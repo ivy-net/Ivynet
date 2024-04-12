@@ -13,12 +13,15 @@ pub fn load_config() -> IvyConfig {
 }
 
 pub fn store_config(cfg: IvyConfig) {
+    println!("Config in store config: {:?}", cfg);
     confy::store("ivy", "ivy-config", &cfg).expect("Failed to store config");
 }
 
-pub fn set_rpc_url(rpc_url: String) {
+pub fn set_rpc_url(rpc: String) {
     let mut cfg = load_config();
-    cfg.rpc_url = rpc_url;
+    println!("Setting rpc url to: {}", rpc);
+    cfg.rpc_url = rpc;
+    
     store_config(cfg);
 }
 
@@ -28,3 +31,12 @@ pub fn set_default_keyfile(keyfile: String) {
     store_config(cfg);
 }
 
+
+
+
+#[test]
+fn test_set_rpc() {
+    set_rpc_url("http://notreallyanrpchost:8845".to_string());
+    let cfg = load_config();
+    assert_eq!(cfg.rpc_url, "http://notreallyanrpchost:8845");
+}
