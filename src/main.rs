@@ -25,11 +25,10 @@ pub struct Args {
 
     /// Set or update your rpc endpoint url
     #[arg(long, value_name = "URL")]
-    set_rpc: Option<String>, 
-    //Default values in this struct are ALWAYS executed, so until I figure out how to 
+    set_rpc: Option<String>,
+    //Default values in this struct are ALWAYS executed, so until I figure out how to
     //stop execution even when we already have values, we cannot have default values
     //Need to read more about how clap works
-
     /// View saved RPC url
     #[arg(long)]
     get_rpc: bool,
@@ -63,7 +62,8 @@ pub struct Args {
 //     ImportPrivateKey(private_key: String),
 // }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     let args = Args::parse();
 
     //TODO: Refactor for subcommands
@@ -73,14 +73,20 @@ fn main() {
 
     //Ugly
     match args {
+        
         Args {
             import_ecdsa: Some(private_key),
             ..
         } => keys::key_setup(private_key),
         Args { create_ecdsa: true, .. } => keys::key_setup("".to_string()),
-        Args { check_restake: Some(address), .. } => {
-            rpc::reads::try_connection();
-        },
+        Args {
+            check_restake: Some(address),
+            ..
+        } => {
+            println!("Checking restake data for address: {}", address);
+            println!("Block number: {:?}", rpc::reads::get_block().await);
+            println!("Code: {:?}", rpc::reads::get_code().await);
+        }
         Args {
             get_stored_address: true, ..
         } => {

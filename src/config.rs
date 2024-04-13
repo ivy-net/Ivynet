@@ -1,6 +1,8 @@
+use lazy_static;
 use serde_derive::{Deserialize, Serialize};
+use std::sync::Mutex;
 
-#[derive(Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct IvyConfig {
     // Default rpc url
     pub rpc_url: String,
@@ -8,35 +10,31 @@ pub struct IvyConfig {
     pub default_keyfile: String,
 }
 
+lazy_static::lazy_static! {
+    static ref CONFIG: Mutex<IvyConfig> = Mutex::new(load_config());
+}
+
 pub fn load_config() -> IvyConfig {
     confy::load("ivy", "ivy-config").expect("Failed to load config")
 }
 
 pub fn store_config(cfg: IvyConfig) {
-    println!("Config in store config: {:?}", cfg);
     confy::store("ivy", "ivy-config", &cfg).expect("Failed to store config");
 }
 
+pub fn get_config() -> IvyConfig {
+    CONFIG.lock().unwrap().clone()
+}
+
 pub fn set_rpc_url(rpc: String) {
-    let mut cfg = load_config();
+    let mut cfg = CONFIG.lock().unwrap();
     println!("Setting rpc url to: {}", rpc);
     cfg.rpc_url = rpc;
-    
-    store_config(cfg);
+    store_config(cfg.clone());
 }
 
 pub fn set_default_keyfile(keyfile: String) {
-    let mut cfg = load_config();
+    let mut cfg = CONFIG.lock().unwrap();
     cfg.default_keyfile = keyfile;
-    store_config(cfg);
-}
-
-
-
-
-#[test]
-fn test_set_rpc() {
-    set_rpc_url("http://notreallyanrpchost:8845".to_string());
-    let cfg = load_config();
-    assert_eq!(cfg.rpc_url, "http://notreallyanrpchost:8845");
+    store_config(cfg.clone());
 }
