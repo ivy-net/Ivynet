@@ -2,6 +2,7 @@ use std::fs::{self, File};
 use std::io::{Read, Write};
 
 use dialoguer::Input;
+use ethers_signers::LocalWallet;
 use secp256k1::rand::rngs::OsRng;
 use secp256k1::{PublicKey, Secp256k1, SecretKey};
 use sha3::{Digest, Keccak256};
@@ -108,4 +109,21 @@ pub fn open_pem(file_path: String) -> SecretKey {
     let secret_key = SecretKey::from_slice(&contents).expect("Invalid private key");
 
     secret_key
+}
+
+pub fn get_secret_from_config() -> SecretKey {
+    let config = config::load_config();
+    let keyfile = config.default_keyfile;
+
+    open_pem(keyfile)
+}
+
+pub fn get_keystring() -> String {
+    let secret_key = get_secret_from_config();
+    hex::encode(secret_key.secret_bytes())
+}
+
+pub fn connect_wallet() -> LocalWallet {
+    let pkey = get_secret_from_config();
+    get_keystring().parse::<LocalWallet>().expect("Could not connect to wallet")
 }

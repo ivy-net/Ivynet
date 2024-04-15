@@ -1,4 +1,5 @@
 use clap::Parser;
+use eyre::Result;
 
 mod config;
 mod keys;
@@ -17,7 +18,7 @@ pub struct Args {
 
     /// Sanity Check to grab restake data from Eth network using public address
     #[arg(long, value_name = "Public Address")]
-    check_restake: Option<String>,
+    check_operator_stake: Option<String>,
 
     /// Get the default public EVM address from a local pem file
     #[arg(long)]
@@ -63,7 +64,7 @@ pub struct Args {
 // }
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
     let args = Args::parse();
 
     //TODO: Refactor for subcommands
@@ -73,19 +74,20 @@ async fn main() {
 
     //Ugly
     match args {
-        
         Args {
             import_ecdsa: Some(private_key),
             ..
         } => keys::key_setup(private_key),
         Args { create_ecdsa: true, .. } => keys::key_setup("".to_string()),
         Args {
-            check_restake: Some(address),
+            check_operator_stake: Some(address),
             ..
         } => {
             println!("Checking restake data for address: {}", address);
-            println!("Block number: {:?}", rpc::reads::get_block().await);
-            println!("Code: {:?}", rpc::reads::get_code().await);
+            // println!("Block number: {:?}", rpc::reads::get_block().await);
+            // println!("OperatorDetails: {:?}", rpc::reads::get_operator_details(address).await);
+            println!("Staker strategy details for address: {:?}", address);
+            rpc::reads::get_staker_delegatable_shares(address).await;
         }
         Args {
             get_stored_address: true, ..
@@ -110,4 +112,6 @@ async fn main() {
         }
         _ => println!("No arguments provided"),
     }
+
+    Ok(())
 }
