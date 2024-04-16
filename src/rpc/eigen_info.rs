@@ -2,23 +2,41 @@ use ethers_contract::abigen;
 
 pub const DELEGATION_MANAGER_ADDRESS: &str = "0xA44151489861Fe9e3055d95adC98FbD462B948e7";
 
+lazy_static::lazy_static! {
+    pub static ref STRATEGY_LIST: Vec<EigenStrategy> = vec![
+    EigenStrategy::Weth,
+    EigenStrategy::Eth,
+    EigenStrategy::Reth,
+    EigenStrategy::Oseth,
+    EigenStrategy::Steth,
+    EigenStrategy::Ankreth,
+    EigenStrategy::Meth,
+    EigenStrategy::Ethx,
+    EigenStrategy::Lseth,
+    EigenStrategy::Cbeth,
+    EigenStrategy::Sfrxeth,
+    ];
+}
+
+// EigenLayer shares types in order of their appearance on EL website
+#[derive(Debug, Clone)]
 pub enum EigenStrategy {
-    Eth,
-    Steth,
-    Reth,
     Weth,
-    Lseth,
-    Sfrxeth,
-    Ethx,
+    Eth,
+    Reth,
     Oseth,
-    Cbeth,
-    Meth,
+    Steth,
     Ankreth,
+    Meth,
+    Ethx,
+    Lseth,
+    Cbeth,
+    Sfrxeth,
     Unknown,
 }
 
-impl EigenStrategy {
-    pub fn from_hex(hex: &str) -> Self {
+impl From<&str> for EigenStrategy {
+    fn from(hex: &str) -> Self {
         match hex {
             "0x7d704507b76571a51d9cae8addabbfd0ba0e63d3" => EigenStrategy::Steth,
             "0x3A8fBdf9e77DFc25d09741f51d3E181b25d0c4E0 " => EigenStrategy::Reth,
@@ -32,6 +50,25 @@ impl EigenStrategy {
             "0x7673a47463F80c6a3553Db9E54c8cDcd5313d0ac " => EigenStrategy::Ankreth,
             "0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0" => EigenStrategy::Eth,
             _ => EigenStrategy::Unknown,
+        }
+    }
+}
+
+impl From<EigenStrategy> for &str {
+    fn from(strategy: EigenStrategy) -> Self {
+        match strategy {
+            EigenStrategy::Steth => "0x7d704507b76571a51d9cae8addabbfd0ba0e63d3",
+            EigenStrategy::Reth => "0x3A8fBdf9e77DFc25d09741f51d3E181b25d0c4E0 ",
+            EigenStrategy::Weth => "0x80528D6e9A2BAbFc766965E0E26d5aB08D9CFaF9 ",
+            EigenStrategy::Lseth => "0x05037A81BD7B4C9E0F7B430f1F2A22c31a2FD943 ",
+            EigenStrategy::Sfrxeth => "0x9281ff96637710Cd9A5CAcce9c6FAD8C9F54631c ",
+            EigenStrategy::Ethx => "0x31B6F59e1627cEfC9fA174aD03859fC337666af7 ",
+            EigenStrategy::Oseth => "0x46281E3B7fDcACdBa44CADf069a94a588Fd4C6Ef ",
+            EigenStrategy::Cbeth => "0x70EB4D3c164a6B4A5f908D4FBb5a9cAfFb66bAB6 ",
+            EigenStrategy::Meth => "0xaccc5A86732BE85b5012e8614AF237801636F8e5 ",
+            EigenStrategy::Ankreth => "0x7673a47463F80c6a3553Db9E54c8cDcd5313d0ac ",
+            EigenStrategy::Eth => "0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0",
+            EigenStrategy::Unknown => "",
         }
     }
 }

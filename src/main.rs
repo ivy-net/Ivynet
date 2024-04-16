@@ -16,10 +16,6 @@ pub struct Args {
     #[arg(short, long)]
     create_ecdsa: bool,
 
-    /// Sanity Check to grab restake data from Eth network using public address
-    #[arg(long, value_name = "Public Address")]
-    check_operator_stake: Option<String>,
-
     /// Get the default public EVM address from a local pem file
     #[arg(long)]
     get_stored_address: bool,
@@ -37,6 +33,22 @@ pub struct Args {
     /// Change your default key file located in $HOME/.ivynet/
     #[arg(long, value_name = "path")]
     set_default_keyfile: Option<String>,
+
+    /// Check to grab restake data from Eth network using public address
+    #[arg(long, value_name = "Public Address")]
+    check_operator_stake: Option<String>,
+
+    /// Sanity check to grab saved address's delegated stake data
+    #[arg(long, value_name = "Public Address")]
+    check_my_stake: Option<String>,
+
+    /// Get operator details
+    #[arg(long, value_name = "Public Address")]
+    get_operator_details: Option<String>,
+
+    /// Get staker strategy details and stake
+    #[arg(long, value_name = "Public Address")]
+    get_staker_data: Option<String>,
 }
 
 //TODO: Refactor for subcommands
@@ -64,7 +76,7 @@ pub struct Args {
 // }
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
     //TODO: Refactor for subcommands
@@ -79,16 +91,7 @@ async fn main() -> Result<()> {
             ..
         } => keys::key_setup(private_key),
         Args { create_ecdsa: true, .. } => keys::key_setup("".to_string()),
-        Args {
-            check_operator_stake: Some(address),
-            ..
-        } => {
-            println!("Checking restake data for address: {}", address);
-            // println!("Block number: {:?}", rpc::reads::get_block().await);
-            // println!("OperatorDetails: {:?}", rpc::reads::get_operator_details(address).await);
-            println!("Staker strategy details for address: {:?}", address);
-            rpc::reads::get_staker_delegatable_shares(address).await;
-        }
+        
         Args {
             get_stored_address: true, ..
         } => {
@@ -106,6 +109,21 @@ async fn main() -> Result<()> {
             set_default_keyfile: Some(path),
             ..
         } => config::set_default_keyfile(path),
+        Args {
+            check_operator_stake: Some(address),
+            ..
+        } => {
+            rpc::reads::get_all_statregies_delegated_stake(address).await?;
+            // println!("Checking restake data for address: {}", address);
+            // println!("Staker strategy details for address: {:?}", address);
+            // rpc::reads::get_staker_delegatable_shares(address).await?;
+        }
+        Args {
+            get_operator_details: Some(address),
+            ..
+        } => {
+            rpc::reads::get_operator_details(address).await?;
+        }
         Args { get_rpc: true, .. } => {
             let config = config::load_config();
             println!("RPC URL: {}", config.rpc_url);
