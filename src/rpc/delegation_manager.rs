@@ -1,37 +1,21 @@
-use ethers_core::k256;
 use ethers_core::types::{Address, H160, U256};
 use ethers_core::utils::format_units;
-use ethers_middleware::SignerMiddleware;
-use ethers_providers::{Http, Provider};
-use ethers_signers::{LocalWallet, Wallet};
-use std::convert::TryFrom;
-use std::sync::Arc;
 
-use super::eigen_info::{self, STRATEGY_LIST};
-use crate::rpc::eigen_info::EigenStrategy;
-use crate::{config, keys};
+use crate::rpc::eigen_info::STRATEGY_LIST;
 
-type Client = SignerMiddleware<Provider<Http>, Wallet<k256::ecdsa::SigningKey>>;
-type DelegationManager = eigen_info::DelegationManager<Client>;
+use super::{eigen_info, rpc_management};
+
+type DelegationManager = eigen_info::DelegationManagerAbi<rpc_management::Client>;
 
 lazy_static::lazy_static! {
-    static ref PROVIDER: Provider<Http> = connect_provider();
-    static ref WALLET: LocalWallet = keys::connect_wallet();
-    static ref CLIENT: Arc<Client> = Arc::new(SignerMiddleware::new(PROVIDER.clone(), WALLET.clone()));
     static ref DELEGATION_MANAGER: DelegationManager = setup_delegation_manager_contract();
-}
-
-fn connect_provider() -> Provider<Http> {
-    let cfg = config::get_config();
-    Provider::<Http>::try_from(&cfg.rpc_url).expect("Could not connect to provider")
 }
 
 pub fn setup_delegation_manager_contract() -> DelegationManager {
     let del_mgr_addr: Address = eigen_info::DELEGATION_MANAGER_ADDRESS
         .parse()
         .expect("Could not parse DelegationManager address");
-    let arc_signer = Arc::new(SignerMiddleware::new(PROVIDER.clone(), WALLET.clone()));
-    eigen_info::DelegationManager::new(del_mgr_addr.clone(), arc_signer)
+    eigen_info::DelegationManagerAbi::new(del_mgr_addr.clone(), rpc_management::CLIENT.clone())
 }
 
 pub async fn get_operator_details(address: String) -> Result<(), Box<dyn std::error::Error>> {

@@ -1438,7 +1438,6 @@ dependencies = [
  "ethers-middleware",
  "ethers-providers",
  "ethers-signers",
- "eyre",
  "hex",
  "lazy_static",
  "pem 3.0.4",
