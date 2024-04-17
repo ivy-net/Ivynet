@@ -37,6 +37,7 @@ pub async fn get_staker_delegatable_shares(address: String) -> Result<(), Box<dy
     Ok(())
 }
 
+// Function to get all strategies' delegated stake to an operator 
 pub async fn get_all_statregies_delegated_stake(address: String) -> Result<(), Box<dyn std::error::Error>> {
     let operator_address = address.parse::<Address>()?;
     println!("Shares for operator: {:?}", operator_address);

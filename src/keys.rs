@@ -1,12 +1,9 @@
-use dialoguer::Input;
-use ethers_core::types::{Address, H160, U256};
-use ethers_signers::LocalWallet;
-use pem::Pem;
-use secp256k1::rand::rngs::OsRng;
-use secp256k1::{PublicKey, Secp256k1, SecretKey};
-use sha3::{Digest, Keccak256};
-use std::fs::{self, File};
-use std::io::{Read, Write};
+use dialoguer::{Input, Password};
+use ethers_core::types::Address;
+use ethers_signers::{LocalWallet, Signer};
+use secp256k1::rand::thread_rng;
+use std::fs;
+use std::path::PathBuf;
 
 use crate::config;
 
@@ -14,62 +11,61 @@ lazy_static::lazy_static! {
     pub static ref WALLET: LocalWallet = connect_wallet();
 }
 
-pub fn create_key(store: bool, name: Option<String>) {
-    let secp = Secp256k1::new();
-    let (secret_key, pub_key) = secp.generate_keypair(&mut OsRng);
-
+pub fn create_key(
+    store: bool,
+    name: Option<String>,
+    password: Option<String>,
+) -> Result<(), Box<dyn std::error::Error>> {
     println! {"Please back up your private key in a safe place!"};
-    println!("Private Key: {:?}", hex::encode(secret_key.secret_bytes()));
+    let wallet = LocalWallet::new(&mut thread_rng());
+    let priv_key = hex::encode(wallet.signer().to_bytes());
+    println!("Private key: {:?}", priv_key);
 
-    let eth_address = get_eth_address(pub_key);
-    println!("Address: 0x{}", eth_address);
+    let addr = wallet.address();
+    println!("Public Address: {:?}", addr);
 
     if store {
-        create_pem(secret_key, name);
+        encrypt_and_store(wallet, name, password)?;
     }
+    Ok(())
 }
 
-pub fn import_key(private_key_string: String, name: Option<String>) {
-    let (secret_key, pub_key) = import_keypair(private_key_string);
+pub fn import_key(
+    private_key_string: String,
+    name: Option<String>,
+    password: Option<String>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let priv_bytes = hex::decode(&private_key_string)?;
+    let local_wallet = LocalWallet::from_bytes(&priv_bytes)?;
+    println!("Address: {:?}", local_wallet.address());
 
-    let eth_address = get_eth_address(pub_key);
-    println!("Address: 0x{}", eth_address);
-
-    create_pem(secret_key, name);
+    encrypt_and_store(local_wallet, name, password)
 }
 
-fn import_keypair(secret_key: String) -> (SecretKey, PublicKey) {
-    let secp = Secp256k1::new();
+pub fn encrypt_and_store(
+    wallet: LocalWallet,
+    name: Option<String>,
+    password: Option<String>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    //Find home directory and add .ivynet folder
+    let mut file_path = dirs::home_dir().expect("Could not get home directory");
+    file_path.push(".ivynet");
 
-    let hex_secret_key = hex::decode(secret_key).expect("Expected a valid hex string");
-    let secret_key = SecretKey::from_slice(&hex_secret_key).expect("Invalid private key");
-    let public_key = PublicKey::from_secret_key(&secp, &secret_key);
+    // Create the directory if it doesn't exist
+    fs::create_dir_all(&file_path).expect("Failed to create directory");
 
-    (secret_key, public_key)
-}
+    //Prompt the user to enter a password for their pkey
+    let pass: String;
+    if password.is_none() {
+        pass = Password::new()
+            .with_prompt("Enter a password to encrypt the private key")
+            .interact()
+            .expect("Error reading password");
+    } else {
+        pass = password.unwrap();
+    }
 
-// Gets the Ethereum public address, the last 20 bytes, from the last 64 bytes of the public key
-pub fn get_eth_address(pub_key: PublicKey) -> String {
-    let pub_uncomp = pub_key.serialize_uncompressed();
-    let pub_slice = &pub_uncomp[1..];
-    // println!("Public Key: {:?}", hex::encode(pub_slice));
-
-    let mut hasher = Keccak256::new();
-    hasher.update(pub_slice);
-    let result = hasher.finalize();
-
-    hex::encode(&result[12..])
-}
-
-pub fn get_eth_address_from_secret(secret_key: SecretKey) -> String {
-    let secp = Secp256k1::new();
-    let public_key = PublicKey::from_secret_key(&secp, &secret_key);
-
-    get_eth_address(public_key)
-}
-
-// Create a PEM file with the private key and save it password protected
-fn create_pem(secret_key: SecretKey, name: Option<String>) {
+    //Prompt the user to enter a name for the key
     let key_name: String;
     if name.is_none() {
         key_name = Input::new()
@@ -80,57 +76,192 @@ fn create_pem(secret_key: SecretKey, name: Option<String>) {
         key_name = name.unwrap();
     }
 
-    //TODO: Enable password protection for the PEM file
-    // let password: String = Password::new()
-    //     .with_prompt("Enter a password to encrypt the private key")
-    //     .interact()
-    //     .expect("Error reading password");
+    // ------ Private Key File ------
+    let mut private_key_path: PathBuf = file_path.clone();
 
-    let pem = Pem::new(key_name.clone(), secret_key.secret_bytes());
+    //Encrypt private key
+    LocalWallet::encrypt_keystore(
+        private_key_path.clone(),
+        &mut thread_rng(),
+        wallet.signer().to_bytes(),
+        pass,
+        Some(&(key_name.clone() + ".json")),
+    )?;
 
-    let mut file_path = dirs::home_dir().expect("Could not get home directory");
-    file_path.push(".ivynet");
+    //Set the default private keyfile path
+    private_key_path.push(format!("{}.json", key_name));
+    config::set_default_private_keyfile(private_key_path);
 
-    // Create the directory if it doesn't exist
-    fs::create_dir_all(&file_path).expect("Failed to create directory");
+    // ------ Public Key File ------
+    //Create path for pub key
+    let mut pub_file_path = file_path.clone();
+    pub_file_path.push(format!("{}.pub", key_name));
 
-    file_path.push(format!("{}.pem", key_name));
+    //Write public key to file
+    let public_key = wallet.address();
+    fs::write(pub_file_path.clone(), public_key).expect("Unable to write to file");
+    config::set_default_public_keyfile(pub_file_path);
 
-    // Build the file
-    let mut file = File::create(file_path.as_path()).expect("Failed to create PEM file");
-    file.write_all(pem.contents()).expect("Failed to write PEM to file");
+    println!("Key successfully stored!");
 
-    config::set_default_keyfile(file_path.to_str().unwrap().to_string());
-
-    println!("PEM file created successfully!");
-}
-
-// Open a PEM file and return the private key
-fn open_pem(file_path: String) -> SecretKey {
-    let mut file = File::open(file_path).expect("Failed to open PEM file");
-
-    let mut contents = Vec::new();
-    file.read_to_end(&mut contents).expect("Failed to read PEM file");
-
-    let secret_key = SecretKey::from_slice(&contents).expect("Invalid private key");
-
-    secret_key
-}
-
-pub fn get_secret_from_config() -> SecretKey {
-    let config = config::load_config();
-    let keyfile = config.default_keyfile;
-
-    open_pem(keyfile)
-}
-
-pub fn get_keystring() -> String {
-    let secret_key = get_secret_from_config();
-    hex::encode(secret_key.secret_bytes())
+    Ok(())
 }
 
 pub fn connect_wallet() -> LocalWallet {
-    get_keystring()
-        .parse::<LocalWallet>()
-        .expect("Could not connect to wallet")
+    let file_path = config::get_default_private_keyfile();
+    println!("File Path: {:?}", file_path);
+
+    let password: String = Password::new()
+        .with_prompt("Enter the password you used to encrypt the private key")
+        .interact()
+        .expect("Error reading password");
+
+    LocalWallet::decrypt_keystore(file_path, password).expect("Failed to decrypt wallet")
 }
+
+pub fn get_stored_public_key() -> Result<String, Box<dyn std::error::Error>> {
+    let file_path = config::get_default_public_keyfile();
+    let addr_vec: Vec<u8> = fs::read(file_path)?;
+    let addr_bytes: [u8; 20] = addr_vec.try_into().expect("Expected 20 bytes");
+    let addr: Address = Address::from(addr_bytes);
+    //Can't do to_string because it truncates it
+    Ok("0x".to_owned() + &hex::encode(addr))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_import_key() {
+        assert!(import_key(
+            "8042944cd65953d95cb5a5d59f96a3b7e5251a05e64b98a0f0a32795c38e2247".to_string(),
+            Some("test".to_string()),
+            Some("jimmy".to_string())
+        )
+        .is_ok());
+    }
+
+    #[test]
+    fn test_get_stored_public_key() {
+        assert_eq!(get_stored_public_key().unwrap(), "0xCD6908FcF7b711d5b7486F7Eb5f7F1A0504aF2c6");
+    }
+}
+
+// // Create a PEM file with the private key and save it password protected
+// fn create_pem(secret_key: SecretKey, name: Option<String>) {
+//     let key_name: String;
+//     if name.is_none() {
+//         key_name = Input::new()
+//             .with_prompt("Enter a name for the key")
+//             .interact_text()
+//             .expect("Error reading key name");
+//     } else {
+//         key_name = name.unwrap();
+//     }
+
+//     //TODO: Enable password protection for the PEM file
+//     // let password: String = Password::new()
+//     //     .with_prompt("Enter a password to encrypt the private key")
+//     //     .interact()
+//     //     .expect("Error reading password");
+
+//     let pem = Pem::new(key_name.clone(), secret_key.secret_bytes());
+
+//     let mut file_path = dirs::home_dir().expect("Could not get home directory");
+//     file_path.push(".ivynet");
+
+//     // Create the directory if it doesn't exist
+//     fs::create_dir_all(&file_path).expect("Failed to create directory");
+
+//     file_path.push(format!("{}.pem", key_name));
+
+//     // Build the file
+//     let mut file = File::create(file_path.as_path()).expect("Failed to create PEM file");
+//     file.write_all(pem.contents()).expect("Failed to write PEM to file");
+
+//     config::set_default_keyfile(file_path.to_str().unwrap().to_string());
+
+//     println!("PEM file created successfully!");
+// }
+
+// // Open a PEM file and return the private key
+// fn open_pem(file_path: String) -> SecretKey {
+//     let mut file = File::open(file_path).expect("Failed to open PEM file");
+
+//     let mut contents = Vec::new();
+//     file.read_to_end(&mut contents).expect("Failed to read PEM file");
+
+//     let secret_key = SecretKey::from_slice(&contents).expect("Invalid private key");
+
+//     secret_key
+// }
+
+// pub fn get_secret_from_config() -> SecretKey {
+//     let config = config::load_config();
+//     let keyfile = config.default_keyfile;
+
+//     open_pem(keyfile)
+// }
+
+// pub fn get_keystring() -> String {
+//     let secret_key = get_secret_from_config();
+//     hex::encode(secret_key.secret_bytes())
+// }
+
+//OLD - Delete after testing
+
+// pub fn create_key_old(store: bool, name: Option<String>) {
+//     let secp = Secp256k1::new();
+//     let (secret_key, pub_key) = secp.generate_keypair(&mut OsRng);
+
+//     println! {"Please back up your private key in a safe place!"};
+//     println!("Private Key: {:?}", hex::encode(secret_key.secret_bytes()));
+
+//     let eth_address = get_eth_address(pub_key);
+//     println!("Address: 0x{}", eth_address);
+
+//     if store {
+//         create_pem(secret_key, name);
+//     }
+// }
+
+// pub fn import_key_old(private_key_string: String, name: Option<String>) {
+//     let (secret_key, pub_key) = import_keypair(private_key_string);
+
+//     let eth_address = get_eth_address(pub_key);
+//     println!("Address: 0x{}", eth_address);
+
+//     create_pem(secret_key, name);
+// }
+
+// fn import_keypair(secret_key: String) -> (SecretKey, PublicKey) {
+//     let secp = Secp256k1::new();
+
+//     let hex_secret_key = hex::decode(secret_key).expect("Expected a valid hex string");
+//     let secret_key = SecretKey::from_slice(&hex_secret_key).expect("Invalid private key");
+//     let public_key = PublicKey::from_secret_key(&secp, &secret_key);
+
+//     (secret_key, public_key)
+// }
+
+// Gets the Ethereum public address, the last 20 bytes, from the last 64 bytes of the public key
+// pub fn get_eth_address(pub_key: PublicKey) -> String {
+//     let pub_uncomp = pub_key.serialize_uncompressed();
+//     let pub_slice = &pub_uncomp[1..];
+//     // println!("Public Key: {:?}", hex::encode(pub_slice));
+
+//     let mut hasher = Keccak256::new();
+//     hasher.update(pub_slice);
+//     let result = hasher.finalize();
+
+//     hex::encode(&result[12..])
+// }
+
+//
+// pub fn get_eth_address_from_secret(secret_key: SecretKey) -> String {
+//     let secp = Secp256k1::new();
+//     let public_key = PublicKey::from_secret_key(&secp, &secret_key);
+
+//     get_eth_address(public_key)
+// }

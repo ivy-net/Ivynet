@@ -1,6 +1,6 @@
 use lazy_static;
 use serde_derive::{Deserialize, Serialize};
-use std::sync::Mutex;
+use std::{path::PathBuf, sync::Mutex};
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct IvyConfig {
@@ -10,8 +10,10 @@ pub struct IvyConfig {
     pub testnet_rpc_url: String,
     // Mainnet rpc url
     pub local_rpc_url: String,
-    // Default key file full path
-    pub default_keyfile: String,
+    // Default private key file full path
+    pub default_private_keyfile: PathBuf,
+    // Default public key file full path
+    pub default_public_keyfile: PathBuf,
 }
 
 lazy_static::lazy_static! {
@@ -43,7 +45,8 @@ fn create_new_config() {
         mainnet_rpc_url: "https://rpc.flashbots.net/fast".to_string(),
         testnet_rpc_url: "https://rpc.holesky.ethpandaops.io".to_string(),
         local_rpc_url: "http://localhost:8545".to_string(),
-        default_keyfile: "".to_string(),
+        default_private_keyfile: "".into(),
+        default_public_keyfile: "".into(),
     };
     store_config(cfg);
 }
@@ -84,8 +87,36 @@ pub fn get_rpc_url(network: String) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }
 
-pub fn set_default_keyfile(keyfile: String) {
+pub fn set_default_private_keyfile(keyfile: PathBuf) {
     let mut cfg = CONFIG.lock().unwrap();
-    cfg.default_keyfile = keyfile;
+    cfg.default_private_keyfile = keyfile;
     store_config(cfg.clone());
+}
+
+pub fn get_default_private_keyfile() -> PathBuf {
+    let cfg = CONFIG.lock().unwrap();
+    cfg.default_private_keyfile.clone()
+}
+
+pub fn set_default_public_keyfile(keyfile: PathBuf) {
+    let mut cfg = CONFIG.lock().unwrap();
+    cfg.default_public_keyfile = keyfile;
+    store_config(cfg.clone());
+}
+
+pub fn get_default_public_keyfile() -> PathBuf {
+    let cfg = CONFIG.lock().unwrap();
+    cfg.default_public_keyfile.clone().into()
+    
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_load_config() {
+       println!("Config: {:?}", load_config());
+    }
 }

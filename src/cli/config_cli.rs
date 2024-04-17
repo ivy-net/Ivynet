@@ -5,12 +5,13 @@ use crate::{config, keys};
 #[derive(Parser, Debug, Clone)]
 pub(crate) enum ConfigCommands {
     #[command(
-        name = "import-private-key",
+        name = "import-key",
         about = "Import and save as your default Ethereum private key - WARNING: Not production ready - not encrypted!"
     )]
     ImportPrivateKey {
         private_key: String,
         keyname: Option<String>,
+        password: Option<String>,
     },
     #[command(
         name = "create-key",
@@ -18,17 +19,18 @@ pub(crate) enum ConfigCommands {
     )]
     CreatePrivateKey {
         #[arg(long)]
-        store_as_default: bool,
-        #[arg(long)]
+        store: bool,
         keyname: Option<String>,
+        password: Option<String>,
+        
     },
     #[command(
-        name = "get-default-eth-address",
+        name = "get-default-public",
         about = "Get the current default saved keypair's Ethereum address"
     )]
     GetDefaultEthAddress,
     #[command(
-        name = "get-default-private-key",
+        name = "get-default-private",
         about = "Get the current default saved private key - WARNING: Not production ready - not encrypted!"
     )]
     GetDefaultPrivateKey,
@@ -46,20 +48,23 @@ pub(crate) enum ConfigCommands {
 
 pub fn parse_config_subcommands(subcmd: ConfigCommands) -> Result<(), Box<dyn std::error::Error>> {
     match subcmd {
-        ConfigCommands::ImportPrivateKey { private_key, keyname } => keys::import_key(private_key, keyname),
-        ConfigCommands::CreatePrivateKey {
-            store_as_default,
+        ConfigCommands::ImportPrivateKey {
+            private_key,
             keyname,
-        } => keys::create_key(store_as_default, keyname),
+            password,
+        } => keys::import_key(private_key, keyname, password)?,
+        ConfigCommands::CreatePrivateKey {
+            store,
+            keyname,
+            password,
+        } => keys::create_key(store, keyname, password)?,
         ConfigCommands::SetRpc { network, rpc_url } => config::set_rpc_url(rpc_url, network)?,
         ConfigCommands::GetRpc { network } => config::get_rpc_url(network)?,
-        ConfigCommands::GetDefaultEthAddress => {
-            println!("Info: {:?}", keys::connect_wallet());
-        }
+        ConfigCommands::GetDefaultEthAddress => println!("Public Key: {}", keys::get_stored_public_key()?),
         ConfigCommands::GetDefaultPrivateKey => {
-            let key = keys::get_keystring();
-            println!("Private key: {:?}", key);
-        }
-    }
+            let priv_key = hex::encode(keys::WALLET.signer().to_bytes());
+            println!("Private key: {:?}", priv_key);
+        },
+    };
     Ok(())
 }
