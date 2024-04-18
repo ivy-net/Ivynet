@@ -10,8 +10,16 @@ use crate::{config, keys};
 
 pub type Client = SignerMiddleware<Provider<Http>, Wallet<k256::ecdsa::SigningKey>>;
 
+#[derive(Debug, Clone, Copy)]
+pub enum Network {
+    Mainnet,
+    Testnet,
+    Local,
+}
+
 lazy_static::lazy_static! {
-    pub static ref NETWORK: Mutex<String> = Mutex::new("".to_string());
+    #[derive(Debug, Clone)]
+    pub static ref NETWORK: Mutex<Network> = Mutex::new(Network::Local);
     pub static ref PROVIDER: Provider<Http> = connect_provider();
     pub static ref CLIENT: Arc<Client> = Arc::new(SignerMiddleware::new(PROVIDER.clone(), keys::WALLET.clone()));
 }
@@ -19,21 +27,22 @@ lazy_static::lazy_static! {
 fn connect_provider() -> Provider<Http> {
     let cfg: config::IvyConfig = config::get_config();
     match *NETWORK.lock().unwrap() {
-        ref network if network == "mainnet" => {
+        Network::Mainnet => {
             Provider::<Http>::try_from(cfg.mainnet_rpc_url.clone()).expect("Could not connect to provider")
         }
-        ref network if network == "testnet" => {
+        Network::Testnet => {
             Provider::<Http>::try_from(cfg.testnet_rpc_url.clone()).expect("Could not connect to provider")
         }
-        _ => {
-            Provider::<Http>::try_from(cfg.local_rpc_url.clone()).expect("Could not connect to provider")
-        }
+        Network::Local => Provider::<Http>::try_from(cfg.local_rpc_url.clone()).expect("Could not connect to provider"),
     }
 }
 
 pub fn set_network(network: String) {
-    println!("Got here");
-    *NETWORK.lock().unwrap() = network;
+    match network.as_str() {
+        "mainnet" => *NETWORK.lock().unwrap() = Network::Mainnet,
+        "testnet" => *NETWORK.lock().unwrap() = Network::Testnet,
+        _ => *NETWORK.lock().unwrap() = Network::Local,
+    }
 }
 
 #[cfg(test)]

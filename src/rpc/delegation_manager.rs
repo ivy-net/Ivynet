@@ -1,21 +1,21 @@
 use ethers_core::types::{Address, H160, U256};
 use ethers_core::utils::format_units;
 
-use crate::rpc::eigen_info::STRATEGY_LIST;
+use crate::rpc::eigen_delegation_info::STRATEGY_LIST;
 
-use super::{eigen_info, rpc_management};
+use super::{eigen_delegation_info, rpc_management};
 
-type DelegationManager = eigen_info::DelegationManagerAbi<rpc_management::Client>;
+type DelegationManager = eigen_delegation_info::DelegationManagerAbi<rpc_management::Client>;
 
 lazy_static::lazy_static! {
     static ref DELEGATION_MANAGER: DelegationManager = setup_delegation_manager_contract();
 }
 
 pub fn setup_delegation_manager_contract() -> DelegationManager {
-    let del_mgr_addr: Address = eigen_info::DELEGATION_MANAGER_ADDRESS
+    let del_mgr_addr: Address = eigen_delegation_info::DELEGATION_MANAGER_ADDRESS
         .parse()
         .expect("Could not parse DelegationManager address");
-    eigen_info::DelegationManagerAbi::new(del_mgr_addr.clone(), rpc_management::CLIENT.clone())
+    eigen_delegation_info::DelegationManagerAbi::new(del_mgr_addr.clone(), rpc_management::CLIENT.clone())
 }
 
 pub async fn get_operator_details(address: String) -> Result<(), Box<dyn std::error::Error>> {

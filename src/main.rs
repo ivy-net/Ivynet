@@ -75,10 +75,10 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::Operator { subcmd } => operator_cli::parse_operator_subcommands(subcmd).await?,
         Commands::Staker { subcmd } => staker_cli::parse_staker_subcommands(subcmd).await?,
         Commands::Setup { subcmd } => match subcmd {
-            SetupCommands::Todo { private_key } => todo!(),
+            SetupCommands::Todo { private_key: _ } => todo!(),
         },
         Commands::Avs { subcmd } => match subcmd {
-            AvsCommands::Todo { private_key } => todo!(),
+            AvsCommands::Todo { private_key: _ } => todo!(),
         },
     }
 

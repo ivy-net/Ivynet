@@ -1,21 +1,10 @@
 use ethers_contract::abigen;
 
-pub const DELEGATION_MANAGER_ADDRESS: &str = "0xA44151489861Fe9e3055d95adC98FbD462B948e7";
+use super::rpc_management::{self, Network};
 
 lazy_static::lazy_static! {
-    pub static ref STRATEGY_LIST: Vec<EigenStrategy> = vec![
-    EigenStrategy::Weth,
-    EigenStrategy::Eth,
-    EigenStrategy::Reth,
-    EigenStrategy::Oseth,
-    EigenStrategy::Steth,
-    EigenStrategy::Ankreth,
-    EigenStrategy::Meth,
-    EigenStrategy::Ethx,
-    EigenStrategy::Lseth,
-    EigenStrategy::Cbeth,
-    EigenStrategy::Sfrxeth,
-    ];
+    pub static ref DELEGATION_MANAGER_ADDRESS: String = get_delegation_manager_address();
+    pub static ref STRATEGY_LIST: Vec<EigenStrategy> = get_strategy_list();
 }
 
 // EigenLayer shares types in order of their appearance on EL website
@@ -32,44 +21,131 @@ pub enum EigenStrategy {
     Lseth,
     Cbeth,
     Sfrxeth,
+    Sweth,
+    Oeth,
+    Wbeth,
     Unknown,
 }
 
 impl From<&str> for EigenStrategy {
     fn from(hex: &str) -> Self {
-        match hex {
-            "0x7d704507b76571a51d9cae8addabbfd0ba0e63d3" => EigenStrategy::Steth,
-            "0x3A8fBdf9e77DFc25d09741f51d3E181b25d0c4E0 " => EigenStrategy::Reth,
-            "0x80528D6e9A2BAbFc766965E0E26d5aB08D9CFaF9 " => EigenStrategy::Weth,
-            "0x05037A81BD7B4C9E0F7B430f1F2A22c31a2FD943 " => EigenStrategy::Lseth,
-            "0x9281ff96637710Cd9A5CAcce9c6FAD8C9F54631c " => EigenStrategy::Sfrxeth,
-            "0x31B6F59e1627cEfC9fA174aD03859fC337666af7 " => EigenStrategy::Ethx,
-            "0x46281E3B7fDcACdBa44CADf069a94a588Fd4C6Ef " => EigenStrategy::Oseth,
-            "0x70EB4D3c164a6B4A5f908D4FBb5a9cAfFb66bAB6 " => EigenStrategy::Cbeth,
-            "0xaccc5A86732BE85b5012e8614AF237801636F8e5 " => EigenStrategy::Meth,
-            "0x7673a47463F80c6a3553Db9E54c8cDcd5313d0ac " => EigenStrategy::Ankreth,
-            "0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0" => EigenStrategy::Eth,
-            _ => EigenStrategy::Unknown,
+        let network: Network = rpc_management::NETWORK.lock().unwrap().clone();
+        match network {
+            Network::Testnet => match hex {
+                "0x7d704507b76571a51d9cae8addabbfd0ba0e63d3" => EigenStrategy::Steth,
+                "0x3A8fBdf9e77DFc25d09741f51d3E181b25d0c4E0" => EigenStrategy::Reth,
+                "0x80528D6e9A2BAbFc766965E0E26d5aB08D9CFaF9" => EigenStrategy::Weth,
+                "0x05037A81BD7B4C9E0F7B430f1F2A22c31a2FD943" => EigenStrategy::Lseth,
+                "0x9281ff96637710Cd9A5CAcce9c6FAD8C9F54631c" => EigenStrategy::Sfrxeth,
+                "0x31B6F59e1627cEfC9fA174aD03859fC337666af7" => EigenStrategy::Ethx,
+                "0x46281E3B7fDcACdBa44CADf069a94a588Fd4C6Ef" => EigenStrategy::Oseth,
+                "0x70EB4D3c164a6B4A5f908D4FBb5a9cAfFb66bAB6" => EigenStrategy::Cbeth,
+                "0xaccc5A86732BE85b5012e8614AF237801636F8e5" => EigenStrategy::Meth,
+                "0x7673a47463F80c6a3553Db9E54c8cDcd5313d0ac" => EigenStrategy::Ankreth,
+                "0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0" => EigenStrategy::Eth,
+                _ => EigenStrategy::Unknown,
+            },
+            Network::Mainnet => match hex {
+                "0x54945180dB7943c0ed0FEE7EdaB2Bd24620256bc" => EigenStrategy::Cbeth,
+                "0x93c4b944D05dfe6df7645A86cd2206016c51564D" => EigenStrategy::Steth,
+                "0x1BeE69b7dFFfA4E2d53C2a2Df135C388AD25dCD2" => EigenStrategy::Reth,
+                "0x0Fe4F44beE93503346A3Ac9EE5A26b130a5796d6" => EigenStrategy::Sweth,
+                "0xAe60d8180437b5C34bB956822ac2710972584473" => EigenStrategy::Lseth,
+                "0x8CA7A5d6f3acd3A7A8bC468a8CD0FB14B6BD28b6" => EigenStrategy::Sfrxeth,
+                "0x7CA911E83dabf90C90dD3De5411a10F1A6112184" => EigenStrategy::Wbeth,
+                "0x9d7eD45EE2E8FC5482fa2428f15C971e6369011d" => EigenStrategy::Ethx,
+                "0x57ba429517c3473B6d34CA9aCd56c0e735b94c02" => EigenStrategy::Oseth,
+                "0x298aFB19A105D59E74658C4C334Ff360BadE6dd2" => EigenStrategy::Meth,
+                "0x13760F50a9d7377e4F20CB8CF9e4c26586c658ff" => EigenStrategy::Ankreth,
+                "0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0" => EigenStrategy::Eth,
+                "0xa4C637e0F704745D182e4D38cAb7E7485321d059" => EigenStrategy::Oeth,
+                _ => EigenStrategy::Unknown,
+            },
+            Network::Local => todo!(),
         }
     }
 }
 
 impl From<EigenStrategy> for &str {
     fn from(strategy: EigenStrategy) -> Self {
-        match strategy {
-            EigenStrategy::Steth => "0x7d704507b76571a51d9cae8addabbfd0ba0e63d3",
-            EigenStrategy::Reth => "0x3A8fBdf9e77DFc25d09741f51d3E181b25d0c4E0 ",
-            EigenStrategy::Weth => "0x80528D6e9A2BAbFc766965E0E26d5aB08D9CFaF9 ",
-            EigenStrategy::Lseth => "0x05037A81BD7B4C9E0F7B430f1F2A22c31a2FD943 ",
-            EigenStrategy::Sfrxeth => "0x9281ff96637710Cd9A5CAcce9c6FAD8C9F54631c ",
-            EigenStrategy::Ethx => "0x31B6F59e1627cEfC9fA174aD03859fC337666af7 ",
-            EigenStrategy::Oseth => "0x46281E3B7fDcACdBa44CADf069a94a588Fd4C6Ef ",
-            EigenStrategy::Cbeth => "0x70EB4D3c164a6B4A5f908D4FBb5a9cAfFb66bAB6 ",
-            EigenStrategy::Meth => "0xaccc5A86732BE85b5012e8614AF237801636F8e5 ",
-            EigenStrategy::Ankreth => "0x7673a47463F80c6a3553Db9E54c8cDcd5313d0ac ",
-            EigenStrategy::Eth => "0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0",
-            EigenStrategy::Unknown => "",
+        let network: Network = rpc_management::NETWORK.lock().unwrap().clone();
+        match network {
+            Network::Testnet => match strategy {
+                EigenStrategy::Steth => "0x7d704507b76571a51d9cae8addabbfd0ba0e63d3",
+                EigenStrategy::Reth => "0x3A8fBdf9e77DFc25d09741f51d3E181b25d0c4E0",
+                EigenStrategy::Weth => "0x80528D6e9A2BAbFc766965E0E26d5aB08D9CFaF9",
+                EigenStrategy::Lseth => "0x05037A81BD7B4C9E0F7B430f1F2A22c31a2FD943",
+                EigenStrategy::Sfrxeth => "0x9281ff96637710Cd9A5CAcce9c6FAD8C9F54631c",
+                EigenStrategy::Ethx => "0x31B6F59e1627cEfC9fA174aD03859fC337666af7",
+                EigenStrategy::Oseth => "0x46281E3B7fDcACdBa44CADf069a94a588Fd4C6Ef",
+                EigenStrategy::Cbeth => "0x70EB4D3c164a6B4A5f908D4FBb5a9cAfFb66bAB6",
+                EigenStrategy::Meth => "0xaccc5A86732BE85b5012e8614AF237801636F8e5",
+                EigenStrategy::Ankreth => "0x7673a47463F80c6a3553Db9E54c8cDcd5313d0ac",
+                EigenStrategy::Eth => "0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0",
+                _ => "",
+            },
+            Network::Mainnet => match strategy {
+                EigenStrategy::Cbeth => "0x54945180dB7943c0ed0FEE7EdaB2Bd24620256bc",
+                EigenStrategy::Steth => "0x93c4b944D05dfe6df7645A86cd2206016c51564D",
+                EigenStrategy::Reth => "0x1BeE69b7dFFfA4E2d53C2a2Df135C388AD25dCD2",
+                EigenStrategy::Sweth => "0x0Fe4F44beE93503346A3Ac9EE5A26b130a5796d6",
+                EigenStrategy::Lseth => "0xAe60d8180437b5C34bB956822ac2710972584473",
+                EigenStrategy::Sfrxeth => "0x8CA7A5d6f3acd3A7A8bC468a8CD0FB14B6BD28b6",
+                EigenStrategy::Wbeth => "0x7CA911E83dabf90C90dD3De5411a10F1A6112184",
+                EigenStrategy::Ethx => "0x9d7eD45EE2E8FC5482fa2428f15C971e6369011d",
+                EigenStrategy::Oseth => "0x57ba429517c3473B6d34CA9aCd56c0e735b94c02",
+                EigenStrategy::Meth => "0x298aFB19A105D59E74658C4C334Ff360BadE6dd2",
+                EigenStrategy::Ankreth => "0x13760F50a9d7377e4F20CB8CF9e4c26586c658ff",
+                EigenStrategy::Eth => "0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0",
+                EigenStrategy::Oeth => "0xa4C637e0F704745D182e4D38cAb7E7485321d059",
+                _ => "",
+            },
+            Network::Local => todo!(),
         }
+    }
+}
+
+fn get_delegation_manager_address() -> String {
+    let network: Network = rpc_management::NETWORK.lock().unwrap().clone();
+    match network {
+        Network::Testnet => "0xA44151489861Fe9e3055d95adC98FbD462B948e7".to_string(),
+        Network::Mainnet => "0x39053D51B77DC0d36036Fc1fCc8Cb819df8Ef37A".to_string(),
+        Network::Local => todo!(),
+    }
+}
+
+fn get_strategy_list() -> Vec<EigenStrategy> {
+    let network: Network = rpc_management::NETWORK.lock().unwrap().clone();
+    match network {
+        Network::Testnet => vec![
+            EigenStrategy::Steth,
+            EigenStrategy::Reth,
+            EigenStrategy::Weth,
+            EigenStrategy::Lseth,
+            EigenStrategy::Sfrxeth,
+            EigenStrategy::Ethx,
+            EigenStrategy::Oseth,
+            EigenStrategy::Cbeth,
+            EigenStrategy::Meth,
+            EigenStrategy::Ankreth,
+            EigenStrategy::Eth,
+        ],
+        Network::Mainnet => vec![
+            EigenStrategy::Cbeth,
+            EigenStrategy::Steth,
+            EigenStrategy::Reth,
+            EigenStrategy::Sweth,
+            EigenStrategy::Lseth,
+            EigenStrategy::Sfrxeth,
+            EigenStrategy::Wbeth,
+            EigenStrategy::Ethx,
+            EigenStrategy::Oseth,
+            EigenStrategy::Meth,
+            EigenStrategy::Ankreth,
+            EigenStrategy::Eth,
+            EigenStrategy::Oeth,
+        ],
+        Network::Local => todo!(),
     }
 }
 
