@@ -9,7 +9,7 @@ With this cli, that begins with calculations determining whether a specific AVS 
 ## Features
 
 - Import, create, and password protect your keys
-- Grab information from mainnet and testnet on operators and stakers
+- Grab information from mainnet and holesky testnet on operators and stakers
 - Grab information on your computer/server in relation to AVS's node requirements
 - Register as an operator or staker (Soon)
 - Deploy any AVS with one command after utilizing the setup function (Soon - EigenDA coming first)
