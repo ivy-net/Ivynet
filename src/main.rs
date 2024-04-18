@@ -1,116 +1,85 @@
-use clap::Parser;
-use eyre::Result;
+use clap::{Parser, Subcommand};
+use cli::{config_cli, operator_cli, staker_cli};
+use rpc::rpc_management::set_network;
 
+mod cli;
 mod config;
 mod keys;
 mod rpc;
 
-#[derive(Parser)]
+#[derive(Parser, Debug, Clone)]
 #[command(name = "ivy", version, about = "The command line interface for ivynet")]
-pub struct Args {
-    /// Import an Eth key and save it - start here
-    #[arg(short, long, value_name = "Private Key")]
-    import_ecdsa: Option<String>,
-
-    /// Create an Eth key and save it - or start here
-    #[arg(short, long)]
-    create_ecdsa: bool,
-
-    /// Sanity Check to grab restake data from Eth network using public address
-    #[arg(long, value_name = "Public Address")]
-    check_operator_stake: Option<String>,
-
-    /// Get the default public EVM address from a local pem file
-    #[arg(long)]
-    get_stored_address: bool,
-
-    /// Set or update your rpc endpoint url
-    #[arg(long, value_name = "URL")]
-    set_rpc: Option<String>,
-    //Default values in this struct are ALWAYS executed, so until I figure out how to
-    //stop execution even when we already have values, we cannot have default values
-    //Need to read more about how clap works
-    /// View saved RPC url
-    #[arg(long)]
-    get_rpc: bool,
-
-    /// Change your default key file located in $HOME/.ivynet/
-    #[arg(long, value_name = "path")]
-    set_default_keyfile: Option<String>,
+struct Args {
+    #[command(subcommand)]
+    cmd: Commands,
+    /// The network to connect to: mainnet, testnet, local
+    #[arg(long, short, default_value = "local")]
+    network: String,
 }
 
-//TODO: Refactor for subcommands
-// struct Args {
-//     #[command(subcommand)]
-//     cmd: Commands
-// }
+#[derive(Subcommand, Debug, Clone)]
+enum Commands {
+    #[command(
+        name = "setup",
+        about = "Not implemented yet - First time setup for ivynet! Start here!"
+    )]
+    Setup {
+        #[command(subcommand)]
+        subcmd: SetupCommands,
+    },
+    #[command(name = "config", about = "Manage rpc information, keys, and keyfile settings")]
+    Config {
+        #[command(subcommand)]
+        subcmd: config_cli::ConfigCommands,
+    },
+    #[command(name = "operator", about = "Request information, register, or manage your operator")]
+    Operator {
+        #[command(subcommand)]
+        subcmd: operator_cli::OperatorCommands,
+    },
+    #[command(name = "staker", about = "Request information about stakers")]
+    Staker {
+        #[command(subcommand)]
+        subcmd: staker_cli::StakerCommands,
+    },
+    #[command(
+        name = "avs",
+        about = "Not implemented yet - Request information about an AVS or boot up a node"
+    )]
+    Avs {
+        #[command(subcommand)]
+        subcmd: AvsCommands,
+    },
+}
 
-// #[derive(Subcommand, Debug, Clone)]
-// enum Commands {
-//     // #[command(name = "get", about = "Get a value")]
-//     // Get {
-//     //     #[arg(about = "The key to get")]
-//     //     key: String,
-//     // },
-//     // #[command(name = "set", about = "Set a value")]
-//     // Set {
-//     //     #[arg(about = "The key to set")]
-//     //     key: String,
-//     //     #[arg(about = "The value to set")]
-//     //     value: String,
-//     // },
-//     #[command(name = "import_private_key", about = "Import your private key to ivynet")]
-//     ImportPrivateKey(private_key: String),
-// }
+#[derive(Parser, Debug, Clone)]
+enum SetupCommands {
+    #[command(name = "todo", about = "todo")]
+    Todo { private_key: String },
+}
+
+#[derive(Parser, Debug, Clone)]
+enum AvsCommands {
+    #[command(name = "todo", about = "todo")]
+    Todo { private_key: String },
+}
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
     //TODO: Refactor for subcommands
-    // match args.cmd {
-    //     Commands::ImportPrivateKey { private_key } => keys::key_setup(private_key),
-    // }
-
-    //Ugly
-    match args {
-        Args {
-            import_ecdsa: Some(private_key),
-            ..
-        } => keys::key_setup(private_key),
-        Args { create_ecdsa: true, .. } => keys::key_setup("".to_string()),
-        Args {
-            check_operator_stake: Some(address),
-            ..
-        } => {
-            println!("Checking restake data for address: {}", address);
-            // println!("Block number: {:?}", rpc::reads::get_block().await);
-            // println!("OperatorDetails: {:?}", rpc::reads::get_operator_details(address).await);
-            println!("Staker strategy details for address: {:?}", address);
-            rpc::reads::get_staker_delegatable_shares(address).await;
-        }
-        Args {
-            get_stored_address: true, ..
-        } => {
-            let config = config::load_config();
-            let keyfile = config.default_keyfile;
-            println!("Keyfile: {}", keyfile);
-
-            let addr = keys::get_eth_address_from_secret(keys::open_pem(keyfile));
-            println!("Address: 0x{}", addr);
-        }
-        Args {
-            set_rpc: Some(rpc_string), ..
-        } => config::set_rpc_url(rpc_string),
-        Args {
-            set_default_keyfile: Some(path),
-            ..
-        } => config::set_default_keyfile(path),
-        Args { get_rpc: true, .. } => {
-            let config = config::load_config();
-            println!("RPC URL: {}", config.rpc_url);
-        }
-        _ => println!("No arguments provided"),
+    set_network(args.network.clone());
+    match args.cmd {
+        Commands::Config { subcmd } => config_cli::parse_config_subcommands(subcmd)?,
+        Commands::Operator { subcmd } => operator_cli::parse_operator_subcommands(subcmd).await?,
+        Commands::Staker { subcmd } => staker_cli::parse_staker_subcommands(subcmd).await?,
+        Commands::Setup { subcmd } => match subcmd {
+            SetupCommands::Todo { private_key: _ } => todo!(),
+        },
+        Commands::Avs { subcmd } => match subcmd {
+            AvsCommands::Todo { private_key: _ } => todo!(),
+        },
     }
 
     Ok(())
