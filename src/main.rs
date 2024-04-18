@@ -1,16 +1,20 @@
 use clap::{Parser, Subcommand};
 use cli::{config_cli, operator_cli, staker_cli};
+use rpc::rpc_management::set_network;
 
 mod cli;
 mod config;
 mod keys;
 mod rpc;
 
-#[derive(Parser)]
+#[derive(Parser, Debug, Clone)]
 #[command(name = "ivy", version, about = "The command line interface for ivynet")]
 struct Args {
     #[command(subcommand)]
     cmd: Commands,
+    /// The network to connect to: mainnet, testnet, local
+    #[arg(long, short, default_value = "local")]
+    network: String,
 }
 
 #[derive(Subcommand, Debug, Clone)]
@@ -46,11 +50,6 @@ enum Commands {
         #[command(subcommand)]
         subcmd: AvsCommands,
     },
-    #[command(
-        name = "network",
-        about = "Specify which network to use: mainnet, testnet, or local(default)"
-    )]
-    Network { network: String },
 }
 
 #[derive(Parser, Debug, Clone)]
@@ -70,10 +69,8 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
     //TODO: Refactor for subcommands
+    set_network(args.network.clone());
     match args.cmd {
-        Commands::Network { network } => {
-            println!("Network: {:?}", network);
-        }
         Commands::Config { subcmd } => config_cli::parse_config_subcommands(subcmd)?,
         Commands::Operator { subcmd } => operator_cli::parse_operator_subcommands(subcmd).await?,
         Commands::Staker { subcmd } => staker_cli::parse_staker_subcommands(subcmd).await?,
