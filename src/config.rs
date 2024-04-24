@@ -1,6 +1,7 @@
 use lazy_static;
 use serde_derive::{Deserialize, Serialize};
 use std::{path::PathBuf, sync::Mutex};
+use sys_info::{self, DiskInfo, MemInfo};
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct IvyConfig {
@@ -109,6 +110,15 @@ pub fn get_default_public_keyfile() -> PathBuf {
     cfg.default_public_keyfile.clone().into()
     
 }
+
+pub fn get_system_information() -> Result<(u32, MemInfo, DiskInfo), Box<dyn std::error::Error>> {
+    let cpu_cores = sys_info::cpu_num()?;
+    let mem_info = sys_info::mem_info()?;
+    let disk_info = sys_info::disk_info()?;
+    Ok((cpu_cores, mem_info, disk_info))
+}
+
+
 
 
 #[cfg(test)]

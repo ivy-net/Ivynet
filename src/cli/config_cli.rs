@@ -44,6 +44,11 @@ pub(crate) enum ConfigCommands {
         about = "Get the current default RPC URL for 'mainnet', 'testnet', or 'local'"
     )]
     GetRpc { network: String },
+    #[command(
+        name = "get-sys-info",
+        about = "Get the number of CPU cores, memory, and free disk space on the current machine"
+    )]
+    GetSysInfo,
 }
 
 pub fn parse_config_subcommands(subcmd: ConfigCommands) -> Result<(), Box<dyn std::error::Error>> {
@@ -64,6 +69,19 @@ pub fn parse_config_subcommands(subcmd: ConfigCommands) -> Result<(), Box<dyn st
         ConfigCommands::GetDefaultPrivateKey => {
             let priv_key = hex::encode(keys::WALLET.signer().to_bytes());
             println!("Private key: {:?}", priv_key);
+        },
+        ConfigCommands::GetSysInfo => {
+            let (cpus, mem_info, disk_info) = config::get_system_information()?;
+            println!(" --- System Information: --- ");
+            println!("CPU Cores: {}", cpus);
+            println!("Memory Information:");
+            println!("  Total: {}", mem_info.total);
+            println!("  Free: {}", mem_info.free);
+            println!("  Available: {}", mem_info.avail);
+            println!("Disk Information:");
+            println!("  Total: {}", disk_info.total);
+            println!("  Free: {}", disk_info.free);
+            println!(" --------------------------- ");
         },
     };
     Ok(())

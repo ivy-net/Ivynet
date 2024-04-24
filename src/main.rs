@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use cli::{config_cli, operator_cli, staker_cli};
+use cli::{avs_cli, config_cli, operator_cli, staker_cli};
 use rpc::rpc_management::set_network;
 
 mod cli;
@@ -49,7 +49,7 @@ enum Commands {
     )]
     Avs {
         #[command(subcommand)]
-        subcmd: AvsCommands,
+        subcmd: avs_cli::AvsCommands,
     },
 }
 
@@ -59,11 +59,7 @@ enum SetupCommands {
     Todo { private_key: String },
 }
 
-#[derive(Parser, Debug, Clone)]
-enum AvsCommands {
-    #[command(name = "todo", about = "todo")]
-    Todo { private_key: String },
-}
+
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -79,7 +75,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             SetupCommands::Todo { private_key: _ } => todo!(),
         },
         Commands::Avs { subcmd } => match subcmd {
-            AvsCommands::Todo { private_key: _ } => todo!(),
+            avs_cli::AvsCommands::Todo { private_key: _ } => todo!(),
         },
     }
 
