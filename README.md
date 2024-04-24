@@ -18,6 +18,8 @@ With this cli, that begins with calculations determining whether a specific AVS 
 
 ## Use
 
+Until operator registration is ready, please register as an operator using the EigenLayer CLI tool. This tool will check your operator status in order to add you as an operator to individual AVS's, and will check automatically that you are using the correct configuration (eg: CPU cores, memory, storage space) for the requested AVS. 
+
 TODO: Ability to install
 
 For now, 

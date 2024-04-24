@@ -6,6 +6,7 @@ mod cli;
 mod config;
 mod keys;
 mod rpc;
+mod eigen;
 
 #[derive(Parser, Debug, Clone)]
 #[command(name = "ivy", version, about = "The command line interface for ivynet")]

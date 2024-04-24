@@ -1,6 +1,6 @@
 use ethers_contract::abigen;
 
-use super::rpc_management::{self, Network};
+use crate::rpc::rpc_management::{self, Network};
 
 lazy_static::lazy_static! {
     pub static ref DELEGATION_MANAGER_ADDRESS: String = get_delegation_manager_address();

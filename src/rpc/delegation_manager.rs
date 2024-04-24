@@ -1,21 +1,21 @@
 use ethers_core::types::{Address, H160, U256};
 use ethers_core::utils::format_units;
 
-use crate::rpc::eigen_delegation_info::STRATEGY_LIST;
+use crate::eigen::dgm_info::{self, STRATEGY_LIST};
 
-use super::{eigen_delegation_info, rpc_management};
+use super::rpc_management;
 
-type DelegationManager = eigen_delegation_info::DelegationManagerAbi<rpc_management::Client>;
+type DelegationManager = dgm_info::DelegationManagerAbi<rpc_management::Client>;
 
 lazy_static::lazy_static! {
     static ref DELEGATION_MANAGER: DelegationManager = setup_delegation_manager_contract();
 }
 
 pub fn setup_delegation_manager_contract() -> DelegationManager {
-    let del_mgr_addr: Address = eigen_delegation_info::DELEGATION_MANAGER_ADDRESS
+    let del_mgr_addr: Address = dgm_info::DELEGATION_MANAGER_ADDRESS
         .parse()
         .expect("Could not parse DelegationManager address");
-    eigen_delegation_info::DelegationManagerAbi::new(del_mgr_addr.clone(), rpc_management::CLIENT.clone())
+    dgm_info::DelegationManagerAbi::new(del_mgr_addr.clone(), rpc_management::CLIENT.clone())
 }
 
 pub async fn get_operator_details(address: String) -> Result<(), Box<dyn std::error::Error>> {
@@ -37,7 +37,7 @@ pub async fn get_staker_delegatable_shares(address: String) -> Result<(), Box<dy
     Ok(())
 }
 
-// Function to get all strategies' delegated stake to an operator 
+// Function to get all strategies' delegated stake to an operator
 pub async fn get_all_statregies_delegated_stake(address: String) -> Result<(), Box<dyn std::error::Error>> {
     let operator_address = address.parse::<Address>()?;
     println!("Shares for operator: {:?}", operator_address);
@@ -50,7 +50,10 @@ pub async fn get_all_statregies_delegated_stake(address: String) -> Result<(), B
         strat_list.push(hex_strat)
     }
 
-    let shares: Vec<U256> = DELEGATION_MANAGER.get_operator_shares(operator_address, strat_list).call().await?;
+    let shares: Vec<U256> = DELEGATION_MANAGER
+        .get_operator_shares(operator_address, strat_list)
+        .call()
+        .await?;
 
     for i in 0..STRATEGY_LIST.len() {
         println!(
@@ -61,4 +64,12 @@ pub async fn get_all_statregies_delegated_stake(address: String) -> Result<(), B
     }
 
     Ok(())
+}
+
+pub async fn get_operator_status(address: String) -> Result<bool, Box<dyn std::error::Error>> {
+    let operator_address = address.parse::<Address>()?;
+    let status: bool = DELEGATION_MANAGER.is_operator(operator_address).call().await?;
+    println!("Operator status: {:?}", status);
+
+    Ok(status)
 }

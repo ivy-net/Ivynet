@@ -8,7 +8,8 @@ use std::sync::Arc;
 
 use crate::{config, keys};
 
-pub type Client = SignerMiddleware<Provider<Http>, Wallet<k256::ecdsa::SigningKey>>;
+pub type Client = Provider<Http>;
+pub type Signer = SignerMiddleware<Provider<Http>, Wallet<k256::ecdsa::SigningKey>>;
 
 #[derive(Debug, Clone, Copy)]
 pub enum Network {
@@ -21,7 +22,8 @@ lazy_static::lazy_static! {
     #[derive(Debug, Clone)]
     pub static ref NETWORK: Mutex<Network> = Mutex::new(Network::Local);
     pub static ref PROVIDER: Provider<Http> = connect_provider();
-    pub static ref CLIENT: Arc<Client> = Arc::new(SignerMiddleware::new(PROVIDER.clone(), keys::WALLET.clone()));
+    pub static ref SIGNER: Arc<Signer> = Arc::new(SignerMiddleware::new(PROVIDER.clone(), keys::WALLET.clone()));
+    pub static ref CLIENT: Arc<Client> = Arc::new(PROVIDER.clone());
 }
 
 fn connect_provider() -> Provider<Http> {
