@@ -1,9 +1,13 @@
+use std::collections::HashMap;
+
 use ethers_core::types::{Address, H160, U256};
 use ethers_core::utils::format_units;
 
-use crate::eigen::dgm_info::{self, STRATEGY_LIST};
+use dgm_info::{EigenStrategy, STRATEGY_LIST};
 
-use super::rpc_management;
+use crate::rpc_management;
+
+use super::dgm_info;
 
 type DelegationManager = dgm_info::DelegationManagerAbi<rpc_management::Client>;
 
@@ -18,7 +22,7 @@ pub fn setup_delegation_manager_contract() -> DelegationManager {
     dgm_info::DelegationManagerAbi::new(del_mgr_addr.clone(), rpc_management::CLIENT.clone())
 }
 
-pub async fn get_operator_details(address: String) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn get_operator_details(address: &str) -> Result<(), Box<dyn std::error::Error>> {
     let operator_address = address.parse::<Address>()?;
 
     let status = DELEGATION_MANAGER.is_operator(operator_address).call().await?;
@@ -29,7 +33,7 @@ pub async fn get_operator_details(address: String) -> Result<(), Box<dyn std::er
     Ok(())
 }
 
-pub async fn get_staker_delegatable_shares(address: String) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn get_staker_delegatable_shares(address: &str) -> Result<(), Box<dyn std::error::Error>> {
     let staker_address = address.parse::<Address>()?;
     let details = DELEGATION_MANAGER.get_delegatable_shares(staker_address).call().await?;
     println!("Staker delegatable shares: {:?}", details);
@@ -38,7 +42,9 @@ pub async fn get_staker_delegatable_shares(address: String) -> Result<(), Box<dy
 }
 
 // Function to get all strategies' delegated stake to an operator
-pub async fn get_all_statregies_delegated_stake(address: String) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn get_all_statregies_delegated_stake(
+    address: String,
+) -> Result<HashMap<EigenStrategy, U256>, Box<dyn std::error::Error>> {
     let operator_address = address.parse::<Address>()?;
     println!("Shares for operator: {:?}", operator_address);
 
@@ -55,18 +61,20 @@ pub async fn get_all_statregies_delegated_stake(address: String) -> Result<(), B
         .call()
         .await?;
 
+    let mut stake_map: HashMap<EigenStrategy, U256> = HashMap::new();
     for i in 0..STRATEGY_LIST.len() {
+        stake_map.insert(STRATEGY_LIST[i], shares[i]);
         println!(
             "Share Type: {:?}, Amount: {:?}",
-            STRATEGY_LIST[i].clone(),
+            STRATEGY_LIST[i],
             format_units(shares[i], "ether").unwrap()
         );
     }
 
-    Ok(())
+    Ok(stake_map)
 }
 
-pub async fn get_operator_status(address: String) -> Result<bool, Box<dyn std::error::Error>> {
+pub async fn get_operator_status(address: &str) -> Result<bool, Box<dyn std::error::Error>> {
     let operator_address = address.parse::<Address>()?;
     let status: bool = DELEGATION_MANAGER.is_operator(operator_address).call().await?;
     println!("Operator status: {:?}", status);

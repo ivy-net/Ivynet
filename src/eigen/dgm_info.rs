@@ -1,17 +1,18 @@
 use ethers_contract::abigen;
 
-use crate::rpc::rpc_management::{self, Network};
+use crate::rpc_management::{self, Network};
 
 lazy_static::lazy_static! {
+    pub static ref NETWORK: Network = rpc_management::NETWORK.lock().unwrap().clone();
     pub static ref DELEGATION_MANAGER_ADDRESS: String = get_delegation_manager_address();
     pub static ref STRATEGY_LIST: Vec<EigenStrategy> = get_strategy_list();
 }
 
 // EigenLayer shares types in order of their appearance on EL website
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
 pub enum EigenStrategy {
     Weth,
-    Eth,
+    BeaconEth,
     Reth,
     Oseth,
     Steth,
@@ -29,8 +30,7 @@ pub enum EigenStrategy {
 
 impl From<&str> for EigenStrategy {
     fn from(hex: &str) -> Self {
-        let network: Network = rpc_management::NETWORK.lock().unwrap().clone();
-        match network {
+        match NETWORK.clone() {
             Network::Testnet => match hex {
                 "0x7d704507b76571a51d9cae8addabbfd0ba0e63d3" => EigenStrategy::Steth,
                 "0x3A8fBdf9e77DFc25d09741f51d3E181b25d0c4E0" => EigenStrategy::Reth,
@@ -42,7 +42,7 @@ impl From<&str> for EigenStrategy {
                 "0x70EB4D3c164a6B4A5f908D4FBb5a9cAfFb66bAB6" => EigenStrategy::Cbeth,
                 "0xaccc5A86732BE85b5012e8614AF237801636F8e5" => EigenStrategy::Meth,
                 "0x7673a47463F80c6a3553Db9E54c8cDcd5313d0ac" => EigenStrategy::Ankreth,
-                "0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0" => EigenStrategy::Eth,
+                "0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0" => EigenStrategy::BeaconEth,
                 _ => EigenStrategy::Unknown,
             },
             Network::Mainnet => match hex {
@@ -57,7 +57,7 @@ impl From<&str> for EigenStrategy {
                 "0x57ba429517c3473B6d34CA9aCd56c0e735b94c02" => EigenStrategy::Oseth,
                 "0x298aFB19A105D59E74658C4C334Ff360BadE6dd2" => EigenStrategy::Meth,
                 "0x13760F50a9d7377e4F20CB8CF9e4c26586c658ff" => EigenStrategy::Ankreth,
-                "0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0" => EigenStrategy::Eth,
+                "0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0" => EigenStrategy::BeaconEth,
                 "0xa4C637e0F704745D182e4D38cAb7E7485321d059" => EigenStrategy::Oeth,
                 _ => EigenStrategy::Unknown,
             },
@@ -68,8 +68,7 @@ impl From<&str> for EigenStrategy {
 
 impl From<EigenStrategy> for &str {
     fn from(strategy: EigenStrategy) -> Self {
-        let network: Network = rpc_management::NETWORK.lock().unwrap().clone();
-        match network {
+        match NETWORK.clone() {
             Network::Testnet => match strategy {
                 EigenStrategy::Steth => "0x7d704507b76571a51d9cae8addabbfd0ba0e63d3",
                 EigenStrategy::Reth => "0x3A8fBdf9e77DFc25d09741f51d3E181b25d0c4E0",
@@ -81,7 +80,7 @@ impl From<EigenStrategy> for &str {
                 EigenStrategy::Cbeth => "0x70EB4D3c164a6B4A5f908D4FBb5a9cAfFb66bAB6",
                 EigenStrategy::Meth => "0xaccc5A86732BE85b5012e8614AF237801636F8e5",
                 EigenStrategy::Ankreth => "0x7673a47463F80c6a3553Db9E54c8cDcd5313d0ac",
-                EigenStrategy::Eth => "0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0",
+                EigenStrategy::BeaconEth => "0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0",
                 _ => "",
             },
             Network::Mainnet => match strategy {
@@ -96,7 +95,7 @@ impl From<EigenStrategy> for &str {
                 EigenStrategy::Oseth => "0x57ba429517c3473B6d34CA9aCd56c0e735b94c02",
                 EigenStrategy::Meth => "0x298aFB19A105D59E74658C4C334Ff360BadE6dd2",
                 EigenStrategy::Ankreth => "0x13760F50a9d7377e4F20CB8CF9e4c26586c658ff",
-                EigenStrategy::Eth => "0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0",
+                EigenStrategy::BeaconEth => "0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0",
                 EigenStrategy::Oeth => "0xa4C637e0F704745D182e4D38cAb7E7485321d059",
                 _ => "",
             },
@@ -106,8 +105,7 @@ impl From<EigenStrategy> for &str {
 }
 
 fn get_delegation_manager_address() -> String {
-    let network: Network = rpc_management::NETWORK.lock().unwrap().clone();
-    match network {
+    match NETWORK.clone() {
         Network::Testnet => "0xA44151489861Fe9e3055d95adC98FbD462B948e7".to_string(),
         Network::Mainnet => "0x39053D51B77DC0d36036Fc1fCc8Cb819df8Ef37A".to_string(),
         Network::Local => todo!(),
@@ -115,8 +113,7 @@ fn get_delegation_manager_address() -> String {
 }
 
 fn get_strategy_list() -> Vec<EigenStrategy> {
-    let network: Network = rpc_management::NETWORK.lock().unwrap().clone();
-    match network {
+    match NETWORK.clone() {
         Network::Testnet => vec![
             EigenStrategy::Steth,
             EigenStrategy::Reth,
@@ -128,7 +125,7 @@ fn get_strategy_list() -> Vec<EigenStrategy> {
             EigenStrategy::Cbeth,
             EigenStrategy::Meth,
             EigenStrategy::Ankreth,
-            EigenStrategy::Eth,
+            EigenStrategy::BeaconEth,
         ],
         Network::Mainnet => vec![
             EigenStrategy::Cbeth,
@@ -142,7 +139,7 @@ fn get_strategy_list() -> Vec<EigenStrategy> {
             EigenStrategy::Oseth,
             EigenStrategy::Meth,
             EigenStrategy::Ankreth,
-            EigenStrategy::Eth,
+            EigenStrategy::BeaconEth,
             EigenStrategy::Oeth,
         ],
         Network::Local => todo!(),

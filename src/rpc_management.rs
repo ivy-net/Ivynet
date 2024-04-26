@@ -19,7 +19,7 @@ pub enum Network {
 }
 
 lazy_static::lazy_static! {
-    #[derive(Debug, Clone)]
+    #[derive(Debug, Clone, Copy)]
     pub static ref NETWORK: Mutex<Network> = Mutex::new(Network::Local);
     pub static ref PROVIDER: Provider<Http> = connect_provider();
     pub static ref SIGNER: Arc<Signer> = Arc::new(SignerMiddleware::new(PROVIDER.clone(), keys::WALLET.clone()));
@@ -39,12 +39,16 @@ fn connect_provider() -> Provider<Http> {
     }
 }
 
-pub fn set_network(network: String) {
-    match network.as_str() {
+pub fn set_network(network: &str) {
+    match network {
         "mainnet" => *NETWORK.lock().unwrap() = Network::Mainnet,
         "testnet" => *NETWORK.lock().unwrap() = Network::Testnet,
         _ => *NETWORK.lock().unwrap() = Network::Local,
     }
+}
+
+pub fn get_network() -> Network {
+    NETWORK.lock().unwrap().clone()
 }
 
 #[cfg(test)]

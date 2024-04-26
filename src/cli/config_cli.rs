@@ -63,8 +63,8 @@ pub fn parse_config_subcommands(subcmd: ConfigCommands) -> Result<(), Box<dyn st
             keyname,
             password,
         } => keys::create_key(store, keyname, password)?,
-        ConfigCommands::SetRpc { network, rpc_url } => config::set_rpc_url(rpc_url, network)?,
-        ConfigCommands::GetRpc { network } => config::get_rpc_url(network)?,
+        ConfigCommands::SetRpc { network, rpc_url } => config::set_rpc_url(&rpc_url, &network)?,
+        ConfigCommands::GetRpc { network } => config::get_rpc_url(&network)?,
         ConfigCommands::GetDefaultEthAddress => println!("Public Key: {}", keys::get_stored_public_key()?),
         ConfigCommands::GetDefaultPrivateKey => {
             let priv_key = hex::encode(keys::WALLET.signer().to_bytes());

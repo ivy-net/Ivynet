@@ -1,12 +1,13 @@
 use clap::{Parser, Subcommand};
 use cli::{avs_cli, config_cli, operator_cli, staker_cli};
-use rpc::rpc_management::set_network;
 
 mod cli;
 mod config;
 mod keys;
-mod rpc;
 mod eigen;
+mod avs_info;
+mod errors;
+mod rpc_management;
 
 #[derive(Parser, Debug, Clone)]
 #[command(name = "ivy", version, about = "The command line interface for ivynet")]
@@ -59,14 +60,12 @@ enum SetupCommands {
     Todo { private_key: String },
 }
 
-
-
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
     //TODO: Refactor for subcommands
-    set_network(args.network.clone());
+    rpc_management::set_network(&args.network.clone());
     match args.cmd {
         Commands::Config { subcmd } => config_cli::parse_config_subcommands(subcmd)?,
         Commands::Operator { subcmd } => operator_cli::parse_operator_subcommands(subcmd).await?,
@@ -74,9 +73,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         Commands::Setup { subcmd } => match subcmd {
             SetupCommands::Todo { private_key: _ } => todo!(),
         },
-        Commands::Avs { subcmd } => match subcmd {
-            avs_cli::AvsCommands::Todo { private_key: _ } => todo!(),
-        },
+        Commands::Avs { subcmd } => avs_cli::parse_config_subcommands(subcmd).await?,
     }
 
     Ok(())

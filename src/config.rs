@@ -52,20 +52,20 @@ fn create_new_config() {
     store_config(cfg);
 }
 
-pub fn set_rpc_url(rpc: String, network: String) -> Result<(), Box<dyn std::error::Error>> {
+pub fn set_rpc_url(rpc: &str, network: &str) -> Result<(), Box<dyn std::error::Error>> {
     let mut cfg = CONFIG.lock()?;
-    match network.as_str() {
+    match network {
         "mainnet" => {
             println!("Setting mainnet rpc url to: {}", rpc);
-            cfg.mainnet_rpc_url = rpc;
+            cfg.mainnet_rpc_url = rpc.to_string();
         }
         "testnet" => {
             println!("Setting testnet rpc url to: {}", rpc);
-            cfg.testnet_rpc_url = rpc;
+            cfg.testnet_rpc_url = rpc.to_string();
         }
         "local" => {
             println!("Setting local rpc url to: {}", rpc);
-            cfg.local_rpc_url = rpc;
+            cfg.local_rpc_url = rpc.to_string();
         }
         _ => {
             println!("Unknown network");
@@ -75,9 +75,9 @@ pub fn set_rpc_url(rpc: String, network: String) -> Result<(), Box<dyn std::erro
     Ok(())
 }
 
-pub fn get_rpc_url(network: String) -> Result<(), Box<dyn std::error::Error>> {
+pub fn get_rpc_url(network: &str) -> Result<(), Box<dyn std::error::Error>> {
     let cfg = CONFIG.lock()?;
-    match network.as_str() {
+    match network {
         "mainnet" => println!("Mainnet url: {:?}", cfg.mainnet_rpc_url),
         "testnet" => println!("Testnet url: {:?}", cfg.testnet_rpc_url),
         "local" => println!("Localhost url: {:?}", cfg.local_rpc_url),

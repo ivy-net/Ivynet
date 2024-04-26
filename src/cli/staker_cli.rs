@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use crate::{keys, rpc};
+use crate::{keys, eigen};
 
 #[derive(Parser, Debug, Clone)]
 pub(crate) enum StakerCommands {
@@ -20,10 +20,10 @@ pub(crate) enum StakerCommands {
 
 pub async fn parse_staker_subcommands(subcmd: StakerCommands) -> Result<(), Box<dyn std::error::Error>> {
     match subcmd {
-        StakerCommands::GetStakerShares { private_key } => rpc::delegation_manager::get_staker_delegatable_shares(private_key).await?,
+        StakerCommands::GetStakerShares { private_key } => eigen::delegation_manager::get_staker_delegatable_shares(&private_key).await?,
         StakerCommands::GetMyShares => {
-            let key = keys::get_stored_public_key()?;
-            rpc::delegation_manager::get_staker_delegatable_shares(key).await?
+            let addr = keys::get_stored_public_key()?;
+            eigen::delegation_manager::get_staker_delegatable_shares(&addr).await?
         },
     }
     Ok(())
