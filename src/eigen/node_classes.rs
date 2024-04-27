@@ -4,6 +4,7 @@ use crate::config;
 
 #[derive(PartialEq, PartialOrd)]
 pub enum NodeClass {
+    // Note: Eigen's specified node classes do not contain disk requirements
     USELESS,
     LRG,    //  cpus: 2, mem: 8gb, bandwidth: 5mbps,
     XL,     //  cpus: 4, mem: 16gb, bandwidth: 25mbps,
