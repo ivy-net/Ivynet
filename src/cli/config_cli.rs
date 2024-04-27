@@ -75,12 +75,9 @@ pub fn parse_config_subcommands(subcmd: ConfigCommands) -> Result<(), Box<dyn st
             println!(" --- System Information: --- ");
             println!("CPU Cores: {}", cpus);
             println!("Memory Information:");
-            println!("  Total: {}", mem_info.total);
-            println!("  Free: {}", mem_info.free);
-            println!("  Available: {}", mem_info.avail);
+            println!("  Total: {}", mem_info);
             println!("Disk Information:");
-            println!("  Total: {}", disk_info.total);
-            println!("  Free: {}", disk_info.free);
+            println!("  Free: {}", disk_info);
             println!(" --------------------------- ");
         },
     };

@@ -1,7 +1,8 @@
 use lazy_static;
 use serde_derive::{Deserialize, Serialize};
-use std::{path::PathBuf, sync::Mutex};
-use sys_info::{self, DiskInfo, MemInfo};
+use std::path::PathBuf;
+use std::sync::Mutex;
+use sysinfo::{Disks, System};
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct IvyConfig {
@@ -108,18 +109,19 @@ pub fn set_default_public_keyfile(keyfile: PathBuf) {
 pub fn get_default_public_keyfile() -> PathBuf {
     let cfg = CONFIG.lock().unwrap();
     cfg.default_public_keyfile.clone().into()
-    
 }
 
-pub fn get_system_information() -> Result<(u32, MemInfo, DiskInfo), Box<dyn std::error::Error>> {
-    let cpu_cores = sys_info::cpu_num()?;
-    let mem_info = sys_info::mem_info()?;
-    let disk_info = sys_info::disk_info()?;
-    Ok((cpu_cores, mem_info, disk_info))
+pub fn get_system_information() -> Result<(u64, u64, u64), Box<dyn std::error::Error>> {
+    let mut sys = System::new();
+    sys.refresh_all();
+
+    let disks = Disks::new_with_refreshed_list();
+
+    let cpu_cores = sys.cpus().len() as u64;
+    let total_memory = sys.total_memory();
+    let free_disk = disks[0].available_space();
+    Ok((cpu_cores, total_memory, free_disk))
 }
-
-
-
 
 #[cfg(test)]
 mod tests {
@@ -127,6 +129,6 @@ mod tests {
 
     #[test]
     fn test_load_config() {
-       println!("Config: {:?}", load_config());
+        println!("Config: {:?}", load_config());
     }
 }
