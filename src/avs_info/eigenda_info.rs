@@ -10,7 +10,7 @@ lazy_static::lazy_static! {
 pub fn get_stake_registry_address() -> String {
     match NETWORK.clone() {
         Network::Mainnet => "0x006124ae7976137266feebfb3f4d2be4c073139d".to_string(),
-        Network::Testnet => "0xBDACD5998989Eec814ac7A0f0f6596088AA2a270".to_string(),
+        Network::Holesky => "0xBDACD5998989Eec814ac7A0f0f6596088AA2a270".to_string(),
         Network::Local => todo!(),
     }
 }

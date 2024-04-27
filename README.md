@@ -28,3 +28,27 @@ For now,
 cargo build -r
 ivy-cli --help 
 ```
+
+
+
+To setup properly first create/import your Ethereum Key
+
+```sh
+ivy-cli config create-key [KEYNAME] [PASSWORD] --store
+or 
+ivy-cli config import-key [PRIVATE-KEY] [KEYNAME] [PASSWORD]
+```
+
+Then set your RPC urls for mainnet and holesky
+
+```sh
+ivy-cli config set-rpc mainnet [URL]
+and
+ivy-cli config set-rpc holesky https://rpc.holesky.ethpandaops.io
+```
+
+Then try grabbing your stake:
+
+```sh
+ivy-cli --network holesky operator get-stake [ADDRESS]
+```

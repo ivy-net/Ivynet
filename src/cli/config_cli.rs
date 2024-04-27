@@ -6,7 +6,7 @@ use crate::{config, keys};
 pub(crate) enum ConfigCommands {
     #[command(
         name = "import-key",
-        about = "Import and save as your default Ethereum private key - WARNING: Not production ready - not encrypted!"
+        about = "Import and save as your default Ethereum private key with a password"
     )]
     ImportPrivateKey {
         private_key: String,
@@ -15,7 +15,7 @@ pub(crate) enum ConfigCommands {
     },
     #[command(
         name = "create-key",
-        about = "Create an Ethereum private key to use with Ivynet - WARNING: Not production ready - not encrypted!"
+        about = "Create an Ethereum private key to use with Ivynet and optionally store it with a password"
     )]
     CreatePrivateKey {
         #[arg(long)]
@@ -31,17 +31,17 @@ pub(crate) enum ConfigCommands {
     GetDefaultEthAddress,
     #[command(
         name = "get-default-private",
-        about = "Get the current default saved private key - WARNING: Not production ready - not encrypted!"
+        about = "Get the current default saved private key"
     )]
     GetDefaultPrivateKey,
     #[command(
         name = "set-rpc",
-        about = "Set default URLs to use when connecting to 'mainnet', 'testnet', and 'local' RPC urls"
+        about = "Set default URLs to use when connecting to 'mainnet', 'holesky', and 'local' RPC urls"
     )]
     SetRpc { network: String, rpc_url: String },
     #[command(
         name = "get-rpc",
-        about = "Get the current default RPC URL for 'mainnet', 'testnet', or 'local'"
+        about = "Get the current default RPC URL for 'mainnet', 'holesky', or 'local'"
     )]
     GetRpc { network: String },
     #[command(

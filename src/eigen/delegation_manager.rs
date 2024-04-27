@@ -64,11 +64,6 @@ pub async fn get_all_statregies_delegated_stake(
     let mut stake_map: HashMap<EigenStrategy, U256> = HashMap::new();
     for i in 0..STRATEGY_LIST.len() {
         stake_map.insert(STRATEGY_LIST[i], shares[i]);
-        println!(
-            "Share Type: {:?}, Amount: {:?}",
-            STRATEGY_LIST[i],
-            format_units(shares[i], "ether").unwrap()
-        );
     }
 
     Ok(stake_map)

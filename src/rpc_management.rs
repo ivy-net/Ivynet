@@ -14,8 +14,19 @@ pub type Signer = SignerMiddleware<Provider<Http>, Wallet<k256::ecdsa::SigningKe
 #[derive(Debug, Clone, Copy)]
 pub enum Network {
     Mainnet,
-    Testnet,
+    Holesky,
     Local,
+}
+
+impl From<&str> for Network {
+    fn from(network: &str) -> Network {
+        match network {
+            "mainnet" => Network::Mainnet,
+            "testnet" => Network::Holesky,
+            "holesky" => Network::Holesky,
+            _ => Network::Local,
+        }
+    }
 }
 
 lazy_static::lazy_static! {
@@ -32,7 +43,7 @@ fn connect_provider() -> Provider<Http> {
         Network::Mainnet => {
             Provider::<Http>::try_from(cfg.mainnet_rpc_url.clone()).expect("Could not connect to provider")
         }
-        Network::Testnet => {
+        Network::Holesky => {
             Provider::<Http>::try_from(cfg.testnet_rpc_url.clone()).expect("Could not connect to provider")
         }
         Network::Local => Provider::<Http>::try_from(cfg.local_rpc_url.clone()).expect("Could not connect to provider"),
@@ -40,11 +51,7 @@ fn connect_provider() -> Provider<Http> {
 }
 
 pub fn set_network(network: &str) {
-    match network {
-        "mainnet" => *NETWORK.lock().unwrap() = Network::Mainnet,
-        "testnet" => *NETWORK.lock().unwrap() = Network::Testnet,
-        _ => *NETWORK.lock().unwrap() = Network::Local,
-    }
+    *NETWORK.lock().unwrap() = Network::from(network);
 }
 
 pub fn get_network() -> Network {
