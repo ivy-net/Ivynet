@@ -114,22 +114,22 @@ fn check_stake_mins(quorum_percentages: Vec<U256>) -> Result<Vec<bool>, Box<dyn 
                 }
             }
             x if x < U256::from(20) => {
-                if class < NodeClass::LRG || bandwidth < 1 || disk_info < 150000000000 {
+                if class < NodeClass::XL || bandwidth < 1 || disk_info < 150000000000 {
                     acceptable = false
                 }
             }
             x if x < U256::from(100) => {
-                if class < NodeClass::LRG || bandwidth < 1 || disk_info < 750000000000 {
+                if class < NodeClass::FOURXL || bandwidth < 3 || disk_info < 750000000000 {
                     acceptable = false
                 }
             }
             x if x < U256::from(1000) => {
-                if class < NodeClass::LRG || bandwidth < 1 || disk_info < 4000000000000 {
+                if class < NodeClass::FOURXL || bandwidth < 25 || disk_info < 4000000000000 {
                     acceptable = false
                 }
             }
             x if x > U256::from(2000) => {
-                if class < NodeClass::LRG || bandwidth < 1 || disk_info < 8000000000000 {
+                if class < NodeClass::FOURXL || bandwidth < 50 || disk_info < 8000000000000 {
                     acceptable = false
                 }
             }
