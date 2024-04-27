@@ -5,7 +5,6 @@ mod avs_info;
 mod cli;
 mod config;
 mod eigen;
-mod errors;
 mod keys;
 mod rpc_management;
 

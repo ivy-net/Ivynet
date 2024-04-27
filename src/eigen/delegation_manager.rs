@@ -1,13 +1,8 @@
-use std::collections::HashMap;
-
-use ethers_core::types::{Address, H160, U256};
-use ethers_core::utils::format_units;
-
-use dgm_info::{EigenStrategy, STRATEGY_LIST};
-
-use crate::rpc_management;
-
 use super::dgm_info;
+use crate::rpc_management;
+use dgm_info::{EigenStrategy, STRATEGY_LIST};
+use ethers_core::types::{Address, H160, U256};
+use std::collections::HashMap;
 
 type DelegationManager = dgm_info::DelegationManagerAbi<rpc_management::Client>;
 

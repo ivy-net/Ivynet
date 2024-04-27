@@ -1,14 +1,13 @@
 use dialoguer::Input;
 use ethers_core::types::{Address, U256};
 use ethers_core::utils::format_units;
+use rpc_management::Network;
 
+use super::eigenda_info;
 use crate::eigen::dgm_info::EigenStrategy;
 use crate::eigen::node_classes::NodeClass;
 use crate::eigen::{delegation_manager, node_classes};
 use crate::{config, keys, rpc_management};
-use rpc_management::Network;
-
-use super::eigenda_info;
 
 type StakeRegistry = eigenda_info::EigendaStakeRegistryAbi<rpc_management::Client>;
 

@@ -1,5 +1,4 @@
 use ethers_core::k256;
-
 use ethers_middleware::SignerMiddleware;
 use ethers_providers::{Http, Provider};
 use ethers_signers::Wallet;
