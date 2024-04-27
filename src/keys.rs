@@ -95,7 +95,7 @@ pub fn encrypt_and_store(
     // ------ Public Key File ------
     //Create path for pub key
     let mut pub_file_path = file_path.clone();
-    pub_file_path.push(format!("{}.pub", key_name));
+    pub_file_path.push(format!("{}.txt", key_name));
 
     //Write public key to file
     let public_key = wallet.address();
@@ -120,6 +120,7 @@ pub fn connect_wallet() -> LocalWallet {
 }
 
 pub fn get_stored_public_key() -> Result<String, Box<dyn std::error::Error>> {
+    println!("Grabbing stored public key");
     let file_path = config::get_default_public_keyfile();
     let addr_vec: Vec<u8> = fs::read(file_path)?;
     let addr_bytes: [u8; 20] = addr_vec.try_into().expect("Expected 20 bytes");
@@ -144,6 +145,9 @@ mod tests {
 
     #[test]
     fn test_get_stored_public_key() {
-        assert_eq!(get_stored_public_key().unwrap(), "0xCD6908FcF7b711d5b7486F7Eb5f7F1A0504aF2c6");
+        assert_eq!(
+            get_stored_public_key().unwrap(),
+            "0xCD6908FcF7b711d5b7486F7Eb5f7F1A0504aF2c6"
+        );
     }
 }

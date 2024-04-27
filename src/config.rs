@@ -1,6 +1,8 @@
 use lazy_static;
 use serde_derive::{Deserialize, Serialize};
-use std::{path::PathBuf, sync::Mutex};
+use std::path::PathBuf;
+use std::sync::Mutex;
+use sysinfo::{Disks, System};
 
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct IvyConfig {
@@ -51,20 +53,20 @@ fn create_new_config() {
     store_config(cfg);
 }
 
-pub fn set_rpc_url(rpc: String, network: String) -> Result<(), Box<dyn std::error::Error>> {
+pub fn set_rpc_url(rpc: &str, network: &str) -> Result<(), Box<dyn std::error::Error>> {
     let mut cfg = CONFIG.lock()?;
-    match network.as_str() {
+    match network {
         "mainnet" => {
             println!("Setting mainnet rpc url to: {}", rpc);
-            cfg.mainnet_rpc_url = rpc;
+            cfg.mainnet_rpc_url = rpc.to_string();
         }
         "testnet" => {
             println!("Setting testnet rpc url to: {}", rpc);
-            cfg.testnet_rpc_url = rpc;
+            cfg.testnet_rpc_url = rpc.to_string();
         }
         "local" => {
             println!("Setting local rpc url to: {}", rpc);
-            cfg.local_rpc_url = rpc;
+            cfg.local_rpc_url = rpc.to_string();
         }
         _ => {
             println!("Unknown network");
@@ -74,9 +76,9 @@ pub fn set_rpc_url(rpc: String, network: String) -> Result<(), Box<dyn std::erro
     Ok(())
 }
 
-pub fn get_rpc_url(network: String) -> Result<(), Box<dyn std::error::Error>> {
+pub fn get_rpc_url(network: &str) -> Result<(), Box<dyn std::error::Error>> {
     let cfg = CONFIG.lock()?;
-    match network.as_str() {
+    match network {
         "mainnet" => println!("Mainnet url: {:?}", cfg.mainnet_rpc_url),
         "testnet" => println!("Testnet url: {:?}", cfg.testnet_rpc_url),
         "local" => println!("Localhost url: {:?}", cfg.local_rpc_url),
@@ -107,9 +109,19 @@ pub fn set_default_public_keyfile(keyfile: PathBuf) {
 pub fn get_default_public_keyfile() -> PathBuf {
     let cfg = CONFIG.lock().unwrap();
     cfg.default_public_keyfile.clone().into()
-    
 }
 
+pub fn get_system_information() -> Result<(u64, u64, u64), Box<dyn std::error::Error>> {
+    let mut sys = System::new();
+    sys.refresh_all();
+
+    let disks = Disks::new_with_refreshed_list();
+
+    let cpu_cores = sys.cpus().len() as u64;
+    let total_memory = sys.total_memory();
+    let free_disk = disks[0].available_space();
+    Ok((cpu_cores, total_memory, free_disk))
+}
 
 #[cfg(test)]
 mod tests {
@@ -117,6 +129,6 @@ mod tests {
 
     #[test]
     fn test_load_config() {
-       println!("Config: {:?}", load_config());
+        println!("Config: {:?}", load_config());
     }
 }
