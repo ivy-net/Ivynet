@@ -22,17 +22,13 @@ pub(crate) enum ConfigCommands {
         store: bool,
         keyname: Option<String>,
         password: Option<String>,
-        
     },
     #[command(
         name = "get-default-public",
         about = "Get the current default saved keypair's Ethereum address"
     )]
     GetDefaultEthAddress,
-    #[command(
-        name = "get-default-private",
-        about = "Get the current default saved private key"
-    )]
+    #[command(name = "get-default-private", about = "Get the current default saved private key")]
     GetDefaultPrivateKey,
     #[command(
         name = "set-rpc",
@@ -69,7 +65,7 @@ pub fn parse_config_subcommands(subcmd: ConfigCommands) -> Result<(), Box<dyn st
         ConfigCommands::GetDefaultPrivateKey => {
             let priv_key = hex::encode(keys::WALLET.signer().to_bytes());
             println!("Private key: {:?}", priv_key);
-        },
+        }
         ConfigCommands::GetSysInfo => {
             let (cpus, mem_info, disk_info) = config::get_system_information()?;
             println!(" --- System Information: --- ");
@@ -79,7 +75,7 @@ pub fn parse_config_subcommands(subcmd: ConfigCommands) -> Result<(), Box<dyn st
             println!("Disk Information:");
             println!("  Free: {}", disk_info);
             println!(" --------------------------- ");
-        },
+        }
     };
     Ok(())
 }

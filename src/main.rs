@@ -1,12 +1,12 @@
 use clap::{Parser, Subcommand};
 use cli::{avs_cli, config_cli, operator_cli, staker_cli};
 
+mod avs_info;
 mod cli;
 mod config;
-mod keys;
 mod eigen;
-mod avs_info;
 mod errors;
+mod keys;
 mod rpc_management;
 
 #[derive(Parser, Debug, Clone)]

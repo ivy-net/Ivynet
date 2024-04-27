@@ -39,7 +39,6 @@ impl Ord for NodeClass {
 
 impl Eq for NodeClass {}
 
-
 #[cfg(test)]
 mod tests {
     use super::*;

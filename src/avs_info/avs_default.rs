@@ -35,7 +35,6 @@ pub async fn check_stake_and_system_requirements(
     Ok(())
 }
 
-
 impl FromStr for AVS {
     type Err = ();
 

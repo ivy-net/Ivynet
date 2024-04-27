@@ -94,7 +94,7 @@ pub async fn check_stake_and_system_requirements(
         }
     }
 
-    quorums
+    Ok(quorums)
 }
 
 fn check_stake_mins(quorum_percentages: Vec<U256>) -> Result<Vec<bool>, Box<dyn std::error::Error>> {

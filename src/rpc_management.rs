@@ -3,8 +3,8 @@ use ethers_core::k256;
 use ethers_middleware::SignerMiddleware;
 use ethers_providers::{Http, Provider};
 use ethers_signers::Wallet;
-use std::{convert::TryFrom, sync::Mutex};
 use std::sync::Arc;
+use std::{convert::TryFrom, sync::Mutex};
 
 use crate::{config, keys};
 
