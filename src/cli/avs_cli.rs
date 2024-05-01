@@ -1,6 +1,7 @@
 use clap::Parser;
 
-use crate::{avs_info, rpc_management::Network};
+use crate::avs_info;
+use crate::rpc_management::Network;
 
 #[derive(Parser, Debug, Clone)]
 pub enum AvsCommands {
