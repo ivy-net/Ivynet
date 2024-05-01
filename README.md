@@ -52,3 +52,13 @@ Then try grabbing your stake:
 ```sh
 ivy-cli --network holesky operator get-stake [ADDRESS]
 ```
+
+and finally booting up the eigenda AVS!
+
+```sh
+ivy-cli --network holesky avs boot eigenda
+```
+
+Note: This command assumes you have docker installed, your operator is registered already, and your key has been imported. Also, it downloads files directly from github (eigenda operator setup repository) and two files from AWS that are needed for EigenDA to work (g1.point and g2.point.powerOf2) as well as directly checks your public IP using [api.ipify.org](https://api.ipify.org)
+
+More AVS integrations coming soon!

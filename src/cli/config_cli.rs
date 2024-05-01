@@ -1,5 +1,6 @@
 use clap::Parser;
 
+use crate::rpc_management::Network;
 use crate::{config, keys};
 
 #[derive(Parser, Debug, Clone)]
@@ -60,7 +61,15 @@ pub fn parse_config_subcommands(subcmd: ConfigCommands) -> Result<(), Box<dyn st
             password,
         } => keys::create_key(store, keyname, password)?,
         ConfigCommands::SetRpc { network, rpc_url } => config::set_rpc_url(&rpc_url, &network)?,
-        ConfigCommands::GetRpc { network } => config::get_rpc_url(&network)?,
+        ConfigCommands::GetRpc { network } => match network.as_str() {
+            "mainnet" => println!("Mainnet url: {:?}", config::get_rpc_url(Network::Mainnet)?),
+            "testnet" => println!("Testnet url: {:?}", config::get_rpc_url(Network::Holesky)?),
+            "holesky" => println!("Testnet url: {:?}", config::get_rpc_url(Network::Holesky)?),
+            "local" => println!("Localhost url: {:?}", config::get_rpc_url(Network::Local)?),
+            _ => {
+                println!("Unknown network: {}", network);
+            }
+        },
         ConfigCommands::GetDefaultEthAddress => println!("Public Key: {}", keys::get_stored_public_key()?),
         ConfigCommands::GetDefaultPrivateKey => {
             let priv_key = hex::encode(keys::WALLET.signer().to_bytes());

@@ -20,7 +20,6 @@ pub enum AvsCommands {
 pub async fn parse_config_subcommands(subcmd: AvsCommands) -> Result<(), Box<dyn std::error::Error>> {
     match subcmd {
         AvsCommands::Boot { avs } => {
-            println!("Booting up AVS: {}", avs);
             avs_info::avs_default::boot_avs(&avs).await?
         }
         AvsCommands::CheckStakePercentage { avs, address, network } => {

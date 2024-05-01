@@ -4,6 +4,8 @@ use std::path::PathBuf;
 use std::sync::Mutex;
 use sysinfo::{Disks, System};
 
+use crate::rpc_management::Network;
+
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct IvyConfig {
     // Mainnet rpc url
@@ -76,17 +78,13 @@ pub fn set_rpc_url(rpc: &str, network: &str) -> Result<(), Box<dyn std::error::E
     Ok(())
 }
 
-pub fn get_rpc_url(network: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let cfg = CONFIG.lock()?;
-    match network {
-        "mainnet" => println!("Mainnet url: {:?}", cfg.mainnet_rpc_url),
-        "testnet" => println!("Testnet url: {:?}", cfg.testnet_rpc_url),
-        "local" => println!("Localhost url: {:?}", cfg.local_rpc_url),
-        _ => {
-            println!("Unknown network: {}", network);
-        }
-    }
-    Ok(())
+pub fn get_rpc_url(network: Network) -> Result<String, Box<dyn std::error::Error>> {
+    let cfg = CONFIG.lock().unwrap().clone();
+    Ok(match network {
+        Network::Mainnet => cfg.mainnet_rpc_url,
+        Network::Holesky => cfg.testnet_rpc_url,
+        Network::Local => cfg.local_rpc_url,
+    })
 }
 
 pub fn set_default_private_keyfile(keyfile: PathBuf) {
@@ -107,7 +105,7 @@ pub fn set_default_public_keyfile(keyfile: PathBuf) {
 }
 
 pub fn get_default_public_keyfile() -> PathBuf {
-    let cfg = CONFIG.lock().unwrap();
+    let cfg: std::sync::MutexGuard<'_, IvyConfig> = CONFIG.lock().unwrap();
     cfg.default_public_keyfile.clone().into()
 }
 

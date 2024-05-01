@@ -1,2 +1,4 @@
 /target
 /.vscode
+/eigenda_operator_setup
+.env
