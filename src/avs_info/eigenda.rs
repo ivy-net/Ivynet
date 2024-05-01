@@ -21,7 +21,7 @@ lazy_static::lazy_static! {
     static ref STAKE_REGISTRY: eigenda_info::StakeRegistry = eigenda_info::setup_stake_registry();
     static ref REGISTRY_COORDINATOR: eigenda_info::RegistryCoordinator = eigenda_info::setup_registry_coordinator();
     static ref REGISTRY_SIGNER: eigenda_info::RegistryCoordinatorSigner = eigenda_info::setup_registry_coordinator_signer();
-    static ref QUORUMS: Vec<(EigenStrategy, u8)> = vec![(EigenStrategy::BeaconEth, 0), (EigenStrategy::Weth, 1)];
+    static ref QUORUMS: HashMap<EigenStrategy, u8> = build_quorums();
 }
 
 pub async fn boot_eigenda() -> Result<(), Box<dyn std::error::Error>> {
@@ -30,8 +30,8 @@ pub async fn boot_eigenda() -> Result<(), Box<dyn std::error::Error>> {
     let network: Network = rpc_management::get_network();
     let operator_address: String = keys::get_stored_public_key()?;
 
-    // let quorums_to_boot = check_stake_and_system_requirements(&operator_address, network).await?;
-    // println!("Quorums: {:?}", quorums_to_boot);
+    let quorums_to_boot = check_stake_and_system_requirements(&operator_address, network).await?;
+    println!("Quorums: {:?}", quorums_to_boot);
 
     //Individual quorums will need to be checked - cannot opt in to quorums they're already in
     let status = get_operator_status(&operator_address).await?;
@@ -50,40 +50,66 @@ pub async fn boot_eigenda() -> Result<(), Box<dyn std::error::Error>> {
     }
     fs::create_dir_all(&eigen_path).expect("Failed to create directory");
 
-    let operator_setup_path = eigen_path.join("eigenda_operator_setup");
-    if operator_setup_path.exists() {
-        println!("The 'extracted_files' directory already exists. Not downloading files");
-    } else {
-        println!("The 'extracted_files' directory does not exist, downloading appropriate files");
-        download_operator_setup_files(eigen_path.clone()).await?;
-    }
+    download_operator_setup_files(eigen_path.clone()).await?;
 
     download_g1_g2(eigen_path.clone()).await?;
 
-    // build_env_file(network, eigen_path.clone()).await?;
+    build_env_file(network, eigen_path.clone()).await?;
 
-    run(network, eigen_path)?;
+    let quorums_converted: Vec<u8> = quorums_to_boot
+        .iter()
+        .filter_map(|strat| QUORUMS.get(strat).cloned())
+        .collect();
+    let quorums_converted_str: String = quorums_converted
+        .iter()
+        .map(|n| n.to_string())
+        .collect::<Vec<String>>()
+        .join(",");
+    println!("Quorums to boot: {}", quorums_converted_str);
+    optin("0,1".to_string(), network, eigen_path)?;
 
     Ok(())
 }
 
-pub fn run(network: Network, eigen_path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+pub fn optin(quorums: String, network: Network, eigen_path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
     let run_script_path = eigen_path.join("eigenda_operator_setup");
     let run_script_path = match network {
         Network::Mainnet => run_script_path.join("mainnet"),
         Network::Holesky => run_script_path.join("holesky"),
         Network::Local => run_script_path.join("holesky"),
     };
+
+    let env_path = run_script_path.join(".env");
+    let current_dir = std::env::current_dir()?;
+    let current_env_path = current_dir.join(".env");
+
+    // Copy .env file to current directory
+    std::fs::copy(&env_path, &current_env_path)?;
+
+    let ecdsa_password: String = Password::new()
+        .with_prompt("Input the password for your ECDSA key file for quorum opt-in")
+        .interact()
+        .expect("Error reading ECDSA password");
+
     let run_script_path = run_script_path.join("run.sh");
-    let status = Command::new("sh")
-        .arg(run_script_path)
-        .arg("--operation-type list-quorums")
-        // .arg(arg2)
+    let optin = Command::new("sh")
+        .arg(run_script_path.clone())
+        .arg("--operation-type")
+        .arg("opt-in")
+        .arg("--node-ecdsa-key-file-host")
+        .arg(config::get_default_private_keyfile())
+        .arg("--node-ecdsa-key-password")
+        .arg(ecdsa_password)
+        .arg("--quorums")
+        .arg(quorums)
         .status()?;
 
-    if status.success() {
+    // Delete .env file from current directory
+    std::fs::remove_file(current_env_path)?;
+
+    if optin.success() {
         Ok(())
-    }else {
+    } else {
         Err("Error running script".into())
     }
 }
@@ -114,56 +140,70 @@ pub async fn build_env_file(network: Network, eigen_path: PathBuf) -> Result<(),
         Network::Holesky => run_script_path.join("holesky"),
         Network::Local => run_script_path.join("holesky"),
     };
-    println!("{:?}", run_script_path);
+
+    let mut set_vars: bool = false;
 
     let env_example_path = run_script_path.join(".env.example");
     let env_path = run_script_path.join(".env");
     if env_example_path.exists() && !env_path.exists() {
         std::fs::copy(env_example_path, env_path.clone())?;
         println!("Copied '.env.example' to '.env'.");
+        set_vars = true;
     } else if !env_example_path.exists() {
         println!("The '.env.example' file does not exist.");
     } else {
         println!("The '.env' file already exists.");
+        let reset_string: String = Input::new()
+            .with_prompt("Reset env file? (y/n)")
+            .interact_text()
+            .expect("Error reading BLS key name");
+        if reset_string == "y" {
+            std::fs::remove_file(env_path.clone())?;
+            std::fs::copy(env_example_path, env_path.clone())?;
+            println!("Copied '.env.example' to '.env'.");
+            set_vars = true;
+        }
     }
 
-    let mut env_values: HashMap<&str, &str> = HashMap::new();
-    let node_hostname = reqwest::get("https://api.ipify.org").await?.text().await?;
-    env_values.insert("NODE_HOSTNAME", &node_hostname);
+    if set_vars {
+        let mut env_values: HashMap<&str, &str> = HashMap::new();
+        let node_hostname = reqwest::get("https://api.ipify.org").await?.text().await?;
+        env_values.insert("NODE_HOSTNAME", &node_hostname);
 
-    let rpc_url = &config::get_rpc_url(network)?;
-    env_values.insert("NODE_CHAIN_RPC", rpc_url);
+        let rpc_url = &config::get_rpc_url(network)?;
+        env_values.insert("NODE_CHAIN_RPC", rpc_url);
 
-    let home_dir = dirs::home_dir().unwrap();
-    let home_str = home_dir.to_str().expect("Could not get home directory");
-    env_values.insert("USER_HOME", home_str);
+        let home_dir = dirs::home_dir().unwrap();
+        let home_str = home_dir.to_str().expect("Could not get home directory");
+        env_values.insert("USER_HOME", home_str);
 
-    let bls_key_name: String = Input::new()
-        .with_prompt(
-            "Input the name of your BLS key file - looks in .eigenlayer folder (where eigen cli stores the key",
-        )
-        .interact_text()
-        .expect("Error reading BLS key name");
+        let bls_key_name: String = Input::new()
+            .with_prompt(
+                "Input the name of your BLS key file - looks in .eigenlayer folder (where eigen cli stores the key)",
+            )
+            .interact_text()
+            .expect("Error reading BLS key name");
 
-    let mut bls_json_file_location = dirs::home_dir().expect("Could not get home directory");
-    bls_json_file_location.push(".eigenlayer/operator_keys");
-    bls_json_file_location.push(bls_key_name);
-    bls_json_file_location.set_extension("bls.key.json");
-    println!("BLS key file location: {:?}", bls_json_file_location);
-    env_values.insert(
-        "NODE_BLS_KEY_FILE_HOST",
-        bls_json_file_location
-            .to_str()
-            .expect("Could not get BLS key file location"),
-    );
+        let mut bls_json_file_location = dirs::home_dir().expect("Could not get home directory");
+        bls_json_file_location.push(".eigenlayer/operator_keys");
+        bls_json_file_location.push(bls_key_name);
+        bls_json_file_location.set_extension("bls.key.json");
+        println!("BLS key file location: {:?}", bls_json_file_location);
+        env_values.insert(
+            "NODE_BLS_KEY_FILE_HOST",
+            bls_json_file_location
+                .to_str()
+                .expect("Could not get BLS key file location"),
+        );
 
-    let bls_password: String = Password::new()
-        .with_prompt("Input the password for your BLS key file")
-        .interact()
-        .expect("Error reading BLS password");
-    env_values.insert("NODE_BLS_KEY_PASSWORD", &bls_password);
+        let bls_password: String = Password::new()
+            .with_prompt("Input the password for your BLS key file")
+            .interact()
+            .expect("Error reading BLS password");
+        env_values.insert("NODE_BLS_KEY_PASSWORD", &bls_password);
 
-    edit_env_vars(env_path.to_str().unwrap(), env_values)?;
+        edit_env_vars(env_path.to_str().unwrap(), env_values)?;
+    }
 
     Ok(())
 }
@@ -175,14 +215,15 @@ pub async fn download_g1_g2(eigen_path: PathBuf) -> Result<(), Box<dyn std::erro
     if g1_file_path.exists() {
         println!("The 'g1.point' file already exists.");
     } else {
-        println!("The 'g1.point' file does not exist, downloading appropriate file");
+        println!("The 'g1.point' file does not exist, downloading appropriate file - 8.5GB!");
         // Download the "g1.point" file
         let g1_response = reqwest::get("https://srs-mainnet.s3.amazonaws.com/kzg/g1.point").await?;
+        let bytes = g1_response.bytes().await?;
         let resources_dir = eigen_path.join("eigenda_operator_setup/resources");
         std::fs::create_dir_all(&resources_dir)?;
         let file_path = resources_dir.join("g1.point");
         let mut file = tokio::fs::File::create(&file_path).await?;
-        file.write_all(&g1_response.bytes().await?).await?;
+        file.write_all(&bytes).await?;
         println!("Downloaded g1.point");
     }
 
@@ -192,11 +233,12 @@ pub async fn download_g1_g2(eigen_path: PathBuf) -> Result<(), Box<dyn std::erro
         println!("The 'g2.point.PowerOf2' file does not exist, downloading appropriate file");
         //Download g2.point.powerOf2
         let g2_response = reqwest::get("https://srs-mainnet.s3.amazonaws.com/kzg/g2.point.powerOf2").await?;
+        let bytes = g2_response.bytes().await?;
         let resources_dir = eigen_path.join("eigenda_operator_setup/resources");
         std::fs::create_dir_all(&resources_dir)?;
         let file_path = resources_dir.join("g2.point.PowerOf2");
         let mut file = tokio::fs::File::create(&file_path).await?;
-        file.write_all(&g2_response.bytes().await?).await?;
+        file.write_all(&bytes).await?;
         println!("Downloaded g2.point");
     }
 
@@ -205,62 +247,79 @@ pub async fn download_g1_g2(eigen_path: PathBuf) -> Result<(), Box<dyn std::erro
 
 //Whole function needs to be cleaned up
 pub async fn download_operator_setup_files(eigen_path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
-    let repo_url =
-        "https://github.com/Layr-Labs/eigenda-operator-setup/archive/refs/heads/madhur/remove-ecdsa-as-requirement.zip";
-    let response = reqwest::get(repo_url).await?;
-
-    let mut dest = {
-        let fname = response
-            .url()
-            .path_segments()
-            .and_then(|segments| segments.last())
-            .and_then(|name| if name.is_empty() { None } else { None })
-            .unwrap_or("eigenda_operator_setup.zip");
-
-        File::create(fname)?
-    };
-    let bytes = response.bytes().await?;
-    std::io::copy(&mut bytes.as_ref(), &mut dest)?;
-
-    let reader = BufReader::new(File::open("eigenda_operator_setup.zip")?);
-    let mut archive = ZipArchive::new(reader)?;
-
-    for i in 0..archive.len() {
-        let mut file = archive.by_index(i)?;
-        let outpath = eigen_path.join("setup_files").join(file.name());
-
-        if (&*file.name()).ends_with('/') {
-            std::fs::create_dir_all(&outpath)?;
-        } else {
-            if let Some(p) = outpath.parent() {
-                if !p.exists() {
-                    std::fs::create_dir_all(&p)?;
-                }
-            }
-            let mut outfile = File::create(&outpath)?;
-            copy(&mut file, &mut outfile)?;
+    let mut setup = false;
+    let operator_setup_path = eigen_path.join("eigenda_operator_setup");
+    if operator_setup_path.exists() {
+        let reset_string: String = Input::new()
+            .with_prompt("The 'extracted_files' directory already exists. Redownload? (y/n)")
+            .interact_text()
+            .expect("Error reading answer");
+        if reset_string == "y" {
+            setup = true;
+            fs::remove_dir_all(operator_setup_path)?;
         }
+    } else {
+        println!("The 'extracted_files' directory does not exist, downloading appropriate files");
+        setup = true;
     }
 
-    let extracted_files_dir = eigen_path.join("setup_files");
-    let first_dir = std::fs::read_dir(&extracted_files_dir)?
-        .filter_map(Result::ok)
-        .find(|entry| entry.file_type().unwrap().is_dir());
-    if let Some(first_dir) = first_dir {
-        let old_folder_path = first_dir.path();
-        let new_folder_path = eigen_path.join("eigenda_operator_setup");
-        std::fs::rename(&old_folder_path, &new_folder_path)?;
-    }
+    if setup {
+        let repo_url = "https://github.com/ivy-net/eigenda-operator-setup/archive/refs/heads/master.zip";
+        let response = reqwest::get(repo_url).await?;
 
-    // Delete the "extracted_files" directory
-    if extracted_files_dir.exists() {
-        std::fs::remove_dir_all(extracted_files_dir)?;
-    }
+        let mut dest = {
+            let fname = response
+                .url()
+                .path_segments()
+                .and_then(|segments| segments.last())
+                .and_then(|name| if name.is_empty() { None } else { None })
+                .unwrap_or("eigenda_operator_setup.zip");
 
-    // Delete the "eigenda_operator_setup.zip" file
-    let zip_file_path = Path::new("eigenda_operator_setup.zip");
-    if zip_file_path.exists() {
-        std::fs::remove_file(zip_file_path)?;
+            File::create(fname)?
+        };
+        let bytes = response.bytes().await?;
+        std::io::copy(&mut bytes.as_ref(), &mut dest)?;
+
+        let reader = BufReader::new(File::open("eigenda_operator_setup.zip")?);
+        let mut archive = ZipArchive::new(reader)?;
+
+        for i in 0..archive.len() {
+            let mut file = archive.by_index(i)?;
+            let outpath = eigen_path.join("setup_files").join(file.name());
+
+            if (&*file.name()).ends_with('/') {
+                std::fs::create_dir_all(&outpath)?;
+            } else {
+                if let Some(p) = outpath.parent() {
+                    if !p.exists() {
+                        std::fs::create_dir_all(&p)?;
+                    }
+                }
+                let mut outfile = File::create(&outpath)?;
+                copy(&mut file, &mut outfile)?;
+            }
+        }
+
+        let extracted_files_dir = eigen_path.join("setup_files");
+        let first_dir = std::fs::read_dir(&extracted_files_dir)?
+            .filter_map(Result::ok)
+            .find(|entry| entry.file_type().unwrap().is_dir());
+        if let Some(first_dir) = first_dir {
+            let old_folder_path = first_dir.path();
+            let new_folder_path = eigen_path.join("eigenda_operator_setup");
+            std::fs::rename(&old_folder_path, &new_folder_path)?;
+        }
+
+        // Delete the "extracted_files" directory
+        if extracted_files_dir.exists() {
+            std::fs::remove_dir_all(extracted_files_dir)?;
+        }
+
+        // Delete the "eigenda_operator_setup.zip" file
+        let zip_file_path = Path::new("eigenda_operator_setup.zip");
+        if zip_file_path.exists() {
+            std::fs::remove_file(zip_file_path)?;
+        }
     }
 
     Ok(())
@@ -278,6 +337,11 @@ pub async fn check_stake_and_system_requirements(
 ) -> Result<Vec<EigenStrategy>, Box<dyn std::error::Error>> {
     let stake_map = delegation_manager::get_all_statregies_delegated_stake(address.to_string()).await?;
     println!("You are on network: {:?}", network);
+
+    let bandwidth: u32 = Input::new()
+        .with_prompt("Input your bandwidth in mbps")
+        .interact_text()
+        .expect("Error reading bandwidth");
 
     let mut quorums_to_boot: Vec<EigenStrategy> = Vec::new();
     for (strat, num) in QUORUMS.iter() {
@@ -308,11 +372,6 @@ pub async fn check_stake_and_system_requirements(
             "After registering, you would have {:?}/10000 of quorum {:?}",
             quorum_percentage, strat
         );
-
-        let bandwidth: u32 = Input::new()
-            .with_prompt("Input your bandwidth in mbps")
-            .interact_text()
-            .expect("Error reading bandwidth");
 
         let passed_mins = check_system_mins(quorum_percentage, bandwidth)?;
         match network {
@@ -376,6 +435,13 @@ fn check_system_mins(quorum_percentage: U256, bandwidth: u32) -> Result<bool, Bo
         _ => {}
     }
     Ok(acceptable)
+}
+
+pub fn build_quorums() -> HashMap<EigenStrategy, u8> {
+    let mut quorums: HashMap<EigenStrategy, u8> = HashMap::new();
+    quorums.insert(EigenStrategy::BeaconEth, 0);
+    quorums.insert(EigenStrategy::Weth, 1);
+    quorums
 }
 
 #[cfg(test)]

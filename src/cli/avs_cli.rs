@@ -19,9 +19,7 @@ pub enum AvsCommands {
 
 pub async fn parse_config_subcommands(subcmd: AvsCommands) -> Result<(), Box<dyn std::error::Error>> {
     match subcmd {
-        AvsCommands::Boot { avs } => {
-            avs_info::avs_default::boot_avs(&avs).await?
-        }
+        AvsCommands::Boot { avs } => avs_info::avs_default::boot_avs(&avs).await?,
         AvsCommands::CheckStakePercentage { avs, address, network } => {
             println!("Checking stake percentage for address: {}", address);
             let net = Network::from(network.as_str());
