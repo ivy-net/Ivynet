@@ -53,7 +53,7 @@ Then try grabbing your stake:
 ivy-cli --network holesky operator get-stake [ADDRESS]
 ```
 
-and finally booting up the eigenda AVS!
+and finally booting up the EigenDA AVS!
 
 ```sh
 ivy-cli --network holesky avs boot eigenda
