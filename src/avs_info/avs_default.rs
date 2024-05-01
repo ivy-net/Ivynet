@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
-use crate::{avs_info::eigenda, rpc_management::Network};
+use crate::avs_info::eigenda;
+use crate::rpc_management::Network;
 
 pub enum AVS {
     EigenDA,
@@ -42,14 +43,6 @@ impl FromStr for AVS {
         match s.to_ascii_lowercase().as_str() {
             "eigenda" => Ok(AVS::EigenDA),
             _ => Err(()),
-        }
-    }
-}
-
-impl AVS {
-    pub fn to_string(&self) -> String {
-        match self {
-            AVS::EigenDA => "EigenDA".to_string(),
         }
     }
 }

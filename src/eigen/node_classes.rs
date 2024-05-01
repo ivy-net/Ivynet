@@ -12,7 +12,7 @@ pub enum NodeClass {
 }
 
 pub fn get_node_class() -> Result<NodeClass, Box<dyn std::error::Error>> {
-    let (cpus, mem_info, disk_info) = config::get_system_information()?;
+    let (cpus, mem_info, _) = config::get_system_information()?;
     if cpus >= 16 && mem_info >= 64000000 {
         return Ok(NodeClass::FOURXL);
     } else if cpus >= 4 && mem_info >= 16000000 {
