@@ -22,6 +22,8 @@ Until operator registration is ready, please register as an operator using the E
 
 TODO: Ability to install
 
+NOTE: Development is happening at a rapid pace and there may be bugs - please feel free to open a github issue if any are encountered!
+
 For now, 
 
 ```sh
