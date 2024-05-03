@@ -1696,7 +1696,7 @@ dependencies = [
  "clap",
  "ethers-core",
  "hex",
- "ivynet-core",
+ "ivynet-core 0.0.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde",
  "serde_derive",
  "tokio",
@@ -1705,6 +1705,32 @@ dependencies = [
 [[package]]
 name = "ivynet-core"
 version = "0.0.1"
+dependencies = [
+ "clap",
+ "confy",
+ "dialoguer",
+ "dirs",
+ "ethers-contract",
+ "ethers-core",
+ "ethers-middleware",
+ "ethers-providers",
+ "ethers-signers",
+ "hex",
+ "lazy_static",
+ "reqwest 0.12.4",
+ "secp256k1",
+ "serde",
+ "serde_derive",
+ "sysinfo",
+ "tokio",
+ "zip",
+]
+
+[[package]]
+name = "ivynet-core"
+version = "0.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a03643fcbf38aae49e661c2ce03a51d0902f58608b7a5be9ca996aeefe684407"
 dependencies = [
  "clap",
  "confy",
