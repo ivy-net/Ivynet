@@ -7,6 +7,7 @@ version = "0.0.1"
 edition = "2021"
 repository = "https://github.com/ivy-net/ivynet"
 categories = ["cryptography::cryptocurrencies"]
+license = "AGPL-3.0"
 
 [workspace.lints.clippy]
 # Duplicated from Reth - Reth has more enabled but lists them as experimental so
