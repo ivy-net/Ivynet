@@ -1,19 +1,11 @@
 use clap::Parser;
 
-use crate::rpc_management::Network;
-use crate::{config, keys};
+use ivy_core::{config, keys, rpc_management::Network};
 
 #[derive(Parser, Debug, Clone)]
 pub(crate) enum ConfigCommands {
-    #[command(
-        name = "import-key",
-        about = "Import and save as your default Ethereum private key with a password"
-    )]
-    ImportPrivateKey {
-        private_key: String,
-        keyname: Option<String>,
-        password: Option<String>,
-    },
+    #[command(name = "import-key", about = "Import and save as your default Ethereum private key with a password")]
+    ImportPrivateKey { private_key: String, keyname: Option<String>, password: Option<String> },
     #[command(
         name = "create-key",
         about = "Create an Ethereum private key to use with Ivynet and optionally store it with a password"
@@ -24,10 +16,7 @@ pub(crate) enum ConfigCommands {
         keyname: Option<String>,
         password: Option<String>,
     },
-    #[command(
-        name = "get-default-public",
-        about = "Get the current default saved keypair's Ethereum address"
-    )]
+    #[command(name = "get-default-public", about = "Get the current default saved keypair's Ethereum address")]
     GetDefaultEthAddress,
     #[command(name = "get-default-private", about = "Get the current default saved private key")]
     GetDefaultPrivateKey,
@@ -36,10 +25,7 @@ pub(crate) enum ConfigCommands {
         about = "Set default URLs to use when connecting to 'mainnet', 'holesky', and 'local' RPC urls"
     )]
     SetRpc { network: String, rpc_url: String },
-    #[command(
-        name = "get-rpc",
-        about = "Get the current default RPC URL for 'mainnet', 'holesky', or 'local'"
-    )]
+    #[command(name = "get-rpc", about = "Get the current default RPC URL for 'mainnet', 'holesky', or 'local'")]
     GetRpc { network: String },
     #[command(
         name = "get-sys-info",
@@ -50,16 +36,10 @@ pub(crate) enum ConfigCommands {
 
 pub fn parse_config_subcommands(subcmd: ConfigCommands) -> Result<(), Box<dyn std::error::Error>> {
     match subcmd {
-        ConfigCommands::ImportPrivateKey {
-            private_key,
-            keyname,
-            password,
-        } => keys::import_key(private_key, keyname, password)?,
-        ConfigCommands::CreatePrivateKey {
-            store,
-            keyname,
-            password,
-        } => keys::create_key(store, keyname, password)?,
+        ConfigCommands::ImportPrivateKey { private_key, keyname, password } => {
+            keys::import_key(private_key, keyname, password)?
+        }
+        ConfigCommands::CreatePrivateKey { store, keyname, password } => keys::create_key(store, keyname, password)?,
         ConfigCommands::SetRpc { network, rpc_url } => config::set_rpc_url(&rpc_url, &network)?,
         ConfigCommands::GetRpc { network } => match network.as_str() {
             "mainnet" => println!("Mainnet url: {:?}", config::get_rpc_url(Network::Mainnet)?),

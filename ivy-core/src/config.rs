@@ -1,7 +1,6 @@
 use lazy_static;
 use serde_derive::{Deserialize, Serialize};
-use std::path::PathBuf;
-use std::sync::Mutex;
+use std::{path::PathBuf, sync::Mutex};
 use sysinfo::{Disks, System};
 
 use crate::rpc_management::Network;

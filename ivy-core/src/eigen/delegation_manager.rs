@@ -11,9 +11,8 @@ lazy_static::lazy_static! {
 }
 
 pub fn setup_delegation_manager_contract() -> DelegationManager {
-    let del_mgr_addr: Address = dgm_info::DELEGATION_MANAGER_ADDRESS
-        .parse()
-        .expect("Could not parse DelegationManager address");
+    let del_mgr_addr: Address =
+        dgm_info::DELEGATION_MANAGER_ADDRESS.parse().expect("Could not parse DelegationManager address");
     dgm_info::DelegationManagerAbi::new(del_mgr_addr.clone(), rpc_management::CLIENT.clone())
 }
 
@@ -51,10 +50,7 @@ pub async fn get_all_statregies_delegated_stake(
         strat_list.push(hex_strat)
     }
 
-    let shares: Vec<U256> = DELEGATION_MANAGER
-        .get_operator_shares(operator_address, strat_list)
-        .call()
-        .await?;
+    let shares: Vec<U256> = DELEGATION_MANAGER.get_operator_shares(operator_address, strat_list).call().await?;
 
     let mut stake_map: HashMap<EigenStrategy, U256> = HashMap::new();
     for i in 0..STRATEGY_LIST.len() {

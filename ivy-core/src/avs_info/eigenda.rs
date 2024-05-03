@@ -1,21 +1,23 @@
 use dialoguer::{Input, Password};
-use ethers_core::types::U256;
-use ethers_core::utils::format_units;
+use ethers_core::{types::U256, utils::format_units};
 use rpc_management::Network;
 use tokio::io::AsyncWriteExt;
 
-use std::collections::HashMap;
-use std::fs::{self, File};
-use std::io::{copy, BufReader};
-use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::{
+    collections::HashMap,
+    fs::{self, File},
+    io::{copy, BufReader},
+    path::{Path, PathBuf},
+    process::Command,
+};
 use zip::read::ZipArchive;
 
 use super::eigenda_info;
-use crate::eigen::dgm_info::EigenStrategy;
-use crate::eigen::node_classes::NodeClass;
-use crate::eigen::{delegation_manager, node_classes};
-use crate::{config, keys, rpc_management};
+use crate::{
+    config,
+    eigen::{delegation_manager, dgm_info::EigenStrategy, node_classes, node_classes::NodeClass},
+    keys, rpc_management,
+};
 
 lazy_static::lazy_static! {
     static ref STAKE_REGISTRY: eigenda_info::StakeRegistry = eigenda_info::setup_stake_registry();
@@ -56,15 +58,9 @@ pub async fn boot_eigenda() -> Result<(), Box<dyn std::error::Error>> {
 
     build_env_file(network, eigen_path.clone()).await?;
 
-    let quorums_converted: Vec<u8> = quorums_to_boot
-        .iter()
-        .filter_map(|strat| QUORUMS.get(strat).cloned())
-        .collect();
-    let quorums_converted_str: String = quorums_converted
-        .iter()
-        .map(|n| n.to_string())
-        .collect::<Vec<String>>()
-        .join(",");
+    let quorums_converted: Vec<u8> = quorums_to_boot.iter().filter_map(|strat| QUORUMS.get(strat).cloned()).collect();
+    let quorums_converted_str: String =
+        quorums_converted.iter().map(|n| n.to_string()).collect::<Vec<String>>().join(",");
     println!("Quorums to boot: {}", quorums_converted_str);
     optin("0,1".to_string(), network, eigen_path)?;
 
@@ -153,10 +149,8 @@ pub async fn build_env_file(network: Network, eigen_path: PathBuf) -> Result<(),
         println!("The '.env.example' file does not exist.");
     } else {
         println!("The '.env' file already exists.");
-        let reset_string: String = Input::new()
-            .with_prompt("Reset env file? (y/n)")
-            .interact_text()
-            .expect("Error reading BLS key name");
+        let reset_string: String =
+            Input::new().with_prompt("Reset env file? (y/n)").interact_text().expect("Error reading BLS key name");
         if reset_string == "y" {
             std::fs::remove_file(env_path.clone())?;
             std::fs::copy(env_example_path, env_path.clone())?;
@@ -191,9 +185,7 @@ pub async fn build_env_file(network: Network, eigen_path: PathBuf) -> Result<(),
         println!("BLS key file location: {:?}", bls_json_file_location);
         env_values.insert(
             "NODE_BLS_KEY_FILE_HOST",
-            bls_json_file_location
-                .to_str()
-                .expect("Could not get BLS key file location"),
+            bls_json_file_location.to_str().expect("Could not get BLS key file location"),
         );
 
         let bls_password: String = Password::new()
@@ -338,40 +330,24 @@ pub async fn check_stake_and_system_requirements(
     let stake_map = delegation_manager::get_all_statregies_delegated_stake(address.to_string()).await?;
     println!("You are on network: {:?}", network);
 
-    let bandwidth: u32 = Input::new()
-        .with_prompt("Input your bandwidth in mbps")
-        .interact_text()
-        .expect("Error reading bandwidth");
+    let bandwidth: u32 =
+        Input::new().with_prompt("Input your bandwidth in mbps").interact_text().expect("Error reading bandwidth");
 
     let mut quorums_to_boot: Vec<EigenStrategy> = Vec::new();
     for (strat, num) in QUORUMS.iter() {
-        let quorum_stake: U256 = stake_map
-            .get(strat)
-            .expect("Amount should never be none, should always be 0")
-            .clone();
+        let quorum_stake: U256 = stake_map.get(strat).expect("Amount should never be none, should always be 0").clone();
 
-        println!(
-            "Your stake in quorum {:?}: {:?}",
-            strat,
-            format_units(quorum_stake, "ether").unwrap()
-        );
+        println!("Your stake in quorum {:?}: {:?}", strat, format_units(quorum_stake, "ether").unwrap());
 
         let quorum_total = STAKE_REGISTRY.get_current_total_stake(num.clone()).call().await?;
-        println!(
-            "Total stake in quorum 0 - {:?}: {:?}",
-            strat,
-            format_units(quorum_total, "ether").unwrap()
-        );
+        println!("Total stake in quorum 0 - {:?}: {:?}", strat, format_units(quorum_total, "ether").unwrap());
 
         // TODO: Check if the address is already an operator to get their appropriate percentage
         //For now, just assume they are not
         // let already_operator = STAKE_REGISTRY.is_operator(H160::from_str(address)?).call().await?;
 
         let quorum_percentage = quorum_stake * 10000 / (quorum_stake + quorum_total);
-        println!(
-            "After registering, you would have {:?}/10000 of quorum {:?}",
-            quorum_percentage, strat
-        );
+        println!("After registering, you would have {:?}/10000 of quorum {:?}", quorum_percentage, strat);
 
         let passed_mins = check_system_mins(quorum_percentage, bandwidth)?;
         match network {

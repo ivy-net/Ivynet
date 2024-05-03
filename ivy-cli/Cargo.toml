@@ -1,0 +1,31 @@
+[package]
+name = "ivy-cli"
+version = "0.0.1"
+edition = "2021"
+
+[[bin]]
+name = "ivy-cli"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.5.4", features = ["derive"] }
+confy = "0.6.1"
+dialoguer = "0.11.0"
+dirs = "5.0.1"
+dotenv = "0.15.0"
+ethers-contract = "2.0.14"
+ethers-core = "2.0.14"
+ethers-middleware = "2.0.14"
+ethers-providers = "2.0.14"
+ethers-signers = "2.0.14"
+hex = "0.4.3"
+lazy_static = "1.4.0"
+mockall = "0.12.1"
+reqwest = "0.12.4"
+secp256k1 = { version = "0.29.0", features = ["rand", "rand-std"] }
+serde = "1.0.197"
+serde_derive = "1.0.197"
+sysinfo = "0.30.11"
+tokio = { version = "1.37.0", features = ["full"] }
+zip = "1.1.2"
+ivy-core = { path = "../ivy-core" }

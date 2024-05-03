@@ -1,7 +1,6 @@
 use clap::Parser;
 
-use crate::avs_info;
-use crate::rpc_management::Network;
+use ivy_core::{avs_info, rpc_management::Network};
 
 #[derive(Parser, Debug, Clone)]
 pub enum AvsCommands {
@@ -11,11 +10,7 @@ pub enum AvsCommands {
         name = "check-stake-percentage",
         about = "Determine what percentage of the total stake an address would have"
     )]
-    CheckStakePercentage {
-        avs: String,
-        address: String,
-        network: String,
-    },
+    CheckStakePercentage { avs: String, address: String, network: String },
 }
 
 pub async fn parse_config_subcommands(subcmd: AvsCommands) -> Result<(), Box<dyn std::error::Error>> {

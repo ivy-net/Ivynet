@@ -1,8 +1,10 @@
 use clap::Parser;
 use ethers_core::utils::format_units;
 
-use crate::eigen::dgm_info::STRATEGY_LIST;
-use crate::eigen::{self};
+use ivy_core::eigen::{
+    dgm_info::STRATEGY_LIST,
+    {self},
+};
 
 #[derive(Parser, Debug, Clone)]
 pub(crate) enum OperatorCommands {
