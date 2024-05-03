@@ -9,7 +9,7 @@ repository = "https://github.com/ivy-net/ivynet"
 license = "AGPL-3.0"
 
 [[bin]]
-name = "ivy-cli"
+name = "ivynet-cli"
 path = "src/main.rs"
 
 [dependencies]
@@ -19,4 +19,4 @@ serde_derive = "1.0.197"
 ethers-core = "2.0.14"
 hex = "0.4.3"
 tokio = { version = "1.37.0", features = ["full"] }
-ivy-core = { path = "../ivy-core" }
+ivynet-core = { path = "../ivynet-core" }

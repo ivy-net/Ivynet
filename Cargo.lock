@@ -1690,7 +1690,20 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "49f1f14873335454500d59611f1cf4a4b0f786f9ac11f4312a78e4cf2566695b"
 
 [[package]]
-name = "ivy-core"
+name = "ivynet-cli"
+version = "0.0.1"
+dependencies = [
+ "clap",
+ "ethers-core",
+ "hex",
+ "ivynet-core",
+ "serde",
+ "serde_derive",
+ "tokio",
+]
+
+[[package]]
+name = "ivynet-core"
 version = "0.0.1"
 dependencies = [
  "clap",
@@ -1711,19 +1724,6 @@ dependencies = [
  "sysinfo",
  "tokio",
  "zip",
-]
-
-[[package]]
-name = "ivynet-cli"
-version = "0.0.1"
-dependencies = [
- "clap",
- "ethers-core",
- "hex",
- "ivy-core",
- "serde",
- "serde_derive",
- "tokio",
 ]
 
 [[package]]
