@@ -2,8 +2,7 @@ use dialoguer::{Input, Password};
 use ethers_core::types::Address;
 use ethers_signers::{LocalWallet, Signer};
 use secp256k1::rand::thread_rng;
-use std::fs;
-use std::path::PathBuf;
+use std::{fs, path::PathBuf};
 
 use crate::config;
 
@@ -68,10 +67,8 @@ pub fn encrypt_and_store(
     //Prompt the user to enter a name for the key
     let key_name: String;
     if name.is_none() {
-        key_name = Input::new()
-            .with_prompt("Enter a name for the key")
-            .interact_text()
-            .expect("Error reading key name");
+        key_name =
+            Input::new().with_prompt("Enter a name for the key").interact_text().expect("Error reading key name");
     } else {
         key_name = name.unwrap();
     }
@@ -145,9 +142,6 @@ mod tests {
 
     #[test]
     fn test_get_stored_public_key() {
-        assert_eq!(
-            get_stored_public_key().unwrap(),
-            "0xCD6908FcF7b711d5b7486F7Eb5f7F1A0504aF2c6"
-        );
+        assert_eq!(get_stored_public_key().unwrap(), "0xCD6908FcF7b711d5b7486F7Eb5f7F1A0504aF2c6");
     }
 }

@@ -1,18 +1,12 @@
 use clap::Parser;
 
-use crate::{eigen, keys};
+use ivy_core::{eigen, keys};
 
 #[derive(Parser, Debug, Clone)]
 pub(crate) enum StakerCommands {
-    #[command(
-        name = "get-shares",
-        about = "Get data on a staker's strategy choices and their stake in each one"
-    )]
+    #[command(name = "get-shares", about = "Get data on a staker's strategy choices and their stake in each one")]
     GetStakerShares { private_key: String },
-    #[command(
-        name = "get-my-shares",
-        about = "Get data on the saved keypair's current strategy and stake"
-    )]
+    #[command(name = "get-my-shares", about = "Get data on the saved keypair's current strategy and stake")]
     GetMyShares,
 }
 

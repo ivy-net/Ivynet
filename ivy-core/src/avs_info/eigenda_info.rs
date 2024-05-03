@@ -12,23 +12,19 @@ pub type RegistryCoordinator = RegistryCoordinatorAbi<rpc_management::Client>;
 pub type RegistryCoordinatorSigner = RegistryCoordinatorAbi<rpc_management::Signer>;
 
 pub fn setup_stake_registry() -> StakeRegistry {
-    let stake_reg_addr: Address = get_stake_registry_address()
-        .parse()
-        .expect("Could not parse StakeRegistry address");
+    let stake_reg_addr: Address = get_stake_registry_address().parse().expect("Could not parse StakeRegistry address");
     StakeRegistryAbi::new(stake_reg_addr.clone(), rpc_management::CLIENT.clone())
 }
 
 pub fn setup_registry_coordinator() -> RegistryCoordinator {
-    let stake_reg_addr: Address = get_registry_coordinator_address()
-        .parse()
-        .expect("Could not parse RegistryCoordinator address");
+    let stake_reg_addr: Address =
+        get_registry_coordinator_address().parse().expect("Could not parse RegistryCoordinator address");
     RegistryCoordinatorAbi::new(stake_reg_addr.clone(), rpc_management::CLIENT.clone())
 }
 
 pub fn setup_registry_coordinator_signer() -> RegistryCoordinatorSigner {
-    let stake_reg_addr: Address = get_registry_coordinator_address()
-        .parse()
-        .expect("Could not parse RegistryCoordinator address");
+    let stake_reg_addr: Address =
+        get_registry_coordinator_address().parse().expect("Could not parse RegistryCoordinator address");
     RegistryCoordinatorAbi::new(stake_reg_addr.clone(), rpc_management::SIGNER.clone())
 }
 
