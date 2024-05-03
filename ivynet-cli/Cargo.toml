@@ -1,6 +1,6 @@
 [package]
 name = "ivynet-cli"
-version = "0.0.1"
+version = "0.1.0"
 edition = "2021"
 authors = ["Noah Foltz <noahfoltz5@gmail.com>"]
 description = "CLI for Ivynet client"
