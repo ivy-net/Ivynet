@@ -2,6 +2,9 @@
 name = "ivy-core"
 version = "0.0.1"
 edition = "2021"
+authors = ["Noah Foltz <noahfoltz5@gmail.com>"]
+description = "Core library for Ivynet client functionality"
+repository = "https://github.com/ivy-net/ivynet"
 
 [lib]
 path = "src/lib.rs"

@@ -1,5 +1,12 @@
 [workspace]
 members = ["ivy-cli", "ivy-core"]
+resolver = "2"
+
+[workspace.package]
+version = "0.0.1"
+edition = "2021"
+repository = "https://github.com/ivy-net/ivynet"
+categories = ["cryptography::cryptocurrencies"]
 
 [workspace.lints.clippy]
 # Duplicated from Reth - Reth has more enabled but lists them as experimental so

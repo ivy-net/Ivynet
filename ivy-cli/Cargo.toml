@@ -2,6 +2,10 @@
 name = "ivy-cli"
 version = "0.0.1"
 edition = "2021"
+authors = ["Noah Foltz <noahfoltz5@gmail.com>"]
+description = "CLI for Ivynet client"
+keywords = ["cli", "tool"]
+repository = "https://github.com/ivy-net/ivynet"
 
 [[bin]]
 name = "ivy-cli"
