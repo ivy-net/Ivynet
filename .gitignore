@@ -3,5 +3,5 @@
 /eigenda_operator_setup
 .env
 
-/ivy-cli/target
-/ivy-core/target
+/ivynet-cli/target
+/ivynet-core/target

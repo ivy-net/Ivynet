@@ -55,7 +55,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
     //TODO: Refactor for subcommands
-    ivy_core::rpc_management::set_network(&args.network.clone());
+    ivynet_core::rpc_management::set_network(&args.network.clone());
     match args.cmd {
         Commands::Config { subcmd } => config::parse_config_subcommands(subcmd)?,
         Commands::Operator { subcmd } => operator::parse_operator_subcommands(subcmd).await?,

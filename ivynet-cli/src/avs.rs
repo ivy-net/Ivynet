@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use ivy_core::{avs_info, rpc_management::Network};
+use ivynet_core::{avs_info, rpc_management::Network};
 
 #[derive(Parser, Debug, Clone)]
 pub enum AvsCommands {

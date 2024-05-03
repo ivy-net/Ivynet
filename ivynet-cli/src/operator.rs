@@ -1,7 +1,7 @@
 use clap::Parser;
 use ethers_core::utils::format_units;
 
-use ivy_core::eigen::{
+use ivynet_core::eigen::{
     dgm_info::STRATEGY_LIST,
     {self},
 };

@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use ivy_core::{eigen, keys};
+use ivynet_core::{eigen, keys};
 
 #[derive(Parser, Debug, Clone)]
 pub(crate) enum StakerCommands {

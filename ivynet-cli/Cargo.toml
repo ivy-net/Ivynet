@@ -1,0 +1,22 @@
+[package]
+name = "ivynet-cli"
+version = "0.0.1"
+edition = "2021"
+authors = ["Noah Foltz <noahfoltz5@gmail.com>"]
+description = "CLI for Ivynet client"
+keywords = ["cli", "tool"]
+repository = "https://github.com/ivy-net/ivynet"
+license = "AGPL-3.0"
+
+[[bin]]
+name = "ivynet-cli"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.5.4", features = ["derive"] }
+serde = "1.0.197"
+serde_derive = "1.0.197"
+ethers-core = "2.0.14"
+hex = "0.4.3"
+tokio = { version = "1.37.0", features = ["full"] }
+ivynet-core = "0.0.1"

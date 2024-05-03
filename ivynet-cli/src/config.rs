@@ -1,6 +1,6 @@
 use clap::Parser;
 
-use ivy_core::{config, keys, rpc_management::Network};
+use ivynet_core::{config, keys, rpc_management::Network};
 
 #[derive(Parser, Debug, Clone)]
 pub(crate) enum ConfigCommands {
