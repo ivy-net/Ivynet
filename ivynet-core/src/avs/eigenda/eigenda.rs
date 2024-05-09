@@ -1,6 +1,7 @@
 use dialoguer::{Input, Password};
 use ethers_core::{types::U256, utils::format_units};
 use rpc_management::Network;
+use thiserror::Error;
 use tokio::io::AsyncWriteExt;
 
 use std::{
@@ -24,6 +25,12 @@ lazy_static::lazy_static! {
     static ref REGISTRY_COORDINATOR: eigenda_info::RegistryCoordinator = eigenda_info::setup_registry_coordinator();
     static ref REGISTRY_SIGNER: eigenda_info::RegistryCoordinatorSigner = eigenda_info::setup_registry_coordinator_signer();
     static ref QUORUMS: HashMap<EigenStrategy, u8> = build_quorums();
+}
+
+#[derive(Error, Debug)]
+pub enum EigenDAError {
+    #[error("Boot script failed: {0}")]
+    ScriptError(String),
 }
 
 pub async fn boot_eigenda() -> Result<(), Box<dyn std::error::Error>> {
@@ -62,7 +69,7 @@ pub async fn boot_eigenda() -> Result<(), Box<dyn std::error::Error>> {
     let quorums_converted_str: String =
         quorums_converted.iter().map(|n| n.to_string()).collect::<Vec<String>>().join(",");
     println!("Quorums to boot: {}", quorums_converted_str);
-    optin("0,1".to_string(), network, eigen_path)?;
+    optin(quorums_converted_str, network, eigen_path)?;
 
     Ok(())
 }
@@ -106,7 +113,7 @@ pub fn optin(quorums: String, network: Network, eigen_path: PathBuf) -> Result<(
     if optin.success() {
         Ok(())
     } else {
-        Err("Error running script".into())
+        Err(Box::new(EigenDAError::ScriptError(optin.to_string())))
     }
 }
 
