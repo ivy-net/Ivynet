@@ -3,7 +3,7 @@ use ethers_middleware::SignerMiddleware;
 use ethers_providers::{Http, Provider};
 use ethers_signers::Wallet;
 use once_cell::sync::OnceCell;
-use std::{convert::TryFrom, sync::Arc};
+use std::{convert::TryFrom, error::Error, sync::Arc};
 
 use crate::{config, keys};
 
@@ -58,8 +58,8 @@ pub fn get_provider() -> Provider<Http> {
     PROVIDER.get_or_init(connect_provider).clone()
 }
 
-pub fn set_network(network: &str) {
-    NETWORK.set(Network::from(network));
+pub fn set_network(network: &str) -> Result<(), Network> {
+    NETWORK.set(Network::from(network))
 }
 
 pub fn get_network() -> Network {

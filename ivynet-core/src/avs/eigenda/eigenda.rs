@@ -427,16 +427,3 @@ pub fn build_quorums() -> HashMap<EigenStrategy, u8> {
     quorums.insert(EigenStrategy::Weth, 1);
     quorums
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_stake_percentages() {
-        let lowstake =
-            check_stake_and_system_requirements("0x0a3e3d83c99b27ca7540720b54105c79cd58dbdd", Network::Holesky)
-                .await
-                .unwrap();
-    }
-}

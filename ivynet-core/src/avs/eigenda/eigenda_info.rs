@@ -1,8 +1,7 @@
 use ethers_contract::abigen;
 use ethers_core::abi::Address;
-use once_cell::sync::Lazy;
 
-use crate::rpc_management::{self, get_client, Network};
+use crate::rpc_management::{self, Network};
 
 pub type StakeRegistry = StakeRegistryAbi<rpc_management::Client>;
 pub type RegistryCoordinator = RegistryCoordinatorAbi<rpc_management::Client>;
