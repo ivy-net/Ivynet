@@ -28,7 +28,7 @@ For now,
 
 ```sh
 cargo build -r
-ivy-cli --help 
+ivynet-cli --help 
 ```
 
 
@@ -36,29 +36,29 @@ ivy-cli --help
 To setup properly first create/import your Ethereum Key
 
 ```sh
-ivy-cli config create-key [KEYNAME] [PASSWORD] --store
+ivynet-cli config create-key [KEYNAME] [PASSWORD] --store
 or 
-ivy-cli config import-key [PRIVATE-KEY] [KEYNAME] [PASSWORD]
+ivynet-cli config import-key [PRIVATE-KEY] [KEYNAME] [PASSWORD]
 ```
 
 Then set your RPC urls for mainnet and holesky
 
 ```sh
-ivy-cli config set-rpc mainnet [URL]
+ivynet-cli config set-rpc mainnet [URL]
 and
-ivy-cli config set-rpc holesky https://rpc.holesky.ethpandaops.io
+ivynet-cli config set-rpc holesky https://rpc.holesky.ethpandaops.io
 ```
 
 Then try grabbing your stake:
 
 ```sh
-ivy-cli --network holesky operator get-stake [ADDRESS]
+ivynet-cli --network holesky operator get-stake [ADDRESS]
 ```
 
 and finally booting up the EigenDA AVS!
 
 ```sh
-ivy-cli --network holesky avs boot eigenda
+ivynet-cli --network holesky avs boot eigenda
 ```
 
 Note: This command assumes you have docker installed, your operator is registered already, your ECDSA key has been imported, and your BLS key generated (BLS key can be generated with the EigenLayer CLI). Also, it downloads files directly from github (Ivy's fork of EigenDA operator setup repository) and two files from AWS that are needed for EigenDA to work (g1.point and g2.point.powerOf2) as well as directly checks your public IP using [api.ipify.org](https://api.ipify.org)
