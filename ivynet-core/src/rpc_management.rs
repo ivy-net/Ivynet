@@ -2,15 +2,18 @@ use ethers_core::k256;
 use ethers_middleware::SignerMiddleware;
 use ethers_providers::{Http, Provider};
 use ethers_signers::Wallet;
-use std::{
-    convert::TryFrom,
-    sync::{Arc, Mutex},
-};
+use once_cell::sync::OnceCell;
+use std::{convert::TryFrom, sync::Arc};
 
 use crate::{config, keys};
 
 pub type Client = Provider<Http>;
 pub type Signer = SignerMiddleware<Provider<Http>, Wallet<k256::ecdsa::SigningKey>>;
+
+static NETWORK: OnceCell<Network> = OnceCell::new();
+static PROVIDER: OnceCell<Provider<Http>> = OnceCell::new();
+static SIGNER: OnceCell<Arc<Signer>> = OnceCell::new();
+static CLIENT: OnceCell<Arc<Client>> = OnceCell::new();
 
 #[derive(Debug, Clone, Copy)]
 pub enum Network {
@@ -30,17 +33,9 @@ impl From<&str> for Network {
     }
 }
 
-lazy_static::lazy_static! {
-    #[derive(Debug, Clone, Copy)]
-    pub static ref NETWORK: Mutex<Network> = Mutex::new(Network::Local);
-    pub static ref PROVIDER: Provider<Http> = connect_provider();
-    pub static ref SIGNER: Arc<Signer> = Arc::new(SignerMiddleware::new(PROVIDER.clone(), keys::WALLET.clone()));
-    pub static ref CLIENT: Arc<Client> = Arc::new(PROVIDER.clone());
-}
-
 fn connect_provider() -> Provider<Http> {
     let cfg: config::IvyConfig = config::get_config();
-    match *NETWORK.lock().unwrap() {
+    match get_network() {
         Network::Mainnet => {
             Provider::<Http>::try_from(cfg.mainnet_rpc_url.clone()).expect("Could not connect to provider")
         }
@@ -51,12 +46,24 @@ fn connect_provider() -> Provider<Http> {
     }
 }
 
+pub fn get_client() -> Arc<Client> {
+    CLIENT.get_or_init(|| Arc::new(get_provider())).clone()
+}
+
+pub fn get_signer() -> Arc<Signer> {
+    SIGNER.get_or_init(|| Arc::new(SignerMiddleware::new(get_provider(), keys::get_wallet()))).clone()
+}
+
+pub fn get_provider() -> Provider<Http> {
+    PROVIDER.get_or_init(connect_provider).clone()
+}
+
 pub fn set_network(network: &str) {
-    *NETWORK.lock().unwrap() = Network::from(network);
+    NETWORK.set(Network::from(network));
 }
 
 pub fn get_network() -> Network {
-    NETWORK.lock().unwrap().clone()
+    NETWORK.get_or_init(|| Network::Local).clone()
 }
 
 #[cfg(test)]

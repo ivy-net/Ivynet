@@ -1,13 +1,16 @@
 use dialoguer::{Input, Password};
 use ethers_core::types::Address;
 use ethers_signers::{LocalWallet, Signer};
+use once_cell::sync::OnceCell;
 use secp256k1::rand::thread_rng;
 use std::{fs, path::PathBuf};
 
 use crate::config;
 
-lazy_static::lazy_static! {
-    pub static ref WALLET: LocalWallet = connect_wallet();
+static WALLET: OnceCell<LocalWallet> = OnceCell::new();
+
+pub fn get_wallet() -> LocalWallet {
+    WALLET.get_or_init(connect_wallet).clone()
 }
 
 pub fn create_key(

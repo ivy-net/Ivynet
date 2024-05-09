@@ -1,5 +1,6 @@
 use dialoguer::{Input, Password};
 use ethers_core::{types::U256, utils::format_units};
+use once_cell::sync::Lazy;
 use rpc_management::Network;
 use thiserror::Error;
 use tokio::io::AsyncWriteExt;
@@ -20,12 +21,12 @@ use crate::{
     keys, rpc_management,
 };
 
-lazy_static::lazy_static! {
-    static ref STAKE_REGISTRY: eigenda_info::StakeRegistry = eigenda_info::setup_stake_registry();
-    static ref REGISTRY_COORDINATOR: eigenda_info::RegistryCoordinator = eigenda_info::setup_registry_coordinator();
-    static ref REGISTRY_SIGNER: eigenda_info::RegistryCoordinatorSigner = eigenda_info::setup_registry_coordinator_signer();
-    static ref QUORUMS: HashMap<EigenStrategy, u8> = build_quorums();
-}
+pub static STAKE_REGISTRY: Lazy<eigenda_info::StakeRegistry> = Lazy::new(eigenda_info::setup_stake_registry);
+pub static REGISTRY_COORDINATOR: Lazy<eigenda_info::RegistryCoordinator> =
+    Lazy::new(eigenda_info::setup_registry_coordinator);
+pub static REGISTRY_SIGNER: Lazy<eigenda_info::RegistryCoordinatorSigner> =
+    Lazy::new(eigenda_info::setup_registry_coordinator_signer);
+pub static QUORUMS: Lazy<HashMap<EigenStrategy, u8>> = Lazy::new(build_quorums);
 
 #[derive(Error, Debug)]
 pub enum EigenDAError {

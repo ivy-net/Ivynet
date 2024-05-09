@@ -1753,7 +1753,6 @@ dependencies = [
  "ethers-providers",
  "ethers-signers",
  "hex",
- "lazy_static",
  "log",
  "once_cell",
  "reqwest 0.12.4",
