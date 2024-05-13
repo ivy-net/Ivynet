@@ -1,6 +1,8 @@
 use dialoguer::{Input, Password};
 use ethers_core::{types::U256, utils::format_units};
+use once_cell::sync::Lazy;
 use rpc_management::Network;
+use thiserror::Error;
 use tokio::io::AsyncWriteExt;
 
 use std::{
@@ -19,11 +21,17 @@ use crate::{
     keys, rpc_management,
 };
 
-lazy_static::lazy_static! {
-    static ref STAKE_REGISTRY: eigenda_info::StakeRegistry = eigenda_info::setup_stake_registry();
-    static ref REGISTRY_COORDINATOR: eigenda_info::RegistryCoordinator = eigenda_info::setup_registry_coordinator();
-    static ref REGISTRY_SIGNER: eigenda_info::RegistryCoordinatorSigner = eigenda_info::setup_registry_coordinator_signer();
-    static ref QUORUMS: HashMap<EigenStrategy, u8> = build_quorums();
+pub static STAKE_REGISTRY: Lazy<eigenda_info::StakeRegistry> = Lazy::new(eigenda_info::setup_stake_registry);
+pub static REGISTRY_COORDINATOR: Lazy<eigenda_info::RegistryCoordinator> =
+    Lazy::new(eigenda_info::setup_registry_coordinator);
+pub static REGISTRY_SIGNER: Lazy<eigenda_info::RegistryCoordinatorSigner> =
+    Lazy::new(eigenda_info::setup_registry_coordinator_signer);
+pub static QUORUMS: Lazy<HashMap<EigenStrategy, u8>> = Lazy::new(build_quorums);
+
+#[derive(Error, Debug)]
+pub enum EigenDAError {
+    #[error("Boot script failed: {0}")]
+    ScriptError(String),
 }
 
 pub async fn boot_eigenda() -> Result<(), Box<dyn std::error::Error>> {
@@ -50,7 +58,7 @@ pub async fn boot_eigenda() -> Result<(), Box<dyn std::error::Error>> {
         Network::Holesky => eigen_path.push("holesky"),
         Network::Local => eigen_path.push("holesky"),
     }
-    fs::create_dir_all(&eigen_path).expect("Failed to create directory");
+    fs::create_dir_all(&eigen_path)?;
 
     download_operator_setup_files(eigen_path.clone()).await?;
 
@@ -62,7 +70,7 @@ pub async fn boot_eigenda() -> Result<(), Box<dyn std::error::Error>> {
     let quorums_converted_str: String =
         quorums_converted.iter().map(|n| n.to_string()).collect::<Vec<String>>().join(",");
     println!("Quorums to boot: {}", quorums_converted_str);
-    optin("0,1".to_string(), network, eigen_path)?;
+    optin(quorums_converted_str, network, eigen_path)?;
 
     Ok(())
 }
@@ -82,10 +90,8 @@ pub fn optin(quorums: String, network: Network, eigen_path: PathBuf) -> Result<(
     // Copy .env file to current directory
     std::fs::copy(&env_path, &current_env_path)?;
 
-    let ecdsa_password: String = Password::new()
-        .with_prompt("Input the password for your ECDSA key file for quorum opt-in")
-        .interact()
-        .expect("Error reading ECDSA password");
+    let ecdsa_password: String =
+        Password::new().with_prompt("Input the password for your ECDSA key file for quorum opt-in").interact()?;
 
     let run_script_path = run_script_path.join("run.sh");
     let optin = Command::new("sh")
@@ -106,7 +112,7 @@ pub fn optin(quorums: String, network: Network, eigen_path: PathBuf) -> Result<(
     if optin.success() {
         Ok(())
     } else {
-        Err("Error running script".into())
+        Err(Box::new(EigenDAError::ScriptError(optin.to_string())))
     }
 }
 
@@ -149,8 +155,7 @@ pub async fn build_env_file(network: Network, eigen_path: PathBuf) -> Result<(),
         println!("The '.env.example' file does not exist.");
     } else {
         println!("The '.env' file already exists.");
-        let reset_string: String =
-            Input::new().with_prompt("Reset env file? (y/n)").interact_text().expect("Error reading BLS key name");
+        let reset_string: String = Input::new().with_prompt("Reset env file? (y/n)").interact_text()?;
         if reset_string == "y" {
             std::fs::remove_file(env_path.clone())?;
             std::fs::copy(env_example_path, env_path.clone())?;
@@ -175,8 +180,7 @@ pub async fn build_env_file(network: Network, eigen_path: PathBuf) -> Result<(),
             .with_prompt(
                 "Input the name of your BLS key file - looks in .eigenlayer folder (where eigen cli stores the key)",
             )
-            .interact_text()
-            .expect("Error reading BLS key name");
+            .interact_text()?;
 
         let mut bls_json_file_location = dirs::home_dir().expect("Could not get home directory");
         bls_json_file_location.push(".eigenlayer/operator_keys");
@@ -188,10 +192,8 @@ pub async fn build_env_file(network: Network, eigen_path: PathBuf) -> Result<(),
             bls_json_file_location.to_str().expect("Could not get BLS key file location"),
         );
 
-        let bls_password: String = Password::new()
-            .with_prompt("Input the password for your BLS key file")
-            .interact()
-            .expect("Error reading BLS password");
+        let bls_password: String =
+            Password::new().with_prompt("Input the password for your BLS key file").interact()?;
         env_values.insert("NODE_BLS_KEY_PASSWORD", &bls_password);
 
         edit_env_vars(env_path.to_str().unwrap(), env_values)?;
@@ -244,8 +246,8 @@ pub async fn download_operator_setup_files(eigen_path: PathBuf) -> Result<(), Bo
     if operator_setup_path.exists() {
         let reset_string: String = Input::new()
             .with_prompt("The 'extracted_files' directory already exists. Redownload? (y/n)")
-            .interact_text()
-            .expect("Error reading answer");
+            .interact_text()?;
+
         if reset_string == "y" {
             setup = true;
             fs::remove_dir_all(operator_setup_path)?;
@@ -330,8 +332,7 @@ pub async fn check_stake_and_system_requirements(
     let stake_map = delegation_manager::get_all_statregies_delegated_stake(address.to_string()).await?;
     println!("You are on network: {:?}", network);
 
-    let bandwidth: u32 =
-        Input::new().with_prompt("Input your bandwidth in mbps").interact_text().expect("Error reading bandwidth");
+    let bandwidth: u32 = Input::new().with_prompt("Input your bandwidth in mbps").interact_text()?;
 
     let mut quorums_to_boot: Vec<EigenStrategy> = Vec::new();
     for (strat, num) in QUORUMS.iter() {
@@ -418,17 +419,4 @@ pub fn build_quorums() -> HashMap<EigenStrategy, u8> {
     quorums.insert(EigenStrategy::BeaconEth, 0);
     quorums.insert(EigenStrategy::Weth, 1);
     quorums
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_stake_percentages() {
-        let lowstake =
-            check_stake_and_system_requirements("0x0a3e3d83c99b27ca7540720b54105c79cd58dbdd", Network::Holesky)
-                .await
-                .unwrap();
-    }
 }

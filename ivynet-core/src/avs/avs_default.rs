@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use crate::{avs_info::eigenda, rpc_management::Network};
+use crate::{avs::eigenda::eigenda, rpc_management::Network};
 
 pub enum AVS {
     EigenDA,

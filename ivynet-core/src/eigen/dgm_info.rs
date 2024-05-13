@@ -2,12 +2,6 @@ use ethers_contract::abigen;
 
 use crate::rpc_management::{self, Network};
 
-lazy_static::lazy_static! {
-    pub static ref NETWORK: Network = rpc_management::NETWORK.lock().unwrap().clone();
-    pub static ref DELEGATION_MANAGER_ADDRESS: String = get_delegation_manager_address();
-    pub static ref STRATEGY_LIST: Vec<EigenStrategy> = get_strategy_list();
-}
-
 // EigenLayer shares types in order of their appearance on EL website
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]
 pub enum EigenStrategy {
@@ -30,7 +24,7 @@ pub enum EigenStrategy {
 
 impl From<&str> for EigenStrategy {
     fn from(hex: &str) -> Self {
-        match NETWORK.clone() {
+        match rpc_management::get_network() {
             Network::Holesky => match hex {
                 "0x7d704507b76571a51d9cae8addabbfd0ba0e63d3" => EigenStrategy::Steth,
                 "0x3A8fBdf9e77DFc25d09741f51d3E181b25d0c4E0" => EigenStrategy::Reth,
@@ -68,7 +62,7 @@ impl From<&str> for EigenStrategy {
 
 impl From<EigenStrategy> for &str {
     fn from(strategy: EigenStrategy) -> Self {
-        match NETWORK.clone() {
+        match rpc_management::get_network() {
             Network::Holesky => match strategy {
                 EigenStrategy::Steth => "0x7d704507b76571a51d9cae8addabbfd0ba0e63d3",
                 EigenStrategy::Reth => "0x3A8fBdf9e77DFc25d09741f51d3E181b25d0c4E0",
@@ -104,16 +98,17 @@ impl From<EigenStrategy> for &str {
     }
 }
 
-fn get_delegation_manager_address() -> String {
-    match NETWORK.clone() {
+pub fn get_delegation_manager_address() -> String {
+    match rpc_management::get_network() {
         Network::Holesky => "0xA44151489861Fe9e3055d95adC98FbD462B948e7".to_string(),
         Network::Mainnet => "0x39053D51B77DC0d36036Fc1fCc8Cb819df8Ef37A".to_string(),
-        Network::Local => todo!(),
+        //Fork testnet
+        Network::Local => "0xA44151489861Fe9e3055d95adC98FbD462B948e7".to_string(),
     }
 }
 
-fn get_strategy_list() -> Vec<EigenStrategy> {
-    match NETWORK.clone() {
+pub fn get_strategy_list() -> Vec<EigenStrategy> {
+    match rpc_management::get_network() {
         Network::Holesky => vec![
             EigenStrategy::Steth,
             EigenStrategy::Reth,

@@ -1,19 +1,19 @@
 use super::dgm_info;
 use crate::rpc_management;
-use dgm_info::{EigenStrategy, STRATEGY_LIST};
+use dgm_info::EigenStrategy;
 use ethers_core::types::{Address, H160, U256};
+use once_cell::sync::Lazy;
 use std::collections::HashMap;
 
 type DelegationManager = dgm_info::DelegationManagerAbi<rpc_management::Client>;
 
-lazy_static::lazy_static! {
-    static ref DELEGATION_MANAGER: DelegationManager = setup_delegation_manager_contract();
-}
+static DELEGATION_MANAGER: Lazy<DelegationManager> = Lazy::new(setup_delegation_manager_contract);
+static STRATEGY_LIST: Lazy<Vec<EigenStrategy>> = Lazy::new(dgm_info::get_strategy_list);
 
-pub fn setup_delegation_manager_contract() -> DelegationManager {
+fn setup_delegation_manager_contract() -> DelegationManager {
     let del_mgr_addr: Address =
-        dgm_info::DELEGATION_MANAGER_ADDRESS.parse().expect("Could not parse DelegationManager address");
-    dgm_info::DelegationManagerAbi::new(del_mgr_addr.clone(), rpc_management::CLIENT.clone())
+        dgm_info::get_delegation_manager_address().parse().expect("Could not parse DelegationManager address");
+    dgm_info::DelegationManagerAbi::new(del_mgr_addr.clone(), rpc_management::get_client())
 }
 
 pub async fn get_operator_details(address: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -31,7 +31,6 @@ pub async fn get_staker_delegatable_shares(address: &str) -> Result<(), Box<dyn 
     let staker_address = address.parse::<Address>()?;
     let details = DELEGATION_MANAGER.get_delegatable_shares(staker_address).call().await?;
     println!("Staker delegatable shares: {:?}", details);
-
     Ok(())
 }
 

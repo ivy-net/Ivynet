@@ -1,13 +1,16 @@
 use dialoguer::{Input, Password};
 use ethers_core::types::Address;
 use ethers_signers::{LocalWallet, Signer};
+use once_cell::sync::OnceCell;
 use secp256k1::rand::thread_rng;
 use std::{fs, path::PathBuf};
 
 use crate::config;
 
-lazy_static::lazy_static! {
-    pub static ref WALLET: LocalWallet = connect_wallet();
+static WALLET: OnceCell<LocalWallet> = OnceCell::new();
+
+pub fn get_wallet() -> LocalWallet {
+    WALLET.get_or_init(connect_wallet).clone()
 }
 
 pub fn create_key(
@@ -51,15 +54,12 @@ pub fn encrypt_and_store(
     file_path.push(".ivynet");
 
     // Create the directory if it doesn't exist
-    fs::create_dir_all(&file_path).expect("Failed to create directory");
+    fs::create_dir_all(&file_path)?;
 
     //Prompt the user to enter a password for their pkey
     let pass: String;
     if password.is_none() {
-        pass = Password::new()
-            .with_prompt("Enter a password to encrypt the private key")
-            .interact()
-            .expect("Error reading password");
+        pass = Password::new().with_prompt("Enter a password to encrypt the private key").interact()?;
     } else {
         pass = password.unwrap();
     }
@@ -67,8 +67,7 @@ pub fn encrypt_and_store(
     //Prompt the user to enter a name for the key
     let key_name: String;
     if name.is_none() {
-        key_name =
-            Input::new().with_prompt("Enter a name for the key").interact_text().expect("Error reading key name");
+        key_name = Input::new().with_prompt("Enter a name for the key").interact_text()?;
     } else {
         key_name = name.unwrap();
     }
@@ -96,7 +95,7 @@ pub fn encrypt_and_store(
 
     //Write public key to file
     let public_key = wallet.address();
-    fs::write(pub_file_path.clone(), public_key).expect("Unable to write to file");
+    fs::write(pub_file_path.clone(), public_key)?;
     config::set_default_public_keyfile(pub_file_path);
 
     println!("Key successfully stored!");

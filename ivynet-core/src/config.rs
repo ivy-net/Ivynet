@@ -1,6 +1,6 @@
-use lazy_static;
+use once_cell::sync::Lazy;
 use serde_derive::{Deserialize, Serialize};
-use std::{path::PathBuf, sync::Mutex};
+use std::path::PathBuf;
 use sysinfo::{Disks, System};
 
 use crate::rpc_management::Network;
@@ -19,9 +19,7 @@ pub struct IvyConfig {
     pub default_public_keyfile: PathBuf,
 }
 
-lazy_static::lazy_static! {
-    static ref CONFIG: Mutex<IvyConfig> = Mutex::new(load_config());
-}
+pub static CONFIG: Lazy<IvyConfig> = Lazy::new(load_config);
 
 pub fn load_config() -> IvyConfig {
     match confy::load::<IvyConfig>("ivy", "ivy-config") {
@@ -40,7 +38,7 @@ pub fn store_config(cfg: IvyConfig) {
 }
 
 pub fn get_config() -> IvyConfig {
-    CONFIG.lock().unwrap().clone()
+    CONFIG.clone()
 }
 
 fn create_new_config() {
@@ -55,57 +53,54 @@ fn create_new_config() {
 }
 
 pub fn set_rpc_url(rpc: &str, network: &str) -> Result<(), Box<dyn std::error::Error>> {
-    let mut cfg = CONFIG.lock()?;
+    let mut config = CONFIG.clone();
     match network {
         "mainnet" => {
             println!("Setting mainnet rpc url to: {}", rpc);
-            cfg.mainnet_rpc_url = rpc.to_string();
+            config.mainnet_rpc_url = rpc.to_string();
         }
         "testnet" => {
             println!("Setting testnet rpc url to: {}", rpc);
-            cfg.testnet_rpc_url = rpc.to_string();
+            config.testnet_rpc_url = rpc.to_string();
         }
         "local" => {
             println!("Setting local rpc url to: {}", rpc);
-            cfg.local_rpc_url = rpc.to_string();
+            config.local_rpc_url = rpc.to_string();
         }
         _ => {
             println!("Unknown network");
         }
     }
-    store_config(cfg.clone());
+    store_config(config);
     Ok(())
 }
 
 pub fn get_rpc_url(network: Network) -> Result<String, Box<dyn std::error::Error>> {
-    let cfg = CONFIG.lock().unwrap().clone();
     Ok(match network {
-        Network::Mainnet => cfg.mainnet_rpc_url,
-        Network::Holesky => cfg.testnet_rpc_url,
-        Network::Local => cfg.local_rpc_url,
+        Network::Mainnet => CONFIG.mainnet_rpc_url.clone(),
+        Network::Holesky => CONFIG.testnet_rpc_url.clone(),
+        Network::Local => CONFIG.local_rpc_url.clone(),
     })
 }
 
 pub fn set_default_private_keyfile(keyfile: PathBuf) {
-    let mut cfg = CONFIG.lock().unwrap();
-    cfg.default_private_keyfile = keyfile;
-    store_config(cfg.clone());
+    let mut config = CONFIG.clone();
+    config.default_private_keyfile = keyfile;
+    store_config(config);
 }
 
 pub fn get_default_private_keyfile() -> PathBuf {
-    let cfg = CONFIG.lock().unwrap();
-    cfg.default_private_keyfile.clone()
+    CONFIG.default_private_keyfile.clone()
 }
 
 pub fn set_default_public_keyfile(keyfile: PathBuf) {
-    let mut cfg = CONFIG.lock().unwrap();
-    cfg.default_public_keyfile = keyfile;
-    store_config(cfg.clone());
+    let mut config = CONFIG.clone();
+    config.default_public_keyfile = keyfile;
+    store_config(config.clone());
 }
 
 pub fn get_default_public_keyfile() -> PathBuf {
-    let cfg: std::sync::MutexGuard<'_, IvyConfig> = CONFIG.lock().unwrap();
-    cfg.default_public_keyfile.clone().into()
+    CONFIG.default_public_keyfile.clone()
 }
 
 pub fn get_system_information() -> Result<(u64, u64, u64), Box<dyn std::error::Error>> {
