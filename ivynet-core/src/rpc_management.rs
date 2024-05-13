@@ -3,7 +3,7 @@ use ethers_middleware::SignerMiddleware;
 use ethers_providers::{Http, Provider};
 use ethers_signers::Wallet;
 use once_cell::sync::OnceCell;
-use std::{convert::TryFrom, error::Error, sync::Arc};
+use std::{convert::TryFrom, sync::Arc};
 
 use crate::{config, keys};
 
