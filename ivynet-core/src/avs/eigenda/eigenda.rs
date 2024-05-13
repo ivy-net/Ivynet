@@ -336,11 +336,11 @@ pub async fn check_stake_and_system_requirements(
 
     let mut quorums_to_boot: Vec<EigenStrategy> = Vec::new();
     for (strat, num) in QUORUMS.iter() {
-        let quorum_stake: U256 = stake_map.get(strat).expect("Amount should never be none, should always be 0").clone();
+        let quorum_stake: U256 = *stake_map.get(strat).expect("Amount should never be none, should always be 0");
 
         println!("Your stake in quorum {:?}: {:?}", strat, format_units(quorum_stake, "ether").unwrap());
 
-        let quorum_total = STAKE_REGISTRY.get_current_total_stake(num.clone()).call().await?;
+        let quorum_total = STAKE_REGISTRY.get_current_total_stake(*num).call().await?;
         println!("Total stake in quorum 0 - {:?}: {:?}", strat, format_units(quorum_total, "ether").unwrap());
 
         // TODO: Check if the address is already an operator to get their appropriate percentage
@@ -353,24 +353,24 @@ pub async fn check_stake_and_system_requirements(
         let passed_mins = check_system_mins(quorum_percentage, bandwidth)?;
         match network {
             Network::Mainnet => {
-                let stake_min: U256 = U256::from(96 * 10 ^ 18);
+                let stake_min: U256 = U256::from(96 * (10 ^ 18));
                 if quorum_stake > stake_min && passed_mins {
-                    quorums_to_boot.push(strat.clone());
+                    quorums_to_boot.push(*strat);
                 } else {
                     println!("You do not meet the requirements for quorum {:?}", strat);
                 }
             }
             Network::Holesky => {
-                let stake_min: U256 = U256::from(32 * 10 ^ 18);
+                let stake_min: U256 = U256::from(32 * (10 ^ 18));
                 if quorum_stake > stake_min && passed_mins {
-                    quorums_to_boot.push(strat.clone());
+                    quorums_to_boot.push(*strat);
                 } else {
                     println!("You do not meet the requirements for quorum {:?}", strat);
                 }
             }
             Network::Local => {
                 //If its local, presumably you want to try against a forked network and do the calls anyway
-                quorums_to_boot.push(strat.clone())
+                quorums_to_boot.push(*strat)
             }
         }
     }

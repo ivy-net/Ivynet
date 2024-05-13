@@ -25,11 +25,7 @@ pub async fn parse_operator_subcommands(subcmd: OperatorCommands) -> Result<(), 
             let stake_map = eigen::delegation_manager::get_all_statregies_delegated_stake(address).await?;
             for i in 0..STRATEGY_LIST.len() {
                 let stake = stake_map.get(&STRATEGY_LIST[i]).unwrap();
-                println!(
-                    "Share Type: {:?}, Amount: {:?}",
-                    STRATEGY_LIST[i],
-                    format_units(stake.clone(), "ether").unwrap()
-                );
+                println!("Share Type: {:?}, Amount: {:?}", STRATEGY_LIST[i], format_units(*stake, "ether").unwrap());
             }
         }
         OperatorCommands::GetOperatorStatus { address } => {

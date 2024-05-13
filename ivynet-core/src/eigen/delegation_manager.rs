@@ -13,7 +13,7 @@ static STRATEGY_LIST: Lazy<Vec<EigenStrategy>> = Lazy::new(dgm_info::get_strateg
 fn setup_delegation_manager_contract() -> DelegationManager {
     let del_mgr_addr: Address =
         dgm_info::get_delegation_manager_address().parse().expect("Could not parse DelegationManager address");
-    dgm_info::DelegationManagerAbi::new(del_mgr_addr.clone(), rpc_management::get_client())
+    dgm_info::DelegationManagerAbi::new(del_mgr_addr, rpc_management::get_client())
 }
 
 pub async fn get_operator_details(address: &str) -> Result<(), Box<dyn std::error::Error>> {
@@ -44,7 +44,7 @@ pub async fn get_all_statregies_delegated_stake(
     let mut strat_list: Vec<H160> = Vec::new();
 
     for i in 0..STRATEGY_LIST.len() {
-        let str_strat: &str = STRATEGY_LIST[i].clone().into();
+        let str_strat: &str = STRATEGY_LIST[i].into();
         let hex_strat = str_strat.parse::<Address>()?;
         strat_list.push(hex_strat)
     }

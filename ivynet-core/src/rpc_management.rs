@@ -63,7 +63,7 @@ pub fn set_network(network: &str) -> Result<(), Network> {
 }
 
 pub fn get_network() -> Network {
-    NETWORK.get_or_init(|| Network::Local).clone()
+    *NETWORK.get_or_init(|| Network::Local)
 }
 
 #[cfg(test)]

@@ -8,7 +8,7 @@ pub enum AVS {
 
 //Need to refactor this so its abstract and forces impl on individual avs modules
 pub async fn boot_avs(avs: &str) -> Result<(), Box<dyn std::error::Error>> {
-    match AVS::from_str(&avs) {
+    match AVS::from_str(avs) {
         Ok(AVS::EigenDA) => {
             eigenda::boot_eigenda().await?;
         }

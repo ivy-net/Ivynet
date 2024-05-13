@@ -18,7 +18,7 @@ pub fn create_key(
     name: Option<String>,
     password: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    println! {"Please back up your private key in a safe place!"};
+    println!("Please back up your private key in a safe place!");
     let wallet = LocalWallet::new(&mut thread_rng());
     let priv_key = hex::encode(wallet.signer().to_bytes());
     println!("Private key: {:?}", priv_key);
@@ -37,7 +37,7 @@ pub fn import_key(
     name: Option<String>,
     password: Option<String>,
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let priv_bytes = hex::decode(&private_key_string)?;
+    let priv_bytes = hex::decode(private_key_string)?;
     let local_wallet = LocalWallet::from_bytes(&priv_bytes)?;
     println!("Address: {:?}", local_wallet.address());
 
@@ -57,20 +57,18 @@ pub fn encrypt_and_store(
     fs::create_dir_all(&file_path)?;
 
     //Prompt the user to enter a password for their pkey
-    let pass: String;
-    if password.is_none() {
-        pass = Password::new().with_prompt("Enter a password to encrypt the private key").interact()?;
+    let pass = if let Some(inner) = password {
+        inner
     } else {
-        pass = password.unwrap();
-    }
+        Password::new().with_prompt("Enter a password to encrypt the private key").interact()?
+    };
 
     //Prompt the user to enter a name for the key
-    let key_name: String;
-    if name.is_none() {
-        key_name = Input::new().with_prompt("Enter a name for the key").interact_text()?;
+    let key_name = if let Some(inner) = name {
+        inner
     } else {
-        key_name = name.unwrap();
-    }
+        Input::new().with_prompt("Enter a name for the key").interact_text()?
+    };
 
     // ------ Private Key File ------
     let mut private_key_path: PathBuf = file_path.clone();
