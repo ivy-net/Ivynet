@@ -13,7 +13,6 @@ path = "src/lib.rs"
 [lints]
 workspace = true
 
-
 [dependencies]
 futures-util = "0.3"
 clap = { version = "4.5.4", features = ["derive"] }

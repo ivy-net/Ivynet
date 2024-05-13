@@ -22,6 +22,7 @@ use zip::read::ZipArchive;
 use super::eigenda_info;
 use crate::{
     config,
+    download::dl_progress_bar,
     eigen::{delegation_manager, dgm_info::EigenStrategy, node_classes, node_classes::NodeClass},
     keys, rpc_management,
 };
@@ -214,31 +215,13 @@ pub async fn download_g1_g2(eigen_path: PathBuf) -> Result<(), Box<dyn std::erro
     if g1_file_path.exists() {
         println!("The 'g1.point' file already exists.");
     } else {
-        println!("The 'g1.point' file does not exist, downloading appropriate file - 8.5GB!");
-        // Download the "g1.point" file
-        let g1_response = reqwest::get("https://srs-mainnet.s3.amazonaws.com/kzg/g1.point").await?;
-        let bytes = g1_response.bytes().await?;
-        let resources_dir = eigen_path.join("eigenda_operator_setup/resources");
-        std::fs::create_dir_all(&resources_dir)?;
-        let file_path = resources_dir.join("g1.point");
-        let mut file = tokio::fs::File::create(&file_path).await?;
-        file.write_all(&bytes).await?;
-        println!("Downloaded g1.point");
+        dl_progress_bar("https://srs-mainnet.s3.amazonaws.com/kzg/g1.point", g1_file_path).await?;
     }
-
     if g2_file_path.exists() {
         println!("The 'g2.point.PowerOf2' file already exists.");
     } else {
         println!("The 'g2.point.PowerOf2' file does not exist, downloading appropriate file");
-        //Download g2.point.powerOf2
-        let g2_response = reqwest::get("https://srs-mainnet.s3.amazonaws.com/kzg/g2.point.powerOf2").await?;
-        let bytes = g2_response.bytes().await?;
-        let resources_dir = eigen_path.join("eigenda_operator_setup/resources");
-        std::fs::create_dir_all(&resources_dir)?;
-        let file_path = resources_dir.join("g2.point.PowerOf2");
-        let mut file = tokio::fs::File::create(&file_path).await?;
-        file.write_all(&bytes).await?;
-        println!("Downloaded g2.point");
+        dl_progress_bar("https://srs-mainnet.s3.amazonaws.com/kzg/g2.point.powerOf2", g2_file_path).await?
     }
 
     Ok(())
