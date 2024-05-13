@@ -1,6 +1,9 @@
 use ethers_contract::abigen;
+use once_cell::sync::Lazy;
 
 use crate::rpc_management::{self, Network};
+
+pub static STRATEGY_LIST: Lazy<Vec<EigenStrategy>> = Lazy::new(get_strategy_list);
 
 // EigenLayer shares types in order of their appearance on EL website
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Copy)]

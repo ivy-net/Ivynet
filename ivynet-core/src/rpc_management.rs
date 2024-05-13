@@ -26,7 +26,6 @@ impl From<&str> for Network {
     fn from(network: &str) -> Network {
         match network {
             "mainnet" => Network::Mainnet,
-            "testnet" => Network::Holesky,
             "holesky" => Network::Holesky,
             _ => Network::Local,
         }
@@ -40,7 +39,7 @@ fn connect_provider() -> Provider<Http> {
             Provider::<Http>::try_from(cfg.mainnet_rpc_url.clone()).expect("Could not connect to provider")
         }
         Network::Holesky => {
-            Provider::<Http>::try_from(cfg.testnet_rpc_url.clone()).expect("Could not connect to provider")
+            Provider::<Http>::try_from(cfg.holesky_rpc_url.clone()).expect("Could not connect to provider")
         }
         Network::Local => Provider::<Http>::try_from(cfg.local_rpc_url.clone()).expect("Could not connect to provider"),
     }

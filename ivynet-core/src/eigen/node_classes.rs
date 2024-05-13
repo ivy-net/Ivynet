@@ -1,8 +1,6 @@
-use std::cmp::Ordering;
-
 use crate::config;
 
-#[derive(PartialEq, PartialOrd)]
+#[derive(PartialEq, PartialOrd, Ord)]
 pub enum NodeClass {
     // Note: Eigen's specified node classes do not contain disk requirements
     USELESS,
@@ -21,21 +19,6 @@ pub fn get_node_class() -> Result<NodeClass, Box<dyn std::error::Error>> {
         return Ok(NodeClass::LRG);
     }
     Ok(NodeClass::USELESS)
-}
-
-impl Ord for NodeClass {
-    fn cmp(&self, other: &Self) -> Ordering {
-        fn rank(nc: &NodeClass) -> u8 {
-            match nc {
-                NodeClass::USELESS => 0,
-                NodeClass::LRG => 1,
-                NodeClass::XL => 2,
-                NodeClass::FOURXL => 3,
-            }
-        }
-
-        rank(self).cmp(&rank(other))
-    }
 }
 
 impl Eq for NodeClass {}

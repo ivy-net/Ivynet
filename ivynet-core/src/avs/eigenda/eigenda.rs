@@ -1,17 +1,22 @@
 use dialoguer::{Input, Password};
-use ethers_core::{types::U256, utils::format_units};
+use ethers_core::{
+    types::{transaction::request, U256},
+    utils::format_units,
+};
+use indicatif::{ProgressBar, ProgressState, ProgressStyle};
 use once_cell::sync::Lazy;
 use rpc_management::Network;
-use thiserror::Error;
-use tokio::io::AsyncWriteExt;
-
 use std::{
     collections::HashMap,
+    fmt::{Display, Write},
     fs::{self, File},
     io::{copy, BufReader},
     path::{Path, PathBuf},
     process::Command,
+    str::Bytes,
 };
+use thiserror::Error;
+use tokio::io::AsyncWriteExt;
 use zip::read::ZipArchive;
 
 use super::eigenda_info;
@@ -238,6 +243,21 @@ pub async fn download_g1_g2(eigen_path: PathBuf) -> Result<(), Box<dyn std::erro
 
     Ok(())
 }
+
+#[derive(Debug)]
+pub enum CoreError {
+    DownloadFailed,
+}
+
+impl Display for CoreError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CoreError::DownloadFailed => write!(f, "Failed to download resource"),
+        }
+    }
+}
+
+impl std::error::Error for CoreError {}
 
 //Whole function needs to be cleaned up
 pub async fn download_operator_setup_files(eigen_path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {

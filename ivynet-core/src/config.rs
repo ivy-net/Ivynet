@@ -10,7 +10,7 @@ pub struct IvyConfig {
     // Mainnet rpc url
     pub mainnet_rpc_url: String,
     // Mainnet rpc url
-    pub testnet_rpc_url: String,
+    pub holesky_rpc_url: String,
     // Mainnet rpc url
     pub local_rpc_url: String,
     // Default private key file full path
@@ -44,7 +44,7 @@ pub fn get_config() -> IvyConfig {
 fn create_new_config() {
     let cfg = IvyConfig {
         mainnet_rpc_url: "https://rpc.flashbots.net/fast".to_string(),
-        testnet_rpc_url: "https://rpc.holesky.ethpandaops.io".to_string(),
+        holesky_rpc_url: "https://rpc.holesky.ethpandaops.io".to_string(),
         local_rpc_url: "http://localhost:8545".to_string(),
         default_private_keyfile: "".into(),
         default_public_keyfile: "".into(),
@@ -53,15 +53,16 @@ fn create_new_config() {
 }
 
 pub fn set_rpc_url(rpc: &str, network: &str) -> Result<(), Box<dyn std::error::Error>> {
+    println!("{}", network);
     let mut config = CONFIG.clone();
     match network {
         "mainnet" => {
             println!("Setting mainnet rpc url to: {}", rpc);
             config.mainnet_rpc_url = rpc.to_string();
         }
-        "testnet" => {
-            println!("Setting testnet rpc url to: {}", rpc);
-            config.testnet_rpc_url = rpc.to_string();
+        "holesky" => {
+            println!("Setting holesky rpc url to: {}", rpc);
+            config.holesky_rpc_url = rpc.to_string();
         }
         "local" => {
             println!("Setting local rpc url to: {}", rpc);
@@ -78,7 +79,7 @@ pub fn set_rpc_url(rpc: &str, network: &str) -> Result<(), Box<dyn std::error::E
 pub fn get_rpc_url(network: Network) -> Result<String, Box<dyn std::error::Error>> {
     Ok(match network {
         Network::Mainnet => CONFIG.mainnet_rpc_url.clone(),
-        Network::Holesky => CONFIG.testnet_rpc_url.clone(),
+        Network::Holesky => CONFIG.holesky_rpc_url.clone(),
         Network::Local => CONFIG.local_rpc_url.clone(),
     })
 }
@@ -96,7 +97,7 @@ pub fn get_default_private_keyfile() -> PathBuf {
 pub fn set_default_public_keyfile(keyfile: PathBuf) {
     let mut config = CONFIG.clone();
     config.default_public_keyfile = keyfile;
-    store_config(config.clone());
+    store_config(config);
 }
 
 pub fn get_default_public_keyfile() -> PathBuf {

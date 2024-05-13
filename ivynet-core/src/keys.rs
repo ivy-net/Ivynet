@@ -7,7 +7,8 @@ use std::{fs, path::PathBuf};
 
 use crate::config;
 
-static WALLET: OnceCell<LocalWallet> = OnceCell::new();
+// TODO: Rework pub type to private here with methods for wallet validation or otherwise redo wallet state
+pub static WALLET: OnceCell<LocalWallet> = OnceCell::new();
 
 pub fn get_wallet() -> LocalWallet {
     WALLET.get_or_init(connect_wallet).clone()

@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use clap::Parser;
 
 use ivynet_core::{config, keys, rpc_management::Network};
@@ -43,8 +45,7 @@ pub fn parse_config_subcommands(subcmd: ConfigCommands) -> Result<(), Box<dyn st
         ConfigCommands::SetRpc { network, rpc_url } => config::set_rpc_url(&rpc_url, &network)?,
         ConfigCommands::GetRpc { network } => match network.as_str() {
             "mainnet" => println!("Mainnet url: {:?}", config::get_rpc_url(Network::Mainnet)?),
-            "testnet" => println!("Testnet url: {:?}", config::get_rpc_url(Network::Holesky)?),
-            "holesky" => println!("Testnet url: {:?}", config::get_rpc_url(Network::Holesky)?),
+            "holesky" => println!("Holesky url: {:?}", config::get_rpc_url(Network::Holesky)?),
             "local" => println!("Localhost url: {:?}", config::get_rpc_url(Network::Local)?),
             _ => {
                 println!("Unknown network: {}", network);
@@ -52,7 +53,7 @@ pub fn parse_config_subcommands(subcmd: ConfigCommands) -> Result<(), Box<dyn st
         },
         ConfigCommands::GetDefaultEthAddress => println!("Public Key: {}", keys::get_stored_public_key()?),
         ConfigCommands::GetDefaultPrivateKey => {
-            let priv_key = hex::encode(keys::WALLET.signer().to_bytes());
+            let priv_key = hex::encode(keys::WALLET.get().ok_or(CliError::EmptySigner)?.signer().to_bytes());
             println!("Private key: {:?}", priv_key);
         }
         ConfigCommands::GetSysInfo => {
@@ -68,3 +69,18 @@ pub fn parse_config_subcommands(subcmd: ConfigCommands) -> Result<(), Box<dyn st
     };
     Ok(())
 }
+
+#[derive(Debug)]
+pub enum CliError {
+    EmptySigner,
+}
+
+impl Display for CliError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CliError::EmptySigner => write!(f, "Could not parse wallet signer. Is your key initialized?"),
+        }
+    }
+}
+
+impl std::error::Error for CliError {}

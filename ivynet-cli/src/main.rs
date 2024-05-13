@@ -10,7 +10,7 @@ mod staker;
 struct Args {
     #[command(subcommand)]
     cmd: Commands,
-    /// The network to connect to: mainnet, testnet, local
+    /// The network to connect to: mainnet, holesky, local
     #[arg(long, short, default_value = "local")]
     network: String,
 }
