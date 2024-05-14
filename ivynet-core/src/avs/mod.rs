@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::{collections::HashMap, path::PathBuf};
 
 use crate::rpc_management::Network;
 
@@ -11,5 +11,6 @@ pub mod eigenda;
 pub trait Avs {
     async fn boot();
     async fn build_env_file(network: Network, eigen_path: PathBuf);
+    fn edit_env_vars(filename: &str, env_values: HashMap<&str, &str>) -> Result<(), Box<dyn std::error::Error>>;
     fn optin(quorums: String, network: Network, eigen_path: PathBuf);
 }

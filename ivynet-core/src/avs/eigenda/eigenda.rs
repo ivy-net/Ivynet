@@ -3,7 +3,6 @@ use ethers_core::{
     types::{transaction::request, U256},
     utils::format_units,
 };
-use indicatif::{ProgressBar, ProgressState, ProgressStyle};
 use once_cell::sync::Lazy;
 use rpc_management::Network;
 use std::{
@@ -13,10 +12,8 @@ use std::{
     io::{copy, BufReader},
     path::{Path, PathBuf},
     process::Command,
-    str::Bytes,
 };
 use thiserror::Error;
-use tokio::io::AsyncWriteExt;
 use zip::read::ZipArchive;
 
 use super::eigenda_info;
@@ -62,7 +59,7 @@ pub async fn boot_eigenda() -> Result<(), Box<dyn std::error::Error>> {
     match network {
         Network::Mainnet => eigen_path.push("mainnet"),
         Network::Holesky => eigen_path.push("holesky"),
-        Network::Local => eigen_path.push("holesky"),
+        Network::Local => todo!("Unimplemented"),
     }
     fs::create_dir_all(&eigen_path)?;
 
@@ -86,7 +83,7 @@ pub fn optin(quorums: String, network: Network, eigen_path: PathBuf) -> Result<(
     let run_script_path = match network {
         Network::Mainnet => run_script_path.join("mainnet"),
         Network::Holesky => run_script_path.join("holesky"),
-        Network::Local => run_script_path.join("holesky"),
+        Network::Local => todo!("Unimplemented"),
     };
 
     let env_path = run_script_path.join(".env");
@@ -101,7 +98,7 @@ pub fn optin(quorums: String, network: Network, eigen_path: PathBuf) -> Result<(
 
     let run_script_path = run_script_path.join("run.sh");
     let optin = Command::new("sh")
-        .arg(run_script_path.clone())
+        .arg(run_script_path)
         .arg("--operation-type")
         .arg("opt-in")
         .arg("--node-ecdsa-key-file-host")
@@ -146,7 +143,7 @@ pub async fn build_env_file(network: Network, eigen_path: PathBuf) -> Result<(),
     let run_script_path = match network {
         Network::Mainnet => run_script_path.join("mainnet"),
         Network::Holesky => run_script_path.join("holesky"),
-        Network::Local => run_script_path.join("holesky"),
+        Network::Local => todo!("Unimplemented"),
     };
 
     let mut set_vars: bool = false;
@@ -208,6 +205,7 @@ pub async fn build_env_file(network: Network, eigen_path: PathBuf) -> Result<(),
     Ok(())
 }
 
+/// Downloads eigenDA node resources
 pub async fn download_g1_g2(eigen_path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
     let resources_dir = eigen_path.join("eigenda_operator_setup/resources");
     let g1_file_path = resources_dir.join("g1.point");
