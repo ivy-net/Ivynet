@@ -3,15 +3,14 @@ use ethers_core::types::Address;
 use ethers_signers::{LocalWallet, Signer};
 use once_cell::sync::OnceCell;
 use secp256k1::rand::thread_rng;
-use std::{fs, path::PathBuf};
+use std::{fs, ops::DerefMut, path::PathBuf};
 
-use crate::config;
+use crate::config::CONFIG;
 
-// TODO: Rework pub type to private here with methods for wallet validation or otherwise redo wallet state
 pub static WALLET: OnceCell<LocalWallet> = OnceCell::new();
 
 pub fn get_wallet() -> LocalWallet {
-    WALLET.get_or_init(connect_wallet).clone()
+    WALLET.get_or_init(|| connect_wallet().unwrap()).clone()
 }
 
 pub fn create_key(
@@ -73,7 +72,7 @@ pub fn encrypt_and_store(
 
     // ------ Private Key File ------
     let mut private_key_path: PathBuf = file_path.clone();
-
+    println!("Private key path: {}", private_key_path.display());
     //Encrypt private key
     LocalWallet::encrypt_keystore(
         private_key_path.clone(),
@@ -85,40 +84,41 @@ pub fn encrypt_and_store(
 
     //Set the default private keyfile path
     private_key_path.push(format!("{}.json", key_name));
-    config::set_default_private_keyfile(private_key_path);
+
+    CONFIG.lock()?.set_private_keyfile(private_key_path);
 
     // ------ Public Key File ------
     //Create path for pub key
-    let mut pub_file_path = file_path.clone();
-    pub_file_path.push(format!("{}.txt", key_name));
+    let mut pub_key_path = file_path.clone();
+    pub_key_path.push(format!("{}.txt", key_name));
 
     //Write public key to file
     let public_key = wallet.address();
-    fs::write(pub_file_path.clone(), public_key)?;
-    config::set_default_public_keyfile(pub_file_path);
+    fs::write(pub_key_path.clone(), public_key)?;
+
+    CONFIG.lock()?.set_public_keyfile(pub_key_path);
+    CONFIG.lock()?.store()?;
 
     println!("Key successfully stored!");
 
     Ok(())
 }
 
-pub fn connect_wallet() -> LocalWallet {
-    let file_path = config::get_default_private_keyfile();
+pub fn connect_wallet() -> Result<LocalWallet, Box<dyn std::error::Error>> {
+    let file_path = &CONFIG.lock()?.default_public_keyfile;
     println!("File Path: {:?}", file_path);
 
-    let password: String = Password::new()
-        .with_prompt("Enter the password you used to encrypt the private key")
-        .interact()
-        .expect("Error reading password");
+    let password: String =
+        Password::new().with_prompt("Enter the password you used to encrypt the private key").interact()?;
 
-    LocalWallet::decrypt_keystore(file_path, password).expect("Failed to decrypt wallet")
+    Ok(LocalWallet::decrypt_keystore(file_path, password).expect("Failed to decrypt wallet"))
 }
 
 pub fn get_stored_public_key() -> Result<String, Box<dyn std::error::Error>> {
     println!("Grabbing stored public key");
-    let file_path = config::get_default_public_keyfile();
+    let file_path = &CONFIG.lock()?.default_public_keyfile;
     let addr_vec: Vec<u8> = fs::read(file_path)?;
-    let addr_bytes: [u8; 20] = addr_vec.try_into().expect("Expected 20 bytes");
+    let addr_bytes: [u8; 20] = addr_vec.try_into().or_else(|_| Err("Expected 20 bytes".to_string()))?;
     let addr: Address = Address::from(addr_bytes);
     //Can't do to_string because it truncates it
     Ok("0x".to_owned() + &hex::encode(addr))
@@ -138,8 +138,8 @@ mod tests {
         .is_ok());
     }
 
-    #[test]
-    fn test_get_stored_public_key() {
+    #[tokio::test]
+    async fn test_get_stored_public_key() {
         assert_eq!(get_stored_public_key().unwrap(), "0xCD6908FcF7b711d5b7486F7Eb5f7F1A0504aF2c6");
     }
 }

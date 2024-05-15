@@ -2,7 +2,11 @@ use std::fmt::Display;
 
 use clap::Parser;
 
-use ivynet_core::{config, keys, rpc_management::Network};
+use ivynet_core::{
+    config::{self, CONFIG},
+    keys,
+    rpc_management::Network,
+};
 
 #[derive(Parser, Debug, Clone)]
 pub(crate) enum ConfigCommands {
@@ -42,16 +46,20 @@ pub fn parse_config_subcommands(subcmd: ConfigCommands) -> Result<(), Box<dyn st
             keys::import_key(private_key, keyname, password)?
         }
         ConfigCommands::CreatePrivateKey { store, keyname, password } => keys::create_key(store, keyname, password)?,
-        ConfigCommands::SetRpc { network, rpc_url } => config::set_rpc_url(&rpc_url, &network)?,
+        ConfigCommands::SetRpc { network, rpc_url } => {
+            CONFIG.lock()?.set_rpc_url(Network::from(network.as_str()), &rpc_url)?
+        }
         ConfigCommands::GetRpc { network } => match network.as_str() {
-            "mainnet" => println!("Mainnet url: {:?}", config::get_rpc_url(Network::Mainnet)?),
-            "holesky" => println!("Holesky url: {:?}", config::get_rpc_url(Network::Holesky)?),
-            "local" => println!("Localhost url: {:?}", config::get_rpc_url(Network::Local)?),
+            "mainnet" => println!("Mainnet url: {:?}", CONFIG.lock()?.get_rpc_url(Network::Mainnet)?),
+            "holesky" => println!("Holesky url: {:?}", CONFIG.lock()?.get_rpc_url(Network::Holesky)?),
+            "local" => println!("Localhost url: {:?}", CONFIG.lock()?.get_rpc_url(Network::Local)?),
             _ => {
                 println!("Unknown network: {}", network);
             }
         },
-        ConfigCommands::GetDefaultEthAddress => println!("Public Key: {}", keys::get_stored_public_key()?),
+        ConfigCommands::GetDefaultEthAddress => {
+            println!("Public Key: {}", keys::get_stored_public_key().expect("Could not get ETH address"))
+        }
         ConfigCommands::GetDefaultPrivateKey => {
             let priv_key = hex::encode(keys::WALLET.get().ok_or(CliError::EmptySigner)?.signer().to_bytes());
             println!("Private key: {:?}", priv_key);

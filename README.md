@@ -31,7 +31,15 @@ cargo build -r
 ivynet-cli --help 
 ```
 
+Install the eigenlayer CLI and create your BLS key if you do not already have one:
 
+```sh
+# Install the Eigenlayer CLI:
+curl -sSfL https://raw.githubusercontent.com/layr-labs/eigenlayer-cli/master/scripts/install.sh | sh -s
+# Create a BLS key with optional password:
+eigenlayer operator keys create --key-type bls [keyname]
+
+```
 
 To setup properly first create/import your Ethereum Key
 

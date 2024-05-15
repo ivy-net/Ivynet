@@ -1,4 +1,4 @@
-use dialoguer::{Input, Password};
+use dialoguer::{theme::ColorfulTheme, Input, Password};
 use ethers_core::{
     types::{transaction::request, U256},
     utils::format_units,
@@ -7,7 +7,7 @@ use once_cell::sync::Lazy;
 use rpc_management::Network;
 use std::{
     collections::HashMap,
-    fmt::{Display, Write},
+    fmt::Display,
     fs::{self, File},
     io::{copy, BufReader},
     path::{Path, PathBuf},
@@ -18,7 +18,7 @@ use zip::read::ZipArchive;
 
 use super::eigenda_info;
 use crate::{
-    config,
+    config::{self, CONFIG},
     download::dl_progress_bar,
     eigen::{delegation_manager, dgm_info::EigenStrategy, node_classes, node_classes::NodeClass},
     keys, rpc_management,
@@ -73,12 +73,12 @@ pub async fn boot_eigenda() -> Result<(), Box<dyn std::error::Error>> {
     let quorums_converted_str: String =
         quorums_converted.iter().map(|n| n.to_string()).collect::<Vec<String>>().join(",");
     println!("Quorums to boot: {}", quorums_converted_str);
-    optin(quorums_converted_str, network, eigen_path)?;
+    optin(quorums_converted_str, network, eigen_path).await?;
 
     Ok(())
 }
 
-pub fn optin(quorums: String, network: Network, eigen_path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn optin(quorums: String, network: Network, eigen_path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
     let run_script_path = eigen_path.join("eigenda_operator_setup");
     let run_script_path = match network {
         Network::Mainnet => run_script_path.join("mainnet"),
@@ -96,13 +96,15 @@ pub fn optin(quorums: String, network: Network, eigen_path: PathBuf) -> Result<(
     let ecdsa_password: String =
         Password::new().with_prompt("Input the password for your ECDSA key file for quorum opt-in").interact()?;
 
+    let private_keyfile = &CONFIG.lock()?.default_private_keyfile;
+
     let run_script_path = run_script_path.join("run.sh");
     let optin = Command::new("sh")
         .arg(run_script_path)
         .arg("--operation-type")
         .arg("opt-in")
         .arg("--node-ecdsa-key-file-host")
-        .arg(config::get_default_private_keyfile())
+        .arg(private_keyfile)
         .arg("--node-ecdsa-key-password")
         .arg(ecdsa_password)
         .arg("--quorums")
@@ -136,6 +138,12 @@ fn edit_env_vars(filename: &str, env_values: HashMap<&str, &str>) -> Result<(), 
         .join("\n");
     fs::write(filename, new_contents.as_bytes())?;
     Ok(())
+}
+
+pub async fn setup_eigenlayer_cli() {}
+
+fn selection_theme() -> ColorfulTheme {
+    ColorfulTheme { ..ColorfulTheme::default() }
 }
 
 pub async fn build_env_file(network: Network, eigen_path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
@@ -172,8 +180,8 @@ pub async fn build_env_file(network: Network, eigen_path: PathBuf) -> Result<(),
         let node_hostname = reqwest::get("https://api.ipify.org").await?.text().await?;
         env_values.insert("NODE_HOSTNAME", &node_hostname);
 
-        let rpc_url = &config::get_rpc_url(network)?;
-        env_values.insert("NODE_CHAIN_RPC", rpc_url);
+        let rpc_url = CONFIG.lock()?.get_rpc_url(network)?;
+        env_values.insert("NODE_CHAIN_RPC", &rpc_url);
 
         let home_dir = dirs::home_dir().unwrap();
         let home_str = home_dir.to_str().expect("Could not get home directory");

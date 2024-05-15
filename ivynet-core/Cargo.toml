@@ -17,6 +17,7 @@ workspace = true
 futures-util = "0.3"
 clap = { version = "4.5.4", features = ["derive"] }
 confy = "0.6.1"
+console = "0.15.8"
 dialoguer = "0.11.0"
 dirs = "5.0.1"
 ethers-contract = "2.0.14"
