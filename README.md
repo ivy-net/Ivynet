@@ -26,12 +26,23 @@ NOTE: Development is happening at pace and there may be bugs - please feel free 
 
 For now,
 
+### Build
+
+Rust and cmake is required to build the code with following commands:
+
 ```sh
 cargo build -r
-ivynet-cli --help
 ```
 
+The output is stored in the `target/release` folder.
+To validated that binaries are functional, change directory and check if the outout of the help command.
 
+```sh
+cd target/release
+./ivynet-cli --help
+```
+
+### Private Key setup
 
 To setup properly first create/import your Ethereum Key
 
@@ -41,23 +52,23 @@ or
 ivynet-cli config import-key [PRIVATE-KEY] [KEYNAME] [PASSWORD]
 ```
 
-Then set your RPC urls for mainnet and holesky
+### RPC url setup
 
+Then set your RPC urls for mainnet and holesky
 ```sh
 ivynet-cli config set-rpc mainnet [URL]
 and
 ivynet-cli config set-rpc holesky https://rpc.holesky.ethpandaops.io
 ```
 
+### EigenDA AVS configuration
+
 Then try grabbing your stake:
 
 ```sh
 ivynet-cli --network holesky operator get-stake [ADDRESS]
 ```
-
 and finally booting up the EigenDA AVS!
-
-
 
 ```sh
 ivynet-cli --network holesky avs boot eigenda
