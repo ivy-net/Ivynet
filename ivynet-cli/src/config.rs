@@ -47,7 +47,8 @@ pub fn parse_config_subcommands(subcmd: ConfigCommands) -> Result<(), Box<dyn st
         }
         ConfigCommands::CreatePrivateKey { store, keyname, password } => keys::create_key(store, keyname, password)?,
         ConfigCommands::SetRpc { network, rpc_url } => {
-            CONFIG.lock()?.set_rpc_url(Network::from(network.as_str()), &rpc_url)?
+            CONFIG.lock()?.set_rpc_url(Network::from(network.as_str()), &rpc_url)?;
+            CONFIG.lock()?.store()?
         }
         ConfigCommands::GetRpc { network } => match network.as_str() {
             "mainnet" => println!("Mainnet url: {:?}", CONFIG.lock()?.get_rpc_url(Network::Mainnet)?),

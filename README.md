@@ -66,7 +66,6 @@ ivynet-cli --network holesky operator get-stake [ADDRESS]
 and finally booting up the EigenDA AVS!
 
 
-
 ```sh
 ivynet-cli --network holesky avs boot eigenda
 ```

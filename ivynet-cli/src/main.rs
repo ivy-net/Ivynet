@@ -1,4 +1,6 @@
 use clap::{Parser, Subcommand};
+use tracing::{debug, error, info, level_filters::LevelFilter, trace, warn, Level};
+use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 mod avs;
 mod config;
@@ -54,8 +56,12 @@ enum SetupCommands {
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args = Args::parse();
 
+    // Set up tracing
+    let filter = EnvFilter::builder().parse("ivynet_cli=debug,ivynet_core=debug")?;
+    tracing_subscriber::registry().with(fmt::layer()).with(filter).init();
+
     //TODO: Refactor for subcommands
-    ivynet_core::rpc_management::set_network(&args.network.clone());
+    ivynet_core::rpc_management::set_network(&args.network.clone()).expect("Could not set network");
     match args.cmd {
         Commands::Config { subcmd } => config::parse_config_subcommands(subcmd)?,
         Commands::Operator { subcmd } => operator::parse_operator_subcommands(subcmd).await?,

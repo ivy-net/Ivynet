@@ -1,6 +1,6 @@
-use dialoguer::{theme::ColorfulTheme, Input, Password};
+use dialoguer::{Input, Password};
 use ethers_core::{
-    types::{transaction::request, U256},
+    types::{transaction::request, Address, U256},
     utils::format_units,
 };
 use once_cell::sync::Lazy;
@@ -14,13 +14,15 @@ use std::{
     process::Command,
 };
 use thiserror::Error;
+use tracing::{debug, error, info, warn};
 use zip::read::ZipArchive;
 
 use super::eigenda_info;
 use crate::{
+    avs::quorum::Quorum,
     config::{self, CONFIG},
     download::dl_progress_bar,
-    eigen::{delegation_manager, dgm_info::EigenStrategy, node_classes, node_classes::NodeClass},
+    eigen::{delegation_manager::DELEGATION_MANAGER, dgm_info::EigenStrategy, node_classes, node_classes::NodeClass},
     keys, rpc_management,
 };
 
@@ -29,6 +31,8 @@ pub static REGISTRY_COORDINATOR: Lazy<eigenda_info::RegistryCoordinator> =
     Lazy::new(eigenda_info::setup_registry_coordinator);
 pub static REGISTRY_SIGNER: Lazy<eigenda_info::RegistryCoordinatorSigner> =
     Lazy::new(eigenda_info::setup_registry_coordinator_signer);
+// TODO: Quorums are per GROUPING of strategies, not per-strategy. May differ between AVSs?
+// https://docs.eigenlayer.xyz/eigenlayer/operator-guides/operator-introduction#quorums
 pub static QUORUMS: Lazy<HashMap<EigenStrategy, u8>> = Lazy::new(build_quorums);
 
 #[derive(Error, Debug)]
@@ -37,17 +41,29 @@ pub enum EigenDAError {
     ScriptError(String),
 }
 
-pub async fn boot_eigenda() -> Result<(), Box<dyn std::error::Error>> {
-    println!("Booting up AVS: EigenDA");
-    println!("Checking system information and operator stake");
-    let network: Network = rpc_management::get_network();
-    let operator_address: String = keys::get_stored_public_key()?;
+pub struct EigenDa {}
 
-    let quorums_to_boot = check_stake_and_system_requirements(&operator_address, network).await?;
-    println!("Quorums: {:?}", quorums_to_boot);
+impl EigenDa {
+    fn boot(network: Network) -> Result<(), Box<dyn std::error::Error>> {
+        Ok(())
+    }
+}
+
+trait AvsConstants {
+    const QUORUMS: HashMap<Network, Vec<isize>>;
+}
+
+pub async fn boot_eigenda() -> Result<(), Box<dyn std::error::Error>> {
+    info!("Booting up AVS: EigenDA");
+    info!("Checking system information and operator stake");
+    let network: Network = rpc_management::get_network();
+    let operator_address: Address = keys::get_stored_public_key()?;
+
+    let quorums_to_boot = check_stake_and_system_requirements(operator_address, network).await?;
+    info!("Quorums: {:?}", quorums_to_boot);
 
     //Individual quorums will need to be checked - cannot opt in to quorums they're already in
-    let status = get_operator_status(&operator_address).await?;
+    let status = get_operator_status(operator_address).await?;
     if status == 1 {
         //Check which quorums they're already in and register for the others they're eligible for
     } else {
@@ -72,7 +88,7 @@ pub async fn boot_eigenda() -> Result<(), Box<dyn std::error::Error>> {
     let quorums_converted: Vec<u8> = quorums_to_boot.iter().filter_map(|strat| QUORUMS.get(strat).cloned()).collect();
     let quorums_converted_str: String =
         quorums_converted.iter().map(|n| n.to_string()).collect::<Vec<String>>().join(",");
-    println!("Quorums to boot: {}", quorums_converted_str);
+    info!("Quorums to boot: {}", quorums_converted_str);
     optin(quorums_converted_str, network, eigen_path).await?;
 
     Ok(())
@@ -91,7 +107,7 @@ pub async fn optin(quorums: String, network: Network, eigen_path: PathBuf) -> Re
     let current_env_path = current_dir.join(".env");
 
     // Copy .env file to current directory
-    std::fs::copy(&env_path, &current_env_path)?;
+    std::fs::copy(env_path, &current_env_path)?;
 
     let ecdsa_password: String =
         Password::new().with_prompt("Input the password for your ECDSA key file for quorum opt-in").interact()?;
@@ -99,6 +115,9 @@ pub async fn optin(quorums: String, network: Network, eigen_path: PathBuf) -> Re
     let private_keyfile = &CONFIG.lock()?.default_private_keyfile;
 
     let run_script_path = run_script_path.join("run.sh");
+
+    println!("Quorums: {:#?}", quorums);
+
     let optin = Command::new("sh")
         .arg(run_script_path)
         .arg("--operation-type")
@@ -138,12 +157,6 @@ fn edit_env_vars(filename: &str, env_values: HashMap<&str, &str>) -> Result<(), 
         .join("\n");
     fs::write(filename, new_contents.as_bytes())?;
     Ok(())
-}
-
-pub async fn setup_eigenlayer_cli() {}
-
-fn selection_theme() -> ColorfulTheme {
-    ColorfulTheme { ..ColorfulTheme::default() }
 }
 
 pub async fn build_env_file(network: Network, eigen_path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
@@ -328,36 +341,40 @@ pub async fn download_operator_setup_files(eigen_path: PathBuf) -> Result<(), Bo
     Ok(())
 }
 
-pub async fn get_operator_status(addr: &str) -> Result<u8, Box<dyn std::error::Error>> {
-    let operator_details = REGISTRY_COORDINATOR.get_operator(addr.parse()?).call().await?;
+pub async fn get_operator_status(addr: Address) -> Result<u8, Box<dyn std::error::Error>> {
+    let operator_details = REGISTRY_COORDINATOR.get_operator(addr).call().await?;
     // println!("Operator status: {:?}", operator_details.status);
     Ok(operator_details.status)
 }
 
 pub async fn check_stake_and_system_requirements(
-    address: &str,
+    address: Address,
     network: Network,
 ) -> Result<Vec<EigenStrategy>, Box<dyn std::error::Error>> {
-    let stake_map = delegation_manager::get_all_statregies_delegated_stake(address.to_string()).await?;
-    println!("You are on network: {:?}", network);
+    let stake_map = DELEGATION_MANAGER.get_all_statregies_delegated_stake(address).await?;
+    info!("You are on network: {:?}", network);
 
     let bandwidth: u32 = Input::new().with_prompt("Input your bandwidth in mbps").interact_text()?;
 
+    let quorums = Quorum::try_from_id_and_network(0, network)?;
+
     let mut quorums_to_boot: Vec<EigenStrategy> = Vec::new();
-    for (strat, num) in QUORUMS.iter() {
+
+    for (strat, num) in quorums.iter() {
+        debug!("Quorum: {:?}", strat);
         let quorum_stake: U256 = *stake_map.get(strat).expect("Amount should never be none, should always be 0");
 
-        println!("Your stake in quorum {:?}: {:?}", strat, format_units(quorum_stake, "ether").unwrap());
+        info!("Your stake in quorum {:?}: {:?}", strat, format_units(quorum_stake, "ether").unwrap());
 
         let quorum_total = STAKE_REGISTRY.get_current_total_stake(*num).call().await?;
-        println!("Total stake in quorum 0 - {:?}: {:?}", strat, format_units(quorum_total, "ether").unwrap());
+        info!("Total stake in quorum {:?}: {:?}", strat, format_units(quorum_total, "ether").unwrap());
 
         // TODO: Check if the address is already an operator to get their appropriate percentage
-        //For now, just assume they are not
+        // For now, just assume they are not
         // let already_operator = STAKE_REGISTRY.is_operator(H160::from_str(address)?).call().await?;
 
         let quorum_percentage = quorum_stake * 10000 / (quorum_stake + quorum_total);
-        println!("After registering, you would have {:?}/10000 of quorum {:?}", quorum_percentage, strat);
+        info!("After registering, you would have {:?}/10000 of quorum {:?}", quorum_percentage, strat);
 
         let passed_mins = check_system_mins(quorum_percentage, bandwidth)?;
         match network {
@@ -366,7 +383,7 @@ pub async fn check_stake_and_system_requirements(
                 if quorum_stake > stake_min && passed_mins {
                     quorums_to_boot.push(*strat);
                 } else {
-                    println!("You do not meet the requirements for quorum {:?}", strat);
+                    warn!("You do not meet the requirements for quorum {:?}", strat);
                 }
             }
             Network::Holesky => {
@@ -374,7 +391,7 @@ pub async fn check_stake_and_system_requirements(
                 if quorum_stake > stake_min && passed_mins {
                     quorums_to_boot.push(*strat);
                 } else {
-                    println!("You do not meet the requirements for quorum {:?}", strat);
+                    warn!("You do not meet the requirements for quorum {:?}", strat);
                 }
             }
             Network::Local => {
@@ -383,7 +400,11 @@ pub async fn check_stake_and_system_requirements(
             }
         }
     }
-
+    if quorums_to_boot.is_empty() {
+        error!("Could not launch EgenDA, no bootable quorums found. Exiting...");
+        return Err("No bootable quorums found".into());
+    }
+    info!("EigenDA boot with quorums: {:?}", quorums_to_boot);
     Ok(quorums_to_boot)
 }
 

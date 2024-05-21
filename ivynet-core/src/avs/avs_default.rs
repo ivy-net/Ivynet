@@ -1,3 +1,4 @@
+use ethers_core::types::Address;
 use std::str::FromStr;
 
 use crate::{avs::eigenda::eigenda, rpc_management::Network};
@@ -24,6 +25,7 @@ pub async fn check_stake_and_system_requirements(
     address: &str,
     network: Network,
 ) -> Result<(), Box<dyn std::error::Error>> {
+    let address: Address = address.parse()?;
     match AVS::from_str(&avs) {
         Ok(AVS::EigenDA) => {
             eigenda::check_stake_and_system_requirements(address, network).await?;

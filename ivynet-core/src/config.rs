@@ -82,6 +82,10 @@ impl IvyConfig {
             Network::Local => self.local_rpc_url.clone(),
         })
     }
+
+    pub fn get_path(&self) -> Result<PathBuf, Box<dyn std::error::Error>> {
+        Ok(confy::get_configuration_file_path("ivy", "ivy-config")?)
+    }
 }
 
 // pub fn load_config() -> IvyConfig {

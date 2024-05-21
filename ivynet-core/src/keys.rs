@@ -85,6 +85,8 @@ pub fn encrypt_and_store(
     //Set the default private keyfile path
     private_key_path.push(format!("{}.json", key_name));
 
+    println!("Saving keys to config path: {}", CONFIG.lock()?.get_path()?.display());
+
     CONFIG.lock()?.set_private_keyfile(private_key_path);
 
     // ------ Public Key File ------
@@ -114,14 +116,11 @@ pub fn connect_wallet() -> Result<LocalWallet, Box<dyn std::error::Error>> {
     Ok(LocalWallet::decrypt_keystore(file_path, password).expect("Failed to decrypt wallet"))
 }
 
-pub fn get_stored_public_key() -> Result<String, Box<dyn std::error::Error>> {
-    println!("Grabbing stored public key");
+pub fn get_stored_public_key() -> Result<Address, Box<dyn std::error::Error>> {
     let file_path = &CONFIG.lock()?.default_public_keyfile;
     let addr_vec: Vec<u8> = fs::read(file_path)?;
-    let addr_bytes: [u8; 20] = addr_vec.try_into().or_else(|_| Err("Expected 20 bytes".to_string()))?;
-    let addr: Address = Address::from(addr_bytes);
-    //Can't do to_string because it truncates it
-    Ok("0x".to_owned() + &hex::encode(addr))
+    let addr_bytes: [u8; 20] = addr_vec.try_into().map_err(|_| "Expected 20 bytes".to_string())?;
+    Ok(Address::from(addr_bytes))
 }
 
 #[cfg(test)]
@@ -140,6 +139,7 @@ mod tests {
 
     #[tokio::test]
     async fn test_get_stored_public_key() {
-        assert_eq!(get_stored_public_key().unwrap(), "0xCD6908FcF7b711d5b7486F7Eb5f7F1A0504aF2c6");
+        let address: Address = "0xCD6908FcF7b711d5b7486F7Eb5f7F1A0504aF2c6".parse().unwrap();
+        assert_eq!(get_stored_public_key().unwrap(), address);
     }
 }

@@ -3,6 +3,7 @@ use ethers_middleware::SignerMiddleware;
 use ethers_providers::{Http, Provider};
 use ethers_signers::Wallet;
 use once_cell::sync::OnceCell;
+use std::hash::Hash;
 use std::{convert::TryFrom, sync::Arc};
 
 use crate::{config::CONFIG, keys};
@@ -15,7 +16,7 @@ static PROVIDER: OnceCell<Provider<Http>> = OnceCell::new();
 static SIGNER: OnceCell<Arc<Signer>> = OnceCell::new();
 static CLIENT: OnceCell<Arc<Client>> = OnceCell::new();
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 pub enum Network {
     Mainnet,
     Holesky,
