@@ -1,21 +1,33 @@
+use ethers_core::types::U256;
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 
-use super::eigenda::EigenDa;
+use super::eigenda::EigenDA;
 use crate::{
-    avs::{quorum::Quorum, AvsConstants},
+    avs::{AvsConstants, QuorumMinMap},
+    eigen::quorum::QuorumType,
     rpc_management::Network,
 };
 
-impl AvsConstants for EigenDa {
-    fn quorums() -> Lazy<HashMap<Network, Vec<Quorum>>> {
-        Lazy::new(|| {
-            let mut m = HashMap::new();
-
-            // TODO: add quorum 1
-            let quorums =
-                m.insert(Network::Mainnet, vec![Quorum::try_from_id_and_network(0, Network::Mainnet).unwrap()]);
-            m
-        })
-    }
+impl AvsConstants for EigenDA {
+    const QUORUM_CANDIDATES: Lazy<Vec<QuorumType>> = Lazy::new(|| vec![QuorumType::LST]);
+    const QUORUM_MINS: Lazy<QuorumMinMap> = Lazy::new(|| {
+        let mut m = HashMap::new();
+        {
+            // Mainnet
+            let mut mainnet_map = HashMap::new();
+            mainnet_map.insert(QuorumType::LST, U256::from(96 * (10 ^ 18)));
+            m.insert(Network::Mainnet, mainnet_map);
+        }
+        {
+            // Holesky
+            let mut holesky_map = HashMap::new();
+            holesky_map.insert(QuorumType::LST, U256::from(96 * (10 ^ 18)));
+            m.insert(Network::Mainnet, holesky_map);
+        }
+        {
+            // Local: TODO
+        }
+        m
+    });
 }

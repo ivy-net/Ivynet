@@ -1,11 +1,8 @@
-use super::{
-    dgm_info,
-    strategy::{EigenStrategy, StrategyList},
-};
+use super::{dgm_info, quorum::Quorum, strategy::EigenStrategy};
 use crate::rpc_management;
 use ethers_core::types::{Address, U256};
 use once_cell::sync::Lazy;
-use std::collections::HashMap;
+use std::{collections::HashMap, error::Error};
 use tracing::info;
 
 /// A global handle for the eigenlayer Delegation Manager contract:
@@ -36,28 +33,24 @@ impl DelegationManager {
         staker_address: Address,
     ) -> Result<(), Box<dyn std::error::Error>> {
         let details = self.0.get_delegatable_shares(staker_address).call().await?;
-        println!("Staker delegatable shares: {:?}", details);
+        info!("Staker delegatable shares: {:?}", details);
         Ok(())
     }
 
+    pub async fn get_shares_for_quorum(&self, operator: Address, quorum: &Quorum) -> Result<Vec<U256>, Box<dyn Error>> {
+        let strategies = quorum.0.iter().map(|strat| strat.address).collect();
+        Ok(self.get_shares_for_strategies(operator, strategies).await?)
+    }
+
     /// Function to get strategies' delegated stake to an operator
-    /// TODO: This currently grabs strategies directly from the type, which may not be the best
-    /// mode of iteraction.
-    pub async fn get_shares_for_strategies<T: StrategyList<T> + EigenStrategy>(
+    pub async fn get_shares_for_strategies(
         &self,
-        operator_address: Address,
-    ) -> Result<HashMap<T, U256>, Box<dyn std::error::Error>> {
-        info!("Shares for operator: {:?}", operator_address);
-        let strategies = T::get_all();
-        let strategy_addresses: Vec<Address> = strategies.iter().map(|strat| strat.address()).collect();
-        let shares: Vec<U256> = self.0.get_operator_shares(operator_address, strategy_addresses).call().await?;
-
-        let mut stake_map: HashMap<T, U256> = HashMap::new();
-        for (i, strat) in strategies.iter().enumerate() {
-            stake_map.insert(*strat, shares[i]);
-        }
-
-        Ok(stake_map)
+        operator: Address,
+        strategies: Vec<Address>,
+    ) -> Result<Vec<U256>, Box<dyn std::error::Error>> {
+        info!("Shares for operator: {}", operator);
+        let shares: Vec<U256> = self.0.get_operator_shares(operator, strategies).call().await?;
+        Ok(shares)
     }
 
     pub async fn get_operator_status(&self, operator_address: Address) -> Result<bool, Box<dyn std::error::Error>> {

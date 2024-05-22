@@ -56,7 +56,6 @@ impl From<&str> for EigenStrategy {
                 "0x298aFB19A105D59E74658C4C334Ff360BadE6dd2" => EigenStrategy::Meth,
                 "0x13760F50a9d7377e4F20CB8CF9e4c26586c658ff" => EigenStrategy::Ankreth,
                 "0xa4C637e0F704745D182e4D38cAb7E7485321d059" => EigenStrategy::Oeth,
-
                 "0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0" => EigenStrategy::BeaconEth,
                 _ => EigenStrategy::Unknown,
             },

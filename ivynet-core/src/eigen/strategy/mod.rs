@@ -5,12 +5,20 @@ use std::{error::Error, fmt::Display};
 pub mod holesky;
 pub mod mainnet;
 
-pub trait EigenStrategy: TryFrom<&'static str> + Eq + PartialEq + Hash + Copy + Clone {
-    fn address(&self) -> Address;
+#[derive(Clone, Debug)]
+pub struct Strategy {
+    pub name: String,
+    pub address: Address,
 }
 
-pub trait StrategyList<T: EigenStrategy> {
-    fn get_all() -> Vec<T>;
+impl Strategy {
+    fn new(name: &str, address: Address) -> Self {
+        Self { name: name.to_owned(), address }
+    }
+}
+
+pub trait EigenStrategy: TryFrom<&'static str> + Eq + PartialEq + Hash + Copy + Clone {
+    fn address(&self) -> Address;
 }
 
 #[derive(Debug)]

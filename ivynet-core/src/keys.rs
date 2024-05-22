@@ -4,6 +4,7 @@ use ethers_signers::{LocalWallet, Signer};
 use once_cell::sync::OnceCell;
 use secp256k1::rand::thread_rng;
 use std::{fs, ops::DerefMut, path::PathBuf};
+use tracing::info;
 
 use crate::config::CONFIG;
 
@@ -107,7 +108,7 @@ pub fn encrypt_and_store(
 }
 
 pub fn connect_wallet() -> Result<LocalWallet, Box<dyn std::error::Error>> {
-    let file_path = &CONFIG.lock()?.default_public_keyfile;
+    let file_path = &CONFIG.lock()?.default_private_keyfile;
     println!("File Path: {:?}", file_path);
 
     let password: String =
