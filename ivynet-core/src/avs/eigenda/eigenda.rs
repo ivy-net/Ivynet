@@ -91,7 +91,8 @@ impl EigenDA {
         operator: Address,
     ) -> Result<Vec<QuorumType>, Box<dyn std::error::Error>> {
         let mut quorums_to_boot: Vec<QuorumType> = Vec::new();
-        for quorum_type in Self::QUORUM_CANDIDATES.iter() {
+        let candidates = Self::QUORUM_CANDIDATES;
+        for quorum_type in candidates.iter() {
             let quorum = Quorum::try_from_type_and_network(*quorum_type, network)?;
             let shares = DELEGATION_MANAGER.get_shares_for_quorum(operator, &quorum).await?;
             let total_shares = shares.iter().fold(U256::from(0), |acc, x| acc + x);
@@ -217,7 +218,7 @@ pub async fn optin(
     eigen_path: PathBuf,
 ) -> Result<(), Box<dyn std::error::Error>> {
     // TODO: This is a very inefficient clone.
-    let quorum_str: Vec<String> = quorums.iter().map(|quorum| (quorum.clone() as u8).to_string()).collect();
+    let quorum_str: Vec<String> = quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
     let quorum_str = quorum_str.join(",");
 
     let run_script_path = eigen_path.join("eigenda_operator_setup");
@@ -230,6 +231,8 @@ pub async fn optin(
     let env_path = run_script_path.join(".env");
     let current_dir = std::env::current_dir()?;
     let current_env_path = current_dir.join(".env");
+
+    info!("{} | {}", env_path.display(), current_env_path.display());
 
     // Copy .env file to current directory
     std::fs::copy(env_path, &current_env_path)?;

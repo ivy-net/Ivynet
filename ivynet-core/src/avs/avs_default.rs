@@ -21,6 +21,12 @@ pub async fn boot_avs(avs: &str) -> Result<(), Box<dyn std::error::Error>> {
     let network = get_network();
     let operator = get_wallet().address();
 
+    let mut avs_dir = match network {
+        Network::Mainnet => avs_dir.join("mainnet"),
+        Network::Holesky => avs_dir.join("holesky"),
+        Network::Local => todo!("Unimplemented"),
+    };
+
     match AVS::from_str(avs) {
         Ok(AVS::EigenDA) => {
             avs_dir.push("eigenda");
