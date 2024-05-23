@@ -132,12 +132,13 @@ impl EigenDA {
             if reset_string == "y" {
                 std::fs::remove_file(env_path.clone())?;
                 std::fs::copy(env_example_path, env_path.clone())?;
-                println!("Copied '.env.example' to '.env'.");
+                info!("Copied '.env.example' to '.env'.");
                 set_vars = true;
             }
         }
 
         if set_vars {
+            debug!("Setting env vars");
             let mut env_values: HashMap<&str, &str> = HashMap::new();
             let node_hostname = reqwest::get("https://api.ipify.org").await?.text().await?;
             env_values.insert("NODE_HOSTNAME", &node_hostname);
@@ -159,7 +160,7 @@ impl EigenDA {
             bls_json_file_location.push(".eigenlayer/operator_keys");
             bls_json_file_location.push(bls_key_name);
             bls_json_file_location.set_extension("bls.key.json");
-            println!("BLS key file location: {:?}", bls_json_file_location);
+            info!("BLS key file location: {:?}", bls_json_file_location);
             env_values.insert(
                 "NODE_BLS_KEY_FILE_HOST",
                 bls_json_file_location.to_str().expect("Could not get BLS key file location"),
@@ -261,7 +262,7 @@ pub async fn optin(
         .status()?;
 
     // Delete .env file from current directory
-    std::fs::remove_file(current_env_path)?;
+    // std::fs::remove_file(current_env_path)?;
 
     if optin.success() {
         Ok(())
@@ -271,6 +272,7 @@ pub async fn optin(
 }
 
 fn edit_env_vars(filename: &str, env_values: HashMap<&str, &str>) -> Result<(), Box<dyn std::error::Error>> {
+    debug!("{:#?}", env_values);
     let contents = fs::read_to_string(filename)?;
     let new_contents = contents
         .lines()
@@ -286,6 +288,7 @@ fn edit_env_vars(filename: &str, env_values: HashMap<&str, &str>) -> Result<(), 
         .collect::<Vec<_>>()
         .join("\n");
     fs::write(filename, new_contents.as_bytes())?;
+    debug!("writing env vars: {}", filename);
     Ok(())
 }
 
