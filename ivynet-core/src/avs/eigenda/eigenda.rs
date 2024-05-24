@@ -262,7 +262,7 @@ pub async fn optin(
         .status()?;
 
     // Delete .env file from current directory
-    // std::fs::remove_file(current_env_path)?;
+    std::fs::remove_file(current_env_path)?;
 
     if optin.success() {
         Ok(())
