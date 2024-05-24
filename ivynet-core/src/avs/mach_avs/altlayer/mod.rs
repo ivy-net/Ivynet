@@ -1,39 +1,44 @@
+use async_trait::async_trait;
 use dialoguer::{Input, Password};
-use ethers_core::types::U256;
-use std::collections::HashMap;
-use std::error::Error;
-use std::fs::{self, File};
-use std::io::{copy, BufReader};
-use std::path::PathBuf;
+use ethers::types::{Address, Chain, H160, U256};
+use ivynet_macros::h160;
+use std::{
+    collections::HashMap,
+    fs::{self, File},
+    io::{copy, BufReader},
+    path::PathBuf,
+};
 use tracing::{debug, info};
 use zip::ZipArchive;
 
-use crate::avs::AvsVariant;
-use crate::config::{self, CONFIG};
-use crate::eigen::node_classes::{self, NodeClass};
-use crate::eigen::quorum::QuorumType;
-use crate::env::edit_env_vars;
-use crate::rpc_management::Network;
+use crate::{
+    avs::AvsVariant,
+    config::{self, IvyConfig},
+    eigen::{
+        node_classes::{self, NodeClass},
+        quorum::QuorumType,
+    },
+    env::edit_env_vars,
+    error::IvyError,
+};
 
 #[derive(Default)]
 pub struct AltLayer {}
 
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl AvsVariant for AltLayer {
-    async fn setup(&self, env_path: std::path::PathBuf) -> Result<(), Box<dyn Error>> {
+    async fn setup(&self, env_path: std::path::PathBuf) -> Result<(), IvyError> {
         download_operator_setup(env_path.clone()).await?;
         Ok(())
     }
 
-    async fn build_env(
-        &self,
-        env_path: std::path::PathBuf,
-        network: crate::rpc_management::Network,
-    ) -> Result<(), Box<dyn Error>> {
+    async fn build_env(&self, env_path: PathBuf, chain: Chain, config: &IvyConfig) -> Result<(), IvyError> {
         let run_script_path = env_path.join("operator_setup");
-        let run_script_path = match network {
-            Network::Mainnet => run_script_path.join("mainnet"),
-            Network::Holesky => run_script_path.join("holesky"),
-            Network::Local => todo!("Unimplemented"),
+        let run_script_path = match chain {
+            Chain::Mainnet => run_script_path.join("mainnet"),
+            Chain::Holesky => run_script_path.join("holesky"),
+            _ => todo!("Unimplemented"),
         };
 
         let mut set_vars: bool = false;
@@ -63,7 +68,7 @@ impl AvsVariant for AltLayer {
             let node_hostname = reqwest::get("https://api.ipify.org").await?.text().await?;
             env_values.insert("NODE_HOSTNAME", &node_hostname);
 
-            let rpc_url = CONFIG.lock()?.get_rpc_url(network)?;
+            let rpc_url = config.get_rpc_url(chain)?;
             env_values.insert("NODE_CHAIN_RPC", &rpc_url);
 
             let home_dir = dirs::home_dir().unwrap();
@@ -96,7 +101,7 @@ impl AvsVariant for AltLayer {
         Ok(())
     }
 
-    fn validate_node_size(&self, _: U256, _: u32) -> Result<bool, Box<dyn std::error::Error>> {
+    fn validate_node_size(&self, _: U256, _: u32) -> Result<bool, IvyError> {
         let (_, _, disk_info) = config::get_system_information()?;
         let class = node_classes::get_node_class()?;
         // XL node + 50gb disk space
@@ -106,65 +111,63 @@ impl AvsVariant for AltLayer {
     /// Currently, AltLayer Mach AVS is operating in allowlist mode only: https://docs.altlayer.io/altlayer-documentation/altlayer-facilitated-actively-validated-services/xterio-mach-avs-for-xterio-chain/operator-guide
     async fn optin(
         &self,
-        quorums: Vec<crate::eigen::quorum::QuorumType>,
-        network: crate::rpc_management::Network,
-        eigen_path: std::path::PathBuf,
-    ) -> Result<(), Box<dyn Error>> {
+        _quorums: Vec<crate::eigen::quorum::QuorumType>,
+        _eigen_path: std::path::PathBuf,
+        _private_keyfile: PathBuf,
+        _chain: Chain,
+    ) -> Result<(), IvyError> {
         todo!()
     }
 
     /// Quorum stake requirements can be found in the AltLayer docs: https://docs.altlayer.io/altlayer-documentation/altlayer-facilitated-actively-validated-services/xterio-mach-avs-for-xterio-chain/operator-guide
-    fn quorum_min(
-        &self,
-        network: crate::rpc_management::Network,
-        quorum_type: crate::eigen::quorum::QuorumType,
-    ) -> U256 {
-        match network {
-            Network::Mainnet => match quorum_type {
+    fn quorum_min(&self, chain: Chain, quorum_type: crate::eigen::quorum::QuorumType) -> U256 {
+        match chain {
+            Chain::Mainnet => match quorum_type {
                 QuorumType::LST => U256::zero(),
                 QuorumType::EIGEN => todo!("Unimplemented"),
             },
-            Network::Holesky => match quorum_type {
+            Chain::Holesky => match quorum_type {
                 QuorumType::LST => U256::from(10 ^ 18), // one ETH
                 QuorumType::EIGEN => todo!("Unimplemented"),
             },
-            Network::Local => todo!("Unimplemented"),
+            _ => todo!("Unimplemented"),
         }
     }
 
     // TODO: Add Eigen quorum.
-    fn quorum_candidates(&self, network: crate::rpc_management::Network) -> Vec<crate::eigen::quorum::QuorumType> {
-        match network {
-            Network::Mainnet => vec![QuorumType::LST],
-            Network::Holesky => vec![QuorumType::LST],
-            Network::Local => todo!("Unimplemented"),
+    fn quorum_candidates(&self, chain: Chain) -> Vec<crate::eigen::quorum::QuorumType> {
+        match chain {
+            Chain::Mainnet => vec![QuorumType::LST],
+            Chain::Holesky => vec![QuorumType::LST],
+            _ => todo!("Unimplemented"),
         }
     }
 
     /// AltLayer stake registry contracts: https://github.com/alt-research/mach-avs
-    fn stake_registry(&self, network: crate::rpc_management::Network) -> ethers_core::types::Address {
-        match network {
-            Network::Mainnet => "0x49296A7D4a76888370CB377CD909Cc73a2f71289".parse().unwrap(),
-            Network::Holesky => "0x0b3eE1aDc2944DCcBb817f7d77915C7d38F7B858".parse().unwrap(),
-            Network::Local => todo!("Unimplemented"),
+    fn stake_registry(&self, chain: Chain) -> Address {
+        match chain {
+            Chain::Mainnet => h160!(0x49296A7D4a76888370CB377CD909Cc73a2f71289),
+            Chain::Holesky => h160!(0x0b3eE1aDc2944DCcBb817f7d77915C7d38F7B858),
+            _ => todo!("Unimplemented"),
         }
     }
 
     /// AltLayer registry coordinator contracts: https://github.com/alt-research/mach-avs
-    fn registry_coordinator(&self, network: crate::rpc_management::Network) -> ethers_core::types::Address {
-        match network {
-            Network::Mainnet => "0x561be1AB42170a19f31645F774e6e3862B2139AA".parse().unwrap(),
-            Network::Holesky => "0x1eA7D160d325B289bF981e0D7aB6Bf3261a0FFf2".parse().unwrap(),
-            Network::Local => todo!("Unimplemented"),
+    fn registry_coordinator(&self, chain: Chain) -> Address {
+        match chain {
+            Chain::Mainnet => h160!(0x561be1AB42170a19f31645F774e6e3862B2139AA),
+            Chain::Holesky => h160!(0x1eA7D160d325B289bF981e0D7aB6Bf3261a0FFf2),
+            _ => todo!("Unimplemented"),
         }
     }
 }
 
-pub async fn download_operator_setup(eigen_path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn download_operator_setup(eigen_path: PathBuf) -> Result<(), IvyError> {
     let mut setup = false;
     let temp_path = eigen_path.join("temp");
     let destination_path = eigen_path.join("operator_setup");
     if destination_path.exists() {
+        //TODO: Doh! Prompting inside the library?
         let reset_string: String = Input::new()
             .with_prompt("The operator setup directory already exists. Redownload? (y/n)")
             .interact_text()?;

@@ -1,4 +1,4 @@
-use ethers_core::types::Address;
+use ethers::types::Address;
 use once_cell::sync::Lazy;
 use std::error::Error;
 

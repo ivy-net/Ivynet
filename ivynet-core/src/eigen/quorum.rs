@@ -1,5 +1,6 @@
-use crate::rpc_management::Network;
-use std::{error::Error, fmt::Display, ops::Deref};
+use std::{error::Error, fmt::Display};
+
+use ethers::types::Chain;
 
 use super::strategy::{holesky::HOLESKY_LST_STRATEGIES, mainnet::MAINNET_LST_STRATEGIES, Strategy};
 
@@ -25,9 +26,9 @@ impl Display for QuorumType {
 
 // TODO: Fix these clones
 impl Quorum {
-    pub fn try_from_type_and_network(quorum: QuorumType, network: Network) -> Result<Self, QuorumError> {
-        let res = match network {
-            Network::Mainnet => {
+    pub fn try_from_type_and_network(quorum: QuorumType, chain: Chain) -> Result<Self, QuorumError> {
+        let res = match chain {
+            Chain::Mainnet => {
                 let strats = match quorum as usize {
                     0 => MAINNET_LST_STRATEGIES.clone(),
                     1 => todo!("Eigen quorum unimplemented"), // eigen
@@ -35,7 +36,7 @@ impl Quorum {
                 };
                 Quorum(strats.to_vec())
             }
-            Network::Holesky => {
+            Chain::Holesky => {
                 let strats = match quorum as usize {
                     0 => HOLESKY_LST_STRATEGIES.clone(),
                     1 => todo!("Eigen quorum unimplemented"), // eigen
@@ -43,7 +44,7 @@ impl Quorum {
                 };
                 Quorum(strats.to_vec())
             }
-            Network::Local => todo!(),
+            _ => todo!(),
         };
         Ok(res)
     }

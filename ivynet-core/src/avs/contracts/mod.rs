@@ -1,12 +1,42 @@
-use ethers_contract::abigen;
+use ethers::{
+    contract::abigen,
+    signers::Signer,
+    types::{Chain, H160},
+};
+use ivynet_macros::h160;
 
-use crate::rpc_management;
+use crate::rpc_management::IvyProvider;
 
-pub type StakeRegistry = StakeRegistryAbi<rpc_management::Client>;
-pub type RegistryCoordinator = RegistryCoordinatorAbi<rpc_management::Client>;
-pub type RegistryCoordinatorSigner = RegistryCoordinatorAbi<rpc_management::Signer>;
+pub type StakeRegistry = StakeRegistryAbi<IvyProvider>;
+pub type RegistryCoordinator = RegistryCoordinatorAbi<IvyProvider>;
 
-// TODO: Load from JSON
+pub fn setup_stake_registry(provider: &IvyProvider) -> StakeRegistry {
+    let stake_reg_addr = get_stake_registry_address(Chain::try_from(provider.signer().chain_id()).unwrap_or_default());
+    StakeRegistryAbi::new(stake_reg_addr.clone(), provider.clone().into())
+}
+
+pub fn setup_registry_coordinator(provider: &IvyProvider) -> RegistryCoordinator {
+    let stake_reg_addr =
+        get_registry_coordinator_address(Chain::try_from(provider.signer().chain_id()).unwrap_or_default());
+    RegistryCoordinatorAbi::new(stake_reg_addr.clone(), provider.clone().into())
+}
+
+pub fn get_stake_registry_address(chain: Chain) -> H160 {
+    match chain {
+        Chain::Mainnet => h160!(0x006124ae7976137266feebfb3f4d2be4c073139d),
+        Chain::Holesky => h160!(0xBDACD5998989Eec814ac7A0f0f6596088AA2a270),
+        _ => todo!(),
+    }
+}
+
+pub fn get_registry_coordinator_address(chain: Chain) -> H160 {
+    match chain {
+        Chain::Mainnet => h160!(0x0baac79acd45a023e19345c352d8a7a83c4e5656),
+        Chain::Holesky => h160!(0x53012C69A189cfA2D9d29eb6F19B32e0A2EA3490),
+        _ => todo!(),
+    }
+}
+
 abigen!(
     RegistryCoordinatorAbi,
     r#"[

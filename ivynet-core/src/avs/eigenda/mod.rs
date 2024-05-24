@@ -1,30 +1,30 @@
 use dialoguer::{Input, Password};
-use ethers_core::types::{Address, U256};
-use rpc_management::Network;
-use std::error::Error;
+use ethers::types::{Address, Chain, H160, U256};
+use ivynet_macros::h160;
 use std::{
     collections::HashMap,
     fmt::Display,
     fs::{self, File},
     io::{copy, BufReader},
-    path::{Path, PathBuf},
+    path::PathBuf,
     process::Command,
 };
 use thiserror::Error as ThisError;
 use tracing::{debug, error, info};
 use zip::read::ZipArchive;
 
+use crate::config::{self, IvyConfig};
+use crate::error::IvyError;
 use crate::{
     avs::AvsVariant,
-    config::{self, CONFIG},
     download::dl_progress_bar,
     eigen::{
         node_classes::{self, NodeClass},
         quorum::QuorumType,
     },
     env::edit_env_vars,
-    rpc_management,
 };
+use async_trait::async_trait;
 
 #[derive(Debug)]
 pub enum CoreError {
@@ -63,10 +63,12 @@ impl Default for EigenDA {
     }
 }
 
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl AvsVariant for EigenDA {
     // TODO: the env_path should probably be a constant or another constant-like attribute implemented on the
     // singleton struct.
-    async fn setup(&self, env_path: PathBuf) -> Result<(), Box<dyn Error>> {
+    async fn setup(&self, env_path: PathBuf) -> Result<(), IvyError> {
         download_operator_setup(env_path.clone()).await?;
         download_g1_g2(env_path).await?;
         Ok(())
@@ -74,12 +76,12 @@ impl AvsVariant for EigenDA {
 
     // TODO: method is far too complex, this should be compartmentalized so that we can be sure
     // that general eigenlayer envs are sufficiently decoupled from specific AVS envs
-    async fn build_env(&self, env_path: PathBuf, network: Network) -> Result<(), Box<dyn Error>> {
+    async fn build_env(&self, env_path: PathBuf, chain: Chain, config: &IvyConfig) -> Result<(), IvyError> {
         let run_script_path = env_path.join("operator_setup");
-        let run_script_path = match network {
-            Network::Mainnet => run_script_path.join("mainnet"),
-            Network::Holesky => run_script_path.join("holesky"),
-            Network::Local => todo!("Unimplemented"),
+        let run_script_path = match chain {
+            Chain::Mainnet => run_script_path.join("mainnet"),
+            Chain::Holesky => run_script_path.join("holesky"),
+            _ => todo!("Unimplemented"),
         };
 
         let mut set_vars: bool = false;
@@ -109,7 +111,7 @@ impl AvsVariant for EigenDA {
             let node_hostname = reqwest::get("https://api.ipify.org").await?.text().await?;
             env_values.insert("NODE_HOSTNAME", &node_hostname);
 
-            let rpc_url = CONFIG.lock()?.get_rpc_url(network)?;
+            let rpc_url = config.get_rpc_url(chain)?;
             env_values.insert("NODE_CHAIN_RPC", &rpc_url);
 
             let home_dir = dirs::home_dir().unwrap();
@@ -144,7 +146,7 @@ impl AvsVariant for EigenDA {
 
     // TODO: This method may need to be abstracted in some way, as not all AVS types encforce
     // quorum_pericentage.
-    fn validate_node_size(&self, quorum_percentage: U256, bandwidth: u32) -> Result<bool, Box<dyn std::error::Error>> {
+    fn validate_node_size(&self, quorum_percentage: U256, bandwidth: u32) -> Result<bool, IvyError> {
         let (_, _, disk_info) = config::get_system_information()?;
         let class = node_classes::get_node_class()?;
 
@@ -184,18 +186,19 @@ impl AvsVariant for EigenDA {
     async fn optin(
         &self,
         quorums: Vec<QuorumType>,
-        network: Network,
         eigen_path: PathBuf,
-    ) -> Result<(), Box<dyn std::error::Error>> {
+        private_keyfile: PathBuf,
+        chain: Chain,
+    ) -> Result<(), IvyError> {
         // TODO: This is a very inefficient clone.
         let quorum_str: Vec<String> = quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
         let quorum_str = quorum_str.join(",");
 
         let run_script_path = eigen_path.join("operator_setup");
-        let run_script_path = match network {
-            Network::Mainnet => run_script_path.join("mainnet"),
-            Network::Holesky => run_script_path.join("holesky"),
-            Network::Local => todo!("Unimplemented"),
+        let run_script_path = match chain {
+            Chain::Mainnet => run_script_path.join("mainnet"),
+            Chain::Holesky => run_script_path.join("holesky"),
+            _ => todo!("Unimplemented"),
         };
 
         let env_path = run_script_path.join(".env");
@@ -207,10 +210,9 @@ impl AvsVariant for EigenDA {
         // Copy .env file to current directory
         std::fs::copy(env_path, &current_env_path)?;
 
+        // TODO: This shouldn't happen here! We should already have a wallet in signer
         let ecdsa_password: String =
             Password::new().with_prompt("Input the password for your ECDSA key file for quorum opt-in").interact()?;
-
-        let private_keyfile = &CONFIG.lock()?.default_private_keyfile;
 
         let run_script_path = run_script_path.join("run.sh");
 
@@ -236,54 +238,54 @@ impl AvsVariant for EigenDA {
         if optin.success() {
             Ok(())
         } else {
-            Err(Box::new(EigenDAError::ScriptError(optin.to_string())))
+            Err(EigenDAError::ScriptError(optin.to_string()).into())
         }
     }
 
     // TODO: Should probably be a hashmap
-    fn quorum_min(&self, network: Network, quorum_type: QuorumType) -> U256 {
-        match network {
-            Network::Mainnet => match quorum_type {
+    fn quorum_min(&self, chain: Chain, quorum_type: QuorumType) -> U256 {
+        match chain {
+            Chain::Mainnet => match quorum_type {
                 QuorumType::LST => U256::from(96 * (10 ^ 18)),
                 QuorumType::EIGEN => todo!("Unimplemented"),
             },
-            Network::Holesky => match quorum_type {
+            Chain::Holesky => match quorum_type {
                 QuorumType::LST => U256::from(96 * (10 ^ 18)),
                 QuorumType::EIGEN => todo!("Unimplemented"),
             },
-            Network::Local => todo!("Unimplemented"),
+            _ => todo!("Unimplemented"),
         }
     }
 
     // TODO: Consider loading these from a TOML config file or somesuch
     // TODO: Add Eigen quorum
-    fn quorum_candidates(&self, network: Network) -> Vec<QuorumType> {
-        match network {
-            Network::Mainnet => vec![QuorumType::LST],
-            Network::Holesky => vec![QuorumType::LST],
-            Network::Local => todo!("Unimplemented"),
+    fn quorum_candidates(&self, chain: Chain) -> Vec<QuorumType> {
+        match chain {
+            Chain::Mainnet => vec![QuorumType::LST],
+            Chain::Holesky => vec![QuorumType::LST],
+            _ => todo!("Unimplemented"),
         }
     }
 
-    fn stake_registry(&self, network: Network) -> Address {
-        match network {
-            Network::Mainnet => "0x006124ae7976137266feebfb3f4d2be4c073139d".parse().unwrap(),
-            Network::Holesky => "0xBDACD5998989Eec814ac7A0f0f6596088AA2a270".parse().unwrap(),
-            Network::Local => todo!("Unimplemented"),
+    fn stake_registry(&self, chain: Chain) -> Address {
+        match chain {
+            Chain::Mainnet => h160!(0x006124ae7976137266feebfb3f4d2be4c073139d),
+            Chain::Holesky => h160!(0xBDACD5998989Eec814ac7A0f0f6596088AA2a270),
+            _ => todo!("Unimplemented"),
         }
     }
 
-    fn registry_coordinator(&self, network: Network) -> Address {
-        match network {
-            Network::Mainnet => "0x0baac79acd45a023e19345c352d8a7a83c4e5656".parse().unwrap(),
-            Network::Holesky => "0x53012C69A189cfA2D9d29eb6F19B32e0A2EA3490".parse().unwrap(),
-            Network::Local => todo!("Unimplemented"),
+    fn registry_coordinator(&self, chain: Chain) -> Address {
+        match chain {
+            Chain::Mainnet => h160!(0x0baac79acd45a023e19345c352d8a7a83c4e5656),
+            Chain::Holesky => h160!(0x53012C69A189cfA2D9d29eb6F19B32e0A2EA3490),
+            _ => todo!("Unimplemented"),
         }
     }
 }
 
 /// Downloads eigenDA node resources
-pub async fn download_g1_g2(eigen_path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn download_g1_g2(eigen_path: PathBuf) -> Result<(), IvyError> {
     let resources_dir = eigen_path.join("operator_setup/resources");
     let g1_file_path = resources_dir.join("g1.point");
     let g2_file_path = resources_dir.join("g2.point.PowerOf2");
@@ -302,7 +304,7 @@ pub async fn download_g1_g2(eigen_path: PathBuf) -> Result<(), Box<dyn std::erro
     Ok(())
 }
 
-pub async fn download_operator_setup(eigen_path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn download_operator_setup(eigen_path: PathBuf) -> Result<(), IvyError> {
     let mut setup = false;
     let repo_url = "https://github.com/ivy-net/eigenda-operator-setup/archive/refs/heads/master.zip";
     let temp_path = eigen_path.join("temp");
