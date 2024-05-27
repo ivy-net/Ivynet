@@ -6,6 +6,7 @@ pub type StakeRegistry = StakeRegistryAbi<rpc_management::Client>;
 pub type RegistryCoordinator = RegistryCoordinatorAbi<rpc_management::Client>;
 pub type RegistryCoordinatorSigner = RegistryCoordinatorAbi<rpc_management::Signer>;
 
+// TODO: Load from JSON
 abigen!(
     RegistryCoordinatorAbi,
     r#"[

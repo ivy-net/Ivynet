@@ -1,3 +1,8 @@
+pub mod avs_default;
+pub mod contracts;
+pub mod eigenda;
+pub mod mach_avs;
+
 use crate::{
     eigen::{
         delegation_manager::DELEGATION_MANAGER,
@@ -10,16 +15,9 @@ use ethers_core::types::{Address, U256};
 use std::{error::Error, fs, path::PathBuf, sync::Arc};
 use tracing::{debug, error, info};
 
-use self::eigenda::{
-    eigenda::{download_g1_g2, download_operator_setup_files},
-    eigenda_info::{
-        RegistryCoordinator, RegistryCoordinatorAbi, RegistryCoordinatorSigner, StakeRegistry, StakeRegistryAbi,
-    },
+use self::contracts::{
+    RegistryCoordinator, RegistryCoordinatorAbi, RegistryCoordinatorSigner, StakeRegistry, StakeRegistryAbi,
 };
-
-pub mod avs_default;
-pub mod eigenda;
-pub mod mach_avs;
 
 // TODO: Reduce cooridnator and coordinatorSigner to single field following condensed wallet/signer
 // pattern
@@ -59,8 +57,7 @@ impl<T: AvsVariant> AvsProvider<T> {
         //     //Register operator for all quorums they're eligible for
         // }
 
-        download_operator_setup_files(self.env_path.clone()).await?;
-        download_g1_g2(self.env_path.clone()).await?;
+        self.avs.setup(self.env_path.clone()).await?;
         self.avs.build_env(self.env_path.clone(), network).await?;
         self.avs.optin(quorums, network, self.env_path.clone()).await?;
         Ok(())

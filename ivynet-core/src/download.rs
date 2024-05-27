@@ -8,7 +8,7 @@ use tokio::{
     sync::watch,
 };
 
-use crate::avs::eigenda::eigenda::CoreError;
+use crate::avs::eigenda::CoreError;
 
 // TODO: Move downloading flow and utils to cli?
 // TODO: As this uses a stream, ctrl+c prematurely will lead to a bad file hash. Handle SIGTERM

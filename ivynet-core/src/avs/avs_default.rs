@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-use super::{eigenda::eigenda::EigenDA, AvsProvider};
+use super::{eigenda::EigenDA, AvsProvider};
 use crate::rpc_management::{get_client, get_network, get_signer, Network};
 
 pub enum AVS {
