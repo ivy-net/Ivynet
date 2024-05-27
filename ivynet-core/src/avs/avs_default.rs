@@ -1,12 +1,13 @@
 use ethers_core::types::Address;
+use ethers_providers::Provider;
 use ethers_signers::Signer;
-use std::str::FromStr;
+use std::{str::FromStr, sync::Arc};
 
-use super::eigenda::eigenda::EigenDA;
+use super::{eigenda::eigenda::EigenDA, AvsProvider};
 use crate::{
     avs::eigenda::eigenda,
     keys::get_wallet,
-    rpc_management::{get_network, Network},
+    rpc_management::{get_client, get_network, get_provider, get_signer, Network},
 };
 
 pub enum AVS {
@@ -19,7 +20,8 @@ pub async fn boot_avs(avs: &str) -> Result<(), Box<dyn std::error::Error>> {
     avs_dir.push(".eigenlayer");
 
     let network = get_network();
-    let operator = get_wallet().address();
+    let provider = get_client();
+    let signer = get_signer();
 
     let mut avs_dir = match network {
         Network::Mainnet => avs_dir.join("mainnet"),
@@ -30,8 +32,9 @@ pub async fn boot_avs(avs: &str) -> Result<(), Box<dyn std::error::Error>> {
     match AVS::from_str(avs) {
         Ok(AVS::EigenDA) => {
             avs_dir.push("eigenda");
-            let eigenda = EigenDA::new(avs_dir);
-            eigenda.boot(operator, network).await?;
+            let avs = EigenDA::new();
+            let avs_provider = AvsProvider::new(network, avs, provider, signer, avs_dir);
+            avs_provider.boot(network).await?;
         }
         Err(_) => {
             println!("Invalid AVS: {}", avs);

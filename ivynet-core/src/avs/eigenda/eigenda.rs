@@ -1,10 +1,7 @@
 use dialoguer::{Input, Password};
-use ethers_core::{
-    types::{transaction::request, Address, U256},
-    utils::format_units,
-};
-use once_cell::sync::Lazy;
+use ethers_core::types::{Address, U256};
 use rpc_management::Network;
+use std::error::Error;
 use std::{
     collections::HashMap,
     fmt::Display,
@@ -13,33 +10,38 @@ use std::{
     path::{Path, PathBuf},
     process::Command,
 };
-use thiserror::Error;
+use thiserror::Error as ThisError;
 use tracing::{debug, error, info};
 use zip::read::ZipArchive;
 
-use super::super::AvsConstants;
-use super::eigenda_info;
+use crate::env::edit_env_vars;
 use crate::{
+    avs::AvsVariant,
     config::{self, CONFIG},
     download::dl_progress_bar,
     eigen::{
-        delegation_manager::DELEGATION_MANAGER,
         node_classes::{self, NodeClass},
-        quorum::{Quorum, QuorumType},
+        quorum::QuorumType,
     },
-    keys, rpc_management,
-    system::SystemInfo,
+    rpc_management,
 };
 
-pub static STAKE_REGISTRY: Lazy<eigenda_info::StakeRegistry> = Lazy::new(eigenda_info::setup_stake_registry);
-pub static REGISTRY_COORDINATOR: Lazy<eigenda_info::RegistryCoordinator> =
-    Lazy::new(eigenda_info::setup_registry_coordinator);
-pub static REGISTRY_SIGNER: Lazy<eigenda_info::RegistryCoordinatorSigner> =
-    Lazy::new(eigenda_info::setup_registry_coordinator_signer);
-// TODO: Quorums are per GROUPING of strategies, not per-strategy. May differ between AVSs?
-// https://docs.eigenlayer.xyz/eigenlayer/operator-guides/operator-introduction#quorums
+#[derive(Debug)]
+pub enum CoreError {
+    DownloadFailed,
+}
 
-#[derive(Error, Debug)]
+impl Display for CoreError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            CoreError::DownloadFailed => write!(f, "Failed to download resource"),
+        }
+    }
+}
+
+impl std::error::Error for CoreError {}
+
+#[derive(ThisError, Debug)]
 pub enum EigenDAError {
     #[error("Boot script failed: {0}")]
     ScriptError(String),
@@ -47,69 +49,27 @@ pub enum EigenDAError {
     QuorumValidationError(QuorumType),
 }
 
-pub struct EigenDA {
-    env_path: PathBuf,
-}
+pub struct EigenDA {}
 
 impl EigenDA {
-    pub fn new(env_path: PathBuf) -> Self {
-        Self { env_path }
+    pub fn new() -> Self {
+        Self {}
     }
 }
 
-impl EigenDA {
-    // fn setup() -> {}
-    // fn verify_install() -> {} // MD5 hashing stuff
-    async fn validate_quorum() -> Result<(), EigenDAError> {
-        Ok(())
-    }
-    pub async fn boot(&self, operator: Address, network: Network) -> Result<(), Box<dyn std::error::Error>> {
-        let quorums = Self::get_bootable_quorums(network, operator).await?;
-        if quorums.is_empty() {
-            error!("Could not launch EgenDA, no bootable quorums found. Exiting...");
-            return Err("No bootable quorums found".into());
-        }
-
-        fs::create_dir_all(&self.env_path)?;
-
-        let status = get_operator_status(operator).await?;
-        if status == 1 {
-            //Check which quorums they're already in and register for the others they're eligible for
-        } else {
-            //Register operator for all quorums they're eligible for
-        }
-
-        download_operator_setup_files(self.env_path.clone()).await?;
-        download_g1_g2(self.env_path.clone()).await?;
-        self.build_env_file(network).await?;
-        optin(quorums, network, self.env_path.clone()).await?;
+impl AvsVariant for EigenDA {
+    // TODO: the env_path should probably be a constant or another constant-like attribute implemented on the
+    // singleton struct.
+    async fn setup(&self, env_path: PathBuf) -> Result<(), Box<dyn Error>> {
+        download_operator_setup_files(env_path.clone()).await?;
+        download_g1_g2(env_path).await?;
         Ok(())
     }
 
-    pub async fn get_bootable_quorums(
-        network: Network,
-        operator: Address,
-    ) -> Result<Vec<QuorumType>, Box<dyn std::error::Error>> {
-        let mut quorums_to_boot: Vec<QuorumType> = Vec::new();
-        let candidates = Self::QUORUM_CANDIDATES;
-        for quorum_type in candidates.iter() {
-            let quorum = Quorum::try_from_type_and_network(*quorum_type, network)?;
-            let shares = DELEGATION_MANAGER.get_shares_for_quorum(operator, &quorum).await?;
-            let total_shares = shares.iter().fold(U256::from(0), |acc, x| acc + x);
-            info!("Operator shares for quorum {}: {}", quorum_type, total_shares);
-            // TODO: This may be queriable as a one-off on the AVS stake registry.
-            let quorum_total = STAKE_REGISTRY.get_current_total_stake(*quorum_type as u8).await?;
-            let quorum_percentage = total_shares * 10000 / (total_shares + quorum_total);
-            let bandwidth: u32 = Input::new().with_prompt("Input your bandwidth in mbps").interact_text()?;
-            if validate_node_size(quorum_percentage, bandwidth)? {
-                quorums_to_boot.push(*quorum_type);
-            };
-        }
-        Ok(quorums_to_boot)
-    }
-
-    pub async fn build_env_file(&self, network: Network) -> Result<(), Box<dyn std::error::Error>> {
-        let run_script_path = self.env_path.join("eigenda_operator_setup");
+    // TODO: method is far too complex, this should be compartmentalized so that we can be sure
+    // that general eigenlayer envs are sufficiently decoupled from specific AVS envs
+    async fn build_env(&self, env_path: PathBuf, network: Network) -> Result<(), Box<dyn Error>> {
+        let run_script_path = env_path.join("eigenda_operator_setup");
         let run_script_path = match network {
             Network::Mainnet => run_script_path.join("mainnet"),
             Network::Holesky => run_script_path.join("holesky"),
@@ -175,121 +135,143 @@ impl EigenDA {
 
         Ok(())
     }
-}
 
-fn validate_node_size(quorum_percentage: U256, bandwidth: u32) -> Result<bool, Box<dyn std::error::Error>> {
-    let (_, _, disk_info) = config::get_system_information()?;
-    let class = node_classes::get_node_class()?;
+    // TODO: This method may need to be abstracted in some way, as not all AVS types encforce
+    // quorum_pericentage.
+    fn validate_node_size(&self, quorum_percentage: U256, bandwidth: u32) -> Result<bool, Box<dyn std::error::Error>> {
+        let (_, _, disk_info) = config::get_system_information()?;
+        let class = node_classes::get_node_class()?;
 
-    let mut acceptable: bool = false;
-    match quorum_percentage {
-        x if x < U256::from(3) => {
-            if class >= NodeClass::LRG || bandwidth >= 1 || disk_info >= 20000000000 {
-                acceptable = true
+        let mut acceptable: bool = false;
+        match quorum_percentage {
+            x if x < U256::from(3) => {
+                if class >= NodeClass::LRG || bandwidth >= 1 || disk_info >= 20000000000 {
+                    acceptable = true
+                }
             }
-        }
-        x if x < U256::from(20) => {
-            if class >= NodeClass::XL || bandwidth >= 1 || disk_info >= 150000000000 {
-                acceptable = true
+            x if x < U256::from(20) => {
+                if class >= NodeClass::XL || bandwidth >= 1 || disk_info >= 150000000000 {
+                    acceptable = true
+                }
             }
-        }
-        x if x < U256::from(100) => {
-            if class >= NodeClass::FOURXL || bandwidth >= 3 || disk_info >= 750000000000 {
-                acceptable = true
+            x if x < U256::from(100) => {
+                if class >= NodeClass::FOURXL || bandwidth >= 3 || disk_info >= 750000000000 {
+                    acceptable = true
+                }
             }
-        }
-        x if x < U256::from(1000) => {
-            if class >= NodeClass::FOURXL || bandwidth >= 25 || disk_info >= 4000000000000 {
-                acceptable = true
+            x if x < U256::from(1000) => {
+                if class >= NodeClass::FOURXL || bandwidth >= 25 || disk_info >= 4000000000000 {
+                    acceptable = true
+                }
             }
-        }
-        x if x > U256::from(2000) => {
-            if class >= NodeClass::FOURXL || bandwidth >= 50 || disk_info >= 8000000000000 {
-                acceptable = true
+            x if x > U256::from(2000) => {
+                if class >= NodeClass::FOURXL || bandwidth >= 50 || disk_info >= 8000000000000 {
+                    acceptable = true
+                }
             }
+            _ => {}
         }
-        _ => {}
+        Ok(acceptable)
     }
-    Ok(acceptable)
-}
 
-pub async fn optin(
-    quorums: Vec<QuorumType>,
-    network: Network,
-    eigen_path: PathBuf,
-) -> Result<(), Box<dyn std::error::Error>> {
-    // TODO: This is a very inefficient clone.
-    let quorum_str: Vec<String> = quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
-    let quorum_str = quorum_str.join(",");
+    async fn optin(
+        &self,
+        quorums: Vec<QuorumType>,
+        network: Network,
+        eigen_path: PathBuf,
+    ) -> Result<(), Box<dyn std::error::Error>> {
+        // TODO: This is a very inefficient clone.
+        let quorum_str: Vec<String> = quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
+        let quorum_str = quorum_str.join(",");
 
-    let run_script_path = eigen_path.join("eigenda_operator_setup");
-    let run_script_path = match network {
-        Network::Mainnet => run_script_path.join("mainnet"),
-        Network::Holesky => run_script_path.join("holesky"),
-        Network::Local => todo!("Unimplemented"),
-    };
+        let run_script_path = eigen_path.join("eigenda_operator_setup");
+        let run_script_path = match network {
+            Network::Mainnet => run_script_path.join("mainnet"),
+            Network::Holesky => run_script_path.join("holesky"),
+            Network::Local => todo!("Unimplemented"),
+        };
 
-    let env_path = run_script_path.join(".env");
-    let current_dir = std::env::current_dir()?;
-    let current_env_path = current_dir.join(".env");
+        let env_path = run_script_path.join(".env");
+        let current_dir = std::env::current_dir()?;
+        let current_env_path = current_dir.join(".env");
 
-    info!("{} | {}", env_path.display(), current_env_path.display());
+        info!("{} | {}", env_path.display(), current_env_path.display());
 
-    // Copy .env file to current directory
-    std::fs::copy(env_path, &current_env_path)?;
+        // Copy .env file to current directory
+        std::fs::copy(env_path, &current_env_path)?;
 
-    let ecdsa_password: String =
-        Password::new().with_prompt("Input the password for your ECDSA key file for quorum opt-in").interact()?;
+        let ecdsa_password: String =
+            Password::new().with_prompt("Input the password for your ECDSA key file for quorum opt-in").interact()?;
 
-    let private_keyfile = &CONFIG.lock()?.default_private_keyfile;
+        let private_keyfile = &CONFIG.lock()?.default_private_keyfile;
 
-    let run_script_path = run_script_path.join("run.sh");
+        let run_script_path = run_script_path.join("run.sh");
 
-    info!("Booting quorums: {:#?}", quorums);
+        info!("Booting quorums: {:#?}", quorums);
 
-    debug!("{} | {} | {}", run_script_path.display(), private_keyfile.display(), quorum_str);
+        debug!("{} | {} | {}", run_script_path.display(), private_keyfile.display(), quorum_str);
 
-    let optin = Command::new("sh")
-        .arg(run_script_path)
-        .arg("--operation-type")
-        .arg("opt-in")
-        .arg("--node-ecdsa-key-file-host")
-        .arg(private_keyfile)
-        .arg("--node-ecdsa-key-password")
-        .arg(ecdsa_password)
-        .arg("--quorums")
-        .arg(quorum_str)
-        .status()?;
+        let optin = Command::new("sh")
+            .arg(run_script_path)
+            .arg("--operation-type")
+            .arg("opt-in")
+            .arg("--node-ecdsa-key-file-host")
+            .arg(private_keyfile)
+            .arg("--node-ecdsa-key-password")
+            .arg(ecdsa_password)
+            .arg("--quorums")
+            .arg(quorum_str)
+            .status()?;
 
-    // Delete .env file from current directory
-    std::fs::remove_file(current_env_path)?;
+        // Delete .env file from current directory
+        std::fs::remove_file(current_env_path)?;
 
-    if optin.success() {
-        Ok(())
-    } else {
-        Err(Box::new(EigenDAError::ScriptError(optin.to_string())))
+        if optin.success() {
+            Ok(())
+        } else {
+            Err(Box::new(EigenDAError::ScriptError(optin.to_string())))
+        }
     }
-}
 
-fn edit_env_vars(filename: &str, env_values: HashMap<&str, &str>) -> Result<(), Box<dyn std::error::Error>> {
-    debug!("{:#?}", env_values);
-    let contents = fs::read_to_string(filename)?;
-    let new_contents = contents
-        .lines()
-        .map(|line| {
-            let mut parts = line.splitn(2, '=');
-            let key: &str = parts.next().unwrap();
-            if let Some(value) = env_values.get(key) {
-                format!("{}={}", key, value)
-            } else {
-                line.to_string()
-            }
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
-    fs::write(filename, new_contents.as_bytes())?;
-    debug!("writing env vars: {}", filename);
-    Ok(())
+    // TODO: Should probably be a hashmap
+    fn quorum_min(&self, network: Network, quorum_type: QuorumType) -> U256 {
+        match network {
+            Network::Mainnet => match quorum_type {
+                QuorumType::LST => U256::from(96 * (10 ^ 18)),
+                QuorumType::EIGEN => todo!("Unimplemented"),
+            },
+            Network::Holesky => match quorum_type {
+                QuorumType::LST => U256::from(96 * (10 ^ 18)),
+                QuorumType::EIGEN => todo!("Unimplemented"),
+            },
+            Network::Local => todo!("Unimplemented"),
+        }
+    }
+
+    // TODO: Consider loading these from a TOML config file or somesuch
+    fn quorum_candidates(&self, network: Network) -> Vec<QuorumType> {
+        match network {
+            Network::Mainnet => vec![QuorumType::LST],
+            Network::Holesky => vec![QuorumType::LST],
+            Network::Local => todo!("Unimplemented"),
+        }
+    }
+
+    fn stake_registry(&self, network: Network) -> Address {
+        match network {
+            Network::Mainnet => "0x006124ae7976137266feebfb3f4d2be4c073139d".parse().unwrap(),
+            Network::Holesky => "0xBDACD5998989Eec814ac7A0f0f6596088AA2a270".parse().unwrap(),
+            Network::Local => todo!("Unimplemented"),
+        }
+    }
+
+    fn registry_coordinator(&self, network: Network) -> Address {
+        match network {
+            Network::Mainnet => "0x0baac79acd45a023e19345c352d8a7a83c4e5656".parse().unwrap(),
+            Network::Holesky => "0x53012C69A189cfA2D9d29eb6F19B32e0A2EA3490".parse().unwrap(),
+            Network::Local => todo!("Unimplemented"),
+        }
+    }
 }
 
 /// Downloads eigenDA node resources
@@ -311,21 +293,6 @@ pub async fn download_g1_g2(eigen_path: PathBuf) -> Result<(), Box<dyn std::erro
 
     Ok(())
 }
-
-#[derive(Debug)]
-pub enum CoreError {
-    DownloadFailed,
-}
-
-impl Display for CoreError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            CoreError::DownloadFailed => write!(f, "Failed to download resource"),
-        }
-    }
-}
-
-impl std::error::Error for CoreError {}
 
 //Whole function needs to be cleaned up
 pub async fn download_operator_setup_files(eigen_path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
@@ -406,10 +373,4 @@ pub async fn download_operator_setup_files(eigen_path: PathBuf) -> Result<(), Bo
     }
 
     Ok(())
-}
-
-pub async fn get_operator_status(addr: Address) -> Result<u8, Box<dyn std::error::Error>> {
-    let operator_details = REGISTRY_COORDINATOR.get_operator(addr).call().await?;
-    // println!("Operator status: {:?}", operator_details.status);
-    Ok(operator_details.status)
 }
