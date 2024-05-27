@@ -75,7 +75,7 @@ impl AvsVariant for EigenDA {
     // TODO: method is far too complex, this should be compartmentalized so that we can be sure
     // that general eigenlayer envs are sufficiently decoupled from specific AVS envs
     async fn build_env(&self, env_path: PathBuf, network: Network) -> Result<(), Box<dyn Error>> {
-        let run_script_path = env_path.join("eigenda_operator_setup");
+        let run_script_path = env_path.join("operator_setup");
         let run_script_path = match network {
             Network::Mainnet => run_script_path.join("mainnet"),
             Network::Holesky => run_script_path.join("holesky"),
@@ -88,12 +88,12 @@ impl AvsVariant for EigenDA {
         let env_path = run_script_path.join(".env");
         if env_example_path.exists() && !env_path.exists() {
             std::fs::copy(env_example_path, env_path.clone())?;
-            println!("Copied '.env.example' to '.env'.");
+            info!("Copied '.env.example' to '.env'.");
             set_vars = true;
         } else if !env_example_path.exists() {
-            println!("The '.env.example' file does not exist.");
+            info!("The '.env.example' file does not exist.");
         } else {
-            println!("The '.env' file already exists.");
+            info!("The '.env' file already exists.");
             let reset_string: String = Input::new().with_prompt("Reset env file? (y/n)").interact_text()?;
             if reset_string == "y" {
                 std::fs::remove_file(env_path.clone())?;
@@ -151,6 +151,7 @@ impl AvsVariant for EigenDA {
         let mut acceptable: bool = false;
         match quorum_percentage {
             x if x < U256::from(3) => {
+                // NOTE: Should these be || operators?
                 if class >= NodeClass::LRG || bandwidth >= 1 || disk_info >= 20000000000 {
                     acceptable = true
                 }
@@ -190,7 +191,7 @@ impl AvsVariant for EigenDA {
         let quorum_str: Vec<String> = quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
         let quorum_str = quorum_str.join(",");
 
-        let run_script_path = eigen_path.join("eigenda_operator_setup");
+        let run_script_path = eigen_path.join("operator_setup");
         let run_script_path = match network {
             Network::Mainnet => run_script_path.join("mainnet"),
             Network::Holesky => run_script_path.join("holesky"),
@@ -255,6 +256,7 @@ impl AvsVariant for EigenDA {
     }
 
     // TODO: Consider loading these from a TOML config file or somesuch
+    // TODO: Add Eigen quorum
     fn quorum_candidates(&self, network: Network) -> Vec<QuorumType> {
         match network {
             Network::Mainnet => vec![QuorumType::LST],
@@ -282,65 +284,61 @@ impl AvsVariant for EigenDA {
 
 /// Downloads eigenDA node resources
 pub async fn download_g1_g2(eigen_path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
-    let resources_dir = eigen_path.join("eigenda_operator_setup/resources");
+    let resources_dir = eigen_path.join("operator_setup/resources");
     let g1_file_path = resources_dir.join("g1.point");
     let g2_file_path = resources_dir.join("g2.point.PowerOf2");
     if g1_file_path.exists() {
-        println!("The 'g1.point' file already exists.");
+        info!("The 'g1.point' file already exists.");
     } else {
+        info!("Downloading 'g1.point' ...");
         dl_progress_bar("https://srs-mainnet.s3.amazonaws.com/kzg/g1.point", g1_file_path).await?;
     }
     if g2_file_path.exists() {
-        println!("The 'g2.point.PowerOf2' file already exists.");
+        info!("The 'g2.point.PowerOf2' file already exists.");
     } else {
-        println!("The 'g2.point.PowerOf2' file does not exist, downloading appropriate file");
+        info!("Downloading 'g2.point.PowerOf2' ...");
         dl_progress_bar("https://srs-mainnet.s3.amazonaws.com/kzg/g2.point.powerOf2", g2_file_path).await?
     }
-
     Ok(())
 }
 
-//Whole function needs to be cleaned up
+// TODO: remove network name from eigen_path fed into this func, ensure compatibility with .env
 pub async fn download_operator_setup_files(eigen_path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
     let mut setup = false;
-    let operator_setup_path = eigen_path.join("eigenda_operator_setup");
-    if operator_setup_path.exists() {
+    let temp_path = eigen_path.join("temp");
+    let destination_path = eigen_path.join("operator_setup");
+    if destination_path.exists() {
         let reset_string: String = Input::new()
-            .with_prompt("The 'extracted_files' directory already exists. Redownload? (y/n)")
+            .with_prompt("The operator setup directory already exists. Redownload? (y/n)")
             .interact_text()?;
 
         if reset_string == "y" {
             setup = true;
-            fs::remove_dir_all(operator_setup_path.clone())?;
+            fs::remove_dir_all(destination_path.clone())?;
+            fs::create_dir_all(temp_path.clone())?;
         }
     } else {
-        info!("The 'extracted_files' directory does not exist, downloading to {}", operator_setup_path.display());
+        info!("The setup directory does not exist, downloading to {}", temp_path.display());
+        fs::create_dir_all(temp_path.clone())?;
         setup = true;
     }
 
     if setup {
-        info!("Downloading setup files to {}", operator_setup_path.display());
+        info!("Downloading setup files to {}", temp_path.display());
         let repo_url = "https://github.com/ivy-net/eigenda-operator-setup/archive/refs/heads/master.zip";
         let response = reqwest::get(repo_url).await?;
 
-        let mut dest = {
-            let fname = response
-                .url()
-                .path_segments()
-                .and_then(|segments| segments.last())
-                .unwrap_or("eigenda_operator_setup.zip");
-
-            File::create(fname)?
-        };
+        let fname = temp_path.join("source.zip");
+        let mut dest = File::create(&fname)?;
         let bytes = response.bytes().await?;
         std::io::copy(&mut bytes.as_ref(), &mut dest)?;
-
-        let reader = BufReader::new(File::open("eigenda_operator_setup.zip")?);
+        let reader = BufReader::new(File::open(fname)?);
         let mut archive = ZipArchive::new(reader)?;
 
         for i in 0..archive.len() {
             let mut file = archive.by_index(i)?;
-            let outpath = eigen_path.join("setup_files").join(file.name());
+            let outpath = temp_path.join(file.name());
+            debug!("Extracting to {}", outpath.display());
 
             if (file.name()).ends_with('/') {
                 std::fs::create_dir_all(&outpath)?;
@@ -354,26 +352,17 @@ pub async fn download_operator_setup_files(eigen_path: PathBuf) -> Result<(), Bo
                 copy(&mut file, &mut outfile)?;
             }
         }
-
-        let extracted_files_dir = eigen_path.join("setup_files");
-        let first_dir = std::fs::read_dir(&extracted_files_dir)?
-            .filter_map(Result::ok)
-            .find(|entry| entry.file_type().unwrap().is_dir());
+        let first_dir =
+            std::fs::read_dir(&temp_path)?.filter_map(Result::ok).find(|entry| entry.file_type().unwrap().is_dir());
         if let Some(first_dir) = first_dir {
             let old_folder_path = first_dir.path();
-            let new_folder_path = eigen_path.join("eigenda_operator_setup");
-            std::fs::rename(old_folder_path, new_folder_path)?;
+            debug!("{}", old_folder_path.display());
+            std::fs::rename(old_folder_path, destination_path)?;
         }
-
-        // Delete the "extracted_files" directory
-        if extracted_files_dir.exists() {
-            std::fs::remove_dir_all(extracted_files_dir)?;
-        }
-
-        // Delete the "eigenda_operator_setup.zip" file
-        let zip_file_path = Path::new("eigenda_operator_setup.zip");
-        if zip_file_path.exists() {
-            std::fs::remove_file(zip_file_path)?;
+        // Delete the setup directory
+        if temp_path.exists() {
+            info!("Cleaning up setup directory...");
+            std::fs::remove_dir_all(temp_path)?;
         }
     }
 
