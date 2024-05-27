@@ -1,7 +1,7 @@
 use clap::Parser;
-use ethers_core::{types::Address, utils::format_units};
+use ethers_core::types::Address;
 
-use ivynet_core::eigen::{delegation_manager::DELEGATION_MANAGER, dgm_info::STRATEGY_LIST};
+use ivynet_core::eigen::delegation_manager::DELEGATION_MANAGER;
 
 #[derive(Parser, Debug, Clone)]
 pub(crate) enum OperatorCommands {
@@ -19,7 +19,7 @@ pub async fn parse_operator_subcommands(subcmd: OperatorCommands) -> Result<(), 
             DELEGATION_MANAGER.get_operator_details(address).await?;
         }
         OperatorCommands::Stake { address } => {
-            let stake_map = DELEGATION_MANAGER.get_staker_delegatable_shares(address).await?;
+            DELEGATION_MANAGER.get_staker_delegatable_shares(address).await?;
         }
         OperatorCommands::Status { address } => {
             DELEGATION_MANAGER.get_operator_status(address).await?;

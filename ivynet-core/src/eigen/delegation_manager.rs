@@ -39,7 +39,7 @@ impl DelegationManager {
 
     pub async fn get_shares_for_quorum(&self, operator: Address, quorum: &Quorum) -> Result<Vec<U256>, Box<dyn Error>> {
         let strategies = quorum.0.iter().map(|strat| strat.address).collect();
-        Ok(self.get_shares_for_strategies(operator, strategies).await?)
+        self.get_shares_for_strategies(operator, strategies).await
     }
 
     /// Function to get strategies' delegated stake to an operator

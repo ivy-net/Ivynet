@@ -3,7 +3,7 @@ use ethers_core::types::Address;
 use ethers_signers::{LocalWallet, Signer};
 use once_cell::sync::OnceCell;
 use secp256k1::rand::thread_rng;
-use std::{fs, ops::DerefMut, path::PathBuf};
+use std::{fs, path::PathBuf};
 use tracing::info;
 
 use crate::config::CONFIG;

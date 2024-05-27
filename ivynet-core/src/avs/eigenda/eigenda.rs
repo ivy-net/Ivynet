@@ -57,6 +57,12 @@ impl EigenDA {
     }
 }
 
+impl Default for EigenDA {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AvsVariant for EigenDA {
     // TODO: the env_path should probably be a constant or another constant-like attribute implemented on the
     // singleton struct.
@@ -322,7 +328,6 @@ pub async fn download_operator_setup_files(eigen_path: PathBuf) -> Result<(), Bo
                 .url()
                 .path_segments()
                 .and_then(|segments| segments.last())
-                .and_then(|name| if name.is_empty() { None } else { None })
                 .unwrap_or("eigenda_operator_setup.zip");
 
             File::create(fname)?
@@ -337,12 +342,12 @@ pub async fn download_operator_setup_files(eigen_path: PathBuf) -> Result<(), Bo
             let mut file = archive.by_index(i)?;
             let outpath = eigen_path.join("setup_files").join(file.name());
 
-            if (&*file.name()).ends_with('/') {
+            if (file.name()).ends_with('/') {
                 std::fs::create_dir_all(&outpath)?;
             } else {
                 if let Some(p) = outpath.parent() {
                     if !p.exists() {
-                        std::fs::create_dir_all(&p)?;
+                        std::fs::create_dir_all(p)?;
                     }
                 }
                 let mut outfile = File::create(&outpath)?;
@@ -357,7 +362,7 @@ pub async fn download_operator_setup_files(eigen_path: PathBuf) -> Result<(), Bo
         if let Some(first_dir) = first_dir {
             let old_folder_path = first_dir.path();
             let new_folder_path = eigen_path.join("eigenda_operator_setup");
-            std::fs::rename(&old_folder_path, &new_folder_path)?;
+            std::fs::rename(old_folder_path, new_folder_path)?;
         }
 
         // Delete the "extracted_files" directory

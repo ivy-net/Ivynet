@@ -1,14 +1,7 @@
-use ethers_core::types::Address;
-use ethers_providers::Provider;
-use ethers_signers::Signer;
-use std::{str::FromStr, sync::Arc};
+use std::str::FromStr;
 
 use super::{eigenda::eigenda::EigenDA, AvsProvider};
-use crate::{
-    avs::eigenda::eigenda,
-    keys::get_wallet,
-    rpc_management::{get_client, get_network, get_provider, get_signer, Network},
-};
+use crate::rpc_management::{get_client, get_network, get_signer, Network};
 
 pub enum AVS {
     EigenDA,

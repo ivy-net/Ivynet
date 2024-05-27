@@ -1,16 +1,13 @@
 use crate::{
-    config::{self, CONFIG},
     eigen::{
         delegation_manager::DELEGATION_MANAGER,
-        node_classes::{self, NodeClass},
         quorum::{Quorum, QuorumType},
     },
-    env::edit_env_vars,
     rpc_management::{Client, Network, Signer},
 };
-use dialoguer::{Input, Password};
+use dialoguer::Input;
 use ethers_core::types::{Address, U256};
-use std::{collections::HashMap, error::Error, fs, path::PathBuf, sync::Arc};
+use std::{error::Error, fs, path::PathBuf, sync::Arc};
 use tracing::{debug, error, info};
 
 use self::eigenda::{
