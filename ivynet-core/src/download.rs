@@ -1,12 +1,20 @@
+use dialoguer::Input;
 use futures_util::StreamExt;
 use indicatif::{ProgressBar, ProgressStyle};
-use std::{cmp::min, path::PathBuf};
+use std::{
+    cmp::min,
+    fs::{self, File},
+    io::{copy, BufReader},
+    path::PathBuf,
+};
 use tokio::{
     fs::remove_file,
     io::AsyncWriteExt,
     signal::unix::{signal, SignalKind},
     sync::watch,
 };
+use tracing::{debug, info};
+use zip::ZipArchive;
 
 use crate::avs::eigenda::CoreError;
 
@@ -54,18 +62,3 @@ pub async fn dl_progress_bar(url: &str, file_path: PathBuf) -> Result<(), Box<dy
     pb.finish_with_message(format!("Downloaded {} to {}", url, file_path.display()));
     Ok(())
 }
-
-// Likely not very robust
-// TODO: Attempt to integrate this with dl_progress_bar
-// pub async fn get_source_zip(out_path: PathBuf, url: &str) -> Result<(), Box<dyn std::error::Error>> {
-//     let response = reqwest::get(repo_url).await?;
-//
-//     let mut dest = {
-//         let fname =
-//             response.url().path_segments().and_then(|segments| segments.last()).unwrap_or("eigenda_operator_setup.zip");
-//
-//         File::create(fname)?
-//     };
-//     let bytes = response.bytes().await?;
-//     std::io::copy(&mut bytes.as_ref(), &mut dest)?;
-// }

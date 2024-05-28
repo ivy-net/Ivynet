@@ -67,7 +67,7 @@ impl AvsVariant for EigenDA {
     // TODO: the env_path should probably be a constant or another constant-like attribute implemented on the
     // singleton struct.
     async fn setup(&self, env_path: PathBuf) -> Result<(), Box<dyn Error>> {
-        download_operator_setup_files(env_path.clone()).await?;
+        download_operator_setup(env_path.clone()).await?;
         download_g1_g2(env_path).await?;
         Ok(())
     }
@@ -302,9 +302,9 @@ pub async fn download_g1_g2(eigen_path: PathBuf) -> Result<(), Box<dyn std::erro
     Ok(())
 }
 
-// TODO: remove network name from eigen_path fed into this func, ensure compatibility with .env
-pub async fn download_operator_setup_files(eigen_path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn download_operator_setup(eigen_path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
     let mut setup = false;
+    let repo_url = "https://github.com/ivy-net/eigenda-operator-setup/archive/refs/heads/master.zip";
     let temp_path = eigen_path.join("temp");
     let destination_path = eigen_path.join("operator_setup");
     if destination_path.exists() {
@@ -325,7 +325,6 @@ pub async fn download_operator_setup_files(eigen_path: PathBuf) -> Result<(), Bo
 
     if setup {
         info!("Downloading setup files to {}", temp_path.display());
-        let repo_url = "https://github.com/ivy-net/eigenda-operator-setup/archive/refs/heads/master.zip";
         let response = reqwest::get(repo_url).await?;
 
         let fname = temp_path.join("source.zip");
