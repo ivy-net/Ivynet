@@ -1,45 +1,12 @@
 use ethers_contract::abigen;
-use ethers_core::abi::Address;
 
-use crate::rpc_management::{self, Network};
+use crate::rpc_management;
 
 pub type StakeRegistry = StakeRegistryAbi<rpc_management::Client>;
 pub type RegistryCoordinator = RegistryCoordinatorAbi<rpc_management::Client>;
 pub type RegistryCoordinatorSigner = RegistryCoordinatorAbi<rpc_management::Signer>;
 
-pub fn setup_stake_registry() -> StakeRegistry {
-    let stake_reg_addr: Address = get_stake_registry_address().parse().expect("Could not parse StakeRegistry address");
-    StakeRegistryAbi::new(stake_reg_addr.clone(), rpc_management::get_client())
-}
-
-pub fn setup_registry_coordinator() -> RegistryCoordinator {
-    let stake_reg_addr: Address =
-        get_registry_coordinator_address().parse().expect("Could not parse RegistryCoordinator address");
-    RegistryCoordinatorAbi::new(stake_reg_addr.clone(), rpc_management::get_client())
-}
-
-pub fn setup_registry_coordinator_signer() -> RegistryCoordinatorSigner {
-    let stake_reg_addr: Address =
-        get_registry_coordinator_address().parse().expect("Could not parse RegistryCoordinator address");
-    RegistryCoordinatorAbi::new(stake_reg_addr.clone(), rpc_management::get_signer())
-}
-
-pub fn get_stake_registry_address() -> String {
-    match rpc_management::get_network() {
-        Network::Mainnet => "0x006124ae7976137266feebfb3f4d2be4c073139d".to_string(),
-        Network::Holesky => "0xBDACD5998989Eec814ac7A0f0f6596088AA2a270".to_string(),
-        Network::Local => todo!(),
-    }
-}
-
-pub fn get_registry_coordinator_address() -> String {
-    match rpc_management::get_network() {
-        Network::Mainnet => "0x0baac79acd45a023e19345c352d8a7a83c4e5656".to_string(),
-        Network::Holesky => "0x53012C69A189cfA2D9d29eb6F19B32e0A2EA3490".to_string(),
-        Network::Local => todo!(),
-    }
-}
-
+// TODO: Load from JSON
 abigen!(
     RegistryCoordinatorAbi,
     r#"[

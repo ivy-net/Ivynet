@@ -1,8 +1,8 @@
-use super::{dgm_info, quorum::Quorum, strategy::EigenStrategy};
+use super::{dgm_info, quorum::Quorum};
 use crate::rpc_management;
 use ethers_core::types::{Address, U256};
 use once_cell::sync::Lazy;
-use std::{collections::HashMap, error::Error};
+use std::error::Error;
 use tracing::info;
 
 /// A global handle for the eigenlayer Delegation Manager contract:
@@ -39,7 +39,7 @@ impl DelegationManager {
 
     pub async fn get_shares_for_quorum(&self, operator: Address, quorum: &Quorum) -> Result<Vec<U256>, Box<dyn Error>> {
         let strategies = quorum.0.iter().map(|strat| strat.address).collect();
-        Ok(self.get_shares_for_strategies(operator, strategies).await?)
+        self.get_shares_for_strategies(operator, strategies).await
     }
 
     /// Function to get strategies' delegated stake to an operator

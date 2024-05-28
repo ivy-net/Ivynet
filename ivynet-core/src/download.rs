@@ -1,16 +1,24 @@
+use dialoguer::Input;
 use futures_util::StreamExt;
 use indicatif::{ProgressBar, ProgressStyle};
-use std::{cmp::min, path::PathBuf};
+use std::{
+    cmp::min,
+    fs::{self, File},
+    io::{copy, BufReader},
+    path::PathBuf,
+};
 use tokio::{
     fs::remove_file,
     io::AsyncWriteExt,
     signal::unix::{signal, SignalKind},
     sync::watch,
 };
+use tracing::{debug, info};
+use zip::ZipArchive;
 
-use crate::avs::eigenda::eigenda::CoreError;
+use crate::avs::eigenda::CoreError;
 
-// TODO: Move downloading flow and utils to cli
+// TODO: Move downloading flow and utils to cli?
 // TODO: As this uses a stream, ctrl+c prematurely will lead to a bad file hash. Handle SIGTERM
 // correctly.
 pub async fn dl_progress_bar(url: &str, file_path: PathBuf) -> Result<(), Box<dyn std::error::Error>> {
