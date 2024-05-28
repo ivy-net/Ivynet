@@ -83,4 +83,3 @@ For mac users testing:
 ```sh
 docker pull ghcr.io/layr-labs/eigenda/opr-nodeplugin:0.7.0 --platform=linux/amd64
 ```
-
