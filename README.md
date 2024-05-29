@@ -4,7 +4,7 @@ https://ivynet.dev/
 
 Ivynet is building the operating system for EigenLayer - where EigenLayer, and underneath it, LRTs, facilitate an efficient use of restaked Ethereum, Ivynet facilitates an efficient use of compute in order to maxmize yield from that staked Eth.
 
-With this cli, that begins with calculations determining whether a specific AVS is worth the compute it demands, and then it helps in deploying that AVS. 
+With this cli, that begins with calculations determining whether a specific AVS is worth the compute it demands, and then it helps in deploying that AVS.
 
 ## Features
 
@@ -18,17 +18,17 @@ With this cli, that begins with calculations determining whether a specific AVS 
 
 ## Use
 
-Until operator registration is ready, please register as an operator using the EigenLayer CLI tool. This tool will check your operator status in order to add you as an operator to individual AVS's, and will check automatically that you are using the correct configuration (eg: CPU cores, memory, storage space) for the requested AVS. 
+Until operator registration is ready, please register as an operator using the EigenLayer CLI tool. This tool will check your operator status in order to add you as an operator to individual AVS's, and will check automatically that you are using the correct configuration (eg: CPU cores, memory, storage space) for the requested AVS.
 
 TODO: Ability to install, way better documentation, cleanup of core code
 
 NOTE: Development is happening at pace and there may be bugs - please feel free to open a github issue if any are encountered!
 
-For now, 
+For now,
 
 ```sh
 cargo build -r
-ivynet-cli --help 
+ivynet-cli --help
 ```
 
 Install the eigenlayer CLI and create your BLS key if you do not already have one:
@@ -45,7 +45,7 @@ To setup properly first create/import your Ethereum Key
 
 ```sh
 ivynet-cli config create-key [KEYNAME] [PASSWORD] --store
-or 
+or
 ivynet-cli config import-key [PRIVATE-KEY] [KEYNAME] [PASSWORD]
 ```
 
@@ -74,9 +74,8 @@ Note: This command assumes you have docker installed, your operator is registere
 
 More AVS integrations coming soon!
 
-For mac users testing: 
+For mac users testing:
 
 ```sh
 docker pull ghcr.io/layr-labs/eigenda/opr-nodeplugin:0.7.0 --platform=linux/amd64
 ```
-
