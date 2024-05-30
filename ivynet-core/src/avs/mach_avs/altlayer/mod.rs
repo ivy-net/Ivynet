@@ -77,6 +77,7 @@ impl AvsVariant for AltLayer {
 
             // TODO: Resolve
             let ecdsa_address = get_wallet().address();
+            debug!("ecdsa address: {:?}", ecdsa_address);
 
             let bls_key_name: String = Input::new()
             .with_prompt(
@@ -133,16 +134,15 @@ impl AvsVariant for AltLayer {
             debug!("Setting env vars");
 
             let mut env_lines = EnvLines::load(&env_path)?;
-            // TODO: 
-            let rpc_url = CONFIG.lock()?.get_rpc_url(network)?;
-            let user_home = dirs::home_dir().unwrap().to_str().expect("Could not get home directory");
-            let ecdsa_address = get_wallet().address();
+
+            let user_home = dirs::home_dir().unwrap();
+            let user_home = user_home.to_str().expect("Could not get home directory");
 
             let bls_key_name: String = Input::new()
-            .with_prompt(
-                "Input the name of your BLS key file - looks in .eigenlayer folder (where eigen cli stores the key)",
-            )
-            .interact_text()?;
+                .with_prompt(
+                    "Input the name of your BLS key file - look in .eigenlayer folder (where eigen cli stores the key)",
+                )
+                .interact_text()?;
 
             let mut bls_json_file_location = dirs::home_dir().expect("Could not get home directory");
             bls_json_file_location.push(".eigenlayer/operator_keys");
@@ -152,15 +152,24 @@ impl AvsVariant for AltLayer {
 
             let bls_password: String =
                 Password::new().with_prompt("Input the password for your BLS key file").interact()?;
+            let ecdsa_password: String =
+                Password::new().with_prompt("Input the password for your ECDSA key file").interact()?;
 
-            env_lines.set("METADATA_URI", metadata_uri);
+            env_lines.set("METADATA_URI", IVY_METADATA);
             env_lines.set("USER_HOME", user_home);
-
             env_lines.set(
                 "NODE_BLS_KEY_FILE_HOST",
                 bls_json_file_location.to_str().expect("Could not get BLS key file location"),
             );
-            env_lines.set("NODE_ECDSA_KEY_FILE_HOST", &ecdsa_location);
+            env_lines.set(
+                "NODE_ECDSA_KEY_FILE_HOST",
+                CONFIG
+                    .lock()
+                    .expect("Unexpected poisoned mutex")
+                    .default_private_keyfile
+                    .to_str()
+                    .expect("Bad private key path"),
+            );
             env_lines.set("OPERATOR_BLS_KEY_PASSWORD", &bls_password);
             env_lines.set("OPERATOR_ECDSA_KEY_PASSWORD", &ecdsa_password);
             env_lines.save(&env_path)?;
@@ -178,12 +187,23 @@ impl AvsVariant for AltLayer {
     /// Currently, AltLayer Mach AVS is operating in allowlist mode only: https://docs.altlayer.io/altlayer-documentation/altlayer-facilitated-actively-validated-services/xterio-mach-avs-for-xterio-chain/operator-guide
     async fn optin(
         &self,
-        _quorums: Vec<crate::eigen::quorum::QuorumType>,
-        _eigen_path: std::path::PathBuf,
-        _private_keyfile: PathBuf,
-        _chain: Chain,
-    ) -> Result<(), IvyError> {
-        todo!()
+        _: Vec<crate::eigen::quorum::QuorumType>,
+        network: crate::rpc_management::Network,
+        eigen_path: std::path::PathBuf,
+    ) -> Result<(), Box<dyn Error>> {
+        let run_path =
+            eigen_path.join("operator_setup").join(network.to_string().to_lowercase()).join("mach-avs/op-sepolia");
+        info!("Opting in...");
+        debug!("altlayer opt-in: {}", run_path.display());
+        // WARN: Changing directory here may not be the best strategy.
+        env::set_current_dir(&run_path)?;
+        let run_path = run_path.join("run.sh");
+        let optin = Command::new("sh").arg(run_path).arg("opt-in").status()?;
+        if optin.success() {
+            Ok(())
+        } else {
+            Err(optin.to_string().into())
+        }
     }
 
     /// Quorum stake requirements can be found in the AltLayer docs: https://docs.altlayer.io/altlayer-documentation/altlayer-facilitated-actively-validated-services/xterio-mach-avs-for-xterio-chain/operator-guide

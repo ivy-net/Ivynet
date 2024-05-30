@@ -49,6 +49,8 @@ or
 ivynet-cli config import-key [PRIVATE-KEY] [KEYNAME] [PASSWORD]
 ```
 
+This will store private and public keyfiles to ${HOME}/.ivynet/ as key_name.json and key_name.txt, respectively.
+
 Then set your RPC urls for mainnet and holesky
 
 ```sh

@@ -219,7 +219,7 @@ impl AvsVariant for EigenDA {
 
         info!("Booting quorums: {:#?}", quorums);
 
-        debug!("{} | {} | {}", run_script_path.display(), private_keyfile.display(), quorum_str);
+        debug!("{} |  {}", run_script_path.display(), quorum_str);
 
         let optin = Command::new("sh")
             .arg(run_script_path)
