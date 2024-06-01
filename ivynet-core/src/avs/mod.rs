@@ -72,9 +72,9 @@ impl<T: AvsVariant> AvsProvider<T> {
     pub async fn get_bootable_quorums(&self) -> Result<Vec<QuorumType>, IvyError> {
         let mut quorums_to_boot: Vec<QuorumType> = Vec::new();
         let chain = Chain::try_from(self.provider.signer().chain_id()).unwrap_or_default();
+        let manager = DelegationManager::new(&*self.provider);
         for quorum_type in self.avs.quorum_candidates(chain).iter() {
             let quorum = Quorum::try_from_type_and_network(*quorum_type, chain)?;
-            let manager = DelegationManager::new(&*self.provider);
             let shares = manager.get_shares_for_quorum(self.provider.address(), &quorum).await?;
             let total_shares = shares.iter().fold(U256::from(0), |acc, x| acc + x); // This may be
                                                                                     // queryable from stake_registry or registry_coordinator directly?

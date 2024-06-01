@@ -1918,11 +1918,8 @@ dependencies = [
 name = "ivynet-macros"
 version = "0.1.0"
 dependencies = [
- "heck 0.4.1",
- "log",
  "proc-macro2",
  "quote",
- "syn 1.0.109",
 ]
 
 [[package]]
