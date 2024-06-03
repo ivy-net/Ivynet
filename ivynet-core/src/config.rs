@@ -5,7 +5,7 @@ use sysinfo::{Disks, System};
 
 use crate::error::IvyError;
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct IvyConfig {
     // Mainnet rpc url
     pub mainnet_rpc_url: String,
@@ -17,6 +17,18 @@ pub struct IvyConfig {
     pub default_private_keyfile: PathBuf,
     // Default public key file full path
     pub default_public_keyfile: PathBuf,
+}
+
+impl Default for IvyConfig {
+    fn default() -> Self {
+        Self {
+            mainnet_rpc_url: "https://rpc.flashbots.net/fast".to_string(),
+            holesky_rpc_url: "https://rpc.holesky.ethpandaops.io".to_string(),
+            local_rpc_url: "http://localhost:8545".to_string(),
+            default_private_keyfile: "".into(),
+            default_public_keyfile: "".into(),
+        }
+    }
 }
 
 impl IvyConfig {
