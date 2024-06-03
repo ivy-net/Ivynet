@@ -15,7 +15,7 @@ pub async fn boot_avs(avs: &str, chain: Chain, config: &IvyConfig, wallet: Optio
     let mut avs_dir = dirs::home_dir().expect("Could not get a home directory");
     avs_dir.push(".eigenlayer");
 
-    let provider = connect_provider(&config.get_rpc_url(chain)?, wallet)?;
+    let provider = connect_provider(&config.get_rpc_url(chain)?, wallet).await?;
 
     let chain: Chain = Chain::try_from(provider.get_chainid().await?).unwrap_or_default();
     let avs_dir = match chain {

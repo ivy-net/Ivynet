@@ -19,7 +19,7 @@ pub async fn parse_operator_subcommands(
     config: &IvyConfig,
     chain: Chain,
 ) -> Result<(), Error> {
-    let provider = connect_provider(&config.get_rpc_url(chain)?, None)?;
+    let provider = connect_provider(&config.get_rpc_url(chain)?, None).await?;
     let manager = DelegationManager::new(&provider);
     match subcmd {
         OperatorCommands::Details { address } => {

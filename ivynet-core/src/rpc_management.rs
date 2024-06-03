@@ -2,14 +2,19 @@ use std::str::FromStr;
 
 use ethers::{
     middleware::SignerMiddleware,
-    providers::{Http, Provider},
+    providers::{Http, Middleware, Provider},
+    signers::Signer,
 };
 
 use crate::{error::IvyError, wallet::IvyWallet};
 
 pub type IvyProvider = SignerMiddleware<Provider<Http>, IvyWallet>;
 
-pub fn connect_provider(rpc_url: &str, wallet: Option<IvyWallet>) -> Result<IvyProvider, IvyError> {
+pub async fn connect_provider(rpc_url: &str, wallet: Option<IvyWallet>) -> Result<IvyProvider, IvyError> {
     let wallet = wallet.unwrap_or_default();
-    Ok(SignerMiddleware::new(Provider::new(Http::from_str(rpc_url)?), wallet))
+    let provider = Provider::new(Http::from_str(rpc_url)?);
+
+    let chain = provider.get_chainid().await.map_err(|_| IvyError::UnknownNetwork)?;
+
+    Ok(SignerMiddleware::new(provider, wallet.with_chain_id(chain.low_u64())))
 }

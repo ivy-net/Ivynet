@@ -26,8 +26,6 @@ pub type QuorumMinMap = HashMap<Chain, HashMap<QuorumType, U256>>;
 
 use self::contracts::{RegistryCoordinator, RegistryCoordinatorAbi, StakeRegistry, StakeRegistryAbi};
 
-// TODO: Reduce cooridnator and coordinatorSigner to single field following condensed wallet/signer
-// pattern
 pub struct AvsProvider<T: AvsVariant> {
     avs: T,
     provider: Arc<IvyProvider>, // This can also be accessed by registry_coordinator_signer.client, only
