@@ -29,7 +29,7 @@ sysinfo = "0.30.11"
 thiserror = "1.0.60"
 tokio = { version = "1.37.0", features = ["full"] }
 tracing = "0.1.40"
-zip = "1.1.2"
+zip = "2.1.2"
 url = { version = "2.5.0", features = ["serde"] }
 async-trait = "0.1.80"
 ivynet-macros = { path = "../ivynet-macros" }
