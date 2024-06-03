@@ -18,7 +18,7 @@ use crate::{
         node_classes::{self, NodeClass},
         quorum::QuorumType,
     },
-    env::edit_env_vars,
+    env_parser::EnvLines,
     error::IvyError,
 };
 
@@ -41,8 +41,11 @@ impl AvsVariant for AltLayer {
             _ => todo!("Unimplemented"),
         };
 
+        let run_script_path = run_script_path.join("mach-avs/op-sepolia");
+
         let mut set_vars: bool = false;
 
+        // env file
         let env_example_path = run_script_path.join(".env.example");
         let env_path = run_script_path.join(".env");
         if env_example_path.exists() && !env_path.exists() {
@@ -64,16 +67,16 @@ impl AvsVariant for AltLayer {
 
         if set_vars {
             debug!("Setting env vars");
-            let mut env_values: HashMap<&str, &str> = HashMap::new();
-            let node_hostname = reqwest::get("https://api.ipify.org").await?.text().await?;
-            env_values.insert("NODE_HOSTNAME", &node_hostname);
+
+            let mut env_lines = EnvLines::load(&env_path)?;
 
             let rpc_url = config.get_rpc_url(chain)?;
-            env_values.insert("NODE_CHAIN_RPC", &rpc_url);
 
             let home_dir = dirs::home_dir().unwrap();
             let home_str = home_dir.to_str().expect("Could not get home directory");
-            env_values.insert("USER_HOME", home_str);
+
+            // TODO: Resolve
+            let ecdsa_address = get_wallet().address();
 
             let bls_key_name: String = Input::new()
             .with_prompt(
@@ -86,18 +89,82 @@ impl AvsVariant for AltLayer {
             bls_json_file_location.push(bls_key_name);
             bls_json_file_location.set_extension("bls.key.json");
             info!("BLS key file location: {:?}", bls_json_file_location);
-            env_values.insert(
-                "NODE_BLS_KEY_FILE_HOST",
-                bls_json_file_location.to_str().expect("Could not get BLS key file location"),
-            );
 
             let bls_password: String =
                 Password::new().with_prompt("Input the password for your BLS key file").interact()?;
-            env_values.insert("NODE_BLS_KEY_PASSWORD", &bls_password);
 
-            edit_env_vars(env_path.to_str().unwrap(), env_values)?;
+            env_lines.set("USER_HOME", home_str);
+            env_lines.set("ETH_RPC_URL", &rpc_url);
+            env_lines.set("OPERATOR_ECDSA_ADDRESS", &format!("{:?}", ecdsa_address));
+            env_lines.set(
+                "NODE_BLS_KEY_FILE_HOST",
+                bls_json_file_location.to_str().expect("Could not get BLS key file location"),
+            );
+            env_lines.set("OPERATOR_BLS_KEY_PASSWORD", &bls_password);
+            env_lines.save(&env_path)?; //TODO
         }
 
+        // .env.opt
+        set_vars = false;
+
+        let example_env = ".env.opt-example";
+        let env = ".env.opt";
+
+        let env_example_path = run_script_path.join(example_env);
+        let env_path = run_script_path.join(env);
+        if env_example_path.exists() && !env_path.exists() {
+            std::fs::copy(env_example_path, env_path.clone())?;
+            info!("Copied {} to {}.", example_env, env);
+            set_vars = true;
+        } else if !env_example_path.exists() {
+            info!("The {} file does not exist.", example_env);
+        } else {
+            info!("The {} file already exists.", env);
+            let reset_string: String = Input::new().with_prompt("Reset env.opt file? (y/n)").interact_text()?;
+            if reset_string == "y" {
+                std::fs::remove_file(env_path.clone())?;
+                std::fs::copy(env_example_path, env_path.clone())?;
+                info!("Copied '.env.opt-example' to '.env'.");
+                set_vars = true;
+            }
+        }
+
+        if set_vars {
+            debug!("Setting env vars");
+
+            let mut env_lines = EnvLines::load(&env_path)?;
+            // TODO: 
+            let rpc_url = CONFIG.lock()?.get_rpc_url(network)?;
+            let user_home = dirs::home_dir().unwrap().to_str().expect("Could not get home directory");
+            let ecdsa_address = get_wallet().address();
+
+            let bls_key_name: String = Input::new()
+            .with_prompt(
+                "Input the name of your BLS key file - looks in .eigenlayer folder (where eigen cli stores the key)",
+            )
+            .interact_text()?;
+
+            let mut bls_json_file_location = dirs::home_dir().expect("Could not get home directory");
+            bls_json_file_location.push(".eigenlayer/operator_keys");
+            bls_json_file_location.push(bls_key_name);
+            bls_json_file_location.set_extension("bls.key.json");
+            info!("BLS key file location: {:?}", bls_json_file_location);
+
+            let bls_password: String =
+                Password::new().with_prompt("Input the password for your BLS key file").interact()?;
+
+            env_lines.set("METADATA_URI", metadata_uri);
+            env_lines.set("USER_HOME", user_home);
+
+            env_lines.set(
+                "NODE_BLS_KEY_FILE_HOST",
+                bls_json_file_location.to_str().expect("Could not get BLS key file location"),
+            );
+            env_lines.set("NODE_ECDSA_KEY_FILE_HOST", &ecdsa_location);
+            env_lines.set("OPERATOR_BLS_KEY_PASSWORD", &bls_password);
+            env_lines.set("OPERATOR_ECDSA_KEY_PASSWORD", &ecdsa_password);
+            env_lines.save(&env_path)?;
+        }
         Ok(())
     }
 

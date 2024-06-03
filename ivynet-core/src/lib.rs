@@ -3,6 +3,7 @@ pub mod config;
 pub mod download;
 pub mod eigen;
 pub mod env;
+pub mod env_parser;
 pub mod error;
 pub mod rpc_management;
 pub mod wallet;
