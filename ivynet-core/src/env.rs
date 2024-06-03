@@ -2,7 +2,9 @@ use std::{collections::HashMap, fs};
 
 use tracing::debug;
 
-pub fn edit_env_vars(filename: &str, env_values: HashMap<&str, &str>) -> Result<(), Box<dyn std::error::Error>> {
+use crate::error::IvyError;
+
+pub fn edit_env_vars(filename: &str, env_values: HashMap<&str, &str>) -> Result<(), IvyError> {
     debug!("{:?}", env_values);
     let contents = fs::read_to_string(filename)?;
     let new_contents = contents

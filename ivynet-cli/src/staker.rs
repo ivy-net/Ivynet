@@ -1,24 +1,29 @@
 use clap::Parser;
 
-use ethers_core::types::Address;
-use ivynet_core::{eigen::delegation_manager::DELEGATION_MANAGER, keys};
+use ethers::types::{Address, Chain};
+use ivynet_core::{
+    config::IvyConfig, eigen::delegation_manager::DelegationManager, rpc_management::connect_provider,
+    wallet::IvyWallet,
+};
+
+use crate::error::Error;
 
 #[derive(Parser, Debug, Clone)]
-pub(crate) enum StakerCommands {
+pub enum StakerCommands {
     #[command(name = "get-shares", about = "Get data on a staker's strategy choices and their stake in each one")]
     GetStakerShares { address: Address },
     #[command(name = "get-my-shares", about = "Get data on the saved keypair's current strategy and stake")]
     GetMyShares,
 }
 
-pub async fn parse_staker_subcommands(subcmd: StakerCommands) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn parse_staker_subcommands(subcmd: StakerCommands, config: &IvyConfig, chain: Chain) -> Result<(), Error> {
+    let provider = connect_provider(&config.get_rpc_url(chain)?, None).await?;
+    let manager = DelegationManager::new(&provider);
     match subcmd {
-        StakerCommands::GetStakerShares { address } => {
-            DELEGATION_MANAGER.get_staker_delegatable_shares(address).await?
-        }
+        StakerCommands::GetStakerShares { address } => manager.get_staker_delegatable_shares(address).await?,
         StakerCommands::GetMyShares => {
-            let address = keys::get_stored_public_key()?;
-            DELEGATION_MANAGER.get_staker_delegatable_shares(address).await?
+            let address = IvyWallet::address_from_file(config.default_public_keyfile.clone())?;
+            manager.get_staker_delegatable_shares(address).await?
         }
     }
     Ok(())

@@ -1,11 +1,9 @@
 use clap::{Parser, Subcommand};
-use tracing::{debug, error, info, level_filters::LevelFilter, trace, warn, Level};
+use ethers::types::Chain;
+use ivynet_core::config::IvyConfig;
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
-mod avs;
-mod config;
-mod operator;
-mod staker;
+use ivynet_cli::{avs, config, error::Error, operator, staker};
 
 #[derive(Parser, Debug, Clone)]
 #[command(name = "ivy", version, about = "The command line interface for ivynet")]
@@ -53,23 +51,27 @@ enum SetupCommands {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<(), Error> {
     let args = Args::parse();
 
     // Set up tracing
     let filter = EnvFilter::builder().parse("ivynet_cli=debug,ivynet_core=debug")?;
     tracing_subscriber::registry().with(fmt::layer()).with(filter).init();
 
-    //TODO: Refactor for subcommands
-    ivynet_core::rpc_management::set_network(&args.network.clone()).expect("Could not set network");
+    let mut config = IvyConfig::load();
+    let chain = args.network.parse::<Chain>().expect("Unknown network");
+
     match args.cmd {
-        Commands::Config { subcmd } => config::parse_config_subcommands(subcmd)?,
-        Commands::Operator { subcmd } => operator::parse_operator_subcommands(subcmd).await?,
-        Commands::Staker { subcmd } => staker::parse_staker_subcommands(subcmd).await?,
+        Commands::Config { subcmd } => {
+            config::parse_config_subcommands(subcmd, &mut config, chain)?;
+            config.store()?;
+        }
+        Commands::Operator { subcmd } => operator::parse_operator_subcommands(subcmd, &config, chain).await?,
+        Commands::Staker { subcmd } => staker::parse_staker_subcommands(subcmd, &config, chain).await?,
         Commands::Setup { subcmd } => match subcmd {
             SetupCommands::Todo { private_key: _ } => todo!(),
         },
-        Commands::Avs { subcmd } => avs::parse_config_subcommands(subcmd).await?,
+        Commands::Avs { subcmd } => avs::parse_config_subcommands(subcmd, &config, chain).await?,
     }
 
     Ok(())

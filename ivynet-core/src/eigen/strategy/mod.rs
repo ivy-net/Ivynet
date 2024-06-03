@@ -1,6 +1,6 @@
-use ethers_core::types::Address;
-use std::hash::Hash;
-use std::{error::Error, fmt::Display};
+use std::{error::Error, fmt::Display, hash::Hash};
+
+use ethers::types::Address;
 
 pub mod holesky;
 pub mod mainnet;

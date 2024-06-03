@@ -1,6 +1,9 @@
 use clap::Parser;
 
-use ivynet_core::avs;
+use ethers::types::Chain;
+use ivynet_core::{avs, config::IvyConfig};
+
+use crate::error::Error;
 
 #[derive(Parser, Debug, Clone)]
 pub enum AvsCommands {
@@ -13,9 +16,10 @@ pub enum AvsCommands {
     CheckStakePercentage { avs: String, address: String, network: String },
 }
 
-pub async fn parse_config_subcommands(subcmd: AvsCommands) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn parse_config_subcommands(subcmd: AvsCommands, config: &IvyConfig, chain: Chain) -> Result<(), Error> {
+    // TODO! We need to decrypt wallet here FIRST
     match subcmd {
-        AvsCommands::Boot { avs } => avs::avs_default::boot_avs(&avs).await?,
+        AvsCommands::Boot { avs } => avs::avs_default::boot_avs(&avs, chain, config, None).await?,
         _ => todo!("Unimplemented"),
     };
     Ok(())

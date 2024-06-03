@@ -14,11 +14,11 @@ path = "src/main.rs"
 
 [dependencies]
 clap = { version = "4.5.4", features = ["derive"] }
-serde = "1.0.197"
-serde_derive = "1.0.197"
-ethers-core = "2.0.14"
-hex = "0.4.3"
+serde = { version = "1.0", features = ["derive"]}
+ethers = "2.0"
 tokio = { version = "1.37.0", features = ["full"] }
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
 ivynet-core = { path = "../ivynet-core" }
+thiserror = "1.0"
+dialoguer = "0.11.0"

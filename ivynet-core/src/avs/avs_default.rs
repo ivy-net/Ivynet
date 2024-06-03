@@ -1,7 +1,9 @@
-use std::str::FromStr;
+use std::{str::FromStr, sync::Arc};
 
 use super::{eigenda::EigenDA, mach_avs::AltLayer, AvsProvider};
-use crate::rpc_management::{get_client, get_network, get_signer, Network};
+use ethers::{providers::Middleware, types::Chain};
+
+use crate::{config::IvyConfig, error::IvyError, rpc_management::connect_provider, wallet::IvyWallet};
 
 pub enum AVS {
     EigenDA,
@@ -9,32 +11,29 @@ pub enum AVS {
 }
 
 //Need to refactor this so its abstract and forces impl on individual avs modules
-pub async fn boot_avs(avs: &str) -> Result<(), Box<dyn std::error::Error>> {
+pub async fn boot_avs(avs: &str, chain: Chain, config: &IvyConfig, wallet: Option<IvyWallet>) -> Result<(), IvyError> {
     let mut avs_dir = dirs::home_dir().expect("Could not get a home directory");
     avs_dir.push(".eigenlayer");
 
-    let network = get_network();
-    let provider = get_client();
-    let signer = get_signer();
+    let provider = connect_provider(&config.get_rpc_url(chain)?, wallet).await?;
 
-    let mut avs_dir = match network {
-        Network::Mainnet => avs_dir.join("mainnet"),
-        Network::Holesky => avs_dir.join("holesky"),
-        Network::Local => todo!("Unimplemented"),
+    let chain: Chain = Chain::try_from(provider.get_chainid().await?).unwrap_or_default();
+    let avs_dir = match chain {
+        Chain::Mainnet => avs_dir.join("mainnet"),
+        Chain::Holesky => avs_dir.join("holesky"),
+        _ => todo!("Unimplemented"),
     };
 
     match AVS::from_str(avs) {
         Ok(AVS::EigenDA) => {
-            avs_dir.push("eigenda");
             let avs = EigenDA::default();
-            let avs_provider = AvsProvider::new(network, avs, provider, signer, avs_dir);
-            avs_provider.boot(network).await?;
+            let avs_provider = AvsProvider::new(chain, avs, Arc::new(provider), avs_dir.join("eigenda"));
+            avs_provider.boot(config).await?;
         }
         Ok(AVS::AltLayer) => {
-            avs_dir.push("altlayer");
             let avs = AltLayer::default();
-            let avs_provider = AvsProvider::new(network, avs, provider, signer, avs_dir);
-            avs_provider.boot(network).await?;
+            let avs_provider = AvsProvider::new(chain, avs, Arc::new(provider), avs_dir.join("altlayer"));
+            avs_provider.boot(config).await?;
         }
         Err(_) => {
             println!("Invalid AVS: {}", avs);

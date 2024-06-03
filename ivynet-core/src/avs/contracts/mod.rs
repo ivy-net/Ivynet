@@ -1,12 +1,10 @@
-use ethers_contract::abigen;
+use ethers::contract::abigen;
 
-use crate::rpc_management;
+use crate::rpc_management::IvyProvider;
 
-pub type StakeRegistry = StakeRegistryAbi<rpc_management::Client>;
-pub type RegistryCoordinator = RegistryCoordinatorAbi<rpc_management::Client>;
-pub type RegistryCoordinatorSigner = RegistryCoordinatorAbi<rpc_management::Signer>;
+pub type StakeRegistry = StakeRegistryAbi<IvyProvider>;
+pub type RegistryCoordinator = RegistryCoordinatorAbi<IvyProvider>;
 
-// TODO: Load from JSON
 abigen!(
     RegistryCoordinatorAbi,
     r#"[

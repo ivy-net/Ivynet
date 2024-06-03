@@ -1,15 +1,15 @@
-use std::fmt::Display;
-
 use clap::Parser;
-
+use dialoguer::{Input, Password};
+use ethers::{types::Chain, utils::hex::ToHex as _};
 use ivynet_core::{
-    config::{self, CONFIG},
-    keys,
-    rpc_management::Network,
+    config::{self, IvyConfig},
+    wallet::IvyWallet,
 };
 
+use crate::error::Error;
+
 #[derive(Parser, Debug, Clone)]
-pub(crate) enum ConfigCommands {
+pub enum ConfigCommands {
     #[command(name = "import-key", about = "Import and save as your default Ethereum private key with a password")]
     ImportPrivateKey { private_key: String, keyname: Option<String>, password: Option<String> },
     #[command(
@@ -40,30 +40,47 @@ pub(crate) enum ConfigCommands {
     GetSysInfo,
 }
 
-pub fn parse_config_subcommands(subcmd: ConfigCommands) -> Result<(), Box<dyn std::error::Error>> {
+pub fn parse_config_subcommands(subcmd: ConfigCommands, config: &mut IvyConfig, chain: Chain) -> Result<(), Error> {
     match subcmd {
         ConfigCommands::ImportPrivateKey { private_key, keyname, password } => {
-            keys::import_key(private_key, keyname, password)?
+            let wallet = IvyWallet::from_private_key(private_key)?;
+            let (keyname, pass) = get_credentials(keyname, password);
+            let (prv_key_path, pub_key_path) = wallet.encrypt_and_store(keyname, pass)?;
+            config.default_private_keyfile = prv_key_path;
+            config.default_public_keyfile = pub_key_path;
         }
-        ConfigCommands::CreatePrivateKey { store, keyname, password } => keys::create_key(store, keyname, password)?,
-        ConfigCommands::SetRpc { network, rpc_url } => {
-            CONFIG.lock()?.set_rpc_url(Network::from(network.as_str()), &rpc_url)?;
-            CONFIG.lock()?.store()?
-        }
-        ConfigCommands::GetRpc { network } => match network.as_str() {
-            "mainnet" => println!("Mainnet url: {:?}", CONFIG.lock()?.get_rpc_url(Network::Mainnet)?),
-            "holesky" => println!("Holesky url: {:?}", CONFIG.lock()?.get_rpc_url(Network::Holesky)?),
-            "local" => println!("Localhost url: {:?}", CONFIG.lock()?.get_rpc_url(Network::Local)?),
-            _ => {
-                println!("Unknown network: {}", network);
+        ConfigCommands::CreatePrivateKey { store, keyname, password } => {
+            let wallet = IvyWallet::new();
+            let priv_key = wallet.to_private_key();
+            println!("Private key: {:?}", priv_key);
+            let addr = wallet.address();
+            println!("Public Address: {:?}", addr);
+            if store {
+                let (keyname, pass) = get_credentials(keyname, password);
+                let (prv_key_path, pub_key_path) = wallet.encrypt_and_store(keyname, pass)?;
+                config.default_private_keyfile = prv_key_path;
+                config.default_public_keyfile = pub_key_path;
             }
-        },
+        }
+        ConfigCommands::SetRpc { network: _, rpc_url } => {
+            config.set_rpc_url(chain, &rpc_url)?;
+        }
+        ConfigCommands::GetRpc { network } => {
+            println!(
+                "Url for {network} is {}",
+                config.get_rpc_url(network.parse::<Chain>().expect("Wrong network name provided"))?
+            );
+        }
         ConfigCommands::GetDefaultEthAddress => {
-            println!("Public Key: {}", keys::get_stored_public_key().expect("Could not get ETH address"))
+            println!(
+                "Public Key: {}",
+                IvyWallet::address_from_file(config.default_public_keyfile.clone())?.encode_hex::<String>()
+            )
         }
         ConfigCommands::GetDefaultPrivateKey => {
-            let priv_key = hex::encode(keys::WALLET.get().ok_or(CliError::EmptySigner)?.signer().to_bytes());
-            println!("Private key: {:?}", priv_key);
+            let pass = Password::new().with_prompt("Enter a password to the private key").interact()?;
+            let wallet = IvyWallet::from_keystore(config.default_private_keyfile.clone(), pass)?;
+            println!("Private key: {:?}", wallet.to_private_key());
         }
         ConfigCommands::GetSysInfo => {
             let (cpus, mem_info, disk_info) = config::get_system_information()?;
@@ -79,17 +96,25 @@ pub fn parse_config_subcommands(subcmd: ConfigCommands) -> Result<(), Box<dyn st
     Ok(())
 }
 
-#[derive(Debug)]
-pub enum CliError {
-    EmptySigner,
-}
-
-impl Display for CliError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            CliError::EmptySigner => write!(f, "Could not parse wallet signer. Is your key initialized?"),
+fn get_credentials(keyname: Option<String>, password: Option<String>) -> (String, String) {
+    match (keyname, password) {
+        (None, None) => (
+            Input::new().with_prompt("Enter a name for the key").interact_text().expect("No keyname provided"),
+            Password::new()
+                .with_prompt("Enter a password to the private key")
+                .interact()
+                .expect("No password provided"),
+        ),
+        (None, Some(pass)) => {
+            (Input::new().with_prompt("Enter a name for the key").interact_text().expect("No keyname provided"), pass)
         }
+        (Some(keyname), None) => (
+            keyname,
+            Password::new()
+                .with_prompt("Enter a password to the private key")
+                .interact()
+                .expect("No password provided"),
+        ),
+        (Some(keyname), Some(pass)) => (keyname, pass),
     }
 }
-
-impl std::error::Error for CliError {}

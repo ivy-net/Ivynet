@@ -1,25 +1,27 @@
 use super::{dgm_info, quorum::Quorum};
-use crate::rpc_management;
-use ethers_core::types::{Address, U256};
-use once_cell::sync::Lazy;
-use std::error::Error;
+
+use crate::{
+    error::IvyError,
+    rpc_management::{self, IvyProvider},
+};
+use ethers::{
+    signers::Signer,
+    types::{Address, Chain, U256},
+};
 use tracing::info;
 
 /// A global handle for the eigenlayer Delegation Manager contract:
 /// https://github.com/Layr-Labs/eigenlayer-contracts/blob/testnet-holesky/src/contracts/core/DelegationManager.sol
-///
-pub static DELEGATION_MANAGER: Lazy<DelegationManager> = Lazy::new(DelegationManager::new);
-
-pub struct DelegationManager(pub dgm_info::DelegationManagerAbi<rpc_management::Client>);
+pub struct DelegationManager(pub dgm_info::DelegationManagerAbi<rpc_management::IvyProvider>);
 
 impl DelegationManager {
-    pub fn new() -> Self {
+    pub fn new(provider: &IvyProvider) -> Self {
         let del_mgr_addr: Address =
-            dgm_info::get_delegation_manager_address().parse().expect("Could not parse DelegationManager address");
-        Self(dgm_info::DelegationManagerAbi::new(del_mgr_addr, rpc_management::get_client()))
+            dgm_info::get_delegation_manager_address(Chain::try_from(provider.signer().chain_id()).unwrap_or_default());
+        Self(dgm_info::DelegationManagerAbi::new(del_mgr_addr, provider.clone().into()))
     }
 
-    pub async fn get_operator_details(&self, operator_address: Address) -> Result<(), Box<dyn std::error::Error>> {
+    pub async fn get_operator_details(&self, operator_address: Address) -> Result<(), IvyError> {
         let status = self.0.is_operator(operator_address).call().await?;
         println!("Is operator: {:?}", status);
         let details = self.0.operator_details(operator_address).call().await?;
@@ -28,16 +30,13 @@ impl DelegationManager {
         Ok(())
     }
 
-    pub async fn get_staker_delegatable_shares(
-        &self,
-        staker_address: Address,
-    ) -> Result<(), Box<dyn std::error::Error>> {
-        let details = self.0.get_delegatable_shares(staker_address).call().await?;
+    pub async fn get_staker_delegatable_shares(&self, staker_address: Address) -> Result<(), IvyError> {
+        let details = self.0.get_delegatable_shares(staker_address).await?;
         info!("Staker delegatable shares: {:?}", details);
         Ok(())
     }
 
-    pub async fn get_shares_for_quorum(&self, operator: Address, quorum: &Quorum) -> Result<Vec<U256>, Box<dyn Error>> {
+    pub async fn get_shares_for_quorum(&self, operator: Address, quorum: &Quorum) -> Result<Vec<U256>, IvyError> {
         let strategies = quorum.0.iter().map(|strat| strat.address).collect();
         self.get_shares_for_strategies(operator, strategies).await
     }
@@ -47,22 +46,16 @@ impl DelegationManager {
         &self,
         operator: Address,
         strategies: Vec<Address>,
-    ) -> Result<Vec<U256>, Box<dyn std::error::Error>> {
+    ) -> Result<Vec<U256>, IvyError> {
         info!("Shares for operator: {}", operator);
-        let shares: Vec<U256> = self.0.get_operator_shares(operator, strategies).call().await?;
+        let shares: Vec<U256> = self.0.get_operator_shares(operator, strategies).await?;
         Ok(shares)
     }
 
-    pub async fn get_operator_status(&self, operator_address: Address) -> Result<bool, Box<dyn std::error::Error>> {
-        let status: bool = self.0.is_operator(operator_address).call().await?;
+    pub async fn get_operator_status(&self, operator_address: Address) -> Result<bool, IvyError> {
+        let status: bool = self.0.is_operator(operator_address).await?;
         println!("Operator status: {:?}", status);
 
         Ok(status)
-    }
-}
-
-impl Default for DelegationManager {
-    fn default() -> Self {
-        Self::new()
     }
 }
