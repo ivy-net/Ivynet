@@ -1,5 +1,12 @@
 # Introduction
 
+To run:
+```
+pre-commit run --all-files
+```
+
+# Setup
+
 ## Quick notes on pre-commit setup
 
 This is not full documentaiton, just basic notes from my intial run.
