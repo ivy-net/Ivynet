@@ -86,7 +86,7 @@ impl AvsVariant for EigenDA {
         config: &IvyConfig,
     ) -> Result<(), IvyError> {
         let chain = Chain::try_from(provider.signer().chain_id())?;
-        let rpc_url = config.get_rpc_url(chain);
+        let rpc_url = config.get_rpc_url(chain)?;
 
         let run_script_path = env_path.join("eigenda_operator_setup");
         let run_script_path = match chain {
@@ -120,8 +120,6 @@ impl AvsVariant for EigenDA {
             debug!("Setting env vars");
             let mut env_lines = EnvLines::load(&env_path)?;
             let node_hostname = reqwest::get("https://api.ipify.org").await?.text().await?;
-
-            let rpc_url = config.get_rpc_url(chain)?;
 
             let home_dir = dirs::home_dir().expect("Could not get home directory");
             let home_str = home_dir.to_str().expect("Could not get home directory");
@@ -166,27 +164,27 @@ impl AvsVariant for EigenDA {
             x if x < U256::from(3) => {
                 // NOTE: Should these be || operators?
                 if class >= NodeClass::LRG || bandwidth >= 1 || disk_info >= 20000000000 {
-                    acceptable = true
+                    acceptable = true;
                 }
             }
             x if x < U256::from(20) => {
                 if class >= NodeClass::XL || bandwidth >= 1 || disk_info >= 150000000000 {
-                    acceptable = true
+                    acceptable = true;
                 }
             }
             x if x < U256::from(100) => {
                 if class >= NodeClass::FOURXL || bandwidth >= 3 || disk_info >= 750000000000 {
-                    acceptable = true
+                    acceptable = true;
                 }
             }
             x if x < U256::from(1000) => {
                 if class >= NodeClass::FOURXL || bandwidth >= 25 || disk_info >= 4000000000000 {
-                    acceptable = true
+                    acceptable = true;
                 }
             }
             x if x > U256::from(2000) => {
                 if class >= NodeClass::FOURXL || bandwidth >= 50 || disk_info >= 8000000000000 {
-                    acceptable = true
+                    acceptable = true;
                 }
             }
             _ => {}

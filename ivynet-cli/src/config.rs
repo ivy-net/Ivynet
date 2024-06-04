@@ -75,7 +75,7 @@ pub fn parse_config_subcommands(subcmd: ConfigCommands, config: &mut IvyConfig, 
             println!(
                 "Public Key: {}",
                 IvyWallet::address_from_file(config.default_public_keyfile.clone())?.encode_hex::<String>()
-            )
+            );
         }
         ConfigCommands::GetDefaultPrivateKey => {
             let pass = Password::new().with_prompt("Enter a password to the private key").interact()?;
@@ -85,11 +85,11 @@ pub fn parse_config_subcommands(subcmd: ConfigCommands, config: &mut IvyConfig, 
         ConfigCommands::GetSysInfo => {
             let (cpus, mem_info, disk_info) = config::get_system_information()?;
             println!(" --- System Information: --- ");
-            println!("CPU Cores: {}", cpus);
+            println!("CPU Cores: {cpus}");
             println!("Memory Information:");
-            println!("  Total: {}", mem_info);
+            println!("  Total: {mem_info}");
             println!("Disk Information:");
-            println!("  Free: {}", disk_info);
+            println!("  Free: {disk_info}");
             println!(" --------------------------- ");
         }
     };

@@ -196,9 +196,9 @@ impl AvsVariant for AltLayer {
     /// Currently, AltLayer Mach AVS is operating in allowlist mode only: https://docs.altlayer.io/altlayer-documentation/altlayer-facilitated-actively-validated-services/xterio-mach-avs-for-xterio-chain/operator-guide
     async fn optin(
         &self,
-        quorums: Vec<QuorumType>,
+        _quorums: Vec<QuorumType>,
         eigen_path: PathBuf,
-        private_keyfile: PathBuf,
+        _private_keyfile: PathBuf,
         chain: Chain,
     ) -> Result<(), IvyError> {
         let run_path =

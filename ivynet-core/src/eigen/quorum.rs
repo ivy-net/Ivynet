@@ -34,7 +34,7 @@ impl Quorum {
                     1 => todo!("Eigen quorum unimplemented"), // eigen
                     _ => return Err(QuorumError::QuorumNotFound),
                 };
-                Quorum(strats.to_vec())
+                Quorum(strats)
             }
             Chain::Holesky => {
                 let strats = match quorum as usize {
@@ -42,7 +42,7 @@ impl Quorum {
                     1 => todo!("Eigen quorum unimplemented"), // eigen
                     _ => return Err(QuorumError::QuorumNotFound),
                 };
-                Quorum(strats.to_vec())
+                Quorum(strats)
             }
             _ => todo!(),
         };
