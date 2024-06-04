@@ -27,13 +27,10 @@ impl EnvLines {
                 lines.push(EnvLine::Comment(line));
             } else if line.trim().is_empty() {
                 lines.push(EnvLine::Blank);
+            } else if let Some((k, v)) = line.split_once('=') {
+                lines.push(EnvLine::KeyValue(k.trim().to_string(), v.trim().to_string()));
             } else {
-                let parts: Vec<&str> = line.splitn(2, '=').collect();
-                if parts.len() == 2 {
-                    lines.push(EnvLine::KeyValue(parts[0].trim().to_string(), parts[1].trim().to_string()));
-                } else {
-                    lines.push(EnvLine::Comment(line)); // Treat malformed lines as comments
-                }
+                lines.push(EnvLine::Comment(line)); // Treat malformed lines as comments
             }
         }
 
