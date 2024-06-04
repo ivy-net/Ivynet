@@ -1,7 +1,8 @@
-use std::error::Error;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 use std::path::Path;
+
+use crate::error::IvyError;
 
 #[derive(Debug, Clone)]
 enum EnvLine {
@@ -15,7 +16,7 @@ pub struct EnvLines {
 }
 
 impl EnvLines {
-    pub fn load(path: &Path) -> Result<Self, Box<dyn Error>> {
+    pub fn load(path: &Path) -> Result<Self, IvyError> {
         let file = File::open(path)?;
         let reader = BufReader::new(file);
         let mut lines = Vec::new();
@@ -39,7 +40,7 @@ impl EnvLines {
         Ok(Self { lines })
     }
 
-    pub fn save(&self, path: &Path) -> Result<(), Box<dyn Error>> {
+    pub fn save(&self, path: &Path) -> Result<(), IvyError> {
         let mut file = File::create(path)?;
         for line in &self.lines {
             match line {

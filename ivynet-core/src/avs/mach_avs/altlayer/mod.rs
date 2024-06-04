@@ -1,12 +1,17 @@
 use async_trait::async_trait;
 use dialoguer::{Input, Password};
-use ethers::types::{Address, Chain, H160, U256};
+use ethers::{
+    signers::Signer,
+    types::{Address, Chain, H160, U256},
+};
 use ivynet_macros::h160;
 use std::{
-    collections::HashMap,
+    env,
     fs::{self, File},
     io::{copy, BufReader},
     path::PathBuf,
+    process::Command,
+    sync::Arc,
 };
 use tracing::{debug, info};
 use zip::ZipArchive;
@@ -14,12 +19,14 @@ use zip::ZipArchive;
 use crate::{
     avs::AvsVariant,
     config::{self, IvyConfig},
+    constants::IVY_METADATA,
     eigen::{
         node_classes::{self, NodeClass},
         quorum::QuorumType,
     },
     env_parser::EnvLines,
     error::IvyError,
+    rpc_management::IvyProvider,
 };
 
 #[derive(Default)]
@@ -33,8 +40,16 @@ impl AvsVariant for AltLayer {
         Ok(())
     }
 
-    async fn build_env(&self, env_path: PathBuf, chain: Chain, config: &IvyConfig) -> Result<(), IvyError> {
-        let run_script_path = env_path.join("operator_setup");
+    async fn build_env(
+        &self,
+        env_path: PathBuf,
+        provider: Arc<IvyProvider>,
+        config: &IvyConfig,
+    ) -> Result<(), IvyError> {
+        let chain = Chain::try_from(provider.signer().chain_id())?;
+        let ecdsa_address = provider.address();
+
+        let run_script_path = env_path.join("eigenda_operator_setup");
         let run_script_path = match chain {
             Chain::Mainnet => run_script_path.join("mainnet"),
             Chain::Holesky => run_script_path.join("holesky"),
@@ -76,7 +91,6 @@ impl AvsVariant for AltLayer {
             let home_str = home_dir.to_str().expect("Could not get home directory");
 
             // TODO: Resolve
-            let ecdsa_address = get_wallet().address();
             debug!("ecdsa address: {:?}", ecdsa_address);
 
             let bls_key_name: String = Input::new()
@@ -163,12 +177,7 @@ impl AvsVariant for AltLayer {
             );
             env_lines.set(
                 "NODE_ECDSA_KEY_FILE_HOST",
-                CONFIG
-                    .lock()
-                    .expect("Unexpected poisoned mutex")
-                    .default_private_keyfile
-                    .to_str()
-                    .expect("Bad private key path"),
+                config.default_private_keyfile.to_str().expect("Bad private key path"),
             );
             env_lines.set("OPERATOR_BLS_KEY_PASSWORD", &bls_password);
             env_lines.set("OPERATOR_ECDSA_KEY_PASSWORD", &ecdsa_password);
@@ -187,12 +196,13 @@ impl AvsVariant for AltLayer {
     /// Currently, AltLayer Mach AVS is operating in allowlist mode only: https://docs.altlayer.io/altlayer-documentation/altlayer-facilitated-actively-validated-services/xterio-mach-avs-for-xterio-chain/operator-guide
     async fn optin(
         &self,
-        _: Vec<crate::eigen::quorum::QuorumType>,
-        network: crate::rpc_management::Network,
-        eigen_path: std::path::PathBuf,
-    ) -> Result<(), Box<dyn Error>> {
+        quorums: Vec<QuorumType>,
+        eigen_path: PathBuf,
+        private_keyfile: PathBuf,
+        chain: Chain,
+    ) -> Result<(), IvyError> {
         let run_path =
-            eigen_path.join("operator_setup").join(network.to_string().to_lowercase()).join("mach-avs/op-sepolia");
+            eigen_path.join("operator_setup").join(chain.to_string().to_lowercase()).join("mach-avs/op-sepolia");
         info!("Opting in...");
         debug!("altlayer opt-in: {}", run_path.display());
         // WARN: Changing directory here may not be the best strategy.
@@ -202,7 +212,8 @@ impl AvsVariant for AltLayer {
         if optin.success() {
             Ok(())
         } else {
-            Err(optin.to_string().into())
+            // TODO: Consider a more robust .into()
+            Err(IvyError::CommandError(optin.to_string()))
         }
     }
 

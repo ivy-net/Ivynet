@@ -4,7 +4,7 @@ use ethers::{
     middleware::{signer::SignerMiddlewareError, SignerMiddleware},
     providers::{Http, JsonRpcError, MiddlewareError as _, Provider},
     signers::WalletError,
-    types::Bytes,
+    types::{Bytes, Chain, TryFromPrimitiveError},
     utils::hex::FromHexError,
 };
 use indicatif::style::TemplateError;
@@ -54,6 +54,12 @@ pub enum IvyError {
 
     #[error(transparent)]
     TemplateError(#[from] TemplateError),
+
+    #[error(transparent)]
+    TryFromChainError(#[from] TryFromPrimitiveError<Chain>),
+
+    #[error("Command failed with code:")]
+    CommandError(String),
 
     #[error("Folder inaccesible")]
     DirInaccessible,

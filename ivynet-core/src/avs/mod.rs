@@ -26,10 +26,10 @@ pub type QuorumMinMap = HashMap<Chain, HashMap<QuorumType, U256>>;
 
 use self::contracts::{RegistryCoordinator, RegistryCoordinatorAbi, StakeRegistry, StakeRegistryAbi};
 
+#[allow(dead_code)] // TODO: use or remove registry coordinator
 pub struct AvsProvider<T: AvsVariant> {
     avs: T,
-    provider: Arc<IvyProvider>, // This can also be accessed by registry_coordinator_signer.client, only
-    // reproduced here for clarity
+    provider: Arc<IvyProvider>,
     stake_registry: StakeRegistry,
     registry_coordinator: RegistryCoordinator,
     env_path: PathBuf,
@@ -62,7 +62,7 @@ impl<T: AvsVariant> AvsProvider<T> {
         // }
 
         self.avs.setup(self.env_path.clone()).await?;
-        self.avs.build_env(self.env_path.clone(), chain, config).await?;
+        self.avs.build_env(self.env_path.clone(), self.provider.clone(), config).await?;
         self.avs.optin(quorums, self.env_path.clone(), config.default_private_keyfile.clone(), chain).await?;
         Ok(())
     }
@@ -92,7 +92,12 @@ impl<T: AvsVariant> AvsProvider<T> {
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 pub trait AvsVariant {
     async fn setup(&self, env_path: PathBuf) -> Result<(), IvyError>;
-    async fn build_env(&self, env_path: PathBuf, chain: Chain, config: &IvyConfig) -> Result<(), IvyError>;
+    async fn build_env(
+        &self,
+        env_path: PathBuf,
+        provider: Arc<IvyProvider>,
+        config: &IvyConfig,
+    ) -> Result<(), IvyError>;
     //fn validate_install();
     fn validate_node_size(&self, quorum_percentage: U256, bandwidth: u32) -> Result<bool, IvyError>;
     async fn optin(

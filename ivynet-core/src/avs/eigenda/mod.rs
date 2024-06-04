@@ -1,19 +1,21 @@
 use dialoguer::{Input, Password};
-use ethers::types::{Address, Chain, H160, U256};
+use ethers::{
+    signers::Signer,
+    types::{Address, Chain, H160, U256},
+};
 use ivynet_macros::h160;
 use std::{
-    collections::HashMap,
     fmt::Display,
     fs::{self, File},
     io::{copy, BufReader},
     path::PathBuf,
     process::Command,
+    sync::Arc,
 };
 use thiserror::Error as ThisError;
 use tracing::{debug, error, info};
 use zip::read::ZipArchive;
 
-use crate::env_parser::EnvLines;
 use crate::config::{self, IvyConfig};
 use crate::error::IvyError;
 use crate::{
@@ -23,8 +25,8 @@ use crate::{
         node_classes::{self, NodeClass},
         quorum::QuorumType,
     },
-    rpc_management,
 };
+use crate::{env_parser::EnvLines, rpc_management::IvyProvider};
 use async_trait::async_trait;
 
 #[derive(Debug)]
@@ -77,7 +79,15 @@ impl AvsVariant for EigenDA {
 
     // TODO: method is far too complex, this should be compartmentalized so that we can be sure
     // that general eigenlayer envs are sufficiently decoupled from specific AVS envs
-    async fn build_env(&self, env_path: PathBuf, chain: Chain, config: &IvyConfig) -> Result<(), IvyError> {
+    async fn build_env(
+        &self,
+        env_path: PathBuf,
+        provider: Arc<IvyProvider>,
+        config: &IvyConfig,
+    ) -> Result<(), IvyError> {
+        let chain = Chain::try_from(provider.signer().chain_id())?;
+        let rpc_url = config.get_rpc_url(chain);
+
         let run_script_path = env_path.join("eigenda_operator_setup");
         let run_script_path = match chain {
             Chain::Mainnet => run_script_path.join("mainnet"),
@@ -111,7 +121,7 @@ impl AvsVariant for EigenDA {
             let mut env_lines = EnvLines::load(&env_path)?;
             let node_hostname = reqwest::get("https://api.ipify.org").await?.text().await?;
 
-            let rpc_url = CONFIG.lock()?.get_rpc_url(network)?;
+            let rpc_url = config.get_rpc_url(chain)?;
 
             let home_dir = dirs::home_dir().expect("Could not get home directory");
             let home_str = home_dir.to_str().expect("Could not get home directory");
@@ -293,7 +303,7 @@ pub async fn download_g1_g2(eigen_path: PathBuf) -> Result<(), IvyError> {
     if g1_file_path.exists() {
         info!("The 'g1.point' file already exists.");
     } else {
-        info!("Downloading 'g1.point' ...");
+        info!("Downloading 'g1.point'  to {}", g1_file_path.display());
         dl_progress_bar("https://srs-mainnet.s3.amazonaws.com/kzg/g1.point", g1_file_path).await?;
     }
     if g2_file_path.exists() {
@@ -309,7 +319,7 @@ pub async fn download_operator_setup(eigen_path: PathBuf) -> Result<(), IvyError
     let mut setup = false;
     let repo_url = "https://github.com/ivy-net/eigenda-operator-setup/archive/refs/heads/master.zip";
     let temp_path = eigen_path.join("temp");
-    let destination_path = eigen_path.join("operator_setup");
+    let destination_path = eigen_path.join("eigenda_operator_setup");
     if destination_path.exists() {
         let reset_string: String = Input::new()
             .with_prompt("The operator setup directory already exists. Redownload? (y/n)")
