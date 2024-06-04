@@ -1,4 +1,6 @@
 use ethers::types::Address;
+use ethers::types::H160;
+use ivynet_macros::h160;
 use once_cell::sync::Lazy;
 use std::error::Error;
 
@@ -6,17 +8,17 @@ use super::{EigenStrategy, Strategy, StrategyError};
 
 pub static HOLESKY_LST_STRATEGIES: Lazy<Vec<Strategy>> = Lazy::new(|| {
     vec![
-        Strategy::new("Steth", "0x7d704507b76571a51d9cae8addabbfd0ba0e63d3".parse().unwrap()),
-        Strategy::new("Reth", "0x3A8fBdf9e77DFc25d09741f51d3E181b25d0c4E0".parse().unwrap()),
-        Strategy::new("Weth", "0x80528D6e9A2BAbFc766965E0E26d5aB08D9CFaF9".parse().unwrap()),
-        Strategy::new("Lseth", "0x05037A81BD7B4C9E0F7B430f1F2A22c31a2FD943".parse().unwrap()),
-        Strategy::new("Sfrxeth", "0x9281ff96637710Cd9A5CAcce9c6FAD8C9F54631c".parse().unwrap()),
-        Strategy::new("Ethx", "0x31B6F59e1627cEfC9fA174aD03859fC337666af7".parse().unwrap()),
-        Strategy::new("Oseth", "0x46281E3B7fDcACdBa44CADf069a94a588Fd4C6Ef".parse().unwrap()),
-        Strategy::new("Cbeth", "0x70EB4D3c164a6B4A5f908D4FBb5a9cAfFb66bAB6".parse().unwrap()),
-        Strategy::new("Meth", "0xaccc5A86732BE85b5012e8614AF237801636F8e5".parse().unwrap()),
-        Strategy::new("Ankreth", "0x7673a47463F80c6a3553Db9E54c8cDcd5313d0ac".parse().unwrap()),
-        Strategy::new("BeaconEth", "0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0".parse().unwrap()),
+        Strategy::new("Steth", h160!(0x7d704507b76571a51d9cae8addabbfd0ba0e63d3)),
+        Strategy::new("Reth", h160!(0x3A8fBdf9e77DFc25d09741f51d3E181b25d0c4E0)),
+        Strategy::new("Weth", h160!(0x80528D6e9A2BAbFc766965E0E26d5aB08D9CFaF9)),
+        Strategy::new("Lseth", h160!(0x05037A81BD7B4C9E0F7B430f1F2A22c31a2FD943)),
+        Strategy::new("Sfrxeth", h160!(0x9281ff96637710Cd9A5CAcce9c6FAD8C9F54631c)),
+        Strategy::new("Ethx", h160!(0x31B6F59e1627cEfC9fA174aD03859fC337666af7)),
+        Strategy::new("Oseth", h160!(0x46281E3B7fDcACdBa44CADf069a94a588Fd4C6Ef)),
+        Strategy::new("Cbeth", h160!(0x70EB4D3c164a6B4A5f908D4FBb5a9cAfFb66bAB6)),
+        Strategy::new("Meth", h160!(0xaccc5A86732BE85b5012e8614AF237801636F8e5)),
+        Strategy::new("Ankreth", h160!(0x7673a47463F80c6a3553Db9E54c8cDcd5313d0ac)),
+        Strategy::new("BeaconEth", h160!(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0)),
     ]
 });
 
@@ -61,17 +63,17 @@ impl EigenStrategy for HoleskyLstStrategies {
     // expensive.
     fn address(&self) -> Address {
         match self {
-            HoleskyLstStrategies::Steth => "0x7d704507b76571a51d9cae8addabbfd0ba0e63d3".parse().unwrap(),
-            HoleskyLstStrategies::Reth => "0x3A8fBdf9e77DFc25d09741f51d3E181b25d0c4E0".parse().unwrap(),
-            HoleskyLstStrategies::Weth => "0x80528D6e9A2BAbFc766965E0E26d5aB08D9CFaF9".parse().unwrap(),
-            HoleskyLstStrategies::Lseth => "0x05037A81BD7B4C9E0F7B430f1F2A22c31a2FD943".parse().unwrap(),
-            HoleskyLstStrategies::Sfrxeth => "0x9281ff96637710Cd9A5CAcce9c6FAD8C9F54631c".parse().unwrap(),
-            HoleskyLstStrategies::Ethx => "0x31B6F59e1627cEfC9fA174aD03859fC337666af7".parse().unwrap(),
-            HoleskyLstStrategies::Oseth => "0x46281E3B7fDcACdBa44CADf069a94a588Fd4C6Ef".parse().unwrap(),
-            HoleskyLstStrategies::Cbeth => "0x70EB4D3c164a6B4A5f908D4FBb5a9cAfFb66bAB6".parse().unwrap(),
-            HoleskyLstStrategies::Meth => "0xaccc5A86732BE85b5012e8614AF237801636F8e5".parse().unwrap(),
-            HoleskyLstStrategies::Ankreth => "0x7673a47463F80c6a3553Db9E54c8cDcd5313d0ac".parse().unwrap(),
-            HoleskyLstStrategies::BeaconEth => "0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0".parse().unwrap(),
+            HoleskyLstStrategies::Steth => h160!(0x7d704507b76571a51d9cae8addabbfd0ba0e63d3),
+            HoleskyLstStrategies::Reth => h160!(0x3A8fBdf9e77DFc25d09741f51d3E181b25d0c4E0),
+            HoleskyLstStrategies::Weth => h160!(0x80528D6e9A2BAbFc766965E0E26d5aB08D9CFaF9),
+            HoleskyLstStrategies::Lseth => h160!(0x05037A81BD7B4C9E0F7B430f1F2A22c31a2FD943),
+            HoleskyLstStrategies::Sfrxeth => h160!(0x9281ff96637710Cd9A5CAcce9c6FAD8C9F54631c),
+            HoleskyLstStrategies::Ethx => h160!(0x31B6F59e1627cEfC9fA174aD03859fC337666af7),
+            HoleskyLstStrategies::Oseth => h160!(0x46281E3B7fDcACdBa44CADf069a94a588Fd4C6Ef),
+            HoleskyLstStrategies::Cbeth => h160!(0x70EB4D3c164a6B4A5f908D4FBb5a9cAfFb66bAB6),
+            HoleskyLstStrategies::Meth => h160!(0xaccc5A86732BE85b5012e8614AF237801636F8e5),
+            HoleskyLstStrategies::Ankreth => h160!(0x7673a47463F80c6a3553Db9E54c8cDcd5313d0ac),
+            HoleskyLstStrategies::BeaconEth => h160!(0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0),
         }
     }
 }

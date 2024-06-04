@@ -1,13 +1,16 @@
 use dialoguer::{Input, Password};
-use ethers::types::{Address, Chain, H160, U256};
+use ethers::{
+    signers::Signer,
+    types::{Address, Chain, H160, U256},
+};
 use ivynet_macros::h160;
 use std::{
-    collections::HashMap,
     fmt::Display,
     fs::{self, File},
     io::{copy, BufReader},
     path::PathBuf,
     process::Command,
+    sync::Arc,
 };
 use thiserror::Error as ThisError;
 use tracing::{debug, error, info};
@@ -22,8 +25,8 @@ use crate::{
         node_classes::{self, NodeClass},
         quorum::QuorumType,
     },
-    env::edit_env_vars,
 };
+use crate::{env_parser::EnvLines, rpc_management::IvyProvider};
 use async_trait::async_trait;
 
 #[derive(Debug)]
@@ -76,8 +79,16 @@ impl AvsVariant for EigenDA {
 
     // TODO: method is far too complex, this should be compartmentalized so that we can be sure
     // that general eigenlayer envs are sufficiently decoupled from specific AVS envs
-    async fn build_env(&self, env_path: PathBuf, chain: Chain, config: &IvyConfig) -> Result<(), IvyError> {
-        let run_script_path = env_path.join("operator_setup");
+    async fn build_env(
+        &self,
+        env_path: PathBuf,
+        provider: Arc<IvyProvider>,
+        config: &IvyConfig,
+    ) -> Result<(), IvyError> {
+        let chain = Chain::try_from(provider.signer().chain_id())?;
+        let rpc_url = config.get_rpc_url(chain)?;
+
+        let run_script_path = env_path.join("eigenda_operator_setup");
         let run_script_path = match chain {
             Chain::Mainnet => run_script_path.join("mainnet"),
             Chain::Holesky => run_script_path.join("holesky"),
@@ -107,16 +118,11 @@ impl AvsVariant for EigenDA {
 
         if set_vars {
             debug!("Setting env vars");
-            let mut env_values: HashMap<&str, &str> = HashMap::new();
+            let mut env_lines = EnvLines::load(&env_path)?;
             let node_hostname = reqwest::get("https://api.ipify.org").await?.text().await?;
-            env_values.insert("NODE_HOSTNAME", &node_hostname);
 
-            let rpc_url = config.get_rpc_url(chain)?;
-            env_values.insert("NODE_CHAIN_RPC", &rpc_url);
-
-            let home_dir = dirs::home_dir().unwrap();
+            let home_dir = dirs::home_dir().expect("Could not get home directory");
             let home_str = home_dir.to_str().expect("Could not get home directory");
-            env_values.insert("USER_HOME", home_str);
 
             let bls_key_name: String = Input::new()
             .with_prompt(
@@ -124,21 +130,24 @@ impl AvsVariant for EigenDA {
             )
             .interact_text()?;
 
-            let mut bls_json_file_location = dirs::home_dir().expect("Could not get home directory");
+            let mut bls_json_file_location = dirs::home_dir().expect("Could not get home dir");
             bls_json_file_location.push(".eigenlayer/operator_keys");
             bls_json_file_location.push(bls_key_name);
             bls_json_file_location.set_extension("bls.key.json");
             info!("BLS key file location: {:?}", bls_json_file_location);
-            env_values.insert(
-                "NODE_BLS_KEY_FILE_HOST",
-                bls_json_file_location.to_str().expect("Could not get BLS key file location"),
-            );
 
             let bls_password: String =
                 Password::new().with_prompt("Input the password for your BLS key file").interact()?;
-            env_values.insert("NODE_BLS_KEY_PASSWORD", &bls_password);
 
-            edit_env_vars(env_path.to_str().unwrap(), env_values)?;
+            env_lines.set("NODE_HOSTNAME", &node_hostname);
+            env_lines.set("NODE_CHAIN_RPC", &rpc_url);
+            env_lines.set("USER_HOME", home_str);
+            env_lines.set(
+                "NODE_BLS_KEY_FILE_HOST",
+                bls_json_file_location.to_str().expect("Could not get BLS key file location"),
+            );
+            env_lines.set("NODE_BLS_KEY_PASSWORD", &bls_password);
+            env_lines.save(&env_path)?;
         }
 
         Ok(())
@@ -155,27 +164,27 @@ impl AvsVariant for EigenDA {
             x if x < U256::from(3) => {
                 // NOTE: Should these be || operators?
                 if class >= NodeClass::LRG || bandwidth >= 1 || disk_info >= 20000000000 {
-                    acceptable = true
+                    acceptable = true;
                 }
             }
             x if x < U256::from(20) => {
                 if class >= NodeClass::XL || bandwidth >= 1 || disk_info >= 150000000000 {
-                    acceptable = true
+                    acceptable = true;
                 }
             }
             x if x < U256::from(100) => {
                 if class >= NodeClass::FOURXL || bandwidth >= 3 || disk_info >= 750000000000 {
-                    acceptable = true
+                    acceptable = true;
                 }
             }
             x if x < U256::from(1000) => {
                 if class >= NodeClass::FOURXL || bandwidth >= 25 || disk_info >= 4000000000000 {
-                    acceptable = true
+                    acceptable = true;
                 }
             }
             x if x > U256::from(2000) => {
                 if class >= NodeClass::FOURXL || bandwidth >= 50 || disk_info >= 8000000000000 {
-                    acceptable = true
+                    acceptable = true;
                 }
             }
             _ => {}
@@ -194,7 +203,7 @@ impl AvsVariant for EigenDA {
         let quorum_str: Vec<String> = quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
         let quorum_str = quorum_str.join(",");
 
-        let run_script_path = eigen_path.join("operator_setup");
+        let run_script_path = eigen_path.join("eigenda_operator_setup");
         let run_script_path = match chain {
             Chain::Mainnet => run_script_path.join("mainnet"),
             Chain::Holesky => run_script_path.join("holesky"),
@@ -218,7 +227,7 @@ impl AvsVariant for EigenDA {
 
         info!("Booting quorums: {:#?}", quorums);
 
-        debug!("{} | {} | {}", run_script_path.display(), private_keyfile.display(), quorum_str);
+        debug!("{} |  {}", run_script_path.display(), quorum_str);
 
         let optin = Command::new("sh")
             .arg(run_script_path)
@@ -286,13 +295,13 @@ impl AvsVariant for EigenDA {
 
 /// Downloads eigenDA node resources
 pub async fn download_g1_g2(eigen_path: PathBuf) -> Result<(), IvyError> {
-    let resources_dir = eigen_path.join("operator_setup/resources");
+    let resources_dir = eigen_path.join("eigenda_operator_setup/resources");
     let g1_file_path = resources_dir.join("g1.point");
     let g2_file_path = resources_dir.join("g2.point.PowerOf2");
     if g1_file_path.exists() {
         info!("The 'g1.point' file already exists.");
     } else {
-        info!("Downloading 'g1.point' ...");
+        info!("Downloading 'g1.point'  to {}", g1_file_path.display());
         dl_progress_bar("https://srs-mainnet.s3.amazonaws.com/kzg/g1.point", g1_file_path).await?;
     }
     if g2_file_path.exists() {
@@ -308,7 +317,7 @@ pub async fn download_operator_setup(eigen_path: PathBuf) -> Result<(), IvyError
     let mut setup = false;
     let repo_url = "https://github.com/ivy-net/eigenda-operator-setup/archive/refs/heads/master.zip";
     let temp_path = eigen_path.join("temp");
-    let destination_path = eigen_path.join("operator_setup");
+    let destination_path = eigen_path.join("eigenda_operator_setup");
     if destination_path.exists() {
         let reset_string: String = Input::new()
             .with_prompt("The operator setup directory already exists. Redownload? (y/n)")

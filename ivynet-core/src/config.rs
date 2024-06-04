@@ -3,20 +3,18 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use sysinfo::{Disks, System};
 
-use crate::error::IvyError;
+use crate::{error::IvyError, metadata::Metadata};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct IvyConfig {
-    // Mainnet rpc url
     pub mainnet_rpc_url: String,
-    // Mainnet rpc url
     pub holesky_rpc_url: String,
-    // Mainnet rpc url
     pub local_rpc_url: String,
-    // Default private key file full path
+    /// Default private key file full path
     pub default_private_keyfile: PathBuf,
-    // Default public key file full path
+    /// Default public key file full path
     pub default_public_keyfile: PathBuf,
+    pub metadata: Option<Metadata>,
 }
 
 impl Default for IvyConfig {
@@ -25,8 +23,9 @@ impl Default for IvyConfig {
             mainnet_rpc_url: "https://rpc.flashbots.net/fast".to_string(),
             holesky_rpc_url: "https://rpc.holesky.ethpandaops.io".to_string(),
             local_rpc_url: "http://localhost:8545".to_string(),
-            default_private_keyfile: "".into(),
+            default_private_keyfile: "".into(), // TODO: Option
             default_public_keyfile: "".into(),
+            metadata: None,
         }
     }
 }
@@ -39,6 +38,7 @@ impl IvyConfig {
             local_rpc_url: "http://localhost:8545".to_string(),
             default_private_keyfile: "".into(),
             default_public_keyfile: "".into(),
+            ..Default::default()
         }
     }
 

@@ -23,7 +23,7 @@ pub async fn parse_staker_subcommands(subcmd: StakerCommands, config: &IvyConfig
         StakerCommands::GetStakerShares { address } => manager.get_staker_delegatable_shares(address).await?,
         StakerCommands::GetMyShares => {
             let address = IvyWallet::address_from_file(config.default_public_keyfile.clone())?;
-            manager.get_staker_delegatable_shares(address).await?
+            manager.get_staker_delegatable_shares(address).await?;
         }
     }
     Ok(())

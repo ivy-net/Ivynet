@@ -27,7 +27,7 @@ pub async fn parse_operator_subcommands(
         }
         OperatorCommands::Stake { address } => {
             let _stake_map = manager.get_staker_delegatable_shares(address).await?;
-            // TODO! Ok, and what should we do with this map?
+            // TODO: Ok, and what should we do with this map?
         }
         OperatorCommands::Status { address } => {
             manager.get_operator_status(address).await?;
