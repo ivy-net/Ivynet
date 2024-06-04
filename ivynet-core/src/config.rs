@@ -14,7 +14,7 @@ pub struct IvyConfig {
     pub default_private_keyfile: PathBuf,
     /// Default public key file full path
     pub default_public_keyfile: PathBuf,
-    pub metadata: Option<Metadata>,
+    pub metadata: Metadata,
 }
 
 impl Default for IvyConfig {
@@ -25,7 +25,7 @@ impl Default for IvyConfig {
             local_rpc_url: "http://localhost:8545".to_string(),
             default_private_keyfile: "".into(), // TODO: Option
             default_public_keyfile: "".into(),
-            metadata: None,
+            metadata: Metadata::default(),
         }
     }
 }

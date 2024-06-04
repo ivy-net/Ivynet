@@ -10,4 +10,7 @@ pub enum Error {
 
     #[error(transparent)]
     TracingFilterParseError(#[from] tracing_subscriber::filter::ParseError),
+
+    #[error("Metadata Uri Not Found")]
+    MetadataUriNotFoundError,
 }

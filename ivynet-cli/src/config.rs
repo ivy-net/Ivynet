@@ -3,6 +3,7 @@ use dialoguer::{Input, Password};
 use ethers::{types::Chain, utils::hex::ToHex as _};
 use ivynet_core::{
     config::{self, IvyConfig},
+    metadata::{self, Metadata},
     wallet::IvyWallet,
 };
 
@@ -11,7 +12,11 @@ use crate::error::Error;
 #[derive(Parser, Debug, Clone)]
 pub enum ConfigCommands {
     #[command(name = "import-key", about = "Import and save as your default Ethereum private key with a password")]
-    ImportPrivateKey { private_key: String, keyname: Option<String>, password: Option<String> },
+    ImportPrivateKey {
+        private_key: String,
+        keyname: Option<String>,
+        password: Option<String>,
+    },
     #[command(
         name = "create-key",
         about = "Create an Ethereum private key to use with Ivynet and optionally store it with a password"
@@ -30,13 +35,26 @@ pub enum ConfigCommands {
         name = "set-rpc",
         about = "Set default URLs to use when connecting to 'mainnet', 'holesky', and 'local' RPC urls"
     )]
-    SetRpc { network: String, rpc_url: String },
+    SetRpc {
+        network: String,
+        rpc_url: String,
+    },
     #[command(name = "get-rpc", about = "Get the current default RPC URL for 'mainnet', 'holesky', or 'local'")]
-    GetRpc { network: String },
+    GetRpc {
+        network: String,
+    },
     #[command(
         name = "get-sys-info",
         about = "Get the number of CPU cores, memory, and free disk space on the current machine"
     )]
+    #[command(name = "set-metadata", about = "Set metadata")]
+    SetMetadata {
+        metadata_uri: Option<String>,
+        logo_uri: Option<String>,
+        favicon_uri: Option<String>,
+    },
+    #[command(name = "get-metadata", about = "Get metadata")]
+    GetMetadata,
     GetSysInfo,
 }
 
@@ -81,6 +99,16 @@ pub fn parse_config_subcommands(subcmd: ConfigCommands, config: &mut IvyConfig, 
             let pass = Password::new().with_prompt("Enter a password to the private key").interact()?;
             let wallet = IvyWallet::from_keystore(config.default_private_keyfile.clone(), pass)?;
             println!("Private key: {:?}", wallet.to_private_key());
+        }
+        ConfigCommands::SetMetadata { metadata_uri, logo_uri, favicon_uri } => {
+            let metadata_uri = if let Some(a) = metadata_uri { a } else { "".to_string() };
+            let logo_uri = if let Some(a) = logo_uri { a } else { "".to_string() };
+            let favicon_uri = if let Some(a) = favicon_uri { a } else { "".to_string() };
+            config.metadata = Metadata::new(&metadata_uri, &logo_uri, &favicon_uri);
+        }
+        ConfigCommands::GetMetadata => {
+            let metadata = &config.metadata;
+            println!("{metadata:?}");
         }
         ConfigCommands::GetSysInfo => {
             let (cpus, mem_info, disk_info) = config::get_system_information()?;
