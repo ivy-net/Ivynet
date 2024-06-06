@@ -20,6 +20,7 @@ use tracing::{error, info};
 pub mod avs_default;
 pub mod contracts;
 pub mod eigenda;
+pub mod instance;
 pub mod mach_avs;
 
 pub type QuorumMinMap = HashMap<Chain, HashMap<QuorumType, U256>>;
@@ -32,17 +33,16 @@ pub struct AvsProvider<T: AvsVariant> {
     provider: Arc<IvyProvider>,
     stake_registry: StakeRegistry,
     registry_coordinator: RegistryCoordinator,
-    env_path: PathBuf,
 }
 
 impl<T: AvsVariant> AvsProvider<T> {
-    fn new(chain: Chain, avs: T, provider: Arc<IvyProvider>, env_path: PathBuf) -> Self {
+    fn new(chain: Chain, avs: T, provider: Arc<IvyProvider>) -> Self {
         let stake_registry = StakeRegistryAbi::new(avs.stake_registry(chain), provider.clone());
         let registry_coordinator = RegistryCoordinatorAbi::new(avs.registry_coordinator(chain), provider.clone());
-        Self { avs, provider, stake_registry, registry_coordinator, env_path }
+        Self { avs, provider, stake_registry, registry_coordinator }
     }
 
-    pub async fn boot(&self, config: &IvyConfig) -> Result<(), IvyError> {
+    pub async fn opt_in(&self, config: &IvyConfig) -> Result<(), IvyError> {
         let chain = Chain::try_from(self.provider.signer().chain_id()).unwrap_or_default();
         let quorums = self.get_bootable_quorums().await?;
         if quorums.is_empty() {
@@ -51,7 +51,9 @@ impl<T: AvsVariant> AvsProvider<T> {
             return Err(IvyError::NoQuorums);
         }
 
-        fs::create_dir_all(&self.env_path)?;
+        let avs_path = self.avs.path();
+
+        fs::create_dir_all(avs_path.clone())?;
 
         // TODO: likely a function call in registry_coordinator
         // let status = DELEGATION_MANAGER.get_operator_status(self.client.address()).await?;
@@ -61,9 +63,24 @@ impl<T: AvsVariant> AvsProvider<T> {
         //     //Register operator for all quorums they're eligible for
         // }
 
-        self.avs.setup(self.env_path.clone()).await?;
-        self.avs.build_env(self.env_path.clone(), self.provider.clone(), config).await?;
-        self.avs.optin(quorums, self.env_path.clone(), config.default_private_keyfile.clone(), chain).await?;
+        self.avs.setup().await?;
+        self.avs.build_env(self.provider.clone(), config).await?;
+        self.avs.opt_in(quorums, avs_path.clone(), config.default_private_keyfile.clone(), chain).await?;
+        Ok(())
+    }
+
+    pub async fn opt_out(&self, config: &IvyConfig) -> Result<(), IvyError> {
+        let chain = Chain::try_from(self.provider.signer().chain_id()).unwrap_or_default();
+        let quorums = self.get_bootable_quorums().await?;
+        if quorums.is_empty() {
+            error!("Could not launch EgenDA, no bootable quorums found. Exiting...");
+
+            return Err(IvyError::NoQuorums);
+        }
+
+        let avs_path = self.avs.path();
+
+        self.avs.opt_out(quorums, avs_path.clone(), config.default_private_keyfile.clone(), chain).await?;
         Ok(())
     }
 
@@ -91,16 +108,18 @@ impl<T: AvsVariant> AvsProvider<T> {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 pub trait AvsVariant {
-    async fn setup(&self, env_path: PathBuf) -> Result<(), IvyError>;
-    async fn build_env(
-        &self,
-        env_path: PathBuf,
-        provider: Arc<IvyProvider>,
-        config: &IvyConfig,
-    ) -> Result<(), IvyError>;
+    async fn setup(&self) -> Result<(), IvyError>;
+    async fn build_env(&self, provider: Arc<IvyProvider>, config: &IvyConfig) -> Result<(), IvyError>;
     //fn validate_install();
     fn validate_node_size(&self, quorum_percentage: U256, bandwidth: u32) -> Result<bool, IvyError>;
-    async fn optin(
+    async fn opt_in(
+        &self,
+        quorums: Vec<QuorumType>,
+        eigen_path: PathBuf,
+        private_keypath: PathBuf,
+        chain: Chain,
+    ) -> Result<(), IvyError>;
+    async fn opt_out(
         &self,
         quorums: Vec<QuorumType>,
         eigen_path: PathBuf,
@@ -111,4 +130,5 @@ pub trait AvsVariant {
     fn quorum_candidates(&self, chain: Chain) -> Vec<QuorumType>;
     fn stake_registry(&self, chain: Chain) -> Address;
     fn registry_coordinator(&self, chain: Chain) -> Address;
+    fn path(&self) -> PathBuf;
 }

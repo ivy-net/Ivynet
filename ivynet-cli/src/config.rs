@@ -3,7 +3,7 @@ use dialoguer::{Input, Password};
 use ethers::{types::Chain, utils::hex::ToHex as _};
 use ivynet_core::{
     config::{self, IvyConfig},
-    metadata::{self, Metadata},
+    metadata::Metadata,
     wallet::IvyWallet,
 };
 
@@ -55,6 +55,8 @@ pub enum ConfigCommands {
     },
     #[command(name = "get-metadata", about = "Get metadata")]
     GetMetadata,
+    #[command(name = "get-config", about = "Get all config data")]
+    GetConfig,
     GetSysInfo,
 }
 
@@ -109,6 +111,9 @@ pub fn parse_config_subcommands(subcmd: ConfigCommands, config: &mut IvyConfig, 
         ConfigCommands::GetMetadata => {
             let metadata = &config.metadata;
             println!("{metadata:?}");
+        }
+        ConfigCommands::GetConfig => {
+            println!("{config:?}")
         }
         ConfigCommands::GetSysInfo => {
             let (cpus, mem_info, disk_info) = config::get_system_information()?;

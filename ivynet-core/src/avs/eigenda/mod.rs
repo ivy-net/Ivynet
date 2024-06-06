@@ -4,8 +4,8 @@ use ethers::{
     types::{Address, Chain, H160, U256},
 };
 use ivynet_macros::h160;
+use once_cell::sync::Lazy;
 use std::{
-    fmt::Display,
     fs::{self, File},
     io::{copy, BufReader},
     path::PathBuf,
@@ -29,20 +29,10 @@ use crate::{
 use crate::{env_parser::EnvLines, rpc_management::IvyProvider};
 use async_trait::async_trait;
 
-#[derive(Debug)]
-pub enum CoreError {
-    DownloadFailed,
-}
-
-impl Display for CoreError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            CoreError::DownloadFailed => write!(f, "Failed to download resource"),
-        }
-    }
-}
-
-impl std::error::Error for CoreError {}
+pub static EIGENDA_PATH: Lazy<PathBuf> = Lazy::new(|| {
+    let dir = dirs::home_dir().expect("Could not get a home directory");
+    dir.join(".eigenlayer/EigenDA")
+});
 
 #[derive(ThisError, Debug)]
 pub enum EigenDAError {
@@ -50,19 +40,23 @@ pub enum EigenDAError {
     ScriptError(String),
     #[error("Not eligible for Quorum: {0}")]
     QuorumValidationError(QuorumType),
+    #[error("Failed to download resource: {0}")]
+    DownloadFailedError(String),
 }
 
-pub struct EigenDA {}
+pub struct EigenDA {
+    path: PathBuf,
+}
 
 impl EigenDA {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(path: PathBuf) -> Self {
+        Self { path }
     }
 }
 
 impl Default for EigenDA {
     fn default() -> Self {
-        Self::new()
+        Self::new(EIGENDA_PATH.to_path_buf())
     }
 }
 
@@ -71,24 +65,19 @@ impl Default for EigenDA {
 impl AvsVariant for EigenDA {
     // TODO: the env_path should probably be a constant or another constant-like attribute implemented on the
     // singleton struct.
-    async fn setup(&self, env_path: PathBuf) -> Result<(), IvyError> {
-        download_operator_setup(env_path.clone()).await?;
-        download_g1_g2(env_path).await?;
+    async fn setup(&self) -> Result<(), IvyError> {
+        download_operator_setup(self.path.clone()).await?;
+        download_g1_g2(self.path.clone()).await?;
         Ok(())
     }
 
     // TODO: method is far too complex, this should be compartmentalized so that we can be sure
     // that general eigenlayer envs are sufficiently decoupled from specific AVS envs
-    async fn build_env(
-        &self,
-        env_path: PathBuf,
-        provider: Arc<IvyProvider>,
-        config: &IvyConfig,
-    ) -> Result<(), IvyError> {
+    async fn build_env(&self, provider: Arc<IvyProvider>, config: &IvyConfig) -> Result<(), IvyError> {
         let chain = Chain::try_from(provider.signer().chain_id())?;
         let rpc_url = config.get_rpc_url(chain)?;
 
-        let run_script_path = env_path.join("eigenda_operator_setup");
+        let run_script_path = self.path.join("eigenda_operator_setup");
         let run_script_path = match chain {
             Chain::Mainnet => run_script_path.join("mainnet"),
             Chain::Holesky => run_script_path.join("holesky"),
@@ -192,7 +181,7 @@ impl AvsVariant for EigenDA {
         Ok(acceptable)
     }
 
-    async fn optin(
+    async fn opt_in(
         &self,
         quorums: Vec<QuorumType>,
         eigen_path: PathBuf,
@@ -251,6 +240,65 @@ impl AvsVariant for EigenDA {
         }
     }
 
+    async fn opt_out(
+        &self,
+        quorums: Vec<QuorumType>,
+        eigen_path: PathBuf,
+        private_keyfile: PathBuf,
+        chain: Chain,
+    ) -> Result<(), IvyError> {
+        // TODO: This is a very inefficient clone.
+        let quorum_str: Vec<String> = quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
+        let quorum_str = quorum_str.join(",");
+
+        let run_script_path = eigen_path.join("eigenda_operator_setup");
+        let run_script_path = match chain {
+            Chain::Mainnet => run_script_path.join("mainnet"),
+            Chain::Holesky => run_script_path.join("holesky"),
+            _ => todo!("Unimplemented"),
+        };
+
+        let env_path = run_script_path.join(".env");
+        let current_dir = std::env::current_dir()?;
+        let current_env_path = current_dir.join(".env");
+
+        info!("{} | {}", env_path.display(), current_env_path.display());
+
+        // Copy .env file to current directory
+        std::fs::copy(env_path, &current_env_path)?;
+
+        // TODO: This shouldn't happen here! We should already have a wallet in signer
+        let ecdsa_password: String =
+            Password::new().with_prompt("Input the password for your ECDSA key file for quorum opt-in").interact()?;
+
+        let run_script_path = run_script_path.join("run.sh");
+
+        info!("Booting quorums: {:#?}", quorums);
+
+        debug!("{} |  {}", run_script_path.display(), quorum_str);
+
+        let optin = Command::new("sh")
+            .arg(run_script_path)
+            .arg("--operation-type")
+            .arg("opt-out")
+            .arg("--node-ecdsa-key-file-host")
+            .arg(private_keyfile)
+            .arg("--node-ecdsa-key-password")
+            .arg(ecdsa_password)
+            .arg("--quorums")
+            .arg(quorum_str)
+            .status()?;
+
+        // Delete .env file from current directory
+        std::fs::remove_file(current_env_path)?;
+
+        if optin.success() {
+            Ok(())
+        } else {
+            Err(EigenDAError::ScriptError(optin.to_string()).into())
+        }
+    }
+
     // TODO: Should probably be a hashmap
     fn quorum_min(&self, chain: Chain, quorum_type: QuorumType) -> U256 {
         match chain {
@@ -290,6 +338,10 @@ impl AvsVariant for EigenDA {
             Chain::Holesky => h160!(0x53012C69A189cfA2D9d29eb6F19B32e0A2EA3490),
             _ => todo!("Unimplemented"),
         }
+    }
+
+    fn path(&self) -> PathBuf {
+        self.path.clone()
     }
 }
 

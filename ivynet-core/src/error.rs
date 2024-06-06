@@ -67,6 +67,9 @@ pub enum IvyError {
     #[error("Unknown contract error")]
     UnknownContractError,
 
+    #[error("Avs parse error: ensure the name of the requested AVS is valid")]
+    AvsParseError,
+
     #[error("Custom contract error")]
     ContractError(Bytes),
 

@@ -5,6 +5,7 @@ use ethers::{
     types::{Address, Chain, H160, U256},
 };
 use ivynet_macros::h160;
+use once_cell::sync::Lazy;
 use std::{
     env,
     fs::{self, File},
@@ -29,27 +30,41 @@ use crate::{
     rpc_management::IvyProvider,
 };
 
-#[derive(Default)]
-pub struct AltLayer {}
+pub static ALTLAYER_PATH: Lazy<PathBuf> = Lazy::new(|| {
+    let dir = dirs::home_dir().expect("Could not get a home directory");
+    dir.join(".eigenlayer/altlayer") // TODO: This may not be correct as mach-avs uses a nested
+                                     // file structure
+});
+
+pub struct AltLayer {
+    path: PathBuf,
+}
+
+impl AltLayer {
+    pub fn new(path: PathBuf) -> Self {
+        Self { path }
+    }
+}
+
+impl Default for AltLayer {
+    fn default() -> Self {
+        Self::new(ALTLAYER_PATH.to_path_buf())
+    }
+}
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl AvsVariant for AltLayer {
-    async fn setup(&self, env_path: std::path::PathBuf) -> Result<(), IvyError> {
-        download_operator_setup(env_path.clone()).await?;
+    async fn setup(&self) -> Result<(), IvyError> {
+        download_operator_setup(self.path.clone()).await?;
         Ok(())
     }
 
-    async fn build_env(
-        &self,
-        env_path: PathBuf,
-        provider: Arc<IvyProvider>,
-        config: &IvyConfig,
-    ) -> Result<(), IvyError> {
+    async fn build_env(&self, provider: Arc<IvyProvider>, config: &IvyConfig) -> Result<(), IvyError> {
         let chain = Chain::try_from(provider.signer().chain_id())?;
         let ecdsa_address = provider.address();
 
-        let run_script_path = env_path.join("eigenda_operator_setup");
+        let run_script_path = self.path.join("eigenda_operator_setup");
         let run_script_path = match chain {
             Chain::Mainnet => run_script_path.join("mainnet"),
             Chain::Holesky => run_script_path.join("holesky"),
@@ -194,7 +209,7 @@ impl AvsVariant for AltLayer {
     }
 
     /// Currently, AltLayer Mach AVS is operating in allowlist mode only: https://docs.altlayer.io/altlayer-documentation/altlayer-facilitated-actively-validated-services/xterio-mach-avs-for-xterio-chain/operator-guide
-    async fn optin(
+    async fn opt_in(
         &self,
         _quorums: Vec<QuorumType>,
         eigen_path: PathBuf,
@@ -215,6 +230,16 @@ impl AvsVariant for AltLayer {
             // TODO: Consider a more robust .into()
             Err(IvyError::CommandError(optin.to_string()))
         }
+    }
+
+    async fn opt_out(
+        &self,
+        _quorums: Vec<QuorumType>,
+        eigen_path: PathBuf,
+        _private_keyfile: PathBuf,
+        chain: Chain,
+    ) -> Result<(), IvyError> {
+        todo!()
     }
 
     /// Quorum stake requirements can be found in the AltLayer docs: https://docs.altlayer.io/altlayer-documentation/altlayer-facilitated-actively-validated-services/xterio-mach-avs-for-xterio-chain/operator-guide
@@ -257,6 +282,10 @@ impl AvsVariant for AltLayer {
             Chain::Holesky => h160!(0x1eA7D160d325B289bF981e0D7aB6Bf3261a0FFf2),
             _ => todo!("Unimplemented"),
         }
+    }
+
+    fn path(&self) -> PathBuf {
+        self.path.clone()
     }
 }
 
