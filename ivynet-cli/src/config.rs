@@ -1,8 +1,8 @@
 use clap::Parser;
 use dialoguer::{Input, Password};
-use ethers::{types::Chain, utils::hex::ToHex as _};
 use ivynet_core::{
     config::{self, IvyConfig},
+    ethers::{types::Chain, utils::hex::ToHex as _},
     wallet::IvyWallet,
 };
 

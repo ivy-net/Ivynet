@@ -1,8 +1,10 @@
 use clap::Parser;
 
-use ethers::types::{Address, Chain};
 use ivynet_core::{
-    config::IvyConfig, eigen::delegation_manager::DelegationManager, rpc_management::connect_provider,
+    config::IvyConfig,
+    eigen::delegation_manager::DelegationManager,
+    ethers::types::{Address, Chain},
+    rpc_management::connect_provider,
     wallet::IvyWallet,
 };
 

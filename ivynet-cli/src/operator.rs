@@ -1,6 +1,10 @@
 use clap::Parser;
-use ethers::{core::types::Address, types::Chain};
-use ivynet_core::{config::IvyConfig, eigen::delegation_manager::DelegationManager, rpc_management::connect_provider};
+use ivynet_core::{
+    config::IvyConfig,
+    eigen::delegation_manager::DelegationManager,
+    ethers::{core::types::Address, types::Chain},
+    rpc_management::connect_provider,
+};
 
 use crate::error::Error;
 

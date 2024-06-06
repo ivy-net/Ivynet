@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use sysinfo::{Disks, System};
 
-use crate::{error::IvyError, metadata::Metadata};
+use crate::{error::IvyError, metadata::Metadata, wallet::IvyWallet};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct IvyConfig {
@@ -15,10 +15,13 @@ pub struct IvyConfig {
     /// Default public key file full path
     pub default_public_keyfile: PathBuf,
     pub metadata: Option<Metadata>,
+    // Identification key that node uses for server communications
+    pub identity_key: String,
 }
 
 impl Default for IvyConfig {
     fn default() -> Self {
+        let identity_wallet = IvyWallet::new();
         Self {
             mainnet_rpc_url: "https://rpc.flashbots.net/fast".to_string(),
             holesky_rpc_url: "https://rpc.holesky.ethpandaops.io".to_string(),
@@ -26,20 +29,14 @@ impl Default for IvyConfig {
             default_private_keyfile: "".into(), // TODO: Option
             default_public_keyfile: "".into(),
             metadata: None,
+            identity_key: identity_wallet.to_private_key(),
         }
     }
 }
 
 impl IvyConfig {
     pub fn new() -> Self {
-        Self {
-            mainnet_rpc_url: "https://rpc.flashbots.net/fast".to_string(),
-            holesky_rpc_url: "https://rpc.holesky.ethpandaops.io".to_string(),
-            local_rpc_url: "http://localhost:8545".to_string(),
-            default_private_keyfile: "".into(),
-            default_public_keyfile: "".into(),
-            ..Default::default()
-        }
+        Self::default()
     }
 
     // TODO: Consider making this fallible / requiring an init.
@@ -93,6 +90,10 @@ impl IvyConfig {
 
     pub fn get_path(&self) -> Result<PathBuf, IvyError> {
         Ok(confy::get_configuration_file_path("ivy", "ivy-config")?)
+    }
+
+    pub fn identity_wallet(&self) -> Result<IvyWallet, IvyError> {
+        IvyWallet::from_private_key(self.identity_key.clone())
     }
 }
 
