@@ -287,6 +287,25 @@ impl AvsVariant for AltLayer {
     fn path(&self) -> PathBuf {
         self.path.clone()
     }
+
+    async fn start(
+        &self,
+        quorums: Vec<QuorumType>,
+        eigen_path: PathBuf,
+        private_keypath: PathBuf,
+        chain: Chain,
+    ) -> Result<(), IvyError> {
+        todo!()
+    }
+    async fn stop(
+        &self,
+        quorums: Vec<QuorumType>,
+        eigen_path: PathBuf,
+        private_keypath: PathBuf,
+        chain: Chain,
+    ) -> Result<(), IvyError> {
+        todo!()
+    }
 }
 
 pub async fn download_operator_setup(eigen_path: PathBuf) -> Result<(), IvyError> {

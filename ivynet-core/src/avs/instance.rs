@@ -31,6 +31,12 @@ impl AvsVariant for AvsInstance {
         }
         Ok(())
     }
+    fn validate_node_size(&self, quorum_percentage: U256, bandwidth: u32) -> Result<bool, IvyError> {
+        match self {
+            AvsInstance::EigenDA(avs) => avs.validate_node_size(quorum_percentage, bandwidth),
+            AvsInstance::AltLayer(avs) => avs.validate_node_size(quorum_percentage, bandwidth),
+        }
+    }
     async fn opt_in(
         &self,
         quorums: Vec<QuorumType>,
@@ -55,10 +61,28 @@ impl AvsVariant for AvsInstance {
             AvsInstance::AltLayer(avs) => avs.opt_out(quorums, eigen_path, private_keypath, chain).await,
         }
     }
-    fn validate_node_size(&self, quorum_percentage: U256, bandwidth: u32) -> Result<bool, IvyError> {
+    async fn start(
+        &self,
+        quorums: Vec<QuorumType>,
+        eigen_path: PathBuf,
+        private_keypath: PathBuf,
+        chain: Chain,
+    ) -> Result<(), IvyError> {
         match self {
-            AvsInstance::EigenDA(avs) => avs.validate_node_size(quorum_percentage, bandwidth),
-            AvsInstance::AltLayer(avs) => avs.validate_node_size(quorum_percentage, bandwidth),
+            AvsInstance::EigenDA(avs) => avs.start(quorums, eigen_path, private_keypath, chain).await,
+            AvsInstance::AltLayer(avs) => avs.start(quorums, eigen_path, private_keypath, chain).await,
+        }
+    }
+    async fn stop(
+        &self,
+        quorums: Vec<QuorumType>,
+        eigen_path: PathBuf,
+        private_keypath: PathBuf,
+        chain: Chain,
+    ) -> Result<(), IvyError> {
+        match self {
+            AvsInstance::EigenDA(avs) => avs.stop(quorums, eigen_path, private_keypath, chain).await,
+            AvsInstance::AltLayer(avs) => avs.stop(quorums, eigen_path, private_keypath, chain).await,
         }
     }
     fn quorum_min(&self, chain: Chain, quorum_type: QuorumType) -> U256 {

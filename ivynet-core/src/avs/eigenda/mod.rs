@@ -181,6 +181,75 @@ impl AvsVariant for EigenDA {
         Ok(acceptable)
     }
 
+    async fn start(
+        &self,
+        quorums: Vec<QuorumType>,
+        eigen_path: PathBuf,
+        private_keyfile: PathBuf,
+        chain: Chain,
+    ) -> Result<(), IvyError> {
+        // TODO: This is a very inefficient clone.
+        let quorum_str: Vec<String> = quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
+        let quorum_str = quorum_str.join(",");
+
+        let run_script_path = eigen_path.join("eigenda_operator_setup");
+        let run_script_path = match chain {
+            Chain::Mainnet => run_script_path.join("mainnet"),
+            Chain::Holesky => run_script_path.join("holesky"),
+            _ => todo!("Unimplemented"),
+        };
+
+        let env_path = run_script_path.join(".env");
+        let current_dir = std::env::current_dir()?;
+        let current_env_path = current_dir.join(".env");
+
+        info!("{} | {}", env_path.display(), current_env_path.display());
+
+        // Copy .env file to current directory
+        std::fs::copy(env_path, &current_env_path)?;
+
+        // TODO: This shouldn't happen here! We should already have a wallet in signer
+        let ecdsa_password: String =
+            Password::new().with_prompt("Input the password for your ECDSA key file for quorum opt-in").interact()?;
+
+        let run_script_path = run_script_path.join("run.sh");
+
+        info!("Booting quorums: {:#?}", quorums);
+
+        debug!("{} |  {}", run_script_path.display(), quorum_str);
+
+        let optin = Command::new("sh")
+            .arg(run_script_path)
+            .arg("--operation-type")
+            .arg("opt-in")
+            .arg("--node-ecdsa-key-file-host")
+            .arg(private_keyfile)
+            .arg("--node-ecdsa-key-password")
+            .arg(ecdsa_password)
+            .arg("--quorums")
+            .arg(quorum_str)
+            .status()?;
+
+        // Delete .env file from current directory
+        std::fs::remove_file(current_env_path)?;
+
+        if optin.success() {
+            Ok(())
+        } else {
+            Err(EigenDAError::ScriptError(optin.to_string()).into())
+        }
+    }
+
+    async fn stop(
+        &self,
+        quorums: Vec<QuorumType>,
+        eigen_path: PathBuf,
+        private_keyfile: PathBuf,
+        chain: Chain,
+    ) -> Result<(), IvyError> {
+        todo!()
+    }
+
     async fn opt_in(
         &self,
         quorums: Vec<QuorumType>,

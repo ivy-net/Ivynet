@@ -1,14 +1,23 @@
 use clap::Parser;
 
 use ethers::types::Chain;
-use ivynet_core::{avs, config::IvyConfig};
+use ivynet_core::{
+    config::IvyConfig,
+    server::{handle_avs_command, AvsHandleCommands},
+};
 
 use crate::error::Error;
 
 #[derive(Parser, Debug, Clone)]
 pub enum AvsCommands {
-    #[command(name = "optin", about = "optin to valid quorums with the given AVS")]
+    #[command(name = "optin", about = "opt in to valid quorums with the given AVS")]
     Optin { avs: String },
+    #[command(name = "optin", about = "opt out of valid quorums with the given AVS")]
+    Optout { avs: String },
+    #[command(name = "start", about = "Start running an AVS node in a docker container")]
+    Start { avs: String },
+    #[command(name = "stop", about = "stop running the active AVS docker container")]
+    Stop { avs: String },
     #[command(
         name = "check-stake-percentage",
         about = "Determine what percentage of the total stake an address would have"
@@ -19,9 +28,11 @@ pub enum AvsCommands {
 pub async fn parse_config_subcommands(subcmd: AvsCommands, config: &IvyConfig, chain: Chain) -> Result<(), Error> {
     // TODO! We need to decrypt wallet here FIRST
     match subcmd {
-        AvsCommands::Optin { avs } => avs::avs_default::opt_in(&avs, chain, config, None).await?,
-        // AvsCommands::opt_out { avs } => avs::avs_default::boot_avs(&avs, chain, config, None).await?,
-        _ => todo!("Unimplemented"),
+        AvsCommands::Optin { avs } => handle_avs_command(AvsHandleCommands::Optin, &avs, config, chain, None).await?,
+        AvsCommands::Optout { avs } => handle_avs_command(AvsHandleCommands::Optout, &avs, config, chain, None).await?,
+        AvsCommands::Start { avs } => handle_avs_command(AvsHandleCommands::Start, &avs, config, chain, None).await?,
+        AvsCommands::Stop { avs } => handle_avs_command(AvsHandleCommands::Start, &avs, config, chain, None).await?,
+        _ => todo!(),
     };
     Ok(())
 }

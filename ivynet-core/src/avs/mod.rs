@@ -17,7 +17,6 @@ use ethers::{
 };
 use tracing::{error, info};
 
-pub mod avs_default;
 pub mod contracts;
 pub mod eigenda;
 pub mod instance;
@@ -36,10 +35,18 @@ pub struct AvsProvider<T: AvsVariant> {
 }
 
 impl<T: AvsVariant> AvsProvider<T> {
-    fn new(chain: Chain, avs: T, provider: Arc<IvyProvider>) -> Self {
+    pub fn new(chain: Chain, avs: T, provider: Arc<IvyProvider>) -> Self {
         let stake_registry = StakeRegistryAbi::new(avs.stake_registry(chain), provider.clone());
         let registry_coordinator = RegistryCoordinatorAbi::new(avs.registry_coordinator(chain), provider.clone());
         Self { avs, provider, stake_registry, registry_coordinator }
+    }
+
+    pub async fn start(&self, config: &IvyConfig) -> Result<(), IvyError> {
+        todo!();
+    }
+
+    pub async fn stop(&self, config: &IvyConfig) -> Result<(), IvyError> {
+        todo!();
     }
 
     pub async fn opt_in(&self, config: &IvyConfig) -> Result<(), IvyError> {
@@ -120,6 +127,20 @@ pub trait AvsVariant {
         chain: Chain,
     ) -> Result<(), IvyError>;
     async fn opt_out(
+        &self,
+        quorums: Vec<QuorumType>,
+        eigen_path: PathBuf,
+        private_keypath: PathBuf,
+        chain: Chain,
+    ) -> Result<(), IvyError>;
+    async fn start(
+        &self,
+        quorums: Vec<QuorumType>,
+        eigen_path: PathBuf,
+        private_keypath: PathBuf,
+        chain: Chain,
+    ) -> Result<(), IvyError>;
+    async fn stop(
         &self,
         quorums: Vec<QuorumType>,
         eigen_path: PathBuf,
