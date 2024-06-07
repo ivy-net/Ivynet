@@ -1,6 +1,8 @@
-use std::fs::File;
-use std::io::{BufRead, BufReader, Write};
-use std::path::Path;
+use std::{
+    fs::File,
+    io::{BufRead, BufReader, Write},
+    path::Path,
+};
 
 use crate::error::IvyError;
 

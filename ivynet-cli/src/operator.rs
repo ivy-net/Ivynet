@@ -30,7 +30,7 @@ pub async fn parse_operator_subcommands(
             manager.get_operator_details(address).await?;
         }
         OperatorCommands::Stake { address } => {
-            let _stake_map = manager.get_staker_delegatable_shares(address).await?;
+            manager.get_staker_delegatable_shares(address).await?;
             // TODO: Ok, and what should we do with this map?
         }
         OperatorCommands::Status { address } => {
