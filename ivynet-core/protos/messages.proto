@@ -8,4 +8,3 @@ message RegistrationCredentials {
     string password = 2;
     bytes public_key = 3;
 }
-
