@@ -9,4 +9,4 @@ pub mod messages {
     tonic::include_proto!("messages");
 }
 
-pub use tonic::Status;
+pub use tonic::{async_trait, Status};
