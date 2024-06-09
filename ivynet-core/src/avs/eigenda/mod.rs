@@ -144,7 +144,7 @@ impl AvsVariant for EigenDA {
 
     // TODO: This method may need to be abstracted in some way, as not all AVS types encforce
     // quorum_pericentage.
-    fn validate_node_size(&self, quorum_percentage: U256, bandwidth: u32) -> Result<bool, IvyError> {
+    fn validate_node_size(&self, quorum_percentage: U256) -> Result<bool, IvyError> {
         let (_, _, disk_info) = config::get_system_information()?;
         let class = node_classes::get_node_class()?;
 
@@ -152,27 +152,27 @@ impl AvsVariant for EigenDA {
         match quorum_percentage {
             x if x < U256::from(3) => {
                 // NOTE: Should these be || operators?
-                if class >= NodeClass::LRG || bandwidth >= 1 || disk_info >= 20000000000 {
+                if class >= NodeClass::LRG || disk_info >= 20000000000 {
                     acceptable = true;
                 }
             }
             x if x < U256::from(20) => {
-                if class >= NodeClass::XL || bandwidth >= 1 || disk_info >= 150000000000 {
+                if class >= NodeClass::XL || disk_info >= 150000000000 {
                     acceptable = true;
                 }
             }
             x if x < U256::from(100) => {
-                if class >= NodeClass::FOURXL || bandwidth >= 3 || disk_info >= 750000000000 {
+                if class >= NodeClass::FOURXL || disk_info >= 750000000000 {
                     acceptable = true;
                 }
             }
             x if x < U256::from(1000) => {
-                if class >= NodeClass::FOURXL || bandwidth >= 25 || disk_info >= 4000000000000 {
+                if class >= NodeClass::FOURXL || disk_info >= 4000000000000 {
                     acceptable = true;
                 }
             }
             x if x > U256::from(2000) => {
-                if class >= NodeClass::FOURXL || bandwidth >= 50 || disk_info >= 8000000000000 {
+                if class >= NodeClass::FOURXL || disk_info >= 8000000000000 {
                     acceptable = true;
                 }
             }

@@ -31,10 +31,10 @@ impl AvsVariant for AvsInstance {
         }
         Ok(())
     }
-    fn validate_node_size(&self, quorum_percentage: U256, bandwidth: u32) -> Result<bool, IvyError> {
+    fn validate_node_size(&self, quorum_percentage: U256) -> Result<bool, IvyError> {
         match self {
-            AvsInstance::EigenDA(avs) => avs.validate_node_size(quorum_percentage, bandwidth),
-            AvsInstance::AltLayer(avs) => avs.validate_node_size(quorum_percentage, bandwidth),
+            AvsInstance::EigenDA(avs) => avs.validate_node_size(quorum_percentage),
+            AvsInstance::AltLayer(avs) => avs.validate_node_size(quorum_percentage),
         }
     }
     async fn opt_in(

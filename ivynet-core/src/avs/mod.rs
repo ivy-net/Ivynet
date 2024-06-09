@@ -113,8 +113,7 @@ impl<T: AvsVariant> AvsProvider<T> {
             info!("Operator shares for quorum {}: {}", quorum_type, total_shares);
             let quorum_total = self.stake_registry.get_current_total_stake(*quorum_type as u8).await?;
             let quorum_percentage = total_shares * 10000 / (total_shares + quorum_total);
-            let bandwidth: u32 = Input::new().with_prompt("Input your bandwidth in mbps").interact_text()?;
-            if self.avs.validate_node_size(quorum_percentage, bandwidth)? {
+            if self.avs.validate_node_size(quorum_percentage)? {
                 quorums_to_boot.push(*quorum_type);
             };
         }
@@ -132,7 +131,7 @@ pub trait AvsVariant {
     /// .env file. Check logs for specific file-paths.
     async fn build_env(&self, provider: Arc<IvyProvider>, config: &IvyConfig) -> Result<(), IvyError>;
     //fn validate_install();
-    fn validate_node_size(&self, quorum_percentage: U256, bandwidth: u32) -> Result<bool, IvyError>;
+    fn validate_node_size(&self, quorum_percentage: U256) -> Result<bool, IvyError>;
     async fn opt_in(
         &self,
         quorums: Vec<QuorumType>,
