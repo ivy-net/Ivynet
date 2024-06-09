@@ -90,6 +90,15 @@ pub enum IvyError {
 
     #[error("Unimplemented")]
     Unimplemented,
+
+    #[error(transparent)]
+    SetupError(#[from] SetupError),
+}
+
+#[derive(Debug, Error)]
+pub enum SetupError {
+    #[error("No .env.example found")]
+    NoEnvExample,
 }
 
 impl From<ContractError<SignerMiddleware<Provider<Http>, IvyWallet>>> for IvyError {

@@ -17,10 +17,10 @@ pub enum AvsInstance {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl AvsVariant for AvsInstance {
-    async fn setup(&self) -> Result<(), IvyError> {
+    async fn setup(&self, provider: Arc<IvyProvider>, config: &IvyConfig) -> Result<(), IvyError> {
         match self {
-            AvsInstance::EigenDA(avs) => avs.setup().await?,
-            AvsInstance::AltLayer(avs) => avs.setup().await?,
+            AvsInstance::EigenDA(avs) => avs.setup(provider, config).await?,
+            AvsInstance::AltLayer(avs) => avs.setup(provider, config).await?,
         }
         Ok(())
     }
@@ -61,28 +61,16 @@ impl AvsVariant for AvsInstance {
             AvsInstance::AltLayer(avs) => avs.opt_out(quorums, eigen_path, private_keypath, chain).await,
         }
     }
-    async fn start(
-        &self,
-        quorums: Vec<QuorumType>,
-        eigen_path: PathBuf,
-        private_keypath: PathBuf,
-        chain: Chain,
-    ) -> Result<(), IvyError> {
+    async fn start(&self, quorums: Vec<QuorumType>, chain: Chain) -> Result<(), IvyError> {
         match self {
-            AvsInstance::EigenDA(avs) => avs.start(quorums, eigen_path, private_keypath, chain).await,
-            AvsInstance::AltLayer(avs) => avs.start(quorums, eigen_path, private_keypath, chain).await,
+            AvsInstance::EigenDA(avs) => avs.start(quorums, chain).await,
+            AvsInstance::AltLayer(avs) => avs.start(quorums, chain).await,
         }
     }
-    async fn stop(
-        &self,
-        quorums: Vec<QuorumType>,
-        eigen_path: PathBuf,
-        private_keypath: PathBuf,
-        chain: Chain,
-    ) -> Result<(), IvyError> {
+    async fn stop(&self, quorums: Vec<QuorumType>, chain: Chain) -> Result<(), IvyError> {
         match self {
-            AvsInstance::EigenDA(avs) => avs.stop(quorums, eigen_path, private_keypath, chain).await,
-            AvsInstance::AltLayer(avs) => avs.stop(quorums, eigen_path, private_keypath, chain).await,
+            AvsInstance::EigenDA(avs) => avs.stop(quorums, chain).await,
+            AvsInstance::AltLayer(avs) => avs.stop(quorums, chain).await,
         }
     }
     fn quorum_min(&self, chain: Chain, quorum_type: QuorumType) -> U256 {

@@ -30,11 +30,7 @@ use crate::{
     rpc_management::IvyProvider,
 };
 
-pub static ALTLAYER_PATH: Lazy<PathBuf> = Lazy::new(|| {
-    let dir = dirs::home_dir().expect("Could not get a home directory");
-    dir.join(".eigenlayer/altlayer") // TODO: This may not be correct as mach-avs uses a nested
-                                     // file structure
-});
+const ALTLAYER_PATH: &str = ".eigenlayer/altlayer";
 
 pub struct AltLayer {
     path: PathBuf,
@@ -48,14 +44,15 @@ impl AltLayer {
 
 impl Default for AltLayer {
     fn default() -> Self {
-        Self::new(ALTLAYER_PATH.to_path_buf())
+        let home_dir = dirs::home_dir().unwrap();
+        Self::new(home_dir.join(ALTLAYER_PATH))
     }
 }
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl AvsVariant for AltLayer {
-    async fn setup(&self) -> Result<(), IvyError> {
+    async fn setup(&self, provider: Arc<IvyProvider>, config: &IvyConfig) -> Result<(), IvyError> {
         download_operator_setup(self.path.clone()).await?;
         Ok(())
     }
@@ -64,7 +61,7 @@ impl AvsVariant for AltLayer {
         let chain = Chain::try_from(provider.signer().chain_id())?;
         let ecdsa_address = provider.address();
 
-        let run_script_path = self.path.join("eigenda_operator_setup");
+        let run_script_path = self.path.join("eigenda-operator-setup");
         let run_script_path = match chain {
             Chain::Mainnet => run_script_path.join("mainnet"),
             Chain::Holesky => run_script_path.join("holesky"),
@@ -288,22 +285,10 @@ impl AvsVariant for AltLayer {
         self.path.clone()
     }
 
-    async fn start(
-        &self,
-        quorums: Vec<QuorumType>,
-        eigen_path: PathBuf,
-        private_keypath: PathBuf,
-        chain: Chain,
-    ) -> Result<(), IvyError> {
+    async fn start(&self, quorums: Vec<QuorumType>, chain: Chain) -> Result<(), IvyError> {
         todo!()
     }
-    async fn stop(
-        &self,
-        quorums: Vec<QuorumType>,
-        eigen_path: PathBuf,
-        private_keypath: PathBuf,
-        chain: Chain,
-    ) -> Result<(), IvyError> {
+    async fn stop(&self, quorums: Vec<QuorumType>, chain: Chain) -> Result<(), IvyError> {
         todo!()
     }
 }

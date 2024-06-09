@@ -10,6 +10,8 @@ use crate::error::Error;
 
 #[derive(Parser, Debug, Clone)]
 pub enum AvsCommands {
+    #[command(name = "setup", about = "opt in to valid quorums with the given AVS")]
+    Setup { avs: String },
     #[command(name = "optin", about = "opt in to valid quorums with the given AVS")]
     Optin { avs: String },
     #[command(name = "optin", about = "opt out of valid quorums with the given AVS")]
@@ -28,6 +30,7 @@ pub enum AvsCommands {
 pub async fn parse_config_subcommands(subcmd: AvsCommands, config: &IvyConfig, chain: Chain) -> Result<(), Error> {
     // TODO! We need to decrypt wallet here FIRST
     match subcmd {
+        AvsCommands::Setup { avs } => handle_avs_command(AvsHandleCommands::Setup, &avs, config, chain, None).await?,
         AvsCommands::Optin { avs } => handle_avs_command(AvsHandleCommands::Optin, &avs, config, chain, None).await?,
         AvsCommands::Optout { avs } => handle_avs_command(AvsHandleCommands::Optout, &avs, config, chain, None).await?,
         AvsCommands::Start { avs } => handle_avs_command(AvsHandleCommands::Start, &avs, config, chain, None).await?,

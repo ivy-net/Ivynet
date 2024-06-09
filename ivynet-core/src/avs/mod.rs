@@ -1,5 +1,3 @@
-use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
-
 use crate::{
     config::IvyConfig,
     eigen::{
@@ -15,6 +13,7 @@ use ethers::{
     signers::Signer,
     types::{Address, Chain, U256},
 };
+use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 use tracing::{error, info};
 
 pub mod contracts;
@@ -41,8 +40,21 @@ impl<T: AvsVariant> AvsProvider<T> {
         Self { avs, provider, stake_registry, registry_coordinator }
     }
 
+    pub async fn setup(&self, config: &IvyConfig) -> Result<(), IvyError> {
+        self.avs.setup(self.provider.clone(), config).await?;
+        info!("setup complete");
+        Ok(())
+    }
+
     pub async fn start(&self, config: &IvyConfig) -> Result<(), IvyError> {
-        todo!();
+        let chain = Chain::try_from(self.provider.signer().chain_id()).unwrap_or_default();
+        let quorums = self.get_bootable_quorums().await?;
+        if quorums.is_empty() {
+            error!("Could not launch EgenDA, no bootable quorums found. Exiting...");
+            return Err(IvyError::NoQuorums);
+        }
+
+        self.avs.start(quorums, chain).await
     }
 
     pub async fn stop(&self, config: &IvyConfig) -> Result<(), IvyError> {
@@ -70,8 +82,6 @@ impl<T: AvsVariant> AvsProvider<T> {
         //     //Register operator for all quorums they're eligible for
         // }
 
-        self.avs.setup().await?;
-        self.avs.build_env(self.provider.clone(), config).await?;
         self.avs.opt_in(quorums, avs_path.clone(), config.default_private_keyfile.clone(), chain).await?;
         Ok(())
     }
@@ -115,7 +125,11 @@ impl<T: AvsVariant> AvsProvider<T> {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 pub trait AvsVariant {
-    async fn setup(&self) -> Result<(), IvyError>;
+    /// Perform all first-time setup steps for a given AVS instance. Includes an internal call to
+    /// build_env
+    async fn setup(&self, provider: Arc<IvyProvider>, config: &IvyConfig) -> Result<(), IvyError>;
+    /// Builds the ENV file for the specific AVS + Chain combination. Writes changes to the local
+    /// .env file. Check logs for specific file-paths.
     async fn build_env(&self, provider: Arc<IvyProvider>, config: &IvyConfig) -> Result<(), IvyError>;
     //fn validate_install();
     fn validate_node_size(&self, quorum_percentage: U256, bandwidth: u32) -> Result<bool, IvyError>;
@@ -133,20 +147,8 @@ pub trait AvsVariant {
         private_keypath: PathBuf,
         chain: Chain,
     ) -> Result<(), IvyError>;
-    async fn start(
-        &self,
-        quorums: Vec<QuorumType>,
-        eigen_path: PathBuf,
-        private_keypath: PathBuf,
-        chain: Chain,
-    ) -> Result<(), IvyError>;
-    async fn stop(
-        &self,
-        quorums: Vec<QuorumType>,
-        eigen_path: PathBuf,
-        private_keypath: PathBuf,
-        chain: Chain,
-    ) -> Result<(), IvyError>;
+    async fn start(&self, quorums: Vec<QuorumType>, chain: Chain) -> Result<(), IvyError>;
+    async fn stop(&self, quorums: Vec<QuorumType>, chain: Chain) -> Result<(), IvyError>;
     fn quorum_min(&self, chain: Chain, quorum_type: QuorumType) -> U256;
     fn quorum_candidates(&self, chain: Chain) -> Vec<QuorumType>;
     fn stake_registry(&self, chain: Chain) -> Address;

@@ -62,7 +62,7 @@ pub async fn handle_avs_command(
     let avs_provider = AvsProvider::new(chain, avs, Arc::new(provider));
 
     match op {
-        AvsHandleCommands::Setup => todo!(),
+        AvsHandleCommands::Setup => avs_provider.setup(config).await?,
         AvsHandleCommands::Start => avs_provider.start(config).await?,
         AvsHandleCommands::Stop => avs_provider.stop(config).await?,
         AvsHandleCommands::Optin => avs_provider.opt_in(config).await?,

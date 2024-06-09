@@ -7,6 +7,7 @@ use tokio::{
     signal::unix::{signal, SignalKind},
     sync::watch,
 };
+use tracing::info;
 
 use crate::error::IvyError;
 
@@ -47,6 +48,7 @@ pub async fn dl_progress_bar(url: &str, file_path: PathBuf) -> Result<(), IvyErr
         pb.set_position(new);
         if *rx.borrow() {
             remove_file(file_path).await?;
+            info!("sigterm recieved, download canceled");
             return Err(IvyError::DownloadInt);
         };
     }
