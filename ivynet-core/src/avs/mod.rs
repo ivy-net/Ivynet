@@ -8,7 +8,6 @@ use crate::{
     rpc_management::IvyProvider,
 };
 use async_trait::async_trait;
-use dialoguer::Input;
 use ethers::{
     signers::Signer,
     types::{Address, Chain, U256},

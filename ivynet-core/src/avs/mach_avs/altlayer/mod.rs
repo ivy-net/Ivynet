@@ -198,7 +198,7 @@ impl AvsVariant for AltLayer {
         Ok(())
     }
 
-    fn validate_node_size(&self, _: U256, _: u32) -> Result<bool, IvyError> {
+    fn validate_node_size(&self, _: U256) -> Result<bool, IvyError> {
         let (_, _, disk_info) = config::get_system_information()?;
         let class = node_classes::get_node_class()?;
         // XL node + 50gb disk space
