@@ -13,6 +13,7 @@ use ethers::{
         Address, H160,
     },
 };
+use tracing::info;
 
 use crate::error::IvyError;
 
@@ -58,6 +59,7 @@ impl IvyWallet {
         let pub_key_path = file_path.join(format!("{name}.txt"));
 
         fs::write(pub_key_path.clone(), self.local_wallet.address())?;
+        info!("keyfile stored to {}", file_path.display());
 
         Ok((pub_key_path, prv_key_path))
     }

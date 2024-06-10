@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use ethers::types::Chain;
 use ivynet_core::config::IvyConfig;
+use tracing::warn;
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 use ivynet_cli::{avs, config, error::Error, operator, staker};
@@ -59,7 +60,10 @@ async fn main() -> Result<(), Error> {
     tracing_subscriber::registry().with(fmt::layer()).with(filter).init();
 
     let mut config = IvyConfig::load();
-    let chain = args.network.parse::<Chain>().expect("Unknown network");
+    let chain = args.network.parse::<Chain>().unwrap_or_else(|_| {
+        warn!("unknown network: {}, defaulting to anvil_hardhat at 31337", args.network);
+        Chain::AnvilHardhat
+    });
 
     match args.cmd {
         Commands::Config { subcmd } => {
