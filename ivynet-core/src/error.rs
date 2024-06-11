@@ -93,6 +93,9 @@ pub enum IvyError {
 
     #[error(transparent)]
     SetupError(#[from] SetupError),
+
+    #[error(transparent)]
+    SerdeJsonError(#[from] serde_json::Error),
 }
 
 #[derive(Debug, Error)]

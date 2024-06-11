@@ -1896,6 +1896,7 @@ dependencies = [
  "once_cell",
  "reqwest 0.12.4",
  "serde",
+ "serde_json",
  "sysinfo",
  "thiserror",
  "tokio",

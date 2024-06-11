@@ -13,9 +13,14 @@ use ethers::{
         Address, H160,
     },
 };
-use tracing::info;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use tracing::{debug, info};
 
-use crate::error::IvyError;
+use crate::{
+    error::IvyError,
+    utils::{read_json, write_json},
+};
 
 #[derive(Clone, Debug)]
 pub struct IvyWallet {
@@ -47,20 +52,22 @@ impl IvyWallet {
 
         fs::create_dir_all(&file_path)?;
 
-        LocalWallet::encrypt_keystore(
+        let encrypt = LocalWallet::encrypt_keystore(
             file_path.clone(),
             &mut thread_rng(),
             self.local_wallet.signer().to_bytes(),
-            password,
+            &password,
             Some(&(name.clone() + ".json")),
         )?;
+        debug!("{:?}", encrypt);
 
         let pub_key_path = file_path.join(format!("{name}.txt"));
         let prv_key_path = file_path.join(format!("{name}.json"));
         let address_write = format!("{:?}", self.local_wallet.address());
 
-        fs::write(pub_key_path.clone(), address_write.strip_prefix("0x").expect("address does not contain 0x prefix"))?;
+        fs::write(pub_key_path.clone(), address_write)?;
         info!("keyfile stored to {}", file_path.display());
+        create_legacy_keyfile(&prv_key_path, &password)?;
 
         Ok((pub_key_path, prv_key_path))
     }
@@ -114,4 +121,32 @@ impl Signer for IvyWallet {
     async fn sign_transaction(&self, message: &TypedTransaction) -> Result<Signature, Self::Error> {
         self.local_wallet.sign_transaction(message).await
     }
+}
+
+pub fn create_legacy_keyfile(path: &PathBuf, password: &str) -> Result<(), IvyError> {
+    debug!("creating legacy keyfile");
+    let wallet = IvyWallet::from_keystore(path.to_owned(), password.to_owned())?;
+    debug!("wallet loaded");
+    let Keyfile { crypto, id, version } = read_json(path.clone())?;
+    let legacy_keyfile = KeyfileLegacy { address: wallet.address(), crypto, id, version };
+    let mut legacy_keyfile_path = path.to_owned();
+    legacy_keyfile_path.set_extension("legacy.json");
+    debug!("{:#?}", legacy_keyfile_path.clone());
+    write_json(legacy_keyfile_path, &legacy_keyfile)?;
+    Ok(())
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct Keyfile {
+    crypto: Value,
+    id: String,
+    version: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct KeyfileLegacy {
+    address: Address,
+    crypto: Value,
+    id: String,
+    version: u32,
 }

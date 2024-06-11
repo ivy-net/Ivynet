@@ -8,4 +8,5 @@ pub mod error;
 pub mod metadata;
 pub mod rpc_management;
 pub mod server;
+pub mod utils;
 pub mod wallet;

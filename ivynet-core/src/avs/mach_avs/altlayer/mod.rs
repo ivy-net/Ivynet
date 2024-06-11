@@ -142,8 +142,9 @@ impl AvsVariant for AltLayer {
             "NODE_BLS_KEY_FILE_HOST",
             bls_json_file_location.to_str().expect("Could not get BLS key file location"),
         );
-        env_lines
-            .set("NODE_ECDSA_KEY_FILE_HOST", config.default_private_keyfile.to_str().expect("Bad private key path"));
+        let mut legacy_keyfile_path = config.default_private_keyfile.clone();
+        legacy_keyfile_path.set_extension("legacy.json");
+        env_lines.set("NODE_ECDSA_KEY_FILE_HOST", legacy_keyfile_path.to_str().expect("Bad private key path"));
         env_lines.set("OPERATOR_BLS_KEY_PASSWORD", &bls_password);
         env_lines.set("OPERATOR_ECDSA_KEY_PASSWORD", &ecdsa_password);
         env_lines.save(&env_path)?;
@@ -160,17 +161,21 @@ impl AvsVariant for AltLayer {
     /// Currently, AltLayer Mach AVS is operating in allowlist mode only: https://docs.altlayer.io/altlayer-documentation/altlayer-facilitated-actively-validated-services/xterio-mach-avs-for-xterio-chain/operator-guide
     async fn opt_in(
         &self,
-        _quorums: Vec<QuorumType>,
+        quorums: Vec<QuorumType>,
         eigen_path: PathBuf,
         _private_keyfile: PathBuf,
         chain: Chain,
     ) -> Result<(), IvyError> {
+        let quorum_str: Vec<String> = quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
+        let quorum_str = quorum_str.join(",");
+
         let run_path = eigen_path
             .join("mach-avs-operator-setup")
             .join(chain.to_string().to_lowercase())
             .join("mach-avs/op-sepolia");
         info!("Opting in...");
         debug!("altlayer opt-in: {}", run_path.display());
+
         // WARN: Changing directory here may not be the best strategy.
         env::set_current_dir(&run_path)?;
         let run_path = run_path.join("run.sh");
@@ -178,7 +183,6 @@ impl AvsVariant for AltLayer {
         if optin.success() {
             Ok(())
         } else {
-            // TODO: Consider a more robust .into()
             Err(IvyError::CommandError(optin.to_string()))
         }
     }
