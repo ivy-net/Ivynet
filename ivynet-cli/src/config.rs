@@ -65,7 +65,7 @@ pub fn parse_config_subcommands(subcmd: ConfigCommands, config: &mut IvyConfig, 
         ConfigCommands::ImportPrivateKey { private_key, keyname, password } => {
             let wallet = IvyWallet::from_private_key(private_key)?;
             let (keyname, pass) = get_credentials(keyname, password);
-            let (prv_key_path, pub_key_path) = wallet.encrypt_and_store(keyname, pass)?;
+            let (pub_key_path, prv_key_path) = wallet.encrypt_and_store(keyname, pass)?;
             config.default_private_keyfile = prv_key_path;
             config.default_public_keyfile = pub_key_path;
         }
@@ -77,7 +77,7 @@ pub fn parse_config_subcommands(subcmd: ConfigCommands, config: &mut IvyConfig, 
             println!("Public Address: {:?}", addr);
             if store {
                 let (keyname, pass) = get_credentials(keyname, password);
-                let (prv_key_path, pub_key_path) = wallet.encrypt_and_store(keyname, pass)?;
+                let (pub_key_path, prv_key_path) = wallet.encrypt_and_store(keyname, pass)?;
                 config.default_private_keyfile = prv_key_path;
                 config.default_public_keyfile = pub_key_path;
             }

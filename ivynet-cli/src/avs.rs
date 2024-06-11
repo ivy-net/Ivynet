@@ -1,10 +1,13 @@
 use clap::Parser;
 
+use dialoguer::Password;
 use ethers::types::Chain;
 use ivynet_core::{
     config::IvyConfig,
     server::{handle_avs_command, AvsHandleCommands},
+    wallet::IvyWallet,
 };
+use tracing::debug;
 
 use crate::error::Error;
 
@@ -28,13 +31,27 @@ pub enum AvsCommands {
 }
 
 pub async fn parse_config_subcommands(subcmd: AvsCommands, config: &IvyConfig, chain: Chain) -> Result<(), Error> {
-    // TODO! We need to decrypt wallet here FIRST
+    // TODO: Remove this prompt from library
+    // Not every AVS instance requires access to a wallet. How best to handle this? Enum variant?
+    let password: String = Password::new().with_prompt("Input the password for your stored keyfile").interact()?;
+    debug!("{password} | {:?}", config.default_private_keyfile.clone());
+    let wallet = IvyWallet::from_keystore(config.default_private_keyfile.clone(), password)?;
     match subcmd {
-        AvsCommands::Setup { avs } => handle_avs_command(AvsHandleCommands::Setup, &avs, config, chain, None).await?,
-        AvsCommands::Optin { avs } => handle_avs_command(AvsHandleCommands::Optin, &avs, config, chain, None).await?,
-        AvsCommands::Optout { avs } => handle_avs_command(AvsHandleCommands::Optout, &avs, config, chain, None).await?,
-        AvsCommands::Start { avs } => handle_avs_command(AvsHandleCommands::Start, &avs, config, chain, None).await?,
-        AvsCommands::Stop { avs } => handle_avs_command(AvsHandleCommands::Start, &avs, config, chain, None).await?,
+        AvsCommands::Setup { avs } => {
+            handle_avs_command(AvsHandleCommands::Setup, &avs, config, chain, Some(wallet)).await?
+        }
+        AvsCommands::Optin { avs } => {
+            handle_avs_command(AvsHandleCommands::Optin, &avs, config, chain, Some(wallet)).await?
+        }
+        AvsCommands::Optout { avs } => {
+            handle_avs_command(AvsHandleCommands::Optout, &avs, config, chain, Some(wallet)).await?
+        }
+        AvsCommands::Start { avs } => {
+            handle_avs_command(AvsHandleCommands::Start, &avs, config, chain, Some(wallet)).await?
+        }
+        AvsCommands::Stop { avs } => {
+            handle_avs_command(AvsHandleCommands::Start, &avs, config, chain, Some(wallet)).await?
+        }
         _ => todo!(),
     };
     Ok(())

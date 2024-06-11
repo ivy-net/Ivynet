@@ -55,10 +55,11 @@ impl IvyWallet {
             Some(&(name.clone() + ".json")),
         )?;
 
-        let prv_key_path = file_path.join(format!("{name}.json"));
         let pub_key_path = file_path.join(format!("{name}.txt"));
+        let prv_key_path = file_path.join(format!("{name}.json"));
+        let address_write = format!("{:?}", self.local_wallet.address());
 
-        fs::write(pub_key_path.clone(), self.local_wallet.address())?;
+        fs::write(pub_key_path.clone(), address_write.strip_prefix("0x").expect("address does not contain 0x prefix"))?;
         info!("keyfile stored to {}", file_path.display());
 
         Ok((pub_key_path, prv_key_path))
