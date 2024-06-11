@@ -5,7 +5,6 @@ use ethers::{
     types::{Address, Chain, H160, U256},
 };
 use ivynet_macros::h160;
-use once_cell::sync::Lazy;
 use std::{
     env,
     fs::{self, File},
@@ -14,7 +13,7 @@ use std::{
     process::Command,
     sync::Arc,
 };
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 use zip::ZipArchive;
 
 use crate::{
@@ -26,11 +25,12 @@ use crate::{
         quorum::QuorumType,
     },
     env_parser::EnvLines,
-    error::IvyError,
+    error::{IvyError, SetupError},
     rpc_management::IvyProvider,
 };
 
 const ALTLAYER_PATH: &str = ".eigenlayer/altlayer";
+const ALTLAYER_REPO_URL: &str = "https://github.com/alt-research/mach-avs-operator-setup/archive/refs/heads/master.zip";
 
 pub struct AltLayer {
     path: PathBuf,
@@ -54,147 +54,99 @@ impl Default for AltLayer {
 impl AvsVariant for AltLayer {
     async fn setup(&self, provider: Arc<IvyProvider>, config: &IvyConfig) -> Result<(), IvyError> {
         download_operator_setup(self.path.clone()).await?;
+        self.build_env(provider, config).await?;
         Ok(())
     }
 
     async fn build_env(&self, provider: Arc<IvyProvider>, config: &IvyConfig) -> Result<(), IvyError> {
         let chain = Chain::try_from(provider.signer().chain_id())?;
-        let ecdsa_address = provider.address();
+        let rpc_url = config.get_rpc_url(chain)?;
 
-        let run_script_path = self.path.join("eigenda-operator-setup");
-        let run_script_path = match chain {
-            Chain::Mainnet => run_script_path.join("mainnet"),
-            Chain::Holesky => run_script_path.join("holesky"),
+        let mach_avs_path = self.path.join("mach-avs-operator-setup");
+        let avs_run_path = match chain {
+            Chain::Mainnet => mach_avs_path.join("mainnet"),
+            Chain::Holesky => mach_avs_path.join("holesky"),
             _ => todo!("Unimplemented"),
         };
 
-        let run_script_path = run_script_path.join("mach-avs/op-sepolia");
+        let avs_run_path = avs_run_path.join("mach-avs/op-sepolia");
+        //
+        // .env
+        //
 
-        let mut set_vars: bool = false;
+        let env_example_path = avs_run_path.join(".env.example");
+        let env_path = avs_run_path.join(".env");
 
-        // env file
-        let env_example_path = run_script_path.join(".env.example");
-        let env_path = run_script_path.join(".env");
-        if env_example_path.exists() && !env_path.exists() {
-            std::fs::copy(env_example_path, env_path.clone())?;
-            info!("Copied '.env.example' to '.env'.");
-            set_vars = true;
-        } else if !env_example_path.exists() {
-            info!("The '.env.example' file does not exist.");
-        } else {
-            info!("The '.env' file already exists.");
-            let reset_string: String = Input::new().with_prompt("Reset env file? (y/n)").interact_text()?;
-            if reset_string == "y" {
-                std::fs::remove_file(env_path.clone())?;
-                std::fs::copy(env_example_path, env_path.clone())?;
-                info!("Copied '.env.example' to '.env'.");
-                set_vars = true;
-            }
+        if !env_example_path.exists() {
+            error!("The '.env.example' file does not exist at {}. '.env.example' is used for .env templating, please ensure the operator-setup was downloaded to the correct location.", env_example_path.display());
+            return Err(SetupError::NoEnvExample.into());
         }
 
-        if set_vars {
-            debug!("Setting env vars");
+        std::fs::copy(env_example_path, env_path.clone())?;
 
-            let mut env_lines = EnvLines::load(&env_path)?;
+        let ecdsa_address = provider.address();
+        debug!("using provider address {ecdsa_address:?}");
 
-            let rpc_url = config.get_rpc_url(chain)?;
+        debug!("configuring env...");
+        let mut env_lines = EnvLines::load(&env_path)?;
 
-            let home_dir = dirs::home_dir().unwrap();
-            let home_str = home_dir.to_str().expect("Could not get home directory");
+        let home_dir = dirs::home_dir().unwrap();
+        let home_str = home_dir.to_str().expect("Could not get home directory");
 
-            // TODO: Resolve
-            debug!("ecdsa address: {:?}", ecdsa_address);
-
-            let bls_key_name: String = Input::new()
+        let bls_key_name: String = Input::new()
             .with_prompt(
                 "Input the name of your BLS key file - looks in .eigenlayer folder (where eigen cli stores the key)",
             )
             .interact_text()?;
 
-            let mut bls_json_file_location = dirs::home_dir().expect("Could not get home directory");
-            bls_json_file_location.push(".eigenlayer/operator_keys");
-            bls_json_file_location.push(bls_key_name);
-            bls_json_file_location.set_extension("bls.key.json");
-            info!("BLS key file location: {:?}", bls_json_file_location);
+        let mut bls_json_file_location = dirs::home_dir().expect("Could not get home directory");
+        bls_json_file_location.push(".eigenlayer/operator_keys");
+        bls_json_file_location.push(bls_key_name);
+        bls_json_file_location.set_extension("bls.key.json");
+        info!("BLS key file location: {:?}", bls_json_file_location);
 
-            let bls_password: String =
-                Password::new().with_prompt("Input the password for your BLS key file").interact()?;
+        let bls_password: String =
+            Password::new().with_prompt("Input the password for your BLS key file").interact()?;
 
-            env_lines.set("USER_HOME", home_str);
-            env_lines.set("ETH_RPC_URL", &rpc_url);
-            env_lines.set("OPERATOR_ECDSA_ADDRESS", &format!("{:?}", ecdsa_address));
-            env_lines.set(
-                "NODE_BLS_KEY_FILE_HOST",
-                bls_json_file_location.to_str().expect("Could not get BLS key file location"),
-            );
-            env_lines.set("OPERATOR_BLS_KEY_PASSWORD", &bls_password);
-            env_lines.save(&env_path)?; //TODO
-        }
+        let node_cache_path = mach_avs_path.join("resources/cache");
 
+        env_lines.set("USER_HOME", home_str);
+        env_lines.set("ETH_RPC_URL", &rpc_url);
+        env_lines.set("OPERATOR_ECDSA_ADDRESS", &format!("{:?}", ecdsa_address));
+        env_lines.set(
+            "NODE_BLS_KEY_FILE_HOST",
+            bls_json_file_location.to_str().expect("Could not get BLS key file location"),
+        );
+        env_lines.set("OPERATOR_BLS_KEY_PASSWORD", &bls_password);
+        env_lines.set("NODE_CACHE_PATH_HOST", node_cache_path.to_str().expect("Could not parse string"));
+        env_lines.save(&env_path)?;
+
+        //
         // .env.opt
-        set_vars = false;
+        //
 
-        let example_env = ".env.opt-example";
-        let env = ".env.opt";
+        let env_example_path = avs_run_path.join(".env.opt-example");
+        let env_path = avs_run_path.join(".env.opt");
 
-        let env_example_path = run_script_path.join(example_env);
-        let env_path = run_script_path.join(env);
-        if env_example_path.exists() && !env_path.exists() {
-            std::fs::copy(env_example_path, env_path.clone())?;
-            info!("Copied {} to {}.", example_env, env);
-            set_vars = true;
-        } else if !env_example_path.exists() {
-            info!("The {} file does not exist.", example_env);
-        } else {
-            info!("The {} file already exists.", env);
-            let reset_string: String = Input::new().with_prompt("Reset env.opt file? (y/n)").interact_text()?;
-            if reset_string == "y" {
-                std::fs::remove_file(env_path.clone())?;
-                std::fs::copy(env_example_path, env_path.clone())?;
-                info!("Copied '.env.opt-example' to '.env'.");
-                set_vars = true;
-            }
-        }
+        std::fs::copy(env_example_path, env_path.clone())?;
 
-        if set_vars {
-            debug!("Setting env vars");
+        debug!("Setting env.opt vars");
+        let mut env_lines = EnvLines::load(&env_path)?;
 
-            let mut env_lines = EnvLines::load(&env_path)?;
+        let ecdsa_password: String =
+            Password::new().with_prompt("Input the password for your ECDSA key file").interact()?;
 
-            let user_home = dirs::home_dir().unwrap();
-            let user_home = user_home.to_str().expect("Could not get home directory");
-
-            let bls_key_name: String = Input::new()
-                .with_prompt(
-                    "Input the name of your BLS key file - look in .eigenlayer folder (where eigen cli stores the key)",
-                )
-                .interact_text()?;
-
-            let mut bls_json_file_location = dirs::home_dir().expect("Could not get home directory");
-            bls_json_file_location.push(".eigenlayer/operator_keys");
-            bls_json_file_location.push(bls_key_name);
-            bls_json_file_location.set_extension("bls.key.json");
-            info!("BLS key file location: {:?}", bls_json_file_location);
-
-            let bls_password: String =
-                Password::new().with_prompt("Input the password for your BLS key file").interact()?;
-            let ecdsa_password: String =
-                Password::new().with_prompt("Input the password for your ECDSA key file").interact()?;
-
-            env_lines.set("METADATA_URI", IVY_METADATA);
-            env_lines.set("USER_HOME", user_home);
-            env_lines.set(
-                "NODE_BLS_KEY_FILE_HOST",
-                bls_json_file_location.to_str().expect("Could not get BLS key file location"),
-            );
-            env_lines.set(
-                "NODE_ECDSA_KEY_FILE_HOST",
-                config.default_private_keyfile.to_str().expect("Bad private key path"),
-            );
-            env_lines.set("OPERATOR_BLS_KEY_PASSWORD", &bls_password);
-            env_lines.set("OPERATOR_ECDSA_KEY_PASSWORD", &ecdsa_password);
-            env_lines.save(&env_path)?;
-        }
+        env_lines.set("METADATA_URI", IVY_METADATA);
+        env_lines.set("USER_HOME", home_str);
+        env_lines.set(
+            "NODE_BLS_KEY_FILE_HOST",
+            bls_json_file_location.to_str().expect("Could not get BLS key file location"),
+        );
+        env_lines
+            .set("NODE_ECDSA_KEY_FILE_HOST", config.default_private_keyfile.to_str().expect("Bad private key path"));
+        env_lines.set("OPERATOR_BLS_KEY_PASSWORD", &bls_password);
+        env_lines.set("OPERATOR_ECDSA_KEY_PASSWORD", &ecdsa_password);
+        env_lines.save(&env_path)?;
         Ok(())
     }
 
@@ -213,8 +165,10 @@ impl AvsVariant for AltLayer {
         _private_keyfile: PathBuf,
         chain: Chain,
     ) -> Result<(), IvyError> {
-        let run_path =
-            eigen_path.join("operator_setup").join(chain.to_string().to_lowercase()).join("mach-avs/op-sepolia");
+        let run_path = eigen_path
+            .join("mach-avs-operator-setup")
+            .join(chain.to_string().to_lowercase())
+            .join("mach-avs/op-sepolia");
         info!("Opting in...");
         debug!("altlayer opt-in: {}", run_path.display());
         // WARN: Changing directory here may not be the best strategy.
@@ -296,7 +250,7 @@ impl AvsVariant for AltLayer {
 pub async fn download_operator_setup(eigen_path: PathBuf) -> Result<(), IvyError> {
     let mut setup = false;
     let temp_path = eigen_path.join("temp");
-    let destination_path = eigen_path.join("operator_setup");
+    let destination_path = eigen_path.join("mach-avs-operator-setup");
     if destination_path.exists() {
         //TODO: Doh! Prompting inside the library?
         let reset_string: String = Input::new()
@@ -316,8 +270,7 @@ pub async fn download_operator_setup(eigen_path: PathBuf) -> Result<(), IvyError
 
     if setup {
         info!("Downloading setup files to {}", temp_path.display());
-        let repo_url = "https://github.com/alt-research/mach-avs-operator-setup/archive/refs/heads/master.zip";
-        let response = reqwest::get(repo_url).await?;
+        let response = reqwest::get(ALTLAYER_REPO_URL).await?;
 
         let fname = temp_path.join("source.zip");
         let mut dest = File::create(&fname)?;

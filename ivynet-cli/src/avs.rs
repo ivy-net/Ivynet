@@ -14,7 +14,7 @@ pub enum AvsCommands {
     Setup { avs: String },
     #[command(name = "optin", about = "opt in to valid quorums with the given AVS")]
     Optin { avs: String },
-    #[command(name = "optin", about = "opt out of valid quorums with the given AVS")]
+    #[command(name = "optout", about = "opt out of valid quorums with the given AVS")]
     Optout { avs: String },
     #[command(name = "start", about = "Start running an AVS node in a docker container")]
     Start { avs: String },

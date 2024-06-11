@@ -86,7 +86,7 @@ impl AvsVariant for EigenDA {
         let env_path = avs_run_path.join(".env");
 
         if !env_example_path.exists() {
-            error!("The '.env.example' file does not exist. '.env.example' is used for .env templating, please ensure the eigenda-operator-setup was downloaded to the correct location.");
+            error!("The '.env.example' file does not exist at {}. '.env.example' is used for .env templating, please ensure the operator-setup was downloaded to the correct location.", env_example_path.display());
             return Err(SetupError::NoEnvExample.into());
         }
         std::fs::copy(env_example_path, env_path.clone())?;
