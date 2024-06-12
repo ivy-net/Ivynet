@@ -59,7 +59,8 @@ async fn main() -> Result<(), Error> {
     let filter = EnvFilter::builder().parse("ivynet_cli=debug,ivynet_core=debug")?;
     tracing_subscriber::registry().with(fmt::layer()).with(filter).init();
 
-    let mut config = IvyConfig::load();
+    // TODO: Optionally pas a filepath as a config location flag
+    let mut config = IvyConfig::load_from_default_path().unwrap_or_default();
     let chain = args.network.parse::<Chain>().unwrap_or_else(|_| {
         warn!("unknown network: {}, defaulting to anvil_hardhat at 31337", args.network);
         Chain::AnvilHardhat

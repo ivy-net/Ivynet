@@ -1,4 +1,3 @@
-use confy::ConfyError;
 use ethers::{
     contract::ContractError,
     middleware::{signer::SignerMiddlewareError, SignerMiddleware},
@@ -33,9 +32,6 @@ pub enum IvyError {
 
     #[error(transparent)]
     ProviderError(#[from] SignerMiddlewareError<Provider<Http>, IvyWallet>),
-
-    #[error(transparent)]
-    ConfyError(#[from] ConfyError),
 
     #[error(transparent)]
     DialogerError(#[from] dialoguer::Error),
@@ -96,6 +92,12 @@ pub enum IvyError {
 
     #[error(transparent)]
     SerdeJsonError(#[from] serde_json::Error),
+
+    #[error(transparent)]
+    TomlSerError(#[from] toml::ser::Error),
+
+    #[error(transparent)]
+    TomlDeError(#[from] toml::de::Error),
 }
 
 #[derive(Debug, Error)]

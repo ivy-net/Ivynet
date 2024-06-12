@@ -8,11 +8,20 @@ pub fn read_json<T: for<'a> Deserialize<'a>>(path: PathBuf) -> Result<T, IvyErro
     Ok(res)
 }
 
-pub fn write_json<T>(path: PathBuf, data: &T) -> Result<(), std::io::Error>
-where
-    T: Serialize,
-{
-    let json = serde_json::to_string(data)?;
-    fs::write(path, json)?;
+pub fn write_json<T: Serialize>(path: PathBuf, data: &T) -> Result<(), IvyError> {
+    let data = serde_json::to_string(data)?;
+    fs::write(path, data)?;
+    Ok(())
+}
+
+pub fn read_toml<T: for<'a> Deserialize<'a>>(path: PathBuf) -> Result<T, IvyError> {
+    let toml_str = fs::read_to_string(path)?;
+    let res = toml::from_str(&toml_str)?;
+    Ok(res)
+}
+
+pub fn write_toml<T: Serialize>(path: PathBuf, data: &T) -> Result<(), IvyError> {
+    let data = toml::to_string(data)?;
+    fs::write(path, data)?;
     Ok(())
 }
