@@ -12,7 +12,7 @@ use std::{
     sync::Arc,
 };
 use thiserror::Error as ThisError;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info};
 use zip::read::ZipArchive;
 
 use crate::error::IvyError;
