@@ -1,7 +1,6 @@
 use clap::Parser;
 
-use ethers::types::Chain;
-use ivynet_core::{avs, config::IvyConfig};
+use ivynet_core::{avs, config::IvyConfig, ethers::types::Chain};
 
 use crate::error::Error;
 

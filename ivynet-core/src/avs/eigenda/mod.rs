@@ -16,17 +16,18 @@ use thiserror::Error as ThisError;
 use tracing::{debug, error, info};
 use zip::read::ZipArchive;
 
-use crate::config::{self, IvyConfig};
-use crate::error::IvyError;
 use crate::{
     avs::AvsVariant,
+    config::{self, IvyConfig},
     download::dl_progress_bar,
     eigen::{
         node_classes::{self, NodeClass},
         quorum::QuorumType,
     },
+    env_parser::EnvLines,
+    error::IvyError,
+    rpc_management::IvyProvider,
 };
-use crate::{env_parser::EnvLines, rpc_management::IvyProvider};
 use async_trait::async_trait;
 
 #[derive(Debug)]
@@ -69,8 +70,8 @@ impl Default for EigenDA {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl AvsVariant for EigenDA {
-    // TODO: the env_path should probably be a constant or another constant-like attribute implemented on the
-    // singleton struct.
+    // TODO: the env_path should probably be a constant or another constant-like attribute implemented
+    // on the singleton struct.
     async fn setup(&self, env_path: PathBuf) -> Result<(), IvyError> {
         download_operator_setup(env_path.clone()).await?;
         download_g1_g2(env_path).await?;

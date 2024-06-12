@@ -66,35 +66,43 @@ pub enum EigenStrategy {
 //     fn from(strategy: EigenStrategy) -> Self {
 //         match rpc_management::get_network() {
 //             Network::Holesky => match strategy {
-//                 EigenStrategy::Steth => "0x7d704507b76571a51d9cae8addabbfd0ba0e63d3".parse().unwrap(),
-//                 EigenStrategy::Reth => "0x3A8fBdf9e77DFc25d09741f51d3E181b25d0c4E0".parse().unwrap(),
-//                 EigenStrategy::Weth => "0x80528D6e9A2BAbFc766965E0E26d5aB08D9CFaF9".parse().unwrap(),
-//                 EigenStrategy::Lseth => "0x05037A81BD7B4C9E0F7B430f1F2A22c31a2FD943".parse().unwrap(),
-//                 EigenStrategy::Sfrxeth => "0x9281ff96637710Cd9A5CAcce9c6FAD8C9F54631c".parse().unwrap(),
-//                 EigenStrategy::Ethx => "0x31B6F59e1627cEfC9fA174aD03859fC337666af7".parse().unwrap(),
-//                 EigenStrategy::Oseth => "0x46281E3B7fDcACdBa44CADf069a94a588Fd4C6Ef".parse().unwrap(),
-//                 EigenStrategy::Cbeth => "0x70EB4D3c164a6B4A5f908D4FBb5a9cAfFb66bAB6".parse().unwrap(),
-//                 EigenStrategy::Meth => "0xaccc5A86732BE85b5012e8614AF237801636F8e5".parse().unwrap(),
-//                 EigenStrategy::Ankreth => "0x7673a47463F80c6a3553Db9E54c8cDcd5313d0ac".parse().unwrap(),
-//                 EigenStrategy::BeaconEth => "0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0".parse().unwrap(),
-//                 _ => "".parse().unwrap(), // Panics
-//             },
+//                 EigenStrategy::Steth =>
+// "0x7d704507b76571a51d9cae8addabbfd0ba0e63d3".parse().unwrap(),
+// EigenStrategy::Reth => "0x3A8fBdf9e77DFc25d09741f51d3E181b25d0c4E0".parse().unwrap(),
+// EigenStrategy::Weth => "0x80528D6e9A2BAbFc766965E0E26d5aB08D9CFaF9".parse().unwrap(),
+// EigenStrategy::Lseth => "0x05037A81BD7B4C9E0F7B430f1F2A22c31a2FD943".parse().unwrap(),
+//                 EigenStrategy::Sfrxeth =>
+// "0x9281ff96637710Cd9A5CAcce9c6FAD8C9F54631c".parse().unwrap(),
+// EigenStrategy::Ethx => "0x31B6F59e1627cEfC9fA174aD03859fC337666af7".parse().unwrap(),
+// EigenStrategy::Oseth => "0x46281E3B7fDcACdBa44CADf069a94a588Fd4C6Ef".parse().unwrap(),
+//                 EigenStrategy::Cbeth =>
+// "0x70EB4D3c164a6B4A5f908D4FBb5a9cAfFb66bAB6".parse().unwrap(),
+// EigenStrategy::Meth => "0xaccc5A86732BE85b5012e8614AF237801636F8e5".parse().unwrap(),
+// EigenStrategy::Ankreth => "0x7673a47463F80c6a3553Db9E54c8cDcd5313d0ac".parse().unwrap(),
+//                 EigenStrategy::BeaconEth =>
+// "0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0".parse().unwrap(),                 _ =>
+// "".parse().unwrap(), // Panics             },
 //             Network::Mainnet => match strategy {
-//                 EigenStrategy::Cbeth => "0x54945180dB7943c0ed0FEE7EdaB2Bd24620256bc".parse().unwrap(),
-//                 EigenStrategy::Steth => "0x93c4b944D05dfe6df7645A86cd2206016c51564D".parse().unwrap(),
-//                 EigenStrategy::Reth => "0x1BeE69b7dFFfA4E2d53C2a2Df135C388AD25dCD2".parse().unwrap(),
-//                 EigenStrategy::Sweth => "0x0Fe4F44beE93503346A3Ac9EE5A26b130a5796d6".parse().unwrap(),
-//                 EigenStrategy::Lseth => "0xAe60d8180437b5C34bB956822ac2710972584473".parse().unwrap(),
-//                 EigenStrategy::Sfrxeth => "0x8CA7A5d6f3acd3A7A8bC468a8CD0FB14B6BD28b6".parse().unwrap(),
-//                 EigenStrategy::Wbeth => "0x7CA911E83dabf90C90dD3De5411a10F1A6112184".parse().unwrap(),
-//                 EigenStrategy::Ethx => "0x9d7eD45EE2E8FC5482fa2428f15C971e6369011d".parse().unwrap(),
-//                 EigenStrategy::Oseth => "0x57ba429517c3473B6d34CA9aCd56c0e735b94c02".parse().unwrap(),
-//                 EigenStrategy::Meth => "0x298aFB19A105D59E74658C4C334Ff360BadE6dd2".parse().unwrap(),
-//                 EigenStrategy::Ankreth => "0x13760F50a9d7377e4F20CB8CF9e4c26586c658ff".parse().unwrap(),
-//                 EigenStrategy::BeaconEth => "0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0".parse().unwrap(),
-//                 EigenStrategy::Oeth => "0xa4C637e0F704745D182e4D38cAb7E7485321d059".parse().unwrap(),
-//                 _ => "".parse().unwrap(), // Panics
-//             },
+//                 EigenStrategy::Cbeth =>
+// "0x54945180dB7943c0ed0FEE7EdaB2Bd24620256bc".parse().unwrap(),
+// EigenStrategy::Steth => "0x93c4b944D05dfe6df7645A86cd2206016c51564D".parse().unwrap(),
+//                 EigenStrategy::Reth =>
+// "0x1BeE69b7dFFfA4E2d53C2a2Df135C388AD25dCD2".parse().unwrap(),
+// EigenStrategy::Sweth => "0x0Fe4F44beE93503346A3Ac9EE5A26b130a5796d6".parse().unwrap(),
+//                 EigenStrategy::Lseth =>
+// "0xAe60d8180437b5C34bB956822ac2710972584473".parse().unwrap(),
+// EigenStrategy::Sfrxeth => "0x8CA7A5d6f3acd3A7A8bC468a8CD0FB14B6BD28b6".parse().unwrap(),
+//                 EigenStrategy::Wbeth =>
+// "0x7CA911E83dabf90C90dD3De5411a10F1A6112184".parse().unwrap(),
+// EigenStrategy::Ethx => "0x9d7eD45EE2E8FC5482fa2428f15C971e6369011d".parse().unwrap(),
+// EigenStrategy::Oseth => "0x57ba429517c3473B6d34CA9aCd56c0e735b94c02".parse().unwrap(),
+//                 EigenStrategy::Meth =>
+// "0x298aFB19A105D59E74658C4C334Ff360BadE6dd2".parse().unwrap(),
+// EigenStrategy::Ankreth => "0x13760F50a9d7377e4F20CB8CF9e4c26586c658ff".parse().unwrap(),
+//                 EigenStrategy::BeaconEth =>
+// "0xbeaC0eeEeeeeEEeEeEEEEeeEEeEeeeEeeEEBEaC0".parse().unwrap(),
+// EigenStrategy::Oeth => "0xa4C637e0F704745D182e4D38cAb7E7485321d059".parse().unwrap(),
+// _ => "".parse().unwrap(), // Panics             },
 //             Network::Local => todo!(),
 //         }
 //     }

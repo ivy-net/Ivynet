@@ -1,5 +1,4 @@
-use ethers::types::Address;
-use ethers::types::H160;
+use ethers::types::{Address, H160};
 use ivynet_macros::h160;
 use once_cell::sync::Lazy;
 use std::error::Error;
