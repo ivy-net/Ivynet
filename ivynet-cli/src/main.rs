@@ -1,7 +1,16 @@
+use std::str::FromStr as _;
+
 use clap::{Parser, Subcommand};
-use ethers::types::Chain;
-use ivynet_core::config::IvyConfig;
 use tracing::warn;
+use ivynet_core::{
+    config::IvyConfig,
+    ethers::types::Chain,
+    grpc::{
+        backend::backend_client::BackendClient,
+        client::{create_channel, Request, Uri},
+        messages::RegistrationCredentials,
+    },
+};
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 use ivynet_cli::{avs, config, error::Error, operator, staker};
@@ -11,9 +20,18 @@ use ivynet_cli::{avs, config, error::Error, operator, staker};
 struct Args {
     #[command(subcommand)]
     cmd: Commands,
+
     /// The network to connect to: mainnet, holesky, local
     #[arg(long, short, default_value = "local")]
     network: String,
+
+    /// IvyNet servers Uri for communication
+    #[arg(long, env = "SERVER_URL", value_parser = Uri::from_str, default_value = "http://localhost:50050")]
+    pub server_url: Uri,
+
+    /// IvyNets server certificate
+    #[arg(long, env = "SERVER_CA")]
+    pub server_ca: Option<String>,
 }
 
 #[derive(Subcommand, Debug, Clone)]
@@ -49,6 +67,17 @@ enum Commands {
 enum SetupCommands {
     #[command(name = "todo", about = "todo")]
     Todo { private_key: String },
+
+    #[command(name = "register", about = "Register node on IvyNet server")]
+    Register {
+        /// Email address registered at IvyNet portal
+        #[arg(long, env = "IVYNET_EMAIL")]
+        email: String,
+
+        /// Password to IvyNet account
+        #[arg(long, env = "IVYNET_PASSWORD")]
+        password: String,
+    },
 }
 
 #[tokio::main]
@@ -75,6 +104,18 @@ async fn main() -> Result<(), Error> {
         Commands::Staker { subcmd } => staker::parse_staker_subcommands(subcmd, &config, chain).await?,
         Commands::Setup { subcmd } => match subcmd {
             SetupCommands::Todo { private_key: _ } => todo!(),
+            SetupCommands::Register { email, password } => {
+                let public_key = config.identity_wallet()?.address();
+                let mut backend = BackendClient::new(create_channel(&args.server_url, args.server_ca.as_ref()));
+                backend
+                    .register(Request::new(RegistrationCredentials {
+                        email,
+                        password,
+                        public_key: public_key.as_bytes().to_vec(),
+                    }))
+                    .await?;
+                println!("Node registered");
+            }
         },
         Commands::Avs { subcmd } => avs::parse_config_subcommands(subcmd, &config, chain).await?,
     }

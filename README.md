@@ -15,6 +15,9 @@ With this cli, that begins with calculations determining whether a specific AVS 
 - Deploy any AVS with one command after utilizing the setup function (Soon - EigenDA coming first)
 
 
+## Build Dependencies
+- Rust
+- protobuf-compiler (apt install protobuf-compiler)
 
 ## Use
 

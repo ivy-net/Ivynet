@@ -8,7 +8,6 @@ pub struct Metadata {
 }
 
 impl Metadata {
-    #[allow(dead_code)]
     pub fn new(metadata_uri: &str, logo_uri: &str, favicon_uri: &str) -> Self {
         Self {
             metadata_uri: metadata_uri.to_string(),
@@ -16,7 +15,10 @@ impl Metadata {
             favicon_uri: favicon_uri.to_string(),
         }
     }
-    pub fn default() -> Self {
-        Self { metadata_uri: "".to_owned(), logo_uri: "".to_owned(), favicon_uri: "".to_owned() }
+}
+
+impl Default for Metadata {
+    fn default() -> Self {
+        Self::new("", "", "")
     }
 }

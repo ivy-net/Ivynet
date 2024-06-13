@@ -1,9 +1,9 @@
 use clap::Parser;
 
 use dialoguer::Password;
-use ethers::types::Chain;
 use ivynet_core::{
     config::IvyConfig,
+    ethers::types::Chain,
     server::{handle_avs_command, AvsHandleCommands},
     wallet::IvyWallet,
 };
@@ -34,7 +34,6 @@ pub async fn parse_config_subcommands(subcmd: AvsCommands, config: &IvyConfig, c
     // TODO: Remove this prompt from library
     // Not every AVS instance requires access to a wallet. How best to handle this? Enum variant?
     let password: String = Password::new().with_prompt("Input the password for your stored keyfile").interact()?;
-    debug!("{password} | {:?}", config.default_private_keyfile.clone());
     let wallet = IvyWallet::from_keystore(config.default_private_keyfile.clone(), password)?;
     match subcmd {
         AvsCommands::Setup { avs } => {

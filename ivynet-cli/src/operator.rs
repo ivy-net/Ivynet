@@ -1,6 +1,10 @@
 use clap::Parser;
-use ethers::{core::types::Address, types::Chain};
-use ivynet_core::{config::IvyConfig, eigen::delegation_manager::DelegationManager, rpc_management::connect_provider};
+use ivynet_core::{
+    config::IvyConfig,
+    eigen::delegation_manager::DelegationManager,
+    ethers::{core::types::Address, types::Chain},
+    rpc_management::connect_provider,
+};
 use tracing::debug;
 
 use crate::error::Error;
@@ -29,7 +33,7 @@ pub async fn parse_operator_subcommands(
             manager.get_operator_details(address).await?;
         }
         OperatorCommands::Stake { address } => {
-            let _stake_map = manager.get_staker_delegatable_shares(address).await?;
+            manager.get_staker_delegatable_shares(address).await?;
             // TODO: Ok, and what should we do with this map?
         }
         OperatorCommands::Status { address } => {

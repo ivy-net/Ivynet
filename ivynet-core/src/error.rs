@@ -8,6 +8,7 @@ use ethers::{
 };
 use indicatif::style::TemplateError;
 use thiserror::Error;
+use tonic::Status;
 use tracing::subscriber::SetGlobalDefaultError;
 use zip::result::ZipError;
 
@@ -54,8 +55,14 @@ pub enum IvyError {
     #[error(transparent)]
     TryFromChainError(#[from] TryFromPrimitiveError<Chain>),
 
+    #[error(transparent)]
+    GRPCError(#[from] Status),
+
     #[error("Command failed with code:")]
     CommandError(String),
+
+    #[error("GRPC server error")]
+    GRPCServerError,
 
     #[error("Folder inaccesible")]
     DirInaccessible,

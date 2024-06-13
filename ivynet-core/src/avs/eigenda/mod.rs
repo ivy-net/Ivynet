@@ -15,20 +15,19 @@ use thiserror::Error as ThisError;
 use tracing::{debug, error, info};
 use zip::read::ZipArchive;
 
-use crate::error::IvyError;
 use crate::{
     avs::AvsVariant,
+    config::{self, IvyConfig},
     download::dl_progress_bar,
     eigen::{
         node_classes::{self, NodeClass},
         quorum::QuorumType,
     },
+    env_parser::EnvLines,
+    error::{IvyError, SetupError},
+    rpc_management::IvyProvider,
 };
-use crate::{
-    config::{self, IvyConfig},
-    error::SetupError,
-};
-use crate::{env_parser::EnvLines, rpc_management::IvyProvider};
+
 use async_trait::async_trait;
 
 pub const EIGENDA_PATH: &str = ".eigenlayer/eigenda";

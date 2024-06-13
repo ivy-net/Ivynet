@@ -194,7 +194,20 @@ impl AvsVariant for AltLayer {
         _private_keyfile: PathBuf,
         chain: Chain,
     ) -> Result<(), IvyError> {
-        todo!()
+        let run_path =
+            eigen_path.join("operator_setup").join(chain.to_string().to_lowercase()).join("mach-avs/op-sepolia");
+        info!("Opting in...");
+        debug!("altlayer opt-in: {}", run_path.display());
+        // WARN: Changing directory here may not be the best strategy.
+        env::set_current_dir(&run_path)?;
+        let run_path = run_path.join("run.sh");
+        let optin = Command::new("sh").arg(run_path).arg("opt-in").status()?;
+        if optin.success() {
+            Ok(())
+        } else {
+            // TODO: Consider a more robust .into()
+            Err(IvyError::CommandError(optin.to_string()))
+        }
     }
 
     /// Quorum stake requirements can be found in the AltLayer docs: https://docs.altlayer.io/altlayer-documentation/altlayer-facilitated-actively-validated-services/xterio-mach-avs-for-xterio-chain/operator-guide

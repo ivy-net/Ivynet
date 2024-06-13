@@ -1,0 +1,10 @@
+syntax = "proto3";
+package backend;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+import "messages.proto";
+
+service Backend {
+    rpc Register(messages.RegistrationCredentials) returns (google.protobuf.Empty);
+}

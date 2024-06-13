@@ -13,6 +13,7 @@ use crate::{
     error::IvyError,
     metadata::Metadata,
     utils::{read_toml, write_toml},
+    wallet::IvyWallet,
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -27,10 +28,13 @@ pub struct IvyConfig {
     /// Default public key file full path
     pub default_public_keyfile: PathBuf,
     pub metadata: Metadata,
+    // Identification key that node uses for server communications
+    pub identity_key: String,
 }
 
 impl Default for IvyConfig {
     fn default() -> Self {
+        let identity_wallet = IvyWallet::new();
         Self {
             path: DEFAULT_CONFIG_PATH.to_owned(),
             mainnet_rpc_url: "https://rpc.flashbots.net/fast".to_string(),
@@ -39,13 +43,14 @@ impl Default for IvyConfig {
             default_private_keyfile: "".into(), // TODO: Option
             default_public_keyfile: "".into(),
             metadata: Metadata::default(),
+            identity_key: identity_wallet.to_private_key(),
         }
     }
 }
 
 impl IvyConfig {
     pub fn new() -> Self {
-        Self { ..Default::default() }
+        Self::default()
     }
 
     pub fn new_at_path(path: PathBuf) -> Self {
@@ -105,6 +110,10 @@ impl IvyConfig {
 
     pub fn get_path(&self) -> PathBuf {
         self.path.clone()
+    }
+
+    pub fn identity_wallet(&self) -> Result<IvyWallet, IvyError> {
+        IvyWallet::from_private_key(self.identity_key.clone())
     }
 }
 
