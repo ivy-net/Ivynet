@@ -34,7 +34,6 @@ pub struct IvyConfig {
 
 impl Default for IvyConfig {
     fn default() -> Self {
-        let identity_wallet = IvyWallet::new();
         Self {
             path: DEFAULT_CONFIG_PATH.to_owned(),
             mainnet_rpc_url: "https://rpc.flashbots.net/fast".to_string(),
@@ -43,7 +42,7 @@ impl Default for IvyConfig {
             default_private_keyfile: "".into(), // TODO: Option
             default_public_keyfile: "".into(),
             metadata: Metadata::default(),
-            identity_key: Some(identity_wallet.to_private_key()),
+            identity_key: None,
         }
     }
 }

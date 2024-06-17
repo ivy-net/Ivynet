@@ -12,4 +12,3 @@ AVS Integration Chart
 DOCS
 
 [Hyperlane AVS](https://docs.hyperlane.xyz/docs/protocol/eigenlayer-avs)
-

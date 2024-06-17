@@ -1,5 +1,4 @@
 use clap::Parser;
-
 use dialoguer::Password;
 use ivynet_core::{
     config::IvyConfig,
@@ -7,9 +6,6 @@ use ivynet_core::{
     server::{handle_avs_command, AvsHandleCommands},
     wallet::IvyWallet,
 };
-
-#[allow(dead_code)]
-use tracing::debug;
 
 use crate::error::Error;
 
