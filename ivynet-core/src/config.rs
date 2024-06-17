@@ -29,7 +29,7 @@ pub struct IvyConfig {
     pub default_public_keyfile: PathBuf,
     pub metadata: Metadata,
     // Identification key that node uses for server communications
-    pub identity_key: String,
+    pub identity_key: Option<String>,
 }
 
 impl Default for IvyConfig {
@@ -43,7 +43,7 @@ impl Default for IvyConfig {
             default_private_keyfile: "".into(), // TODO: Option
             default_public_keyfile: "".into(),
             metadata: Metadata::default(),
-            identity_key: identity_wallet.to_private_key(),
+            identity_key: Some(identity_wallet.to_private_key()),
         }
     }
 }
@@ -113,7 +113,7 @@ impl IvyConfig {
     }
 
     pub fn identity_wallet(&self) -> Result<IvyWallet, IvyError> {
-        IvyWallet::from_private_key(self.identity_key.clone())
+        IvyWallet::from_private_key(self.identity_key.clone().ok_or(IvyError::IdentityKeyError)?)
     }
 }
 

@@ -105,6 +105,12 @@ pub enum IvyError {
 
     #[error(transparent)]
     TomlDeError(#[from] toml::de::Error),
+
+    #[error("Malformed config found, ensure ivynet setup was run correctly")]
+    MalformedConfigError,
+
+    #[error("IvyWallet identity key not found")]
+    IdentityKeyError,
 }
 
 #[derive(Debug, Error)]

@@ -1,9 +1,9 @@
 use std::str::FromStr as _;
 
 use clap::{Parser, Subcommand};
-use tracing::warn;
 use ivynet_core::{
     config::IvyConfig,
+    error::IvyError,
     ethers::types::Chain,
     grpc::{
         backend::backend_client::BackendClient,
@@ -11,6 +11,7 @@ use ivynet_core::{
         messages::RegistrationCredentials,
     },
 };
+use tracing::{debug, error, warn};
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 use ivynet_cli::{avs, config, error::Error, operator, staker};
@@ -89,7 +90,7 @@ async fn main() -> Result<(), Error> {
     tracing_subscriber::registry().with(fmt::layer()).with(filter).init();
 
     // TODO: Optionally pas a filepath as a config location flag
-    let mut config = IvyConfig::load_from_default_path().unwrap_or_default();
+    let mut config = IvyConfig::load_from_default_path()?;
     let chain = args.network.parse::<Chain>().unwrap_or_else(|_| {
         warn!("unknown network: {}, defaulting to anvil_hardhat at 31337", args.network);
         Chain::AnvilHardhat
