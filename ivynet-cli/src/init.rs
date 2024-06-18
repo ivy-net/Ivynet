@@ -1,4 +1,5 @@
 use dialoguer::{Input, MultiSelect, Password, Select};
+use ivynet_core::metadata::Metadata;
 use ivynet_core::wallet::IvyWallet;
 use ivynet_core::{config::IvyConfig, error::IvyError};
 use std::unreachable;
@@ -31,9 +32,39 @@ pub fn initialize_ivynet() -> Result<(), IvyError> {
         // configure RPC addresses
         let config = set_config_rpcs(config)?;
         let config = set_config_keys(config)?;
+        let config = set_config_metadata(config)?;
         config.store()?;
     }
     Ok(())
+}
+
+fn set_config_metadata(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
+    let mut metadata = Metadata::default();
+    let metadata_fields = ["Metadata URI", "Logo URI", "Favicon URI"];
+    let fields_to_fill = MultiSelect::new()
+        .with_prompt("Select the metadata fields you wish to configure. Press space to toggle flag, Enter to confirm.")
+        .items(&metadata_fields)
+        .interact()
+        .unwrap();
+    for field in fields_to_fill {
+        match field {
+            0 => {
+                let metadata_uri: String = Input::new().with_prompt("Enter the operator metadata URI").interact()?;
+                metadata.metadata_uri = metadata_uri;
+            }
+            1 => {
+                let logo_uri: String = Input::new().with_prompt("Enter the operator logo URI").interact()?;
+                metadata.logo_uri = logo_uri;
+            }
+            2 => {
+                let favicon_uri: String = Input::new().with_prompt("Enter the operator favicon URI").interact()?;
+                metadata.favicon_uri = favicon_uri;
+            }
+            _ => unreachable!("Unknown metadata field reached"),
+        }
+    }
+    config.metadata = metadata;
+    Ok(config)
 }
 
 fn set_config_rpcs(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
