@@ -13,21 +13,16 @@ use ivynet_core::{
 use tracing::{debug, error, warn};
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
-use ivynet_cli::{
-    avs, config,
-    error::Error,
-    init::{self, initialize_ivynet},
-    operator, staker,
-};
+use ivynet_cli::{avs, config, error::Error, init::initialize_ivynet, operator, staker};
 
-#[derive(Parser, Debug, Clone)]
+#[derive(Parser, Debug)]
 #[command(name = "ivy", version, about = "The command line interface for ivynet")]
 struct Args {
     #[command(subcommand)]
     cmd: Commands,
 
     /// The network to connect to: mainnet, holesky, local
-    #[arg(long, short, default_value = "local")]
+    #[arg(long, short, default_value = "holesky")]
     network: String,
 
     /// IvyNet servers Uri for communication
@@ -39,14 +34,14 @@ struct Args {
     pub server_ca: Option<String>,
 }
 
-#[derive(Subcommand, Debug, Clone)]
+#[derive(Subcommand, Debug)]
 enum Commands {
     #[command(name = "setup", about = "Not implemented yet - First time setup for ivynet! Start here!")]
     Setup {
         #[command(subcommand)]
         subcmd: SetupCommands,
     },
-    #[command(name = "init", about = "First time setup for ivynet! Start here!")]
+    #[command(name = "init", about = "Ivynet config intiliazation")]
     Init,
     #[command(name = "config", about = "Manage rpc information, keys, and keyfile settings")]
     Config {
@@ -95,26 +90,20 @@ async fn main() -> Result<(), Error> {
     let filter = EnvFilter::builder().parse("ivynet_cli=debug,ivynet_core=debug")?;
     tracing_subscriber::registry().with(fmt::layer()).with(filter).init();
 
-    // TODO: Optionally pas a filepath as a config location flag
-    let chain = args.network.parse::<Chain>().unwrap_or_else(|_| {
-        warn!("unknown network: {}, defaulting to anvil_hardhat at 31337", args.network);
-        Chain::AnvilHardhat
-    });
-
     match args.cmd {
         Commands::Init {} => initialize_ivynet()?,
         Commands::Config { subcmd } => {
             let mut config = IvyConfig::load_from_default_path()?;
-            config::parse_config_subcommands(subcmd, &mut config, chain)?;
+            config::parse_config_subcommands(subcmd, &mut config)?;
             config.store()?;
         }
         Commands::Operator { subcmd } => {
             let config = IvyConfig::load_from_default_path()?;
-            operator::parse_operator_subcommands(subcmd, &config, chain).await?
+            operator::parse_operator_subcommands(subcmd, &config).await?
         }
         Commands::Staker { subcmd } => {
             let config = IvyConfig::load_from_default_path()?;
-            staker::parse_staker_subcommands(subcmd, &config, chain).await?
+            staker::parse_staker_subcommands(subcmd, &config).await?
         }
         Commands::Setup { subcmd } => match subcmd {
             SetupCommands::Todo { private_key: _ } => todo!(),
@@ -134,7 +123,7 @@ async fn main() -> Result<(), Error> {
         },
         Commands::Avs { subcmd } => {
             let config = IvyConfig::load_from_default_path()?;
-            avs::parse_config_subcommands(subcmd, &config, chain).await?
+            avs::parse_avs_subcommands(subcmd, &config).await?
         }
     }
 

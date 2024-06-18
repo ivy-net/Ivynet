@@ -8,7 +8,7 @@ use ivynet_core::{
     wallet::IvyWallet,
 };
 
-use crate::error::Error;
+use crate::{error::Error, utils::parse_chain};
 
 #[derive(Parser, Debug, Clone)]
 pub enum ConfigCommands {
@@ -37,12 +37,12 @@ pub enum ConfigCommands {
         about = "Set default URLs to use when connecting to 'mainnet', 'holesky', and 'local' RPC urls"
     )]
     SetRpc {
-        network: String,
+        chain: String,
         rpc_url: String,
     },
     #[command(name = "get-rpc", about = "Get the current default RPC URL for 'mainnet', 'holesky', or 'local'")]
     GetRpc {
-        network: String,
+        chain: String,
     },
     #[command(
         name = "get-sys-info",
@@ -61,7 +61,7 @@ pub enum ConfigCommands {
     GetSysInfo,
 }
 
-pub fn parse_config_subcommands(subcmd: ConfigCommands, config: &mut IvyConfig, chain: Chain) -> Result<(), Error> {
+pub fn parse_config_subcommands(subcmd: ConfigCommands, config: &mut IvyConfig) -> Result<(), Error> {
     match subcmd {
         ConfigCommands::ImportPrivateKey { private_key, keyname, password } => {
             let wallet = IvyWallet::from_private_key(private_key)?;
@@ -83,13 +83,14 @@ pub fn parse_config_subcommands(subcmd: ConfigCommands, config: &mut IvyConfig, 
                 config.default_public_keyfile = pub_key_path;
             }
         }
-        ConfigCommands::SetRpc { network: _, rpc_url } => {
+        ConfigCommands::SetRpc { chain, rpc_url } => {
+            let chain = parse_chain(&chain);
             config.set_rpc_url(chain, &rpc_url)?;
         }
-        ConfigCommands::GetRpc { network } => {
+        ConfigCommands::GetRpc { chain } => {
             println!(
-                "Url for {network} is {}",
-                config.get_rpc_url(network.parse::<Chain>().expect("Wrong network name provided"))?
+                "Url for {chain} is {}",
+                config.get_rpc_url(chain.parse::<Chain>().expect("Wrong network name provided"))?
             );
         }
         ConfigCommands::GetDefaultEthAddress => {
