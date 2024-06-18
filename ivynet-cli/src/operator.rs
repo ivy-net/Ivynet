@@ -12,11 +12,11 @@ use crate::{error::Error, utils::parse_chain};
 #[derive(Parser, Debug, Clone)]
 pub enum OperatorCommands {
     #[command(name = "get-details", about = "Get operator details")]
-    Details { address: Address, chain: String },
+    Details { chain: String, address: Address },
     #[command(name = "get-stake", about = "Get an operator's total delineated stake per strategy")]
-    Stake { address: Address, chain: String },
+    Stake { chain: String, address: Address },
     #[command(name = "get-status", about = "Determine whether an address is a registered operator")]
-    Status { address: Address, chain: String },
+    Status { chain: String, address: Address },
     #[command(name = "register", about = "Register an operator")]
     Register { chain: String, delegation_approver: Option<Address>, staker_opt_out_window_blocks: Option<u32> },
 }
