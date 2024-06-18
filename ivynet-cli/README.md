@@ -45,4 +45,6 @@ Supported chains:
 - mainnet
 - holesky
 
-
+Registration steps:
+`ivynet-cli operator register holesky` -- Register the operator for Eigenlayer on the holesky chain
+`ivynet-cli avs optin eigenda holesky` -- Optin to the Eigenda AVS on the holesky chain

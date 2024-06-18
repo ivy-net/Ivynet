@@ -18,7 +18,7 @@ pub enum OperatorCommands {
     #[command(name = "get-status", about = "Determine whether an address is a registered operator")]
     Status { address: Address, chain: String },
     #[command(name = "register", about = "Register an operator")]
-    Register { delegation_approver: Option<Address>, staker_opt_out_window_blocks: Option<u32>, chain: String },
+    Register { chain: String, delegation_approver: Option<Address>, staker_opt_out_window_blocks: Option<u32> },
 }
 
 impl OperatorCommands {
