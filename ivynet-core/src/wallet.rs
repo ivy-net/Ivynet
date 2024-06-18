@@ -76,6 +76,10 @@ impl IvyWallet {
         self.local_wallet.signer().to_bytes().encode_hex::<String>()
     }
 
+    pub fn signer(&self) -> LocalWallet {
+        self.local_wallet.clone()
+    }
+
     pub fn address(&self) -> Address {
         self.local_wallet.address()
     }

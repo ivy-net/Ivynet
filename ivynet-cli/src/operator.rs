@@ -1,9 +1,11 @@
 use clap::Parser;
+use dialoguer::Password;
 use ivynet_core::{
     config::IvyConfig,
     eigen::delegation_manager::DelegationManager,
-    ethers::{core::types::Address, types::Chain},
+    ethers::{core::types::Address, middleware::MiddlewareBuilder, types::Chain},
     rpc_management::connect_provider,
+    wallet::IvyWallet,
 };
 use tracing::debug;
 
@@ -34,20 +36,31 @@ impl OperatorCommands {
 
 pub async fn parse_operator_subcommands(subcmd: OperatorCommands, config: &IvyConfig) -> Result<(), Error> {
     let chain = subcmd.chain();
-    let provider = connect_provider(&config.get_rpc_url(chain)?, None).await?;
-    let manager = DelegationManager::new(&provider);
     match subcmd {
         OperatorCommands::Details { address, .. } => {
+            let provider = connect_provider(&config.get_rpc_url(chain)?, None).await?;
+            let manager = DelegationManager::new(&provider);
             manager.get_operator_details(address).await?;
         }
         OperatorCommands::Stake { address, .. } => {
+            let provider = connect_provider(&config.get_rpc_url(chain)?, None).await?;
+            let manager = DelegationManager::new(&provider);
             manager.get_staker_delegatable_shares(address).await?;
             // TODO: Ok, and what should we do with this map?
         }
         OperatorCommands::Status { address, .. } => {
+            let provider = connect_provider(&config.get_rpc_url(chain)?, None).await?;
+            let manager = DelegationManager::new(&provider);
             manager.get_operator_status(address).await?;
         }
         OperatorCommands::Register { delegation_approver, staker_opt_out_window_blocks, .. } => {
+            let password: String =
+                Password::new().with_prompt("Input the password for your stored keyfile").interact()?;
+            let wallet = IvyWallet::from_keystore(config.default_private_keyfile.clone(), password)?;
+            let earnings_receiver = wallet.address();
+            let provider = connect_provider(&config.get_rpc_url(chain)?, Some(wallet)).await?;
+            let manager = DelegationManager::new(&provider);
+
             let delegation_approver = delegation_approver.unwrap_or_else(Address::zero);
             let staker_opt_out_window_blocks = staker_opt_out_window_blocks.unwrap_or(0_u32);
             let metadata_uri = &config.metadata.metadata_uri;
@@ -57,7 +70,7 @@ pub async fn parse_operator_subcommands(subcmd: OperatorCommands, config: &IvyCo
                 return Err(Error::MetadataUriNotFoundError);
             }
             debug!("Operator register: {delegation_approver:?} | {staker_opt_out_window_blocks} | {metadata_uri}");
-            manager.register(delegation_approver, staker_opt_out_window_blocks, metadata_uri).await?
+            manager.register(earnings_receiver, delegation_approver, staker_opt_out_window_blocks, metadata_uri).await?
         }
     }
     Ok(())

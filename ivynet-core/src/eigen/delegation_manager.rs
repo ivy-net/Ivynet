@@ -64,12 +64,13 @@ impl DelegationManager {
 
     pub async fn register(
         &self,
+        earnings_receiver: Address,
         delegation_approver: Address,
         staker_opt_out_window_blocks: u32,
         metadata_uri: &str,
     ) -> Result<(), IvyError> {
         let operator_details = OperatorDetails {
-            earnings_receiver: Address::zero(), // Deprecated according to Eigenlayer docs
+            earnings_receiver, // Deprecated according to Eigenlayer docs
             delegation_approver,
             staker_opt_out_window_blocks,
         };
