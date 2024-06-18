@@ -12,9 +12,12 @@ use crate::{error::Error, utils::parse_chain};
 
 #[derive(Parser, Debug, Clone)]
 pub enum StakerCommands {
-    #[command(name = "get-shares", about = "Get data on a staker's strategy choices and their stake in each one")]
-    GetStakerShares { address: Address, chain: String },
-    #[command(name = "get-my-shares", about = "Get data on the saved keypair's current strategy and stake")]
+    #[command(
+        name = "get-shares",
+        about = "Get data on a staker's strategy choices and their stake in each one <CHAIN> <ADDRESS>"
+    )]
+    GetStakerShares { chain: String, address: Address },
+    #[command(name = "get-my-shares", about = "Get data on the saved keypair's current strategy and stake <CHAIN>")]
     GetMyShares { chain: String },
 }
 

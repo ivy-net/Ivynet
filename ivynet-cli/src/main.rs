@@ -67,9 +67,6 @@ enum Commands {
 
 #[derive(Parser, Debug, Clone)]
 enum SetupCommands {
-    #[command(name = "todo", about = "todo")]
-    Todo { private_key: String },
-
     #[command(name = "register", about = "Register node on IvyNet server")]
     Register {
         /// Email address registered at IvyNet portal
@@ -106,7 +103,6 @@ async fn main() -> Result<(), Error> {
             staker::parse_staker_subcommands(subcmd, &config).await?
         }
         Commands::Setup { subcmd } => match subcmd {
-            SetupCommands::Todo { private_key: _ } => todo!(),
             SetupCommands::Register { email, password } => {
                 let config = IvyConfig::load_from_default_path()?;
                 let public_key = config.identity_wallet()?.address();

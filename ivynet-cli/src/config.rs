@@ -12,12 +12,11 @@ use crate::{error::Error, utils::parse_chain};
 
 #[derive(Parser, Debug, Clone)]
 pub enum ConfigCommands {
-    #[command(name = "import-key", about = "Import and save as your default Ethereum private key with a password")]
-    ImportPrivateKey {
-        private_key: String,
-        keyname: Option<String>,
-        password: Option<String>,
-    },
+    #[command(
+        name = "import-key",
+        about = "Import and save as your default Ethereum private key with a password <PRIVATE_KEY>"
+    )]
+    ImportPrivateKey { private_key: String, keyname: Option<String>, password: Option<String> },
     #[command(
         name = "create-key",
         about = "Create an Ethereum private key to use with Ivynet and optionally store it with a password"
@@ -34,30 +33,25 @@ pub enum ConfigCommands {
     GetDefaultPrivateKey,
     #[command(
         name = "set-rpc",
-        about = "Set default URLs to use when connecting to 'mainnet', 'holesky', and 'local' RPC urls"
+        about = "Set default URLs to use when connecting to 'mainnet', 'holesky', and 'local' RPC urls <CHAIN> <RPC_URL>"
     )]
-    SetRpc {
-        chain: String,
-        rpc_url: String,
-    },
-    #[command(name = "get-rpc", about = "Get the current default RPC URL for 'mainnet', 'holesky', or 'local'")]
-    GetRpc {
-        chain: String,
-    },
+    SetRpc { chain: String, rpc_url: String },
+    #[command(
+        name = "get-rpc",
+        about = "Get the current default RPC URL for 'mainnet', 'holesky', or 'local' <CHAIN>"
+    )]
+    GetRpc { chain: String },
     #[command(
         name = "get-sys-info",
         about = "Get the number of CPU cores, memory, and free disk space on the current machine"
     )]
-    #[command(name = "set-metadata", about = "Set metadata")]
-    SetMetadata {
-        metadata_uri: Option<String>,
-        logo_uri: Option<String>,
-        favicon_uri: Option<String>,
-    },
-    #[command(name = "get-metadata", about = "Get metadata")]
+    #[command(name = "set-metadata", about = "Set metadata for EigenLayer Operator")]
+    SetMetadata { metadata_uri: Option<String>, logo_uri: Option<String>, favicon_uri: Option<String> },
+    #[command(name = "get-metadata", about = "Get local metadata")]
     GetMetadata,
     #[command(name = "get-config", about = "Get all config data")]
     GetConfig,
+    #[command(name = "get-sys-info", about = "Get system information")]
     GetSysInfo,
 }
 

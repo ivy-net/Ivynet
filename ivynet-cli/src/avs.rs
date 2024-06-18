@@ -14,21 +14,21 @@ use crate::{error::Error, utils::parse_chain};
 
 #[derive(Subcommand, Debug)]
 pub enum AvsCommands {
-    #[command(name = "setup", about = "opt in to valid quorums with the given AVS")]
-    Setup { avs: String, chain: String },
-    #[command(name = "optin", about = "opt in to valid quorums with the given AVS")]
-    Optin { avs: String, chain: String },
-    #[command(name = "optout", about = "opt out of valid quorums with the given AVS")]
-    Optout { avs: String, chain: String },
-    #[command(name = "start", about = "Start running an AVS node in a docker container")]
-    Start { avs: String, chain: String },
-    #[command(name = "stop", about = "stop running the active AVS docker container")]
-    Stop { avs: String, chain: String },
+    #[command(name = "setup", about = "Set up environment and download required files for an AVS <CHAIN> <AVS>")]
+    Setup { avs: String, chain: String, },
+    #[command(name = "optin", about = "Opt in to valid quorums with the given AVS <CHAIN> <AVS>")]
+    Optin { avs: String, chain: String, },
+    #[command(name = "optout", about = "Opt out of valid quorums with the given AVS <CHAIN> <AVS>")]
+    Optout { avs: String, chain: String, },
+    #[command(name = "start", about = "Start running an AVS node in a docker container <CHAIN> <AVS>")]
+    Start { avs: String, chain: String, },
+    #[command(name = "stop", about = "Stop running the active AVS docker container <CHAIN> <AVS>")]
+    Stop { avs: String, chain: String, },
     #[command(
         name = "check-stake-percentage",
-        about = "Determine what percentage of the total stake an address would have"
+        about = "Determine what percentage of the total stake an address would have <AVS> <ADDRESS> <CHAIN>"
     )]
-    CheckStakePercentage { avs: String, address: String, network: String },
+    CheckStakePercentage { avs: String, address: String, chain: String },
 }
 
 impl Display for AvsCommands {
@@ -39,8 +39,8 @@ impl Display for AvsCommands {
             AvsCommands::Optout { avs, chain } => write!(f, "optout {} on chain {}", avs, chain),
             AvsCommands::Start { avs, chain } => write!(f, "start {} on chain {}", avs, chain),
             AvsCommands::Stop { avs, chain } => write!(f, "stop {} on chain {}", avs, chain),
-            AvsCommands::CheckStakePercentage { avs, address, network } => {
-                write!(f, "check stake percentage for {} on {} network", address, network)
+            AvsCommands::CheckStakePercentage { avs, address, chain } => {
+                write!(f, "check stake percentage for {} on {} network", address, chain)
             }
         }
     }
