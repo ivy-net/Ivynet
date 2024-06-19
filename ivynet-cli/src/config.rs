@@ -2,7 +2,6 @@ use clap::Parser;
 use dialoguer::{Input, Password};
 use ivynet_core::{
     config::{self, IvyConfig},
-    error::IvyError,
     ethers::{types::Chain, utils::hex::ToHex as _},
     metadata::Metadata,
     wallet::IvyWallet,

@@ -1,11 +1,8 @@
 use clap::Parser;
 
 use ivynet_core::{
-    config::IvyConfig,
-    eigen::delegation_manager::DelegationManager,
-    ethers::types::{Address, Chain},
-    rpc_management::connect_provider,
-    wallet::IvyWallet,
+    config::IvyConfig, eigen::delegation_manager::DelegationManager, ethers::types::Address,
+    rpc_management::connect_provider, wallet::IvyWallet,
 };
 
 use crate::{error::Error, utils::parse_chain};

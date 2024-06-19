@@ -1,6 +1,8 @@
 use dialoguer::{Input, MultiSelect, Password, Select};
 use ivynet_core::{config::IvyConfig, error::IvyError, metadata::Metadata, wallet::IvyWallet};
 use std::{fs, path::PathBuf, unreachable};
+
+#[allow(unused_imports)]
 use tracing::debug;
 
 // TODO: Step through piecemeal running/initialization of an empty ivy-config file to ensure

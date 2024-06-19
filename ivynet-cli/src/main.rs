@@ -3,15 +3,16 @@ use std::str::FromStr as _;
 use clap::{Parser, Subcommand};
 use ivynet_core::{
     config::IvyConfig,
-    ethers::types::Chain,
     grpc::{
         backend::backend_client::BackendClient,
         client::{create_channel, Request, Uri},
         messages::RegistrationCredentials,
     },
 };
-use tracing::{debug, error, warn};
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
+
+#[allow(unused_imports)]
+use tracing::{debug, error, warn};
 
 use ivynet_cli::{avs, config, error::Error, init::initialize_ivynet, operator, staker};
 
