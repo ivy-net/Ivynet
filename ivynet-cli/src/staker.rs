@@ -15,21 +15,12 @@ pub enum StakerCommands {
     #[command(name = "get", about = "Get data on a staker - defaults to local")]
     Get {
         #[command(subcommand)]
-        subcmd: StakerGetCommands,
+        subcmd: StakerGetterCommands,
     },
 }
 
-pub async fn parse_staker_subcommands(subcmd: StakerCommands, config: &IvyConfig) -> Result<(), Error> {
-    match subcmd {
-        StakerCommands::Get { subcmd } => {
-            parse_staker_get_subcommands(subcmd, config).await?;
-        }
-    }
-    Ok(())
-}
-
 #[derive(Parser, Debug, Clone)]
-pub enum StakerGetCommands {
+pub enum StakerGetterCommands {
     #[command(
         name = "shares",
         about = "Get data on a staker's strategy choices and their stake in each one <CHAIN> <<ADDRESS>>"
@@ -37,9 +28,19 @@ pub enum StakerGetCommands {
     GetStakerShares { chain: String, opt_address: Option<Address> },
 }
 
-pub async fn parse_staker_get_subcommands(subget: StakerGetCommands, config: &IvyConfig) -> Result<(), Error> {
+
+pub async fn parse_staker_subcommands(subcmd: StakerCommands, config: &IvyConfig) -> Result<(), Error> {
+    match subcmd {
+        StakerCommands::Get { subcmd } => {
+            parse_staker_getter_subcommands(subcmd, config).await?;
+        }
+    }
+    Ok(())
+}
+
+pub async fn parse_staker_getter_subcommands(subget: StakerGetterCommands, config: &IvyConfig) -> Result<(), Error> {
     match subget {
-        StakerGetCommands::GetStakerShares { opt_address, chain } => {
+        StakerGetterCommands::GetStakerShares { opt_address, chain } => {
             let chain = parse_chain(&chain);
             let provider = connect_provider(&config.get_rpc_url(chain)?, None).await?;
             let manager = DelegationManager::new(&provider);
