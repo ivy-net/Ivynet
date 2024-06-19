@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use clap::Parser;
 use dialoguer::Password;
 use ivynet_core::{
@@ -23,6 +25,11 @@ pub enum OperatorCommands {
     },
     #[command(name = "register", about = "Register an operator <CHAIN>")]
     Register { chain: String, delegation_approver: Option<Address>, staker_opt_out_window_blocks: Option<u32> },
+    #[command(name = "set", about = "Set operator information")]
+    Set {
+        #[command(subcommand)]
+        subcmd: OperatorSetterCommands,
+    },
 }
 
 #[derive(Parser, Debug, Clone)]
@@ -35,6 +42,14 @@ pub enum OperatorGetterCommands {
     Status { chain: String, opt_address: Option<Address> },
 }
 
+#[derive(Parser, Debug, Clone)]
+pub enum OperatorSetterCommands {
+    #[command(name = "ecdsa-keyfile", about = "Set ECDSA keyfile path for your operator <KEYFILE_PATH>")]
+    EcdsaKeyfile { ecdsa_keypath: PathBuf },
+    #[command(name = "ecdsa-keyfile", about = "Set ECDSA keyfile path for your operator <KEYFILE_PATH>")]
+    BlsKeyfile { bls_keypath: PathBuf },
+}
+
 impl OperatorCommands {
     pub fn chain(&self) -> Chain {
         match self {
@@ -43,7 +58,8 @@ impl OperatorCommands {
                 OperatorGetterCommands::Details { chain, .. } => parse_chain(chain),
                 OperatorGetterCommands::Stake { chain, .. } => parse_chain(chain),
                 OperatorGetterCommands::Status { chain, .. } => parse_chain(chain),
-            }
+            },
+            OperatorCommands::Set { subcmd: _ } => Chain::AnvilHardhat,
         }
     }
 }
@@ -73,6 +89,9 @@ pub async fn parse_operator_subcommands(subcmd: OperatorCommands, config: &IvyCo
             debug!("Operator register: {delegation_approver:?} | {staker_opt_out_window_blocks} | {metadata_uri}");
             manager.register(earnings_receiver, delegation_approver, staker_opt_out_window_blocks, metadata_uri).await?
         }
+        OperatorCommands::Set { subcmd } => {
+            parse_operator_setter_subcommands(subcmd, config).await?;
+        }
     }
     Ok(())
 }
@@ -101,4 +120,15 @@ pub async fn parse_operator_getter_subcommands(
         }
     }
     Ok(())
+}
+
+pub async fn parse_operator_setter_subcommands(
+    subsetter: OperatorSetterCommands,
+    config: &IvyConfig,
+) -> Result<(), Error> {
+    
+    match subsetter {
+        OperatorSetterCommands::EcdsaKeyfile { ecdsa_keypath } => todo!(),
+        OperatorSetterCommands::BlsKeyfile { bls_keypath } => todo!(),
+    }
 }
