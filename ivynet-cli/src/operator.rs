@@ -55,7 +55,7 @@ pub async fn parse_operator_subcommands(subcmd: OperatorCommands, config: &IvyCo
         }
         OperatorCommands::Register { delegation_approver, staker_opt_out_window_blocks, .. } => {
             let password: String =
-                Password::new().with_prompt("Input the password for your stored keyfile").interact()?;
+                Password::new().with_prompt("Input the password for your stored ECDSA keyfile").interact()?;
             let wallet = IvyWallet::from_keystore(config.default_private_keyfile.clone(), password)?;
             let earnings_receiver = wallet.address();
             let provider = connect_provider(&config.get_rpc_url(chain)?, Some(wallet)).await?;
