@@ -1,14 +1,7 @@
 use std::str::FromStr as _;
 
 use clap::{Parser, Subcommand};
-use ivynet_core::{
-    config::IvyConfig,
-    grpc::{
-        backend::backend_client::BackendClient,
-        client::{create_channel, Request, Uri},
-        messages::RegistrationCredentials,
-    },
-};
+use ivynet_core::{config::IvyConfig, grpc::client::Uri};
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 #[allow(unused_imports)]
@@ -37,11 +30,6 @@ struct Args {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    #[command(name = "setup", about = "Not implemented yet - First time setup for ivynet! Start here!")]
-    Setup {
-        #[command(subcommand)]
-        subcmd: SetupCommands,
-    },
     #[command(name = "init", about = "Ivynet config intiliazation")]
     Init,
     #[command(name = "config", about = "Manage rpc information, keys, and keyfile settings")]
@@ -66,20 +54,6 @@ enum Commands {
     },
 }
 
-#[derive(Parser, Debug, Clone)]
-enum SetupCommands {
-    #[command(name = "register", about = "Register node on IvyNet server")]
-    Register {
-        /// Email address registered at IvyNet portal
-        #[arg(long, env = "IVYNET_EMAIL")]
-        email: String,
-
-        /// Password to IvyNet account
-        #[arg(long, env = "IVYNET_PASSWORD")]
-        password: String,
-    },
-}
-
 #[tokio::main]
 async fn main() -> Result<(), Error> {
     let args = Args::parse();
@@ -92,7 +66,7 @@ async fn main() -> Result<(), Error> {
         Commands::Init {} => initialize_ivynet()?,
         Commands::Config { subcmd } => {
             let mut config = IvyConfig::load_from_default_path()?;
-            config::parse_config_subcommands(subcmd, &mut config)?;
+            config::parse_config_subcommands(subcmd, &mut config, args.server_url, args.server_ca.as_ref()).await?;
             config.store()?;
         }
         Commands::Operator { subcmd } => {
@@ -103,21 +77,6 @@ async fn main() -> Result<(), Error> {
             let config = IvyConfig::load_from_default_path()?;
             staker::parse_staker_subcommands(subcmd, &config).await?
         }
-        Commands::Setup { subcmd } => match subcmd {
-            SetupCommands::Register { email, password } => {
-                let config = IvyConfig::load_from_default_path()?;
-                let public_key = config.identity_wallet()?.address();
-                let mut backend = BackendClient::new(create_channel(&args.server_url, args.server_ca.as_ref()));
-                backend
-                    .register(Request::new(RegistrationCredentials {
-                        email,
-                        password,
-                        public_key: public_key.as_bytes().to_vec(),
-                    }))
-                    .await?;
-                println!("Node registered");
-            }
-        },
         Commands::Avs { subcmd } => {
             let config = IvyConfig::load_from_default_path()?;
             avs::parse_avs_subcommands(subcmd, &config).await?

@@ -3,6 +3,11 @@ use dialoguer::{Input, Password};
 use ivynet_core::{
     config::{self, IvyConfig},
     ethers::{types::Chain, utils::hex::ToHex as _},
+    grpc::{
+        backend::backend_client::BackendClient,
+        client::{create_channel, Request, Uri},
+        messages::RegistrationCredentials,
+    },
     metadata::Metadata,
     wallet::IvyWallet,
 };
@@ -52,9 +57,20 @@ pub enum ConfigCommands {
     GetConfig,
     #[command(name = "get-sys-info", about = "Get system information")]
     GetSysInfo,
+
+    #[command(name = "register", about = "Register node on IvyNet server")]
+    Register {
+        /// Email address registered at IvyNet portal
+        #[arg(long, env = "IVYNET_EMAIL")]
+        email: String,
+
+        /// Password to IvyNet account
+        #[arg(long, env = "IVYNET_PASSWORD")]
+        password: String,
+    },
 }
 
-pub fn parse_config_subcommands(subcmd: ConfigCommands, config: &mut IvyConfig) -> Result<(), Error> {
+pub async fn parse_config_subcommands(subcmd: ConfigCommands, config: &mut IvyConfig, server_url: Uri, server_ca: Option<&String>) -> Result<(), Error> {
     match subcmd {
         ConfigCommands::ImportPrivateKey { private_key, keyname, password } => {
             let wallet = IvyWallet::from_private_key(private_key)?;
@@ -119,6 +135,19 @@ pub fn parse_config_subcommands(subcmd: ConfigCommands, config: &mut IvyConfig) 
             println!("Disk Information:");
             println!("  Free: {disk_info}");
             println!(" --------------------------- ");
+        }
+        ConfigCommands::Register { email, password } => {
+            let config = IvyConfig::load_from_default_path()?;
+            let public_key = config.identity_wallet()?.address();
+            let mut backend = BackendClient::new(create_channel(&server_url, server_ca));
+            backend
+                .register(Request::new(RegistrationCredentials {
+                    email,
+                    password,
+                    public_key: public_key.as_bytes().to_vec(),
+                }))
+                .await?;
+            println!("Node registered");
         }
     };
     Ok(())
