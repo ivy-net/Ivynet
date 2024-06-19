@@ -160,8 +160,7 @@ fn set_config_keys(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
     Ok(config)
 }
 
-fn create_config_dir(mut config_path: PathBuf) -> Result<(), IvyError> {
-    config_path.pop();
+fn create_config_dir(config_path: PathBuf) -> Result<(), IvyError> {
     if !config_path.exists() {
         fs::create_dir_all(&config_path)?;
     }

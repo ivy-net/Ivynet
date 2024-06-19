@@ -6,7 +6,7 @@ use sysinfo::{Disks, System};
 
 pub static DEFAULT_CONFIG_PATH: Lazy<PathBuf> = Lazy::new(|| {
     let path = dirs::home_dir().expect("Could not get a home directory");
-    path.join(".ivynet/ivy-config.toml")
+    path.join(".ivynet")
 });
 
 use crate::{
@@ -62,12 +62,13 @@ impl IvyConfig {
     }
 
     pub fn load_from_default_path() -> Result<Self, IvyError> {
-        let config: Self = read_toml(DEFAULT_CONFIG_PATH.to_owned())?;
-        Ok(config)
+        let config_path = DEFAULT_CONFIG_PATH.to_owned().join("ivy-config.toml");
+        Self::load(config_path)
     }
 
     pub fn store(&self) -> Result<(), IvyError> {
-        write_toml(self.path.clone(), self)?;
+        let config_path = self.path.clone().join("ivy-config.toml");
+        write_toml(config_path, self)?;
         Ok(())
     }
 

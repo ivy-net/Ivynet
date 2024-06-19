@@ -57,6 +57,7 @@ impl IvyWallet {
         name: String,
         password: String,
     ) -> Result<(PathBuf, PathBuf), IvyError> {
+        debug!("{:?}", path);
         let encrypt = LocalWallet::encrypt_keystore(
             path,
             &mut thread_rng(),
