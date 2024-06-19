@@ -13,9 +13,10 @@ path = "src/lib.rs"
 [lints]
 workspace = true
 
+# TODO: Remove clap as a dependency unless cli-feature is enabled
 [dependencies]
-futures-util = "0.3"
 clap = { version = "4.5.6", features = ["derive"] }
+futures-util = "0.3"
 console = "0.15.8"
 dialoguer = "0.11.0"
 dirs = "5.0.1"

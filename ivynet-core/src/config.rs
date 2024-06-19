@@ -67,6 +67,7 @@ impl IvyConfig {
     }
 
     pub fn store(&self) -> Result<(), IvyError> {
+        // TODO: Assert identity key is None on save
         let config_path = self.path.clone().join("ivy-config.toml");
         write_toml(config_path, self)?;
         Ok(())

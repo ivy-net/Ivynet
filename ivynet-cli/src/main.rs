@@ -2,8 +2,8 @@ use std::str::FromStr as _;
 
 use clap::{Parser, Subcommand};
 use ivynet_core::{
+    avs::commands::AvsCommands,
     config::IvyConfig,
-    ethers::types::Chain,
     grpc::{
         backend::backend_client::BackendClient,
         client::{create_channel, Request, Uri},
@@ -61,7 +61,7 @@ enum Commands {
     #[command(name = "avs", about = "Request information about an AVS or boot up a node")]
     Avs {
         #[command(subcommand)]
-        subcmd: avs::AvsCommands,
+        subcmd: AvsCommands,
     },
 }
 

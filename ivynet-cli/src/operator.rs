@@ -5,11 +5,12 @@ use ivynet_core::{
     eigen::delegation_manager::DelegationManager,
     ethers::{core::types::Address, types::Chain},
     rpc_management::connect_provider,
+    utils::parse_chain,
     wallet::IvyWallet,
 };
 use tracing::debug;
 
-use crate::{error::Error, utils::parse_chain};
+use crate::error::Error;
 
 #[derive(Parser, Debug, Clone)]
 pub enum OperatorCommands {
