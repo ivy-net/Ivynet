@@ -32,11 +32,17 @@ struct Args {
 enum Commands {
     #[command(name = "init", about = "Ivynet config intiliazation")]
     Init,
+    #[command(name = "avs", about = "Request information about an AVS or boot up a node")]
+    Avs {
+        #[command(subcommand)]
+        subcmd: avs::AvsCommands,
+    },
     #[command(name = "config", about = "Manage rpc information, keys, and keyfile settings")]
     Config {
         #[command(subcommand)]
         subcmd: config::ConfigCommands,
     },
+
     #[command(name = "operator", about = "Request information, register, or manage your operator")]
     Operator {
         #[command(subcommand)]
@@ -46,11 +52,6 @@ enum Commands {
     Staker {
         #[command(subcommand)]
         subcmd: staker::StakerCommands,
-    },
-    #[command(name = "avs", about = "Request information about an AVS or boot up a node")]
-    Avs {
-        #[command(subcommand)]
-        subcmd: avs::AvsCommands,
     },
 }
 

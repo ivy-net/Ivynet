@@ -84,7 +84,7 @@ impl IvyWallet {
         self.local_wallet.address()
     }
 
-    pub fn address_from_file(path: PathBuf) -> Result<H160, IvyError> {
+    pub fn address_from_file(path: PathBuf) -> Result<Address, IvyError> {
         let addr_vec: Vec<u8> = fs::read(path)?;
         Ok(H160::from_slice(&addr_vec))
     }

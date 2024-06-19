@@ -70,7 +70,12 @@ pub enum ConfigCommands {
     },
 }
 
-pub async fn parse_config_subcommands(subcmd: ConfigCommands, config: &mut IvyConfig, server_url: Uri, server_ca: Option<&String>) -> Result<(), Error> {
+pub async fn parse_config_subcommands(
+    subcmd: ConfigCommands,
+    config: &mut IvyConfig,
+    server_url: Uri,
+    server_ca: Option<&String>,
+) -> Result<(), Error> {
     match subcmd {
         ConfigCommands::ImportPrivateKey { private_key, keyname, password } => {
             let wallet = IvyWallet::from_private_key(private_key)?;
