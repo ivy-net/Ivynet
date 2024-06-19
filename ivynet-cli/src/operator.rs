@@ -16,11 +16,11 @@ use crate::{
 
 #[derive(Parser, Debug, Clone)]
 pub enum OperatorCommands {
-    #[command(name = "get-details", about = "Get operator details <CHAIN> <ADDRESS>")]
+    #[command(name = "get-details", about = "Get operator details <CHAIN> <<ADDRESS>>")]
     Details { chain: String, opt_address: Option<Address> },
-    #[command(name = "get-stake", about = "Get an operator's total delineated stake per strategy <CHAIN> <ADDRESS>")]
+    #[command(name = "get-stake", about = "Get an operator's total delineated stake per strategy <CHAIN> <<ADDRESS>>")]
     Stake { chain: String, opt_address: Option<Address> },
-    #[command(name = "get-status", about = "Determine whether an address is a registered operator <CHAIN> <ADDRESS>")]
+    #[command(name = "get-status", about = "Determine whether an address is a registered operator <CHAIN> <<ADDRESS>>")]
     Status { chain: String, opt_address: Option<Address> },
     #[command(name = "register", about = "Register an operator <CHAIN>")]
     Register { chain: String, delegation_approver: Option<Address>, staker_opt_out_window_blocks: Option<u32> },

@@ -63,25 +63,16 @@ async fn main() -> Result<(), Error> {
     let filter = EnvFilter::builder().parse("ivynet_cli=debug,ivynet_core=debug")?;
     tracing_subscriber::registry().with(fmt::layer()).with(filter).init();
 
+    let mut config = IvyConfig::load_from_default_path()?;
     match args.cmd {
         Commands::Init {} => initialize_ivynet()?,
         Commands::Config { subcmd } => {
-            let mut config = IvyConfig::load_from_default_path()?;
             config::parse_config_subcommands(subcmd, &mut config, args.server_url, args.server_ca.as_ref()).await?;
             config.store()?;
         }
-        Commands::Operator { subcmd } => {
-            let config = IvyConfig::load_from_default_path()?;
-            operator::parse_operator_subcommands(subcmd, &config).await?
-        }
-        Commands::Staker { subcmd } => {
-            let config = IvyConfig::load_from_default_path()?;
-            staker::parse_staker_subcommands(subcmd, &config).await?
-        }
-        Commands::Avs { subcmd } => {
-            let config = IvyConfig::load_from_default_path()?;
-            avs::parse_avs_subcommands(subcmd, &config).await?
-        }
+        Commands::Operator { subcmd } => operator::parse_operator_subcommands(subcmd, &config).await?,
+        Commands::Staker { subcmd } => staker::parse_staker_subcommands(subcmd, &config).await?,
+        Commands::Avs { subcmd } => avs::parse_avs_subcommands(subcmd, &config).await?,
     }
 
     Ok(())
