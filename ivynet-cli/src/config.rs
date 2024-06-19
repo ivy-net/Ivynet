@@ -80,9 +80,10 @@ pub async fn parse_config_subcommands(
         ConfigCommands::ImportPrivateKey { private_key, keyname, password } => {
             let wallet = IvyWallet::from_private_key(private_key)?;
             let (keyname, pass) = get_credentials(keyname, password);
-            let (pub_key_path, prv_key_path) = wallet.encrypt_and_store(keyname, pass)?;
+            let (pub_key_path, prv_key_path) = wallet.encrypt_and_store(&config.get_path(), keyname, pass)?;
             config.default_private_keyfile = prv_key_path;
             config.default_public_keyfile = pub_key_path;
+            config.store()?;
         }
         ConfigCommands::CreatePrivateKey { store, keyname, password } => {
             let wallet = IvyWallet::new();
@@ -92,14 +93,16 @@ pub async fn parse_config_subcommands(
             println!("Public Address: {:?}", addr);
             if store {
                 let (keyname, pass) = get_credentials(keyname, password);
-                let (pub_key_path, prv_key_path) = wallet.encrypt_and_store(keyname, pass)?;
+                let (pub_key_path, prv_key_path) = wallet.encrypt_and_store(&config.get_path(), keyname, pass)?;
                 config.default_private_keyfile = prv_key_path;
                 config.default_public_keyfile = pub_key_path;
+                config.store()?;
             }
         }
         ConfigCommands::SetRpc { chain, rpc_url } => {
             let chain = parse_chain(&chain);
             config.set_rpc_url(chain, &rpc_url)?;
+            config.store()?;
         }
         ConfigCommands::GetRpc { chain } => {
             println!(
@@ -108,10 +111,7 @@ pub async fn parse_config_subcommands(
             );
         }
         ConfigCommands::GetDefaultEthAddress => {
-            println!(
-                "Public Key: {}",
-                IvyWallet::address_from_file(config.default_public_keyfile.clone())?.encode_hex::<String>()
-            );
+            println!("Public Key: {:?}", IvyWallet::address_from_file(config.default_public_keyfile.clone())?);
         }
         ConfigCommands::GetDefaultPrivateKey => {
             let pass = Password::new().with_prompt("Enter a password to the private key").interact()?;
