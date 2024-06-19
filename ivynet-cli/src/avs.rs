@@ -4,7 +4,6 @@ use clap::Subcommand;
 use dialoguer::Password;
 use ivynet_core::{
     config::IvyConfig,
-    ethers::types::Chain,
     server::{handle_avs_command, AvsHandleCommands},
     wallet::IvyWallet,
 };

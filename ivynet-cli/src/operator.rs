@@ -3,7 +3,7 @@ use dialoguer::Password;
 use ivynet_core::{
     config::IvyConfig,
     eigen::delegation_manager::DelegationManager,
-    ethers::{core::types::Address, middleware::MiddlewareBuilder, types::Chain},
+    ethers::{core::types::Address, types::Chain},
     rpc_management::connect_provider,
     wallet::IvyWallet,
 };

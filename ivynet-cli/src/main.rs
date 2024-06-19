@@ -95,7 +95,6 @@ async fn main() -> Result<(), Error> {
         Commands::Config { subcmd } => {
             let mut config = IvyConfig::load_from_default_path()?;
             config::parse_config_subcommands(subcmd, &mut config)?;
-            config.store()?;
         }
         Commands::Operator { subcmd } => {
             let config = IvyConfig::load_from_default_path()?;

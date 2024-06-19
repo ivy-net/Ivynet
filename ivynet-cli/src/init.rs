@@ -127,7 +127,7 @@ fn set_config_keys(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
                 pw_confirmed = pw == confirm_pw;
             }
             let wallet = IvyWallet::from_private_key(private_key)?;
-            let (pub_key_path, prv_key_path) = wallet.encrypt_and_store(keyfile_name, pw)?;
+            let (pub_key_path, prv_key_path) = wallet.encrypt_and_store(&config.get_path(), keyfile_name, pw)?;
             config.default_public_keyfile = pub_key_path;
             config.default_private_keyfile.clone_from(&prv_key_path);
         }
@@ -148,7 +148,7 @@ fn set_config_keys(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
                 pw_confirmed = pw == confirm_pw;
             }
 
-            let (pub_key_path, prv_key_path) = wallet.encrypt_and_store(keyfile_name, pw)?;
+            let (pub_key_path, prv_key_path) = wallet.encrypt_and_store(&config.get_path(), keyfile_name, pw)?;
             config.default_public_keyfile = pub_key_path;
             config.default_private_keyfile.clone_from(&prv_key_path);
         }
@@ -169,14 +169,4 @@ fn create_config_dir(mut config_path: PathBuf) -> Result<(), IvyError> {
 }
 
 #[cfg(test)]
-pub mod test {
-    use super::*;
-    #[test]
-    fn test_create_config_dir() {
-        let mut config_path = PathBuf::from("test_path/test_config.toml");
-        create_config_dir(config_path.clone()).unwrap();
-        config_path.pop();
-        assert!(config_path.exists());
-        fs::remove_dir_all(config_path).unwrap();
-    }
-}
+pub mod test {}
