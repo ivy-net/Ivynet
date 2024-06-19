@@ -1,6 +1,8 @@
 use clap::Subcommand;
 use std::fmt::Display;
 
+// TODO: use newtype in ivynet_core to wrap and implement clap subcommands
+
 #[derive(Subcommand, Debug)]
 pub enum AvsCommands {
     #[command(name = "setup", about = "opt in to valid quorums with the given AVS")]
