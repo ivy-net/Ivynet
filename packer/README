@@ -1,0 +1,7 @@
+# Build notes
+
+* Download plugin for GCP VM
+```
+packer init .
+```
+* You need a private key for packer to clone ivynet repo

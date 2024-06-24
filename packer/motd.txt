@@ -1,0 +1,3 @@
+This is cloud workstation (cloudstation for short) to work with IvyNet Client.
+
+The code of eigenda, eigenda-operator-setup, ivynet and g1, g2 files are in the /opt/eigen directory.
