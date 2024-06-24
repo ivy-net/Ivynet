@@ -1,17 +1,11 @@
 use std::str::FromStr as _;
 
 use clap::{Parser, Subcommand};
-use ivynet_core::{
-    avs::commands::AvsCommands,
-    config::IvyConfig,
-    grpc::{
-        backend::backend_client::BackendClient,
-        client::{create_channel, Request, Uri},
-        messages::RegistrationCredentials,
-    },
-};
-use tracing::{debug, error, warn};
+use ivynet_core::{avs::commands::AvsCommands, config::IvyConfig, grpc::client::Uri};
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
+
+#[allow(unused_imports)]
+use tracing::{debug, error, warn};
 
 use ivynet_cli::{avs, config, error::Error, init::initialize_ivynet, operator, staker};
 
@@ -36,18 +30,19 @@ struct Args {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    #[command(name = "setup", about = "Not implemented yet - First time setup for ivynet! Start here!")]
-    Setup {
-        #[command(subcommand)]
-        subcmd: SetupCommands,
-    },
     #[command(name = "init", about = "Ivynet config intiliazation")]
     Init,
+    #[command(name = "avs", about = "Request information about an AVS or boot up a node")]
+    Avs {
+        #[command(subcommand)]
+        subcmd: AvsCommands,
+    },
     #[command(name = "config", about = "Manage rpc information, keys, and keyfile settings")]
     Config {
         #[command(subcommand)]
         subcmd: config::ConfigCommands,
     },
+
     #[command(name = "operator", about = "Request information, register, or manage your operator")]
     Operator {
         #[command(subcommand)]
@@ -57,28 +52,6 @@ enum Commands {
     Staker {
         #[command(subcommand)]
         subcmd: staker::StakerCommands,
-    },
-    #[command(name = "avs", about = "Request information about an AVS or boot up a node")]
-    Avs {
-        #[command(subcommand)]
-        subcmd: AvsCommands,
-    },
-}
-
-#[derive(Parser, Debug, Clone)]
-enum SetupCommands {
-    #[command(name = "todo", about = "todo")]
-    Todo { private_key: String },
-
-    #[command(name = "register", about = "Register node on IvyNet server")]
-    Register {
-        /// Email address registered at IvyNet portal
-        #[arg(long, env = "IVYNET_EMAIL")]
-        email: String,
-
-        /// Password to IvyNet account
-        #[arg(long, env = "IVYNET_PASSWORD")]
-        password: String,
     },
 }
 
@@ -90,40 +63,16 @@ async fn main() -> Result<(), Error> {
     let filter = EnvFilter::builder().parse("ivynet_cli=debug,ivynet_core=debug")?;
     tracing_subscriber::registry().with(fmt::layer()).with(filter).init();
 
+    let mut config = IvyConfig::load_from_default_path()?;
     match args.cmd {
-        Commands::Init {} => initialize_ivynet()?,
+        Commands::Init => initialize_ivynet()?,
         Commands::Config { subcmd } => {
-            let mut config = IvyConfig::load_from_default_path()?;
-            config::parse_config_subcommands(subcmd, &mut config)?;
+            config::parse_config_subcommands(subcmd, &mut config, args.server_url, args.server_ca.as_ref()).await?;
+            config.store()?;
         }
-        Commands::Operator { subcmd } => {
-            let config = IvyConfig::load_from_default_path()?;
-            operator::parse_operator_subcommands(subcmd, &config).await?
-        }
-        Commands::Staker { subcmd } => {
-            let config = IvyConfig::load_from_default_path()?;
-            staker::parse_staker_subcommands(subcmd, &config).await?
-        }
-        Commands::Setup { subcmd } => match subcmd {
-            SetupCommands::Todo { private_key: _ } => todo!(),
-            SetupCommands::Register { email, password } => {
-                let config = IvyConfig::load_from_default_path()?;
-                let public_key = config.identity_wallet()?.address();
-                let mut backend = BackendClient::new(create_channel(&args.server_url, args.server_ca.as_ref()));
-                backend
-                    .register(Request::new(RegistrationCredentials {
-                        email,
-                        password,
-                        public_key: public_key.as_bytes().to_vec(),
-                    }))
-                    .await?;
-                println!("Node registered");
-            }
-        },
-        Commands::Avs { subcmd } => {
-            let config = IvyConfig::load_from_default_path()?;
-            avs::parse_avs_subcommands(subcmd, &config).await?
-        }
+        Commands::Operator { subcmd } => operator::parse_operator_subcommands(subcmd, &config).await?,
+        Commands::Staker { subcmd } => staker::parse_staker_subcommands(subcmd, &config).await?,
+        Commands::Avs { subcmd } => avs::parse_avs_subcommands(subcmd, &config).await?,
     }
 
     Ok(())

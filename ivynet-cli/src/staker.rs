@@ -1,34 +1,49 @@
 use clap::Parser;
 
 use ivynet_core::{
-    config::IvyConfig, eigen::delegation_manager::DelegationManager, ethers::types::Address,
-    rpc_management::connect_provider, utils::parse_chain, wallet::IvyWallet,
+    config::IvyConfig,
+    eigen::delegation_manager::DelegationManager,
+    ethers::types::Address,
+    rpc_management::connect_provider,
+    utils::{parse_chain, unwrap_or_local},
 };
 
 use crate::error::Error;
 
 #[derive(Parser, Debug, Clone)]
 pub enum StakerCommands {
-    #[command(name = "get-shares", about = "Get data on a staker's strategy choices and their stake in each one")]
-    GetStakerShares { address: Address, chain: String },
-    #[command(name = "get-my-shares", about = "Get data on the saved keypair's current strategy and stake")]
-    GetMyShares { chain: String },
+    #[command(name = "get", about = "Get data on a staker - defaults to local")]
+    Get {
+        #[command(subcommand)]
+        subcmd: StakerGetterCommands,
+    },
+}
+
+#[derive(Parser, Debug, Clone)]
+pub enum StakerGetterCommands {
+    #[command(
+        name = "shares",
+        about = "Get data on a staker's strategy choices and their stake in each one <CHAIN> <<ADDRESS>>"
+    )]
+    GetStakerShares { chain: String, opt_address: Option<Address> },
 }
 
 pub async fn parse_staker_subcommands(subcmd: StakerCommands, config: &IvyConfig) -> Result<(), Error> {
     match subcmd {
-        StakerCommands::GetStakerShares { address, chain } => {
-            let chain = parse_chain(&chain);
-            let provider = connect_provider(&config.get_rpc_url(chain)?, None).await?;
-            let manager = DelegationManager::new(&provider);
-            manager.get_staker_delegatable_shares(address).await?
+        StakerCommands::Get { subcmd } => {
+            parse_staker_getter_subcommands(subcmd, config).await?;
         }
-        StakerCommands::GetMyShares { chain } => {
+    }
+    Ok(())
+}
+
+pub async fn parse_staker_getter_subcommands(subget: StakerGetterCommands, config: &IvyConfig) -> Result<(), Error> {
+    match subget {
+        StakerGetterCommands::GetStakerShares { opt_address, chain } => {
             let chain = parse_chain(&chain);
             let provider = connect_provider(&config.get_rpc_url(chain)?, None).await?;
             let manager = DelegationManager::new(&provider);
-            let address = IvyWallet::address_from_file(config.default_public_keyfile.clone())?;
-            manager.get_staker_delegatable_shares(address).await?;
+            manager.get_staker_delegatable_shares(unwrap_or_local(opt_address, config.clone())?).await?
         }
     }
     Ok(())

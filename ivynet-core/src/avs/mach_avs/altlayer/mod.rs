@@ -167,7 +167,7 @@ impl AvsVariant for AltLayer {
         chain: Chain,
     ) -> Result<(), IvyError> {
         let quorum_str: Vec<String> = quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
-        let quorum_str = quorum_str.join(",");
+        let _quorum_str = quorum_str.join(",");
 
         let run_path = eigen_path
             .join("mach-avs-operator-setup")
@@ -256,10 +256,10 @@ impl AvsVariant for AltLayer {
         self.path.clone()
     }
 
-    async fn start(&self, quorums: Vec<QuorumType>, chain: Chain) -> Result<(), IvyError> {
+    async fn start(&self, _quorums: Vec<QuorumType>, _chain: Chain) -> Result<(), IvyError> {
         todo!()
     }
-    async fn stop(&self, quorums: Vec<QuorumType>, chain: Chain) -> Result<(), IvyError> {
+    async fn stop(&self, _quorums: Vec<QuorumType>, _chain: Chain) -> Result<(), IvyError> {
         todo!()
     }
 }

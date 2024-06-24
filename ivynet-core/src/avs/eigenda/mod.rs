@@ -210,7 +210,7 @@ impl AvsVariant for EigenDA {
         }
     }
 
-    async fn stop(&self, quorums: Vec<QuorumType>, chain: Chain) -> Result<(), IvyError> {
+    async fn stop(&self, _quorums: Vec<QuorumType>, _chain: Chain) -> Result<(), IvyError> {
         todo!()
     }
 

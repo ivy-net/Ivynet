@@ -46,7 +46,7 @@ impl<T: AvsVariant> AvsProvider<T> {
         Ok(())
     }
 
-    pub async fn start(&self, config: &IvyConfig) -> Result<(), IvyError> {
+    pub async fn start(&self, _config: &IvyConfig) -> Result<(), IvyError> {
         let chain = Chain::try_from(self.provider.signer().chain_id()).unwrap_or_default();
         let quorums = self.get_bootable_quorums().await?;
         if quorums.is_empty() {
@@ -57,7 +57,7 @@ impl<T: AvsVariant> AvsProvider<T> {
         self.avs.start(quorums, chain).await
     }
 
-    pub async fn stop(&self, config: &IvyConfig) -> Result<(), IvyError> {
+    pub async fn stop(&self, _config: &IvyConfig) -> Result<(), IvyError> {
         todo!();
     }
 

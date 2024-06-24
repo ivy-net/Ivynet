@@ -2,8 +2,12 @@ use clap::Parser;
 use dialoguer::{Input, Password};
 use ivynet_core::{
     config::{self, IvyConfig},
-    error::IvyError,
-    ethers::{types::Chain, utils::hex::ToHex as _},
+    ethers::types::Chain,
+    grpc::{
+        backend::backend_client::BackendClient,
+        client::{create_channel, Request, Uri},
+        messages::RegistrationCredentials,
+    },
     metadata::Metadata,
     utils::parse_chain,
     wallet::IvyWallet,
@@ -13,12 +17,11 @@ use crate::error::Error;
 
 #[derive(Parser, Debug, Clone)]
 pub enum ConfigCommands {
-    #[command(name = "import-key", about = "Import and save as your default Ethereum private key with a password")]
-    ImportPrivateKey {
-        private_key: String,
-        keyname: Option<String>,
-        password: Option<String>,
-    },
+    #[command(
+        name = "import-key",
+        about = "Import and save as your default Ethereum private key with a password <PRIVATE_KEY>"
+    )]
+    ImportPrivateKey { private_key: String, keyname: Option<String>, password: Option<String> },
     #[command(
         name = "create-key",
         about = "Create an Ethereum private key to use with Ivynet and optionally store it with a password"
@@ -35,34 +38,45 @@ pub enum ConfigCommands {
     GetDefaultPrivateKey,
     #[command(
         name = "set-rpc",
-        about = "Set default URLs to use when connecting to 'mainnet', 'holesky', and 'local' RPC urls"
+        about = "Set default URLs to use when connecting to 'mainnet', 'holesky', and 'local' RPC urls <CHAIN> <RPC_URL>"
     )]
-    SetRpc {
-        chain: String,
-        rpc_url: String,
-    },
-    #[command(name = "get-rpc", about = "Get the current default RPC URL for 'mainnet', 'holesky', or 'local'")]
-    GetRpc {
-        chain: String,
-    },
+    SetRpc { chain: String, rpc_url: String },
+    #[command(
+        name = "get-rpc",
+        about = "Get the current default RPC URL for 'mainnet', 'holesky', or 'local' <CHAIN>"
+    )]
+    GetRpc { chain: String },
     #[command(
         name = "get-sys-info",
         about = "Get the number of CPU cores, memory, and free disk space on the current machine"
     )]
-    #[command(name = "set-metadata", about = "Set metadata")]
-    SetMetadata {
-        metadata_uri: Option<String>,
-        logo_uri: Option<String>,
-        favicon_uri: Option<String>,
-    },
-    #[command(name = "get-metadata", about = "Get metadata")]
+    #[command(name = "set-metadata", about = "Set metadata for EigenLayer Operator")]
+    SetMetadata { metadata_uri: Option<String>, logo_uri: Option<String>, favicon_uri: Option<String> },
+    #[command(name = "get-metadata", about = "Get local metadata")]
     GetMetadata,
     #[command(name = "get-config", about = "Get all config data")]
     GetConfig,
+    #[command(name = "get-sys-info", about = "Get system information")]
     GetSysInfo,
+
+    #[command(name = "register", about = "Register node on IvyNet server")]
+    Register {
+        /// Email address registered at IvyNet portal
+        #[arg(long, env = "IVYNET_EMAIL")]
+        email: String,
+
+        /// Password to IvyNet account
+        #[arg(long, env = "IVYNET_PASSWORD")]
+        password: String,
+    },
 }
 
-pub fn parse_config_subcommands(subcmd: ConfigCommands, config: &mut IvyConfig) -> Result<(), Error> {
+pub async fn parse_config_subcommands(
+    subcmd: ConfigCommands,
+    config: &mut IvyConfig,
+    server_url: Uri,
+    server_ca: Option<&String>,
+) -> Result<(), Error> {
     match subcmd {
         ConfigCommands::ImportPrivateKey { private_key, keyname, password } => {
             let wallet = IvyWallet::from_private_key(private_key)?;
@@ -127,6 +141,19 @@ pub fn parse_config_subcommands(subcmd: ConfigCommands, config: &mut IvyConfig) 
             println!("Disk Information:");
             println!("  Free: {disk_info}");
             println!(" --------------------------- ");
+        }
+        ConfigCommands::Register { email, password } => {
+            let config = IvyConfig::load_from_default_path()?;
+            let public_key = config.identity_wallet()?.address();
+            let mut backend = BackendClient::new(create_channel(&server_url, server_ca));
+            backend
+                .register(Request::new(RegistrationCredentials {
+                    email,
+                    password,
+                    public_key: public_key.as_bytes().to_vec(),
+                }))
+                .await?;
+            println!("Node registered");
         }
     };
     Ok(())
