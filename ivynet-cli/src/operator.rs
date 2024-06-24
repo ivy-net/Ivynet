@@ -90,6 +90,25 @@ pub async fn parse_operator_subcommands(subcmd: OperatorCommands, config: &IvyCo
         OperatorCommands::Set { subcmd } => {
             parse_operator_setter_subcommands(subcmd, config).await?;
         }
+        OperatorCommands::Register { delegation_approver, staker_opt_out_window_blocks, .. } => {
+            let password: String =
+                Password::new().with_prompt("Input the password for your stored keyfile").interact()?;
+            let wallet = IvyWallet::from_keystore(config.default_private_keyfile.clone(), password)?;
+            let earnings_receiver = wallet.address();
+            let provider = connect_provider(&config.get_rpc_url(chain)?, Some(wallet)).await?;
+            let manager = DelegationManager::new(&provider);
+
+            let delegation_approver = delegation_approver.unwrap_or_else(Address::zero);
+            let staker_opt_out_window_blocks = staker_opt_out_window_blocks.unwrap_or(0_u32);
+            let metadata_uri = &config.metadata.metadata_uri;
+            if metadata_uri.is_empty() {
+                // TODO: There's probably a better way to check for valid
+                // metadata
+                return Err(Error::MetadataUriNotFoundError);
+            }
+            debug!("Operator register: {delegation_approver:?} | {staker_opt_out_window_blocks} | {metadata_uri}");
+            manager.register(earnings_receiver, delegation_approver, staker_opt_out_window_blocks, metadata_uri).await?
+        }
     }
     Ok(())
 }

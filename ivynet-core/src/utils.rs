@@ -1,10 +1,9 @@
-use crate::error::IvyError;
 use ethers::types::Chain;
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf};
 use tracing::{debug, warn};
 
-use crate::{config::IvyConfig, ethers::types::Address, wallet::IvyWallet};
+use crate::{config::IvyConfig, error::IvyError, ethers::types::Address, wallet::IvyWallet};
 
 pub fn read_json<T: for<'a> Deserialize<'a>>(path: PathBuf) -> Result<T, IvyError> {
     let json_str = fs::read_to_string(path)?;

@@ -2,7 +2,7 @@ use clap::Parser;
 use dialoguer::{Input, Password};
 use ivynet_core::{
     config::{self, IvyConfig},
-    ethers::{types::Chain, utils::hex::ToHex as _},
+    ethers::types::Chain,
     grpc::{
         backend::backend_client::BackendClient,
         client::{create_channel, Request, Uri},

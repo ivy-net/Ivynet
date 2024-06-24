@@ -37,6 +37,8 @@ enum Commands {
         #[command(subcommand)]
         subcmd: AvsCommands,
     },
+    #[command(name = "init", about = "Ivynet config intiliazation")]
+    Init,
     #[command(name = "config", about = "Manage rpc information, keys, and keyfile settings")]
     Config {
         #[command(subcommand)]
@@ -65,7 +67,7 @@ async fn main() -> Result<(), Error> {
 
     let mut config = IvyConfig::load_from_default_path()?;
     match args.cmd {
-        Commands::Init {} => initialize_ivynet()?,
+        Commands::Init => initialize_ivynet()?,
         Commands::Config { subcmd } => {
             config::parse_config_subcommands(subcmd, &mut config, args.server_url, args.server_ca.as_ref()).await?;
             config.store()?;
