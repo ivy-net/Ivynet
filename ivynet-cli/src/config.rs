@@ -9,10 +9,11 @@ use ivynet_core::{
         messages::RegistrationCredentials,
     },
     metadata::Metadata,
+    utils::parse_chain,
     wallet::IvyWallet,
 };
 
-use crate::{error::Error, utils::parse_chain};
+use crate::error::Error;
 
 #[derive(Parser, Debug, Clone)]
 pub enum ConfigCommands {
@@ -119,9 +120,9 @@ pub async fn parse_config_subcommands(
             println!("Private key: {:?}", wallet.to_private_key());
         }
         ConfigCommands::SetMetadata { metadata_uri, logo_uri, favicon_uri } => {
-            let metadata_uri = if let Some(a) = metadata_uri { a } else { "".to_string() };
-            let logo_uri = if let Some(a) = logo_uri { a } else { "".to_string() };
-            let favicon_uri = if let Some(a) = favicon_uri { a } else { "".to_string() };
+            let metadata_uri = metadata_uri.unwrap_or("".to_string());
+            let logo_uri = logo_uri.unwrap_or("".to_string());
+            let favicon_uri = favicon_uri.unwrap_or("".to_string());
             config.metadata = Metadata::new(&metadata_uri, &logo_uri, &favicon_uri);
         }
         ConfigCommands::GetMetadata => {

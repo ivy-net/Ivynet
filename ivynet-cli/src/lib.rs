@@ -5,4 +5,3 @@ pub mod init;
 pub mod keys;
 pub mod operator;
 pub mod staker;
-pub mod utils;

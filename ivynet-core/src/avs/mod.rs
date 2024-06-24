@@ -15,6 +15,7 @@ use ethers::{
 use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
 use tracing::{error, info};
 
+pub mod commands;
 pub mod contracts;
 pub mod eigenda;
 pub mod instance;
