@@ -1,7 +1,7 @@
 use std::str::FromStr as _;
 
 use clap::{Parser, Subcommand};
-use ivynet_core::{config::IvyConfig, grpc::client::Uri};
+use ivynet_core::{avs::commands::AvsCommands, config::IvyConfig, grpc::client::Uri};
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 #[allow(unused_imports)]
@@ -35,7 +35,7 @@ enum Commands {
     #[command(name = "avs", about = "Request information about an AVS or boot up a node")]
     Avs {
         #[command(subcommand)]
-        subcmd: avs::AvsCommands,
+        subcmd: AvsCommands,
     },
     #[command(name = "config", about = "Manage rpc information, keys, and keyfile settings")]
     Config {

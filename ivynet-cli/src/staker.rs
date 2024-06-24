@@ -1,14 +1,14 @@
 use clap::Parser;
 
 use ivynet_core::{
-    config::IvyConfig, eigen::delegation_manager::DelegationManager, ethers::types::Address,
+    config::IvyConfig,
+    eigen::delegation_manager::DelegationManager,
+    ethers::types::Address,
     rpc_management::connect_provider,
-};
-
-use crate::{
-    error::Error,
     utils::{parse_chain, unwrap_or_local},
 };
+
+use crate::error::Error;
 
 #[derive(Parser, Debug, Clone)]
 pub enum StakerCommands {
@@ -27,7 +27,6 @@ pub enum StakerGetterCommands {
     )]
     GetStakerShares { chain: String, opt_address: Option<Address> },
 }
-
 
 pub async fn parse_staker_subcommands(subcmd: StakerCommands, config: &IvyConfig) -> Result<(), Error> {
     match subcmd {

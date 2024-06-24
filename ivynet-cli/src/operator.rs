@@ -7,14 +7,12 @@ use ivynet_core::{
     eigen::delegation_manager::DelegationManager,
     ethers::{core::types::Address, types::Chain},
     rpc_management::connect_provider,
+    utils::{parse_chain, unwrap_or_local},
     wallet::IvyWallet,
 };
 use tracing::debug;
 
-use crate::{
-    error::Error,
-    utils::{parse_chain, unwrap_or_local},
-};
+use crate::error::Error;
 
 #[derive(Parser, Debug, Clone)]
 pub enum OperatorCommands {
@@ -126,7 +124,6 @@ pub async fn parse_operator_setter_subcommands(
     subsetter: OperatorSetterCommands,
     config: &IvyConfig,
 ) -> Result<(), Error> {
-    
     match subsetter {
         OperatorSetterCommands::EcdsaKeyfile { ecdsa_keypath } => todo!(),
         OperatorSetterCommands::BlsKeyfile { bls_keypath } => todo!(),
