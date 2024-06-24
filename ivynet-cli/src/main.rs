@@ -37,8 +37,6 @@ enum Commands {
         #[command(subcommand)]
         subcmd: AvsCommands,
     },
-    #[command(name = "init", about = "Ivynet config intiliazation")]
-    Init,
     #[command(name = "config", about = "Manage rpc information, keys, and keyfile settings")]
     Config {
         #[command(subcommand)]
