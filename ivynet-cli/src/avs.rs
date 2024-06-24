@@ -1,25 +1,14 @@
-use clap::Parser;
-
-use ivynet_core::{avs, config::IvyConfig, ethers::types::Chain};
+use dialoguer::Password;
+use ivynet_core::{avs::commands::AvsCommands, config::IvyConfig, server::handle_avs_command, wallet::IvyWallet};
+use tracing::info;
 
 use crate::error::Error;
 
-#[derive(Parser, Debug, Clone)]
-pub enum AvsCommands {
-    #[command(name = "boot", about = "Boot up an AVS node with the given AVS")]
-    Boot { avs: String },
-    #[command(
-        name = "check-stake-percentage",
-        about = "Determine what percentage of the total stake an address would have"
-    )]
-    CheckStakePercentage { avs: String, address: String, network: String },
-}
-
-pub async fn parse_config_subcommands(subcmd: AvsCommands, config: &IvyConfig, chain: Chain) -> Result<(), Error> {
-    // TODO! We need to decrypt wallet here FIRST
-    match subcmd {
-        AvsCommands::Boot { avs } => avs::avs_default::boot_avs(&avs, chain, config, None).await?,
-        _ => todo!("Unimplemented"),
-    };
+pub async fn parse_avs_subcommands(subcmd: AvsCommands, config: &IvyConfig) -> Result<(), Error> {
+    // Not every AVS instance requires access to a wallet. How best to handle this? Enum variant?
+    let password: String = Password::new().with_prompt("Input the password for your stored keyfile").interact()?;
+    let wallet = IvyWallet::from_keystore(config.default_private_keyfile.clone(), password)?;
+    info!("Avs Command: {subcmd}");
+    handle_avs_command(subcmd, config, Some(wallet)).await?;
     Ok(())
 }

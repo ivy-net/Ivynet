@@ -5,7 +5,6 @@ use ethers::{
 };
 use ivynet_macros::h160;
 use std::{
-    fmt::Display,
     fs::{self, File},
     io::{copy, BufReader},
     path::PathBuf,
@@ -25,25 +24,13 @@ use crate::{
         quorum::QuorumType,
     },
     env_parser::EnvLines,
-    error::IvyError,
+    error::{IvyError, SetupError},
     rpc_management::IvyProvider,
 };
+
 use async_trait::async_trait;
 
-#[derive(Debug)]
-pub enum CoreError {
-    DownloadFailed,
-}
-
-impl Display for CoreError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            CoreError::DownloadFailed => write!(f, "Failed to download resource"),
-        }
-    }
-}
-
-impl std::error::Error for CoreError {}
+pub const EIGENDA_PATH: &str = ".eigenlayer/eigenda";
 
 #[derive(ThisError, Debug)]
 pub enum EigenDAError {
@@ -51,112 +38,112 @@ pub enum EigenDAError {
     ScriptError(String),
     #[error("Not eligible for Quorum: {0}")]
     QuorumValidationError(QuorumType),
+    #[error("Failed to download resource: {0}")]
+    DownloadFailedError(String),
 }
 
-pub struct EigenDA {}
+pub struct EigenDA {
+    path: PathBuf,
+}
 
 impl EigenDA {
-    pub fn new() -> Self {
-        Self {}
+    pub fn new(path: PathBuf) -> Self {
+        Self { path }
     }
 }
 
 impl Default for EigenDA {
     fn default() -> Self {
-        Self::new()
+        let home_dir = dirs::home_dir().unwrap();
+        Self::new(home_dir.join(EIGENDA_PATH))
     }
 }
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl AvsVariant for EigenDA {
-    // TODO: the env_path should probably be a constant or another constant-like attribute implemented
-    // on the singleton struct.
-    async fn setup(&self, env_path: PathBuf) -> Result<(), IvyError> {
-        download_operator_setup(env_path.clone()).await?;
-        download_g1_g2(env_path).await?;
+    async fn setup(&self, provider: Arc<IvyProvider>, config: &IvyConfig) -> Result<(), IvyError> {
+        download_operator_setup(self.path.clone()).await?;
+        download_g1_g2(self.path.clone()).await?;
+        self.build_env(provider, config).await?;
         Ok(())
     }
 
-    // TODO: method is far too complex, this should be compartmentalized so that we can be sure
-    // that general eigenlayer envs are sufficiently decoupled from specific AVS envs
-    async fn build_env(
-        &self,
-        env_path: PathBuf,
-        provider: Arc<IvyProvider>,
-        config: &IvyConfig,
-    ) -> Result<(), IvyError> {
+    // TODO: Consider best place on the host system to store resource files vs simple configs
+    async fn build_env(&self, provider: Arc<IvyProvider>, config: &IvyConfig) -> Result<(), IvyError> {
         let chain = Chain::try_from(provider.signer().chain_id())?;
         let rpc_url = config.get_rpc_url(chain)?;
 
-        let run_script_path = env_path.join("eigenda_operator_setup");
-        let run_script_path = match chain {
-            Chain::Mainnet => run_script_path.join("mainnet"),
-            Chain::Holesky => run_script_path.join("holesky"),
+        let avs_run_path = self.path.join("eigenda-operator-setup");
+        let avs_run_path = match chain {
+            Chain::Mainnet => avs_run_path.join("mainnet"),
+            Chain::Holesky => avs_run_path.join("holesky"),
             _ => todo!("Unimplemented"),
         };
 
-        let mut set_vars: bool = false;
+        let env_example_path = avs_run_path.join(".env.example");
+        let env_path = avs_run_path.join(".env");
 
-        let env_example_path = run_script_path.join(".env.example");
-        let env_path = run_script_path.join(".env");
-        if env_example_path.exists() && !env_path.exists() {
-            std::fs::copy(env_example_path, env_path.clone())?;
-            info!("Copied '.env.example' to '.env'.");
-            set_vars = true;
-        } else if !env_example_path.exists() {
-            info!("The '.env.example' file does not exist.");
-        } else {
-            info!("The '.env' file already exists.");
-            let reset_string: String = Input::new().with_prompt("Reset env file? (y/n)").interact_text()?;
-            if reset_string == "y" {
-                std::fs::remove_file(env_path.clone())?;
-                std::fs::copy(env_example_path, env_path.clone())?;
-                info!("Copied '.env.example' to '.env'.");
-                set_vars = true;
-            }
+        if !env_example_path.exists() {
+            error!("The '.env.example' file does not exist at {}. '.env.example' is used for .env templating, please ensure the operator-setup was downloaded to the correct location.", env_example_path.display());
+            return Err(SetupError::NoEnvExample.into());
         }
+        std::fs::copy(env_example_path, env_path.clone())?;
 
-        if set_vars {
-            debug!("Setting env vars");
-            let mut env_lines = EnvLines::load(&env_path)?;
-            let node_hostname = reqwest::get("https://api.ipify.org").await?.text().await?;
+        debug!("configuring env...");
+        let mut env_lines = EnvLines::load(&env_path)?;
 
-            let home_dir = dirs::home_dir().expect("Could not get home directory");
-            let home_str = home_dir.to_str().expect("Could not get home directory");
+        // Node hostname
+        let node_hostname = reqwest::get("https://api.ipify.org").await?.text().await?;
+        info!("Using node hostname: {node_hostname}");
+        // env_lines.set("NODE_HOSTNAME", &node_hostname);
 
-            let bls_key_name: String = Input::new()
+        // Node chain RPC
+        env_lines.set("NODE_CHAIN_RPC", &rpc_url);
+
+        // User home directory
+        let home_dir = dirs::home_dir().expect("Could not get home directory");
+        let home_str = home_dir.to_str().expect("Could not get home directory");
+        env_lines.set("USER_HOME", home_str);
+        // Node resource paths
+        env_lines.set("NODE_G1_PATH_HOST", r#"${EIGENLAYER_HOME}/eigenda/eigenda-operator-setup/resources/g1.point"#);
+        env_lines.set(
+            "NODE_G2_PATH_HOST",
+            r#"${EIGENLAYER_HOME}/eigenda/eigenda-operator-setup/resources/g2.point.powerOf2"#,
+        );
+        env_lines.set("NODE_CACHE_PATH_HOST", r#"${EIGENLAYER_HOME}/eigenda/eigenda-operator-setup/resources/cache"#);
+
+        // BLS key
+        let bls_key_name: String = Input::new()
             .with_prompt(
                 "Input the name of your BLS key file - looks in .eigenlayer folder (where eigen cli stores the key)",
             )
             .interact_text()?;
 
-            let mut bls_json_file_location = dirs::home_dir().expect("Could not get home dir");
-            bls_json_file_location.push(".eigenlayer/operator_keys");
-            bls_json_file_location.push(bls_key_name);
-            bls_json_file_location.set_extension("bls.key.json");
-            info!("BLS key file location: {:?}", bls_json_file_location);
+        let mut bls_json_file_location = dirs::home_dir().expect("Could not get home dir");
+        bls_json_file_location.push(".eigenlayer/operator_keys");
+        bls_json_file_location.push(bls_key_name);
+        bls_json_file_location.set_extension("bls.key.json");
+        debug!("BLS key file location: {:?}", bls_json_file_location);
 
-            let bls_password: String =
-                Password::new().with_prompt("Input the password for your BLS key file").interact()?;
+        // TODO: Remove prompting
+        let bls_password: String =
+            Password::new().with_prompt("Input the password for your BLS key file").interact()?;
 
-            env_lines.set("NODE_HOSTNAME", &node_hostname);
-            env_lines.set("NODE_CHAIN_RPC", &rpc_url);
-            env_lines.set("USER_HOME", home_str);
-            env_lines.set(
-                "NODE_BLS_KEY_FILE_HOST",
-                bls_json_file_location.to_str().expect("Could not get BLS key file location"),
-            );
-            env_lines.set("NODE_BLS_KEY_PASSWORD", &bls_password);
-            env_lines.save(&env_path)?;
-        }
+        env_lines.set(
+            "NODE_BLS_KEY_FILE_HOST",
+            bls_json_file_location.to_str().expect("Could not get BLS key file location"),
+        );
+        env_lines.set("NODE_BLS_KEY_PASSWORD", &bls_password);
+        env_lines.save(&env_path)?;
+        info!(".env file saved to {}", env_path.display());
 
         Ok(())
     }
 
     // TODO: This method may need to be abstracted in some way, as not all AVS types encforce
     // quorum_pericentage.
-    fn validate_node_size(&self, quorum_percentage: U256, bandwidth: u32) -> Result<bool, IvyError> {
+    fn validate_node_size(&self, quorum_percentage: U256) -> Result<bool, IvyError> {
         let (_, _, disk_info) = config::get_system_information()?;
         let class = node_classes::get_node_class()?;
 
@@ -164,27 +151,27 @@ impl AvsVariant for EigenDA {
         match quorum_percentage {
             x if x < U256::from(3) => {
                 // NOTE: Should these be || operators?
-                if class >= NodeClass::LRG || bandwidth >= 1 || disk_info >= 20000000000 {
+                if class >= NodeClass::LRG || disk_info >= 20000000000 {
                     acceptable = true;
                 }
             }
             x if x < U256::from(20) => {
-                if class >= NodeClass::XL || bandwidth >= 1 || disk_info >= 150000000000 {
+                if class >= NodeClass::XL || disk_info >= 150000000000 {
                     acceptable = true;
                 }
             }
             x if x < U256::from(100) => {
-                if class >= NodeClass::FOURXL || bandwidth >= 3 || disk_info >= 750000000000 {
+                if class >= NodeClass::FOURXL || disk_info >= 750000000000 {
                     acceptable = true;
                 }
             }
             x if x < U256::from(1000) => {
-                if class >= NodeClass::FOURXL || bandwidth >= 25 || disk_info >= 4000000000000 {
+                if class >= NodeClass::FOURXL || disk_info >= 4000000000000 {
                     acceptable = true;
                 }
             }
             x if x > U256::from(2000) => {
-                if class >= NodeClass::FOURXL || bandwidth >= 50 || disk_info >= 8000000000000 {
+                if class >= NodeClass::FOURXL || disk_info >= 8000000000000 {
                     acceptable = true;
                 }
             }
@@ -193,18 +180,96 @@ impl AvsVariant for EigenDA {
         Ok(acceptable)
     }
 
-    async fn optin(
+    async fn start(&self, quorums: Vec<QuorumType>, chain: Chain) -> Result<(), IvyError> {
+        let quorum_str: Vec<String> = quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
+        let quorum_str = quorum_str.join(",");
+
+        let docker_path = self.path.join("eigenda-operator-setup");
+        let docker_path = match chain {
+            Chain::Mainnet => docker_path.join("mainnet"),
+            Chain::Holesky => docker_path.join("holesky"),
+            _ => todo!("Unimplemented"),
+        };
+        debug!("docker at dir: {:?}", docker_path);
+        std::env::set_current_dir(docker_path.clone())?;
+        debug!("docker start: {} |  {}", docker_path.display(), quorum_str);
+        let build = Command::new("docker").arg("compose").arg("build").arg("--no-cache").status()?;
+
+        let _ = Command::new("docker").arg("compose").arg("config").status()?;
+
+        if !build.success() {
+            return Err(EigenDAError::ScriptError(build.to_string()).into());
+        }
+
+        let start = Command::new("docker").arg("compose").arg("up").arg("--force-recreate").status()?;
+
+        if start.success() {
+            Ok(())
+        } else {
+            Err(EigenDAError::ScriptError(start.to_string()).into())
+        }
+    }
+
+    async fn stop(&self, quorums: Vec<QuorumType>, chain: Chain) -> Result<(), IvyError> {
+        todo!()
+    }
+
+    async fn opt_in(
         &self,
         quorums: Vec<QuorumType>,
         eigen_path: PathBuf,
         private_keyfile: PathBuf,
         chain: Chain,
     ) -> Result<(), IvyError> {
-        // TODO: This is a very inefficient clone.
         let quorum_str: Vec<String> = quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
         let quorum_str = quorum_str.join(",");
 
-        let run_script_path = eigen_path.join("eigenda_operator_setup");
+        let run_script_path = eigen_path.join("eigenda-operator-setup");
+        let run_script_path = match chain {
+            Chain::Mainnet => run_script_path.join("mainnet"),
+            Chain::Holesky => run_script_path.join("holesky"),
+            _ => todo!("Unimplemented"),
+        };
+
+        let ecdsa_password: String =
+            Password::new().with_prompt("Input the password for your ECDSA key file for quorum opt-in").interact()?;
+
+        let run_script_path = run_script_path.join("run.sh");
+
+        info!("Booting quorums: {:#?}", quorums);
+
+        debug!("{} |  {}", run_script_path.display(), quorum_str);
+
+        let optin = Command::new("sh")
+            .arg(run_script_path)
+            .arg("--operation-type")
+            .arg("opt-in")
+            .arg("--node-ecdsa-key-file-host")
+            .arg(private_keyfile)
+            .arg("--node-ecdsa-key-password")
+            .arg(ecdsa_password)
+            .arg("--quorums")
+            .arg(quorum_str)
+            .status()?;
+
+        if optin.success() {
+            Ok(())
+        } else {
+            Err(EigenDAError::ScriptError(optin.to_string()).into())
+        }
+    }
+
+    async fn opt_out(
+        &self,
+        quorums: Vec<QuorumType>,
+        eigen_path: PathBuf,
+        private_keyfile: PathBuf,
+        chain: Chain,
+    ) -> Result<(), IvyError> {
+        let quorum_str: Vec<String> = quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
+        let quorum_str = quorum_str.join(",");
+
+        let run_script_path = eigen_path.join("eigenda-operator-setup");
         let run_script_path = match chain {
             Chain::Mainnet => run_script_path.join("mainnet"),
             Chain::Holesky => run_script_path.join("holesky"),
@@ -220,7 +285,6 @@ impl AvsVariant for EigenDA {
         // Copy .env file to current directory
         std::fs::copy(env_path, &current_env_path)?;
 
-        // TODO: This shouldn't happen here! We should already have a wallet in signer
         let ecdsa_password: String =
             Password::new().with_prompt("Input the password for your ECDSA key file for quorum opt-in").interact()?;
 
@@ -233,7 +297,7 @@ impl AvsVariant for EigenDA {
         let optin = Command::new("sh")
             .arg(run_script_path)
             .arg("--operation-type")
-            .arg("opt-in")
+            .arg("opt-out")
             .arg("--node-ecdsa-key-file-host")
             .arg(private_keyfile)
             .arg("--node-ecdsa-key-password")
@@ -292,13 +356,17 @@ impl AvsVariant for EigenDA {
             _ => todo!("Unimplemented"),
         }
     }
+
+    fn path(&self) -> PathBuf {
+        self.path.clone()
+    }
 }
 
 /// Downloads eigenDA node resources
 pub async fn download_g1_g2(eigen_path: PathBuf) -> Result<(), IvyError> {
-    let resources_dir = eigen_path.join("eigenda_operator_setup/resources");
+    let resources_dir = eigen_path.join("eigenda-operator-setup/resources");
     let g1_file_path = resources_dir.join("g1.point");
-    let g2_file_path = resources_dir.join("g2.point.PowerOf2");
+    let g2_file_path = resources_dir.join("g2.point.powerOf2");
     if g1_file_path.exists() {
         info!("The 'g1.point' file already exists.");
     } else {
@@ -306,9 +374,9 @@ pub async fn download_g1_g2(eigen_path: PathBuf) -> Result<(), IvyError> {
         dl_progress_bar("https://srs-mainnet.s3.amazonaws.com/kzg/g1.point", g1_file_path).await?;
     }
     if g2_file_path.exists() {
-        info!("The 'g2.point.PowerOf2' file already exists.");
+        info!("The 'g2.point.powerOf2' file already exists.");
     } else {
-        info!("Downloading 'g2.point.PowerOf2' ...");
+        info!("Downloading 'g2.point.powerOf2' ...");
         dl_progress_bar("https://srs-mainnet.s3.amazonaws.com/kzg/g2.point.powerOf2", g2_file_path).await?
     }
     Ok(())
@@ -318,7 +386,7 @@ pub async fn download_operator_setup(eigen_path: PathBuf) -> Result<(), IvyError
     let mut setup = false;
     let repo_url = "https://github.com/ivy-net/eigenda-operator-setup/archive/refs/heads/master.zip";
     let temp_path = eigen_path.join("temp");
-    let destination_path = eigen_path.join("eigenda_operator_setup");
+    let destination_path = eigen_path.join("eigenda-operator-setup");
     if destination_path.exists() {
         let reset_string: String = Input::new()
             .with_prompt("The operator setup directory already exists. Redownload? (y/n)")

@@ -15,6 +15,9 @@ With this cli, that begins with calculations determining whether a specific AVS 
 - Deploy any AVS with one command after utilizing the setup function (Soon - EigenDA coming first)
 
 
+## Build Dependencies
+- Rust
+- protobuf-compiler (apt install protobuf-compiler)
 
 ## Use
 
@@ -68,13 +71,24 @@ ivynet-cli config set-rpc mainnet [URL]
 # and/or
 ivynet-cli -n holesky config set-rpc holesky https://rpc.holesky.ethpandaops.io
 ```
-* Grab your stake:
+
+Then try grabbing your stake:
+
 ```sh
 ivynet-cli --network holesky operator get-stake [ADDRESS]
 ```
-* and finally, boot up the EigenDA AVS!
+
+
+Before runing the EigenDA AVS, perform first-time setup to populate the .env files: 
+
 ```sh
-ivynet-cli --network holesky avs boot eigenda
+ivynet-cli config --network holesky avs setup eigenda 
+```
+
+And finally booting up the EigenDA AVS!
+
+```sh
+ivynet-cli --network holesky avs start eigenda
 ```
 Note: This command assumes you have docker installed, your operator is registered already, your ECDSA key has been imported, and your BLS key generated (BLS key can be generated with the EigenLayer CLI). Also, it downloads files directly from github (Ivy's fork of EigenDA operator setup repository) and two files from AWS that are needed for EigenDA to work (g1.point and g2.point.powerOf2) as well as directly checks your public IP using [api.ipify.org](https://api.ipify.org)
 

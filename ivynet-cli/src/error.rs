@@ -11,4 +11,7 @@ pub enum Error {
 
     #[error(transparent)]
     GRPCError(#[from] ivynet_core::grpc::Status),
+
+    #[error("Metadata Uri Not Found")]
+    MetadataUriNotFoundError,
 }
