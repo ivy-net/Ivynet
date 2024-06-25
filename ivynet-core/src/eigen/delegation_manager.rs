@@ -1,4 +1,7 @@
-use super::{dgm_info, quorum::Quorum};
+use super::{
+    dgm_info::{self, OperatorDetails},
+    quorum::Quorum,
+};
 
 use crate::{
     error::IvyError,
@@ -57,5 +60,21 @@ impl DelegationManager {
         println!("Operator status: {:?}", status);
 
         Ok(status)
+    }
+
+    pub async fn register(
+        &self,
+        earnings_receiver: Address,
+        delegation_approver: Address,
+        staker_opt_out_window_blocks: u32,
+        metadata_uri: &str,
+    ) -> Result<(), IvyError> {
+        let operator_details = OperatorDetails {
+            earnings_receiver, // Deprecated according to Eigenlayer docs
+            delegation_approver,
+            staker_opt_out_window_blocks,
+        };
+        self.0.register_as_operator(operator_details, metadata_uri.to_owned()).await?;
+        Ok(())
     }
 }

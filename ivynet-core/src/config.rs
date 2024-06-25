@@ -1,12 +1,25 @@
 use ethers::types::Chain;
+use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use sysinfo::{Disks, System};
 
-use crate::{error::IvyError, metadata::Metadata, wallet::IvyWallet};
+pub static DEFAULT_CONFIG_PATH: Lazy<PathBuf> = Lazy::new(|| {
+    let path = dirs::home_dir().expect("Could not get a home directory");
+    path.join(".ivynet")
+});
+
+use crate::{
+    error::IvyError,
+    metadata::Metadata,
+    utils::{read_toml, write_toml},
+    wallet::IvyWallet,
+};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct IvyConfig {
+    /// Storage path for serialized config file
+    path: PathBuf,
     pub mainnet_rpc_url: String,
     pub holesky_rpc_url: String,
     pub local_rpc_url: String,
@@ -14,22 +27,22 @@ pub struct IvyConfig {
     pub default_private_keyfile: PathBuf,
     /// Default public key file full path
     pub default_public_keyfile: PathBuf,
-    pub metadata: Option<Metadata>,
+    pub metadata: Metadata,
     // Identification key that node uses for server communications
-    pub identity_key: String,
+    pub identity_key: Option<String>,
 }
 
 impl Default for IvyConfig {
     fn default() -> Self {
-        let identity_wallet = IvyWallet::new();
         Self {
+            path: DEFAULT_CONFIG_PATH.to_owned(),
             mainnet_rpc_url: "https://rpc.flashbots.net/fast".to_string(),
             holesky_rpc_url: "https://rpc.holesky.ethpandaops.io".to_string(),
             local_rpc_url: "http://localhost:8545".to_string(),
             default_private_keyfile: "".into(), // TODO: Option
             default_public_keyfile: "".into(),
-            metadata: None,
-            identity_key: identity_wallet.to_private_key(),
+            metadata: Metadata::default(),
+            identity_key: None,
         }
     }
 }
@@ -39,16 +52,24 @@ impl IvyConfig {
         Self::default()
     }
 
-    // TODO: Consider making this fallible / requiring an init.
-    pub fn load() -> Self {
-        match confy::load::<IvyConfig>("ivy", "ivy-config") {
-            Ok(cfg) => cfg,
-            Err(_) => Self::new(),
-        }
+    pub fn new_at_path(path: PathBuf) -> Self {
+        Self { path, ..Default::default() }
+    }
+
+    pub fn load(path: PathBuf) -> Result<Self, IvyError> {
+        let config: Self = read_toml(path)?;
+        Ok(config)
+    }
+
+    pub fn load_from_default_path() -> Result<Self, IvyError> {
+        let config_path = DEFAULT_CONFIG_PATH.to_owned().join("ivy-config.toml");
+        Self::load(config_path)
     }
 
     pub fn store(&self) -> Result<(), IvyError> {
-        confy::store("ivy", "ivy-config", self)?;
+        // TODO: Assert identity key is None on save
+        let config_path = self.path.clone().join("ivy-config.toml");
+        write_toml(config_path, self)?;
         Ok(())
     }
 
@@ -88,12 +109,12 @@ impl IvyConfig {
         }
     }
 
-    pub fn get_path(&self) -> Result<PathBuf, IvyError> {
-        Ok(confy::get_configuration_file_path("ivy", "ivy-config")?)
+    pub fn get_path(&self) -> PathBuf {
+        self.path.clone()
     }
 
     pub fn identity_wallet(&self) -> Result<IvyWallet, IvyError> {
-        IvyWallet::from_private_key(self.identity_key.clone())
+        IvyWallet::from_private_key(self.identity_key.clone().ok_or(IvyError::IdentityKeyError)?)
     }
 }
 
@@ -111,10 +132,9 @@ pub fn get_system_information() -> Result<(u64, u64, u64), IvyError> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[test]
     fn test_load_config() {
-        println!("Config: {:?}", IvyConfig::load());
+        todo!();
     }
 }

@@ -1,4 +1,3 @@
-use confy::ConfyError;
 use ethers::{
     contract::ContractError,
     middleware::{signer::SignerMiddlewareError, SignerMiddleware},
@@ -36,9 +35,6 @@ pub enum IvyError {
     ProviderError(#[from] SignerMiddlewareError<Provider<Http>, IvyWallet>),
 
     #[error(transparent)]
-    ConfyError(#[from] ConfyError),
-
-    #[error(transparent)]
     DialogerError(#[from] dialoguer::Error),
 
     #[error(transparent)]
@@ -74,6 +70,9 @@ pub enum IvyError {
     #[error("Unknown contract error")]
     UnknownContractError,
 
+    #[error("Avs parse error: ensure the name of the requested AVS is valid")]
+    AvsParseError,
+
     #[error("Custom contract error")]
     ContractError(Bytes),
 
@@ -89,11 +88,40 @@ pub enum IvyError {
     #[error("No quorums to boot")]
     NoQuorums,
 
+    #[error("Malformed config found, ensure ivynet setup was run correctly")]
+    MalformedConfigError,
+
+    #[error("IvyWallet identity key not found")]
+    IdentityKeyError,
+
     #[error("Unknown network")]
     UnknownNetwork,
 
     #[error("Unimplemented")]
     Unimplemented,
+
+    // TODO: The place where this is used should probably implement from for the parse() method
+    // instead.
+    #[error("Invalid address")]
+    InvalidAddress,
+
+    #[error(transparent)]
+    SetupError(#[from] SetupError),
+
+    #[error(transparent)]
+    SerdeJsonError(#[from] serde_json::Error),
+
+    #[error(transparent)]
+    TomlSerError(#[from] toml::ser::Error),
+
+    #[error(transparent)]
+    TomlDeError(#[from] toml::de::Error),
+}
+
+#[derive(Debug, Error)]
+pub enum SetupError {
+    #[error("No .env.example found")]
+    NoEnvExample,
 }
 
 impl From<ContractError<SignerMiddleware<Provider<Http>, IvyWallet>>> for IvyError {
