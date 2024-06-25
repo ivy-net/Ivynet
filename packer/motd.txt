@@ -1,3 +1,20 @@
-This is cloud workstation (cloudstation for short) to work with IvyNet Client.
+===============================================================================
+This is a cloudstation VM dedicated to work with IvyNet Client.
 
-The code of eigenda, eigenda-operator-setup, ivynet and g1, g2 files are in the /opt/eigen directory.
+It based on Ubuntu and includes docker, rust and cargo packages.
+
+The code of:
+* eigenda,
+* eigenda-operator-setup,
+* ivynet
+are cloned to the /opt/eigen folder.
+
+Additionally, the
+* eigen-cli
+is downloaded to the /opt/eigen/bin folder.
+
+Finally the
+* g1,
+* g2
+files are in the resources subfolder of the eigenda-operator-setup repository.
+===============================================================================

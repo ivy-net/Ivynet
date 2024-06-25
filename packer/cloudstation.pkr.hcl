@@ -20,17 +20,17 @@ variable "ssh_key_file" {
 }
 
 variable "version" {
-  type = string
-  default = "dev"
+  type        = string
+  default     = "dev"
   description = "Image version"
 }
 
 source "googlecompute" "ivynet-cloudstation" {
-  project_id   = "ivynet-tests"
+  project_id          = "ivynet-tests"
   source_image_family = "ubuntu-2404-lts-amd64"
-  image_name = "ivynet-cloudstation-${var.version}"
-  ssh_username = "packer"
-  zone         = "us-central1-a"
+  image_name          = "ivynet-cloudstation-${var.version}"
+  ssh_username        = "packer"
+  zone                = "us-central1-a"
   metadata = {
     "enable-oslogin" : "FALSE"
   }
@@ -40,15 +40,35 @@ build {
   sources = ["sources.googlecompute.ivynet-cloudstation"]
 
   provisioner "file" {
+    source      = "docker.list"
+    destination = "/tmp/docker.list"
+  }
+
+  provisioner "file" {
+    source      = "motd.txt"
+    destination = "/tmp/motd"
+  }
+
+  provisioner "shell" {
+    inline = [
+      "sudo cp /tmp/motd /etc/",
+      "sudo cp /tmp/docker.list /etc/apt/sources.list.d/",
+    ]
+  }
+
+  provisioner "file" {
     source      = var.ssh_key_file
     destination = "/home/packer/.ssh/id_ed25519"
   }
 
   provisioner "shell" {
     inline = [
-      "sudo apt install rustc cargo -y",
+      "sudo apt install -y rustc cargo apt-transport-https protobuf-compiler pkg-config libssl-dev",
+      "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg",
+      "sudo apt update",
+      "sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin",
       "ssh-keyscan github.com >> ~/.ssh/known_hosts",
-      "sudo mkdir ${var.install_path}",
+      "sudo mkdir -p ${var.install_path}/bin",
       "sudo chmod 777 ${var.install_path}",
       "cd ${var.install_path}",
       "git clone git@github.com:ivy-net/ivynet.git -v",
@@ -56,16 +76,8 @@ build {
       "git clone https://github.com/Layr-Labs/eigenda-operator-setup.git",
       "cd eigenda-operator-setup",
       "./srs_setup.sh",
+      "curl -sSfL https://raw.githubusercontent.com/layr-labs/eigenlayer-cli/master/scripts/install.sh | sudo sh -s -- -b ${var.install_path}/bin",
     ]
   }
 
-  provisioner "file" {
-    source      = "motd.txt"
-    destination = "/tmp/motd"
-  }
-  provisioner "shell" {
-    inline = [
-      "sudo cp /tmp/motd /etc"
-    ]
-  }
 }
