@@ -49,13 +49,18 @@ build {
     destination = "/tmp/motd"
   }
 
+  provisioner "file" {
+    source      = "environment"
+    destination = "/tmp/environment"
+  }
+
   provisioner "shell" {
     inline = [
       "sudo cp /tmp/motd /etc/",
       "sudo cp /tmp/docker.list /etc/apt/sources.list.d/",
+      "sudo cp /tmp/environment /etc/",
     ]
   }
-
   provisioner "file" {
     source      = var.ssh_key_file
     destination = "/home/packer/.ssh/id_ed25519"
