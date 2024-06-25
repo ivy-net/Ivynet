@@ -1,5 +1,32 @@
 # General information
 
+## Setting up VM
+
+The VM can be created with a gcloud command.
+See example below.
+The VM type (n2-standard-2) in the example is cheap, but slow when building rust projects.
+
+```
+VERSION=4
+VMNAME=ivy-c
+
+gcloud compute instances create --image ivynet-cloudstation-$VERSION  --zone "us-central1-a" --boot-disk-size 40GB --machine-type n2-standard-2  $VMNAME
+```
+
+### SSH
+THE GCP CLI can be also use to login to the VM:
+```
+gcloud compute ssh --zone "us-central1-a"  --project "ivynet-tests" $VMNAME
+```
+As well as coping files. E.g.:
+```
+gcloud compute scp  --zone "us-central1-a"  --project "ivynet-tests" metadata.json  $VMNAME:
+```
+The VM should have a network tag _holeksy-eigenda_ to enable firewall setup.
+I don't know how to do this from commandline, yet.
+
+
+## On the machine
 * After login change the ownership of the '/opt/eigen' directory, if you plan to build any programs.
 ```
 sudo chown -R $USER /opt/eigen

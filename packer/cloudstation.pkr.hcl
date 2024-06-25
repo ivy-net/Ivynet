@@ -68,9 +68,9 @@ build {
 
   provisioner "shell" {
     inline = [
-      "sudo apt install -y rustc cargo apt-transport-https protobuf-compiler pkg-config libssl-dev",
       "curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /etc/apt/keyrings/docker.gpg",
       "sudo apt update",
+      "sudo apt install -y rustc cargo protobuf-compiler pkg-config libssl-dev",
       "sudo apt install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin",
       "ssh-keyscan github.com >> ~/.ssh/known_hosts",
       "sudo mkdir -p ${var.install_path}/bin",
