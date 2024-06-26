@@ -12,7 +12,7 @@ use ethers::{
     signers::Signer,
     types::{Address, Chain, U256},
 };
-use std::{collections::HashMap, fs, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, fs, path::PathBuf, process::Child, sync::Arc};
 use tracing::{error, info};
 
 pub mod commands;
@@ -26,6 +26,7 @@ pub type QuorumMinMap = HashMap<Chain, HashMap<QuorumType, U256>>;
 use self::contracts::{RegistryCoordinator, RegistryCoordinatorAbi, StakeRegistry, StakeRegistryAbi};
 
 #[allow(dead_code)] // TODO: use or remove registry coordinator
+#[derive(Debug)]
 pub struct AvsProvider<T: AvsVariant> {
     avs: T,
     provider: Arc<IvyProvider>,
@@ -46,19 +47,18 @@ impl<T: AvsVariant> AvsProvider<T> {
         Ok(())
     }
 
-    pub async fn start(&self, _config: &IvyConfig) -> Result<(), IvyError> {
+    pub async fn start(&self, _config: &IvyConfig) -> Result<Child, IvyError> {
         let chain = Chain::try_from(self.provider.signer().chain_id()).unwrap_or_default();
         let quorums = self.get_bootable_quorums().await?;
         if quorums.is_empty() {
             error!("Could not launch EgenDA, no bootable quorums found. Exiting...");
             return Err(IvyError::NoQuorums);
         }
-
         self.avs.start(quorums, chain).await
     }
 
-    pub async fn stop(&self, _config: &IvyConfig) -> Result<(), IvyError> {
-        todo!();
+    pub async fn stop(&self, chain: Chain) -> Result<(), IvyError> {
+        self.avs.stop(Vec::new(), chain).await
     }
 
     pub async fn opt_in(&self, config: &IvyConfig) -> Result<(), IvyError> {
@@ -119,11 +119,15 @@ impl<T: AvsVariant> AvsProvider<T> {
         }
         Ok(quorums_to_boot)
     }
+
+    pub async fn chain(&self) -> Result<Chain, IvyError> {
+        Ok(Chain::try_from(self.provider.signer().chain_id())?)
+    }
 }
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-pub trait AvsVariant {
+pub trait AvsVariant: Send + Sync + 'static {
     /// Perform all first-time setup steps for a given AVS instance. Includes an internal call to
     /// build_env
     async fn setup(&self, provider: Arc<IvyProvider>, config: &IvyConfig) -> Result<(), IvyError>;
@@ -146,7 +150,7 @@ pub trait AvsVariant {
         private_keypath: PathBuf,
         chain: Chain,
     ) -> Result<(), IvyError>;
-    async fn start(&self, quorums: Vec<QuorumType>, chain: Chain) -> Result<(), IvyError>;
+    async fn start(&self, quorums: Vec<QuorumType>, chain: Chain) -> Result<Child, IvyError>;
     async fn stop(&self, quorums: Vec<QuorumType>, chain: Chain) -> Result<(), IvyError>;
     fn quorum_min(&self, chain: Chain, quorum_type: QuorumType) -> U256;
     fn quorum_candidates(&self, chain: Chain) -> Vec<QuorumType>;

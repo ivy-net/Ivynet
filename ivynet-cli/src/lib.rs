@@ -4,4 +4,5 @@ pub mod error;
 pub mod init;
 pub mod keys;
 pub mod operator;
+pub mod service;
 pub mod staker;

@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use ethers::types::{Address, Chain, U256};
-use std::{path::PathBuf, sync::Arc};
+use std::{path::PathBuf, process::Child, sync::Arc};
 
 use super::{eigenda::EigenDA, mach_avs::AltLayer, AvsVariant};
 use crate::{config::IvyConfig, eigen::quorum::QuorumType, error::IvyError, rpc_management::IvyProvider};
@@ -8,6 +8,7 @@ use crate::{config::IvyConfig, eigen::quorum::QuorumType, error::IvyError, rpc_m
 /// Wrapper type around various AVSes for composition purposes.
 /// TODO: Consider alternate nomenclature -- AvsInstance and AvsVariant may not be descriptive
 /// enough to prevent ambiguity
+#[derive(Debug)]
 pub enum AvsInstance {
     EigenDA(EigenDA),
     AltLayer(AltLayer),
@@ -61,7 +62,7 @@ impl AvsVariant for AvsInstance {
             AvsInstance::AltLayer(avs) => avs.opt_out(quorums, eigen_path, private_keypath, chain).await,
         }
     }
-    async fn start(&self, quorums: Vec<QuorumType>, chain: Chain) -> Result<(), IvyError> {
+    async fn start(&self, quorums: Vec<QuorumType>, chain: Chain) -> Result<Child, IvyError> {
         match self {
             AvsInstance::EigenDA(avs) => avs.start(quorums, chain).await,
             AvsInstance::AltLayer(avs) => avs.start(quorums, chain).await,

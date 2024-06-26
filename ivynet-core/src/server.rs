@@ -44,8 +44,6 @@ pub async fn handle_avs_command(
     config: &IvyConfig,
     wallet: Option<IvyWallet>,
 ) -> Result<(), IvyError> {
-    let mut avs_dir = dirs::home_dir().expect("Could not get a home directory");
-    avs_dir.push(".eigenlayer");
     match op {
         AvsCommands::Setup { avs, chain } => {
             let avs = build_avs_provider(&avs, &chain, config, wallet).await?;
@@ -65,15 +63,15 @@ pub async fn handle_avs_command(
         }
         AvsCommands::Stop { avs, chain } => {
             let avs = build_avs_provider(&avs, &chain, config, wallet).await?;
-            avs.stop(config).await?;
+            todo!()
         }
         AvsCommands::CheckStakePercentage { .. } => todo!(),
     }
     Ok(())
 }
 
-// TODO: This can probably be improved or put in a method
-async fn build_avs_provider(
+// TODO: Builder Method
+pub async fn build_avs_provider(
     id: &str,
     chain: &str,
     config: &IvyConfig,
@@ -82,7 +80,7 @@ async fn build_avs_provider(
     let chain = parse_chain(chain);
     let provider = connect_provider(&config.get_rpc_url(chain)?, wallet).await?;
     let avs_instance = match Avs::from_str(id) {
-        Ok(Avs::EigenDA) => AvsInstance::EigenDA(EigenDA::default()),
+        Ok(Avs::EigenDA) => AvsInstance::EigenDA(EigenDA::new_from_chain(chain)),
         Ok(Avs::AltLayer) => AvsInstance::AltLayer(AltLayer::default()),
         Err(_) => return Err(IvyError::AvsParseError),
     };

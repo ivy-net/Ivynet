@@ -1,5 +1,3 @@
-use std::path::PathBuf;
-
 use clap::Parser;
 use dialoguer::Password;
 use ivynet_core::{
@@ -10,6 +8,7 @@ use ivynet_core::{
     utils::{parse_chain, unwrap_or_local},
     wallet::IvyWallet,
 };
+use std::path::PathBuf;
 use tracing::debug;
 
 use crate::error::Error;

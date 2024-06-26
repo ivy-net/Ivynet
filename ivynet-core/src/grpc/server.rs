@@ -4,6 +4,7 @@ use std::{
     time::Duration,
 };
 
+use tokio::sync::oneshot::Receiver;
 use tonic::{
     body::BoxBody,
     codegen::{
@@ -72,6 +73,17 @@ impl Server {
     pub async fn serve(self, port: u16) -> Result<(), ServerError> {
         let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), port);
         self.router.serve(addr).await.map_err(|_| ServerError::UnableToServe)?;
+        Ok(())
+    }
+
+    pub async fn serve_with_shutdown(self, port: u16, shutdown_receiver: Receiver<()>) -> Result<(), ServerError> {
+        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), port);
+        self.router
+            .serve_with_shutdown(addr, async {
+                shutdown_receiver.await.ok();
+            })
+            .await
+            .map_err(|_| ServerError::UnableToServe)?;
         Ok(())
     }
 }

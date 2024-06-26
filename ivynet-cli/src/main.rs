@@ -7,7 +7,7 @@ use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 #[allow(unused_imports)]
 use tracing::{debug, error, warn};
 
-use ivynet_cli::{avs, config, error::Error, init::initialize_ivynet, operator, staker};
+use ivynet_cli::{avs, config, error::Error, init::initialize_ivynet, operator, service, staker};
 
 #[derive(Parser, Debug)]
 #[command(name = "ivy", version, about = "The command line interface for ivynet")]
@@ -53,6 +53,12 @@ enum Commands {
         #[command(subcommand)]
         subcmd: staker::StakerCommands,
     },
+
+    #[command(
+        name = "serve",
+        about = "Start the Ivynet service with a specified AVS on a specified chain. <AVS> <CHAIN> [PORT]"
+    )]
+    Serve { avs: String, chain: String, port: Option<u16> },
 }
 
 #[tokio::main]
@@ -60,19 +66,19 @@ async fn main() -> Result<(), Error> {
     let args = Args::parse();
 
     // Set up tracing
-    let filter = EnvFilter::builder().parse("ivynet_cli=debug,ivynet_core=debug")?;
+    let filter = EnvFilter::builder().parse("ivynet_cli=debug,ivynet_core=debug,tonic=debug")?;
     tracing_subscriber::registry().with(fmt::layer()).with(filter).init();
 
-    let mut config = IvyConfig::load_from_default_path()?;
+    let config = IvyConfig::load_from_default_path()?;
     match args.cmd {
         Commands::Init => initialize_ivynet()?,
         Commands::Config { subcmd } => {
-            config::parse_config_subcommands(subcmd, &mut config, args.server_url, args.server_ca.as_ref()).await?;
-            config.store()?;
+            config::parse_config_subcommands(subcmd, config, args.server_url, args.server_ca.as_ref()).await?;
         }
         Commands::Operator { subcmd } => operator::parse_operator_subcommands(subcmd, &config).await?,
         Commands::Staker { subcmd } => staker::parse_staker_subcommands(subcmd, &config).await?,
         Commands::Avs { subcmd } => avs::parse_avs_subcommands(subcmd, &config).await?,
+        Commands::Serve { avs, chain, port } => service::serve(avs, chain, port, &config).await?,
     }
 
     Ok(())

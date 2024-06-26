@@ -16,7 +16,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .file_descriptor_set_path(&descriptor_file);
     tonic_build::configure().compile_with_config(
         config,
-        &["protos/messages.proto", "protos/backend.proto"],
+        &["protos/messages.proto", "protos/backend.proto", "protos/ivy_daemon.proto"],
         &["protos"],
     )?;
     let descriptor_bytes = std::fs::read(descriptor_file).unwrap();

@@ -73,7 +73,7 @@ pub enum ConfigCommands {
 
 pub async fn parse_config_subcommands(
     subcmd: ConfigCommands,
-    config: &mut IvyConfig,
+    mut config: IvyConfig,
     server_url: Uri,
     server_ca: Option<&String>,
 ) -> Result<(), Error> {

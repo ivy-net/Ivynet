@@ -10,7 +10,7 @@ use std::{
     fs::{self, File},
     io::{copy, BufReader},
     path::PathBuf,
-    process::Command,
+    process::{Child, Command},
     sync::Arc,
 };
 use tracing::{debug, error, info};
@@ -32,6 +32,7 @@ use crate::{
 const ALTLAYER_PATH: &str = ".eigenlayer/altlayer";
 const ALTLAYER_REPO_URL: &str = "https://github.com/alt-research/mach-avs-operator-setup/archive/refs/heads/master.zip";
 
+#[derive(Debug)]
 pub struct AltLayer {
     path: PathBuf,
 }
@@ -256,7 +257,7 @@ impl AvsVariant for AltLayer {
         self.path.clone()
     }
 
-    async fn start(&self, _quorums: Vec<QuorumType>, _chain: Chain) -> Result<(), IvyError> {
+    async fn start(&self, _quorums: Vec<QuorumType>, _chain: Chain) -> Result<Child, IvyError> {
         todo!()
     }
     async fn stop(&self, _quorums: Vec<QuorumType>, _chain: Chain) -> Result<(), IvyError> {

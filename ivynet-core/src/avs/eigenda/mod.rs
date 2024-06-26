@@ -8,7 +8,7 @@ use std::{
     fs::{self, File},
     io::{copy, BufReader},
     path::PathBuf,
-    process::Command,
+    process::{Child, Command},
     sync::Arc,
 };
 use thiserror::Error as ThisError;
@@ -42,20 +42,27 @@ pub enum EigenDAError {
     DownloadFailedError(String),
 }
 
+#[derive(Debug)]
 pub struct EigenDA {
     path: PathBuf,
+    chain: Chain,
 }
 
 impl EigenDA {
-    pub fn new(path: PathBuf) -> Self {
-        Self { path }
+    pub fn new(path: PathBuf, chain: Chain) -> Self {
+        Self { path, chain }
+    }
+
+    pub fn new_from_chain(chain: Chain) -> Self {
+        let home_dir = dirs::home_dir().unwrap();
+        Self::new(home_dir.join(EIGENDA_PATH), chain)
     }
 }
 
 impl Default for EigenDA {
     fn default() -> Self {
         let home_dir = dirs::home_dir().unwrap();
-        Self::new(home_dir.join(EIGENDA_PATH))
+        Self::new(home_dir.join(EIGENDA_PATH), Chain::Holesky)
     }
 }
 
@@ -180,7 +187,7 @@ impl AvsVariant for EigenDA {
         Ok(acceptable)
     }
 
-    async fn start(&self, quorums: Vec<QuorumType>, chain: Chain) -> Result<(), IvyError> {
+    async fn start(&self, quorums: Vec<QuorumType>, chain: Chain) -> Result<Child, IvyError> {
         let quorum_str: Vec<String> = quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
         let quorum_str = quorum_str.join(",");
 
@@ -190,7 +197,6 @@ impl AvsVariant for EigenDA {
             Chain::Holesky => docker_path.join("holesky"),
             _ => todo!("Unimplemented"),
         };
-        debug!("docker at dir: {:?}", docker_path);
         std::env::set_current_dir(docker_path.clone())?;
         debug!("docker start: {} |  {}", docker_path.display(), quorum_str);
         let build = Command::new("docker").arg("compose").arg("build").arg("--no-cache").status()?;
@@ -201,17 +207,23 @@ impl AvsVariant for EigenDA {
             return Err(EigenDAError::ScriptError(build.to_string()).into());
         }
 
-        let start = Command::new("docker").arg("compose").arg("up").arg("--force-recreate").status()?;
-
-        if start.success() {
-            Ok(())
-        } else {
-            Err(EigenDAError::ScriptError(start.to_string()).into())
-        }
+        // NOTE: See the limitations of the Stdio::piped() method if this experiences a deadlock
+        let cmd = Command::new("docker").arg("compose").arg("up").arg("--force-recreate").spawn()?;
+        debug!("cmd PID: {:?}", cmd.id());
+        Ok(cmd)
     }
 
-    async fn stop(&self, _quorums: Vec<QuorumType>, _chain: Chain) -> Result<(), IvyError> {
-        todo!()
+    // TODO: Remove quorums from stop  method if not needed
+    async fn stop(&self, _quorums: Vec<QuorumType>, chain: Chain) -> Result<(), IvyError> {
+        let docker_path = self.path.join("eigenda-operator-setup");
+        let docker_path = match chain {
+            Chain::Mainnet => docker_path.join("mainnet"),
+            Chain::Holesky => docker_path.join("holesky"),
+            _ => todo!("Unimplemented"),
+        };
+        std::env::set_current_dir(docker_path.clone())?;
+        let _ = Command::new("docker").arg("compose").arg("stop").status()?;
+        Ok(())
     }
 
     async fn opt_in(
