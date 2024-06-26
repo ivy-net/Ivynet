@@ -1,7 +1,6 @@
-use std::str::FromStr as _;
-
 use clap::{Parser, Subcommand};
 use ivynet_core::{avs::commands::AvsCommands, config::IvyConfig, grpc::client::Uri};
+use std::str::FromStr as _;
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 #[allow(unused_imports)]

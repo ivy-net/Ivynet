@@ -1,4 +1,5 @@
 pub mod client;
+pub mod ivynet_api;
 pub mod server;
 
 pub mod backend {
@@ -7,10 +8,6 @@ pub mod backend {
 
 pub mod messages {
     tonic::include_proto!("messages");
-}
-
-pub mod ivy_daemon {
-    tonic::include_proto!("ivy_daemon");
 }
 
 pub use tonic;

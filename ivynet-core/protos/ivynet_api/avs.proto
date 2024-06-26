@@ -1,0 +1,24 @@
+syntax = "proto3";
+package ivy_daemon_avs;
+
+import "ivynet_api/types.proto";
+
+message Setup {
+    string avs = 1;
+}
+
+message Optin {
+    string avs = 1;
+}
+
+message Optout {
+    string avs = 1;
+}
+
+message Start {
+    string avs = 1;
+}
+
+message Stop {
+    string avs = 1;
+}
