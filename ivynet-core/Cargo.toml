@@ -15,7 +15,7 @@ workspace = true
 
 # TODO: Remove clap as a dependency unless cli-feature is enabled
 [dependencies]
-clap = { version = "4.5.7", features = ["derive"] }
+clap = { version = "4.5.8", features = ["derive"] }
 futures-util = "0.3"
 console = "0.15.8"
 dialoguer = "0.11.0"
