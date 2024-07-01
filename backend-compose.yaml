@@ -1,0 +1,20 @@
+services:
+  postgres:
+    container_name: postgres
+    image: 'postgres:latest'
+    ports:
+      - 5432:5432
+    volumes:
+      - psql_vol:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: ivy
+      POSTGRES_PASSWORD: secret_ivy
+      POSTGRES_DB: ivynet
+  memcached:
+      container_name: memcached
+      image: 'memcached:latest'
+      ports: 
+        - 11211:11211
+
+volumes:
+  psql_vol:

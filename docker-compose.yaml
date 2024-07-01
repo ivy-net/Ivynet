@@ -1,0 +1,36 @@
+services:
+  postgres:
+    container_name: postgres
+    image: 'postgres:latest'
+    ports:
+      - 5432:5432
+    volumes:
+      - psql_vol:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: ivy
+      POSTGRES_PASSWORD: secret_ivy
+      POSTGRES_DB: ivynet
+  memcached:
+      container_name: memcached
+      image: 'memcached:latest'
+      ports: 
+        - 11211:11211
+  backend:
+    build:
+      context: .
+      dockerfile: ivynet-backend/Dockerfile
+      args:
+        - CONTEXT_APK=backend
+    environment:
+        DATABASE_URL: postgresql://ivy:secret_ivy@localhost:5432/ivynet
+        IVY_CACHE_URL: memcache://memcached:11211
+    depends_on:
+      postgres:
+        condition: service_healthy
+      memcached:
+        condition: service_healthy
+    ports:
+      - "50050:50050"
+      - "8080:8080"
+volumes:
+  psql_vol:
