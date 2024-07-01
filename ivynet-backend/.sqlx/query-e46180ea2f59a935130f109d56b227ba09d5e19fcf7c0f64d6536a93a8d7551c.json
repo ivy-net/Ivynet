@@ -1,0 +1,56 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT verification_id, associated_id, verification_type AS \"verification_type!: VerificationType\", created_at, updated_at FROM verification WHERE verification_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "verification_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "associated_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "verification_type!: VerificationType",
+        "type_info": {
+          "Custom": {
+            "name": "verification_kind",
+            "kind": {
+              "Enum": [
+                "organization",
+                "user"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 4,
+        "name": "updated_at",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "e46180ea2f59a935130f109d56b227ba09d5e19fcf7c0f64d6536a93a8d7551c"
+}
