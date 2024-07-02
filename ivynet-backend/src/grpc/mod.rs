@@ -51,7 +51,7 @@ pub async fn serve(
     tracing::info!("Starting GRPC server on port {port}");
     server::Server::new(BackendServer::new(BackendService::new(pool)), tls_cert, tls_key)
         .serve(server::Endpoint::Port(port))
-        .await
-        .map_err(|_| BackendError::GRPCServerError)?;
+        .await?;
+
     Ok(())
 }

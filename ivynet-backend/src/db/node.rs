@@ -4,10 +4,11 @@ use chrono::{NaiveDateTime, Utc};
 use ivynet_core::ethers::types::Address;
 use serde::{Deserialize, Serialize};
 use sqlx::{query, PgPool};
+use utoipa::ToSchema;
 
 use super::account::Account;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct Node {
     pub node_id: Address,
     pub organization_id: i64,
@@ -24,10 +25,7 @@ pub struct DbNode {
 }
 
 impl DbNode {
-    pub async fn get_all_for_account(
-        pool: &PgPool,
-        account: &Account,
-    ) -> Result<Vec<Node>, BackendError> {
+    pub async fn get_all_for_account(pool: &PgPool, account: &Account) -> Result<Vec<Node>, BackendError> {
         let nodes = sqlx::query_as!(
             DbNode,
             "SELECT node_id, organization_id, created_at, updated_at FROM node WHERE organization_id = $1",
@@ -51,11 +49,7 @@ impl DbNode {
         Ok(node.into())
     }
 
-    pub async fn new(
-        pool: &PgPool,
-        account: &Account,
-        node_id: &Address,
-    ) -> Result<(), BackendError> {
+    pub async fn new(pool: &PgPool, account: &Account, node_id: &Address) -> Result<(), BackendError> {
         let now: NaiveDateTime = Utc::now().naive_utc();
 
         query!(
@@ -71,9 +65,7 @@ impl DbNode {
     }
 
     pub async fn delete(pool: &PgPool, node_id: &Address) -> Result<(), BackendError> {
-        query!("DELETE FROM node WHERE node_id = $1", node_id.as_bytes())
-            .execute(pool)
-            .await?;
+        query!("DELETE FROM node WHERE node_id = $1", node_id.as_bytes()).execute(pool).await?;
         Ok(())
     }
 

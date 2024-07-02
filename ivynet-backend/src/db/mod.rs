@@ -10,6 +10,10 @@ pub use account::{Account, Role};
 pub use node::Node;
 pub use organization::Organization;
 
-pub async fn configure(uri: &str) -> Result<PgPool, BackendError> {
-    Ok(PoolOptions::new().max_connections(5).connect(uri).await?)
+pub async fn configure(uri: &str, migrate: bool) -> Result<PgPool, BackendError> {
+    let pool = PoolOptions::new().max_connections(5).connect(uri).await?;
+    if migrate {
+        sqlx::migrate!().run(&pool).await?;
+    }
+    Ok(pool)
 }
