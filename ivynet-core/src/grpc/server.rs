@@ -1,9 +1,12 @@
 use std::{
     convert::Infallible,
     net::{IpAddr, Ipv4Addr, SocketAddr},
+    path::Path,
     time::Duration,
 };
 
+use tokio::net::UnixListener;
+use tokio_stream::wrappers::UnixListenerStream;
 use tonic::{
     body::BoxBody,
     codegen::{
@@ -14,13 +17,22 @@ use tonic::{
     transport::{server::Router, Body, Identity, Server as TonicServer, ServerTlsConfig},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, thiserror::Error)]
 pub enum ServerError {
-    UnableToServe,
+    #[error(transparent)]
+    TonicTransportError(#[from] tonic::transport::Error),
+
+    #[error(transparent)]
+    IoError(#[from] std::io::Error),
 }
 
 pub struct Server {
     pub router: Router,
+}
+
+pub enum Endpoint {
+    Port(u16),
+    Path(String),
 }
 
 impl Server {
@@ -69,9 +81,20 @@ impl Server {
         self
     }
 
-    pub async fn serve(self, port: u16) -> Result<(), ServerError> {
-        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), port);
-        self.router.serve(addr).await.map_err(|_| ServerError::UnableToServe)?;
+    pub async fn serve(self, endpoint: Endpoint) -> Result<(), ServerError> {
+        match endpoint {
+            Endpoint::Port(port) => {
+                let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), port);
+                self.router.serve(addr).await?;
+            }
+            Endpoint::Path(path) => {
+                std::fs::create_dir_all(Path::new(&path).parent().unwrap())?;
+
+                let uds = UnixListener::bind(&path)?;
+                let uds_stream = UnixListenerStream::new(uds);
+                self.router.serve_with_incoming(uds_stream).await?;
+            }
+        }
         Ok(())
     }
 }
