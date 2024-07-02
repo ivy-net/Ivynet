@@ -1,9 +1,6 @@
 syntax = "proto3";
 package ivy_daemon;
 
-import "ivynet_api/avs.proto";
-import "ivynet_api/types.proto";
-
 message InfoRequest{
 }
 
@@ -13,12 +10,5 @@ message InfoResponse{
 
 service IvyDaemon {
     rpc GetInfo(InfoRequest) returns (InfoResponse); 
-    
-    // Avs
-    rpc Stop(ivy_daemon_avs.Stop) returns (RpcResponse);
 }
 
-message RpcResponse{
-    ivy_daemon_types.ResponseType response_type = 1;
-    string msg = 2;
-}

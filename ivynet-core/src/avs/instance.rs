@@ -9,33 +9,50 @@ use crate::{config::IvyConfig, eigen::quorum::QuorumType, error::IvyError, rpc_m
 /// TODO: Consider alternate nomenclature -- AvsInstance and AvsVariant may not be descriptive
 /// enough to prevent ambiguity
 #[derive(Debug)]
-pub enum AvsInstance {
+pub enum AvsType {
     EigenDA(EigenDA),
     AltLayer(AltLayer),
+}
+
+impl AvsType {
+    pub fn name(&self) -> &str {
+        match self {
+            AvsType::EigenDA(_) => "EigenDA",
+            AvsType::AltLayer(_) => "AltLayer",
+        }
+    }
+
+    pub fn new(id: &str, chain: Chain) -> Result<Self, IvyError> {
+        match id.to_ascii_lowercase().as_str() {
+            "eigenda" => Ok(AvsType::EigenDA(EigenDA::new_from_chain(chain))),
+            "altlayer" => Ok(AvsType::AltLayer(AltLayer::default())), // TODO: Altlayer init
+            _ => Err(IvyError::InvalidAvsType(id.to_string())),
+        }
+    }
 }
 
 // TODO: This should probably be a macro if possible
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-impl AvsVariant for AvsInstance {
+impl AvsVariant for AvsType {
     async fn setup(&self, provider: Arc<IvyProvider>, config: &IvyConfig) -> Result<(), IvyError> {
         match self {
-            AvsInstance::EigenDA(avs) => avs.setup(provider, config).await?,
-            AvsInstance::AltLayer(avs) => avs.setup(provider, config).await?,
+            AvsType::EigenDA(avs) => avs.setup(provider, config).await?,
+            AvsType::AltLayer(avs) => avs.setup(provider, config).await?,
         }
         Ok(())
     }
     async fn build_env(&self, provider: Arc<IvyProvider>, config: &IvyConfig) -> Result<(), IvyError> {
         match self {
-            AvsInstance::EigenDA(avs) => avs.build_env(provider, config).await?,
-            AvsInstance::AltLayer(avs) => avs.build_env(provider, config).await?,
+            AvsType::EigenDA(avs) => avs.build_env(provider, config).await?,
+            AvsType::AltLayer(avs) => avs.build_env(provider, config).await?,
         }
         Ok(())
     }
     fn validate_node_size(&self, quorum_percentage: U256) -> Result<bool, IvyError> {
         match self {
-            AvsInstance::EigenDA(avs) => avs.validate_node_size(quorum_percentage),
-            AvsInstance::AltLayer(avs) => avs.validate_node_size(quorum_percentage),
+            AvsType::EigenDA(avs) => avs.validate_node_size(quorum_percentage),
+            AvsType::AltLayer(avs) => avs.validate_node_size(quorum_percentage),
         }
     }
     async fn opt_in(
@@ -46,8 +63,8 @@ impl AvsVariant for AvsInstance {
         chain: Chain,
     ) -> Result<(), IvyError> {
         match self {
-            AvsInstance::EigenDA(avs) => avs.opt_in(quorums, eigen_path, private_keypath, chain).await,
-            AvsInstance::AltLayer(avs) => avs.opt_in(quorums, eigen_path, private_keypath, chain).await,
+            AvsType::EigenDA(avs) => avs.opt_in(quorums, eigen_path, private_keypath, chain).await,
+            AvsType::AltLayer(avs) => avs.opt_in(quorums, eigen_path, private_keypath, chain).await,
         }
     }
     async fn opt_out(
@@ -58,50 +75,57 @@ impl AvsVariant for AvsInstance {
         chain: Chain,
     ) -> Result<(), IvyError> {
         match self {
-            AvsInstance::EigenDA(avs) => avs.opt_out(quorums, eigen_path, private_keypath, chain).await,
-            AvsInstance::AltLayer(avs) => avs.opt_out(quorums, eigen_path, private_keypath, chain).await,
+            AvsType::EigenDA(avs) => avs.opt_out(quorums, eigen_path, private_keypath, chain).await,
+            AvsType::AltLayer(avs) => avs.opt_out(quorums, eigen_path, private_keypath, chain).await,
         }
     }
-    async fn start(&self, quorums: Vec<QuorumType>, chain: Chain) -> Result<Child, IvyError> {
+    async fn start(&mut self, quorums: Vec<QuorumType>, chain: Chain) -> Result<Child, IvyError> {
         match self {
-            AvsInstance::EigenDA(avs) => avs.start(quorums, chain).await,
-            AvsInstance::AltLayer(avs) => avs.start(quorums, chain).await,
+            AvsType::EigenDA(avs) => avs.start(quorums, chain).await,
+            AvsType::AltLayer(avs) => avs.start(quorums, chain).await,
         }
     }
-    async fn stop(&self, quorums: Vec<QuorumType>, chain: Chain) -> Result<(), IvyError> {
+    async fn stop(&mut self, chain: Chain) -> Result<(), IvyError> {
         match self {
-            AvsInstance::EigenDA(avs) => avs.stop(quorums, chain).await,
-            AvsInstance::AltLayer(avs) => avs.stop(quorums, chain).await,
+            AvsType::EigenDA(avs) => avs.stop(chain).await,
+            AvsType::AltLayer(avs) => avs.stop(chain).await,
         }
     }
     fn quorum_min(&self, chain: Chain, quorum_type: QuorumType) -> U256 {
         match self {
-            AvsInstance::EigenDA(avs) => avs.quorum_min(chain, quorum_type),
-            AvsInstance::AltLayer(avs) => avs.quorum_min(chain, quorum_type),
+            AvsType::EigenDA(avs) => avs.quorum_min(chain, quorum_type),
+            AvsType::AltLayer(avs) => avs.quorum_min(chain, quorum_type),
         }
     }
     fn quorum_candidates(&self, chain: Chain) -> Vec<QuorumType> {
         match self {
-            AvsInstance::EigenDA(avs) => avs.quorum_candidates(chain),
-            AvsInstance::AltLayer(avs) => avs.quorum_candidates(chain),
+            AvsType::EigenDA(avs) => avs.quorum_candidates(chain),
+            AvsType::AltLayer(avs) => avs.quorum_candidates(chain),
         }
     }
     fn stake_registry(&self, chain: Chain) -> Address {
         match self {
-            AvsInstance::EigenDA(avs) => avs.stake_registry(chain),
-            AvsInstance::AltLayer(avs) => avs.stake_registry(chain),
+            AvsType::EigenDA(avs) => avs.stake_registry(chain),
+            AvsType::AltLayer(avs) => avs.stake_registry(chain),
         }
     }
     fn registry_coordinator(&self, chain: Chain) -> Address {
         match self {
-            AvsInstance::EigenDA(avs) => avs.registry_coordinator(chain),
-            AvsInstance::AltLayer(avs) => avs.registry_coordinator(chain),
+            AvsType::EigenDA(avs) => avs.registry_coordinator(chain),
+            AvsType::AltLayer(avs) => avs.registry_coordinator(chain),
         }
     }
     fn path(&self) -> PathBuf {
         match self {
-            AvsInstance::EigenDA(avs) => avs.path(),
-            AvsInstance::AltLayer(avs) => avs.path(),
+            AvsType::EigenDA(avs) => avs.path(),
+            AvsType::AltLayer(avs) => avs.path(),
+        }
+    }
+
+    fn running(&self) -> bool {
+        match self {
+            AvsType::EigenDA(avs) => avs.running(),
+            AvsType::AltLayer(avs) => avs.running(),
         }
     }
 }

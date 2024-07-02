@@ -1,0 +1,119 @@
+use std::sync::Arc;
+
+use ivynet_core::{
+    avs::{instance::AvsType, AvsProvider, AvsVariant},
+    config::IvyConfig,
+    ethers::{signers::Signer, types::Chain},
+    grpc::{
+        ivynet_api::{
+            ivy_daemon_avs::{
+                avs_server::Avs, AvsInfoRequest, AvsInfoResponse, OptinRequest, OptoutRequest, SetAvsRequest,
+                SetupRequest, StartRequest, StopRequest,
+            },
+            ivy_daemon_types::RpcResponse,
+        },
+        tonic::{self, Request, Response, Status},
+    },
+    rpc_management::connect_provider,
+    utils::parse_chain,
+};
+use tokio::sync::RwLock;
+
+#[derive(Debug, Clone)]
+pub struct AvsService {
+    avs_provider: Arc<RwLock<AvsProvider>>,
+}
+
+impl AvsService {
+    pub fn new(avs_provider: Arc<RwLock<AvsProvider>>) -> Self {
+        Self { avs_provider }
+    }
+}
+
+// TODO: Granular setting chain and AVS, or is requiring both accepable?
+
+#[tonic::async_trait]
+impl Avs for AvsService {
+    async fn avs_info(&self, _request: Request<AvsInfoRequest>) -> Result<Response<AvsInfoResponse>, Status> {
+        let provider = self.avs_provider.read().await;
+        let avs = &provider.avs;
+        let (running, avs_type, chain) = if let Some(avs) = avs {
+            let is_running = avs.running();
+            let avs_type = avs.name();
+            let chain =
+                Chain::try_from(provider.provider.signer().chain_id()).expect("Unexpected chain ID parse failure");
+            (is_running, avs_type, chain.to_string())
+        } else {
+            let avs_type = "None";
+            let chain = "None";
+            (false, avs_type, chain.to_string())
+        };
+        let response = AvsInfoResponse { running, avs_type: avs_type.to_string(), chain };
+        Ok(Response::new(response))
+    }
+
+    async fn setup(&self, _request: Request<SetupRequest>) -> Result<Response<RpcResponse>, Status> {
+        todo!();
+    }
+
+    async fn start(&self, _request: Request<StartRequest>) -> Result<Response<RpcResponse>, Status> {
+        let mut provider = self.avs_provider.write().await;
+        provider.start().await?;
+
+        // TODO: Start Flow + not setup fallback
+        let response = RpcResponse { response_type: 0, msg: "Avs started.".to_string() };
+        Ok(Response::new(response))
+    }
+
+    async fn stop(&self, _request: Request<StopRequest>) -> Result<Response<RpcResponse>, Status> {
+        let mut provider = self.avs_provider.write().await;
+        let chain = provider.chain().await?;
+        provider.stop(chain).await?;
+
+        // TODO: Stop flow
+        let response = RpcResponse { response_type: 0, msg: "Avs stopped.".to_string() };
+        Ok(Response::new(response))
+    }
+
+    async fn opt_in(&self, _request: Request<OptinRequest>) -> Result<Response<RpcResponse>, Status> {
+        let provider = self.avs_provider.write().await;
+        // TODO: ask about storing 'config' in the provider
+        let config = IvyConfig::load_from_default_path()?;
+        provider.opt_in(&config).await?;
+
+        // TODO: Opt-in flow
+        let response = RpcResponse { response_type: 0, msg: "Opt-in success.".to_string() };
+        Ok(Response::new(response))
+    }
+
+    async fn opt_out(&self, _request: Request<OptoutRequest>) -> Result<Response<RpcResponse>, Status> {
+        let provider = self.avs_provider.write().await;
+        // TODO: ask about storing 'config' in the provider
+        let config = IvyConfig::load_from_default_path()?;
+        provider.opt_out(&config).await?;
+
+        // TODO: Opt-out flow
+        let response = RpcResponse { response_type: 0, msg: "Opt-out success.".to_string() };
+        Ok(Response::new(response))
+    }
+
+    async fn set_avs(&self, request: Request<SetAvsRequest>) -> Result<Response<RpcResponse>, Status> {
+        // TODO: Clean this up if possible, complexity comes from needing to synchronize the rpc +
+        // chain id between provider, signer, and AVS instance.
+        let req = request.into_inner();
+        let (avs, chain) = (req.avs, parse_chain(&req.chain));
+
+        let mut provider = self.avs_provider.write().await;
+        let signer = provider.provider.signer().clone();
+        let config = IvyConfig::load_from_default_path()?; // TODO: store config with provider
+
+        let new_ivy_provider = connect_provider(&config.get_rpc_url(chain)?, Some(signer)).await?;
+
+        let avs_instance = AvsType::new(&avs, chain)?;
+
+        *provider = AvsProvider::new(Some(avs_instance), Arc::new(new_ivy_provider));
+
+        let response = RpcResponse { response_type: 0, msg: format!("AVS set: {} on chain {}", avs, chain) };
+        Ok(Response::new(response))
+    }
+}

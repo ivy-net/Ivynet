@@ -58,6 +58,12 @@ pub enum IvyError {
     #[error(transparent)]
     GRPCError(#[from] Status),
 
+    #[error("AVS already started")]
+    AvsAlreadyLoadedError,
+
+    #[error("AVS already started")]
+    AvsNotLoadedError,
+
     #[error("Command failed with code:")]
     CommandError(String),
 
@@ -71,7 +77,10 @@ pub enum IvyError {
     UnknownContractError,
 
     #[error("Avs parse error: ensure the name of the requested AVS is valid")]
-    AvsParseError,
+    InvalidAvsType(String),
+
+    #[error("No AVS is initialized")]
+    AvsNotInitializedError,
 
     #[error("Custom contract error")]
     ContractError(Bytes),
@@ -144,5 +153,11 @@ impl From<ContractError<SignerMiddleware<Provider<Http>, IvyWallet>>> for IvyErr
             }
             _ => IvyError::UnknownContractError,
         }
+    }
+}
+
+impl From<IvyError> for Status {
+    fn from(e: IvyError) -> Self {
+        Self::from_error(Box::new(e))
     }
 }

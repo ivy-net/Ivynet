@@ -46,11 +46,12 @@ pub enum EigenDAError {
 pub struct EigenDA {
     path: PathBuf,
     chain: Chain,
+    running: bool,
 }
 
 impl EigenDA {
     pub fn new(path: PathBuf, chain: Chain) -> Self {
-        Self { path, chain }
+        Self { path, chain, running: false }
     }
 
     pub fn new_from_chain(chain: Chain) -> Self {
@@ -187,45 +188,6 @@ impl AvsVariant for EigenDA {
         Ok(acceptable)
     }
 
-    async fn start(&self, quorums: Vec<QuorumType>, chain: Chain) -> Result<Child, IvyError> {
-        let quorum_str: Vec<String> = quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
-        let quorum_str = quorum_str.join(",");
-
-        let docker_path = self.path.join("eigenda-operator-setup");
-        let docker_path = match chain {
-            Chain::Mainnet => docker_path.join("mainnet"),
-            Chain::Holesky => docker_path.join("holesky"),
-            _ => todo!("Unimplemented"),
-        };
-        std::env::set_current_dir(docker_path.clone())?;
-        debug!("docker start: {} |  {}", docker_path.display(), quorum_str);
-        let build = Command::new("docker").arg("compose").arg("build").arg("--no-cache").status()?;
-
-        let _ = Command::new("docker").arg("compose").arg("config").status()?;
-
-        if !build.success() {
-            return Err(EigenDAError::ScriptError(build.to_string()).into());
-        }
-
-        // NOTE: See the limitations of the Stdio::piped() method if this experiences a deadlock
-        let cmd = Command::new("docker").arg("compose").arg("up").arg("--force-recreate").spawn()?;
-        debug!("cmd PID: {:?}", cmd.id());
-        Ok(cmd)
-    }
-
-    // TODO: Remove quorums from stop  method if not needed
-    async fn stop(&self, _quorums: Vec<QuorumType>, chain: Chain) -> Result<(), IvyError> {
-        let docker_path = self.path.join("eigenda-operator-setup");
-        let docker_path = match chain {
-            Chain::Mainnet => docker_path.join("mainnet"),
-            Chain::Holesky => docker_path.join("holesky"),
-            _ => todo!("Unimplemented"),
-        };
-        std::env::set_current_dir(docker_path.clone())?;
-        let _ = Command::new("docker").arg("compose").arg("stop").status()?;
-        Ok(())
-    }
-
     async fn opt_in(
         &self,
         quorums: Vec<QuorumType>,
@@ -328,6 +290,47 @@ impl AvsVariant for EigenDA {
         }
     }
 
+    async fn start(&mut self, quorums: Vec<QuorumType>, chain: Chain) -> Result<Child, IvyError> {
+        let quorum_str: Vec<String> = quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
+        let quorum_str = quorum_str.join(",");
+
+        let docker_path = self.path.join("eigenda-operator-setup");
+        let docker_path = match chain {
+            Chain::Mainnet => docker_path.join("mainnet"),
+            Chain::Holesky => docker_path.join("holesky"),
+            _ => todo!("Unimplemented"),
+        };
+        std::env::set_current_dir(docker_path.clone())?;
+        debug!("docker start: {} |  {}", docker_path.display(), quorum_str);
+        let build = Command::new("docker").arg("compose").arg("build").arg("--no-cache").status()?;
+
+        let _ = Command::new("docker").arg("compose").arg("config").status()?;
+
+        if !build.success() {
+            return Err(EigenDAError::ScriptError(build.to_string()).into());
+        }
+
+        // NOTE: See the limitations of the Stdio::piped() method if this experiences a deadlock
+        let cmd = Command::new("docker").arg("compose").arg("up").arg("--force-recreate").spawn()?;
+        debug!("cmd PID: {:?}", cmd.id());
+        self.running = true;
+        Ok(cmd)
+    }
+
+    // TODO: Remove quorums from stop  method if not needed
+    async fn stop(&mut self, chain: Chain) -> Result<(), IvyError> {
+        let docker_path = self.path.join("eigenda-operator-setup");
+        let docker_path = match chain {
+            Chain::Mainnet => docker_path.join("mainnet"),
+            Chain::Holesky => docker_path.join("holesky"),
+            _ => todo!("Unimplemented"),
+        };
+        std::env::set_current_dir(docker_path.clone())?;
+        let _ = Command::new("docker").arg("compose").arg("stop").status()?;
+        self.running = false;
+        Ok(())
+    }
+
     // TODO: Should probably be a hashmap
     fn quorum_min(&self, chain: Chain, quorum_type: QuorumType) -> U256 {
         match chain {
@@ -371,6 +374,10 @@ impl AvsVariant for EigenDA {
 
     fn path(&self) -> PathBuf {
         self.path.clone()
+    }
+
+    fn running(&self) -> bool {
+        self.running
     }
 }
 

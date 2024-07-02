@@ -5,6 +5,8 @@ use std::fmt::Display;
 
 #[derive(Subcommand, Debug)]
 pub enum AvsCommands {
+    #[command(name = "info", about = "Get information about the currently running AVS")]
+    Info {},
     #[command(name = "setup", about = "opt in to valid quorums with the given AVS")]
     Setup { avs: String, chain: String },
     #[command(name = "optin", about = "opt in to valid quorums with the given AVS")]
@@ -15,6 +17,8 @@ pub enum AvsCommands {
     Start { avs: String, chain: String },
     #[command(name = "stop", about = "stop running the active AVS docker container")]
     Stop { avs: String, chain: String },
+    #[command(name = "setavs", about = "unload the current AVS instance and load in a new instance.")]
+    SetAvs { avs: String, chain: String },
     #[command(
         name = "check-stake-percentage",
         about = "Determine what percentage of the total stake an address would have"
@@ -25,6 +29,7 @@ pub enum AvsCommands {
 impl Display for AvsCommands {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            AvsCommands::Info {} => write!(f, "get information about the currently running AVS"),
             AvsCommands::Setup { avs, chain } => write!(f, "setup {} on chain {}", avs, chain),
             AvsCommands::Optin { avs, chain } => write!(f, "optin {} on chain {}", avs, chain),
             AvsCommands::Optout { avs, chain } => write!(f, "optout {} on chain {}", avs, chain),
@@ -33,6 +38,7 @@ impl Display for AvsCommands {
             AvsCommands::CheckStakePercentage { avs, address, network } => {
                 write!(f, "check stake percentage for {} on {} network", address, network)
             }
+            AvsCommands::SetAvs { avs, chain } => todo!(),
         }
     }
 }

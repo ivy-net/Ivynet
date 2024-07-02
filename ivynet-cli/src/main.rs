@@ -41,7 +41,6 @@ enum Commands {
         #[command(subcommand)]
         subcmd: config::ConfigCommands,
     },
-
     #[command(name = "operator", about = "Request information, register, or manage your operator")]
     Operator {
         #[command(subcommand)]
@@ -52,12 +51,18 @@ enum Commands {
         #[command(subcommand)]
         subcmd: staker::StakerCommands,
     },
-
     #[command(
         name = "serve",
-        about = "Start the Ivynet service with a specified AVS on a specified chain. <AVS> <CHAIN> [PORT]"
+        about = "Start the Ivynet service with a specified AVS on a specified chain. --avs <AVS> --chain <CHAIN> [PORT]"
     )]
-    Serve { avs: String, chain: String, port: Option<u16> },
+    Serve {
+        #[clap(required(false), long, requires("chain"))]
+        avs: Option<String>,
+        #[clap(required(false), long, requires("avs"))]
+        chain: Option<String>,
+        #[clap(required(false), long)]
+        port: Option<u16>,
+    },
 }
 
 #[tokio::main]

@@ -35,11 +35,12 @@ const ALTLAYER_REPO_URL: &str = "https://github.com/alt-research/mach-avs-operat
 #[derive(Debug)]
 pub struct AltLayer {
     path: PathBuf,
+    running: bool,
 }
 
 impl AltLayer {
     pub fn new(path: PathBuf) -> Self {
-        Self { path }
+        Self { path, running: false }
     }
 }
 
@@ -211,6 +212,14 @@ impl AvsVariant for AltLayer {
         }
     }
 
+    async fn start(&mut self, _quorums: Vec<QuorumType>, _chain: Chain) -> Result<Child, IvyError> {
+        todo!()
+    }
+
+    async fn stop(&mut self, _chain: Chain) -> Result<(), IvyError> {
+        todo!()
+    }
+
     /// Quorum stake requirements can be found in the AltLayer docs: https://docs.altlayer.io/altlayer-documentation/altlayer-facilitated-actively-validated-services/xterio-mach-avs-for-xterio-chain/operator-guide
     fn quorum_min(&self, chain: Chain, quorum_type: crate::eigen::quorum::QuorumType) -> U256 {
         match chain {
@@ -252,16 +261,12 @@ impl AvsVariant for AltLayer {
             _ => todo!("Unimplemented"),
         }
     }
-
     fn path(&self) -> PathBuf {
         self.path.clone()
     }
 
-    async fn start(&self, _quorums: Vec<QuorumType>, _chain: Chain) -> Result<Child, IvyError> {
-        todo!()
-    }
-    async fn stop(&self, _quorums: Vec<QuorumType>, _chain: Chain) -> Result<(), IvyError> {
-        todo!()
+    fn running(&self) -> bool {
+        self.running
     }
 }
 

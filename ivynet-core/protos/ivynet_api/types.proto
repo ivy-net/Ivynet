@@ -5,3 +5,9 @@ enum ResponseType {
     OK = 0;
     ERROR = 1;
 }
+
+message RpcResponse{
+    ResponseType response_type = 1;
+    string msg = 2;
+}
+

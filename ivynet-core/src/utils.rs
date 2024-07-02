@@ -32,6 +32,7 @@ pub fn write_toml<T: Serialize>(path: PathBuf, data: &T) -> Result<(), IvyError>
 }
 
 pub fn parse_chain(chain: &str) -> Chain {
+    //TODO: Error on failure to parse instead of default
     chain.parse::<Chain>().unwrap_or_else(|_| {
         warn!("unknown network: {chain}, defaulting to anvil_hardhat at 31337");
         Chain::AnvilHardhat
