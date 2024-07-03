@@ -22,7 +22,9 @@ pub async fn create_channel(source: Source, tls_ca: Option<&String>) -> Result<C
     debug!("Initializing GRPC channel: {:?}", source);
     let endpoint = match source {
         Source::Uri(ref uri) => Endpoint::from_shared(uri.to_string()).expect("invalid backend URI"),
-        Source::Path(_) => Endpoint::try_from("http://[::]:50050").expect("unable to open anything"),
+        Source::Path(ref path) => {
+            Endpoint::try_from("http://[::]:50050").expect(&format!("unable to open socket at {path}"))
+        }
     };
     let endpoint = if let Some(ca) = tls_ca {
         let ca = std::fs::read_to_string(ca).expect("can't read CA certificate");
