@@ -7,7 +7,6 @@ use ivynet_core::{
         backend::backend_client::BackendClient,
         client::{create_channel, Request, Source, Uri},
         messages::RegistrationCredentials,
-        server::Endpoint,
     },
     metadata::Metadata,
     utils::parse_chain,
@@ -180,5 +179,142 @@ fn get_credentials(keyname: Option<String>, password: Option<String>) -> (String
                 .expect("No password provided"),
         ),
         (Some(keyname), Some(pass)) => (keyname, pass),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::{future::Future, path::PathBuf};
+    use tokio::fs;
+
+    pub async fn build_test_dir<F, Fut, T>(test_dir: &str, test_logic: F) -> T
+    where
+        F: FnOnce(PathBuf) -> Fut,
+        Fut: Future<Output = T>,
+    {
+        let test_path = std::env::current_dir().unwrap().join(format!("testing{}", test_dir));
+        fs::create_dir_all(&test_path).await.expect("Failed to create testing_temp directory");
+        let result = test_logic(test_path.clone()).await;
+        fs::remove_dir_all(test_path).await.expect("Failed to delete testing_temp directory");
+
+        result
+    }
+
+    // Usage example within an async test
+    #[tokio::test]
+    async fn test_import_key() {
+        let test_dir = "test_import_key";
+        build_test_dir(test_dir, |test_path| async move {
+            let mut config = IvyConfig::new_at_path(test_path.clone());
+
+            let result = parse_config_subcommands(
+                ConfigCommands::ImportPrivateKey {
+                    private_key: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef".to_string(),
+                    keyname: Some("testkey".to_string()),
+                    password: Some("password".to_string()),
+                },
+                &mut config,
+                "http://localhost:50051".parse().unwrap(),
+                None,
+            )
+            .await;
+
+            println!("{result:?}",);
+            assert!(result.is_ok());
+            assert!(test_path.join("testkey.json").exists());
+            assert!(test_path.join("testkey.txt").exists());
+
+            let config = IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
+            println!("{config:?}",);
+
+            // Read and parse the TOML file
+            let toml_content =
+                fs::read_to_string(test_path.join("ivy-config.toml")).await.expect("Failed to read TOML file");
+            let toml_data: toml::Value = toml::from_str(&toml_content).expect("Failed to parse TOML");
+
+            // Perform assertions on TOML keys and values
+            let private_keypath = format!("{}/testkey.json", test_path.to_str().unwrap());
+            assert_eq!(toml_data["default_private_keyfile"].as_str(), Some(private_keypath.as_str()));
+
+            let public_keypath = format!("{}/testkey.txt", test_path.to_str().unwrap());
+            assert_eq!(toml_data["default_public_keyfile"].as_str(), Some(public_keypath.as_str()));
+        })
+        .await;
+    }
+
+    #[tokio::test]
+    async fn test_create_key() {
+        let test_dir = "test_create_key";
+        build_test_dir(test_dir, |test_path| async move {
+            let mut config = IvyConfig::new_at_path(test_path.clone());
+
+            let result = parse_config_subcommands(
+                ConfigCommands::CreatePrivateKey {
+                    store: true,
+                    keyname: Some("testkey".to_string()),
+                    password: Some("password".to_string()),
+                },
+                &mut config,
+                "http://localhost:50051".parse().unwrap(),
+                None,
+            )
+            .await;
+
+            println!("{result:?}",);
+            assert!(result.is_ok());
+            assert!(test_path.join("testkey.json").exists());
+            assert!(test_path.join("testkey.txt").exists());
+
+            let config = IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
+            println!("{config:?}",);
+
+            // Read and parse the TOML file
+            let toml_content =
+                fs::read_to_string(test_path.join("ivy-config.toml")).await.expect("Failed to read TOML file");
+            let toml_data: toml::Value = toml::from_str(&toml_content).expect("Failed to parse TOML");
+
+            // Perform assertions on TOML keys and values
+            let private_keypath = format!("{}/testkey.json", test_path.to_str().unwrap());
+            assert_eq!(toml_data["default_private_keyfile"].as_str(), Some(private_keypath.as_str()));
+
+            let public_keypath = format!("{}/testkey.txt", test_path.to_str().unwrap());
+            assert_eq!(toml_data["default_public_keyfile"].as_str(), Some(public_keypath.as_str()));
+        })
+        .await;
+    }
+
+    #[tokio::test]
+    async fn test_rpc_functionality() {
+        let test_dir = "test_rpc_functionality";
+        build_test_dir(test_dir, |test_path| async move {
+            let mut config = IvyConfig::new_at_path(test_path.clone());
+
+            let result = parse_config_subcommands(
+                ConfigCommands::SetRpc { chain: "mainnet".to_string(), rpc_url: "http://localhost:8545".to_string() },
+                &mut config,
+                "http://localhost:50051".parse().unwrap(),
+                None,
+            )
+            .await;
+
+            println!("{result:?}",);
+            assert!(result.is_ok());
+
+            let mut config = IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
+            println!("{config:?}",);
+
+            let result = parse_config_subcommands(
+                ConfigCommands::GetRpc { chain: "mainnet".to_string() },
+                &mut config,
+                "http://localhost:50051".parse().unwrap(),
+                None,
+            )
+            .await;
+
+            println!("{result:?}",);
+            assert!(result.is_ok());
+        })
+        .await;
     }
 }
