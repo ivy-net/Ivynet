@@ -27,6 +27,7 @@ use crate::{
     utils::{read_json, write_json},
 };
 
+// TODO: Make this a newtype strict and impl deref + derefmut to get signer stuff for free
 #[derive(Clone, Debug)]
 pub struct IvyWallet {
     local_wallet: LocalWallet,
@@ -45,7 +46,7 @@ impl IvyWallet {
         Ok(IvyWallet { local_wallet })
     }
 
-    pub fn from_keystore(path: PathBuf, password: String) -> Result<Self, IvyError> {
+    pub fn from_keystore(path: PathBuf, password: &str) -> Result<Self, IvyError> {
         let local_wallet = LocalWallet::decrypt_keystore(path, password)?;
 
         Ok(IvyWallet { local_wallet })
@@ -136,7 +137,7 @@ impl Signer for IvyWallet {
 
 pub fn create_legacy_keyfile(path: &PathBuf, password: &str) -> Result<(), IvyError> {
     debug!("creating legacy keyfile");
-    let wallet = IvyWallet::from_keystore(path.to_owned(), password.to_owned())?;
+    let wallet = IvyWallet::from_keystore(path.to_owned(), password)?;
     debug!("wallet loaded");
     let Keyfile { crypto, id, version } = read_json(path.clone())?;
     let legacy_keyfile = KeyfileLegacy { address: wallet.address(), crypto, id, version };

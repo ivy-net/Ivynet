@@ -105,13 +105,13 @@ impl Avs for AvsService {
 
         let mut provider = self.avs_provider.write().await;
         let signer = provider.provider.signer().clone();
+        let keyfile_pw = &provider.keyfile_pw;
         let config = IvyConfig::load_from_default_path()?; // TODO: store config with provider
 
         let new_ivy_provider = connect_provider(&config.get_rpc_url(chain)?, Some(signer)).await?;
-
         let avs_instance = AvsType::new(&avs, chain)?;
 
-        *provider = AvsProvider::new(Some(avs_instance), Arc::new(new_ivy_provider));
+        *provider = AvsProvider::new(Some(avs_instance), Arc::new(new_ivy_provider), keyfile_pw.clone());
 
         let response = RpcResponse { response_type: 0, msg: format!("AVS set: {} on chain {}", avs, chain) };
         Ok(Response::new(response))

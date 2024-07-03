@@ -5,7 +5,9 @@ use crate::{
         quorum::{Quorum, QuorumType},
     },
     error::IvyError,
-    rpc_management::IvyProvider,
+    rpc_management::{connect_provider, IvyProvider},
+    utils::parse_chain,
+    wallet::IvyWallet,
 };
 use async_trait::async_trait;
 use ethers::{
@@ -36,12 +38,14 @@ pub struct AvsProvider {
     /// Signer and RPC provider
     pub provider: Arc<IvyProvider>,
     pub avs: Option<AvsType>,
+    // TODO: Deprecate this if possible, requires conversion of underlying AVS scripts
+    pub keyfile_pw: Option<String>,
     stake_registry: Option<StakeRegistry>,
     registry_coordinator: Option<RegistryCoordinator>,
 }
 
 impl AvsProvider {
-    pub fn new(avs: Option<AvsType>, provider: Arc<IvyProvider>) -> Self {
+    pub fn new(avs: Option<AvsType>, provider: Arc<IvyProvider>, keyfile_pw: Option<String>) -> Self {
         let chain = Chain::try_from(provider.signer().chain_id()).unwrap_or_default();
         let (stake_registry, registry_coordinator) = if let Some(avs) = &avs {
             let stake_registry = StakeRegistryAbi::new(avs.stake_registry(chain), provider.clone());
@@ -50,7 +54,7 @@ impl AvsProvider {
         } else {
             (None, None)
         };
-        Self { avs, provider, stake_registry, registry_coordinator }
+        Self { avs, provider, keyfile_pw, stake_registry, registry_coordinator }
     }
 
     /// Replace the current AVS instance with a new instance.
@@ -147,7 +151,6 @@ impl AvsProvider {
         }
 
         let avs_path = self.avs()?.path();
-
         fs::create_dir_all(avs_path.clone())?;
 
         // TODO: likely a function call in registry_coordinator
@@ -158,7 +161,13 @@ impl AvsProvider {
         //     //Register operator for all quorums they're eligible for
         // }
 
-        self.avs()?.opt_in(quorums, avs_path.clone(), config.default_private_keyfile.clone(), chain).await?;
+        if let Some(pw) = &self.keyfile_pw {
+            self.avs()?.opt_in(quorums, avs_path.clone(), config.default_private_keyfile.clone(), &pw, chain).await?;
+        } else {
+            error!("No keyfile password provided. Exiting...");
+            return Err(IvyError::KeyfilePasswordError);
+        }
+
         Ok(())
     }
 
@@ -173,7 +182,13 @@ impl AvsProvider {
 
         let avs_path = self.avs()?.path();
 
-        self.avs()?.opt_out(quorums, avs_path.clone(), config.default_private_keyfile.clone(), chain).await?;
+        if let Some(pw) = &self.keyfile_pw {
+            self.avs()?.opt_out(quorums, avs_path.clone(), config.default_private_keyfile.clone(), &pw, chain).await?;
+        } else {
+            error!("No keyfile password provided. Exiting...");
+            return Err(IvyError::KeyfilePasswordError);
+        }
+
         Ok(())
     }
 
@@ -217,6 +232,7 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
         quorums: Vec<QuorumType>,
         eigen_path: PathBuf,
         private_keypath: PathBuf,
+        keyfile_password: &str,
         chain: Chain,
     ) -> Result<(), IvyError>;
     async fn opt_out(
@@ -224,6 +240,7 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
         quorums: Vec<QuorumType>,
         eigen_path: PathBuf,
         private_keypath: PathBuf,
+        keyfile_password: &str,
         chain: Chain,
     ) -> Result<(), IvyError>;
     async fn start(&mut self, quorums: Vec<QuorumType>, chain: Chain) -> Result<Child, IvyError>;
@@ -235,4 +252,18 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
     fn path(&self) -> PathBuf;
     /// Return wether or not the AVS is running
     fn running(&self) -> bool;
+}
+
+// TODO: Builder pattern
+pub async fn build_avs_provider(
+    id: Option<&str>,
+    chain: &str,
+    config: &IvyConfig,
+    wallet: Option<IvyWallet>,
+    keyfile_pw: Option<String>,
+) -> Result<AvsProvider, IvyError> {
+    let chain = parse_chain(chain);
+    let provider = connect_provider(&config.get_rpc_url(chain)?, wallet).await?;
+    let avs_instance = if let Some(avs_id) = id { Some(AvsType::new(avs_id, chain)?) } else { None };
+    Ok(AvsProvider::new(avs_instance, Arc::new(provider), keyfile_pw))
 }

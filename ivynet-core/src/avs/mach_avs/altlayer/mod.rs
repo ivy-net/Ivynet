@@ -166,6 +166,7 @@ impl AvsVariant for AltLayer {
         quorums: Vec<QuorumType>,
         eigen_path: PathBuf,
         _private_keyfile: PathBuf,
+        _keyfile_password: &str,
         chain: Chain,
     ) -> Result<(), IvyError> {
         let quorum_str: Vec<String> = quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
@@ -194,6 +195,7 @@ impl AvsVariant for AltLayer {
         _quorums: Vec<QuorumType>,
         eigen_path: PathBuf,
         _private_keyfile: PathBuf,
+        _keyfile_password: &str,
         chain: Chain,
     ) -> Result<(), IvyError> {
         let run_path =

@@ -7,8 +7,8 @@ pub mod env_parser;
 pub mod error;
 pub mod grpc;
 pub mod metadata;
+pub mod operator;
 pub mod rpc_management;
-pub mod server;
 pub mod utils;
 pub mod wallet;
 

@@ -20,13 +20,20 @@ use crate::{
 pub struct IvyConfig {
     /// Storage path for serialized config file
     path: PathBuf,
+    /// RPC URL for mainnet
     pub mainnet_rpc_url: String,
+    /// RPC URL for holesky
     pub holesky_rpc_url: String,
+    // RPC URL for local development
     pub local_rpc_url: String,
-    /// Default private key file full path
+    /// uri of ivy daemon client
+    pub ivy_daemon_uri: String,
+    // TODO: See if this nomenclature needs to be changed
+    /// Default operator private key file full path
     pub default_private_keyfile: PathBuf,
-    /// Default public key file full path
+    /// Default operator public key file full path
     pub default_public_keyfile: PathBuf,
+    /// Metadata for the operator
     pub metadata: Metadata,
     // Identification key that node uses for server communications
     pub identity_key: Option<String>,
@@ -39,6 +46,7 @@ impl Default for IvyConfig {
             mainnet_rpc_url: "https://rpc.flashbots.net/fast".to_string(),
             holesky_rpc_url: "https://rpc.holesky.ethpandaops.io".to_string(),
             local_rpc_url: "http://localhost:8545".to_string(),
+            ivy_daemon_uri: "http://localhost:55501".to_string(),
             default_private_keyfile: "".into(), // TODO: Option
             default_public_keyfile: "".into(),
             metadata: Metadata::default(),

@@ -10,13 +10,18 @@ pub enum AvsCommands {
     #[command(name = "setup", about = "opt in to valid quorums with the given AVS")]
     Setup { avs: String, chain: String },
     #[command(name = "optin", about = "opt in to valid quorums with the given AVS")]
-    Optin { avs: String, chain: String },
+    Optin {},
     #[command(name = "optout", about = "opt out of valid quorums with the given AVS")]
-    Optout { avs: String, chain: String },
+    Optout {},
     #[command(name = "start", about = "Start running an AVS node in a docker container")]
-    Start { avs: String, chain: String },
+    Start {
+        #[clap(required(false), long, requires("chain"))]
+        avs: Option<String>,
+        #[clap(required(false), long, requires("avs"))]
+        chain: Option<String>,
+    },
     #[command(name = "stop", about = "stop running the active AVS docker container")]
-    Stop { avs: String, chain: String },
+    Stop {},
     #[command(name = "setavs", about = "unload the current AVS instance and load in a new instance.")]
     SetAvs { avs: String, chain: String },
     #[command(
@@ -31,14 +36,14 @@ impl Display for AvsCommands {
         match self {
             AvsCommands::Info {} => write!(f, "get information about the currently running AVS"),
             AvsCommands::Setup { avs, chain } => write!(f, "setup {} on chain {}", avs, chain),
-            AvsCommands::Optin { avs, chain } => write!(f, "optin {} on chain {}", avs, chain),
-            AvsCommands::Optout { avs, chain } => write!(f, "optout {} on chain {}", avs, chain),
-            AvsCommands::Start { avs, chain } => write!(f, "start {} on chain {}", avs, chain),
-            AvsCommands::Stop { avs, chain } => write!(f, "stop {} on chain {}", avs, chain),
+            AvsCommands::Optin {} => write!(f, "optin"),
+            AvsCommands::Optout {} => write!(f, "optout"),
+            AvsCommands::Start { .. } => write!(f, "start"),
+            AvsCommands::Stop {} => write!(f, "stop"),
             AvsCommands::CheckStakePercentage { avs, address, network } => {
                 write!(f, "check stake percentage for {} on {} network", address, network)
             }
-            AvsCommands::SetAvs { avs, chain } => todo!(),
+            AvsCommands::SetAvs { avs, chain } => write!(f, "set AVS to {} on chain {}", avs, chain),
         }
     }
 }

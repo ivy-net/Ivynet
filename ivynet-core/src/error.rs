@@ -12,7 +12,9 @@ use tonic::Status;
 use tracing::subscriber::SetGlobalDefaultError;
 use zip::result::ZipError;
 
-use crate::{avs::eigenda::EigenDAError, eigen::quorum::QuorumError, wallet::IvyWallet};
+use crate::{
+    avs::eigenda::EigenDAError, eigen::quorum::QuorumError, env_parser, rpc_management::IvyProvider, wallet::IvyWallet,
+};
 
 #[derive(Debug, Error)]
 pub enum IvyError {
@@ -70,6 +72,9 @@ pub enum IvyError {
     #[error("GRPC server error")]
     GRPCServerError,
 
+    #[error("GRPC client error")]
+    GRPCClientError,
+
     #[error("Folder inaccesible")]
     DirInaccessible,
 
@@ -103,6 +108,9 @@ pub enum IvyError {
     #[error("IvyWallet identity key not found")]
     IdentityKeyError,
 
+    #[error("No keyfile password found")]
+    KeyfilePasswordError,
+
     #[error("Unknown network")]
     UnknownNetwork,
 
@@ -133,7 +141,7 @@ pub enum SetupError {
     NoEnvExample,
 }
 
-impl From<ContractError<SignerMiddleware<Provider<Http>, IvyWallet>>> for IvyError {
+impl From<ContractError<IvyProvider>> for IvyError {
     fn from(value: ContractError<SignerMiddleware<Provider<Http>, IvyWallet>>) -> Self {
         match value {
             ContractError::Revert(bytes) => IvyError::ContractError(bytes),

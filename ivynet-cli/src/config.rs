@@ -116,7 +116,7 @@ pub async fn parse_config_subcommands(
         }
         ConfigCommands::GetDefaultPrivateKey => {
             let pass = Password::new().with_prompt("Enter a password to the private key").interact()?;
-            let wallet = IvyWallet::from_keystore(config.default_private_keyfile.clone(), pass)?;
+            let wallet = IvyWallet::from_keystore(config.default_private_keyfile.clone(), &pass)?;
             println!("Private key: {:?}", wallet.to_private_key());
         }
         ConfigCommands::SetMetadata { metadata_uri, logo_uri, favicon_uri } => {

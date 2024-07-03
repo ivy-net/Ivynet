@@ -1,5 +1,6 @@
 pub mod api;
 pub mod avs;
+pub mod client;
 pub mod config;
 pub mod error;
 pub mod init;

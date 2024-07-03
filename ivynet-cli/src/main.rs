@@ -1,5 +1,7 @@
 use clap::{Parser, Subcommand};
-use ivynet_core::{avs::commands::AvsCommands, config::IvyConfig, grpc::client::Uri};
+use ivynet_core::{
+    avs::commands::AvsCommands, config::IvyConfig, ethers::core::k256::ecdsa::signature::KeypairRef, grpc::client::Uri,
+};
 use std::str::FromStr as _;
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
@@ -82,7 +84,11 @@ async fn main() -> Result<(), Error> {
         Commands::Operator { subcmd } => operator::parse_operator_subcommands(subcmd, &config).await?,
         Commands::Staker { subcmd } => staker::parse_staker_subcommands(subcmd, &config).await?,
         Commands::Avs { subcmd } => avs::parse_avs_subcommands(subcmd, &config).await?,
-        Commands::Serve { avs, chain, port } => service::serve(avs, chain, port, &config).await?,
+        Commands::Serve { avs, chain, port } => {
+            let keyfile_pw =
+                dialoguer::Password::new().with_prompt("Input the password for your stored keyfile").interact()?;
+            service::serve(avs, chain, port, &config, &keyfile_pw).await?
+        }
     }
 
     Ok(())

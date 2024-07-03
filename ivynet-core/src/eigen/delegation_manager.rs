@@ -1,5 +1,5 @@
 use super::{
-    dgm_info::{self, OperatorDetails},
+    dgm_info::{self, DelegationManagerAbi, OperatorDetails},
     quorum::Quorum,
 };
 
@@ -15,7 +15,7 @@ use tracing::info;
 
 /// A global handle for the eigenlayer Delegation Manager contract:
 /// https://github.com/Layr-Labs/eigenlayer-contracts/blob/testnet-holesky/src/contracts/core/DelegationManager.sol
-pub struct DelegationManager(pub dgm_info::DelegationManagerAbi<rpc_management::IvyProvider>);
+pub struct DelegationManager(pub DelegationManagerAbi<rpc_management::IvyProvider>);
 
 impl DelegationManager {
     pub fn new(provider: &IvyProvider) -> Self {

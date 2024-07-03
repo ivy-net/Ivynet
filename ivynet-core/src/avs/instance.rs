@@ -60,11 +60,12 @@ impl AvsVariant for AvsType {
         quorums: Vec<QuorumType>,
         eigen_path: PathBuf,
         private_keypath: PathBuf,
+        keyfile_password: &str,
         chain: Chain,
     ) -> Result<(), IvyError> {
         match self {
-            AvsType::EigenDA(avs) => avs.opt_in(quorums, eigen_path, private_keypath, chain).await,
-            AvsType::AltLayer(avs) => avs.opt_in(quorums, eigen_path, private_keypath, chain).await,
+            AvsType::EigenDA(avs) => avs.opt_in(quorums, eigen_path, private_keypath, keyfile_password, chain).await,
+            AvsType::AltLayer(avs) => avs.opt_in(quorums, eigen_path, private_keypath, keyfile_password, chain).await,
         }
     }
     async fn opt_out(
@@ -72,11 +73,12 @@ impl AvsVariant for AvsType {
         quorums: Vec<QuorumType>,
         eigen_path: PathBuf,
         private_keypath: PathBuf,
+        keyfile_password: &str,
         chain: Chain,
     ) -> Result<(), IvyError> {
         match self {
-            AvsType::EigenDA(avs) => avs.opt_out(quorums, eigen_path, private_keypath, chain).await,
-            AvsType::AltLayer(avs) => avs.opt_out(quorums, eigen_path, private_keypath, chain).await,
+            AvsType::EigenDA(avs) => avs.opt_out(quorums, eigen_path, private_keypath, keyfile_password, chain).await,
+            AvsType::AltLayer(avs) => avs.opt_out(quorums, eigen_path, private_keypath, keyfile_password, chain).await,
         }
     }
     async fn start(&mut self, quorums: Vec<QuorumType>, chain: Chain) -> Result<Child, IvyError> {

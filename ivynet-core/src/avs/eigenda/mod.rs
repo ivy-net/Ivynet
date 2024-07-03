@@ -188,11 +188,13 @@ impl AvsVariant for EigenDA {
         Ok(acceptable)
     }
 
+    //TODO: We may be able to move this to a contract call directly
     async fn opt_in(
         &self,
         quorums: Vec<QuorumType>,
         eigen_path: PathBuf,
         private_keyfile: PathBuf,
+        keyfile_password: &str,
         chain: Chain,
     ) -> Result<(), IvyError> {
         let quorum_str: Vec<String> = quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
@@ -204,9 +206,6 @@ impl AvsVariant for EigenDA {
             Chain::Holesky => run_script_path.join("holesky"),
             _ => todo!("Unimplemented"),
         };
-
-        let ecdsa_password: String =
-            Password::new().with_prompt("Input the password for your ECDSA key file for quorum opt-in").interact()?;
 
         let run_script_path = run_script_path.join("run.sh");
 
@@ -221,7 +220,7 @@ impl AvsVariant for EigenDA {
             .arg("--node-ecdsa-key-file-host")
             .arg(private_keyfile)
             .arg("--node-ecdsa-key-password")
-            .arg(ecdsa_password)
+            .arg(keyfile_password)
             .arg("--quorums")
             .arg(quorum_str)
             .status()?;
@@ -238,6 +237,7 @@ impl AvsVariant for EigenDA {
         quorums: Vec<QuorumType>,
         eigen_path: PathBuf,
         private_keyfile: PathBuf,
+        keyfile_password: &str,
         chain: Chain,
     ) -> Result<(), IvyError> {
         let quorum_str: Vec<String> = quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
@@ -259,9 +259,6 @@ impl AvsVariant for EigenDA {
         // Copy .env file to current directory
         std::fs::copy(env_path, &current_env_path)?;
 
-        let ecdsa_password: String =
-            Password::new().with_prompt("Input the password for your ECDSA key file for quorum opt-in").interact()?;
-
         let run_script_path = run_script_path.join("run.sh");
 
         info!("Booting quorums: {:#?}", quorums);
@@ -275,7 +272,7 @@ impl AvsVariant for EigenDA {
             .arg("--node-ecdsa-key-file-host")
             .arg(private_keyfile)
             .arg("--node-ecdsa-key-password")
-            .arg(ecdsa_password)
+            .arg(keyfile_password)
             .arg("--quorums")
             .arg(quorum_str)
             .status()?;
