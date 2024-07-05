@@ -50,7 +50,7 @@ pub struct InvitationRequest {
 }
 
 #[utoipa::path(
-    post, 
+    post,
     path = "/organization",
     request_body = CreationRequest,
     responses(
@@ -92,7 +92,7 @@ pub async fn new(
 }
 
 #[utoipa::path(
-    get, 
+    get,
     path = "/organization/{id}",
     params(
         ("id", description = "Organization id")
@@ -107,7 +107,7 @@ pub async fn get(State(state): State<HttpState>, Path(id): Path<u64>) -> Result<
 }
 
 #[utoipa::path(
-    get, 
+    get,
     path = "/organization/nodes",
     responses(
         (status = 200, body = [Node]),
@@ -121,7 +121,7 @@ pub async fn nodes(State(state): State<HttpState>, jar: CookieJar) -> Result<Jso
 }
 
 #[utoipa::path(
-    post, 
+    post,
     path = "/organization/invite",
     request_body = InvitationRequest,
     responses(
@@ -146,7 +146,7 @@ pub async fn invite(
 }
 
 #[utoipa::path(
-    post, 
+    post,
     path = "/organization/confirm/{id}",
     params(
         ("id", description = "Verification id for organization")

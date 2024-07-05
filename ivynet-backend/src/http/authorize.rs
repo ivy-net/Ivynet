@@ -35,11 +35,11 @@ pub struct AuthorizationResponse {
 }
 
 #[utoipa::path(
-    post, 
+    post,
     path = "/authorize", 
     request_body = AuthorizationCredentials,
-    responses( 
-        (status = 200, body = AuthorizationResponse), 
+    responses(
+        (status = 200, body = AuthorizationResponse),
         (status = 404)
     )
 )]
@@ -60,7 +60,7 @@ pub async fn authorize(
 }
 
 #[utoipa::path(
-    get, 
+    get,
     path = "/authorize/invitation/{id}",
     params(
         ("id", description = "Invitation id.")
@@ -82,7 +82,7 @@ pub async fn check_invitation(
 }
 
 #[utoipa::path(
-    post, 
+    post,
     path = "/authorize/set_password",
     request_body = SetPasswordCredentials,
     responses(
