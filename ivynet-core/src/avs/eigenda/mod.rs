@@ -198,7 +198,7 @@ impl AvsVariant for EigenDA {
         let _ = Command::new("docker").arg("compose").arg("config").status()?;
 
         if !build.success() {
-            return Err(EigenDAError::ScriptError(build.to_string()).into());
+            return Err(EigenDAError::ScriptError(format!("Script build error: {}", build)).into());
         }
 
         let start = Command::new("docker").arg("compose").arg("up").arg("--force-recreate").status()?;
@@ -206,7 +206,7 @@ impl AvsVariant for EigenDA {
         if start.success() {
             Ok(())
         } else {
-            Err(EigenDAError::ScriptError(start.to_string()).into())
+            Err(EigenDAError::ScriptError(format!("Script start error: {}", start)).into())
         }
     }
 
