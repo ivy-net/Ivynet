@@ -12,9 +12,7 @@ use tonic::Status;
 use tracing::subscriber::SetGlobalDefaultError;
 use zip::result::ZipError;
 
-use crate::{
-    avs::eigenda::EigenDAError, eigen::quorum::QuorumError, env_parser, rpc_management::IvyProvider, wallet::IvyWallet,
-};
+use crate::{avs::eigenda::EigenDAError, eigen::quorum::QuorumError, rpc_management::IvyProvider, wallet::IvyWallet};
 
 #[derive(Debug, Error)]
 pub enum IvyError {
@@ -65,6 +63,9 @@ pub enum IvyError {
 
     #[error("AVS already started")]
     AvsNotLoadedError,
+
+    #[error("Chain not supported {0}")]
+    ChainNotSupportedError(Chain),
 
     #[error("Command failed with code:")]
     CommandError(String),
@@ -142,7 +143,7 @@ pub enum SetupError {
 }
 
 impl From<ContractError<IvyProvider>> for IvyError {
-    fn from(value: ContractError<SignerMiddleware<Provider<Http>, IvyWallet>>) -> Self {
+    fn from(value: ContractError<IvyProvider>) -> Self {
         match value {
             ContractError::Revert(bytes) => IvyError::ContractError(bytes),
             ContractError::MiddlewareError { e } => {

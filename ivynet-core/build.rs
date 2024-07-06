@@ -6,6 +6,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let out = PathBuf::from(env::var("OUT_DIR").unwrap());
     let descriptor_file = out.join("descriptors.bin");
     let protos = get_protos_from_dir();
+
     let mut config = prost_build::Config::new();
     // Older protoc versions need this flag for optional types
     config.protoc_arg("--experimental_allow_proto3_optional");

@@ -1,7 +1,7 @@
 use crate::{
     config::IvyConfig,
     eigen::{
-        delegation_manager::DelegationManager,
+        contracts::delegation_manager::DelegationManager,
         quorum::{Quorum, QuorumType},
     },
     error::IvyError,
@@ -40,12 +40,13 @@ pub struct AvsProvider {
     pub avs: Option<AvsType>,
     // TODO: Deprecate this if possible, requires conversion of underlying AVS scripts
     pub keyfile_pw: Option<String>,
+    pub delegation_manager: DelegationManager,
     stake_registry: Option<StakeRegistry>,
     registry_coordinator: Option<RegistryCoordinator>,
 }
 
 impl AvsProvider {
-    pub fn new(avs: Option<AvsType>, provider: Arc<IvyProvider>, keyfile_pw: Option<String>) -> Self {
+    pub fn new(avs: Option<AvsType>, provider: Arc<IvyProvider>, keyfile_pw: Option<String>) -> Result<Self, IvyError> {
         let chain = Chain::try_from(provider.signer().chain_id()).unwrap_or_default();
         let (stake_registry, registry_coordinator) = if let Some(avs) = &avs {
             let stake_registry = StakeRegistryAbi::new(avs.stake_registry(chain), provider.clone());
@@ -54,7 +55,10 @@ impl AvsProvider {
         } else {
             (None, None)
         };
-        Self { avs, provider, keyfile_pw, stake_registry, registry_coordinator }
+        // TODO: Create clean method for initializing delegation manager
+
+        let delegation_manager = DelegationManager::new(provider.clone())?;
+        Ok(Self { avs, provider, keyfile_pw, delegation_manager, stake_registry, registry_coordinator })
     }
 
     /// Replace the current AVS instance with a new instance.
@@ -183,7 +187,7 @@ impl AvsProvider {
         let avs_path = self.avs()?.path();
 
         if let Some(pw) = &self.keyfile_pw {
-            self.avs()?.opt_out(quorums, avs_path.clone(), config.default_private_keyfile.clone(), &pw, chain).await?;
+            self.avs()?.opt_out(quorums, avs_path.clone(), config.default_private_keyfile.clone(), pw, chain).await?;
         } else {
             error!("No keyfile password provided. Exiting...");
             return Err(IvyError::KeyfilePasswordError);
@@ -195,10 +199,10 @@ impl AvsProvider {
     pub async fn get_bootable_quorums(&self) -> Result<Vec<QuorumType>, IvyError> {
         let mut quorums_to_boot: Vec<QuorumType> = Vec::new();
         let chain = Chain::try_from(self.provider.signer().chain_id()).unwrap_or_default();
-        let manager = DelegationManager::new(&self.provider);
         for quorum_type in self.avs()?.quorum_candidates(chain).iter() {
             let quorum = Quorum::try_from_type_and_network(*quorum_type, chain)?;
-            let shares = manager.get_shares_for_quorum(self.provider.address(), &quorum).await?;
+            let strategies = quorum.to_addresses();
+            let shares = self.delegation_manager.get_operator_shares(self.provider.address(), strategies).await?;
             let total_shares = shares.iter().fold(U256::from(0), |acc, x| acc + x); // This may be
                                                                                     // queryable from stake_registry or registry_coordinator directly?
             info!("Operator shares for quorum {}: {}", quorum_type, total_shares);
@@ -265,5 +269,5 @@ pub async fn build_avs_provider(
     let chain = parse_chain(chain);
     let provider = connect_provider(&config.get_rpc_url(chain)?, wallet).await?;
     let avs_instance = if let Some(avs_id) = id { Some(AvsType::new(avs_id, chain)?) } else { None };
-    Ok(AvsProvider::new(avs_instance, Arc::new(provider), keyfile_pw))
+    Ok(AvsProvider::new(avs_instance, Arc::new(provider), keyfile_pw)?)
 }

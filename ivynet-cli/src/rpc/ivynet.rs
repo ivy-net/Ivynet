@@ -1,14 +1,18 @@
-use std::sync::Arc;
-
 use ivynet_core::{
-    avs::{instance::AvsType, AvsProvider, AvsVariant},
+    avs::{contracts::stake_registry_abi, instance::AvsType, AvsProvider, AvsVariant},
     config::IvyConfig,
+    eigen::contracts::delegation_manager::OperatorDetails,
     ethers::{signers::Signer, types::Chain},
     grpc::{
         ivynet_api::{
             ivy_daemon_avs::{
                 avs_server::Avs, AvsInfoRequest, AvsInfoResponse, OptinRequest, OptoutRequest, SetAvsRequest,
                 SetupRequest, StartRequest, StopRequest,
+            },
+            ivy_daemon_operator::{
+                operator_server::Operator, DelegatableShares, DelegatableSharesRequest, DelegatableSharesResponse,
+                OperatorDetailsRequest, OperatorDetailsResponse, OperatorShares, OperatorSharesRequest,
+                OperatorSharesResponse,
             },
             ivy_daemon_types::RpcResponse,
         },
@@ -17,23 +21,23 @@ use ivynet_core::{
     rpc_management::connect_provider,
     utils::parse_chain,
 };
+use std::{iter::zip, sync::Arc};
 use tokio::sync::RwLock;
 
 #[derive(Debug, Clone)]
-pub struct AvsService {
+pub struct IvynetService {
     avs_provider: Arc<RwLock<AvsProvider>>,
 }
 
-impl AvsService {
+impl IvynetService {
     pub fn new(avs_provider: Arc<RwLock<AvsProvider>>) -> Self {
         Self { avs_provider }
     }
 }
 
 // TODO: Granular setting chain and AVS, or is requiring both accepable?
-
 #[tonic::async_trait]
-impl Avs for AvsService {
+impl Avs for IvynetService {
     async fn avs_info(&self, _request: Request<AvsInfoRequest>) -> Result<Response<AvsInfoResponse>, Status> {
         let provider = self.avs_provider.read().await;
         let avs = &provider.avs;
@@ -76,7 +80,7 @@ impl Avs for AvsService {
     }
 
     async fn opt_in(&self, _request: Request<OptinRequest>) -> Result<Response<RpcResponse>, Status> {
-        let provider = self.avs_provider.write().await;
+        let provider = self.avs_provider.read().await;
         // TODO: ask about storing 'config' in the provider
         let config = IvyConfig::load_from_default_path()?;
         provider.opt_in(&config).await?;
@@ -87,7 +91,7 @@ impl Avs for AvsService {
     }
 
     async fn opt_out(&self, _request: Request<OptoutRequest>) -> Result<Response<RpcResponse>, Status> {
-        let provider = self.avs_provider.write().await;
+        let provider = self.avs_provider.read().await;
         // TODO: ask about storing 'config' in the provider
         let config = IvyConfig::load_from_default_path()?;
         provider.opt_out(&config).await?;
@@ -111,9 +115,79 @@ impl Avs for AvsService {
         let new_ivy_provider = connect_provider(&config.get_rpc_url(chain)?, Some(signer)).await?;
         let avs_instance = AvsType::new(&avs, chain)?;
 
-        *provider = AvsProvider::new(Some(avs_instance), Arc::new(new_ivy_provider), keyfile_pw.clone());
+        *provider = AvsProvider::new(Some(avs_instance), Arc::new(new_ivy_provider), keyfile_pw.clone())?;
 
         let response = RpcResponse { response_type: 0, msg: format!("AVS set: {} on chain {}", avs, chain) };
         Ok(Response::new(response))
+    }
+}
+#[tonic::async_trait]
+impl Operator for IvynetService {
+    async fn get_operator_details(
+        &self,
+        _request: Request<OperatorDetailsRequest>,
+    ) -> Result<Response<OperatorDetailsResponse>, Status> {
+        let provider = self.avs_provider.read().await;
+        let operator_address = provider.provider.address();
+
+        // TODO: parallelize
+        let is_registered = provider
+            .delegation_manager
+            .is_operator(operator_address)
+            .await
+            .map_err(|e| Status::internal(format!("Failed to check if operator is registered: {}", e)))?;
+
+        let OperatorDetails { earnings_receiver, delegation_approver, staker_opt_out_window_blocks } = provider
+            .delegation_manager
+            .operator_details(operator_address)
+            .await
+            .map_err(|e| Status::internal(format!("Failed to get operator details: {}", e)))?;
+
+        let response = Response::new(OperatorDetailsResponse {
+            operator: provider.provider.address().to_string(),
+            is_registered,
+            deprecated_earnings_receiver: earnings_receiver.to_string(),
+            delegation_approver: delegation_approver.to_string(),
+            staker_opt_out_window_blocks,
+        });
+        Ok(response)
+    }
+
+    async fn get_operator_shares(
+        &self,
+        request: Request<OperatorSharesRequest>,
+    ) -> Result<Response<OperatorSharesResponse>, Status> {
+        let provider = self.avs_provider.read().await;
+        let operator_address = provider.provider.address();
+        let manager = &provider.delegation_manager;
+        let strategies = manager
+            .all_strategies()
+            .map_err(|e| Status::internal(format!("Failed to get all strategies for operator shares: {}", e)))?;
+        let shares = manager
+            .get_operator_shares(operator_address, strategies.clone())
+            .await
+            .map_err(|e| Status::internal(format!("Failed to get operator shares: {}", e)))?;
+        let quorum_shares: Vec<OperatorShares> = zip(strategies.iter(), shares.iter())
+            .map(|(s, sh)| OperatorShares { strategy: s.to_string(), shares: sh.to_string() })
+            .collect();
+        let response = Response::new(OperatorSharesResponse { quorum_shares });
+        Ok(response)
+    }
+
+    async fn get_delegatable_shares(
+        &self,
+        _request: Request<DelegatableSharesRequest>,
+    ) -> Result<Response<DelegatableSharesResponse>, Status> {
+        let provider = self.avs_provider.read().await;
+        let operator_address = provider.provider.address();
+        let manager = &provider.delegation_manager;
+        let (strategies, shares) = manager
+            .get_delegatable_shares(operator_address)
+            .await
+            .map_err(|e| Status::internal(format!("Failed to get delegatable shares: {}", e)))?;
+        let shares: Vec<DelegatableShares> = zip(strategies.iter(), shares.iter())
+            .map(|(s, sh)| DelegatableShares { strategy: s.to_string(), shares: sh.to_string() })
+            .collect();
+        Ok(Response::new(DelegatableSharesResponse { shares }))
     }
 }

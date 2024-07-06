@@ -3,7 +3,7 @@ use ivynet_macros::h160;
 use once_cell::sync::Lazy;
 use std::error::Error;
 
-use super::{EigenStrategy, Strategy, StrategyError};
+use super::{Strategy, StrategyError, StrategyList};
 
 pub static MAINNET_LST_STRATEGIES: Lazy<Vec<Strategy>> = Lazy::new(|| {
     vec![
@@ -64,7 +64,7 @@ impl TryFrom<&str> for MainnetLstStrategies {
     }
 }
 
-impl EigenStrategy for MainnetLstStrategies {
+impl StrategyList for MainnetLstStrategies {
     // TODO: OPTIMIZATION: This should reference a constant, not parse on the fly as parsing is
     // expensive.
     fn address(&self) -> Address {

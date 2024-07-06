@@ -1,0 +1,59 @@
+
+syntax = "proto3";
+package operator;
+
+import "ivynet/types.proto";
+
+//----------------------------
+// OPERATOR
+//----------------------------
+
+// If provided, queries operator data and echoes the address. Otherwise, queries using the address of the loaded operator and returns the operator data.
+message OperatorDetailsRequest {
+}
+
+message OperatorDetailsResponse {
+    string operator = 1;
+    bool is_registered = 2;
+    string __deprecated_earnings_receiver = 3;
+    string delegation_approver = 4;
+    uint32 staker_opt_out_window_blocks = 5;
+}
+
+message OperatorSharesRequest {
+}
+
+message OperatorShares {
+    string strategy = 1;
+    string shares = 2;
+}
+
+message OperatorSharesResponse {
+    repeated OperatorShares quorum_shares = 1;
+}
+
+// If provided, queries the shares that can be delegated to the address. Otherwise, queries using the address of the loaded operator and returns the shares that can be delegated.
+message DelegatableSharesRequest{
+    optional string address = 1;
+}
+
+message DelegatableShares {
+    string strategy = 1;
+    string shares = 2;
+}
+
+message DelegatableSharesResponse {
+   repeated DelegatableShares shares = 1;
+}
+
+message RegisterOperatorRequest {
+    // If provided, the address will be used as the delegation_approver for the operator. Otherwise, the operator can be delegated to permissionlessly.
+    optional string delegation_approver = 1;
+}
+
+service Operator {
+    // Operator endpoints. These endpoints report or modify the state of the currently loaded Operator.
+    rpc GetOperatorDetails(OperatorDetailsRequest) returns (OperatorDetailsResponse);
+    rpc GetOperatorShares(OperatorSharesRequest) returns (OperatorSharesResponse);
+    rpc GetDelegatableShares(DelegatableSharesRequest) returns (DelegatableSharesResponse);
+}

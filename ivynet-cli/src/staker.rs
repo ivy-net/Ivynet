@@ -1,8 +1,10 @@
+use std::sync::Arc;
+
 use clap::Parser;
 
 use ivynet_core::{
     config::IvyConfig,
-    eigen::delegation_manager::DelegationManager,
+    eigen::contracts::delegation_manager::DelegationManager,
     ethers::types::Address,
     rpc_management::connect_provider,
     utils::{parse_chain, unwrap_or_local},
@@ -42,8 +44,8 @@ pub async fn parse_staker_getter_subcommands(subget: StakerGetterCommands, confi
         StakerGetterCommands::GetStakerShares { opt_address, chain } => {
             let chain = parse_chain(&chain);
             let provider = connect_provider(&config.get_rpc_url(chain)?, None).await?;
-            let manager = DelegationManager::new(&provider);
-            manager.get_staker_delegatable_shares(unwrap_or_local(opt_address, config.clone())?).await?
+            let manager = DelegationManager::new(Arc::new(provider))?;
+            todo!()
         }
     }
     Ok(())

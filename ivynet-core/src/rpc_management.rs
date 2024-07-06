@@ -1,8 +1,8 @@
 use std::str::FromStr;
 
 use ethers::{
-    middleware::SignerMiddleware,
-    providers::{Http, Middleware, Provider},
+    middleware::{signer::SignerMiddlewareError, SignerMiddleware},
+    providers::{Http, Middleware, MiddlewareError, Provider},
     signers::Signer,
 };
 

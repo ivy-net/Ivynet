@@ -1,0 +1,74 @@
+syntax = "proto3";
+package avs;
+
+import "ivynet/types.proto";
+
+//--------------------------
+// AVS
+//--------------------------
+
+// Request info about a loaded AVS. Returns AVS type and chain (if an AVS is loaded)
+message AvsInfoRequest{
+}
+
+
+// Response type for AvsInfoRequest. Returns information about the loaded AVS.
+message AvsInfoResponse {
+    // Returns whether or not the AVS service is currently running. Also returns false if the AVS is not loaded.
+    bool running = 1;
+    // The type of the loaded AVS. Returns "None" if no AVS is loaded.
+    string avs_type = 2;
+    // The chain for which the loaded AVS is set. Returns "None" if no AVS is loaded.
+    string chain = 3;
+}
+
+// TODO: Decide whether or not to expose this.
+message SetupRequest {
+    string avs = 1;
+    string chain = 2;
+}
+
+// Start the currently loaded AVS instance. If arguments are passed, this will also set the AVS to the target type and chain in the process.
+message StartRequest {
+    // Name of the AVS type to start.
+    optional string avs = 1;
+    // Chain on which to start the above AVS.
+    optional string chain = 2;
+}
+
+// Stop the currently loaded + running AVS instance.
+message StopRequest {
+}
+
+// Optin to all available quorums for the loaded AVS instance.
+message OptinRequest {
+}
+
+// Optout of all quorums for the loaded AVS instance.
+message OptoutRequest {
+}
+
+// Set the loaded AVS to a new AVS + chain target. Returns an error if an AVS is currently running.
+message SetAvsRequest {
+    // Name of the AVS type to load.
+    string avs = 1;
+    // Name of the chain which the AVS should target.
+    string chain = 2;
+}
+
+
+//--------------------------
+// SERVICE
+//--------------------------
+
+service Avs {
+    // Avs-related endpoints. These endpoints report or modify the state of the currently loaded AVS.
+    rpc AvsInfo(AvsInfoRequest) returns (AvsInfoResponse);
+    rpc Setup(SetupRequest) returns (ivy_daemon_types.RpcResponse);
+    rpc Start(StartRequest) returns (ivy_daemon_types.RpcResponse);
+    rpc Stop(StopRequest) returns (ivy_daemon_types.RpcResponse);
+    rpc OptIn(OptinRequest) returns (ivy_daemon_types.RpcResponse);
+    rpc OptOut(OptoutRequest) returns (ivy_daemon_types.RpcResponse);
+    rpc SetAvs(SetAvsRequest) returns (ivy_daemon_types.RpcResponse);
+
+}
