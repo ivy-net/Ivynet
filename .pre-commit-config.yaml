@@ -11,11 +11,12 @@ repos:
     -   id: check-yaml
     -   id: check-added-large-files
     -   id: check-merge-conflict
--   repo: https://github.com/doublify/pre-commit-rust
-    rev: v1.0
+-   repo: https://github.com/ivy-net/pre-commit-rust
+    rev: v1.2
     langugae: rust
     hooks:
     -   id: fmt
-    -   id: cargo-check
 # clippy does not work at the moment
-#   -   id: clippy
+    -   id: clippy
+# we cannot run this as part of pre-commit, because ivy-backend requires sqlx ran first
+#    -   id: cargo-check
