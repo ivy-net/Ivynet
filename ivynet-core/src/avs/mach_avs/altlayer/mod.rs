@@ -95,7 +95,7 @@ impl AvsVariant for AltLayer {
 
         let bls_key_name: String = Input::new()
             .with_prompt(
-                "Input the name of your BLS key file - looks in .eigenlayer folder (where eigen cli stores the key)",
+                "Input the name of your BLS key file without file extensions - looks in .eigenlayer folder (where eigen cli stores the key)",
             )
             .interact_text()?;
 
@@ -117,7 +117,7 @@ impl AvsVariant for AltLayer {
             "NODE_BLS_KEY_FILE_HOST",
             bls_json_file_location.to_str().expect("Could not get BLS key file location"),
         );
-        env_lines.set("OPERATOR_BLS_KEY_PASSWORD", &bls_password);
+        env_lines.set("OPERATOR_BLS_KEY_PASSWORD", &format!("'{}'", bls_password));
         env_lines.set("NODE_CACHE_PATH_HOST", node_cache_path.to_str().expect("Could not parse string"));
         env_lines.save(&env_path)?;
 

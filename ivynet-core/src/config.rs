@@ -37,7 +37,7 @@ impl Default for IvyConfig {
         Self {
             path: DEFAULT_CONFIG_PATH.to_owned(),
             mainnet_rpc_url: "https://rpc.flashbots.net/fast".to_string(),
-            holesky_rpc_url: "https://rpc.holesky.ethpandaops.io".to_string(),
+            holesky_rpc_url: "https://holesky.drpc.org".to_string(),
             local_rpc_url: "http://localhost:8545".to_string(),
             default_private_keyfile: "".into(), // TODO: Option
             default_public_keyfile: "".into(),
@@ -66,7 +66,7 @@ impl IvyConfig {
         if !config_path.exists() {
             std::fs::create_dir_all(DEFAULT_CONFIG_PATH.clone())?;
             let config = Self::default();
-            write_toml(config_path.clone(), &config)?;
+            write_toml(config_path, &config)?;
             return Ok(config);
         }
         Self::load(config_path)

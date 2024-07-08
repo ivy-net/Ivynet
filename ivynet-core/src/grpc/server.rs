@@ -14,7 +14,7 @@ use tonic::{
         Service,
     },
     server::NamedService,
-    transport::{server::Router, Body, Error as TonicError, Identity, Server as TonicServer, ServerTlsConfig},
+    transport::{server::Router, Body, Identity, Server as TonicServer, ServerTlsConfig},
 };
 
 #[derive(Debug, thiserror::Error)]

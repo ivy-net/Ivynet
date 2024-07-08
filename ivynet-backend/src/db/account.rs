@@ -21,10 +21,7 @@ pub enum Role {
 
 impl Role {
     pub fn is_admin(&self) -> bool {
-        match self {
-            Role::Owner | Role::Admin => true,
-            _ => false,
-        }
+        matches!(self, Role::Owner | Role::Admin)
     }
 
     pub fn can_write(&self) -> bool {
@@ -111,11 +108,11 @@ impl Account {
     }
 
     pub async fn nodes(&self, pool: &PgPool) -> Result<Vec<Node>, BackendError> {
-        DbNode::get_all_for_account(pool, &self).await
+        DbNode::get_all_for_account(pool, self).await
     }
 
     pub async fn attach_node(&self, pool: &PgPool, node_id: &Address) -> Result<(), BackendError> {
-        DbNode::new(pool, &self, node_id).await
+        DbNode::create(pool, self, node_id).await
     }
 
     pub async fn new(
