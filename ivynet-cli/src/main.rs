@@ -1,6 +1,7 @@
 use clap::{Parser, Subcommand};
 use ivynet_core::{
-    avs::commands::AvsCommands, config::IvyConfig, ethers::core::k256::ecdsa::signature::KeypairRef, grpc::client::Uri,
+    avs::commands::AvsCommands, config::IvyConfig,
+    ethers::core::k256::ecdsa::signature::KeypairRef, grpc::client::Uri,
 };
 use std::str::FromStr as _;
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
@@ -79,14 +80,23 @@ async fn main() -> Result<(), Error> {
     match args.cmd {
         Commands::Init => initialize_ivynet()?,
         Commands::Config { subcmd } => {
-            config::parse_config_subcommands(subcmd, config, args.server_url, args.server_ca.as_ref()).await?;
+            config::parse_config_subcommands(
+                subcmd,
+                config,
+                args.server_url,
+                args.server_ca.as_ref(),
+            )
+            .await?;
         }
-        Commands::Operator { subcmd } => operator::parse_operator_subcommands(subcmd, &config).await?,
+        Commands::Operator { subcmd } => {
+            operator::parse_operator_subcommands(subcmd, &config).await?
+        }
         Commands::Staker { subcmd } => staker::parse_staker_subcommands(subcmd, &config).await?,
         Commands::Avs { subcmd } => avs::parse_avs_subcommands(subcmd, &config).await?,
         Commands::Serve { avs, chain, port } => {
-            let keyfile_pw =
-                dialoguer::Password::new().with_prompt("Input the password for your stored keyfile").interact()?;
+            let keyfile_pw = dialoguer::Password::new()
+                .with_prompt("Input the password for your stored keyfile")
+                .interact()?;
             service::serve(avs, chain, port, &config, &keyfile_pw).await?
         }
     }

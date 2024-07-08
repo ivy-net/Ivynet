@@ -3,20 +3,18 @@ use dialoguer::Password;
 use ivynet_core::{
     avs::contracts::stake_registry_abi,
     config::IvyConfig,
-    eigen::{
-        contracts::delegation_manager::DelegationManager,
-        strategy::get_strategy_list,
-    },
+    eigen::{contracts::delegation_manager::DelegationManager, strategy::get_strategy_list},
     error::IvyError,
     ethers::{core::types::Address, types::Chain},
+    grpc::client::{create_channel, Uri},
     rpc_management::connect_provider,
     utils::{parse_chain, unwrap_or_local},
     wallet::IvyWallet,
 };
-use std::{path::PathBuf, sync::Arc};
+use std::{path::PathBuf, str::FromStr, sync::Arc};
 use tracing::debug;
 
-use crate::error::Error;
+use crate::{client::IvynetClient, error::Error};
 
 #[derive(Parser, Debug, Clone)]
 pub enum OperatorCommands {
@@ -40,21 +38,15 @@ pub enum OperatorCommands {
 
 #[derive(Parser, Debug, Clone)]
 pub enum OperatorGetterCommands {
+    #[command(name = "details", about = "Get operator details for loaded operator <<ADDRESS>>")]
+    Details { opt_address: Option<Address> },
+    #[command(name = "shares", about = "Get an operator's total shares per strategy <<ADDRESS>>")]
+    Shares { opt_address: Option<Address> },
     #[command(
-        name = "details",
-        about = "Get operator details <CHAIN> <<ADDRESS>>"
+        name = "delegatable-shares",
+        about = "Get an operator's shares per strategy available for delegation <<ADDRESS>>"
     )]
-    Details { chain: String, opt_address: Option<Address> },
-    #[command(
-        name = "stake",
-        about = "Get an operator's total delineated stake per strategy <CHAIN> <<ADDRESS>>"
-    )]
-    Stake { chain: String, opt_address: Option<Address> },
-    #[command(
-        name = "status",
-        about = "Determine whether an address is a registered operator <CHAIN> <<ADDRESS>>"
-    )]
-    Status { chain: String, opt_address: Option<Address> },
+    DelegatableShares { opt_address: Option<Address> },
 }
 
 #[derive(Parser, Debug, Clone)]
@@ -76,15 +68,9 @@ impl OperatorCommands {
         match self {
             OperatorCommands::Register { chain, .. } => parse_chain(chain),
             OperatorCommands::Get { subcmd } => match subcmd {
-                OperatorGetterCommands::Details { chain, .. } => {
-                    parse_chain(chain)
-                }
-                OperatorGetterCommands::Stake { chain, .. } => {
-                    parse_chain(chain)
-                }
-                OperatorGetterCommands::Status { chain, .. } => {
-                    parse_chain(chain)
-                }
+                OperatorGetterCommands::Details { .. } => todo!("unimplemented"),
+                OperatorGetterCommands::Shares { .. } => todo!("unimplemented"),
+                OperatorGetterCommands::DelegatableShares { .. } => todo!("unimplemented"),
             },
             OperatorCommands::Set { subcmd: _ } => Chain::AnvilHardhat,
         }
@@ -104,27 +90,19 @@ pub async fn parse_operator_subcommands(
             parse_operator_setter_subcommands(subcmd, config).await?;
         }
         OperatorCommands::Register {
-            delegation_approver,
-            staker_opt_out_window_blocks,
-            ..
+            delegation_approver, staker_opt_out_window_blocks, ..
         } => {
             let password: String = Password::new()
                 .with_prompt("Input the password for your stored ECDSA keyfile")
                 .interact()?;
-            let wallet = IvyWallet::from_keystore(
-                config.default_private_keyfile.clone(),
-                &password,
-            )?;
+            let wallet =
+                IvyWallet::from_keystore(config.default_private_keyfile.clone(), &password)?;
             let earnings_receiver = wallet.address();
-            let provider =
-                connect_provider(&config.get_rpc_url(chain)?, Some(wallet))
-                    .await?;
+            let provider = connect_provider(&config.get_rpc_url(chain)?, Some(wallet)).await?;
             let manager = DelegationManager::new(Arc::new(provider))?;
 
-            let delegation_approver =
-                delegation_approver.unwrap_or_else(Address::zero);
-            let staker_opt_out_window_blocks =
-                staker_opt_out_window_blocks.unwrap_or(0_u32);
+            let delegation_approver = delegation_approver.unwrap_or_else(Address::zero);
+            let staker_opt_out_window_blocks = staker_opt_out_window_blocks.unwrap_or(0_u32);
             let metadata_uri = &config.metadata.metadata_uri;
             if metadata_uri.is_empty() {
                 // TODO: There's probably a better way to check for valid
@@ -150,28 +128,22 @@ pub async fn parse_operator_getter_subcommands(
     config: &IvyConfig,
     chain: Chain,
 ) -> Result<(), Error> {
-    let provider = connect_provider(&config.get_rpc_url(chain)?, None).await?;
-    let manager = DelegationManager::new(Arc::new(provider))?;
+    let mut client = IvynetClient::from_channel(create_channel(
+        &Uri::from_str(&config.ivy_daemon_uri).map_err(|_| IvyError::GRPCClientError)?,
+        None,
+    ));
     match subgetter {
-        OperatorGetterCommands::Details { opt_address, .. } => {
-            let result = manager
-                .operator_details(unwrap_or_local(opt_address, config.clone())?)
-                .await
-                .map_err(IvyError::from)?;
-            todo!();
+        OperatorGetterCommands::Details { .. } => {
+            let response = client.operator_mut().get_operator_details().await?;
+            println!("{:?}", response.into_inner());
         }
-        OperatorGetterCommands::Stake { opt_address, .. } => {
-            let strategies = manager.all_strategies()?;
-            manager
-                .get_operator_shares(
-                    unwrap_or_local(opt_address, config.clone())?,
-                    strategies,
-                )
-                .await
-                .map_err(IvyError::from)?;
+        OperatorGetterCommands::Shares { .. } => {
+            let response = client.operator_mut().get_operator_shares().await?;
+            println!("{:?}", response.into_inner());
         }
-        OperatorGetterCommands::Status { opt_address, .. } => {
-            todo!()
+        OperatorGetterCommands::DelegatableShares { .. } => {
+            let response = client.operator_mut().get_delegatable_shares(None).await?;
+            println!("{:?}", response.into_inner());
         }
     }
     Ok(())

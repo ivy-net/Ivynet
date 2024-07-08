@@ -2,8 +2,9 @@ use ivynet_core::{
     error::IvyError,
     grpc::{
         ivynet_api::ivy_daemon_operator::{
-            operator_client::OperatorClient as OperatorClientRaw, DelegatableSharesRequest, DelegatableSharesResponse,
-            OperatorDetailsRequest, OperatorDetailsResponse, OperatorSharesRequest, OperatorSharesResponse,
+            operator_client::OperatorClient as OperatorClientRaw, DelegatableSharesRequest,
+            DelegatableSharesResponse, OperatorDetailsRequest, OperatorDetailsResponse,
+            OperatorSharesRequest, OperatorSharesResponse,
         },
         tonic::{transport::Channel, Request, Response},
     },
@@ -18,27 +19,25 @@ impl OperatorClient {
 
     pub async fn get_operator_details(
         &mut self,
-        request: OperatorDetailsRequest,
     ) -> Result<Response<OperatorDetailsResponse>, IvyError> {
-        let request = Request::new(request);
+        let request = Request::new(OperatorDetailsRequest {});
         let response = self.0.get_operator_details(request).await?;
         Ok(response)
     }
 
     pub async fn get_operator_shares(
         &mut self,
-        request: OperatorSharesRequest,
     ) -> Result<Response<OperatorSharesResponse>, IvyError> {
-        let request = Request::new(request);
+        let request = Request::new(OperatorSharesRequest {});
         let response = self.0.get_operator_shares(request).await?;
         Ok(response)
     }
 
     pub async fn get_delegatable_shares(
         &mut self,
-        request: DelegatableSharesRequest,
+        address: Option<String>,
     ) -> Result<Response<DelegatableSharesResponse>, IvyError> {
-        let request = Request::new(request);
+        let request = Request::new(DelegatableSharesRequest { address });
         let response = self.0.get_delegatable_shares(request).await?;
         Ok(response)
     }

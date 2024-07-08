@@ -6,13 +6,13 @@ use ivynet_core::{
     grpc::{
         ivynet_api::{
             ivy_daemon_avs::{
-                avs_server::Avs, AvsInfoRequest, AvsInfoResponse, OptinRequest, OptoutRequest, SetAvsRequest,
-                SetupRequest, StartRequest, StopRequest,
+                avs_server::Avs, AvsInfoRequest, AvsInfoResponse, OptinRequest, OptoutRequest,
+                SetAvsRequest, SetupRequest, StartRequest, StopRequest,
             },
             ivy_daemon_operator::{
-                operator_server::Operator, DelegatableShares, DelegatableSharesRequest, DelegatableSharesResponse,
-                OperatorDetailsRequest, OperatorDetailsResponse, OperatorShares, OperatorSharesRequest,
-                OperatorSharesResponse,
+                operator_server::Operator, DelegatableShares, DelegatableSharesRequest,
+                DelegatableSharesResponse, OperatorDetailsRequest, OperatorDetailsResponse,
+                OperatorShares, OperatorSharesRequest, OperatorSharesResponse,
             },
             ivy_daemon_types::RpcResponse,
         },
@@ -38,14 +38,17 @@ impl IvynetService {
 // TODO: Granular setting chain and AVS, or is requiring both accepable?
 #[tonic::async_trait]
 impl Avs for IvynetService {
-    async fn avs_info(&self, _request: Request<AvsInfoRequest>) -> Result<Response<AvsInfoResponse>, Status> {
+    async fn avs_info(
+        &self,
+        _request: Request<AvsInfoRequest>,
+    ) -> Result<Response<AvsInfoResponse>, Status> {
         let provider = self.avs_provider.read().await;
         let avs = &provider.avs;
         let (running, avs_type, chain) = if let Some(avs) = avs {
             let is_running = avs.running();
             let avs_type = avs.name();
-            let chain =
-                Chain::try_from(provider.provider.signer().chain_id()).expect("Unexpected chain ID parse failure");
+            let chain = Chain::try_from(provider.provider.signer().chain_id())
+                .expect("Unexpected chain ID parse failure");
             (is_running, avs_type, chain.to_string())
         } else {
             let avs_type = "None";
@@ -56,11 +59,17 @@ impl Avs for IvynetService {
         Ok(Response::new(response))
     }
 
-    async fn setup(&self, _request: Request<SetupRequest>) -> Result<Response<RpcResponse>, Status> {
+    async fn setup(
+        &self,
+        _request: Request<SetupRequest>,
+    ) -> Result<Response<RpcResponse>, Status> {
         todo!();
     }
 
-    async fn start(&self, _request: Request<StartRequest>) -> Result<Response<RpcResponse>, Status> {
+    async fn start(
+        &self,
+        _request: Request<StartRequest>,
+    ) -> Result<Response<RpcResponse>, Status> {
         let mut provider = self.avs_provider.write().await;
         provider.start().await?;
 
@@ -79,7 +88,10 @@ impl Avs for IvynetService {
         Ok(Response::new(response))
     }
 
-    async fn opt_in(&self, _request: Request<OptinRequest>) -> Result<Response<RpcResponse>, Status> {
+    async fn opt_in(
+        &self,
+        _request: Request<OptinRequest>,
+    ) -> Result<Response<RpcResponse>, Status> {
         let provider = self.avs_provider.read().await;
         // TODO: ask about storing 'config' in the provider
         let config = IvyConfig::load_from_default_path()?;
@@ -90,7 +102,10 @@ impl Avs for IvynetService {
         Ok(Response::new(response))
     }
 
-    async fn opt_out(&self, _request: Request<OptoutRequest>) -> Result<Response<RpcResponse>, Status> {
+    async fn opt_out(
+        &self,
+        _request: Request<OptoutRequest>,
+    ) -> Result<Response<RpcResponse>, Status> {
         let provider = self.avs_provider.read().await;
         // TODO: ask about storing 'config' in the provider
         let config = IvyConfig::load_from_default_path()?;
@@ -101,7 +116,10 @@ impl Avs for IvynetService {
         Ok(Response::new(response))
     }
 
-    async fn set_avs(&self, request: Request<SetAvsRequest>) -> Result<Response<RpcResponse>, Status> {
+    async fn set_avs(
+        &self,
+        request: Request<SetAvsRequest>,
+    ) -> Result<Response<RpcResponse>, Status> {
         // TODO: Clean this up if possible, complexity comes from needing to synchronize the rpc +
         // chain id between provider, signer, and AVS instance.
         let req = request.into_inner();
@@ -115,9 +133,11 @@ impl Avs for IvynetService {
         let new_ivy_provider = connect_provider(&config.get_rpc_url(chain)?, Some(signer)).await?;
         let avs_instance = AvsType::new(&avs, chain)?;
 
-        *provider = AvsProvider::new(Some(avs_instance), Arc::new(new_ivy_provider), keyfile_pw.clone())?;
+        *provider =
+            AvsProvider::new(Some(avs_instance), Arc::new(new_ivy_provider), keyfile_pw.clone())?;
 
-        let response = RpcResponse { response_type: 0, msg: format!("AVS set: {} on chain {}", avs, chain) };
+        let response =
+            RpcResponse { response_type: 0, msg: format!("AVS set: {} on chain {}", avs, chain) };
         Ok(Response::new(response))
     }
 }
@@ -131,13 +151,16 @@ impl Operator for IvynetService {
         let operator_address = provider.provider.address();
 
         // TODO: parallelize
-        let is_registered = provider
-            .delegation_manager
-            .is_operator(operator_address)
-            .await
-            .map_err(|e| Status::internal(format!("Failed to check if operator is registered: {}", e)))?;
+        let is_registered =
+            provider.delegation_manager.is_operator(operator_address).await.map_err(|e| {
+                Status::internal(format!("Failed to check if operator is registered: {}", e))
+            })?;
 
-        let OperatorDetails { earnings_receiver, delegation_approver, staker_opt_out_window_blocks } = provider
+        let OperatorDetails {
+            earnings_receiver,
+            delegation_approver,
+            staker_opt_out_window_blocks,
+        } = provider
             .delegation_manager
             .operator_details(operator_address)
             .await
@@ -160,9 +183,9 @@ impl Operator for IvynetService {
         let provider = self.avs_provider.read().await;
         let operator_address = provider.provider.address();
         let manager = &provider.delegation_manager;
-        let strategies = manager
-            .all_strategies()
-            .map_err(|e| Status::internal(format!("Failed to get all strategies for operator shares: {}", e)))?;
+        let strategies = manager.all_strategies().map_err(|e| {
+            Status::internal(format!("Failed to get all strategies for operator shares: {}", e))
+        })?;
         let shares = manager
             .get_operator_shares(operator_address, strategies.clone())
             .await
