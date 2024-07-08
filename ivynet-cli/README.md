@@ -116,12 +116,12 @@ Example:
 ### Interacting with the Ivy Daemon: 
 
 
-
-GRPC Interface:
-
 The Ivynet service exposes a GRPC interface for interacting with the daemon, which can be used either via the Ivynet CLI or through GRPC actions directly. Examples are presented using [GRPCurl](https://github.com/fullstorydev/grpcurl)
 
+#### The Avs Namespace
 The following GRPC actions are supported:
+
+#### Info
 
 `ivy_daemon_avs.Avs/AvsInfo`
 Get information about the currently running AVS instance.
@@ -142,6 +142,10 @@ Example return:
   "chain": "holeksy"
 }
 ```
+
+CLI:
+`ivynet-cli avs info`
+
 #### Start
 
 `ivy_daemon_avs.Avs/Start`
@@ -149,6 +153,9 @@ Start the loaded AVS instance. This will run the AVS in the background in a dock
 
 Example call:
 `grpcurl -plaintext localhost:55501 ivy_daemon_avs.Avs/Start`
+
+CLI:
+`ivynet-cli avs start`
 
 #### Stop
 
@@ -158,6 +165,9 @@ Stop the AVS instance. This will stop the AVS and close its docker container.
 Example call:
 `grpcurl -plaintext localhost:55501 ivy_daemon_avs.Avs/Stop`
 
+CLI:
+`ivynet-cli avs stop`
+
 #### Optin
 
 `ivy_daemon_avs.Avs/OptIn`
@@ -166,6 +176,9 @@ Optin to the AVS instance. This will use the stored keypair from the ivyconfig.t
 Example call:
 `grpcurl -plaintext localhost:55501 ivy_daemon_avs.Avs/OptIn`
 
+CLI:
+`ivynet-cli avs optin`
+
 #### Optout
 
 `ivy_daemon_avs.Avs/OptOut`
@@ -173,6 +186,9 @@ Optout of the AVS instance. This will use the stored keypair from the ivyconfig.
 
 Example call:
 `grpcurl -plaintext localhost:55501 ivy_daemon_avs.Avs/OptOut`
+
+CLI:
+`ivynet-cli avs optout`
 
 #### SetAvs
 
@@ -185,3 +201,10 @@ Arguments:
 
 Example:
 `grpcurl -plaintext -d '{"avs": "eigenda", "chain": "mainnet"}' localhost:55501 ivy_daemon_avs.Avs/SetAvs`
+
+CLI:
+`ivynet-cli avs set <AVS> <CHAIN>`
+
+Example:
+`ivynet-cli avs set eigenda holesky`
+
