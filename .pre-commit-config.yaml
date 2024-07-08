@@ -13,7 +13,6 @@ repos:
     -   id: check-merge-conflict
 -   repo: https://github.com/ivy-net/pre-commit-rust
     rev: v1.2
-    langugae: rust
     hooks:
     -   id: fmt
 # clippy does not work at the moment
