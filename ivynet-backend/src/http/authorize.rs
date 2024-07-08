@@ -100,7 +100,7 @@ pub async fn set_password(
         return Err(BackendError::BadId);
     }
     let account = Account::get(&state.pool, verification.associated_id as u64).await?;
-    if account.password.len() > 0 {
+    if !account.password.is_empty() {
         return Err(BackendError::AlreadySet);
     }
 
@@ -114,5 +114,5 @@ pub async fn verify(pool: &PgPool, cache: &memcache::Client, jar: &CookieJar) ->
     let session = jar.get("session_id").ok_or(BackendError::Unauthorized)?.value();
 
     let user_id = cache.get(session)?.ok_or(BackendError::Unauthorized)?;
-    Ok(Account::get(pool, user_id).await?)
+    Account::get(pool, user_id).await
 }

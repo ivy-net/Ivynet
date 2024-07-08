@@ -66,7 +66,7 @@ impl IvyConfig {
         if !config_path.exists() {
             std::fs::create_dir_all(DEFAULT_CONFIG_PATH.clone())?;
             let config = Self::default();
-            write_toml(config_path.clone(), &config)?;
+            write_toml(config_path, &config)?;
             return Ok(config);
         }
         Self::load(config_path)

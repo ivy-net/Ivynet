@@ -31,7 +31,8 @@ impl Display for AvsCommands {
             AvsCommands::Start { avs, chain } => write!(f, "start {} on chain {}", avs, chain),
             AvsCommands::Stop { avs, chain } => write!(f, "stop {} on chain {}", avs, chain),
             AvsCommands::CheckStakePercentage { avs, address, network } => {
-                write!(f, "check stake percentage for {} on {} network", address, network)
+                write!(f, "check stake percentage for {} on {} network", address, network)?;
+                todo!("Use {}", avs)
             }
         }
     }
