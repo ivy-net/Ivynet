@@ -12,7 +12,10 @@ use tonic::Status;
 use tracing::subscriber::SetGlobalDefaultError;
 use zip::result::ZipError;
 
-use crate::{avs::eigenda::EigenDAError, eigen::quorum::QuorumError, rpc_management::IvyProvider, wallet::IvyWallet};
+use crate::{
+    avs::eigenda::EigenDAError, eigen::quorum::QuorumError, rpc_management::IvyProvider,
+    wallet::IvyWallet,
+};
 
 #[derive(Debug, Error)]
 pub enum IvyError {
@@ -58,8 +61,10 @@ pub enum IvyError {
     #[error(transparent)]
     GRPCError(#[from] Status),
 
-    #[error("AVS already started")]
-    AvsAlreadyLoadedError,
+    #[error(
+        "AVS {0} on chain {1} is currently running. Stop the AVS before using this operation."
+    )]
+    AvsRunningError(String, Chain),
 
     #[error("AVS already started")]
     AvsNotLoadedError,

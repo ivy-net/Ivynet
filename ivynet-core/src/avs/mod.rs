@@ -46,11 +46,16 @@ pub struct AvsProvider {
 }
 
 impl AvsProvider {
-    pub fn new(avs: Option<AvsType>, provider: Arc<IvyProvider>, keyfile_pw: Option<String>) -> Result<Self, IvyError> {
+    pub fn new(
+        avs: Option<AvsType>,
+        provider: Arc<IvyProvider>,
+        keyfile_pw: Option<String>,
+    ) -> Result<Self, IvyError> {
         let chain = Chain::try_from(provider.signer().chain_id()).unwrap_or_default();
         let (stake_registry, registry_coordinator) = if let Some(avs) = &avs {
             let stake_registry = StakeRegistryAbi::new(avs.stake_registry(chain), provider.clone());
-            let registry_coordinator = RegistryCoordinatorAbi::new(avs.registry_coordinator(chain), provider.clone());
+            let registry_coordinator =
+                RegistryCoordinatorAbi::new(avs.registry_coordinator(chain), provider.clone());
             (Some(stake_registry), Some(registry_coordinator))
         } else {
             (None, None)
@@ -58,14 +63,22 @@ impl AvsProvider {
         // TODO: Create clean method for initializing delegation manager
 
         let delegation_manager = DelegationManager::new(provider.clone())?;
-        Ok(Self { avs, provider, keyfile_pw, delegation_manager, stake_registry, registry_coordinator })
+        Ok(Self {
+            avs,
+            provider,
+            keyfile_pw,
+            delegation_manager,
+            stake_registry,
+            registry_coordinator,
+        })
     }
 
     /// Replace the current AVS instance with a new instance.
     pub async fn with_avs(&mut self, avs: Option<AvsType>) -> Result<(), IvyError> {
         let chain = Chain::try_from(self.provider.signer().chain_id()).unwrap_or_default();
         let (stake_registry, registry_coordinator) = if let Some(avs) = &avs {
-            let stake_registry = StakeRegistryAbi::new(avs.stake_registry(chain), self.provider.clone());
+            let stake_registry =
+                StakeRegistryAbi::new(avs.stake_registry(chain), self.provider.clone());
             let registry_coordinator =
                 RegistryCoordinatorAbi::new(avs.registry_coordinator(chain), self.provider.clone());
             (Some(stake_registry), Some(registry_coordinator))
@@ -123,6 +136,14 @@ impl AvsProvider {
 
     /// Start the loaded AVS instance. Returns an error if no AVS instance is loaded.
     pub async fn start(&mut self) -> Result<Child, IvyError> {
+        let avs = self.avs_mut()?;
+        if avs.running() {
+            // TODO: Fix unwrap
+            return Err(IvyError::AvsRunningError(
+                avs.name().to_string(),
+                Chain::try_from(self.provider.signer().chain_id())?,
+            ));
+        }
         let chain = Chain::try_from(self.provider.signer().chain_id()).unwrap_or_default();
         let quorums = self.get_bootable_quorums().await?;
         if quorums.is_empty() {
@@ -166,7 +187,15 @@ impl AvsProvider {
         // }
 
         if let Some(pw) = &self.keyfile_pw {
-            self.avs()?.opt_in(quorums, avs_path.clone(), config.default_private_keyfile.clone(), &pw, chain).await?;
+            self.avs()?
+                .opt_in(
+                    quorums,
+                    avs_path.clone(),
+                    config.default_private_keyfile.clone(),
+                    &pw,
+                    chain,
+                )
+                .await?;
         } else {
             error!("No keyfile password provided. Exiting...");
             return Err(IvyError::KeyfilePasswordError);
@@ -187,7 +216,15 @@ impl AvsProvider {
         let avs_path = self.avs()?.path();
 
         if let Some(pw) = &self.keyfile_pw {
-            self.avs()?.opt_out(quorums, avs_path.clone(), config.default_private_keyfile.clone(), pw, chain).await?;
+            self.avs()?
+                .opt_out(
+                    quorums,
+                    avs_path.clone(),
+                    config.default_private_keyfile.clone(),
+                    pw,
+                    chain,
+                )
+                .await?;
         } else {
             error!("No keyfile password provided. Exiting...");
             return Err(IvyError::KeyfilePasswordError);
@@ -202,11 +239,15 @@ impl AvsProvider {
         for quorum_type in self.avs()?.quorum_candidates(chain).iter() {
             let quorum = Quorum::try_from_type_and_network(*quorum_type, chain)?;
             let strategies = quorum.to_addresses();
-            let shares = self.delegation_manager.get_operator_shares(self.provider.address(), strategies).await?;
+            let shares = self
+                .delegation_manager
+                .get_operator_shares(self.provider.address(), strategies)
+                .await?;
             let total_shares = shares.iter().fold(U256::from(0), |acc, x| acc + x); // This may be
                                                                                     // queryable from stake_registry or registry_coordinator directly?
             info!("Operator shares for quorum {}: {}", quorum_type, total_shares);
-            let quorum_total = self.stake_registry()?.get_current_total_stake(*quorum_type as u8).await?;
+            let quorum_total =
+                self.stake_registry()?.get_current_total_stake(*quorum_type as u8).await?;
             let quorum_percentage = total_shares * 10000 / (total_shares + quorum_total);
             if self.avs()?.validate_node_size(quorum_percentage)? {
                 quorums_to_boot.push(*quorum_type);
@@ -228,7 +269,11 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
     async fn setup(&self, provider: Arc<IvyProvider>, config: &IvyConfig) -> Result<(), IvyError>;
     /// Builds the ENV file for the specific AVS + Chain combination. Writes changes to the local
     /// .env file. Check logs for specific file-paths.
-    async fn build_env(&self, provider: Arc<IvyProvider>, config: &IvyConfig) -> Result<(), IvyError>;
+    async fn build_env(
+        &self,
+        provider: Arc<IvyProvider>,
+        config: &IvyConfig,
+    ) -> Result<(), IvyError>;
     //fn validate_install();
     fn validate_node_size(&self, quorum_percentage: U256) -> Result<bool, IvyError>;
     async fn opt_in(
@@ -268,6 +313,7 @@ pub async fn build_avs_provider(
 ) -> Result<AvsProvider, IvyError> {
     let chain = parse_chain(chain);
     let provider = connect_provider(&config.get_rpc_url(chain)?, wallet).await?;
-    let avs_instance = if let Some(avs_id) = id { Some(AvsType::new(avs_id, chain)?) } else { None };
+    let avs_instance =
+        if let Some(avs_id) = id { Some(AvsType::new(avs_id, chain)?) } else { None };
     Ok(AvsProvider::new(avs_instance, Arc::new(provider), keyfile_pw)?)
 }

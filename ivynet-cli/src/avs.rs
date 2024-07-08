@@ -26,6 +26,7 @@ pub async fn parse_avs_subcommands(subcmd: AvsCommands, config: &IvyConfig) -> R
                 build_avs_provider(Some(avs), chain, config, Some(wallet), Some(password)).await?;
             avs.setup(config).await?;
         }
+        // TODO: Fix timeout issue
         AvsCommands::Optin {} => {
             let response = client.avs_mut().opt_in().await?;
             println!("{:?}", response.into_inner());
@@ -50,3 +51,7 @@ pub async fn parse_avs_subcommands(subcmd: AvsCommands, config: &IvyConfig) -> R
     }
     Ok(())
 }
+
+// TODO:
+// Check error on following flows:
+// - Start without setup (currently returns "no such file")
