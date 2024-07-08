@@ -37,7 +37,7 @@ impl Verification {
         let verification = sqlx::query_as!(
             Verification,
             r#"SELECT verification_id, associated_id, verification_type AS "verification_type!: VerificationType", created_at, updated_at FROM verification WHERE verification_id = $1"#,
-            id 
+            id
         )
             .fetch_one(pool)
             .await?;
@@ -70,12 +70,7 @@ impl Verification {
     }
 
     pub async fn delete(&self, pool: &PgPool) -> Result<(), BackendError> {
-        query!(
-            "DELETE FROM verification WHERE verification_id = $1",
-            self.verification_id
-        )
-        .execute(pool)
-        .await?;
+        query!("DELETE FROM verification WHERE verification_id = $1", self.verification_id).execute(pool).await?;
         Ok(())
     }
 }

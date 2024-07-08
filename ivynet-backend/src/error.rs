@@ -2,6 +2,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
+use ivynet_core::grpc::server::ServerError;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -24,8 +25,11 @@ pub enum BackendError {
     #[error(transparent)]
     SendGridError(#[from] sendgrid::SendgridError),
 
-    #[error("GRPC Service cannot serve")]
-    GRPCServerError,
+    #[error(transparent)]
+    GRPCServerError(#[from] ServerError),
+
+    #[error(transparent)]
+    MigrateError(#[from] sqlx::migrate::MigrateError),
 
     #[error("No internal ID attached to GRPC message")]
     NoInternalId,
@@ -55,14 +59,10 @@ impl IntoResponse for BackendError {
             BackendError::InsufficientPriviledges => {
                 (StatusCode::UNAUTHORIZED, format!("Account is not an admin")).into_response()
             }
-            BackendError::Unauthorized => (
-                StatusCode::UNAUTHORIZED,
-                format!("You are not authorized to access this function"),
-            )
-                .into_response(),
-            BackendError::AccountExists => {
-                (StatusCode::CONFLICT, format!("Account already exists")).into_response()
+            BackendError::Unauthorized => {
+                (StatusCode::UNAUTHORIZED, format!("You are not authorized to access this function")).into_response()
             }
+            BackendError::AccountExists => (StatusCode::CONFLICT, format!("Account already exists")).into_response(),
             _ => (StatusCode::INTERNAL_SERVER_ERROR, format!("{:?}", self)).into_response(),
         }
     }

@@ -1,37 +1,25 @@
-FROM rust:alpine
-
-ARG CONTEXT_APK
-RUN test -n "$CONTEXT_APK"
+FROM lukemathwalker/cargo-chef:latest-rust-1 AS chef
+WORKDIR /build
+FROM chef AS planner
+COPY . .
 
 WORKDIR /build
 
-FROM base AS builder
+RUN cargo chef prepare --recipe-path recipe.json
+
+FROM chef AS builder 
+RUN apt-get update && apt-get install -y protobuf-compiler
 ARG CONTEXT_APK
-RUN mkdir -p "/build/"
-COPY $CONTEXT_APK/ srv_app/
-COPY Cargo.lock srv_app/
-COPY ivynet-core ivynet-core/
+COPY --from=planner /build/recipe.json recipe.json
+# Build dependencies - this is the caching Docker layer!
+RUN cargo chef cook --release --recipe-path recipe.json
+# Build application
+COPY . .
+RUN cargo build --release --bin $CONTEXT_APK 
 
-WORKDIR /build/srv_app
-# Dependency caching magic happens here
-RUN cargo build --release --verbose
-
-COPY Cargo.lock ./Cargo.lock
-COPY $CONTEXT_APK/ ./srv_app
-RUN cargo fmt -- --check
-RUN cargo clippy
-RUN #cargo test --release
-
-# Build main binary
-RUN cargo install --locked --path . --root /output
-
-# Move the binary to fresh, lightweight container leaving the trash behind
-FROM rust:alpine
+# We do not need the Rust toolchain to run the binary!
+FROM debian:bookworm-slim AS runtime
 ARG CONTEXT_APK
-RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates && rm -rf /var/lib/apt/lists/*
-
-COPY --from=builder /output/bin/$CONTEXT_APK /usr/local/bin/internal_service.app
-
-RUN chmod +x /usr/local/bin/internal_service.app
-
-CMD ["/usr/local/bin/internal_service.app"]
+RUN apt-get update && apt-get install -y openssl
+COPY --from=builder /build/target/release/$CONTEXT_APK /usr/local/bin/app
+ENTRYPOINT ["/usr/local/bin/app"]
