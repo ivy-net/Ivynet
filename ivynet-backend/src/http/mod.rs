@@ -1,3 +1,4 @@
+mod apidoc;
 mod authorize;
 mod organization;
 
@@ -12,6 +13,8 @@ use axum::{
 use ivynet_core::grpc::client::Uri;
 use sendgrid::v3::Sender;
 use sqlx::PgPool;
+use utoipa::OpenApi as _;
+use utoipa_swagger_ui::SwaggerUi;
 
 #[derive(Clone)]
 pub struct HttpState {
@@ -35,18 +38,11 @@ pub async fn serve(
     port: u16,
 ) -> Result<(), BackendError> {
     tracing::info!("Starting HTTP server on port {port}");
-    let sender = if let Some(key) = sendgrid_api_key {
-        Some(Sender::new(key))
-    } else {
-        None
-    };
+    let sender = if let Some(key) = sendgrid_api_key { Some(Sender::new(key)) } else { None };
     let app = Router::new()
         .route("/health", get(|| async { "alive" }))
         .route("/authorize", post(authorize::authorize))
-        .route(
-            "/authorize/invitation/{id}",
-            get(authorize::check_invitation),
-        )
+        .route("/authorize/invitation/{id}", get(authorize::check_invitation))
         .route("/authorize/set_password", post(authorize::set_password))
         .route("/organization", post(organization::new))
         .route("/organization/{id}", get(organization::get))
@@ -61,7 +57,8 @@ pub async fn serve(
             root_url,
             org_verification_template,
             user_verification_template,
-        });
+        })
+        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", apidoc::ApiDoc::openapi()));
 
     let listener = tokio::net::TcpListener::bind(&format!("0.0.0.0:{port}")).await?;
     axum::serve(listener, app).await?;

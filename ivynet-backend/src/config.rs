@@ -30,7 +30,7 @@ pub struct Config {
     #[arg(long, env = "IVY_ROOT_URL", value_parser = Uri::from_str, default_value = "http://localhost:8080")]
     pub root_url: Uri,
 
-    #[arg(long, env = "SENDGRID_FROM")]
+    #[arg(long, env = "SENDGRID_FROM", default_value = "no-reply@em739.ivynet.dev")]
     pub sendgrid_from: Option<String>,
 
     #[arg(long, env = "SENDGRID_API_KEY")]
@@ -45,12 +45,11 @@ pub struct Config {
     #[arg(long, env = "IVY_CACHE_URL", value_parser = Uri::from_str, default_value = "memcache://localhost:11211" )]
     pub cache_url: Uri,
 
-    #[arg(
-        long,
-        env = "DATABASE_URL",
-        default_value = "postgresql://ivy:secret_ivy@localhost:5432/ivynet"
-    )]
+    #[arg(long, env = "DATABASE_URL", default_value = "postgresql://ivy:secret_ivy@localhost:5432/ivynet")]
     pub db_uri: String,
+
+    #[arg(long, env = "IVY_MIGRATE", default_value_t = false)]
+    pub migrate: bool,
 
     #[arg(long)]
     pub test_account: Option<String>,
