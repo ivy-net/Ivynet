@@ -126,8 +126,8 @@ impl Account {
 
         let account = sqlx::query_as!(
             Account,
-            r#"INSERT INTO account (organization_id, email, password, role, created_at, updated_at) 
-                    VALUES ($1, $2, $3, $4, $5, $6) 
+            r#"INSERT INTO account (organization_id, email, password, role, created_at, updated_at)
+                    VALUES ($1, $2, $3, $4, $5, $6)
                     RETURNING user_id, organization_id, email, password, role AS "role: _", created_at, updated_at"#,
             organization.organization_id,
             email,

@@ -17,6 +17,6 @@ repos:
     hooks:
     -   id: fmt
 # clippy does not work at the moment
-    -   id: clippy
+#    -   id: clippy
 # we cannot run this as part of pre-commit, because ivy-backend requires sqlx ran first
 #    -   id: cargo-check

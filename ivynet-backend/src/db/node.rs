@@ -49,7 +49,6 @@ impl DbNode {
         Ok(node.into())
     }
 
-
     pub async fn create(pool: &PgPool, account: &Account, node_id: &Address) -> Result<(), BackendError> {
         let now: NaiveDateTime = Utc::now().naive_utc();
 

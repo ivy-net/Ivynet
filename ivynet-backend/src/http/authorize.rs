@@ -36,7 +36,7 @@ pub struct AuthorizationResponse {
 
 #[utoipa::path(
     post,
-    path = "/authorize", 
+    path = "/authorize",
     request_body = AuthorizationCredentials,
     responses(
         (status = 200, body = AuthorizationResponse),
