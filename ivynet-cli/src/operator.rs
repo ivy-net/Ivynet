@@ -1,14 +1,13 @@
 use clap::Parser;
 use dialoguer::Password;
 use ivynet_core::{
-    avs::contracts::stake_registry_abi,
     config::IvyConfig,
-    eigen::{contracts::delegation_manager::DelegationManager, strategy::get_strategy_list},
+    eigen::contracts::delegation_manager::DelegationManager,
     error::IvyError,
     ethers::{core::types::Address, types::Chain},
-    grpc::client::{create_channel, Uri},
+    grpc::client::{create_channel, Source, Uri},
     rpc_management::connect_provider,
-    utils::{parse_chain, unwrap_or_local},
+    utils::parse_chain,
     wallet::IvyWallet,
 };
 use std::{path::PathBuf, str::FromStr, sync::Arc};
@@ -81,10 +80,9 @@ pub async fn parse_operator_subcommands(
     subcmd: OperatorCommands,
     config: &IvyConfig,
 ) -> Result<(), Error> {
-    let chain = subcmd.chain();
     match subcmd {
         OperatorCommands::Get { subcmd } => {
-            parse_operator_getter_subcommands(subcmd, config, chain).await?;
+            parse_operator_getter_subcommands(subcmd, config).await?;
         }
         OperatorCommands::Set { subcmd } => {
             parse_operator_setter_subcommands(subcmd, config).await?;
@@ -92,32 +90,33 @@ pub async fn parse_operator_subcommands(
         OperatorCommands::Register {
             delegation_approver, staker_opt_out_window_blocks, ..
         } => {
-            let password: String = Password::new()
-                .with_prompt("Input the password for your stored ECDSA keyfile")
-                .interact()?;
-            let wallet =
-                IvyWallet::from_keystore(config.default_private_keyfile.clone(), &password)?;
-            let earnings_receiver = wallet.address();
-            let provider = connect_provider(&config.get_rpc_url(chain)?, Some(wallet)).await?;
-            let manager = DelegationManager::new(Arc::new(provider))?;
+            todo!();
+            // let password: String = Password::new()
+            //     .with_prompt("Input the password for your stored ECDSA keyfile")
+            //     .interact()?;
+            // let wallet =
+            //     IvyWallet::from_keystore(config.default_private_keyfile.clone(), &password)?;
+            // let earnings_receiver = wallet.address();
+            // let provider = connect_provider(&config.get_rpc_url(chain)?, Some(wallet)).await?;
+            // let manager = DelegationManager::new(Arc::new(provider))?;
 
-            let delegation_approver = delegation_approver.unwrap_or_else(Address::zero);
-            let staker_opt_out_window_blocks = staker_opt_out_window_blocks.unwrap_or(0_u32);
-            let metadata_uri = &config.metadata.metadata_uri;
-            if metadata_uri.is_empty() {
-                // TODO: There's probably a better way to check for valid
-                // metadata
-                return Err(Error::MetadataUriNotFoundError);
-            }
-            debug!("Operator register: {delegation_approver:?} | {staker_opt_out_window_blocks} | {metadata_uri}");
-            manager
-                .register(
-                    earnings_receiver,
-                    delegation_approver,
-                    staker_opt_out_window_blocks,
-                    metadata_uri,
-                )
-                .await?;
+            // let delegation_approver = delegation_approver.unwrap_or_else(Address::zero);
+            // let staker_opt_out_window_blocks = staker_opt_out_window_blocks.unwrap_or(0_u32);
+            // let metadata_uri = &config.metadata.metadata_uri;
+            // if metadata_uri.is_empty() {
+            //     // TODO: There's probably a better way to check for valid
+            //     // metadata
+            //     return Err(Error::MetadataUriNotFoundError);
+            // }
+            // debug!("Operator register: {delegation_approver:?} | {staker_opt_out_window_blocks} | {metadata_uri}");
+            // manager
+            //     .register(
+            //         earnings_receiver,
+            //         delegation_approver,
+            //         staker_opt_out_window_blocks,
+            //         metadata_uri,
+            //     )
+            //     .await?;
         }
     }
     Ok(())
@@ -126,12 +125,9 @@ pub async fn parse_operator_subcommands(
 pub async fn parse_operator_getter_subcommands(
     subgetter: OperatorGetterCommands,
     config: &IvyConfig,
-    chain: Chain,
 ) -> Result<(), Error> {
-    let mut client = IvynetClient::from_channel(create_channel(
-        &Uri::from_str(&config.ivy_daemon_uri).map_err(|_| IvyError::GRPCClientError)?,
-        None,
-    ));
+    let sock = Source::Path(config.uds_dir());
+    let mut client = IvynetClient::from_channel(create_channel(sock, None).await?);
     match subgetter {
         OperatorGetterCommands::Details { .. } => {
             let response = client.operator_mut().get_operator_details().await?;
@@ -151,7 +147,7 @@ pub async fn parse_operator_getter_subcommands(
 
 pub async fn parse_operator_setter_subcommands(
     subsetter: OperatorSetterCommands,
-    config: &IvyConfig,
+    _config: &IvyConfig,
 ) -> Result<(), Error> {
     match subsetter {
         OperatorSetterCommands::EcdsaKeyfile { ecdsa_keypath } => todo!(),

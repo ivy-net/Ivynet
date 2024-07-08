@@ -26,8 +26,6 @@ pub struct IvyConfig {
     pub holesky_rpc_url: String,
     // RPC URL for local development
     pub local_rpc_url: String,
-    /// uri of ivy daemon client
-    pub ivy_daemon_uri: String,
     // TODO: See if this nomenclature needs to be changed
     /// Default operator private key file full path
     pub default_private_keyfile: PathBuf,
@@ -44,9 +42,8 @@ impl Default for IvyConfig {
         Self {
             path: DEFAULT_CONFIG_PATH.to_owned(),
             mainnet_rpc_url: "https://rpc.flashbots.net/fast".to_string(),
-            holesky_rpc_url: "https://rpc.holesky.ethpandaops.io".to_string(),
+            holesky_rpc_url: "https://holesky.drpc.org/".to_string(),
             local_rpc_url: "http://localhost:8545".to_string(),
-            ivy_daemon_uri: "http://localhost:55501".to_string(),
             default_private_keyfile: "".into(), // TODO: Option
             default_public_keyfile: "".into(),
             metadata: Metadata::default(),
@@ -130,6 +127,10 @@ impl IvyConfig {
     pub fn identity_wallet(&self) -> Result<IvyWallet, IvyError> {
         IvyWallet::from_private_key(self.identity_key.clone().ok_or(IvyError::IdentityKeyError)?)
     }
+
+    pub fn uds_dir(&self) -> String {
+        format!("{}/ivynet.ipc", self.path.display())
+    }
 }
 
 pub fn get_system_information() -> Result<(u64, u64, u64), IvyError> {
@@ -150,5 +151,14 @@ mod tests {
     #[test]
     fn test_load_config() {
         todo!();
+    }
+
+    #[test]
+    fn test_uds_dir() {
+        let config = super::IvyConfig::default();
+        let path_str = config.path.display().to_string();
+        let uds_dir = config.uds_dir();
+        assert_eq!(uds_dir, path_str + "/ivynet.ipc");
+        println!("{}", uds_dir);
     }
 }

@@ -167,10 +167,10 @@ impl Operator for IvynetService {
             .map_err(|e| Status::internal(format!("Failed to get operator details: {}", e)))?;
 
         let response = Response::new(OperatorDetailsResponse {
-            operator: provider.provider.address().to_string(),
+            operator: format!("{:?}", provider.provider.address()),
             is_registered,
-            deprecated_earnings_receiver: earnings_receiver.to_string(),
-            delegation_approver: delegation_approver.to_string(),
+            deprecated_earnings_receiver: format!("{:?}", earnings_receiver),
+            delegation_approver: format!("{:?}", delegation_approver),
             staker_opt_out_window_blocks,
         });
         Ok(response)
@@ -191,7 +191,7 @@ impl Operator for IvynetService {
             .await
             .map_err(|e| Status::internal(format!("Failed to get operator shares: {}", e)))?;
         let quorum_shares: Vec<OperatorShares> = zip(strategies.iter(), shares.iter())
-            .map(|(s, sh)| OperatorShares { strategy: s.to_string(), shares: sh.to_string() })
+            .map(|(s, sh)| OperatorShares { strategy: format!("{:?}", s), shares: sh.to_string() })
             .collect();
         let response = Response::new(OperatorSharesResponse { quorum_shares });
         Ok(response)
@@ -209,7 +209,10 @@ impl Operator for IvynetService {
             .await
             .map_err(|e| Status::internal(format!("Failed to get delegatable shares: {}", e)))?;
         let shares: Vec<DelegatableShares> = zip(strategies.iter(), shares.iter())
-            .map(|(s, sh)| DelegatableShares { strategy: s.to_string(), shares: sh.to_string() })
+            .map(|(s, sh)| DelegatableShares {
+                strategy: format!("{:?}", s),
+                shares: sh.to_string(),
+            })
             .collect();
         Ok(Response::new(DelegatableSharesResponse { shares }))
     }

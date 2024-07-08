@@ -1,7 +1,9 @@
+use core::fmt;
 use std::{
     convert::Infallible,
+    fmt::{Display, Formatter},
     net::{IpAddr, Ipv4Addr, SocketAddr},
-    path::Path,
+    path::{Path, PathBuf},
     time::Duration,
 };
 
@@ -16,6 +18,7 @@ use tonic::{
     server::NamedService,
     transport::{server::Router, Body, Identity, Server as TonicServer, ServerTlsConfig},
 };
+use tracing::info;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ServerError {
@@ -26,13 +29,33 @@ pub enum ServerError {
     IoError(#[from] std::io::Error),
 }
 
+struct Socket(PathBuf);
+
 pub struct Server {
     pub router: Router,
+    socket: Option<Socket>,
+}
+
+impl Drop for Socket {
+    fn drop(&mut self) {
+        if let Err(e) = std::fs::remove_file(&self.0) {
+            eprintln!("Failed to remove socket file: {}", e);
+        }
+    }
 }
 
 pub enum Endpoint {
     Port(u16),
     Path(String),
+}
+
+impl Display for Endpoint {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Endpoint::Port(port) => write!(f, "port {}", port),
+            Endpoint::Path(path) => write!(f, "path {}", path),
+        }
+    }
 }
 
 impl Server {
@@ -58,7 +81,7 @@ impl Server {
         }
         .http2_keepalive_interval(Some(Duration::from_secs(5)));
 
-        Self { router: builder.add_service(service) }
+        Self { router: builder.add_service(service), socket: None }
             .add_reflection(tonic::include_file_descriptor_set!("descriptors"))
     }
 
@@ -92,7 +115,12 @@ impl Server {
             }
             Endpoint::Path(path) => {
                 std::fs::create_dir_all(Path::new(&path).parent().unwrap())?;
-
+                // TODO: Have graceful shutdown of server in a higher module clean up the socket.
+                // For now, we'll just remove the socket file on creation if it exists already.
+                // This will disconnect any existing servers.
+                if Path::new(&path).exists() {
+                    std::fs::remove_file(&path)?;
+                }
                 let uds = UnixListener::bind(&path)?;
                 let uds_stream = UnixListenerStream::new(uds);
                 self.router.serve_with_incoming(uds_stream).await?;
