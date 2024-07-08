@@ -1,10 +1,12 @@
 use std::{
     convert::Infallible,
     net::{IpAddr, Ipv4Addr, SocketAddr},
+    path::Path,
     time::Duration,
 };
 
-use tokio::sync::oneshot::Receiver;
+use tokio::net::UnixListener;
+use tokio_stream::wrappers::UnixListenerStream;
 use tonic::{
     body::BoxBody,
     codegen::{
@@ -15,13 +17,22 @@ use tonic::{
     transport::{server::Router, Body, Identity, Server as TonicServer, ServerTlsConfig},
 };
 
-#[derive(Debug, Clone)]
+#[derive(Debug, thiserror::Error)]
 pub enum ServerError {
-    UnableToServe,
+    #[error(transparent)]
+    TonicTransportError(#[from] tonic::transport::Error),
+
+    #[error(transparent)]
+    IoError(#[from] std::io::Error),
 }
 
 pub struct Server {
     pub router: Router,
+}
+
+pub enum Endpoint {
+    Port(u16),
+    Path(String),
 }
 
 impl Server {
@@ -39,13 +50,16 @@ impl Server {
             let cert = std::fs::read_to_string(cert_path).expect("invalid TLS cert");
             let key = std::fs::read_to_string(key_path).expect("invalid TLS key");
             let identity = Identity::from_pem(cert, key);
-            builder.tls_config(ServerTlsConfig::new().identity(identity)).expect("invalid TLS configuration")
+            builder
+                .tls_config(ServerTlsConfig::new().identity(identity))
+                .expect("invalid TLS configuration")
         } else {
             builder
         }
         .http2_keepalive_interval(Some(Duration::from_secs(5)));
 
-        Self { router: builder.add_service(service) }.add_reflection(tonic::include_file_descriptor_set!("descriptors"))
+        Self { router: builder.add_service(service) }
+            .add_reflection(tonic::include_file_descriptor_set!("descriptors"))
     }
 
     pub fn add_service<S>(mut self, service: S) -> Self
@@ -70,20 +84,20 @@ impl Server {
         self
     }
 
-    pub async fn serve(self, port: u16) -> Result<(), ServerError> {
-        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), port);
-        self.router.serve(addr).await.map_err(|_| ServerError::UnableToServe)?;
-        Ok(())
-    }
+    pub async fn serve(self, endpoint: Endpoint) -> Result<(), ServerError> {
+        match endpoint {
+            Endpoint::Port(port) => {
+                let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), port);
+                self.router.serve(addr).await?;
+            }
+            Endpoint::Path(path) => {
+                std::fs::create_dir_all(Path::new(&path).parent().unwrap())?;
 
-    pub async fn serve_with_shutdown(self, port: u16, shutdown_receiver: Receiver<()>) -> Result<(), ServerError> {
-        let addr = SocketAddr::new(IpAddr::V4(Ipv4Addr::UNSPECIFIED), port);
-        self.router
-            .serve_with_shutdown(addr, async {
-                shutdown_receiver.await.ok();
-            })
-            .await
-            .map_err(|_| ServerError::UnableToServe)?;
+                let uds = UnixListener::bind(&path)?;
+                let uds_stream = UnixListenerStream::new(uds);
+                self.router.serve_with_incoming(uds_stream).await?;
+            }
+        }
         Ok(())
     }
 }

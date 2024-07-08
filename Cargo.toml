@@ -1,5 +1,5 @@
 [workspace]
-members = ["ivynet-cli", "ivynet-core", "ivynet-macros"]
+members = ["ivynet-cli", "ivynet-core", "ivynet-macros", "ivynet-backend"]
 resolver = "2"
 
 [workspace.package]

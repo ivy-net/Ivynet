@@ -5,8 +5,9 @@ use ivynet_core::{
     ethers::types::Chain,
     grpc::{
         backend::backend_client::BackendClient,
-        client::{create_channel, Request, Uri},
+        client::{create_channel, Request, Source, Uri},
         messages::RegistrationCredentials,
+        server::Endpoint,
     },
     metadata::Metadata,
     utils::parse_chain,
@@ -145,7 +146,7 @@ pub async fn parse_config_subcommands(
         ConfigCommands::Register { email, password } => {
             let config = IvyConfig::load_from_default_path()?;
             let public_key = config.identity_wallet()?.address();
-            let mut backend = BackendClient::new(create_channel(&server_url, server_ca));
+            let mut backend = BackendClient::new(create_channel(Source::Uri(server_url), server_ca).await?);
             backend
                 .register(Request::new(RegistrationCredentials {
                     email,
