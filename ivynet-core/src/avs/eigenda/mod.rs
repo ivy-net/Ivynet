@@ -7,7 +7,7 @@ use ivynet_macros::h160;
 use std::{
     fs::{self, File},
     io::{copy, BufReader},
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::Command,
     sync::Arc,
 };
@@ -116,7 +116,7 @@ impl AvsVariant for EigenDA {
         // BLS key
         let bls_key_name: String = Input::new()
             .with_prompt(
-                "Input the name of your BLS key file - looks in .eigenlayer folder (where eigen cli stores the key)",
+                "Input the name of your BLS key file without file extensions - looks in .eigenlayer folder (where eigen cli stores the key)",
             )
             .interact_text()?;
 
@@ -134,7 +134,7 @@ impl AvsVariant for EigenDA {
             "NODE_BLS_KEY_FILE_HOST",
             bls_json_file_location.to_str().expect("Could not get BLS key file location"),
         );
-        env_lines.set("NODE_BLS_KEY_PASSWORD", &bls_password);
+        env_lines.set("NODE_BLS_KEY_PASSWORD", &format!("'{}'", bls_password));
         env_lines.save(&env_path)?;
         info!(".env file saved to {}", env_path.display());
 
@@ -198,7 +198,7 @@ impl AvsVariant for EigenDA {
         let _ = Command::new("docker").arg("compose").arg("config").status()?;
 
         if !build.success() {
-            return Err(EigenDAError::ScriptError(build.to_string()).into());
+            return Err(EigenDAError::ScriptError(format!("Script build error: {}", build)).into());
         }
 
         let start = Command::new("docker").arg("compose").arg("up").arg("--force-recreate").status()?;
@@ -206,7 +206,7 @@ impl AvsVariant for EigenDA {
         if start.success() {
             Ok(())
         } else {
-            Err(EigenDAError::ScriptError(start.to_string()).into())
+            Err(EigenDAError::ScriptError(format!("Script start error: {}", start)).into())
         }
     }
 
@@ -234,7 +234,13 @@ impl AvsVariant for EigenDA {
         let ecdsa_password: String =
             Password::new().with_prompt("Input the password for your ECDSA key file for quorum opt-in").interact()?;
 
+        std::env::set_current_dir(&run_script_path)?;
+        info!("Running from path: {}", run_script_path.display());
+
+        let env_path = run_script_path.join(".env");
         let run_script_path = run_script_path.join("run.sh");
+
+        set_runscript_env_path(&run_script_path, &env_path)?;
 
         info!("Booting quorums: {:#?}", quorums);
 
@@ -288,7 +294,13 @@ impl AvsVariant for EigenDA {
         let ecdsa_password: String =
             Password::new().with_prompt("Input the password for your ECDSA key file for quorum opt-in").interact()?;
 
+        std::env::set_current_dir(&run_script_path)?;
+        info!("Running from path: {}", run_script_path.display());
+
+        let env_path = run_script_path.join(".env");
         let run_script_path = run_script_path.join("run.sh");
+
+        set_runscript_env_path(&run_script_path, &env_path)?;
 
         info!("Booting quorums: {:#?}", quorums);
 
@@ -444,6 +456,14 @@ pub async fn download_operator_setup(eigen_path: PathBuf) -> Result<(), IvyError
             std::fs::remove_dir_all(temp_path)?;
         }
     }
+
+    Ok(())
+}
+
+fn set_runscript_env_path(runscript_path: &Path, env_path: &Path) -> Result<(), IvyError> {
+    let content = fs::read_to_string(runscript_path)?;
+    let modified_content = content.replace("./.env", env_path.to_str().expect("Bad env path"));
+    fs::write(runscript_path, modified_content)?;
 
     Ok(())
 }
