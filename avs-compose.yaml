@@ -7,7 +7,7 @@ services:
     platform: linux/amd64
     ports:
         - "8545:8545"
-    command: --host=0.0.0.0 --chain-id 17000
+    command: --host=0.0.0.0 --chain-id 32382
     healthcheck:
         test: ["CMD", "nc", "-z", "localhost", "8545"]
         interval: 30s
