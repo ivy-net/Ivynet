@@ -9,6 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - run: apt install -y rustc cargo protobuf-compiler pkg-config libssl-dev
       - run: python -m pip install pre-commit
       - run: pre-commit install --install-hooks
       - run: pre-commit run --show-diff-on-failure --color=never -a
