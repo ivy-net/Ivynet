@@ -20,8 +20,8 @@ impl Organization {
         let now: NaiveDateTime = Utc::now().naive_utc();
         let org = sqlx::query_as!(
             Organization,
-            r#"INSERT INTO organization (name, verified, created_at, updated_at) 
-                    VALUES ($1, $2, $3, $4) 
+            r#"INSERT INTO organization (name, verified, created_at, updated_at)
+                    VALUES ($1, $2, $3, $4)
                     RETURNING organization_id, name, verified, created_at, updated_at"#,
             name,
             verified,
@@ -36,7 +36,7 @@ impl Organization {
     pub async fn get(pool: &PgPool, id: u64) -> Result<Organization, BackendError> {
         let org = sqlx::query_as!(
             Organization,
-            r#"SELECT organization_id, name, verified, created_at, updated_at FROM organization 
+            r#"SELECT organization_id, name, verified, created_at, updated_at FROM organization
                 WHERE organization_id = $1"#,
             id as i64
         )

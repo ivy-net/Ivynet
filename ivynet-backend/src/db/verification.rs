@@ -55,8 +55,8 @@ impl Verification {
         let verification_id = Uuid::new_v4();
         let verification = sqlx::query_as!(
             Verification,
-            r#"INSERT INTO verification (verification_id, associated_id, verification_type, created_at, updated_at) 
-                    VALUES ($1, $2, $3, $4, $5) 
+            r#"INSERT INTO verification (verification_id, associated_id, verification_type, created_at, updated_at)
+                    VALUES ($1, $2, $3, $4, $5)
                     RETURNING verification_id, associated_id, verification_type AS "verification_type: _", created_at, updated_at"#,
             verification_id,
             associated_id,

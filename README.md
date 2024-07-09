@@ -79,10 +79,10 @@ ivynet-cli --network holesky operator get-stake [ADDRESS]
 ```
 
 
-Before runing the EigenDA AVS, perform first-time setup to populate the .env files: 
+Before runing the EigenDA AVS, perform first-time setup to populate the .env files:
 
 ```sh
-ivynet-cli config --network holesky avs setup eigenda 
+ivynet-cli config --network holesky avs setup eigenda
 ```
 
 And finally booting up the EigenDA AVS!
