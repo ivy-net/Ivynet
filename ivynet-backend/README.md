@@ -13,12 +13,10 @@ To check available endpoints access `http://localhost:8080/swagger-ui` in your b
 
 # Backend SQL changes
 
-<!--
-If any of the SQL scripts from the migration foleder is modified new hashes has to be produce.
-//Otherwise tools like `cargo clippy` are going to be confused and fail.
--->
-
 * Ensure that the sqlx-cli cargo package is installed, and the sqlx command is in the PATH.
+
+If any of the SQL command (in files in `src` folder) the sqlx cache has to be updated.
+//Otherwise tools like `cargo clippy` are going to be confused and fail.
 
 * Run `docker-compose` to start the postgres SQL:
  ```
@@ -28,7 +26,7 @@ docker-compose -f backend-compose.yaml up  -d
 ```
 export DATABASE_URL=postgresql://ivy:secret_ivy@localhost:5432/ivynet
 ```
-* Run migrations with the command:
+* Prepare migrations with the command:
 ```
-sqlx migrate run
+sqlx migrate prepare
 ```
