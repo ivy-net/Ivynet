@@ -16,7 +16,7 @@ To check available endpoints access `http://localhost:8080/swagger-ui` in your b
 * Ensure that the sqlx-cli cargo package is installed, and the sqlx command is in the PATH.
 
 If any of the SQL command (in files in `src` folder) the sqlx cache has to be updated.
-//Otherwise tools like `cargo clippy` are going to be confused and fail.
+Otherwise tools like `cargo clippy` are going to be confused and fail.
 
 * Run `docker-compose` to start the postgres SQL:
  ```
