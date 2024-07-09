@@ -19,7 +19,7 @@ services:
     image: "ghcr.io/foundry-rs/foundry:nightly-c2e529786c07ee7069cefcd4fe2db41f0e46cef6"
     entrypoint: cast
     command:
-      - rpc 
+      - rpc
       - anvil_setBalance
       - 0x123463a4b065722e99115d6c222f267d9cabb524
       - '10000000000000000000'
@@ -34,7 +34,7 @@ services:
     image: "ghcr.io/foundry-rs/foundry:nightly-c2e529786c07ee7069cefcd4fe2db41f0e46cef6"
     entrypoint: cast
     command:
-      - rpc 
+      - rpc
       - anvil_setBalance
       - 0x860B6912C2d0337ef05bbC89b0C2CB6CbAEAB4A5
       - '10000000000000000000'
