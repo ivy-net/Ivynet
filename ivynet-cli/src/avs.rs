@@ -10,21 +10,23 @@ use crate::{client::IvynetClient, error::Error};
 
 pub async fn parse_avs_subcommands(subcmd: AvsCommands, config: &IvyConfig) -> Result<(), Error> {
     let sock = Source::Path(config.uds_dir());
+
+    // Setup runs local, otherwise construct a client and continue.
+    if let AvsCommands::Setup { ref avs, ref chain } = subcmd {
+        let password: String =
+            Password::new().with_prompt("Input the password for your stored keyfile").interact()?;
+        let wallet = IvyWallet::from_keystore(config.default_private_keyfile.clone(), &password)?;
+        let avs =
+            build_avs_provider(Some(avs), chain, config, Some(wallet), Some(password)).await?;
+        avs.setup(config).await?;
+        return Ok(());
+    }
+
     let mut client = IvynetClient::from_channel(create_channel(sock, None).await?);
     match subcmd {
         AvsCommands::Info {} => {
             let response = client.avs_mut().avs_info().await?;
             println!("{:?}", response.into_inner());
-        }
-        AvsCommands::Setup { ref avs, ref chain } => {
-            let password: String = Password::new()
-                .with_prompt("Input the password for your stored keyfile")
-                .interact()?;
-            let wallet =
-                IvyWallet::from_keystore(config.default_private_keyfile.clone(), &password)?;
-            let avs =
-                build_avs_provider(Some(avs), chain, config, Some(wallet), Some(password)).await?;
-            avs.setup(config).await?;
         }
         // TODO: Fix timeout issue
         AvsCommands::Optin {} => {
@@ -48,6 +50,7 @@ pub async fn parse_avs_subcommands(subcmd: AvsCommands, config: &IvyConfig) -> R
             println!("{:?}", response.into_inner());
         }
         AvsCommands::CheckStakePercentage { avs, address, network } => todo!(),
+        _ => unimplemented!("Command not implemented: {:?}", subcmd),
     }
     Ok(())
 }
