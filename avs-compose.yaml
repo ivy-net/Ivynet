@@ -27,7 +27,7 @@ services:
       - http://anvil:8545
     depends_on:
       anvil:
-        condition: service_healthy 
+        condition: service_healthy
 
   feed-layer:
     platform: linux/amd64
