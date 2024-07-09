@@ -11,6 +11,8 @@ use crate::{
 };
 use async_trait::async_trait;
 use ethers::{
+    middleware::SignerMiddleware,
+    providers::Middleware,
     signers::Signer,
     types::{Address, Chain, U256},
 };
@@ -88,6 +90,19 @@ impl AvsProvider {
         self.avs = avs;
         self.registry_coordinator = registry_coordinator;
         self.stake_registry = stake_registry;
+        Ok(())
+    }
+
+    /// Replace the current signer with a new signer.
+    pub fn with_signer(&mut self, wallet: IvyWallet) -> Result<(), IvyError> {
+        let provider = self.provider.provider().clone();
+        let ivy_provider = SignerMiddleware::new(provider, wallet);
+        self.provider = Arc::new(ivy_provider);
+        Ok(())
+    }
+
+    pub fn with_keyfile_pw(&mut self, keyfile_pw: Option<String>) -> Result<(), IvyError> {
+        self.keyfile_pw = keyfile_pw;
         Ok(())
     }
 

@@ -42,7 +42,7 @@ pub enum EigenDAError {
     DownloadFailedError(String),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct EigenDA {
     path: PathBuf,
     chain: Chain,

@@ -1,16 +1,11 @@
 use clap::Parser;
-use dialoguer::Password;
 use ivynet_core::{
     config::IvyConfig,
-    eigen::contracts::delegation_manager::DelegationManager,
-    error::IvyError,
     ethers::{core::types::Address, types::Chain},
-    grpc::client::{create_channel, Source, Uri},
-    rpc_management::connect_provider,
+    grpc::client::{create_channel, Source},
     utils::parse_chain,
-    wallet::IvyWallet,
 };
-use std::{path::PathBuf, str::FromStr, sync::Arc};
+use std::path::PathBuf;
 use tracing::debug;
 
 use crate::{client::IvynetClient, error::Error};
@@ -147,10 +142,18 @@ pub async fn parse_operator_getter_subcommands(
 
 pub async fn parse_operator_setter_subcommands(
     subsetter: OperatorSetterCommands,
-    _config: &IvyConfig,
+    config: &IvyConfig,
 ) -> Result<(), Error> {
+    let sock = Source::Path(config.uds_dir());
+    let mut client = IvynetClient::from_channel(create_channel(sock, None).await?);
     match subsetter {
-        OperatorSetterCommands::EcdsaKeyfile { ecdsa_keypath } => todo!(),
-        OperatorSetterCommands::BlsKeyfile { bls_keypath } => todo!(),
+        OperatorSetterCommands::EcdsaKeyfile { ecdsa_keypath } => {
+            //client.operator_mut().set_ecdsa_keyfile_path(ecdsa_keypath).await?
+            todo!()
+        }
+        OperatorSetterCommands::BlsKeyfile { bls_keypath } => {
+            //client.operator_mut().set_bls_keyfile_path(bls_keypath).await?
+            todo!()
+        }
     }
 }

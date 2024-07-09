@@ -8,6 +8,10 @@ import "ivynet/types.proto";
 // OPERATOR
 //----------------------------
 
+// Get requests
+
+// TODO: Google empty structs
+
 // If provided, queries operator data and echoes the address. Otherwise, queries using the address of the loaded operator and returns the operator data.
 message OperatorDetailsRequest {
 }
@@ -51,9 +55,29 @@ message RegisterOperatorRequest {
     optional string delegation_approver = 1;
 }
 
+// Set requests
+
+message SetEcdsaKeyfilePathRequest {
+    string keyfile_path = 1;
+    string keyfile_password = 2;
+}
+
+message SetEcdsaKeyfilePathResponse {
+}
+
+message SetBlsKeyfilePathRequest {
+    string keyfile_path = 1;
+    string keyfile_password = 2;
+}
+
+message SetBlsKeyfilePathResponse {
+}
+
 service Operator {
     // Operator endpoints. These endpoints report or modify the state of the currently loaded Operator.
     rpc GetOperatorDetails(OperatorDetailsRequest) returns (OperatorDetailsResponse);
     rpc GetOperatorShares(OperatorSharesRequest) returns (OperatorSharesResponse);
     rpc GetDelegatableShares(DelegatableSharesRequest) returns (DelegatableSharesResponse);
+    rpc SetEcdsaKeyfilePath(SetEcdsaKeyfilePathRequest) returns (SetEcdsaKeyfilePathResponse);
+    rpc SetBlsKeyfilePath(SetBlsKeyfilePathRequest) returns (SetBlsKeyfilePathResponse);
 }

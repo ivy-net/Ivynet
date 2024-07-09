@@ -208,3 +208,9 @@ CLI:
 Example:
 `ivynet-cli avs set eigenda holesky`
 
+
+#### The Operator Namespace
+
+#### Getters
+
+`ivy_daemon_operator.Operator/GetOperator`

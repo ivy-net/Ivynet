@@ -3,12 +3,14 @@ use ethers::types::{Address, Chain, U256};
 use std::{path::PathBuf, process::Child, sync::Arc};
 
 use super::{eigenda::EigenDA, mach_avs::AltLayer, AvsVariant};
-use crate::{config::IvyConfig, eigen::quorum::QuorumType, error::IvyError, rpc_management::IvyProvider};
+use crate::{
+    config::IvyConfig, eigen::quorum::QuorumType, error::IvyError, rpc_management::IvyProvider,
+};
 
 /// Wrapper type around various AVSes for composition purposes.
 /// TODO: Consider alternate nomenclature -- AvsInstance and AvsVariant may not be descriptive
 /// enough to prevent ambiguity
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum AvsType {
     EigenDA(EigenDA),
     AltLayer(AltLayer),
@@ -42,7 +44,11 @@ impl AvsVariant for AvsType {
         }
         Ok(())
     }
-    async fn build_env(&self, provider: Arc<IvyProvider>, config: &IvyConfig) -> Result<(), IvyError> {
+    async fn build_env(
+        &self,
+        provider: Arc<IvyProvider>,
+        config: &IvyConfig,
+    ) -> Result<(), IvyError> {
         match self {
             AvsType::EigenDA(avs) => avs.build_env(provider, config).await?,
             AvsType::AltLayer(avs) => avs.build_env(provider, config).await?,
@@ -64,8 +70,12 @@ impl AvsVariant for AvsType {
         chain: Chain,
     ) -> Result<(), IvyError> {
         match self {
-            AvsType::EigenDA(avs) => avs.opt_in(quorums, eigen_path, private_keypath, keyfile_password, chain).await,
-            AvsType::AltLayer(avs) => avs.opt_in(quorums, eigen_path, private_keypath, keyfile_password, chain).await,
+            AvsType::EigenDA(avs) => {
+                avs.opt_in(quorums, eigen_path, private_keypath, keyfile_password, chain).await
+            }
+            AvsType::AltLayer(avs) => {
+                avs.opt_in(quorums, eigen_path, private_keypath, keyfile_password, chain).await
+            }
         }
     }
     async fn opt_out(
@@ -77,8 +87,12 @@ impl AvsVariant for AvsType {
         chain: Chain,
     ) -> Result<(), IvyError> {
         match self {
-            AvsType::EigenDA(avs) => avs.opt_out(quorums, eigen_path, private_keypath, keyfile_password, chain).await,
-            AvsType::AltLayer(avs) => avs.opt_out(quorums, eigen_path, private_keypath, keyfile_password, chain).await,
+            AvsType::EigenDA(avs) => {
+                avs.opt_out(quorums, eigen_path, private_keypath, keyfile_password, chain).await
+            }
+            AvsType::AltLayer(avs) => {
+                avs.opt_out(quorums, eigen_path, private_keypath, keyfile_password, chain).await
+            }
         }
     }
     async fn start(&mut self, quorums: Vec<QuorumType>, chain: Chain) -> Result<Child, IvyError> {

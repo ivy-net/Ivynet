@@ -1,5 +1,5 @@
 use ivynet_core::{
-    avs::{contracts::stake_registry_abi, instance::AvsType, AvsProvider, AvsVariant},
+    avs::{instance::AvsType, AvsProvider, AvsVariant},
     config::IvyConfig,
     eigen::contracts::delegation_manager::OperatorDetails,
     ethers::{signers::Signer, types::Chain},
@@ -13,6 +13,8 @@ use ivynet_core::{
                 operator_server::Operator, DelegatableShares, DelegatableSharesRequest,
                 DelegatableSharesResponse, OperatorDetailsRequest, OperatorDetailsResponse,
                 OperatorShares, OperatorSharesRequest, OperatorSharesResponse,
+                SetBlsKeyfilePathRequest, SetBlsKeyfilePathResponse, SetEcdsaKeyfilePathRequest,
+                SetEcdsaKeyfilePathResponse,
             },
             ivy_daemon_types::RpcResponse,
         },
@@ -20,6 +22,7 @@ use ivynet_core::{
     },
     rpc_management::connect_provider,
     utils::parse_chain,
+    wallet::IvyWallet,
 };
 use std::{iter::zip, sync::Arc};
 use tokio::sync::RwLock;
@@ -116,6 +119,8 @@ impl Avs for IvynetService {
         Ok(Response::new(response))
     }
 
+    // TODO: Running check stop
+    // TODO: On bad netowork, don't change
     async fn set_avs(
         &self,
         request: Request<SetAvsRequest>,
@@ -141,6 +146,7 @@ impl Avs for IvynetService {
         Ok(Response::new(response))
     }
 }
+
 #[tonic::async_trait]
 impl Operator for IvynetService {
     async fn get_operator_details(
@@ -215,5 +221,46 @@ impl Operator for IvynetService {
             })
             .collect();
         Ok(Response::new(DelegatableSharesResponse { shares }))
+    }
+
+    async fn set_ecdsa_keyfile_path(
+        &self,
+        request: Request<SetEcdsaKeyfilePathRequest>,
+    ) -> Result<Response<SetEcdsaKeyfilePathResponse>, Status> {
+        let mut provider = self.avs_provider.write().await;
+        if let Some(avs) = &provider.avs {
+            if avs.running() {
+                return Err(Status::failed_precondition("AVS must be stopped to set keyfile path"));
+            }
+        }
+
+        let req = request.into_inner();
+        let path = req.keyfile_path;
+        let pass = req.keyfile_password;
+
+        let signer = IvyWallet::from_keystore(path.clone().into(), &pass)?;
+
+        // Update provider
+        provider.with_signer(signer)?;
+        provider.with_keyfile_pw(Some(pass))?;
+
+        // Update config file
+        let mut config = IvyConfig::load_from_default_path()?;
+        config.default_private_keyfile = path.into();
+        config.store()?;
+
+        Ok(Response::new(SetEcdsaKeyfilePathResponse {}))
+    }
+
+    async fn set_bls_keyfile_path(
+        &self,
+        request: Request<SetBlsKeyfilePathRequest>,
+    ) -> Result<Response<SetBlsKeyfilePathResponse>, Status> {
+        // TODO: This requres potential reworking of the way we pass the bls keyfile to the AVS.
+        // Currently it's done through the .env file which is passed to the AVS, but we could also
+        // potentially do it through a local ENV param or a config file. In either case, it should
+        // be stored and passed somewhere outside of the AVS env file as this is a common param
+        // needed by many AVS types.
+        todo!();
     }
 }
