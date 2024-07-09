@@ -4,6 +4,8 @@ repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
+    -   id: no-commit-to-branch
+        args: ['--branch=dev --branch=master']
     -   id: trailing-whitespace
     -   id: end-of-file-fixer
     -   id: mixed-line-ending
@@ -11,11 +13,12 @@ repos:
     -   id: check-yaml
     -   id: check-added-large-files
     -   id: check-merge-conflict
+    -   id: check-case-conflict
 -   repo: https://github.com/ivy-net/pre-commit-rust
     rev: v1.2
     hooks:
     -   id: fmt
 # clippy does not work at the moment
-    -   id: clippy
+#    -   id: clippy
 # we cannot run this as part of pre-commit, because ivy-backend requires sqlx ran first
 #    -   id: cargo-check
