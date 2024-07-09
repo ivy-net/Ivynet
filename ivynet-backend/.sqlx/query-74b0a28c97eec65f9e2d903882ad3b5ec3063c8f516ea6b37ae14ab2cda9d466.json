@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO verification (verification_id, associated_id, verification_type, created_at, updated_at) \n                    VALUES ($1, $2, $3, $4, $5) \n                    RETURNING verification_id, associated_id, verification_type AS \"verification_type: _\", created_at, updated_at",
+  "query": "INSERT INTO verification (verification_id, associated_id, verification_type, created_at, updated_at)\n                    VALUES ($1, $2, $3, $4, $5)\n                    RETURNING verification_id, associated_id, verification_type AS \"verification_type: _\", created_at, updated_at",
   "describe": {
     "columns": [
       {
@@ -66,5 +66,5 @@
       false
     ]
   },
-  "hash": "6ff26c691b57d595ce90b24d516798b3b7dd3aa32bbeec11a6ae2dbb4c95cf40"
+  "hash": "74b0a28c97eec65f9e2d903882ad3b5ec3063c8f516ea6b37ae14ab2cda9d466"
 }

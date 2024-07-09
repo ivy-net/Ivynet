@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT organization_id, name, verified, created_at, updated_at FROM organization \n                WHERE organization_id = $1",
+  "query": "SELECT organization_id, name, verified, created_at, updated_at FROM organization\n                WHERE organization_id = $1",
   "describe": {
     "columns": [
       {
@@ -42,5 +42,5 @@
       false
     ]
   },
-  "hash": "a60c5d62b881df3203d9451c342fdd2052551eb9a6b07b5d899f075e6fb2d408"
+  "hash": "6e289aea9863046425a55ea54a7984f2e06be10718877a63a435374d5a99074a"
 }
