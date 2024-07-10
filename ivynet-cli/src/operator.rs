@@ -5,7 +5,6 @@ use ivynet_core::{
     grpc::client::{create_channel, Source},
 };
 use std::path::PathBuf;
-use tracing::debug;
 
 use crate::{client::IvynetClient, error::Error};
 
@@ -125,19 +124,18 @@ pub async fn parse_operator_getter_subcommands(
 
 pub async fn parse_operator_setter_subcommands(
     subsetter: OperatorSetterCommands,
-    config: &IvyConfig,
+    _config: &IvyConfig,
 ) -> Result<(), Error> {
-    let sock = Source::Path(config.uds_dir());
-    let mut client = IvynetClient::from_channel(create_channel(sock, None).await?);
+    // let sock = Source::Path(config.uds_dir());
+    // let mut client = IvynetClient::from_channel(create_channel(sock, None).await?);
     match subsetter {
-        OperatorSetterCommands::EcdsaKeyfile { ecdsa_keypath } => {
+        OperatorSetterCommands::EcdsaKeyfile { ecdsa_keypath: _ } => {
             //client.operator_mut().set_ecdsa_keyfile_path(ecdsa_keypath).await?
-            todo!();
+            todo!()
         }
-        OperatorSetterCommands::BlsKeyfile { bls_keypath } => {
+        OperatorSetterCommands::BlsKeyfile { bls_keypath: _ } => {
             //client.operator_mut().set_bls_keyfile_path(bls_keypath).await?
-            todo!();
+            todo!()
         }
     }
-    Ok(())
 }

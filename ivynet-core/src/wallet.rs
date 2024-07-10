@@ -7,11 +7,7 @@ use std::{
 
 use async_trait::async_trait;
 use ethers::{
-    core::{
-        rand::thread_rng,
-        types::Signature,
-        utils::hex::{FromHex, ToHex},
-    },
+    core::{rand::thread_rng, types::Signature, utils::hex::ToHex},
     signers::{LocalWallet, Signer, WalletError},
     types::{
         transaction::{eip2718::TypedTransaction, eip712::Eip712},

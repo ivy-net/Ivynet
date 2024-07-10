@@ -1,11 +1,6 @@
-use std::sync::Arc;
-
 use clap::Parser;
 
-use ivynet_core::{
-    config::IvyConfig, eigen::contracts::delegation_manager::DelegationManager,
-    ethers::types::Address, rpc_management::connect_provider, utils::try_parse_chain,
-};
+use ivynet_core::{config::IvyConfig, ethers::types::Address};
 
 use crate::error::Error;
 
@@ -41,15 +36,11 @@ pub async fn parse_staker_subcommands(
 
 pub async fn parse_staker_getter_subcommands(
     subget: StakerGetterCommands,
-    config: &IvyConfig,
+    _config: &IvyConfig,
 ) -> Result<(), Error> {
     match subget {
-        StakerGetterCommands::GetStakerShares { opt_address, chain } => {
-            let chain = try_parse_chain(&chain)?;
-            let provider = connect_provider(&config.get_rpc_url(chain)?, None).await?;
-            let manager = DelegationManager::new(Arc::new(provider))?;
+        StakerGetterCommands::GetStakerShares { .. } => {
             todo!()
         }
     }
-    Ok(())
 }

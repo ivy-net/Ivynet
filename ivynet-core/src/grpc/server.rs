@@ -3,7 +3,7 @@ use std::{
     convert::Infallible,
     fmt::{Display, Formatter},
     net::{IpAddr, Ipv4Addr, SocketAddr},
-    path::{Path, PathBuf},
+    path::Path,
     time::Duration,
 };
 
@@ -18,7 +18,6 @@ use tonic::{
     server::NamedService,
     transport::{server::Router, Body, Identity, Server as TonicServer, ServerTlsConfig},
 };
-use tracing::info;
 
 #[derive(Debug, thiserror::Error)]
 pub enum ServerError {
@@ -29,19 +28,8 @@ pub enum ServerError {
     IoError(#[from] std::io::Error),
 }
 
-struct Socket(PathBuf);
-
 pub struct Server {
     pub router: Router,
-    socket: Option<Socket>,
-}
-
-impl Drop for Socket {
-    fn drop(&mut self) {
-        if let Err(e) = std::fs::remove_file(&self.0) {
-            eprintln!("Failed to remove socket file: {}", e);
-        }
-    }
 }
 
 pub enum Endpoint {
@@ -81,7 +69,7 @@ impl Server {
         }
         .http2_keepalive_interval(Some(Duration::from_secs(5)));
 
-        Self { router: builder.add_service(service), socket: None }
+        Self { router: builder.add_service(service) }
             .add_reflection(tonic::include_file_descriptor_set!("descriptors"))
     }
 

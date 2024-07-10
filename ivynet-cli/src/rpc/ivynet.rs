@@ -185,7 +185,7 @@ impl Operator for IvynetService {
 
     async fn get_operator_shares(
         &self,
-        request: Request<OperatorSharesRequest>,
+        _request: Request<OperatorSharesRequest>,
     ) -> Result<Response<OperatorSharesResponse>, Status> {
         let provider = self.avs_provider.read().await;
         let operator_address = provider.provider.address();
@@ -255,7 +255,7 @@ impl Operator for IvynetService {
 
     async fn set_bls_keyfile_path(
         &self,
-        request: Request<SetBlsKeyfilePathRequest>,
+        _request: Request<SetBlsKeyfilePathRequest>,
     ) -> Result<Response<SetBlsKeyfilePathResponse>, Status> {
         // TODO: This requres potential reworking of the way we pass the bls keyfile to the AVS.
         // Currently it's done through the .env file which is passed to the AVS, but we could also

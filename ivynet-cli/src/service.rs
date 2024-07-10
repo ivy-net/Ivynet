@@ -1,4 +1,3 @@
-use dialoguer::Password;
 use ivynet_core::grpc::ivynet_api::ivy_daemon_avs::avs_server::AvsServer;
 use ivynet_core::grpc::ivynet_api::ivy_daemon_operator::operator_server::OperatorServer;
 use ivynet_core::grpc::server::Endpoint;
@@ -13,7 +12,6 @@ use crate::{error::Error, rpc::ivynet::IvynetService};
 pub async fn serve(
     avs: Option<String>,
     chain: Option<String>,
-    port: Option<u16>,
     config: &IvyConfig,
     keyfile_pw: &str,
 ) -> Result<(), Error> {

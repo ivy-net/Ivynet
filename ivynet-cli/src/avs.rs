@@ -49,7 +49,7 @@ pub async fn parse_avs_subcommands(subcmd: AvsCommands, config: &IvyConfig) -> R
             let response = client.avs_mut().set_avs(avs, chain).await?;
             println!("{:?}", response.into_inner());
         }
-        AvsCommands::CheckStakePercentage { avs, address, network } => todo!(),
+        AvsCommands::CheckStakePercentage { .. } => todo!(),
         _ => unimplemented!("Command not implemented: {:?}", subcmd),
     }
     Ok(())

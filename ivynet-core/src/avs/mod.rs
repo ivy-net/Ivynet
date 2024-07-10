@@ -135,6 +135,7 @@ impl AvsProvider {
     }
 
     /// Get a reference to the current StakeRegistry contract for the loaded AVS.
+    #[allow(dead_code)]
     fn registry_coordinator(&self) -> Result<&RegistryCoordinator, IvyError> {
         if let Some(registry_coordinator) = &self.registry_coordinator {
             Ok(registry_coordinator)
@@ -208,7 +209,7 @@ impl AvsProvider {
                     quorums,
                     avs_path.clone(),
                     config.default_private_keyfile.clone(),
-                    &pw,
+                    pw,
                     chain,
                 )
                 .await?;
@@ -331,5 +332,5 @@ pub async fn build_avs_provider(
     let provider = connect_provider(&config.get_rpc_url(chain)?, wallet).await?;
     let avs_instance =
         if let Some(avs_id) = id { Some(AvsType::new(avs_id, chain)?) } else { None };
-    Ok(AvsProvider::new(avs_instance, Arc::new(provider), keyfile_pw)?)
+    AvsProvider::new(avs_instance, Arc::new(provider), keyfile_pw)
 }

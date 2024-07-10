@@ -55,15 +55,13 @@ enum Commands {
     },
     #[command(
         name = "serve",
-        about = "Start the Ivynet service with a specified AVS on a specified chain. --avs <AVS> --chain <CHAIN> [PORT]"
+        about = "Start the Ivynet service with a specified AVS on a specified chain. --avs <AVS> --chain <CHAIN>"
     )]
     Serve {
         #[clap(required(false), long, requires("chain"))]
         avs: Option<String>,
         #[clap(required(false), long, requires("avs"))]
         chain: Option<String>,
-        #[clap(required(false), long)]
-        port: Option<u16>,
     },
 }
 
@@ -92,11 +90,11 @@ async fn main() -> Result<(), Error> {
         }
         Commands::Staker { subcmd } => staker::parse_staker_subcommands(subcmd, &config).await?,
         Commands::Avs { subcmd } => avs::parse_avs_subcommands(subcmd, &config).await?,
-        Commands::Serve { avs, chain, port } => {
+        Commands::Serve { avs, chain } => {
             let keyfile_pw = dialoguer::Password::new()
                 .with_prompt("Input the password for your stored keyfile")
                 .interact()?;
-            service::serve(avs, chain, port, &config, &keyfile_pw).await?
+            service::serve(avs, chain, &config, &keyfile_pw).await?
         }
     }
 

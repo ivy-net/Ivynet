@@ -8,7 +8,7 @@ use ivynet_macros::h160;
 use std::{
     fs::{self, File},
     io::{copy, BufReader},
-    path::{Path, PathBuf},
+    path::PathBuf,
     process::{Child, Command},
     sync::Arc,
 };
@@ -29,8 +29,6 @@ use crate::{
     rpc_management::IvyProvider,
 };
 
-use super::error::AvsError;
-
 pub const EIGENDA_PATH: &str = ".eigenlayer/eigenda";
 
 #[derive(ThisError, Debug)]
@@ -46,6 +44,7 @@ pub enum EigenDAError {
 #[derive(Debug, Clone)]
 pub struct EigenDA {
     path: PathBuf,
+    #[allow(dead_code)]
     chain: Chain,
     running: bool,
 }
@@ -330,7 +329,7 @@ impl AvsVariant for EigenDA {
             Chain::Holesky => docker_path.join("holesky"),
             _ => todo!("Unimplemented"),
         };
-        std::env::set_current_dir(docker_path.clone())?;
+        std::env::set_current_dir(docker_path)?;
         let _ = Command::new("docker").arg("compose").arg("stop").status()?;
         self.running = false;
         Ok(())
@@ -471,14 +470,6 @@ pub async fn download_operator_setup(eigen_path: PathBuf) -> Result<(), IvyError
             std::fs::remove_dir_all(temp_path)?;
         }
     }
-
-    Ok(())
-}
-
-fn set_runscript_env_path(runscript_path: &Path, env_path: &Path) -> Result<(), IvyError> {
-    let content = fs::read_to_string(runscript_path)?;
-    let modified_content = content.replace("./.env", env_path.to_str().expect("Bad env path"));
-    fs::write(runscript_path, modified_content)?;
 
     Ok(())
 }
