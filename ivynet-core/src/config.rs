@@ -166,11 +166,6 @@ mod tests {
     }
 
     #[test]
-    fn test_load_config() {
-        todo!();
-    }
-
-    #[test]
     fn test_uds_dir() {
         let config = super::IvyConfig::default();
         let path_str = config.path.display().to_string();
