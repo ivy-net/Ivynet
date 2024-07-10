@@ -21,8 +21,8 @@
     "strategyManagerImplementation": "0x61A84cd025ec5EEbEF2098C9d933A49332BE68B4"
   },
   "chainInfo": {
-    "chainId": 32382,
-    "deploymentBlock": 3
+    "chainId": 31337,
+    "deploymentBlock": 0
   },
   "parameters": {
     "executorMultisig": "0x123463a4B065722E99115D6c222f267d9cABb524",

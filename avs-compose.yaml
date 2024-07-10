@@ -1,22 +1,17 @@
 services:
   anvil:
     container_name: anvil
-    image: ghcr.io/foundry-rs/foundry@sha256:e3ba202249cccdffafc0d0e90c43baca8f03e4b0d7e273c0d33b8a5e3cea1eb7
+    image: ghcr.io/foundry-rs/foundry:latest
     entrypoint: anvil
     hostname: anvil
     platform: linux/amd64
     ports:
         - "8545:8545"
-    command: --host=0.0.0.0 --chain-id 32382
-    healthcheck:
-        test: ["CMD", "nc", "-z", "localhost", "8545"]
-        interval: 30s
-        timeout: 10s
-        retries: 3
+    command: --host=0.0.0.0
 
   feed-deployer:
     platform: linux/amd64
-    image: "ghcr.io/foundry-rs/foundry:nightly-c2e529786c07ee7069cefcd4fe2db41f0e46cef6"
+    image: ghcr.io/foundry-rs/foundry:latest
     entrypoint: cast
     command:
       - rpc
@@ -26,12 +21,12 @@ services:
       - --rpc-url
       - http://anvil:8545
     depends_on:
-      anvil:
-        condition: service_healthy
+        autoimpersonation:
+            condition: service_completed_successfully
 
   feed-layer:
     platform: linux/amd64
-    image: "ghcr.io/foundry-rs/foundry:nightly-c2e529786c07ee7069cefcd4fe2db41f0e46cef6"
+    image: ghcr.io/foundry-rs/foundry:latest
     entrypoint: cast
     command:
       - rpc
@@ -44,6 +39,18 @@ services:
       feed-deployer:
         condition: service_completed_successfully
 
+  autoimpersonation:
+    platform: linux/amd64
+    image: ghcr.io/foundry-rs/foundry:latest
+    entrypoint: cast
+    command:
+      - rpc
+      - anvil_autoImpersonateAccount
+      - "true"
+      - --rpc-url
+      - http://anvil:8545
+    depends_on:
+        - anvil
 
   # FoundaryUp based container with local image
   # deploying EigenLayer Contracts
@@ -65,12 +72,12 @@ services:
       - M2_deploy_from_scratch.local.config.json
     working_dir: /eigenlayer/eigenlayer-contracts
     volumes:
-      - docker/eigenlayer/M2_deploy_from_scratch.local.config.json:/eigenlayer/eigenlayer-contracts/script/configs/devnet/M2_deploy_from_scratch.local.config.json
-      - docker/eigenlayer/output.json:/eigenlayer/eigenlayer-contracts/script/output/devnet/M2_from_scratch_deployment_data.json
-      - docker/eigenlayer/run-latest.json:/eigenlayer/eigenlayer-contracts/broadcast/M2_Deploy_From_Scratch.s.sol/32382/run-latest.json
+      - ./docker/eigenlayer/M2_deploy_from_scratch.local.config.json:/eigenlayer/eigenlayer-contracts/script/configs/devnet/M2_deploy_from_scratch.local.config.json
+      - ./docker/eigenlayer/output.json:/eigenlayer/eigenlayer-contracts/script/output/devnet/M2_from_scratch_deployment_data.json
+      - ./docker/eigenlayer/run-latest.json:/eigenlayer/eigenlayer-contracts/broadcast/M2_Deploy_From_Scratch.s.sol/31337/run-latest.json
     depends_on:
       anvil:
-        condition: service_healthy
+        condition: service_started
       feed-deployer:
         condition: service_completed_successfully
 
@@ -83,15 +90,15 @@ services:
       - script/IncredibleSquaringDeployer.s.sol
       - -vvv
       - --rpc-url
-      - http://geth:8545
+      - http://anvil:8545
       - --broadcast
       - --unlocked
       - --sender
       - 0x123463a4b065722e99115d6c222f267d9cabb524
     working_dir: /eigenlayer/incredible-squaring-avs/contracts
     volumes:
-      - docker/eigenlayer/output.json:/eigenlayer/incredible-squaring-avs/contracts/script/output/32382/eigenlayer_deployment_output.json
-      - docker/incredible-squaring-avs/output.json:/eigenlayer/incredible-squaring-avs/contracts/script/output/32382/credible_squaring_avs_deployment_output.json
+      - ./docker/eigenlayer/output.json:/eigenlayer/incredible-squaring-avs/contracts/script/output/31337/eigenlayer_deployment_output.json
+      - ./docker/incredible-squaring-avs/output.json:/eigenlayer/incredible-squaring-avs/contracts/script/output/31337/incredible_squaring_avs_deployment_output.json
     depends_on:
       eigenlayer:
         condition: service_completed_successfully
@@ -103,12 +110,12 @@ services:
       - --config
       - aggregator-docker-compose.yaml
       - --credible-squaring-deployment
-      - contracts/script/output/32382/credible_squaring_avs_deployment_output.json
+      - contracts/script/output/31337/incredible_squaring_avs_deployment_output.json
       - --ecdsa-private-key
       - 0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6
     volumes:
-      - docker/incredible-squaring-avs/32382/aggregator-docker-compose.yaml:/incredible-squaring/aggregator-docker-compose.yaml
-      - docker/incredible-squaring-avs/output.json:/incredible-squaring/contracts/script/output/32382/credible_squaring_avs_deployment_output.json
+      - ./docker/incredible-squaring-avs/31337/aggregator-docker-compose.yaml:/incredible-squaring/aggregator-docker-compose.yaml
+      - ./docker/incredible-squaring-avs/output.json:/incredible-squaring/contracts/script/output/31337/incredible_squaring_avs_deployment_output.json
     working_dir: /incredible-squaring
     depends_on:
       feed-layer:
@@ -121,8 +128,8 @@ services:
     expose:
       - 9090
     volumes:
-      - docker/incredible-squaring-avs/32382/operator-docker-compose.yaml:/incredible-squaring/operator-docker-compose.yaml
-      - docker/incredible-squaring-avs/keys:/incredible-squaring/tests/keys
+      - ./docker/incredible-squaring-avs/31337/operator-docker-compose.yaml:/incredible-squaring/operator-docker-compose.yaml
+      - ./docker/incredible-squaring-avs/keys:/incredible-squaring/tests/keys
     working_dir: /incredible-squaring
     depends_on:
       aggregator:

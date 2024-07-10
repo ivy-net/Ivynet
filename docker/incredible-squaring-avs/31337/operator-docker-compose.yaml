@@ -12,8 +12,8 @@ avs_registry_coordinator_address: 0x10A95e48a51dD3c2b0d37aF4d70b0AC47e755430 #re
 operator_state_retriever_address: 0x4D90e0c42F92149FA005d27139f2657CdcC3A850 #operatorStateRetriver
 
 # ETH RPC URL
-eth_rpc_url: http://geth:8545
-eth_ws_url: ws://geth:8546
+eth_rpc_url: http://anvil:8545
+eth_ws_url: ws://anvil:8545
 
 # If you running this using eigenlayer CLI and the provided AVS packaging structure,
 # this should be /operator_keys/ecdsa_key.json as the host path will be asked while running
