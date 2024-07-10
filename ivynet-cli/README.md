@@ -20,14 +20,14 @@ Usage:
 
 Manage the eigenlayer operator. This namespace includes both query actions for operator status of various accounts, as well as management of the operator status of the account's Ethereum address. For write actions, including register, this namespace will use the ECDSA keypair stored in the ivyconfig.toml file to sign transactions.
 
-Usage: 
+Usage:
 `ivynet-cli operator <OP> <CHAIN> <OTHER_FIELDS>`
 
 # Avs
 
-Setup, run, and manage AVS instances. 
+Setup, run, and manage AVS instances.
 
-Usage: 
+Usage:
 `ivynet-cli avs <OP> <AVS> <CHAIN>`
 
 Supported operations:

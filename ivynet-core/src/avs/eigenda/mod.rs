@@ -8,7 +8,7 @@ use ivynet_macros::h160;
 use std::{
     fs::{self, File},
     io::{copy, BufReader},
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::{Child, Command},
     sync::Arc,
 };
@@ -135,7 +135,7 @@ impl AvsVariant for EigenDA {
         // BLS key
         let bls_key_name: String = Input::new()
             .with_prompt(
-                "Input the name of your BLS key file - looks in .eigenlayer folder (where eigen cli stores the key)",
+                "Input the name of your BLS key file without file extensions - looks in .eigenlayer folder (where eigen cli stores the key)",
             )
             .interact_text()?;
 
@@ -153,7 +153,7 @@ impl AvsVariant for EigenDA {
             "NODE_BLS_KEY_FILE_HOST",
             bls_json_file_location.to_str().expect("Could not get BLS key file location"),
         );
-        env_lines.set("NODE_BLS_KEY_PASSWORD", &bls_password);
+        env_lines.set("NODE_BLS_KEY_PASSWORD", &format!("'{}'", bls_password));
         env_lines.save(&env_path)?;
         info!(".env file saved to {}", env_path.display());
 
@@ -222,11 +222,9 @@ impl AvsVariant for EigenDA {
         // Child shell scripts may not run correctly if the current directory is not set to their
         // own path.
         std::env::set_current_dir(run_script_dir.clone())?;
-
         let run_script_path = run_script_dir.join("run.sh");
 
         info!("Booting quorums: {:#?}", quorums);
-
         debug!("{} |  {}", run_script_path.display(), quorum_str);
 
         let optin = Command::new("sh")
@@ -270,7 +268,6 @@ impl AvsVariant for EigenDA {
         // Child shell scripts may not run correctly if the current directory is not set to their
         // own path.
         std::env::set_current_dir(run_script_dir.clone())?;
-
         let run_script_path = run_script_dir.join("run.sh");
 
         info!("Booting quorums: {:#?}", quorums);
@@ -474,6 +471,14 @@ pub async fn download_operator_setup(eigen_path: PathBuf) -> Result<(), IvyError
             std::fs::remove_dir_all(temp_path)?;
         }
     }
+
+    Ok(())
+}
+
+fn set_runscript_env_path(runscript_path: &Path, env_path: &Path) -> Result<(), IvyError> {
+    let content = fs::read_to_string(runscript_path)?;
+    let modified_content = content.replace("./.env", env_path.to_str().expect("Bad env path"));
+    fs::write(runscript_path, modified_content)?;
 
     Ok(())
 }

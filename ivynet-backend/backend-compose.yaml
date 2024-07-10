@@ -13,7 +13,7 @@ services:
   memcached:
       container_name: memcached
       image: 'memcached:latest'
-      ports: 
+      ports:
         - 11211:11211
 
 volumes:

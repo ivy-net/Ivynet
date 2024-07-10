@@ -1,8 +1,18 @@
-/target
-/.vscode
+# Rust
+**/target
+**/debug
+*.rs.bk
+
+# Project
 /eigenda_operator_setup
 .env
-
-/ivynet-cli/target
-/ivynet-core/target
 /packer/packer.prv
+
+# OS
+.DS_store
+
+# Editor/IDE
+/.vscode
+*~
+[._]*.s[a-w][a-z]
+[._]s[a-w][a-z]

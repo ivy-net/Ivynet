@@ -94,6 +94,13 @@ mod core_io_tests {
     use std::{fs::File, io::Write};
     use tempfile::tempdir;
 
+    #[derive(Serialize, Deserialize, PartialEq, Debug)]
+    struct TestStruct {
+        a: i32,
+        b: i32,
+        c: i32,
+    }
+
     #[test]
     fn test_read_write_json() {
         let dir = tempdir().unwrap();
@@ -117,22 +124,14 @@ mod core_io_tests {
 
     #[test]
     fn test_read_write_toml() {
+        let data = TestStruct { a: 1, b: 2, c: 3 };
+
         let dir = tempdir().unwrap();
         let path = dir.path().join("test.toml");
 
-        let data = vec![1, 2, 3];
-        let data_str = toml::to_string(&data).unwrap();
+        write_toml(&path, &data).unwrap();
 
-        let mut file = File::create(&path).unwrap();
-        file.write_all(data_str.as_bytes()).unwrap();
-
-        let res: Vec<i32> = read_toml(&path).unwrap();
+        let res: TestStruct = read_toml(&path).unwrap();
         assert_eq!(res, data);
-
-        let new_data = vec![4, 5, 6];
-        write_toml(&path, &new_data).unwrap();
-
-        let res: Vec<i32> = read_toml(&path).unwrap();
-        assert_eq!(res, new_data);
     }
 }

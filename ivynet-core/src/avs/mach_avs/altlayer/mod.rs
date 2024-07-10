@@ -102,7 +102,7 @@ impl AvsVariant for AltLayer {
 
         let bls_key_name: String = Input::new()
             .with_prompt(
-                "Input the name of your BLS key file - looks in .eigenlayer folder (where eigen cli stores the key)",
+                "Input the name of your BLS key file without file extensions - looks in .eigenlayer folder (where eigen cli stores the key)",
             )
             .interact_text()?;
 

@@ -27,6 +27,7 @@ pub struct HttpState {
     pub user_verification_template: Option<String>,
 }
 
+#[allow(clippy::too_many_arguments)]
 pub async fn serve(
     pool: Arc<PgPool>,
     cache: memcache::Client,
@@ -38,7 +39,7 @@ pub async fn serve(
     port: u16,
 ) -> Result<(), BackendError> {
     tracing::info!("Starting HTTP server on port {port}");
-    let sender = if let Some(key) = sendgrid_api_key { Some(Sender::new(key)) } else { None };
+    let sender = sendgrid_api_key.map(Sender::new);
     let app = Router::new()
         .route("/health", get(|| async { "alive" }))
         .route("/authorize", post(authorize::authorize))

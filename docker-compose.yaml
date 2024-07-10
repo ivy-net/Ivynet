@@ -11,7 +11,7 @@ services:
       POSTGRES_PASSWORD: secret_ivy
       POSTGRES_DB: ivynet
     healthcheck:
-      test: pg_isready -U ivy -d ivynet 
+      test: pg_isready -U ivy -d ivynet
       interval: 10s
       timeout: 3s
       retries: 3
@@ -19,7 +19,7 @@ services:
   memcached:
       container_name: memcached
       image: 'memcached:alpine'
-      ports: 
+      ports:
         - 11211:11211
       healthcheck:
         test: echo stats | nc 127.0.0.1 11211

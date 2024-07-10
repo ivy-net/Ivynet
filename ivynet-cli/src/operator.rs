@@ -132,11 +132,12 @@ pub async fn parse_operator_setter_subcommands(
     match subsetter {
         OperatorSetterCommands::EcdsaKeyfile { ecdsa_keypath } => {
             //client.operator_mut().set_ecdsa_keyfile_path(ecdsa_keypath).await?
-            todo!()
+            todo!();
         }
         OperatorSetterCommands::BlsKeyfile { bls_keypath } => {
             //client.operator_mut().set_bls_keyfile_path(bls_keypath).await?
-            todo!()
+            todo!();
         }
     }
+    Ok(())
 }

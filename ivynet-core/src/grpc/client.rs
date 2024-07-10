@@ -24,11 +24,12 @@ pub async fn create_channel(
 ) -> Result<Channel, ClientError> {
     debug!("Initializing GRPC channel: {:?}", source);
     let endpoint = match source {
-        Source::Uri(ref uri) => {
-            Endpoint::from_shared(uri.to_string()).expect("invalid backend URI")
+        Source::Uri(ref uri) => Endpoint::from_shared(uri.to_string()).expect("invalid backend URI"),
+        Source::Path(ref path) =>
+        {
+            #[allow(clippy::expect_fun_call)]
+            Endpoint::try_from("http://[::]:50050").expect(&format!("unable to open socket at {path}"))
         }
-        Source::Path(ref path) => Endpoint::try_from("http://[::]:50050")
-            .unwrap_or_else(|_| panic!("unable to open socket at {path}")),
     };
     let endpoint = if let Some(ca) = tls_ca {
         let ca = std::fs::read_to_string(ca).expect("can't read CA certificate");

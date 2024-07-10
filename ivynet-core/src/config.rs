@@ -43,7 +43,7 @@ impl Default for IvyConfig {
         Self {
             path: DEFAULT_CONFIG_PATH.to_owned(),
             mainnet_rpc_url: "https://rpc.flashbots.net/fast".to_string(),
-            holesky_rpc_url: "https://holesky.drpc.org/".to_string(),
+            holesky_rpc_url: "https://holesky.drpc.org".to_string(),
             local_rpc_url: "http://localhost:8545".to_string(),
             default_private_keyfile: "".into(), // TODO: Option
             default_public_keyfile: "".into(),
