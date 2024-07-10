@@ -118,7 +118,7 @@ services:
       - ./docker/incredible-squaring-avs/output.json:/incredible-squaring/contracts/script/output/31337/incredible_squaring_avs_deployment_output.json
     working_dir: /incredible-squaring
     depends_on:
-      feed-layer:
+      avs-demo:
         condition: service_completed_successfully
 
   # Start operator
@@ -134,5 +134,5 @@ services:
     depends_on:
       aggregator:
         condition: service_started
-      feed-layer:
+      avs-demo:
         condition: service_completed_successfully
