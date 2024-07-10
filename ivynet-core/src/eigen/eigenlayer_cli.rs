@@ -4,7 +4,8 @@ use tokio::process::Command;
 
 // A wrapper around the Eigenlayer CLI. Currently unused.
 
-const EIGENLAYER_SOURCE: &str = "https://raw.githubusercontent.com/layr-labs/eigenlayer-cli/master/scripts/install.sh";
+const EIGENLAYER_SOURCE: &str =
+    "https://raw.githubusercontent.com/layr-labs/eigenlayer-cli/master/scripts/install.sh";
 
 // TODO: This is only tested for Linux. This will almost certainly return an incorrect
 // path for Windows systems.
@@ -51,7 +52,8 @@ impl EigenlayerCli {
     /// local system
     pub async fn install_from_remote() -> Result<Self, Box<dyn std::error::Error>> {
         let install = reqwest::get(EIGENLAYER_SOURCE).await?.text().await?;
-        let output = Command::new("sh").arg("-c").arg(&install).stdout(Stdio::piped()).output().await?;
+        let output =
+            Command::new("sh").arg("-c").arg(&install).stdout(Stdio::piped()).output().await?;
         let output_str = String::from_utf8(output.stdout)?;
         println!("{}", output_str);
         Ok(Self { path: "~/bin/eigenlayer".to_string() })

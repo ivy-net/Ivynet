@@ -65,7 +65,7 @@ Initialize the Ivnet directory and configuration file. The configuration file ca
 
 If not already done through interactive mode in the `init` command, configure the private key for the ECDSA account that will be used to sign transactions.
 
-To import a private key: 
+To import a private key:
 
 `ivynet-cli config import-key <PRIVATE_KEY>, [KEYNAME], [PASSWORD]`
 
@@ -113,7 +113,7 @@ Example:
 
 `ivynet-cli serve --port 55501`
 
-### Interacting with the Ivy Daemon: 
+### Interacting with the Ivy Daemon:
 
 
 The Ivynet service exposes a GRPC interface for interacting with the daemon, which can be used either via the Ivynet CLI or through GRPC actions directly. Examples are presented using [GRPCurl](https://github.com/fullstorydev/grpcurl)
@@ -196,7 +196,7 @@ CLI:
 Replace the active AVS with a new AVS instance. Errors if the AVS is curently running.
 
 Arguments:
-"avs": The name of the AVS to load 
+"avs": The name of the AVS to load
 "chain": The chain to operate the loaded AVS on
 
 Example:
