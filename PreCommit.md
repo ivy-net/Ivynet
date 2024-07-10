@@ -14,9 +14,10 @@ This is not full documentation, just basic notes from my initial run.
 ## Used packages
 
 - basic hooks (https://github.com/pre-commit/pre-commit-hooks)
-- rust (https://github.com/ivy-net/pre-commit-rust)
+- rust hooks (https://github.com/ivy-net/pre-commit-rust)
 
-The rust is our fork, including +nightly for fmt and potential to add other commands
+The rust one is our fork (based on fork).
+It includes +nightly for fmt and potential to add other commands.
 
 # Installation
 
