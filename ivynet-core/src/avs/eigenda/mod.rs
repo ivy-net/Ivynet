@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use dialoguer::{Input, Password};
 use ethers::{
     signers::Signer,
@@ -28,7 +29,7 @@ use crate::{
     rpc_management::IvyProvider,
 };
 
-use async_trait::async_trait;
+use super::error::AvsError;
 
 pub const EIGENDA_PATH: &str = ".eigenlayer/eigenda";
 

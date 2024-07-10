@@ -1,7 +1,6 @@
 use ethers::{
     contract::ContractError,
-    middleware::{signer::SignerMiddlewareError, SignerMiddleware},
-    providers::{Http, JsonRpcError, MiddlewareError as _, Provider},
+    providers::{JsonRpcError, MiddlewareError as _},
     signers::WalletError,
     types::{Bytes, Chain, TryFromPrimitiveError},
     utils::hex::FromHexError,
@@ -9,33 +8,25 @@ use ethers::{
 use indicatif::style::TemplateError;
 use thiserror::Error;
 use tonic::Status;
-use tracing::subscriber::SetGlobalDefaultError;
 use zip::result::ZipError;
 
-use crate::{
-    avs::eigenda::EigenDAError, eigen::quorum::QuorumError, rpc_management::IvyProvider,
-    wallet::IvyWallet,
-};
+use crate::{avs::eigenda::EigenDAError, eigen::quorum::QuorumError, rpc_management::IvyProvider};
 
 #[derive(Debug, Error)]
 pub enum IvyError {
+    // ISSUE: Consider deprecating in favor of above.
     #[error(transparent)]
-    Io(#[from] std::io::Error),
-
-    #[error(transparent)]
-    GlobalTracingSetError(#[from] SetGlobalDefaultError),
+    StdIo(#[from] std::io::Error),
 
     #[error(transparent)]
     WalletError(#[from] WalletError),
 
+    // TODO: Attempt to deprecate, see private_key_string to bytes methods.
     #[error(transparent)]
     HexError(#[from] FromHexError),
 
     #[error(transparent)]
     UrlParseError(#[from] url::ParseError),
-
-    #[error(transparent)]
-    ProviderError(#[from] SignerMiddlewareError<Provider<Http>, IvyWallet>),
 
     #[error(transparent)]
     DialogerError(#[from] dialoguer::Error),
@@ -60,6 +51,15 @@ pub enum IvyError {
 
     #[error(transparent)]
     GRPCError(#[from] Status),
+
+    #[error(transparent)]
+    SetupError(#[from] SetupError),
+
+    #[error(transparent)]
+    IoError(#[from] crate::io::IoError),
+
+    #[error(transparent)]
+    ConfigError(#[from] crate::config::ConfigError),
 
     #[error(
         "AVS {0} on chain {1} is currently running. Stop the AVS before using this operation."
@@ -123,22 +123,13 @@ pub enum IvyError {
     #[error("Unimplemented")]
     Unimplemented,
 
+    #[error("Could not parse chain with name {0}")]
+    ChainParseError(String),
+
     // TODO: The place where this is used should probably implement from for the parse() method
     // instead.
     #[error("Invalid address")]
     InvalidAddress,
-
-    #[error(transparent)]
-    SetupError(#[from] SetupError),
-
-    #[error(transparent)]
-    SerdeJsonError(#[from] serde_json::Error),
-
-    #[error(transparent)]
-    TomlSerError(#[from] toml::ser::Error),
-
-    #[error(transparent)]
-    TomlDeError(#[from] toml::de::Error),
 }
 
 #[derive(Debug, Error)]

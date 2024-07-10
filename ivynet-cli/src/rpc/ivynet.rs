@@ -2,6 +2,7 @@ use ivynet_core::{
     avs::{instance::AvsType, AvsProvider, AvsVariant},
     config::IvyConfig,
     eigen::contracts::delegation_manager::OperatorDetails,
+    error::IvyError,
     ethers::{signers::Signer, types::Chain},
     grpc::{
         ivynet_api::{
@@ -21,7 +22,7 @@ use ivynet_core::{
         tonic::{self, Request, Response, Status},
     },
     rpc_management::connect_provider,
-    utils::parse_chain,
+    utils::try_parse_chain,
     wallet::IvyWallet,
 };
 use std::{iter::zip, sync::Arc};
@@ -97,7 +98,7 @@ impl Avs for IvynetService {
     ) -> Result<Response<RpcResponse>, Status> {
         let provider = self.avs_provider.read().await;
         // TODO: ask about storing 'config' in the provider
-        let config = IvyConfig::load_from_default_path()?;
+        let config = IvyConfig::load_from_default_path().map_err(IvyError::from)?;
         provider.opt_in(&config).await?;
 
         // TODO: Opt-in flow
@@ -111,7 +112,7 @@ impl Avs for IvynetService {
     ) -> Result<Response<RpcResponse>, Status> {
         let provider = self.avs_provider.read().await;
         // TODO: ask about storing 'config' in the provider
-        let config = IvyConfig::load_from_default_path()?;
+        let config = IvyConfig::load_from_default_path().map_err(IvyError::from)?;
         provider.opt_out(&config).await?;
 
         // TODO: Opt-out flow
@@ -128,12 +129,12 @@ impl Avs for IvynetService {
         // TODO: Clean this up if possible, complexity comes from needing to synchronize the rpc +
         // chain id between provider, signer, and AVS instance.
         let req = request.into_inner();
-        let (avs, chain) = (req.avs, parse_chain(&req.chain));
+        let (avs, chain) = (req.avs, try_parse_chain(&req.chain)?);
 
         let mut provider = self.avs_provider.write().await;
         let signer = provider.provider.signer().clone();
         let keyfile_pw = &provider.keyfile_pw;
-        let config = IvyConfig::load_from_default_path()?; // TODO: store config with provider
+        let config = IvyConfig::load_from_default_path().map_err(IvyError::from)?; // TODO: store config with provider
 
         let new_ivy_provider = connect_provider(&config.get_rpc_url(chain)?, Some(signer)).await?;
         let avs_instance = AvsType::new(&avs, chain)?;
@@ -245,9 +246,9 @@ impl Operator for IvynetService {
         provider.with_keyfile_pw(Some(pass))?;
 
         // Update config file
-        let mut config = IvyConfig::load_from_default_path()?;
+        let mut config = IvyConfig::load_from_default_path().map_err(IvyError::from)?;
         config.default_private_keyfile = path.into();
-        config.store()?;
+        config.store().map_err(IvyError::from)?;
 
         Ok(Response::new(SetEcdsaKeyfilePathResponse {}))
     }

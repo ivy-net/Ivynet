@@ -1,9 +1,8 @@
 use clap::Parser;
 use ivynet_core::{
     config::IvyConfig,
-    ethers::{core::types::Address, types::Chain},
+    ethers::core::types::Address,
     grpc::client::{create_channel, Source},
-    utils::parse_chain,
 };
 use std::path::PathBuf;
 use tracing::debug;
@@ -57,20 +56,6 @@ pub enum OperatorSetterCommands {
     BlsKeyfile { bls_keypath: PathBuf },
 }
 
-impl OperatorCommands {
-    pub fn chain(&self) -> Chain {
-        match self {
-            OperatorCommands::Register { chain, .. } => parse_chain(chain),
-            OperatorCommands::Get { subcmd } => match subcmd {
-                OperatorGetterCommands::Details { .. } => todo!("unimplemented"),
-                OperatorGetterCommands::Shares { .. } => todo!("unimplemented"),
-                OperatorGetterCommands::DelegatableShares { .. } => todo!("unimplemented"),
-            },
-            OperatorCommands::Set { subcmd: _ } => Chain::AnvilHardhat,
-        }
-    }
-}
-
 pub async fn parse_operator_subcommands(
     subcmd: OperatorCommands,
     config: &IvyConfig,
@@ -82,9 +67,7 @@ pub async fn parse_operator_subcommands(
         OperatorCommands::Set { subcmd } => {
             parse_operator_setter_subcommands(subcmd, config).await?;
         }
-        OperatorCommands::Register {
-            delegation_approver, staker_opt_out_window_blocks, ..
-        } => {
+        OperatorCommands::Register { .. } => {
             todo!();
             // let password: String = Password::new()
             //     .with_prompt("Input the password for your stored ECDSA keyfile")

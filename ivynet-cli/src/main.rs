@@ -1,7 +1,6 @@
 use clap::{Parser, Subcommand};
 use ivynet_core::{
-    avs::commands::AvsCommands, config::IvyConfig,
-    ethers::core::k256::ecdsa::signature::KeypairRef, grpc::client::Uri,
+    avs::commands::AvsCommands, config::IvyConfig, error::IvyError, grpc::client::Uri,
 };
 use std::str::FromStr as _;
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
@@ -76,7 +75,7 @@ async fn main() -> Result<(), Error> {
     let filter = EnvFilter::builder().parse("ivynet_cli=debug,ivynet_core=debug,tonic=debug")?;
     tracing_subscriber::registry().with(fmt::layer()).with(filter).init();
 
-    let config = IvyConfig::load_from_default_path()?;
+    let config = IvyConfig::load_from_default_path().map_err(IvyError::from)?;
     match args.cmd {
         Commands::Init => initialize_ivynet()?,
         Commands::Config { subcmd } => {

@@ -2,15 +2,15 @@ use clap::Parser;
 use dialoguer::{Input, Password};
 use ivynet_core::{
     config::{self, IvyConfig},
+    error::IvyError,
     ethers::types::Chain,
     grpc::{
         backend::backend_client::BackendClient,
         client::{create_channel, Request, Source, Uri},
         messages::RegistrationCredentials,
-        server::Endpoint,
     },
     metadata::Metadata,
-    utils::parse_chain,
+    utils::try_parse_chain,
     wallet::IvyWallet,
 };
 
@@ -33,7 +33,10 @@ pub enum ConfigCommands {
         keyname: Option<String>,
         password: Option<String>,
     },
-    #[command(name = "get-default-public", about = "Get the current default saved keypair's Ethereum address")]
+    #[command(
+        name = "get-default-public",
+        about = "Get the current default saved keypair's Ethereum address"
+    )]
     GetDefaultEthAddress,
     #[command(name = "get-default-private", about = "Get the current default saved private key")]
     GetDefaultPrivateKey,
@@ -52,7 +55,11 @@ pub enum ConfigCommands {
         about = "Get the number of CPU cores, memory, and free disk space on the current machine"
     )]
     #[command(name = "set-metadata", about = "Set metadata for EigenLayer Operator")]
-    SetMetadata { metadata_uri: Option<String>, logo_uri: Option<String>, favicon_uri: Option<String> },
+    SetMetadata {
+        metadata_uri: Option<String>,
+        logo_uri: Option<String>,
+        favicon_uri: Option<String>,
+    },
     #[command(name = "get-metadata", about = "Get local metadata")]
     GetMetadata,
     #[command(name = "get-config", about = "Get all config data")]
@@ -82,10 +89,11 @@ pub async fn parse_config_subcommands(
         ConfigCommands::ImportPrivateKey { private_key, keyname, password } => {
             let wallet = IvyWallet::from_private_key(private_key)?;
             let (keyname, pass) = get_credentials(keyname, password);
-            let (pub_key_path, prv_key_path) = wallet.encrypt_and_store(&config.get_path(), keyname, pass)?;
+            let (pub_key_path, prv_key_path) =
+                wallet.encrypt_and_store(&config.get_path(), keyname, pass)?;
             config.default_private_keyfile = prv_key_path;
             config.default_public_keyfile = pub_key_path;
-            config.store()?;
+            config.store().map_err(IvyError::from)?;
         }
         ConfigCommands::CreatePrivateKey { store, keyname, password } => {
             let wallet = IvyWallet::new();
@@ -95,16 +103,17 @@ pub async fn parse_config_subcommands(
             println!("Public Address: {:?}", addr);
             if store {
                 let (keyname, pass) = get_credentials(keyname, password);
-                let (pub_key_path, prv_key_path) = wallet.encrypt_and_store(&config.get_path(), keyname, pass)?;
+                let (pub_key_path, prv_key_path) =
+                    wallet.encrypt_and_store(&config.get_path(), keyname, pass)?;
                 config.default_private_keyfile = prv_key_path;
                 config.default_public_keyfile = pub_key_path;
-                config.store()?;
+                config.store().map_err(IvyError::from)?;
             }
         }
         ConfigCommands::SetRpc { chain, rpc_url } => {
-            let chain = parse_chain(&chain);
+            let chain = try_parse_chain(&chain)?;
             config.set_rpc_url(chain, &rpc_url)?;
-            config.store()?;
+            config.store().map_err(IvyError::from)?;
         }
         ConfigCommands::GetRpc { chain } => {
             println!(
@@ -113,10 +122,14 @@ pub async fn parse_config_subcommands(
             );
         }
         ConfigCommands::GetDefaultEthAddress => {
-            println!("Public Key: {:?}", IvyWallet::address_from_file(config.default_public_keyfile.clone())?);
+            println!(
+                "Public Key: {:?}",
+                IvyWallet::address_from_file(config.default_public_keyfile.clone())?
+            );
         }
         ConfigCommands::GetDefaultPrivateKey => {
-            let pass = Password::new().with_prompt("Enter a password to the private key").interact()?;
+            let pass =
+                Password::new().with_prompt("Enter a password to the private key").interact()?;
             let wallet = IvyWallet::from_keystore(config.default_private_keyfile.clone(), &pass)?;
             println!("Private key: {:?}", wallet.to_private_key());
         }
@@ -144,9 +157,10 @@ pub async fn parse_config_subcommands(
             println!(" --------------------------- ");
         }
         ConfigCommands::Register { email, password } => {
-            let config = IvyConfig::load_from_default_path()?;
+            let config = IvyConfig::load_from_default_path().map_err(IvyError::from)?;
             let public_key = config.identity_wallet()?.address();
-            let mut backend = BackendClient::new(create_channel(Source::Uri(server_url), server_ca).await?);
+            let mut backend =
+                BackendClient::new(create_channel(Source::Uri(server_url), server_ca).await?);
             backend
                 .register(Request::new(RegistrationCredentials {
                     email,
@@ -163,15 +177,22 @@ pub async fn parse_config_subcommands(
 fn get_credentials(keyname: Option<String>, password: Option<String>) -> (String, String) {
     match (keyname, password) {
         (None, None) => (
-            Input::new().with_prompt("Enter a name for the key").interact_text().expect("No keyname provided"),
+            Input::new()
+                .with_prompt("Enter a name for the key")
+                .interact_text()
+                .expect("No keyname provided"),
             Password::new()
                 .with_prompt("Enter a password to the private key")
                 .interact()
                 .expect("No password provided"),
         ),
-        (None, Some(pass)) => {
-            (Input::new().with_prompt("Enter a name for the key").interact_text().expect("No keyname provided"), pass)
-        }
+        (None, Some(pass)) => (
+            Input::new()
+                .with_prompt("Enter a name for the key")
+                .interact_text()
+                .expect("No keyname provided"),
+            pass,
+        ),
         (Some(keyname), None) => (
             keyname,
             Password::new()

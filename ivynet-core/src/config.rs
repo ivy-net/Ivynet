@@ -3,6 +3,7 @@ use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use sysinfo::{Disks, System};
+use thiserror::Error as ThisError;
 
 pub static DEFAULT_CONFIG_PATH: Lazy<PathBuf> = Lazy::new(|| {
     let path = dirs::home_dir().expect("Could not get a home directory");
@@ -11,9 +12,9 @@ pub static DEFAULT_CONFIG_PATH: Lazy<PathBuf> = Lazy::new(|| {
 
 use crate::{
     error::IvyError,
+    io::{create_dir_all, read_toml, write_toml, IoError},
     metadata::Metadata,
-    utils::{read_toml, write_toml},
-    wallet::IvyWallet,
+    wallet::{IvyWallet, IvyWalletError},
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -61,26 +62,26 @@ impl IvyConfig {
         Self { path, ..Default::default() }
     }
 
-    pub fn load(path: PathBuf) -> Result<Self, IvyError> {
-        let config: Self = read_toml(path)?;
+    pub fn load(path: PathBuf) -> Result<Self, ConfigError> {
+        let config: Self = read_toml(&path)?;
         Ok(config)
     }
 
-    pub fn load_from_default_path() -> Result<Self, IvyError> {
+    pub fn load_from_default_path() -> Result<Self, ConfigError> {
         let config_path = DEFAULT_CONFIG_PATH.to_owned().join("ivy-config.toml");
         if !config_path.exists() {
-            std::fs::create_dir_all(DEFAULT_CONFIG_PATH.clone())?;
+            create_dir_all(&config_path)?;
             let config = Self::default();
-            write_toml(config_path.clone(), &config)?;
+            write_toml(&config_path, &config)?;
             return Ok(config);
         }
         Self::load(config_path)
     }
 
-    pub fn store(&self) -> Result<(), IvyError> {
+    pub fn store(&self) -> Result<(), ConfigError> {
         // TODO: Assert identity key is None on save
         let config_path = self.path.clone().join("ivy-config.toml");
-        write_toml(config_path, self)?;
+        write_toml(&config_path, self)?;
         Ok(())
     }
 
@@ -145,8 +146,24 @@ pub fn get_system_information() -> Result<(u64, u64, u64), IvyError> {
     Ok((cpu_cores, total_memory, free_disk))
 }
 
+#[derive(ThisError, Debug)]
+pub enum ConfigError {
+    #[error(transparent)]
+    ConfigIo(#[from] IoError),
+    #[error(transparent)]
+    WalletFetchError(#[from] IvyWalletError),
+}
+
 #[cfg(test)]
 mod tests {
+    use super::*;
+    #[test]
+    fn test_load_config_error() {
+        let path = PathBuf::from("nonexistent");
+        let config = IvyConfig::load(path);
+        println!("{:?}", config);
+        assert!(config.is_err());
+    }
 
     #[test]
     fn test_load_config() {

@@ -15,7 +15,7 @@ pub enum Source {
 #[derive(Debug, thiserror::Error)]
 pub enum ClientError {
     #[error(transparent)]
-    SockerError(#[from] std::io::Error),
+    SocketError(#[from] std::io::Error),
 }
 
 pub async fn create_channel(

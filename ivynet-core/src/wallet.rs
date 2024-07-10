@@ -24,7 +24,7 @@ use tracing::{debug, info};
 
 use crate::{
     error::IvyError,
-    utils::{read_json, write_json},
+    io::{read_json, write_json},
 };
 
 // TODO: Make this a newtype strict and impl deref + derefmut to get signer stuff for free
@@ -33,6 +33,9 @@ pub struct IvyWallet {
     local_wallet: LocalWallet,
 }
 
+#[derive(thiserror::Error, Debug)]
+pub enum IvyWalletError {}
+
 impl IvyWallet {
     pub fn new() -> Self {
         let local_wallet = LocalWallet::new(&mut thread_rng());
@@ -40,15 +43,12 @@ impl IvyWallet {
     }
 
     pub fn from_private_key(private_key_string: String) -> Result<Self, IvyError> {
-        let priv_bytes = <Vec<u8>>::from_hex(private_key_string)?;
-        let local_wallet = LocalWallet::from_bytes(&priv_bytes)?;
-
+        let local_wallet = LocalWallet::from_str(&private_key_string)?;
         Ok(IvyWallet { local_wallet })
     }
 
     pub fn from_keystore(path: PathBuf, password: &str) -> Result<Self, IvyError> {
         let local_wallet = LocalWallet::decrypt_keystore(path, password)?;
-
         Ok(IvyWallet { local_wallet })
     }
 
@@ -91,6 +91,7 @@ impl IvyWallet {
         self.local_wallet.address()
     }
 
+    // TODO: Deprecate in favor of storing the address in the config file
     pub fn address_from_file(path: PathBuf) -> Result<H160, IvyError> {
         let addr: String = fs::read_to_string(path)?;
         let addr: H160 = H160::from_str(&addr).map_err(|_| IvyError::InvalidAddress)?;
@@ -122,11 +123,17 @@ impl Signer for IvyWallet {
         IvyWallet { local_wallet }
     }
 
-    async fn sign_message<S: Send + Sync + AsRef<[u8]>>(&self, message: S) -> Result<Signature, Self::Error> {
+    async fn sign_message<S: Send + Sync + AsRef<[u8]>>(
+        &self,
+        message: S,
+    ) -> Result<Signature, Self::Error> {
         self.local_wallet.sign_message(message).await
     }
 
-    async fn sign_typed_data<T: Eip712 + Send + Sync>(&self, payload: &T) -> Result<Signature, Self::Error> {
+    async fn sign_typed_data<T: Eip712 + Send + Sync>(
+        &self,
+        payload: &T,
+    ) -> Result<Signature, Self::Error> {
         self.local_wallet.sign_typed_data(payload).await
     }
 
@@ -139,12 +146,12 @@ pub fn create_legacy_keyfile(path: &PathBuf, password: &str) -> Result<(), IvyEr
     debug!("creating legacy keyfile");
     let wallet = IvyWallet::from_keystore(path.to_owned(), password)?;
     debug!("wallet loaded");
-    let Keyfile { crypto, id, version } = read_json(path.clone())?;
+    let Keyfile { crypto, id, version } = read_json(path)?;
     let legacy_keyfile = KeyfileLegacy { address: wallet.address(), crypto, id, version };
     let mut legacy_keyfile_path = path.to_owned();
     legacy_keyfile_path.set_extension("legacy.json");
     debug!("{:#?}", legacy_keyfile_path.clone());
-    write_json(legacy_keyfile_path, &legacy_keyfile)?;
+    write_json(&legacy_keyfile_path, &legacy_keyfile)?;
     Ok(())
 }
 
@@ -174,9 +181,34 @@ mod test {
         let dir = tempdir().unwrap();
         let wallet = IvyWallet::new();
         let address = wallet.address();
-        wallet.encrypt_and_store(dir.as_ref(), "temp_key".to_string(), "ThisIsATempKey".to_string()).unwrap();
+        wallet
+            .encrypt_and_store(dir.as_ref(), "temp_key".to_string(), "ThisIsATempKey".to_string())
+            .unwrap();
         let addr_path = dir.path().join("temp_key.txt");
         let derived_address = IvyWallet::address_from_file(addr_path).unwrap();
         assert_eq!(address, derived_address);
     }
+
+    #[test]
+    fn test_wallet_from_private_key() {
+        let wallet = IvyWallet::new();
+        let private_key = wallet.to_private_key();
+        let wallet2 = IvyWallet::from_private_key(private_key).unwrap();
+        assert_eq!(wallet.address(), wallet2.address());
+    }
+
+    #[test]
+    fn test_wallet_from_keystore() {
+        let dir = tempdir().unwrap();
+        let wallet = IvyWallet::new();
+        let address = wallet.address();
+        let (pub_key_path, prv_key_path) = wallet
+            .encrypt_and_store(dir.as_ref(), "temp_key".to_string(), "ThisIsATempKey".to_string())
+            .unwrap();
+        let wallet2 = IvyWallet::from_keystore(prv_key_path, "ThisIsATempKey").unwrap();
+        assert_eq!(address, wallet2.address());
+    }
+
+    #[test]
+    fn test_wallet_to_
 }

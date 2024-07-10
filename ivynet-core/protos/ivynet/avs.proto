@@ -70,5 +70,4 @@ service Avs {
     rpc OptIn(OptinRequest) returns (ivy_daemon_types.RpcResponse);
     rpc OptOut(OptoutRequest) returns (ivy_daemon_types.RpcResponse);
     rpc SetAvs(SetAvsRequest) returns (ivy_daemon_types.RpcResponse);
-
 }

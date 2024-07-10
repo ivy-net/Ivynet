@@ -6,7 +6,7 @@ use crate::{
     },
     error::IvyError,
     rpc_management::{connect_provider, IvyProvider},
-    utils::parse_chain,
+    utils::try_parse_chain,
     wallet::IvyWallet,
 };
 use async_trait::async_trait;
@@ -22,6 +22,7 @@ use tracing::{error, info};
 pub mod commands;
 pub mod contracts;
 pub mod eigenda;
+pub mod error;
 pub mod instance;
 pub mod mach_avs;
 
@@ -326,7 +327,7 @@ pub async fn build_avs_provider(
     wallet: Option<IvyWallet>,
     keyfile_pw: Option<String>,
 ) -> Result<AvsProvider, IvyError> {
-    let chain = parse_chain(chain);
+    let chain = try_parse_chain(chain)?;
     let provider = connect_provider(&config.get_rpc_url(chain)?, wallet).await?;
     let avs_instance =
         if let Some(avs_id) = id { Some(AvsType::new(avs_id, chain)?) } else { None };
