@@ -3,7 +3,8 @@ use std::{error::Error, fmt::Display, ops::Deref};
 
 use super::strategy::{holesky::HOLESKY_LST_STRATEGIES, mainnet::MAINNET_LST_STRATEGIES, Strategy};
 
-/// A Quorum represents a set of strategies (ERC20 tokens) that are used to determine the operator's stake.
+/// A Quorum represents a set of strategies (ERC20 tokens) that are used to determine the operator's
+/// stake.
 #[derive(Clone, Debug)]
 pub struct Quorum(pub Vec<Strategy>);
 
@@ -34,7 +35,10 @@ impl Display for QuorumType {
 
 // TODO: Fix these clones
 impl Quorum {
-    pub fn try_from_type_and_network(quorum: QuorumType, chain: Chain) -> Result<Self, QuorumError> {
+    pub fn try_from_type_and_network(
+        quorum: QuorumType,
+        chain: Chain,
+    ) -> Result<Self, QuorumError> {
         let res = match chain {
             Chain::Mainnet => {
                 let strats = match quorum as usize {

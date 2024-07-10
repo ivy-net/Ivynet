@@ -13,7 +13,11 @@ use crate::{
     rpc_management::IvyProvider,
 };
 
-abigen!(DelegationManagerAbi, "abi/DelegationManager.json", event_derives(serde::Deserialize, serde::Serialize));
+abigen!(
+    DelegationManagerAbi,
+    "abi/DelegationManager.json",
+    event_derives(serde::Deserialize, serde::Serialize)
+);
 
 /// A delegation manager wrapper with constructor helpers and several utility methods. This struct
 /// implements the `Deref` trait to allow for easy access to the underlying handle to the

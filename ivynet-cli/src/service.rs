@@ -1,8 +1,14 @@
-use ivynet_core::grpc::ivynet_api::ivy_daemon_avs::avs_server::AvsServer;
-use ivynet_core::grpc::ivynet_api::ivy_daemon_operator::operator_server::OperatorServer;
-use ivynet_core::grpc::server::Endpoint;
 use ivynet_core::{
-    avs::build_avs_provider, config::IvyConfig, grpc::server::Server, wallet::IvyWallet,
+    avs::build_avs_provider,
+    config::IvyConfig,
+    grpc::{
+        ivynet_api::{
+            ivy_daemon_avs::avs_server::AvsServer,
+            ivy_daemon_operator::operator_server::OperatorServer,
+        },
+        server::{Endpoint, Server},
+    },
+    wallet::IvyWallet,
 };
 use std::sync::Arc;
 use tokio::sync::RwLock;

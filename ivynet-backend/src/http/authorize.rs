@@ -53,7 +53,10 @@ pub async fn authorize(
             let uuid = Uuid::new_v4().to_string();
             state.cache.set(&uuid, account.user_id, 15 * 60)?;
 
-            Ok((jar.add(Cookie::new("session_id", uuid.clone())), AuthorizationResponse { uuid }.into()))
+            Ok((
+                jar.add(Cookie::new("session_id", uuid.clone())),
+                AuthorizationResponse { uuid }.into(),
+            ))
         }
         Err(_) => Err(BackendError::BadCredentials),
     }
@@ -110,7 +113,11 @@ pub async fn set_password(
     Ok(true.into())
 }
 
-pub async fn verify(pool: &PgPool, cache: &memcache::Client, jar: &CookieJar) -> Result<Account, BackendError> {
+pub async fn verify(
+    pool: &PgPool,
+    cache: &memcache::Client,
+    jar: &CookieJar,
+) -> Result<Account, BackendError> {
     let session = jar.get("session_id").ok_or(BackendError::Unauthorized)?.value();
 
     let user_id = cache.get(session)?.ok_or(BackendError::Unauthorized)?;

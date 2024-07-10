@@ -70,7 +70,9 @@ impl Verification {
     }
 
     pub async fn delete(&self, pool: &PgPool) -> Result<(), BackendError> {
-        query!("DELETE FROM verification WHERE verification_id = $1", self.verification_id).execute(pool).await?;
+        query!("DELETE FROM verification WHERE verification_id = $1", self.verification_id)
+            .execute(pool)
+            .await?;
         Ok(())
     }
 }

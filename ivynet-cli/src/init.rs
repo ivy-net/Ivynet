@@ -13,7 +13,9 @@ pub fn initialize_ivynet() -> Result<(), IvyError> {
     println!("Performing ivynet intialization...");
     let setup_types = ["Interactive", "Empty"];
     let interactive = Select::new()
-        .with_prompt("Would you like to perform setup in interactive mode, or generate an empty config?")
+        .with_prompt(
+            "Would you like to perform setup in interactive mode, or generate an empty config?",
+        )
         .items(&setup_types)
         .interact()
         .unwrap();
@@ -48,15 +50,18 @@ fn set_config_metadata(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
     for field in fields_to_fill {
         match field {
             0 => {
-                let metadata_uri: String = Input::new().with_prompt("Enter the operator metadata URI").interact()?;
+                let metadata_uri: String =
+                    Input::new().with_prompt("Enter the operator metadata URI").interact()?;
                 metadata.metadata_uri = metadata_uri;
             }
             1 => {
-                let logo_uri: String = Input::new().with_prompt("Enter the operator logo URI").interact()?;
+                let logo_uri: String =
+                    Input::new().with_prompt("Enter the operator logo URI").interact()?;
                 metadata.logo_uri = logo_uri;
             }
             2 => {
-                let favicon_uri: String = Input::new().with_prompt("Enter the operator favicon URI").interact()?;
+                let favicon_uri: String =
+                    Input::new().with_prompt("Enter the operator favicon URI").interact()?;
                 metadata.favicon_uri = favicon_uri;
             }
             _ => unreachable!("Unknown metadata field reached"),
@@ -84,17 +89,24 @@ fn set_config_rpcs(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
     for res in rpcs_to_set {
         match res {
             0 => {
-                let new_rpc =
-                    Input::<String>::new().with_prompt("Enter your Mainnet RPC URL:").interact_text().unwrap();
+                let new_rpc = Input::<String>::new()
+                    .with_prompt("Enter your Mainnet RPC URL:")
+                    .interact_text()
+                    .unwrap();
                 config.mainnet_rpc_url = new_rpc;
             }
             1 => {
-                let new_rpc =
-                    Input::<String>::new().with_prompt("Enter your Holesky RPC URL:").interact_text().unwrap();
+                let new_rpc = Input::<String>::new()
+                    .with_prompt("Enter your Holesky RPC URL:")
+                    .interact_text()
+                    .unwrap();
                 config.holesky_rpc_url = new_rpc;
             }
             2 => {
-                let new_rpc = Input::<String>::new().with_prompt("Enter your Local RPC URL:").interact_text().unwrap();
+                let new_rpc = Input::<String>::new()
+                    .with_prompt("Enter your Local RPC URL:")
+                    .interact_text()
+                    .unwrap();
                 config.local_rpc_url = new_rpc;
             }
             _ => unreachable!("Unknown RPC key reached"),
@@ -107,26 +119,36 @@ fn set_config_rpcs(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
 fn set_config_keys(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
     let key_config_types = ["Import", "Create", "Skip"];
     let interactive = Select::new()
-        .with_prompt("Would you like to import a private key, create a new private key, or skip this step?")
+        .with_prompt(
+            "Would you like to import a private key, create a new private key, or skip this step?",
+        )
         .items(&key_config_types)
         .interact()
         .unwrap();
     match interactive {
         0 => {
-            let private_key: String = Password::new().with_prompt("Enter your ECDSA private key").interact()?;
-            let keyfile_name: String = Input::new().with_prompt("Enter a name for the keyfile").interact()?;
-            let mut pw: String = Password::new().with_prompt("Enter a password for keyfile encryption").interact()?;
-            let mut confirm_pw: String = Password::new().with_prompt("Confirm keyfile password").interact()?;
+            let private_key: String =
+                Password::new().with_prompt("Enter your ECDSA private key").interact()?;
+            let keyfile_name: String =
+                Input::new().with_prompt("Enter a name for the keyfile").interact()?;
+            let mut pw: String = Password::new()
+                .with_prompt("Enter a password for keyfile encryption")
+                .interact()?;
+            let mut confirm_pw: String =
+                Password::new().with_prompt("Confirm keyfile password").interact()?;
 
             let mut pw_confirmed = pw == confirm_pw;
             while !pw_confirmed {
                 println!("Password and confirmation do not match. Please retry.");
-                pw = Password::new().with_prompt("Enter a password for keyfile encryption").interact()?;
+                pw = Password::new()
+                    .with_prompt("Enter a password for keyfile encryption")
+                    .interact()?;
                 confirm_pw = Password::new().with_prompt("Confirm keyfile password").interact()?;
                 pw_confirmed = pw == confirm_pw;
             }
             let wallet = IvyWallet::from_private_key(private_key)?;
-            let (pub_key_path, prv_key_path) = wallet.encrypt_and_store(&config.get_path(), keyfile_name, pw)?;
+            let (pub_key_path, prv_key_path) =
+                wallet.encrypt_and_store(&config.get_path(), keyfile_name, pw)?;
             config.default_public_keyfile = pub_key_path;
             config.default_private_keyfile.clone_from(&prv_key_path);
         }
@@ -135,19 +157,26 @@ fn set_config_keys(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
             let addr = wallet.address();
             println!("Public Address: {:?}", addr);
 
-            let keyfile_name: String = Input::new().with_prompt("Enter a name for the keyfile").interact()?;
-            let mut pw: String = Password::new().with_prompt("Enter a password for keyfile encryption").interact()?;
-            let mut confirm_pw: String = Password::new().with_prompt("Confirm keyfile password").interact()?;
+            let keyfile_name: String =
+                Input::new().with_prompt("Enter a name for the keyfile").interact()?;
+            let mut pw: String = Password::new()
+                .with_prompt("Enter a password for keyfile encryption")
+                .interact()?;
+            let mut confirm_pw: String =
+                Password::new().with_prompt("Confirm keyfile password").interact()?;
 
             let mut pw_confirmed = pw == confirm_pw;
             while !pw_confirmed {
                 println!("Password and confirmation do not match. Please retry.");
-                pw = Password::new().with_prompt("Enter a password for keyfile encryption").interact()?;
+                pw = Password::new()
+                    .with_prompt("Enter a password for keyfile encryption")
+                    .interact()?;
                 confirm_pw = Password::new().with_prompt("Confirm keyfile password").interact()?;
                 pw_confirmed = pw == confirm_pw;
             }
 
-            let (pub_key_path, prv_key_path) = wallet.encrypt_and_store(&config.get_path(), keyfile_name, pw)?;
+            let (pub_key_path, prv_key_path) =
+                wallet.encrypt_and_store(&config.get_path(), keyfile_name, pw)?;
             config.default_public_keyfile = pub_key_path;
             config.default_private_keyfile.clone_from(&prv_key_path);
         }

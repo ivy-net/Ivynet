@@ -198,8 +198,8 @@ impl AvsProvider {
         // TODO: likely a function call in registry_coordinator
         // let status = DELEGATION_MANAGER.get_operator_status(self.client.address()).await?;
         // if status == 1 {
-        //     //Check which quorums they're already in and register for the others they're eligible for
-        // } else {
+        //     //Check which quorums they're already in and register for the others they're eligible
+        // for } else {
         //     //Register operator for all quorums they're eligible for
         // }
 

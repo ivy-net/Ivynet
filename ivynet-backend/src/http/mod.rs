@@ -59,7 +59,9 @@ pub async fn serve(
             org_verification_template,
             user_verification_template,
         })
-        .merge(SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", apidoc::ApiDoc::openapi()));
+        .merge(
+            SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", apidoc::ApiDoc::openapi()),
+        );
 
     let listener = tokio::net::TcpListener::bind(&format!("0.0.0.0:{port}")).await?;
     axum::serve(listener, app).await?;

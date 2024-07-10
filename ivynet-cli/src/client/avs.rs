@@ -3,8 +3,8 @@ use ivynet_core::{
     grpc::{
         ivynet_api::{
             ivy_daemon_avs::{
-                avs_client::AvsClient as AvsClientRaw, AvsInfoRequest, AvsInfoResponse, OptinRequest, OptoutRequest,
-                SetAvsRequest, StartRequest, StopRequest,
+                avs_client::AvsClient as AvsClientRaw, AvsInfoRequest, AvsInfoResponse,
+                OptinRequest, OptoutRequest, SetAvsRequest, StartRequest, StopRequest,
             },
             ivy_daemon_types::RpcResponse,
         },
@@ -53,7 +53,11 @@ impl AvsClient {
         Ok(response)
     }
 
-    pub async fn set_avs(&mut self, avs: String, chain: String) -> Result<Response<RpcResponse>, IvyError> {
+    pub async fn set_avs(
+        &mut self,
+        avs: String,
+        chain: String,
+    ) -> Result<Response<RpcResponse>, IvyError> {
         let request = Request::new(SetAvsRequest { avs, chain });
         let response = self.0.set_avs(request).await?;
         Ok(response)

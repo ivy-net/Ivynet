@@ -85,8 +85,8 @@ pub async fn parse_operator_subcommands(
             //     // metadata
             //     return Err(Error::MetadataUriNotFoundError);
             // }
-            // debug!("Operator register: {delegation_approver:?} | {staker_opt_out_window_blocks} | {metadata_uri}");
-            // manager
+            // debug!("Operator register: {delegation_approver:?} | {staker_opt_out_window_blocks} |
+            // {metadata_uri}"); manager
             //     .register(
             //         earnings_receiver,
             //         delegation_approver,

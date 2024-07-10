@@ -22,7 +22,10 @@ pub enum AvsCommands {
     },
     #[command(name = "stop", about = "stop running the active AVS docker container")]
     Stop {},
-    #[command(name = "setavs", about = "unload the current AVS instance and load in a new instance.")]
+    #[command(
+        name = "setavs",
+        about = "unload the current AVS instance and load in a new instance."
+    )]
     SetAvs { avs: String, chain: String },
     #[command(
         name = "check-stake-percentage",
@@ -44,7 +47,9 @@ impl Display for AvsCommands {
                 write!(f, "check stake percentage for {} on {} network", address, network)?;
                 todo!("Use {}", avs)
             }
-            AvsCommands::SetAvs { avs, chain } => write!(f, "set AVS to {} on chain {}", avs, chain),
+            AvsCommands::SetAvs { avs, chain } => {
+                write!(f, "set AVS to {} on chain {}", avs, chain)
+            }
         }
     }
 }
