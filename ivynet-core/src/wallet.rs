@@ -208,7 +208,4 @@ mod test {
         let wallet2 = IvyWallet::from_keystore(prv_key_path, "ThisIsATempKey").unwrap();
         assert_eq!(address, wallet2.address());
     }
-
-    #[test]
-    fn test_wallet_to_
 }
