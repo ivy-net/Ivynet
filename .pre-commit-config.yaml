@@ -8,6 +8,7 @@ repos:
         args: ['--branch=dev --branch=master']
     -   id: trailing-whitespace
     -   id: end-of-file-fixer
+        exclude: ^docker/
     -   id: mixed-line-ending
         args: ['--fix=lf']
     -   id: check-yaml
