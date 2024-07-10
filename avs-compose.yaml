@@ -129,4 +129,3 @@ services:
         condition: service_started
       feed-layer:
         condition: service_completed_successfully
-
