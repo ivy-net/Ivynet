@@ -8,7 +8,7 @@ use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 #[allow(unused_imports)]
 use tracing::{debug, error, warn};
 
-use ivynet_cli::{avs, config, error::Error, init::initialize_ivynet, operator, service, staker};
+use cli::{avs, config, error::Error, init::initialize_ivynet, operator, service, staker};
 
 #[derive(Parser, Debug)]
 #[command(name = "ivy", version, about = "The command line interface for ivynet")]
