@@ -77,10 +77,11 @@ build {
       "sudo chmod 777 ${var.install_path}",
       "cd ${var.install_path}",
       "git clone git@github.com:ivy-net/ivynet.git -v",
-      "git clone https://github.com/Layr-Labs/eigenda.git",
+//      "git clone https://github.com/Layr-Labs/eigenda.git", NOT SURE WE ACTUALLY NEED IT
       "git clone https://github.com/Layr-Labs/eigenda-operator-setup.git",
       "cd eigenda-operator-setup",
-      "./srs_setup.sh",
+// TO DO REPLACE WITH MY METHOD OF DOWNLOADING g1, g2
+//      "./srs_setup.sh",
       "curl -sSfL https://raw.githubusercontent.com/layr-labs/eigenlayer-cli/master/scripts/install.sh | sudo sh -s -- -b ${var.install_path}/bin",
     ]
   }
