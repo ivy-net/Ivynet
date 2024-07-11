@@ -198,7 +198,7 @@ mod test {
         let dir = tempdir().unwrap();
         let wallet = IvyWallet::new();
         let address = wallet.address();
-        let (pub_key_path, prv_key_path) = wallet
+        let (_pub_key_path, prv_key_path) = wallet
             .encrypt_and_store(dir.as_ref(), "temp_key".to_string(), "ThisIsATempKey".to_string())
             .unwrap();
         let wallet2 = IvyWallet::from_keystore(prv_key_path, "ThisIsATempKey").unwrap();

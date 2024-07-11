@@ -1,7 +1,5 @@
 use clap::{Parser, Subcommand};
-use ivynet_core::{
-    avs::commands::AvsCommands, config::IvyConfig, error::IvyError, grpc::client::Uri,
-};
+use ivynet_core::{avs::commands::AvsCommands, config::IvyConfig, grpc::client::Uri};
 use std::str::FromStr as _;
 use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
@@ -27,6 +25,10 @@ struct Args {
     /// IvyNets server certificate
     #[arg(long, env = "SERVER_CA")]
     pub server_ca: Option<String>,
+
+    /// Decide the level of verbosity for the logs
+    #[arg(long, short, default_value = "debug")]
+    pub logs: String,
 }
 
 #[derive(Subcommand, Debug)]
@@ -69,34 +71,72 @@ enum Commands {
 async fn main() -> Result<(), Error> {
     let args = Args::parse();
 
-    // Set up tracing
-    let filter = EnvFilter::builder().parse("ivynet_cli=debug,ivynet_core=debug,tonic=debug")?;
-    tracing_subscriber::registry().with(fmt::layer()).with(filter).init();
+    setup_tracing(&args.logs)?;
 
-    let config = IvyConfig::load_from_default_path().map_err(IvyError::from)?;
     match args.cmd {
         Commands::Init => initialize_ivynet()?,
         Commands::Config { subcmd } => {
             config::parse_config_subcommands(
                 subcmd,
-                config,
+                check_for_config(),
                 args.server_url,
                 args.server_ca.as_ref(),
             )
             .await?;
         }
         Commands::Operator { subcmd } => {
-            operator::parse_operator_subcommands(subcmd, &config).await?
+            operator::parse_operator_subcommands(subcmd, &check_for_config()).await?
         }
-        Commands::Staker { subcmd } => staker::parse_staker_subcommands(subcmd, &config).await?,
-        Commands::Avs { subcmd } => avs::parse_avs_subcommands(subcmd, &config).await?,
+        Commands::Staker { subcmd } => {
+            staker::parse_staker_subcommands(subcmd, &check_for_config()).await?
+        }
+        Commands::Avs { subcmd } => avs::parse_avs_subcommands(subcmd, &check_for_config()).await?,
         Commands::Serve { avs, chain } => {
             let keyfile_pw = dialoguer::Password::new()
                 .with_prompt("Input the password for your stored keyfile")
                 .interact()?;
-            service::serve(avs, chain, &config, &keyfile_pw).await?
+            service::serve(avs, chain, &check_for_config(), &keyfile_pw).await?
         }
     }
 
     Ok(())
+}
+
+// Setup tracing
+fn setup_tracing(logs: &str) -> Result<(), Error> {
+    let mut filter =
+        EnvFilter::builder().parse("ivynet_cli=debug,ivynet_core=debug,tonic=debug")?;
+
+    match logs {
+        "trace" => {
+            filter =
+                EnvFilter::builder().parse("ivynet_cli=trace,ivynet_core=trace,tonic=trace")?;
+        }
+        "debug" => {
+            filter =
+                EnvFilter::builder().parse("ivynet_cli=debug,ivynet_core=debug,tonic=debug")?;
+        }
+        "info" => {
+            filter = EnvFilter::builder().parse("ivynet_cli=info,ivynet_core=info,tonic=info")?;
+        }
+        "warn" => {
+            filter = EnvFilter::builder().parse("ivynet_cli=warn,ivynet_core=warn,tonic=warn")?;
+        }
+        "error" => {
+            filter =
+                EnvFilter::builder().parse("ivynet_cli=error,ivynet_core=error,tonic=error")?;
+        }
+        _ => {
+            println!("Default log level: DEBUG");
+        }
+    }
+    tracing_subscriber::registry().with(fmt::layer()).with(filter).init();
+
+    Ok(())
+}
+
+fn check_for_config() -> IvyConfig {
+    IvyConfig::load_from_default_path().unwrap_or_else(|_| {
+        panic!("No config file found. Run 'ivynet init' to start initialization.")
+    })
 }

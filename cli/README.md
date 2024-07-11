@@ -1,29 +1,29 @@
-Ivynet CLI Documentation
+# Ivynet CLI Documentation
 
 The following is documentation of the various commands that can be called from the Ivynet CLI:
 
-# Init
+## Init
 
 Initialize the ivyconfig.toml file and perform first-time setup of the ivynet-cli.
 
 Usage:
 `ivynet-cli init`
 
-# Config
+## Config
 
 Manage the ivyconfig.toml file, which is used for base configuraction for the CLI and downstream AVS instances. This allows for piecemeal modification of the setup step done on init.
 
 Usage:
 `ivynet-cli config <OP>`
 
-# Operator
+## Operator
 
 Manage the eigenlayer operator. This namespace includes both query actions for operator status of various accounts, as well as management of the operator status of the account's Ethereum address. For write actions, including register, this namespace will use the ECDSA keypair stored in the ivyconfig.toml file to sign transactions.
 
 Usage:
 `ivynet-cli operator <OP> <CHAIN> <OTHER_FIELDS>`
 
-# Avs
+## Avs
 
 Setup, run, and manage AVS instances.
 
@@ -31,6 +31,7 @@ Usage:
 `ivynet-cli avs <OP> <AVS> <CHAIN>`
 
 Supported operations:
+
 - setup: Run the setup script for the specified AVS. This includes downloading files necessary for the AVS to run, as well as setting up the AVS environment variables.
 - optin: Optin to the specified AVS. This will use the stored keypair from the ivyconfig.toml file to optin to the AVS.
 - optout: Optout of the specified AVS. This will use the stored keypair from the ivyconfig.toml file to optout of the AVS. UNIMPLEMENTED
@@ -38,10 +39,12 @@ Supported operations:
 - stop: Stop the specified AVS. This will stop the AVS and close its docker container. UNIMPLEMENTED
 
 Supported AVSes:
+
 - eigenda
 - altlayer
 
 Supported chains:
+
 - mainnet
 - holesky
 
@@ -51,17 +54,17 @@ Registration steps:
 
 ## Quickstart
 
-### Setup and Confgiuration:
+### Setup and Confgiuration
 
 The following assumes that the ivynet-cli has been installed and is available in the PATH, and that the user's ECDSA account has already registered as an operator on the Eigenlayer network.
 
-#### Initialize Ivynet:
+#### Initialize Ivynet
 
 `ivynet-cli init`
 
 Initialize the Ivnet directory and configuration file. The configuration file can be found at `${HOME}/.ivynet/ivyconfig.toml` and can be configured manually or through `ivynet init` interactive mode. Sensible defaults are provided for newly generated ivyconfig.toml files created via 'empty.'
 
-#### Configure a private key:
+#### Configure a private key
 
 If not already done through interactive mode in the `init` command, configure the private key for the ECDSA account that will be used to sign transactions.
 
@@ -83,7 +86,7 @@ Where `[KEYNAME]` and `[PASSWORD]` behave as above, and `[STORE]` is a boolean f
 Example:
 `ivynet-cli config create-key true mykey mypassword`
 
-#### Configure RPC endpoints:
+#### Configure RPC endpoints
 
 If not already done through interactive mode in the `init` command, configure the RPC endpoints for supported networks (currently Mainnet and Holesky.) This can be done by editing the `mainnet_rpc_url` and `holesky_rpc_url` fields in the ivyconfig.toml file, or by running the following commands:
 
@@ -94,7 +97,7 @@ Example:
 
 valid CHAIN values are `mainnet` and `holesky`.
 
-#### Setup the AVS type you wish to run:
+#### Setup the AVS type you wish to run
 
 `ivynet-cli avs setup <AVS> <CHAIN>`
 
@@ -103,22 +106,22 @@ This will download the necessary files and set up the environment variables for 
 Example:
 `ivynet-cli avs setup eigenda holesky`
 
-#### Start the Ivynet Daemon:
+#### Start the Ivynet Daemon
 
 `ivynet-cli serve [--port <PORT>]`
-
+added all
 This will start the ivynet daemon on the specified port, or on port 55501 if no port is specified. The daemon will run in the background.
 
 Example:
 
 `ivynet-cli serve --port 55501`
 
-### Interacting with the Ivy Daemon:
-
+### Interacting with the Ivy Daemon
 
 The Ivynet service exposes a GRPC interface for interacting with the daemon, which can be used either via the Ivynet CLI or through GRPC actions directly. Examples are presented using [GRPCurl](https://github.com/fullstorydev/grpcurl)
 
 #### The Avs Namespace
+
 The following GRPC actions are supported:
 
 #### Info
@@ -130,11 +133,13 @@ Example call:
 `grpcurl -plaintext localhost:55501 ivy_daemon_avs.Avs/AvsInfo`
 
 Returns the follwoing fields:
+
 - active: Whether the AVS is currently active
 - avsType: The type of AVS that is currently active
 - chain: The chain that the AVS is currently active on
 
 Example return:
+
 ```json
 {
   "running": true,
@@ -207,7 +212,6 @@ CLI:
 
 Example:
 `ivynet-cli avs select eigenda holesky`
-
 
 #### The Operator Namespace
 
