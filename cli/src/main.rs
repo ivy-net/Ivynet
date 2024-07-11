@@ -92,10 +92,11 @@ async fn main() -> Result<(), Error> {
         }
         Commands::Avs { subcmd } => avs::parse_avs_subcommands(subcmd, &check_for_config()).await?,
         Commands::Serve { avs, chain } => {
+            let config = check_for_config();
             let keyfile_pw = dialoguer::Password::new()
                 .with_prompt("Input the password for your stored keyfile")
                 .interact()?;
-            service::serve(avs, chain, &check_for_config(), &keyfile_pw).await?
+            service::serve(avs, chain, &config, &keyfile_pw).await?
         }
     }
 
