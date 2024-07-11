@@ -6,7 +6,7 @@ on:
     branches:
       - dev
     paths:
-      - ivynet-backend
+      - backend
 
 jobs:
   build:
