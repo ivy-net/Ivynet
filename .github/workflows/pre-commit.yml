@@ -1,7 +1,11 @@
 ---
 name: pre-commit
 
-on: [push]
+on:
+  push:
+    branches-ignore:
+      - dev
+      - master
 
 jobs:
   pre-commit:
