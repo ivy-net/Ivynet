@@ -15,17 +15,23 @@ pub enum Source {
 #[derive(Debug, thiserror::Error)]
 pub enum ClientError {
     #[error(transparent)]
-    SockerError(#[from] std::io::Error),
+    SocketError(#[from] std::io::Error),
 }
 
-pub async fn create_channel(source: Source, tls_ca: Option<&String>) -> Result<Channel, ClientError> {
+pub async fn create_channel(
+    source: Source,
+    tls_ca: Option<&String>,
+) -> Result<Channel, ClientError> {
     debug!("Initializing GRPC channel: {:?}", source);
     let endpoint = match source {
-        Source::Uri(ref uri) => Endpoint::from_shared(uri.to_string()).expect("invalid backend URI"),
+        Source::Uri(ref uri) => {
+            Endpoint::from_shared(uri.to_string()).expect("invalid backend URI")
+        }
         Source::Path(ref path) =>
         {
             #[allow(clippy::expect_fun_call)]
-            Endpoint::try_from("http://[::]:50050").expect(&format!("unable to open socket at {path}"))
+            Endpoint::try_from("http://[::]:50050")
+                .expect(&format!("unable to open socket at {path}"))
         }
     };
     let endpoint = if let Some(ca) = tls_ca {

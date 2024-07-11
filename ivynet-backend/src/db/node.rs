@@ -25,7 +25,10 @@ pub struct DbNode {
 }
 
 impl DbNode {
-    pub async fn get_all_for_account(pool: &PgPool, account: &Account) -> Result<Vec<Node>, BackendError> {
+    pub async fn get_all_for_account(
+        pool: &PgPool,
+        account: &Account,
+    ) -> Result<Vec<Node>, BackendError> {
         let nodes = sqlx::query_as!(
             DbNode,
             "SELECT node_id, organization_id, created_at, updated_at FROM node WHERE organization_id = $1",
@@ -49,7 +52,11 @@ impl DbNode {
         Ok(node.into())
     }
 
-    pub async fn create(pool: &PgPool, account: &Account, node_id: &Address) -> Result<(), BackendError> {
+    pub async fn create(
+        pool: &PgPool,
+        account: &Account,
+        node_id: &Address,
+    ) -> Result<(), BackendError> {
         let now: NaiveDateTime = Utc::now().naive_utc();
 
         query!(

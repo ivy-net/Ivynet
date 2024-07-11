@@ -1,7 +1,6 @@
 use ethers::{
     contract::ContractError,
-    middleware::{signer::SignerMiddlewareError, SignerMiddleware},
-    providers::{Http, JsonRpcError, MiddlewareError as _, Provider},
+    providers::{JsonRpcError, MiddlewareError as _},
     signers::WalletError,
     types::{Bytes, Chain, TryFromPrimitiveError},
     utils::hex::FromHexError,
@@ -9,30 +8,25 @@ use ethers::{
 use indicatif::style::TemplateError;
 use thiserror::Error;
 use tonic::Status;
-use tracing::subscriber::SetGlobalDefaultError;
 use zip::result::ZipError;
 
-use crate::{avs::eigenda::EigenDAError, eigen::quorum::QuorumError, wallet::IvyWallet};
+use crate::{avs::eigenda::EigenDAError, eigen::quorum::QuorumError, rpc_management::IvyProvider};
 
 #[derive(Debug, Error)]
 pub enum IvyError {
+    // ISSUE: Consider deprecating in favor of above.
     #[error(transparent)]
-    Io(#[from] std::io::Error),
-
-    #[error(transparent)]
-    GlobalTracingSetError(#[from] SetGlobalDefaultError),
+    StdIo(#[from] std::io::Error),
 
     #[error(transparent)]
     WalletError(#[from] WalletError),
 
+    // TODO: Attempt to deprecate, see private_key_string to bytes methods.
     #[error(transparent)]
     HexError(#[from] FromHexError),
 
     #[error(transparent)]
     UrlParseError(#[from] url::ParseError),
-
-    #[error(transparent)]
-    ProviderError(#[from] SignerMiddlewareError<Provider<Http>, IvyWallet>),
 
     #[error(transparent)]
     DialogerError(#[from] dialoguer::Error),
@@ -58,11 +52,34 @@ pub enum IvyError {
     #[error(transparent)]
     GRPCError(#[from] Status),
 
+    #[error(transparent)]
+    SetupError(#[from] SetupError),
+
+    #[error(transparent)]
+    IoError(#[from] crate::io::IoError),
+
+    #[error(transparent)]
+    ConfigError(#[from] crate::config::ConfigError),
+
+    #[error(
+        "AVS {0} on chain {1} is currently running. Stop the AVS before using this operation."
+    )]
+    AvsRunningError(String, Chain),
+
+    #[error("AVS already started")]
+    AvsNotLoadedError,
+
+    #[error("Chain not supported {0}")]
+    ChainNotSupportedError(Chain),
+
     #[error("Command failed with code:")]
     CommandError(String),
 
     #[error("GRPC server error")]
     GRPCServerError,
+
+    #[error("GRPC client error")]
+    GRPCClientError,
 
     #[error("Folder inaccesible")]
     DirInaccessible,
@@ -71,7 +88,10 @@ pub enum IvyError {
     UnknownContractError,
 
     #[error("Avs parse error: ensure the name of the requested AVS is valid")]
-    AvsParseError,
+    InvalidAvsType(String),
+
+    #[error("No AVS is initialized")]
+    AvsNotInitializedError,
 
     #[error("Custom contract error")]
     ContractError(Bytes),
@@ -94,28 +114,22 @@ pub enum IvyError {
     #[error("IvyWallet identity key not found")]
     IdentityKeyError,
 
+    #[error("No keyfile password found")]
+    KeyfilePasswordError,
+
     #[error("Unknown network")]
     UnknownNetwork,
 
     #[error("Unimplemented")]
     Unimplemented,
 
+    #[error("Could not parse chain with name {0}")]
+    ChainParseError(String),
+
     // TODO: The place where this is used should probably implement from for the parse() method
     // instead.
     #[error("Invalid address")]
     InvalidAddress,
-
-    #[error(transparent)]
-    SetupError(#[from] SetupError),
-
-    #[error(transparent)]
-    SerdeJsonError(#[from] serde_json::Error),
-
-    #[error(transparent)]
-    TomlSerError(#[from] toml::ser::Error),
-
-    #[error(transparent)]
-    TomlDeError(#[from] toml::de::Error),
 }
 
 #[derive(Debug, Error)]
@@ -124,8 +138,8 @@ pub enum SetupError {
     NoEnvExample,
 }
 
-impl From<ContractError<SignerMiddleware<Provider<Http>, IvyWallet>>> for IvyError {
-    fn from(value: ContractError<SignerMiddleware<Provider<Http>, IvyWallet>>) -> Self {
+impl From<ContractError<IvyProvider>> for IvyError {
+    fn from(value: ContractError<IvyProvider>) -> Self {
         match value {
             ContractError::Revert(bytes) => IvyError::ContractError(bytes),
             ContractError::MiddlewareError { e } => {
@@ -144,5 +158,11 @@ impl From<ContractError<SignerMiddleware<Provider<Http>, IvyWallet>>> for IvyErr
             }
             _ => IvyError::UnknownContractError,
         }
+    }
+}
+
+impl From<IvyError> for Status {
+    fn from(e: IvyError) -> Self {
+        Self::from_error(Box::new(e))
     }
 }

@@ -16,7 +16,11 @@ pub struct Organization {
 }
 
 impl Organization {
-    pub async fn new(pool: &PgPool, name: &str, verified: bool) -> Result<Organization, BackendError> {
+    pub async fn new(
+        pool: &PgPool,
+        name: &str,
+        verified: bool,
+    ) -> Result<Organization, BackendError> {
         let now: NaiveDateTime = Utc::now().naive_utc();
         let org = sqlx::query_as!(
             Organization,
@@ -45,24 +49,38 @@ impl Organization {
         Ok(org)
     }
 
-    pub async fn attach_admin(&self, pool: &PgPool, email: &str, password: &str) -> Result<Account, BackendError> {
+    pub async fn attach_admin(
+        &self,
+        pool: &PgPool,
+        email: &str,
+        password: &str,
+    ) -> Result<Account, BackendError> {
         Account::new(pool, self, email, password, Role::Admin).await
     }
 
-    pub async fn invite(&self, pool: &PgPool, email: &str, role: Role) -> Result<Verification, BackendError> {
+    pub async fn invite(
+        &self,
+        pool: &PgPool,
+        email: &str,
+        role: Role,
+    ) -> Result<Verification, BackendError> {
         let account = Account::new(pool, self, email, "", role).await?;
 
         let verification =
-            Verification::new(pool, super::verification::VerificationType::User, account.user_id).await?;
+            Verification::new(pool, super::verification::VerificationType::User, account.user_id)
+                .await?;
 
         Ok(verification)
     }
 
     pub async fn verify(&mut self, pool: &PgPool) -> Result<(), BackendError> {
         self.verified = true;
-        query!("UPDATE organization SET verified = true WHERE organization_id = $1", self.organization_id)
-            .execute(pool)
-            .await?;
+        query!(
+            "UPDATE organization SET verified = true WHERE organization_id = $1",
+            self.organization_id
+        )
+        .execute(pool)
+        .await?;
         Ok(())
     }
 

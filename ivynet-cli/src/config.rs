@@ -2,6 +2,7 @@ use clap::Parser;
 use dialoguer::{Input, Password};
 use ivynet_core::{
     config::{self, IvyConfig},
+    error::IvyError,
     ethers::types::Chain,
     grpc::{
         backend::backend_client::BackendClient,
@@ -9,7 +10,7 @@ use ivynet_core::{
         messages::RegistrationCredentials,
     },
     metadata::Metadata,
-    utils::parse_chain,
+    utils::try_parse_chain,
     wallet::IvyWallet,
 };
 
@@ -32,7 +33,10 @@ pub enum ConfigCommands {
         keyname: Option<String>,
         password: Option<String>,
     },
-    #[command(name = "get-default-public", about = "Get the current default saved keypair's Ethereum address")]
+    #[command(
+        name = "get-default-public",
+        about = "Get the current default saved keypair's Ethereum address"
+    )]
     GetDefaultEthAddress,
     #[command(name = "get-default-private", about = "Get the current default saved private key")]
     GetDefaultPrivateKey,
@@ -51,7 +55,11 @@ pub enum ConfigCommands {
         about = "Get the number of CPU cores, memory, and free disk space on the current machine"
     )]
     #[command(name = "set-metadata", about = "Set metadata for EigenLayer Operator")]
-    SetMetadata { metadata_uri: Option<String>, logo_uri: Option<String>, favicon_uri: Option<String> },
+    SetMetadata {
+        metadata_uri: Option<String>,
+        logo_uri: Option<String>,
+        favicon_uri: Option<String>,
+    },
     #[command(name = "get-metadata", about = "Get local metadata")]
     GetMetadata,
     #[command(name = "get-config", about = "Get all config data")]
@@ -73,7 +81,7 @@ pub enum ConfigCommands {
 
 pub async fn parse_config_subcommands(
     subcmd: ConfigCommands,
-    config: &mut IvyConfig,
+    mut config: IvyConfig,
     server_url: Uri,
     server_ca: Option<&String>,
 ) -> Result<(), Error> {
@@ -81,10 +89,11 @@ pub async fn parse_config_subcommands(
         ConfigCommands::ImportPrivateKey { private_key, keyname, password } => {
             let wallet = IvyWallet::from_private_key(private_key)?;
             let (keyname, pass) = get_credentials(keyname, password);
-            let (pub_key_path, prv_key_path) = wallet.encrypt_and_store(&config.get_path(), keyname, pass)?;
+            let (pub_key_path, prv_key_path) =
+                wallet.encrypt_and_store(&config.get_path(), keyname, pass)?;
             config.default_private_keyfile = prv_key_path;
             config.default_public_keyfile = pub_key_path;
-            config.store()?;
+            config.store().map_err(IvyError::from)?;
         }
         ConfigCommands::CreatePrivateKey { store, keyname, password } => {
             let wallet = IvyWallet::new();
@@ -94,16 +103,17 @@ pub async fn parse_config_subcommands(
             println!("Public Address: {:?}", addr);
             if store {
                 let (keyname, pass) = get_credentials(keyname, password);
-                let (pub_key_path, prv_key_path) = wallet.encrypt_and_store(&config.get_path(), keyname, pass)?;
+                let (pub_key_path, prv_key_path) =
+                    wallet.encrypt_and_store(&config.get_path(), keyname, pass)?;
                 config.default_private_keyfile = prv_key_path;
                 config.default_public_keyfile = pub_key_path;
-                config.store()?;
+                config.store().map_err(IvyError::from)?;
             }
         }
         ConfigCommands::SetRpc { chain, rpc_url } => {
-            let chain = parse_chain(&chain);
+            let chain = try_parse_chain(&chain)?;
             config.set_rpc_url(chain, &rpc_url)?;
-            config.store()?;
+            config.store().map_err(IvyError::from)?;
         }
         ConfigCommands::GetRpc { chain } => {
             println!(
@@ -112,11 +122,15 @@ pub async fn parse_config_subcommands(
             );
         }
         ConfigCommands::GetDefaultEthAddress => {
-            println!("Public Key: {:?}", IvyWallet::address_from_file(config.default_public_keyfile.clone())?);
+            println!(
+                "Public Key: {:?}",
+                IvyWallet::address_from_file(config.default_public_keyfile.clone())?
+            );
         }
         ConfigCommands::GetDefaultPrivateKey => {
-            let pass = Password::new().with_prompt("Enter a password to the private key").interact()?;
-            let wallet = IvyWallet::from_keystore(config.default_private_keyfile.clone(), pass)?;
+            let pass =
+                Password::new().with_prompt("Enter a password to the private key").interact()?;
+            let wallet = IvyWallet::from_keystore(config.default_private_keyfile.clone(), &pass)?;
             println!("Private key: {:?}", wallet.to_private_key());
         }
         ConfigCommands::SetMetadata { metadata_uri, logo_uri, favicon_uri } => {
@@ -143,9 +157,10 @@ pub async fn parse_config_subcommands(
             println!(" --------------------------- ");
         }
         ConfigCommands::Register { email, password } => {
-            let config = IvyConfig::load_from_default_path()?;
+            let config = IvyConfig::load_from_default_path().map_err(IvyError::from)?;
             let public_key = config.identity_wallet()?.address();
-            let mut backend = BackendClient::new(create_channel(Source::Uri(server_url), server_ca).await?);
+            let mut backend =
+                BackendClient::new(create_channel(Source::Uri(server_url), server_ca).await?);
             backend
                 .register(Request::new(RegistrationCredentials {
                     email,
@@ -162,15 +177,22 @@ pub async fn parse_config_subcommands(
 fn get_credentials(keyname: Option<String>, password: Option<String>) -> (String, String) {
     match (keyname, password) {
         (None, None) => (
-            Input::new().with_prompt("Enter a name for the key").interact_text().expect("No keyname provided"),
+            Input::new()
+                .with_prompt("Enter a name for the key")
+                .interact_text()
+                .expect("No keyname provided"),
             Password::new()
                 .with_prompt("Enter a password to the private key")
                 .interact()
                 .expect("No password provided"),
         ),
-        (None, Some(pass)) => {
-            (Input::new().with_prompt("Enter a name for the key").interact_text().expect("No keyname provided"), pass)
-        }
+        (None, Some(pass)) => (
+            Input::new()
+                .with_prompt("Enter a name for the key")
+                .interact_text()
+                .expect("No keyname provided"),
+            pass,
+        ),
         (Some(keyname), None) => (
             keyname,
             Password::new()
@@ -206,15 +228,16 @@ mod tests {
     async fn test_import_key() {
         let test_dir = "test_import_key";
         build_test_dir(test_dir, |test_path| async move {
-            let mut config = IvyConfig::new_at_path(test_path.clone());
+            let config = IvyConfig::new_at_path(test_path.clone());
 
             let result = parse_config_subcommands(
                 ConfigCommands::ImportPrivateKey {
-                    private_key: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef".to_string(),
+                    private_key: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+                        .to_string(),
                     keyname: Some("testkey".to_string()),
                     password: Some("password".to_string()),
                 },
-                &mut config,
+                config,
                 "http://localhost:50051".parse().unwrap(),
                 None,
             )
@@ -225,17 +248,23 @@ mod tests {
             assert!(test_path.join("testkey.json").exists());
             assert!(test_path.join("testkey.txt").exists());
 
-            let config = IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
+            let config =
+                IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
             println!("{config:?}",);
 
             // Read and parse the TOML file
-            let toml_content =
-                fs::read_to_string(test_path.join("ivy-config.toml")).await.expect("Failed to read TOML file");
-            let toml_data: toml::Value = toml::from_str(&toml_content).expect("Failed to parse TOML");
+            let toml_content = fs::read_to_string(test_path.join("ivy-config.toml"))
+                .await
+                .expect("Failed to read TOML file");
+            let toml_data: toml::Value =
+                toml::from_str(&toml_content).expect("Failed to parse TOML");
 
             // Perform assertions on TOML keys and values
             let private_keypath = format!("{}/testkey.json", test_path.to_str().unwrap());
-            assert_eq!(toml_data["default_private_keyfile"].as_str(), Some(private_keypath.as_str()));
+            assert_eq!(
+                toml_data["default_private_keyfile"].as_str(),
+                Some(private_keypath.as_str())
+            );
 
             let public_keypath = format!("{}/testkey.txt", test_path.to_str().unwrap());
             assert_eq!(toml_data["default_public_keyfile"].as_str(), Some(public_keypath.as_str()));
@@ -247,7 +276,7 @@ mod tests {
     async fn test_create_key() {
         let test_dir = "test_create_key";
         build_test_dir(test_dir, |test_path| async move {
-            let mut config = IvyConfig::new_at_path(test_path.clone());
+            let config = IvyConfig::new_at_path(test_path.clone());
 
             let result = parse_config_subcommands(
                 ConfigCommands::CreatePrivateKey {
@@ -255,7 +284,7 @@ mod tests {
                     keyname: Some("testkey".to_string()),
                     password: Some("password".to_string()),
                 },
-                &mut config,
+                config,
                 "http://localhost:50051".parse().unwrap(),
                 None,
             )
@@ -266,17 +295,23 @@ mod tests {
             assert!(test_path.join("testkey.json").exists());
             assert!(test_path.join("testkey.txt").exists());
 
-            let config = IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
+            let config =
+                IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
             println!("{config:?}",);
 
             // Read and parse the TOML file
-            let toml_content =
-                fs::read_to_string(test_path.join("ivy-config.toml")).await.expect("Failed to read TOML file");
-            let toml_data: toml::Value = toml::from_str(&toml_content).expect("Failed to parse TOML");
+            let toml_content = fs::read_to_string(test_path.join("ivy-config.toml"))
+                .await
+                .expect("Failed to read TOML file");
+            let toml_data: toml::Value =
+                toml::from_str(&toml_content).expect("Failed to parse TOML");
 
             // Perform assertions on TOML keys and values
             let private_keypath = format!("{}/testkey.json", test_path.to_str().unwrap());
-            assert_eq!(toml_data["default_private_keyfile"].as_str(), Some(private_keypath.as_str()));
+            assert_eq!(
+                toml_data["default_private_keyfile"].as_str(),
+                Some(private_keypath.as_str())
+            );
 
             let public_keypath = format!("{}/testkey.txt", test_path.to_str().unwrap());
             assert_eq!(toml_data["default_public_keyfile"].as_str(), Some(public_keypath.as_str()));
@@ -288,11 +323,14 @@ mod tests {
     async fn test_rpc_functionality() {
         let test_dir = "test_rpc_functionality";
         build_test_dir(test_dir, |test_path| async move {
-            let mut config = IvyConfig::new_at_path(test_path.clone());
+            let config = IvyConfig::new_at_path(test_path.clone());
 
             let result = parse_config_subcommands(
-                ConfigCommands::SetRpc { chain: "mainnet".to_string(), rpc_url: "http://localhost:8545".to_string() },
-                &mut config,
+                ConfigCommands::SetRpc {
+                    chain: "mainnet".to_string(),
+                    rpc_url: "http://localhost:8545".to_string(),
+                },
+                config,
                 "http://localhost:50051".parse().unwrap(),
                 None,
             )
@@ -301,12 +339,13 @@ mod tests {
             println!("{result:?}",);
             assert!(result.is_ok());
 
-            let mut config = IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
+            let config =
+                IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
             println!("{config:?}",);
 
             let result = parse_config_subcommands(
                 ConfigCommands::GetRpc { chain: "mainnet".to_string() },
-                &mut config,
+                config,
                 "http://localhost:50051".parse().unwrap(),
                 None,
             )

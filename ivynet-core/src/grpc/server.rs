@@ -1,5 +1,7 @@
+use core::fmt;
 use std::{
     convert::Infallible,
+    fmt::{Display, Formatter},
     net::{IpAddr, Ipv4Addr, SocketAddr},
     path::Path,
     time::Duration,
@@ -35,6 +37,15 @@ pub enum Endpoint {
     Path(String),
 }
 
+impl Display for Endpoint {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Endpoint::Port(port) => write!(f, "port {}", port),
+            Endpoint::Path(path) => write!(f, "path {}", path),
+        }
+    }
+}
+
 impl Server {
     pub fn new<S>(service: S, cert_path: Option<String>, key_path: Option<String>) -> Self
     where
@@ -50,13 +61,16 @@ impl Server {
             let cert = std::fs::read_to_string(cert_path).expect("invalid TLS cert");
             let key = std::fs::read_to_string(key_path).expect("invalid TLS key");
             let identity = Identity::from_pem(cert, key);
-            builder.tls_config(ServerTlsConfig::new().identity(identity)).expect("invalid TLS configuration")
+            builder
+                .tls_config(ServerTlsConfig::new().identity(identity))
+                .expect("invalid TLS configuration")
         } else {
             builder
         }
         .http2_keepalive_interval(Some(Duration::from_secs(5)));
 
-        Self { router: builder.add_service(service) }.add_reflection(tonic::include_file_descriptor_set!("descriptors"))
+        Self { router: builder.add_service(service) }
+            .add_reflection(tonic::include_file_descriptor_set!("descriptors"))
     }
 
     pub fn add_service<S>(mut self, service: S) -> Self
@@ -89,7 +103,12 @@ impl Server {
             }
             Endpoint::Path(path) => {
                 std::fs::create_dir_all(Path::new(&path).parent().unwrap())?;
-
+                // TODO: Have graceful shutdown of server in a higher module clean up the socket.
+                // For now, we'll just remove the socket file on creation if it exists already.
+                // This will disconnect any existing servers.
+                if Path::new(&path).exists() {
+                    std::fs::remove_file(&path)?;
+                }
                 let uds = UnixListener::bind(&path)?;
                 let uds_stream = UnixListenerStream::new(uds);
                 self.router.serve_with_incoming(uds_stream).await?;

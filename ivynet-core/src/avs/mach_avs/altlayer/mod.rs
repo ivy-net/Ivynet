@@ -10,7 +10,7 @@ use std::{
     fs::{self, File},
     io::{copy, BufReader},
     path::PathBuf,
-    process::Command,
+    process::{Child, Command},
     sync::Arc,
 };
 use tracing::{debug, error, info};
@@ -30,15 +30,18 @@ use crate::{
 };
 
 const ALTLAYER_PATH: &str = ".eigenlayer/altlayer";
-const ALTLAYER_REPO_URL: &str = "https://github.com/alt-research/mach-avs-operator-setup/archive/refs/heads/master.zip";
+const ALTLAYER_REPO_URL: &str =
+    "https://github.com/alt-research/mach-avs-operator-setup/archive/refs/heads/master.zip";
 
+#[derive(Debug, Clone)]
 pub struct AltLayer {
     path: PathBuf,
+    running: bool,
 }
 
 impl AltLayer {
     pub fn new(path: PathBuf) -> Self {
-        Self { path }
+        Self { path, running: false }
     }
 }
 
@@ -58,7 +61,11 @@ impl AvsVariant for AltLayer {
         Ok(())
     }
 
-    async fn build_env(&self, provider: Arc<IvyProvider>, config: &IvyConfig) -> Result<(), IvyError> {
+    async fn build_env(
+        &self,
+        provider: Arc<IvyProvider>,
+        config: &IvyConfig,
+    ) -> Result<(), IvyError> {
         let chain = Chain::try_from(provider.signer().chain_id())?;
         let rpc_url = config.get_rpc_url(chain)?;
 
@@ -117,8 +124,9 @@ impl AvsVariant for AltLayer {
             "NODE_BLS_KEY_FILE_HOST",
             bls_json_file_location.to_str().expect("Could not get BLS key file location"),
         );
-        env_lines.set("OPERATOR_BLS_KEY_PASSWORD", &format!("'{}'", bls_password));
-        env_lines.set("NODE_CACHE_PATH_HOST", node_cache_path.to_str().expect("Could not parse string"));
+        env_lines.set("OPERATOR_BLS_KEY_PASSWORD", &bls_password);
+        env_lines
+            .set("NODE_CACHE_PATH_HOST", node_cache_path.to_str().expect("Could not parse string"));
         env_lines.save(&env_path)?;
 
         //
@@ -144,7 +152,10 @@ impl AvsVariant for AltLayer {
         );
         let mut legacy_keyfile_path = config.default_private_keyfile.clone();
         legacy_keyfile_path.set_extension("legacy.json");
-        env_lines.set("NODE_ECDSA_KEY_FILE_HOST", legacy_keyfile_path.to_str().expect("Bad private key path"));
+        env_lines.set(
+            "NODE_ECDSA_KEY_FILE_HOST",
+            legacy_keyfile_path.to_str().expect("Bad private key path"),
+        );
         env_lines.set("OPERATOR_BLS_KEY_PASSWORD", &bls_password);
         env_lines.set("OPERATOR_ECDSA_KEY_PASSWORD", &ecdsa_password);
         env_lines.save(&env_path)?;
@@ -164,9 +175,11 @@ impl AvsVariant for AltLayer {
         quorums: Vec<QuorumType>,
         eigen_path: PathBuf,
         _private_keyfile: PathBuf,
+        _keyfile_password: &str,
         chain: Chain,
     ) -> Result<(), IvyError> {
-        let quorum_str: Vec<String> = quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
+        let quorum_str: Vec<String> =
+            quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
         let _quorum_str = quorum_str.join(",");
 
         let run_path = eigen_path
@@ -192,10 +205,13 @@ impl AvsVariant for AltLayer {
         _quorums: Vec<QuorumType>,
         eigen_path: PathBuf,
         _private_keyfile: PathBuf,
+        _keyfile_password: &str,
         chain: Chain,
     ) -> Result<(), IvyError> {
-        let run_path =
-            eigen_path.join("operator_setup").join(chain.to_string().to_lowercase()).join("mach-avs/op-sepolia");
+        let run_path = eigen_path
+            .join("operator_setup")
+            .join(chain.to_string().to_lowercase())
+            .join("mach-avs/op-sepolia");
         info!("Opting in...");
         debug!("altlayer opt-in: {}", run_path.display());
         // WARN: Changing directory here may not be the best strategy.
@@ -208,6 +224,14 @@ impl AvsVariant for AltLayer {
             // TODO: Consider a more robust .into()
             Err(IvyError::CommandError(optin.to_string()))
         }
+    }
+
+    async fn start(&mut self, _quorums: Vec<QuorumType>, _chain: Chain) -> Result<Child, IvyError> {
+        todo!()
+    }
+
+    async fn stop(&mut self, _chain: Chain) -> Result<(), IvyError> {
+        todo!()
     }
 
     /// Quorum stake requirements can be found in the AltLayer docs: https://docs.altlayer.io/altlayer-documentation/altlayer-facilitated-actively-validated-services/xterio-mach-avs-for-xterio-chain/operator-guide
@@ -251,16 +275,12 @@ impl AvsVariant for AltLayer {
             _ => todo!("Unimplemented"),
         }
     }
-
     fn path(&self) -> PathBuf {
         self.path.clone()
     }
 
-    async fn start(&self, _quorums: Vec<QuorumType>, _chain: Chain) -> Result<(), IvyError> {
-        todo!()
-    }
-    async fn stop(&self, _quorums: Vec<QuorumType>, _chain: Chain) -> Result<(), IvyError> {
-        todo!()
+    fn running(&self) -> bool {
+        self.running
     }
 }
 
@@ -313,8 +333,9 @@ pub async fn download_operator_setup(eigen_path: PathBuf) -> Result<(), IvyError
                 copy(&mut file, &mut outfile)?;
             }
         }
-        let first_dir =
-            std::fs::read_dir(&temp_path)?.filter_map(Result::ok).find(|entry| entry.file_type().unwrap().is_dir());
+        let first_dir = std::fs::read_dir(&temp_path)?
+            .filter_map(Result::ok)
+            .find(|entry| entry.file_type().unwrap().is_dir());
         if let Some(first_dir) = first_dir {
             let old_folder_path = first_dir.path();
             debug!("{}", old_folder_path.display());

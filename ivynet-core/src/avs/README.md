@@ -7,7 +7,7 @@ AVS Integration Chart
 | Omni      | Client labeled "do not run" in Omni docs |  [ ]   |     [ ]      |    [ ]     |
 | Witness   | Requires machine >1TB SSD, whitelist     |  [ ]   |     [ ]      |    [ ]     |
 | NEAR      | No docs on the NEAR side                 |  [ ]   |     [ ]      |    [ ]     |
-| Hyperlane |                                          |  [ ]   |     [ ]      |    [ ]     |
+| Hyperlane | AWS dependencies?                        |  [ ]   |     [ ]      |    [ ]     |
 
 DOCS
 

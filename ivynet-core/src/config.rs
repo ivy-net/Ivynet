@@ -3,6 +3,7 @@ use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use sysinfo::{Disks, System};
+use thiserror::Error as ThisError;
 
 pub static DEFAULT_CONFIG_PATH: Lazy<PathBuf> = Lazy::new(|| {
     let path = dirs::home_dir().expect("Could not get a home directory");
@@ -11,22 +12,27 @@ pub static DEFAULT_CONFIG_PATH: Lazy<PathBuf> = Lazy::new(|| {
 
 use crate::{
     error::IvyError,
+    io::{create_dir_all, read_toml, write_toml, IoError},
     metadata::Metadata,
-    utils::{read_toml, write_toml},
-    wallet::IvyWallet,
+    wallet::{IvyWallet, IvyWalletError},
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct IvyConfig {
     /// Storage path for serialized config file
     path: PathBuf,
+    /// RPC URL for mainnet
     pub mainnet_rpc_url: String,
+    /// RPC URL for holesky
     pub holesky_rpc_url: String,
+    // RPC URL for local development
     pub local_rpc_url: String,
-    /// Default private key file full path
+    // TODO: See if this nomenclature needs to be changed
+    /// Default operator private key file full path
     pub default_private_keyfile: PathBuf,
-    /// Default public key file full path
+    /// Default operator public key file full path
     pub default_public_keyfile: PathBuf,
+    /// Metadata for the operator
     pub metadata: Metadata,
     // Identification key that node uses for server communications
     pub identity_key: Option<String>,
@@ -56,26 +62,26 @@ impl IvyConfig {
         Self { path, ..Default::default() }
     }
 
-    pub fn load(path: PathBuf) -> Result<Self, IvyError> {
-        let config: Self = read_toml(path)?;
+    pub fn load(path: PathBuf) -> Result<Self, ConfigError> {
+        let config: Self = read_toml(&path)?;
         Ok(config)
     }
 
-    pub fn load_from_default_path() -> Result<Self, IvyError> {
+    pub fn load_from_default_path() -> Result<Self, ConfigError> {
         let config_path = DEFAULT_CONFIG_PATH.to_owned().join("ivy-config.toml");
         if !config_path.exists() {
-            std::fs::create_dir_all(DEFAULT_CONFIG_PATH.clone())?;
+            create_dir_all(&config_path)?;
             let config = Self::default();
-            write_toml(config_path, &config)?;
+            write_toml(&config_path, &config)?;
             return Ok(config);
         }
         Self::load(config_path)
     }
 
-    pub fn store(&self) -> Result<(), IvyError> {
+    pub fn store(&self) -> Result<(), ConfigError> {
         // TODO: Assert identity key is None on save
         let config_path = self.path.clone().join("ivy-config.toml");
-        write_toml(config_path, self)?;
+        write_toml(&config_path, self)?;
         Ok(())
     }
 
@@ -122,6 +128,10 @@ impl IvyConfig {
     pub fn identity_wallet(&self) -> Result<IvyWallet, IvyError> {
         IvyWallet::from_private_key(self.identity_key.clone().ok_or(IvyError::IdentityKeyError)?)
     }
+
+    pub fn uds_dir(&self) -> String {
+        format!("{}/ivynet.ipc", self.path.display())
+    }
 }
 
 pub fn get_system_information() -> Result<(u64, u64, u64), IvyError> {
@@ -136,11 +146,31 @@ pub fn get_system_information() -> Result<(u64, u64, u64), IvyError> {
     Ok((cpu_cores, total_memory, free_disk))
 }
 
+#[derive(ThisError, Debug)]
+pub enum ConfigError {
+    #[error(transparent)]
+    ConfigIo(#[from] IoError),
+    #[error(transparent)]
+    WalletFetchError(#[from] IvyWalletError),
+}
+
 #[cfg(test)]
 mod tests {
+    use super::*;
+    #[test]
+    fn test_load_config_error() {
+        let path = PathBuf::from("nonexistent");
+        let config = IvyConfig::load(path);
+        println!("{:?}", config);
+        assert!(config.is_err());
+    }
 
     #[test]
-    fn test_load_config() {
-        todo!();
+    fn test_uds_dir() {
+        let config = super::IvyConfig::default();
+        let path_str = config.path.display().to_string();
+        let uds_dir = config.uds_dir();
+        assert_eq!(uds_dir, path_str + "/ivynet.ipc");
+        println!("{}", uds_dir);
     }
 }

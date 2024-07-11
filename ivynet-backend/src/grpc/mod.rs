@@ -26,11 +26,15 @@ impl BackendService {
 
 #[grpc::async_trait]
 impl Backend for BackendService {
-    async fn register(&self, request: Request<RegistrationCredentials>) -> Result<Response<()>, Status> {
+    async fn register(
+        &self,
+        request: Request<RegistrationCredentials>,
+    ) -> Result<Response<()>, Status> {
         let req = request.into_inner();
-        let account = Account::verify(&self.pool, &req.email, &req.password)
-            .await
-            .map_err(|_| Status::not_found(format!("User {} not found or password is incorrect", req.email)))?;
+        let account =
+            Account::verify(&self.pool, &req.email, &req.password).await.map_err(|_| {
+                Status::not_found(format!("User {} not found or password is incorrect", req.email))
+            })?;
         let node_id = Address::from_slice(&req.public_key);
         account
             .attach_node(&self.pool, &node_id)

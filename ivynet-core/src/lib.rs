@@ -6,9 +6,9 @@ pub mod eigen;
 pub mod env_parser;
 pub mod error;
 pub mod grpc;
+pub mod io;
 pub mod metadata;
 pub mod rpc_management;
-pub mod server;
 pub mod utils;
 pub mod wallet;
 

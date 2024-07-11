@@ -55,7 +55,11 @@ impl Account {
         Ok(accounts)
     }
 
-    pub async fn verify(pool: &PgPool, email: &str, password: &str) -> Result<Account, BackendError> {
+    pub async fn verify(
+        pool: &PgPool,
+        email: &str,
+        password: &str,
+    ) -> Result<Account, BackendError> {
         let account = sqlx::query_as!(
         Account,
         r#"SELECT user_id, organization_id, email, password, role AS "role!: Role", created_at, updated_at FROM account WHERE email = $1 AND password = $2"#,
@@ -67,7 +71,11 @@ impl Account {
         Ok(account)
     }
 
-    pub async fn set_password(&self, pool: &PgPool, password: &str) -> Result<Account, BackendError> {
+    pub async fn set_password(
+        &self,
+        pool: &PgPool,
+        password: &str,
+    ) -> Result<Account, BackendError> {
         let account = sqlx::query_as!(
             Account,
             r#"UPDATE account SET password = $1 WHERE email = $2

@@ -70,7 +70,8 @@ pub async fn new(
 
     org.attach_admin(&state.pool, &request.email, &request.password).await?;
 
-    let verification = Verification::new(&state.pool, VerificationType::Organization, org.organization_id).await?;
+    let verification =
+        Verification::new(&state.pool, VerificationType::Organization, org.organization_id).await?;
 
     if let (Some(sender), Some(sender_address), Some(org_template)) =
         (state.sender, state.sender_email, state.org_verification_template)
@@ -83,9 +84,14 @@ pub async fn new(
         );
 
         sender
-            .send(&Message::new(Email::new(&sender_address)).set_template_id(&org_template).add_personalization(
-                Personalization::new(Email::new(request.email)).add_dynamic_template_data(arguments),
-            ))
+            .send(
+                &Message::new(Email::new(&sender_address))
+                    .set_template_id(&org_template)
+                    .add_personalization(
+                        Personalization::new(Email::new(request.email))
+                            .add_dynamic_template_data(arguments),
+                    ),
+            )
             .await?;
     }
     Ok(CreationResult { id: org.organization_id as u64 }.into())
@@ -102,7 +108,10 @@ pub async fn new(
         (status = 404)
     )
 )]
-pub async fn get(State(state): State<HttpState>, Path(id): Path<u64>) -> Result<Json<Organization>, BackendError> {
+pub async fn get(
+    State(state): State<HttpState>,
+    Path(id): Path<u64>,
+) -> Result<Json<Organization>, BackendError> {
     Ok(Organization::get(&state.pool, id).await?.into())
 }
 
@@ -114,7 +123,10 @@ pub async fn get(State(state): State<HttpState>, Path(id): Path<u64>) -> Result<
         (status = 404)
     )
 )]
-pub async fn nodes(State(state): State<HttpState>, jar: CookieJar) -> Result<Json<Vec<Node>>, BackendError> {
+pub async fn nodes(
+    State(state): State<HttpState>,
+    jar: CookieJar,
+) -> Result<Json<Vec<Node>>, BackendError> {
     let account = authorize::verify(&state.pool, &state.cache, &jar).await?;
 
     Ok(DbNode::get_all_for_account(&state.pool, &account).await?.into())
