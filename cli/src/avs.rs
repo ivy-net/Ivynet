@@ -13,8 +13,9 @@ pub async fn parse_avs_subcommands(subcmd: AvsCommands, config: &IvyConfig) -> R
 
     // Setup runs local, otherwise construct a client and continue.
     if let AvsCommands::Setup { ref avs, ref chain } = subcmd {
-        let password: String =
-            Password::new().with_prompt("Input the password for your stored keyfile").interact()?;
+        let password: String = Password::new()
+            .with_prompt("Input the password for your stored ECDSA keyfile")
+            .interact()?;
         let wallet = IvyWallet::from_keystore(config.default_private_keyfile.clone(), &password)?;
         let avs =
             build_avs_provider(Some(avs), chain, config, Some(wallet), Some(password)).await?;

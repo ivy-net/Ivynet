@@ -94,7 +94,7 @@ async fn main() -> Result<(), Error> {
         Commands::Serve { avs, chain } => {
             let config = check_for_config();
             let keyfile_pw = dialoguer::Password::new()
-                .with_prompt("Input the password for your stored keyfile")
+                .with_prompt("Input the password for your stored ECDSA keyfile")
                 .interact()?;
             service::serve(avs, chain, &config, &keyfile_pw).await?
         }
