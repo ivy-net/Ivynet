@@ -15,5 +15,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - run: sudo apt install -y rustc cargo protobuf-compiler pkg-config libssl-dev
-      - run: cd ivynet-backend
-      - run: cargo build --release
+      - run: cargo build --release --bin ivynet-backend
