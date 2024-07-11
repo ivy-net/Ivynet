@@ -5,7 +5,7 @@ edition = "2021"
 authors = ["Noah Foltz <noahfoltz5@gmail.com>"]
 description = "Core library for Ivynet client functionality"
 repository = "https://github.com/ivy-net/ivynet"
-license = "AGPL-3.0"
+license = "UNLICENSED"
 
 [lib]
 path = "src/lib.rs"

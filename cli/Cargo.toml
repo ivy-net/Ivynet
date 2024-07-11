@@ -6,7 +6,8 @@ authors = ["Noah Foltz <noahfoltz5@gmail.com>"]
 description = "CLI for Ivynet client"
 keywords = ["cli", "tool"]
 repository = "https://github.com/ivy-net/ivynet"
-license = "AGPL-3.0"
+default-run = "ivynet"
+license = "UNLICENSED"
 
 [[bin]]
 name = "ivynet"
