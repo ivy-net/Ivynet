@@ -48,8 +48,8 @@ message OptinRequest {
 message OptoutRequest {
 }
 
-// Set the loaded AVS to a new AVS + chain target. Returns an error if an AVS is currently running.
-message SetAvsRequest {
+// Select the loaded AVS to a new AVS + chain target. Returns an error if an AVS is currently running.
+message SelectAvsRequest {
     // Name of the AVS type to load.
     string avs = 1;
     // Name of the chain which the AVS should target.
@@ -69,5 +69,5 @@ service Avs {
     rpc Stop(StopRequest) returns (ivy_daemon_types.RpcResponse);
     rpc OptIn(OptinRequest) returns (ivy_daemon_types.RpcResponse);
     rpc OptOut(OptoutRequest) returns (ivy_daemon_types.RpcResponse);
-    rpc SetAvs(SetAvsRequest) returns (ivy_daemon_types.RpcResponse);
+    rpc SelectAvs(SelectAvsRequest) returns (ivy_daemon_types.RpcResponse);
 }

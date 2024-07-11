@@ -45,8 +45,8 @@ pub async fn parse_avs_subcommands(subcmd: AvsCommands, config: &IvyConfig) -> R
             let response = client.avs_mut().stop().await?;
             println!("{:?}", response.into_inner());
         }
-        AvsCommands::SetAvs { avs, chain } => {
-            let response = client.avs_mut().set_avs(avs, chain).await?;
+        AvsCommands::Select { avs, chain } => {
+            let response = client.avs_mut().select_avs(avs, chain).await?;
             println!("{:?}", response.into_inner());
         }
         AvsCommands::CheckStakePercentage { .. } => todo!(),

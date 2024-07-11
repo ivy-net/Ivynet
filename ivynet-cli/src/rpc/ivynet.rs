@@ -8,7 +8,7 @@ use ivynet_core::{
         ivynet_api::{
             ivy_daemon_avs::{
                 avs_server::Avs, AvsInfoRequest, AvsInfoResponse, OptinRequest, OptoutRequest,
-                SetAvsRequest, SetupRequest, StartRequest, StopRequest,
+                SelectAvsRequest, SetupRequest, StartRequest, StopRequest,
             },
             ivy_daemon_operator::{
                 operator_server::Operator, DelegatableShares, DelegatableSharesRequest,
@@ -122,9 +122,9 @@ impl Avs for IvynetService {
 
     // TODO: Running check stop
     // TODO: On bad netowork, don't change
-    async fn set_avs(
+    async fn select_avs(
         &self,
-        request: Request<SetAvsRequest>,
+        request: Request<SelectAvsRequest>,
     ) -> Result<Response<RpcResponse>, Status> {
         // TODO: Clean this up if possible, complexity comes from needing to synchronize the rpc +
         // chain id between provider, signer, and AVS instance.

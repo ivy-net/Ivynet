@@ -55,7 +55,7 @@ enum Commands {
     },
     #[command(
         name = "serve",
-        about = "Start the Ivynet service with a specified AVS on a specified chain. --avs <AVS> --chain <CHAIN>"
+        about = "Start the Ivynet service with a specified AVS on CHAIN selected for startup. --avs <AVS> --chain <CHAIN>"
     )]
     Serve {
         #[clap(required(false), long, requires("chain"))]

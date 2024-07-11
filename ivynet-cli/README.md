@@ -190,9 +190,9 @@ Example call:
 CLI:
 `ivynet-cli avs optout`
 
-#### SetAvs
+#### Select
 
-`ivy_daemon_avs.Avs/SetAvs`
+`ivy_daemon_avs.Avs/Select`
 Replace the active AVS with a new AVS instance. Errors if the AVS is curently running.
 
 Arguments:
@@ -200,13 +200,13 @@ Arguments:
 "chain": The chain to operate the loaded AVS on
 
 Example:
-`grpcurl -plaintext -d '{"avs": "eigenda", "chain": "mainnet"}' localhost:55501 ivy_daemon_avs.Avs/SetAvs`
+`grpcurl -plaintext -d '{"avs": "eigenda", "chain": "mainnet"}' localhost:55501 ivy_daemon_avs.Avs/Select`
 
 CLI:
-`ivynet-cli avs set <AVS> <CHAIN>`
+`ivynet-cli avs select <AVS> <CHAIN>`
 
 Example:
-`ivynet-cli avs set eigenda holesky`
+`ivynet-cli avs select eigenda holesky`
 
 
 #### The Operator Namespace
