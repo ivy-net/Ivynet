@@ -1,0 +1,18 @@
+---
+name: build dev backend
+
+on:
+  pull_request:
+    branches:
+      - dev
+    paths:
+      - cli
+
+jobs:
+  build:
+    name: build cli (client)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt install -y rustc cargo protobuf-compiler pkg-config libssl-dev
+      - run: cargo build --release --bin cli
