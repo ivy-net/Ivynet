@@ -1,0 +1,19 @@
+---
+name: build dev backend
+
+on:
+  pull_request:
+    branches:
+      - dev
+    paths:
+      - ivynet-backend
+
+jobs:
+  build:
+    name: build backend
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt install -y rustc cargo protobuf-compiler pkg-config libssl-dev
+      - run: cd ivynet-backend
+      - run: cargo build --release
