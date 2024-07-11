@@ -648,6 +648,22 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4b82cf0babdbd58558212896d1a4272303a57bdb245c2bf1147185fb45640e70"
 
 [[package]]
+name = "cli"
+version = "0.1.0"
+dependencies = [
+ "clap",
+ "dialoguer",
+ "ivynet-core",
+ "serde",
+ "thiserror",
+ "tokio",
+ "tokio-stream",
+ "toml",
+ "tracing",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "coins-bip32"
 version = "0.8.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2296,22 +2312,6 @@ dependencies = [
  "utoipa",
  "utoipa-swagger-ui",
  "uuid 1.10.0",
-]
-
-[[package]]
-name = "ivynet-cli"
-version = "0.1.0"
-dependencies = [
- "clap",
- "dialoguer",
- "ivynet-core",
- "serde",
- "thiserror",
- "tokio",
- "tokio-stream",
- "toml",
- "tracing",
- "tracing-subscriber",
 ]
 
 [[package]]
