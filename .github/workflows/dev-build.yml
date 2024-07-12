@@ -1,0 +1,19 @@
+---
+name: build dev
+
+on:
+  pull_request:
+    branches:
+      - dev
+    paths:
+      - core
+      - macros
+
+jobs:
+  build:
+    name: build everything
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt install -y rustc cargo protobuf-compiler pkg-config libssl-dev
+      - run: cargo build --release
