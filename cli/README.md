@@ -107,7 +107,7 @@ Example:
 
 `ivynet serve`
 
-This will start the ivynet daemon over a unix domain socket, located at `~{HOME}/.ivynet/ivynet.ipc`. The daemon will run in the background.
+This will start the ivynet daemon over a unix domain socket, located at `${HOME}/.ivynet/ivynet.ipc`. The daemon will run in the background.
 
 ### Interacting with the Ivy Daemon:
 
