@@ -11,11 +11,10 @@ use ivynet_core::{
                 SelectAvsRequest, SetupRequest, StartRequest, StopRequest,
             },
             ivy_daemon_operator::{
-                operator_server::Operator, DelegatableShares, DelegatableSharesRequest,
-                DelegatableSharesResponse, OperatorDetailsRequest, OperatorDetailsResponse,
-                OperatorShares, OperatorSharesRequest, OperatorSharesResponse,
-                SetBlsKeyfilePathRequest, SetBlsKeyfilePathResponse, SetEcdsaKeyfilePathRequest,
-                SetEcdsaKeyfilePathResponse,
+                operator_server::Operator, DelegatableSharesRequest, DelegatableSharesResponse,
+                OperatorDetailsRequest, OperatorDetailsResponse, OperatorSharesRequest,
+                OperatorSharesResponse, SetBlsKeyfilePathRequest, SetBlsKeyfilePathResponse,
+                SetEcdsaKeyfilePathRequest, SetEcdsaKeyfilePathResponse, Shares,
             },
             ivy_daemon_types::RpcResponse,
         },
@@ -197,10 +196,10 @@ impl Operator for IvynetService {
             .get_operator_shares(operator_address, strategies.clone())
             .await
             .map_err(|e| Status::internal(format!("Failed to get operator shares: {}", e)))?;
-        let quorum_shares: Vec<OperatorShares> = zip(strategies.iter(), shares.iter())
-            .map(|(s, sh)| OperatorShares { strategy: format!("{:?}", s), shares: sh.to_string() })
+        let operator_shares: Vec<Shares> = zip(strategies.iter(), shares.iter())
+            .map(|(s, sh)| Shares { strategy: format!("{:?}", s), shares: sh.to_string() })
             .collect();
-        let response = Response::new(OperatorSharesResponse { quorum_shares });
+        let response = Response::new(OperatorSharesResponse { operator_shares });
         Ok(response)
     }
 
@@ -215,13 +214,10 @@ impl Operator for IvynetService {
             .get_delegatable_shares(operator_address)
             .await
             .map_err(|e| Status::internal(format!("Failed to get delegatable shares: {}", e)))?;
-        let shares: Vec<DelegatableShares> = zip(strategies.iter(), shares.iter())
-            .map(|(s, sh)| DelegatableShares {
-                strategy: format!("{:?}", s),
-                shares: sh.to_string(),
-            })
+        let delegatable_shares: Vec<Shares> = zip(strategies.iter(), shares.iter())
+            .map(|(s, sh)| Shares { strategy: format!("{:?}", s), shares: sh.to_string() })
             .collect();
-        Ok(Response::new(DelegatableSharesResponse { shares }))
+        Ok(Response::new(DelegatableSharesResponse { delegatable_shares }))
     }
 
     async fn set_ecdsa_keyfile_path(
