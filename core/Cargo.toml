@@ -42,7 +42,7 @@ prost = "0.12"
 prost-wkt = "0.5"
 prost-wkt-types = "0.5"
 tonic = { version = "0.11", features = ["tls"] }
-tonic-reflection = "0.11"
+tonic-reflection = "0.12"
 tokio-stream = { version = "0.1.15", features = ["net"] }
 tower = "0.4.13"
 hyper-util = { version = "0.1.6", features = ["full", "tokio"] }
