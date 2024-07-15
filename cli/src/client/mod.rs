@@ -23,7 +23,6 @@ impl IvynetClient {
         }
     }
 
-    // Avs
     pub fn avs(&self) -> &AvsClient {
         &self.avs_client
     }
@@ -32,7 +31,6 @@ impl IvynetClient {
         &mut self.avs_client
     }
 
-    // Operator
     pub fn operator(&self) -> &OperatorClient {
         &self.operator_client
     }
