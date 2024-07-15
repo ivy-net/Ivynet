@@ -27,13 +27,13 @@ message OperatorDetailsResponse {
 message OperatorSharesRequest {
 }
 
-message OperatorShares {
+message Shares {
     string strategy = 1;
     string shares = 2;
 }
 
 message OperatorSharesResponse {
-    repeated OperatorShares quorum_shares = 1;
+    repeated Shares operator_shares = 1;
 }
 
 // If provided, queries the shares that can be delegated to the address. Otherwise, queries using the address of the loaded operator and returns the shares that can be delegated.
@@ -41,13 +41,8 @@ message DelegatableSharesRequest{
     optional string address = 1;
 }
 
-message DelegatableShares {
-    string strategy = 1;
-    string shares = 2;
-}
-
 message DelegatableSharesResponse {
-   repeated DelegatableShares shares = 1;
+   repeated Shares delegatable_shares = 1;
 }
 
 message RegisterOperatorRequest {
