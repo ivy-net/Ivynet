@@ -147,7 +147,7 @@ impl AvsProvider {
     /// Setup the loaded AVS instance. This includes both download and configuration steps.
     pub async fn setup(&self, config: &IvyConfig) -> Result<(), IvyError> {
         self.avs()?.setup(self.provider.clone(), config).await?;
-        info!("setup complete");
+        info!("Setup complete: run 'ivynet avs help' for next steps!");
         Ok(())
     }
 

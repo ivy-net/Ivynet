@@ -12,7 +12,7 @@ pub static DEFAULT_CONFIG_PATH: Lazy<PathBuf> = Lazy::new(|| {
 
 use crate::{
     error::IvyError,
-    io::{create_dir_all, read_toml, write_toml, IoError},
+    io::{read_toml, write_toml, IoError},
     metadata::Metadata,
     wallet::{IvyWallet, IvyWalletError},
 };
@@ -43,7 +43,7 @@ impl Default for IvyConfig {
         Self {
             path: DEFAULT_CONFIG_PATH.to_owned(),
             mainnet_rpc_url: "https://rpc.flashbots.net/fast".to_string(),
-            holesky_rpc_url: "https://holesky.drpc.org".to_string(),
+            holesky_rpc_url: "https://eth-holesky.public.blastapi.io".to_string(),
             local_rpc_url: "http://localhost:8545".to_string(),
             default_private_keyfile: "".into(), // TODO: Option
             default_public_keyfile: "".into(),
@@ -69,12 +69,7 @@ impl IvyConfig {
 
     pub fn load_from_default_path() -> Result<Self, ConfigError> {
         let config_path = DEFAULT_CONFIG_PATH.to_owned().join("ivy-config.toml");
-        if !config_path.exists() {
-            create_dir_all(&config_path)?;
-            let config = Self::default();
-            write_toml(&config_path, &config)?;
-            return Ok(config);
-        }
+        //Previous impl built a bad path - let this error properly
         Self::load(config_path)
     }
 
