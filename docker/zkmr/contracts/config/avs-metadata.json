@@ -1,0 +1,7 @@
+{
+  "name": "Lagrange ZK Prover Network",
+  "website": "https://www.lagrange.dev/",
+  "description": "Decentralized network for reliable generation of different ZK proofs with high liveness guarantees",
+  "logo": "https://raw.githubusercontent.com/Lagrange-Labs/AVS-config/main/config/lagrange-logo.png",
+  "twitter": "https://twitter.com/lagrangedev"
+}

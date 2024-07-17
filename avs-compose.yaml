@@ -81,6 +81,33 @@ services:
       feed-deployer:
         condition: service_completed_successfully
 
+  zkmr:
+    image: ghcr.io/foundry-rs/foundry:latest
+    platform: linux/amd64
+    command:
+      - script
+      - script/DeployAVS.s.sol:DeployAVS
+      - -vvvv
+      - --rpc-url
+      - http://anvil:8545
+      - --broadcast
+      - --private-key
+      - 0xdbda1821b80551c9d65939329250298aa3472ba22feea921c0cf5d620ea67b97
+      - --ffi
+    entrypoint: forge
+    working_dir: /zkmr/
+    environment:
+        WHITELISTED_OPERATORS: "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266,0x70997970C51812dc3A010C7d01b50e0d17dc79C8,0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"
+        PRIVATE_KEY: "0xdbda1821b80551c9d65939329250298aa3472ba22feea921c0cf5d620ea67b97"
+        MAINNET_ETHERSCAN_API_KEY: "http://useless.com"
+    volumes:
+      - ../zkmr-avs-contracts/:/zkmr/
+      - ./docker/zkmr/contracts/config:/zkmr/config
+      - ./docker/zkmr/contracts/script:/zkmr/script
+    depends_on:
+      eigenlayer:
+        condition: service_completed_successfully
+
   # FoundaryUp based container with local image
   # deploying Demo AVS
   avs-demo:
@@ -125,8 +152,10 @@ services:
   operator:
     image: ghcr.io/layr-labs/incredible-squaring/operator/cmd/main.go:latest
     command: --config operator-docker-compose.yaml
-    expose:
-      - 9090
+    ports:
+        - 9090:9090
+    # expose:
+    #   - 9090
     volumes:
       - ./docker/incredible-squaring-avs/31337/operator-docker-compose.yaml:/incredible-squaring/operator-docker-compose.yaml
       - ./docker/incredible-squaring-avs/keys:/incredible-squaring/tests/keys
