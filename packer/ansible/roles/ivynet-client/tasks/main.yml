@@ -1,0 +1,80 @@
+---
+- name: Add Docker Module Repository
+  ansible.builtin.deb822_repository:
+    name: docker
+    types: [deb]
+    uris: "https://download.docker.com/linux/{{ ansible_distribution | lower }}"
+    signed_by: "https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg"
+    suites: ["{{ ansible_distribution_release | lower }}"]
+    components: [stable]
+    state: present
+    enabled: true
+
+- name: Install packages (for rust and docker)
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    update_cache: true
+  loop:
+    - python3-pip
+      #    - rustc
+      #    - cargo
+      #    - protobuf-compiler
+      #    - pkg-config
+      #    - libssl-dev
+      #    - docker-ce
+      #    - docker-ce-cli
+      #    - containerd.io
+      #    - docker-buildx-plugin
+      #    - docker-compose-plugin
+      #
+      #
+
+- name: Install githbub3.py (for github access)
+  ansible.builtin.pip:
+    name: github3.py
+    state: latest
+    break_system_packages: true
+
+- name: Prepare directories
+  ansible.builtin.file:
+    path: "{{ ivynet_client_install_path }}/bin"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+    recurse: true
+
+- name: Get latest release of glove
+  community.general.github_release:
+    user: ivy-net
+    repo: ivynet
+    token: "{{ ivynet_client_github_token }}"
+    action: latest_release
+  register: ivynet_release
+
+- ansible.builtin.debug:
+    msg: "{{ ivynet_release.tag}} is the tag"
+
+- name: Download client
+  ansible.builtin.get_url:
+    url: https://github.com/ivy-net/ivynet/releases/download/{{ivynet_client_release.tag }}/ivynet
+    dest: "{{ ivynet_client_install_path }}/bin"
+    owner: root
+    group: root
+    mode: 0755
+
+- name: Get EigenDA Operator Setup
+  ansible.builtin.git:
+    repo: https://github.com/Layr-Labs/eigenda-operator-setup.git
+    dest: "{{ ivynet_client_install_path }}/eigenda-operator-setup"
+    clone: true
+    update: true
+
+# Extra steps
+# Get eigenlayer-operator-setup repo -
+# Download g1, g2 files
+# Download our binaries -
+# Optional
+# get our repo
+# get eignelayer repo
+#
