@@ -40,12 +40,12 @@ message StartRequest {
 message StopRequest {
 }
 
-// Optin to all available quorums for the loaded AVS instance.
-message OptinRequest {
+// Register an operator for an AVS. Flow is AVS-dependent, see AVS-specific documentation for details.
+message RegisterRequest {
 }
 
-// Optout of all quorums for the loaded AVS instance.
-message OptoutRequest {
+// Unregister an operator for an AVS. Flow is AVS-dependent, see AVS-specific documentation for details.
+message UnregisterRequest {
 }
 
 // Select the loaded AVS to a new AVS + chain target. Returns an error if an AVS is currently running.
@@ -67,7 +67,7 @@ service Avs {
     rpc Setup(SetupRequest) returns (ivy_daemon_types.RpcResponse);
     rpc Start(StartRequest) returns (ivy_daemon_types.RpcResponse);
     rpc Stop(StopRequest) returns (ivy_daemon_types.RpcResponse);
-    rpc OptIn(OptinRequest) returns (ivy_daemon_types.RpcResponse);
-    rpc OptOut(OptoutRequest) returns (ivy_daemon_types.RpcResponse);
+    rpc Register(RegisterRequest) returns (ivy_daemon_types.RpcResponse);
+    rpc Unregister(UnregisterRequest) returns (ivy_daemon_types.RpcResponse);
     rpc SelectAvs(SelectAvsRequest) returns (ivy_daemon_types.RpcResponse);
 }

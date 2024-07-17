@@ -23,6 +23,8 @@ pub mod commands;
 pub mod contracts;
 pub mod eigenda;
 pub mod error;
+pub mod instance;
+pub mod lagrange;
 pub mod mach_avs;
 pub mod witness;
 
@@ -185,67 +187,121 @@ impl AvsProvider {
         Ok(())
     }
 
-    pub async fn opt_in(&self, config: &IvyConfig) -> Result<(), IvyError> {
+    pub async fn register(&self, config: &IvyConfig) -> Result<(), IvyError> {
         let chain = Chain::try_from(self.provider.signer().chain_id()).unwrap_or_default();
-        let quorums = self.get_bootable_quorums().await?;
-        if quorums.is_empty() {
-            error!("Could not launch EgenDA, no bootable quorums found. Exiting...");
-            return Err(IvyError::NoQuorums);
-        }
+        let avs = self.avs()?;
+        match avs {
+            AvsType::EigenDA(inner) => {
+                let quorums = self.get_bootable_quorums().await?;
+                if quorums.is_empty() {
+                    error!("Could not launch EgenDA, no bootable quorums found. Exiting...");
+                    return Err(IvyError::NoQuorums);
+                }
 
-        let avs_path = self.avs()?.path();
-        fs::create_dir_all(avs_path.clone())?;
+                let avs_path = self.avs()?.path();
+                if let Some(pw) = &self.keyfile_pw {
+                    inner
+                        .opt_in(
+                            quorums,
+                            avs_path.clone(),
+                            config.default_private_keyfile.clone(),
+                            pw,
+                            chain,
+                        )
+                        .await?;
+                } else {
+                    error!("No keyfile password provided. Exiting...");
+                    return Err(IvyError::KeyfilePasswordError);
+                }
+            }
+            AvsType::AltLayer(inner) => {
+                let quorums = self.get_bootable_quorums().await?;
+                if quorums.is_empty() {
+                    error!("Could not launch EgenDA, no bootable quorums found. Exiting...");
+                    return Err(IvyError::NoQuorums);
+                }
 
-        // TODO: likely a function call in registry_coordinator
-        // let status = DELEGATION_MANAGER.get_operator_status(self.client.address()).await?;
-        // if status == 1 {
-        //     //Check which quorums they're already in and register for the others they're eligible
-        // for } else {
-        //     //Register operator for all quorums they're eligible for
-        // }
-
-        if let Some(pw) = &self.keyfile_pw {
-            self.avs()?
-                .opt_in(
-                    quorums,
-                    avs_path.clone(),
-                    config.default_private_keyfile.clone(),
-                    pw,
-                    chain,
-                )
-                .await?;
-        } else {
-            error!("No keyfile password provided. Exiting...");
-            return Err(IvyError::KeyfilePasswordError);
+                let avs_path = self.avs()?.path();
+                if let Some(pw) = &self.keyfile_pw {
+                    inner
+                        .opt_in(
+                            quorums,
+                            avs_path.clone(),
+                            config.default_private_keyfile.clone(),
+                            pw,
+                            chain,
+                        )
+                        .await?;
+                } else {
+                    error!("No keyfile password provided. Exiting...");
+                    return Err(IvyError::KeyfilePasswordError);
+                }
+            }
+            AvsType::Lagrange(inner) => {
+                inner.register()?;
+            }
+            _ => {
+                error!("Unregister is not supported for this AVS type. Exiting...");
+            }
         }
 
         Ok(())
     }
 
-    pub async fn opt_out(&self, config: &IvyConfig) -> Result<(), IvyError> {
+    pub async fn unregister(&self, config: &IvyConfig) -> Result<(), IvyError> {
         let chain = Chain::try_from(self.provider.signer().chain_id()).unwrap_or_default();
-        let quorums = self.get_bootable_quorums().await?;
-        if quorums.is_empty() {
-            error!("Could not launch EgenDA, no bootable quorums found. Exiting...");
+        let avs = self.avs()?;
 
-            return Err(IvyError::NoQuorums);
-        }
+        match avs {
+            AvsType::EigenDA(inner) => {
+                let quorums = self.get_bootable_quorums().await?;
+                if quorums.is_empty() {
+                    error!("Could not launch EgenDA, no bootable quorums found. Exiting...");
+                    return Err(IvyError::NoQuorums);
+                }
 
-        let avs_path = self.avs()?.path();
+                let avs_path = self.avs()?.path();
+                if let Some(pw) = &self.keyfile_pw {
+                    inner
+                        .opt_out(
+                            quorums,
+                            avs_path.clone(),
+                            config.default_private_keyfile.clone(),
+                            pw,
+                            chain,
+                        )
+                        .await?;
+                } else {
+                    error!("No keyfile password provided. Exiting...");
+                    return Err(IvyError::KeyfilePasswordError);
+                }
+            }
+            AvsType::AltLayer(inner) => {
+                let quorums = self.get_bootable_quorums().await?;
+                if quorums.is_empty() {
+                    error!("Could not launch EgenDA, no bootable quorums found. Exiting...");
+                    return Err(IvyError::NoQuorums);
+                }
 
-        if let Some(pw) = &self.keyfile_pw {
-            self.avs()?
-                .opt_out(
-                    quorums,
-                    avs_path.clone(),
-                    config.default_private_keyfile.clone(),
-                    pw,
-                    chain,
-                )
-                .await?;
-        } else {
-            error!("No keyfile password provided. Exiting...");
-            return Err(IvyError::KeyfilePasswordError);
+                let avs_path = self.avs()?.path();
+                if let Some(pw) = &self.keyfile_pw {
+                    inner
+                        .opt_out(
+                            quorums,
+                            avs_path.clone(),
+                            config.default_private_keyfile.clone(),
+                            pw,
+                            chain,
+                        )
+                        .await?;
+                } else {
+                    error!("No keyfile password provided. Exiting...");
+                    return Err(IvyError::KeyfilePasswordError);
+                }
+            }
+            _ => {
+                error!("Unregister is not supported for this AVS type. Exiting...");
+            }
         }
 
         Ok(())
@@ -294,22 +350,6 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
     ) -> Result<(), IvyError>;
     //fn validate_install();
     fn validate_node_size(&self, quorum_percentage: U256) -> Result<bool, IvyError>;
-    async fn opt_in(
-        &self,
-        quorums: Vec<QuorumType>,
-        eigen_path: PathBuf,
-        private_keypath: PathBuf,
-        keyfile_password: &str,
-        chain: Chain,
-    ) -> Result<(), IvyError>;
-    async fn opt_out(
-        &self,
-        quorums: Vec<QuorumType>,
-        eigen_path: PathBuf,
-        private_keypath: PathBuf,
-        keyfile_password: &str,
-        chain: Chain,
-    ) -> Result<(), IvyError>;
     async fn start(&mut self, quorums: Vec<QuorumType>, chain: Chain) -> Result<Child, IvyError>;
     async fn stop(&mut self, chain: Chain) -> Result<(), IvyError>;
     fn name(&self) -> &str;

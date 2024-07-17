@@ -30,11 +30,11 @@ pub async fn parse_avs_subcommands(subcmd: AvsCommands, config: &IvyConfig) -> R
             println!("{:?}", response.into_inner());
         }
         // TODO: Fix timeout issue
-        AvsCommands::Optin {} => {
+        AvsCommands::Register {} => {
             let response = client.avs_mut().opt_in().await?;
             println!("{:?}", response.into_inner());
         }
-        AvsCommands::Optout {} => {
+        AvsCommands::Unregister {} => {
             let response = client.avs_mut().opt_out().await?;
             println!("{:?}", response.into_inner());
         }

@@ -176,63 +176,6 @@ impl AvsVariant for AltLayer {
         Ok(class >= NodeClass::XL && disk_info >= 50000000000)
     }
 
-    /// Currently, AltLayer Mach AVS is operating in allowlist mode only: https://docs.altlayer.io/altlayer-documentation/altlayer-facilitated-actively-validated-services/xterio-mach-avs-for-xterio-chain/operator-guide
-    async fn opt_in(
-        &self,
-        quorums: Vec<QuorumType>,
-        eigen_path: PathBuf,
-        _private_keyfile: PathBuf,
-        _keyfile_password: &str,
-        chain: Chain,
-    ) -> Result<(), IvyError> {
-        let quorum_str: Vec<String> =
-            quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
-        let _quorum_str = quorum_str.join(",");
-
-        let run_path = eigen_path
-            .join("mach-avs-operator-setup")
-            .join(chain.to_string().to_lowercase())
-            .join("mach-avs/op-sepolia");
-        info!("Opting in...");
-        debug!("altlayer opt-in: {}", run_path.display());
-
-        // WARN: Changing directory here may not be the best strategy.
-        env::set_current_dir(&run_path)?;
-        let run_path = run_path.join("run.sh");
-        let optin = Command::new("sh").arg(run_path).arg("opt-in").status()?;
-        if optin.success() {
-            Ok(())
-        } else {
-            Err(IvyError::CommandError(optin.to_string()))
-        }
-    }
-
-    async fn opt_out(
-        &self,
-        _quorums: Vec<QuorumType>,
-        eigen_path: PathBuf,
-        _private_keyfile: PathBuf,
-        _keyfile_password: &str,
-        chain: Chain,
-    ) -> Result<(), IvyError> {
-        let run_path = eigen_path
-            .join("operator_setup")
-            .join(chain.to_string().to_lowercase())
-            .join("mach-avs/op-sepolia");
-        info!("Opting in...");
-        debug!("altlayer opt-in: {}", run_path.display());
-        // WARN: Changing directory here may not be the best strategy.
-        env::set_current_dir(&run_path)?;
-        let run_path = run_path.join("run.sh");
-        let optin = Command::new("sh").arg(run_path).arg("opt-in").status()?;
-        if optin.success() {
-            Ok(())
-        } else {
-            // TODO: Consider a more robust .into()
-            Err(IvyError::CommandError(optin.to_string()))
-        }
-    }
-
     async fn start(&mut self, _quorums: Vec<QuorumType>, _chain: Chain) -> Result<Child, IvyError> {
         todo!()
     }
@@ -292,6 +235,65 @@ impl AvsVariant for AltLayer {
 
     fn name(&self) -> &'static str {
         "altlayer"
+    }
+}
+
+impl AltLayer {
+    /// Currently, AltLayer Mach AVS is operating in allowlist mode only: https://docs.altlayer.io/altlayer-documentation/altlayer-facilitated-actively-validated-services/xterio-mach-avs-for-xterio-chain/operator-guide
+    pub async fn opt_in(
+        &self,
+        quorums: Vec<QuorumType>,
+        eigen_path: PathBuf,
+        _private_keyfile: PathBuf,
+        _keyfile_password: &str,
+        chain: Chain,
+    ) -> Result<(), IvyError> {
+        let quorum_str: Vec<String> =
+            quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
+        let _quorum_str = quorum_str.join(",");
+
+        let run_path = eigen_path
+            .join("mach-avs-operator-setup")
+            .join(chain.to_string().to_lowercase())
+            .join("mach-avs/op-sepolia");
+        info!("Opting in...");
+        debug!("altlayer opt-in: {}", run_path.display());
+
+        // WARN: Changing directory here may not be the best strategy.
+        env::set_current_dir(&run_path)?;
+        let run_path = run_path.join("run.sh");
+        let optin = Command::new("sh").arg(run_path).arg("opt-in").status()?;
+        if optin.success() {
+            Ok(())
+        } else {
+            Err(IvyError::CommandError(optin.to_string()))
+        }
+    }
+
+    pub async fn opt_out(
+        &self,
+        _quorums: Vec<QuorumType>,
+        eigen_path: PathBuf,
+        _private_keyfile: PathBuf,
+        _keyfile_password: &str,
+        chain: Chain,
+    ) -> Result<(), IvyError> {
+        let run_path = eigen_path
+            .join("operator_setup")
+            .join(chain.to_string().to_lowercase())
+            .join("mach-avs/op-sepolia");
+        info!("Opting in...");
+        debug!("altlayer opt-in: {}", run_path.display());
+        // WARN: Changing directory here may not be the best strategy.
+        env::set_current_dir(&run_path)?;
+        let run_path = run_path.join("run.sh");
+        let optin = Command::new("sh").arg(run_path).arg("opt-in").status()?;
+        if optin.success() {
+            Ok(())
+        } else {
+            // TODO: Consider a more robust .into()
+            Err(IvyError::CommandError(optin.to_string()))
+        }
     }
 }
 

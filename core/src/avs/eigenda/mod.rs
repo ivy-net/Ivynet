@@ -198,99 +198,6 @@ impl AvsVariant for EigenDA {
         Ok(acceptable)
     }
 
-    //TODO: We may be able to move this to a contract call directly
-    async fn opt_in(
-        &self,
-        quorums: Vec<QuorumType>,
-        eigen_path: PathBuf,
-        private_keyfile: PathBuf,
-        keyfile_password: &str,
-        chain: Chain,
-    ) -> Result<(), IvyError> {
-        let quorum_str: Vec<String> =
-            quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
-        let quorum_str = quorum_str.join(",");
-
-        let run_script_dir = eigen_path.join("eigenda-operator-setup");
-        let run_script_dir = match chain {
-            Chain::Mainnet => run_script_dir.join("mainnet"),
-            Chain::Holesky => run_script_dir.join("holesky"),
-            _ => todo!("Unimplemented"),
-        };
-
-        // Child shell scripts may not run correctly if the current directory is not set to their
-        // own path.
-        std::env::set_current_dir(run_script_dir.clone())?;
-        let run_script_path = run_script_dir.join("run.sh");
-
-        info!("Booting quorums: {:#?}", quorums);
-        debug!("{} |  {}", run_script_path.display(), quorum_str);
-
-        let optin = Command::new("sh")
-            .arg(run_script_path)
-            .arg("--operation-type")
-            .arg("opt-in")
-            .arg("--node-ecdsa-key-file-host")
-            .arg(private_keyfile)
-            .arg("--node-ecdsa-key-password")
-            .arg(keyfile_password)
-            .arg("--quorums")
-            .arg(quorum_str)
-            .status()?;
-
-        if optin.success() {
-            Ok(())
-        } else {
-            Err(EigenDAError::ScriptError(optin.to_string()).into())
-        }
-    }
-
-    async fn opt_out(
-        &self,
-        quorums: Vec<QuorumType>,
-        eigen_path: PathBuf,
-        private_keyfile: PathBuf,
-        keyfile_password: &str,
-        chain: Chain,
-    ) -> Result<(), IvyError> {
-        let quorum_str: Vec<String> =
-            quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
-        let quorum_str = quorum_str.join(",");
-
-        let run_script_dir = eigen_path.join("eigenda-operator-setup");
-        let run_script_dir = match chain {
-            Chain::Mainnet => run_script_dir.join("mainnet"),
-            Chain::Holesky => run_script_dir.join("holesky"),
-            _ => todo!("Unimplemented"),
-        };
-
-        // Child shell scripts may not run correctly if the current directory is not set to their
-        // own path.
-        std::env::set_current_dir(run_script_dir.clone())?;
-        let run_script_path = run_script_dir.join("run.sh");
-
-        info!("Booting quorums: {:#?}", quorums);
-        debug!("{} |  {}", run_script_path.display(), quorum_str);
-
-        let optin = Command::new("sh")
-            .arg(run_script_path)
-            .arg("--operation-type")
-            .arg("opt-out")
-            .arg("--node-ecdsa-key-file-host")
-            .arg(private_keyfile)
-            .arg("--node-ecdsa-key-password")
-            .arg(keyfile_password)
-            .arg("--quorums")
-            .arg(quorum_str)
-            .status()?;
-
-        if optin.success() {
-            Ok(())
-        } else {
-            Err(EigenDAError::ScriptError(optin.to_string()).into())
-        }
-    }
-
     async fn start(&mut self, quorums: Vec<QuorumType>, chain: Chain) -> Result<Child, IvyError> {
         let quorum_str: Vec<String> =
             quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
@@ -384,6 +291,101 @@ impl AvsVariant for EigenDA {
 
     fn name(&self) -> &'static str {
         "eigenda"
+    }
+}
+
+impl EigenDA {
+    //TODO: We may be able to move this to a contract call directly
+    pub async fn opt_in(
+        &self,
+        quorums: Vec<QuorumType>,
+        eigen_path: PathBuf,
+        private_keyfile: PathBuf,
+        keyfile_password: &str,
+        chain: Chain,
+    ) -> Result<(), IvyError> {
+        let quorum_str: Vec<String> =
+            quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
+        let quorum_str = quorum_str.join(",");
+
+        let run_script_dir = eigen_path.join("eigenda-operator-setup");
+        let run_script_dir = match chain {
+            Chain::Mainnet => run_script_dir.join("mainnet"),
+            Chain::Holesky => run_script_dir.join("holesky"),
+            _ => todo!("Unimplemented"),
+        };
+
+        // Child shell scripts may not run correctly if the current directory is not set to their
+        // own path.
+        std::env::set_current_dir(run_script_dir.clone())?;
+        let run_script_path = run_script_dir.join("run.sh");
+
+        info!("Booting quorums: {:#?}", quorums);
+        debug!("{} |  {}", run_script_path.display(), quorum_str);
+
+        let optin = Command::new("sh")
+            .arg(run_script_path)
+            .arg("--operation-type")
+            .arg("opt-in")
+            .arg("--node-ecdsa-key-file-host")
+            .arg(private_keyfile)
+            .arg("--node-ecdsa-key-password")
+            .arg(keyfile_password)
+            .arg("--quorums")
+            .arg(quorum_str)
+            .status()?;
+
+        if optin.success() {
+            Ok(())
+        } else {
+            Err(EigenDAError::ScriptError(optin.to_string()).into())
+        }
+    }
+
+    pub async fn opt_out(
+        &self,
+        quorums: Vec<QuorumType>,
+        eigen_path: PathBuf,
+        private_keyfile: PathBuf,
+        keyfile_password: &str,
+        chain: Chain,
+    ) -> Result<(), IvyError> {
+        let quorum_str: Vec<String> =
+            quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
+        let quorum_str = quorum_str.join(",");
+
+        let run_script_dir = eigen_path.join("eigenda-operator-setup");
+        let run_script_dir = match chain {
+            Chain::Mainnet => run_script_dir.join("mainnet"),
+            Chain::Holesky => run_script_dir.join("holesky"),
+            _ => todo!("Unimplemented"),
+        };
+
+        // Child shell scripts may not run correctly if the current directory is not set to their
+        // own path.
+        std::env::set_current_dir(run_script_dir.clone())?;
+        let run_script_path = run_script_dir.join("run.sh");
+
+        info!("Booting quorums: {:#?}", quorums);
+        debug!("{} |  {}", run_script_path.display(), quorum_str);
+
+        let optin = Command::new("sh")
+            .arg(run_script_path)
+            .arg("--operation-type")
+            .arg("opt-out")
+            .arg("--node-ecdsa-key-file-host")
+            .arg(private_keyfile)
+            .arg("--node-ecdsa-key-password")
+            .arg(keyfile_password)
+            .arg("--quorums")
+            .arg(quorum_str)
+            .status()?;
+
+        if optin.success() {
+            Ok(())
+        } else {
+            Err(EigenDAError::ScriptError(optin.to_string()).into())
+        }
     }
 }
 

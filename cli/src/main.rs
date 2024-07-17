@@ -1,12 +1,12 @@
 use clap::{Parser, Subcommand};
-use ivynet_core::{avs::commands::AvsCommands, config::IvyConfig, grpc::client::Uri};
+use cli::{avs, config, error::Error, init::initialize_ivynet, operator, service, staker};
+use ivynet_core::{
+    avs::commands::AvsCommands, config::IvyConfig, error::IvyError, grpc::client::Uri,
+};
 use std::str::FromStr as _;
-use tracing_subscriber::{fmt, prelude::*, EnvFilter};
-
 #[allow(unused_imports)]
 use tracing::{debug, error, warn};
-
-use cli::{avs, config, error::Error, init::initialize_ivynet, operator, service, staker};
+use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 #[derive(Parser, Debug)]
 #[command(name = "ivy", version, about = "The command line interface for ivynet")]
