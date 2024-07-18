@@ -42,7 +42,7 @@ pub async fn create_channel(
         endpoint
     }
     .timeout(std::time::Duration::from_secs(5));
-    info!("Initialized GRPC channel: {:?}", source);
+    debug!("Initialized GRPC channel: {:?}", source);
     match source {
         Source::Path(ref path) => {
             let mut client = Some(TokioIo::new(UnixStream::connect(&path).await?));

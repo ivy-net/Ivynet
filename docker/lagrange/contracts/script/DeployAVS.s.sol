@@ -44,10 +44,6 @@ contract DeployAVS is BaseScript {
         if (getDeployedStakeRegistry() == address(0)) {
             deployment = deploy(deployer);
 
-            // deployment.serviceManagerProxy.updateAVSMetadataURI(
-            //     "https://raw.githubusercontent.com/lagrange-labs/zkmr-avs-contracts/master/config/avs-metadata.json"
-            // );
-
             if (isLocal()) {
                 string memory key = "WHITELISTED_OPERATORS";
                 string memory delimiter = ",";
