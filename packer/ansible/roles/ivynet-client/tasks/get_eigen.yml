@@ -18,6 +18,7 @@
 
 - name: Download eigenlayer-cli (in tar.gz)
   ansible.builtin.unarchive:
+    # yamllint disable-line rule:line-length
     src: https://github.com/Layr-Labs/eigenlayer-cli/releases/download/{{eigenlayer_cli_release.tag }}/eigenlayer-cli_{{ eigenlayer_cli_release.tag[1:] }}_linux_amd64.tar.gz
     dest: /tmp
     remote_src: true

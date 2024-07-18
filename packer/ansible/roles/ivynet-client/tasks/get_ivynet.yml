@@ -19,6 +19,7 @@
 
 - name: Get release id
   ansible.builtin.uri:
+    # yamllint disable-line rule:line-length
     url: "https://api.github.com/repos/ivy-net/ivynet/releases/tags/{{ ivynet_client_release.tag }}"
     method: GET
     headers:
@@ -31,7 +32,9 @@
 
 - name: Prepare variable if assets id
   ansible.builtin.set_fact:
+    # yamllint disable-line rule:line-length
     ivynet_client_assets_id: "{{ ivynet_client_assets_output | community.general.json_query(json_output_query) }}"
+    cacheable: true
   vars:
     json_output_query: "json.assets[?name=='ivynet'].id"
   tags:
@@ -44,6 +47,7 @@
 
 - name: Get asset id
   ansible.builtin.uri:
+    # yamllint disable-line rule:line-length
     url: "https://api.github.com/repos/ivy-net/ivynet/releases/assets/{{ ivynet_client_assets_id[0] }}"
     method: GET
     headers:
