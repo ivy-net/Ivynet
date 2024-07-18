@@ -106,32 +106,32 @@ services:
       eigenlayer:
         condition: service_completed_successfully
 
-  lagrange-worker:
-    build: https://github.com/ivy-net/lgn-coprocessor#feature/local-network
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./docker/lagrange/worker/config:/config
-      - ./docker/lagrange/worker/params:/zkmr_params
-    restart: always
-    pull_policy: always
-    command: ["worker", "--config", "/config/worker-conf.toml"]
-    environment:
-      DELEGATION_MANAGER_ADDR: 0x30bdaE426d3CBD42e9d41D23958Fac6AD8310f81
-      AVS_DIRECTORY_ADDR: 0x8BfC4B63Cb65d1004c9e9a0a8982915Dc9aAAf29
-      ZKMR_STAKE_REGISTRY_ADDR: 0xEe4cd8999aF659188720808e8af2f8DaB41EBD10
-      ZKMR_SERVICE_MANAGER_ADDR: 0x70621A875adB93392e2B782e07fd3e1A953Ffb4f
-      RPC_URL: http://anvil:8545
-      AVS__ETH_PWD: ${AVS__ETH_PWD}
-      AVS__ETH_KEYSTORE: /config/priv_key.json
-      NETWORK: local
-      AVS__LAGR_KEYSTORE: /config/lagr_keystore.json
-      AVS__LAGR_PWD: ${AVS__LAGR_PWD}
-      RUST_LOG: info,worker=debug
-      PUBLIC_PARAMS__SKIP_STORE: false
-    depends_on:
-      lagrange-contracts:
-        condition: service_completed_successfully
+  # lagrange-worker:
+  #   build: https://github.com/ivy-net/lgn-coprocessor#feature/local-network
+  #   ports:
+  #     - "9090:9090"
+  #   volumes:
+  #     - ./docker/lagrange/worker/config:/config
+  #     - ./docker/lagrange/worker/params:/zkmr_params
+  #   restart: always
+  #   pull_policy: always
+  #   command: ["worker", "--config", "/config/worker-conf.toml"]
+  #   environment:
+  #     DELEGATION_MANAGER_ADDR: 0x30bdaE426d3CBD42e9d41D23958Fac6AD8310f81
+  #     AVS_DIRECTORY_ADDR: 0x8BfC4B63Cb65d1004c9e9a0a8982915Dc9aAAf29
+  #     ZKMR_STAKE_REGISTRY_ADDR: 0xEe4cd8999aF659188720808e8af2f8DaB41EBD10
+  #     ZKMR_SERVICE_MANAGER_ADDR: 0x70621A875adB93392e2B782e07fd3e1A953Ffb4f
+  #     RPC_URL: http://anvil:8545
+  #     AVS__ETH_PWD: ${AVS__ETH_PWD}
+  #     AVS__ETH_KEYSTORE: /config/priv_key.json
+  #     NETWORK: local
+  #     AVS__LAGR_KEYSTORE: /config/lagr_keystore.json
+  #     AVS__LAGR_PWD: ${AVS__LAGR_PWD}
+  #     RUST_LOG: info,worker=debug
+  #     PUBLIC_PARAMS__SKIP_STORE: false
+  #   depends_on:
+  #     lagrange-contracts:
+  #       condition: service_completed_successfully
 
   # FoundaryUp based container with local image
   # deploying Demo AVS
