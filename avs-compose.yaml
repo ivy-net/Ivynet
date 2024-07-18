@@ -108,7 +108,6 @@ services:
 
   lagrange-worker:
     build: https://github.com/ivy-net/lgn-coprocessor#feature/local-network
-    environment:
     ports:
       - "9090:9090"
     volumes:
