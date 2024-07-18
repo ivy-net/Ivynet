@@ -1,5 +1,5 @@
 ---
- - hosts: default
-   become: true
-   roles:
-     - ivynet-client
+- hosts: default
+  become: true
+  roles:
+    - ivynet-client

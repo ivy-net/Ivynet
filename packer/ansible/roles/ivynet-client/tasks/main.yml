@@ -19,16 +19,16 @@
     update_cache: true
   loop:
     - python3-pip
-      #    - rustc
-      #    - cargo
-      #    - protobuf-compiler
-      #    - pkg-config
-      #    - libssl-dev
-      #    - docker-ce
-      #    - docker-ce-cli
-      #    - containerd.io
-      #    - docker-buildx-plugin
-      #    - docker-compose-plugin
+    - rustc
+    - cargo
+    - protobuf-compiler
+    - pkg-config
+    - libssl-dev
+    - docker-ce
+    - docker-ce-cli
+    - containerd.io
+    - docker-buildx-plugin
+    - docker-compose-plugin
   tags:
     - general
     - download

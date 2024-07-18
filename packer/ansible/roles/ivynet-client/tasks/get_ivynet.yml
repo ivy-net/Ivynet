@@ -38,10 +38,10 @@
     - ivynet
     - github
 
-
 - name: Show id
   ansible.builtin.debug:
     msg: "{{ ivynet_client_assets_id }}"
+
 - name: Get asset id
   ansible.builtin.uri:
     url: "https://api.github.com/repos/ivy-net/ivynet/releases/assets/{{ ivynet_client_assets_id[0] }}"

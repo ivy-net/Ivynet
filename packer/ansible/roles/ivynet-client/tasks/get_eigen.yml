@@ -27,7 +27,7 @@
 
 - name: Copy eigenlayer-cli to final destination
   ansible.builtin.copy:
-    src:  /tmp/eigenlayer
+    src: /tmp/eigenlayer
     dest: "{{ ivynet_client_install_path }}/bin"
     owner: root
     group: root
