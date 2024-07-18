@@ -9,6 +9,9 @@
     components: [stable]
     state: present
     enabled: true
+  tags:
+    - general
+    - docker
 
 - name: Install packages (for rust and docker)
   ansible.builtin.apt:
@@ -26,14 +29,20 @@
       #    - containerd.io
       #    - docker-buildx-plugin
       #    - docker-compose-plugin
-      #
-      #
+  tags:
+    - general
+    - download
+
 
 - name: Install githbub3.py (for github access)
   ansible.builtin.pip:
     name: github3.py
     state: latest
     break_system_packages: true
+  tags:
+    - general
+    - download
+    - github
 
 - name: Prepare directories
   ansible.builtin.file:
@@ -46,6 +55,8 @@
   loop:
     - bin
     - resources
+  tags:
+    - general
 
 - name: Download ivynet-cli
   ansible.builtin.include_tasks:
@@ -62,3 +73,5 @@
     owner: root
     group: root
     mode: 0644
+  tags:
+    - general

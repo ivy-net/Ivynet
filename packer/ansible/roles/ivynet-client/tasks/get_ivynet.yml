@@ -6,9 +6,16 @@
     token: "{{ ivynet_client_github_token }}"
     action: latest_release
   register: ivynet_client_release
+  tags:
+    - ivynet
+    - github
 
-- ansible.builtin.debug:
+- name: Expose tag of the downloaded assets
+  ansible.builtin.debug:
     msg: "{{ ivynet_client_release.tag }} is the tag"
+  tags:
+    - ivynet
+    - github
 
 - name: Get release id
   ansible.builtin.uri:
@@ -17,35 +24,40 @@
     headers:
       Authorization: "token {{ ivynet_client_github_token }}"
     follow_redirects: all
-  register: ivynet_client_release_output
+  register: ivynet_client_assets_output
+  tags:
+    - ivynet
+    - github
 
-- ansible.builtin.debug:
-  #msg: "{{ ivynet_client_release_output }}"
-    msg: "{{ item }}"
-  loop:
-    "{{ ivynet_client_release_output | community.general.json_query('json[*]') }}"
+- name: Prepare variable if assets id
+  ansible.builtin.set_fact:
+    ivynet_client_assets_id: "{{ ivynet_client_assets_output | community.general.json_query(json_output_query) }}"
+  vars:
+    json_output_query: "json.assets[?name=='ivynet'].id"
+  tags:
+    - ivynet
+    - github
 
 
+- name: Show id
+  ansible.builtin.debug:
+    msg: "{{ ivynet_client_assets_id }}"
 - name: Get asset id
-  ansible.builtin.get_url:
-    url: "https://api.github.com/repos/ivy-net/ivynet/releases/{{ ivynet_client_release_output.id }}/assets"
+  ansible.builtin.uri:
+    url: "https://api.github.com/repos/ivy-net/ivynet/releases/assets/{{ ivynet_client_assets_id[0] }}"
     method: GET
     headers:
       Authorization: "token {{ ivynet_client_github_token }}"
+      Accept: "application/octet-stream"
     follow_redirects: all
+    dest: "{{ ivynet_client_install_path }}/bin"
+    owner: root
+    group: root
+    mode: 0755
   register: ivynet_client_assets_output
-
-- ansible.builtin.debug:
-    msg: "{{ ivynet_client_assets_output }}"
-
-      #url: https://api.github.com/repos/ivy-net/ivynet/releases/165819880/assets
-        #      Accept: "application/octet-stream"
-        #
-        #    follow_redirects: all
-        #    owner: root
-        #    group: root
-        #    mode: 0755
-#    remote_src: true
+  tags:
+    - ivynet
+    - github
 
 - name: Save ivynet release info
   ansible.builtin.copy:
@@ -55,3 +67,6 @@
     owner: root
     group: root
     mode: 0444
+  tags:
+    - ivynet
+    - github

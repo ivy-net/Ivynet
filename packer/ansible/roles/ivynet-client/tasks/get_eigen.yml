@@ -5,15 +5,25 @@
     repo: eigenlayer-cli
     action: latest_release
   register: eigenlayer_cli_release
+  tags:
+    - eigen
+    - github
 
-- ansible.builtin.debug:
+- name: Expose tag of the downloaded assets
+  ansible.builtin.debug:
     msg: "{{ eigenlayer_cli_release.tag }} is the tag"
+  tags:
+    - eigen
+    - github
 
 - name: Download eigenlayer-cli (in tar.gz)
   ansible.builtin.unarchive:
     src: https://github.com/Layr-Labs/eigenlayer-cli/releases/download/{{eigenlayer_cli_release.tag }}/eigenlayer-cli_{{ eigenlayer_cli_release.tag[1:] }}_linux_amd64.tar.gz
     dest: /tmp
     remote_src: true
+  tags:
+    - eigen
+    - github
 
 - name: Copy eigenlayer-cli to final destination
   ansible.builtin.copy:
@@ -23,6 +33,9 @@
     group: root
     mode: 0755
     remote_src: true
+  tags:
+    - eigen
+    - github
 
 - name: Get EigenDA Operator Setup
   ansible.builtin.git:
@@ -30,6 +43,9 @@
     dest: "{{ ivynet_client_install_path }}/eigenda-operator-setup"
     clone: true
     update: true
+  tags:
+    - eigen
+    - github
 
 - name: Download g1, g2 files
   ansible.builtin.get_url:
@@ -41,3 +57,7 @@
   loop:
     - g1.point
     - g2.point.powerOf2
+  tags:
+    - eigen
+    - download
+    - gcp
