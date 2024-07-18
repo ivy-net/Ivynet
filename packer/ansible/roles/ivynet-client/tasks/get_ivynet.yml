@@ -61,7 +61,7 @@
 
 - name: Save ivynet release info
   ansible.builtin.copy:
-    dest: "{{ ivynet_client_install_path }}"
+    dest: "{{ ivynet_client_install_path }}/ivynet.tag"
     content: |
       {{ ivynet_client_release.tag }}
     owner: root

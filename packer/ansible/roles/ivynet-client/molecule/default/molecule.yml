@@ -1,0 +1,15 @@
+---
+driver:
+  name: docker
+lint: |
+  set -e
+  yamllint .
+  ansible-lint
+  flake8
+platforms:
+  - name: ubuntu24.04
+    image: ubuntu:noble
+provisioner:
+  name: ansible
+verifier:
+  name: ansible
