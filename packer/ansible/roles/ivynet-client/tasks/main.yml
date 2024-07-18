@@ -37,44 +37,28 @@
 
 - name: Prepare directories
   ansible.builtin.file:
-    path: "{{ ivynet_client_install_path }}/bin"
+    path: "{{ ivynet_client_install_path }}/{{ item }}"
     state: directory
     owner: root
     group: root
     mode: 0755
     recurse: true
+  loop:
+    - bin
+    - resources
 
-- name: Get latest release of glove
-  community.general.github_release:
-    user: ivy-net
-    repo: ivynet
-    token: "{{ ivynet_client_github_token }}"
-    action: latest_release
-  register: ivynet_release
+- name: Download ivynet-cli
+  ansible.builtin.include_tasks:
+    file: get_ivynet.yml
 
-- ansible.builtin.debug:
-    msg: "{{ ivynet_release.tag}} is the tag"
+- name: Download eigenlayer resources (cli, point files etc.)
+  ansible.builtin.include_tasks:
+    file: get_eigen.yml
 
-- name: Download client
-  ansible.builtin.get_url:
-    url: https://github.com/ivy-net/ivynet/releases/download/{{ivynet_client_release.tag }}/ivynet
-    dest: "{{ ivynet_client_install_path }}/bin"
+- name: Upload MOTD
+  ansible.builtin.template:
+    src: motd.txt.j2
+    dest: /etc/motd
     owner: root
     group: root
-    mode: 0755
-
-- name: Get EigenDA Operator Setup
-  ansible.builtin.git:
-    repo: https://github.com/Layr-Labs/eigenda-operator-setup.git
-    dest: "{{ ivynet_client_install_path }}/eigenda-operator-setup"
-    clone: true
-    update: true
-
-# Extra steps
-# Get eigenlayer-operator-setup repo -
-# Download g1, g2 files
-# Download our binaries -
-# Optional
-# get our repo
-# get eignelayer repo
-#
+    mode: 0644

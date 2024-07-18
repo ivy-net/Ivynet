@@ -3,18 +3,11 @@ This is a cloudstation VM dedicated to work with IvyNet Client.
 
 It based on Ubuntu and includes docker, rust and cargo packages.
 
-The code of:
-* eigenda,
-* eigenda-operator-setup,
-* ivynet
-are cloned to the /opt/eigen folder.
+* The ivynet (client) and eigenlayer-cli binaries are in {{ ivynet_client_install_path }}/bin directory.
+* The eigenda-operator-setup is cloned to subdirectory of {{ ivynet_client_install_path }}.
 
-Additionally, the
-* eigen-cli
-is downloaded to the /opt/eigen/bin folder.
-
-Finally the
+Additionally,
 * g1,
 * g2
-files are in the resources subfolder of the eigenda-operator-setup repository.
+files are in the {{ ivynet_client_install_path }}/resources directory.
 ===============================================================================

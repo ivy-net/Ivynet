@@ -1,0 +1,57 @@
+---
+- name: Get latest release of ivynet-client
+  community.general.github_release:
+    user: ivy-net
+    repo: ivynet
+    token: "{{ ivynet_client_github_token }}"
+    action: latest_release
+  register: ivynet_client_release
+
+- ansible.builtin.debug:
+    msg: "{{ ivynet_client_release.tag }} is the tag"
+
+- name: Get release id
+  ansible.builtin.uri:
+    url: "https://api.github.com/repos/ivy-net/ivynet/releases/tags/{{ ivynet_client_release.tag }}"
+    method: GET
+    headers:
+      Authorization: "token {{ ivynet_client_github_token }}"
+    follow_redirects: all
+  register: ivynet_client_release_output
+
+- ansible.builtin.debug:
+  #msg: "{{ ivynet_client_release_output }}"
+    msg: "{{ item }}"
+  loop:
+    "{{ ivynet_client_release_output | community.general.json_query('json[*]') }}"
+
+
+- name: Get asset id
+  ansible.builtin.get_url:
+    url: "https://api.github.com/repos/ivy-net/ivynet/releases/{{ ivynet_client_release_output.id }}/assets"
+    method: GET
+    headers:
+      Authorization: "token {{ ivynet_client_github_token }}"
+    follow_redirects: all
+  register: ivynet_client_assets_output
+
+- ansible.builtin.debug:
+    msg: "{{ ivynet_client_assets_output }}"
+
+      #url: https://api.github.com/repos/ivy-net/ivynet/releases/165819880/assets
+        #      Accept: "application/octet-stream"
+        #
+        #    follow_redirects: all
+        #    owner: root
+        #    group: root
+        #    mode: 0755
+#    remote_src: true
+
+- name: Save ivynet release info
+  ansible.builtin.copy:
+    dest: "{{ ivynet_client_install_path }}"
+    content: |
+      {{ ivynet_client_release.tag }}
+    owner: root
+    group: root
+    mode: 0444
