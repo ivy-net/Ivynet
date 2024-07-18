@@ -2,7 +2,7 @@ use hyper_util::rt::TokioIo;
 use tokio::net::UnixStream;
 use tonic::transport::{Certificate, Channel, ClientTlsConfig, Endpoint};
 use tower::service_fn;
-use tracing::{debug, info};
+use tracing::debug;
 
 pub use tonic::{transport::Uri, Request, Response};
 
