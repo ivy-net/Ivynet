@@ -4,12 +4,19 @@
   gather_facts: true
   roles:
     - role: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') | basename }}"
-      tags: github
   pre_tasks:
     - name: Install extra packages
       ansible.builtin.apt:
         name: "{{ item }}"
-        state: latest
+        state: present
       loop:
         - git
         - python3-debian
+        - python3-pip
+      tags:
+        - github
+    - name: Info
+      ansible.builtin.debug:
+        msg: "Finish pre tasks"
+      tags:
+        - github

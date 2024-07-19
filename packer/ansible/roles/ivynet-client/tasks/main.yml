@@ -59,11 +59,11 @@
     - general
 
 - name: Download ivynet-cli
-  ansible.builtin.include_tasks:
+  ansible.builtin.import_tasks:
     file: get_ivynet.yml
 
 - name: Download eigenlayer resources (cli, point files etc.)
-  ansible.builtin.include_tasks:
+  ansible.builtin.import_tasks:
     file: get_eigen.yml
 
 - name: Upload MOTD

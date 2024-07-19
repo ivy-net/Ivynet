@@ -37,15 +37,20 @@
     cacheable: true
   vars:
     json_output_query: "json.assets[?name=='ivynet'].id"
+  when: ivynet_client_assets_id is not defined
   tags:
     - ivynet
     - github
 
-- name: Show id
-  ansible.builtin.debug:
-    msg: "{{ ivynet_client_assets_id }}"
-
-- name: Get asset id
+      #- name: Show id
+      #  ansible.builtin.debug:
+      #    msg: "{{ ivynet_client_assets_output | community.general.json_query(json_output_query) }}"
+      #  vars:
+      #    json_output_query: "json.assets[?name=='ivynet']"
+      #  tags:
+      #    - github
+      #
+- name: Get asset
   ansible.builtin.uri:
     # yamllint disable-line rule:line-length
     url: "https://api.github.com/repos/ivy-net/ivynet/releases/assets/{{ ivynet_client_assets_id[0] }}"
@@ -54,11 +59,21 @@
       Authorization: "token {{ ivynet_client_github_token }}"
       Accept: "application/octet-stream"
     follow_redirects: all
-    dest: "{{ ivynet_client_install_path }}/bin"
+    dest: "{{ ivynet_client_install_path }}/bin/ivynet"
     owner: root
     group: root
     mode: 0755
-  register: ivynet_client_assets_output
+  when: ivynet_client_stat.stat.checksum is not defined
+  tags:
+    - ivynet
+    - github
+
+- name: Prepare hash (sha1) of ivynet client
+  ansible.builtin.stat:
+    name: "{{ ivynet_client_install_path }}/bin/ivynet"
+    get_checksum: true
+  register:
+    ivynet_client_stat
   tags:
     - ivynet
     - github

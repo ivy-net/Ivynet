@@ -11,5 +11,13 @@ platforms:
     image: ubuntu:noble
 provisioner:
   name: ansible
+  log: true
+  playbooks:
+    converge: converge.yml
+  config_options:
+    defaults:
+      fact_caching: jsonfile
+      fact_caching_connection: /tmp/ansible_fact_cache
+      fact_caching_timeout: 86400
 verifier:
   name: ansible
