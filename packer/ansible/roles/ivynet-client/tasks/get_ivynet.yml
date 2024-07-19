@@ -37,7 +37,6 @@
     cacheable: true
   vars:
     json_output_query: "json.assets[?name=='ivynet'].id"
-  when: ivynet_client_assets_id is not defined
   tags:
     - ivynet
     - github
@@ -59,21 +58,11 @@
       Authorization: "token {{ ivynet_client_github_token }}"
       Accept: "application/octet-stream"
     follow_redirects: all
+    status_code: [200, 304]
     dest: "{{ ivynet_client_install_path }}/bin/ivynet"
     owner: root
     group: root
     mode: 0755
-  when: ivynet_client_stat.stat.checksum is not defined
-  tags:
-    - ivynet
-    - github
-
-- name: Prepare hash (sha1) of ivynet client
-  ansible.builtin.stat:
-    name: "{{ ivynet_client_install_path }}/bin/ivynet"
-    get_checksum: true
-  register:
-    ivynet_client_stat
   tags:
     - ivynet
     - github

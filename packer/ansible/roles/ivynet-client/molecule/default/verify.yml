@@ -1,0 +1,17 @@
+---
+- name: Verify
+  hosts: all
+  vars:
+    ivynet_client_path: /opt/ivynet/bin/ivynet
+  tasks:
+    - name: Get file stats
+      ansible.builtin.stat:
+        path: "{{ ivynet_client_path }}"
+      register:
+        ivynet_client_stat
+    - name: Assert the file is download
+      ansible.builtin.assert:
+        that:
+          - ivynet_client_stat.isreg is defined
+          - ivynet_client.stat.isreg == True
+          - ivynet_client.stat.size > 2**20
