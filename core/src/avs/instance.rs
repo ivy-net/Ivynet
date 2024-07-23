@@ -40,23 +40,16 @@ impl AvsType {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl AvsVariant for AvsType {
-    async fn setup(&self, provider: Arc<IvyProvider>, config: &IvyConfig) -> Result<(), IvyError> {
-        match self {
-            AvsType::EigenDA(avs) => avs.setup(provider, config).await?,
-            AvsType::AltLayer(avs) => avs.setup(provider, config).await?,
-            AvsType::Lagrange(avs) => avs.setup(provider, config).await?,
-        }
-        Ok(())
-    }
-    async fn build_env(
+    async fn setup(
         &self,
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
+        pw: Option<String>,
     ) -> Result<(), IvyError> {
         match self {
-            AvsType::EigenDA(avs) => avs.build_env(provider, config).await?,
-            AvsType::AltLayer(avs) => avs.build_env(provider, config).await?,
-            AvsType::Lagrange(avs) => avs.build_env(provider, config).await?,
+            AvsType::EigenDA(avs) => avs.setup(provider, config, pw).await?,
+            AvsType::AltLayer(avs) => avs.setup(provider, config, pw).await?,
+            AvsType::Lagrange(avs) => avs.setup(provider, config, pw).await?,
         }
         Ok(())
     }
@@ -108,11 +101,16 @@ impl AvsVariant for AvsType {
     //         }
     //     }
     // }
-    async fn start(&mut self, quorums: Vec<QuorumType>, chain: Chain) -> Result<Child, IvyError> {
+    async fn start(
+        &mut self,
+        quorums: Vec<QuorumType>,
+        chain: Chain,
+        keyfile_pw: Option<String>,
+    ) -> Result<Child, IvyError> {
         match self {
-            AvsType::EigenDA(avs) => avs.start(quorums, chain).await,
-            AvsType::AltLayer(avs) => avs.start(quorums, chain).await,
-            AvsType::Lagrange(avs) => avs.start(quorums, chain).await,
+            AvsType::EigenDA(avs) => avs.start(quorums, chain, keyfile_pw).await,
+            AvsType::AltLayer(avs) => avs.start(quorums, chain, keyfile_pw).await,
+            AvsType::Lagrange(avs) => avs.start(quorums, chain, keyfile_pw).await,
         }
     }
     async fn stop(&mut self, chain: Chain) -> Result<(), IvyError> {

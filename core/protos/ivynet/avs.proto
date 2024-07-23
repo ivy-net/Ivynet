@@ -56,7 +56,6 @@ message SelectAvsRequest {
     string chain = 2;
 }
 
-
 //--------------------------
 // SERVICE
 //--------------------------

@@ -62,110 +62,14 @@ impl Default for AltLayer {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl AvsVariant for AltLayer {
-    async fn setup(&self, provider: Arc<IvyProvider>, config: &IvyConfig) -> Result<(), IvyError> {
-        download_operator_setup(self.path.clone()).await?;
-        self.build_env(provider, config).await?;
-        Ok(())
-    }
-
-    async fn build_env(
+    async fn setup(
         &self,
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
+        pw: Option<String>,
     ) -> Result<(), IvyError> {
-        let chain = Chain::try_from(provider.signer().chain_id())?;
-        let rpc_url = config.get_rpc_url(chain)?;
-
-        let mach_avs_path = self.path.join("mach-avs-operator-setup");
-        let avs_run_path = match chain {
-            Chain::Mainnet => mach_avs_path.join("mainnet"),
-            Chain::Holesky => mach_avs_path.join("holesky"),
-            _ => todo!("Unimplemented"),
-        };
-
-        let avs_run_path = avs_run_path.join("mach-avs/op-sepolia");
-        //
-        // .env
-        //
-
-        let env_example_path = avs_run_path.join(".env.example");
-        let env_path = avs_run_path.join(".env");
-
-        if !env_example_path.exists() {
-            error!("The '.env.example' file does not exist at {}. '.env.example' is used for .env templating, please ensure the operator-setup was downloaded to the correct location.", env_example_path.display());
-            return Err(SetupError::NoEnvExample.into());
-        }
-
-        std::fs::copy(env_example_path, env_path.clone())?;
-
-        let ecdsa_address = provider.address();
-        debug!("using provider address {ecdsa_address:?}");
-
-        debug!("configuring env...");
-        let mut env_lines = EnvLines::load(&env_path)?;
-
-        let home_dir = dirs::home_dir().unwrap();
-        let home_str = home_dir.to_str().expect("Could not get home directory");
-
-        let bls_key_name: String = Input::new()
-            .with_prompt(
-                "Input the name of your BLS key file without file extensions - looks in .eigenlayer folder (where eigen cli stores the key)",
-            )
-            .interact_text()?;
-
-        let mut bls_json_file_location = dirs::home_dir().expect("Could not get home directory");
-        bls_json_file_location.push(".eigenlayer/operator_keys");
-        bls_json_file_location.push(bls_key_name);
-        bls_json_file_location.set_extension("bls.key.json");
-        info!("BLS key file location: {:?}", bls_json_file_location);
-
-        let bls_password: String =
-            Password::new().with_prompt("Input the password for your BLS key file").interact()?;
-
-        let node_cache_path = mach_avs_path.join("resources/cache");
-
-        env_lines.set("USER_HOME", home_str);
-        env_lines.set("ETH_RPC_URL", &rpc_url);
-        env_lines.set("OPERATOR_ECDSA_ADDRESS", &format!("{:?}", ecdsa_address));
-        env_lines.set(
-            "NODE_BLS_KEY_FILE_HOST",
-            bls_json_file_location.to_str().expect("Could not get BLS key file location"),
-        );
-        env_lines.set("OPERATOR_BLS_KEY_PASSWORD", &bls_password);
-        env_lines
-            .set("NODE_CACHE_PATH_HOST", node_cache_path.to_str().expect("Could not parse string"));
-        env_lines.save(&env_path)?;
-
-        //
-        // .env.opt
-        //
-
-        let env_example_path = avs_run_path.join(".env.opt-example");
-        let env_path = avs_run_path.join(".env.opt");
-
-        std::fs::copy(env_example_path, env_path.clone())?;
-
-        debug!("Setting env.opt vars");
-        let mut env_lines = EnvLines::load(&env_path)?;
-
-        let ecdsa_password: String =
-            Password::new().with_prompt("Input the password for your ECDSA key file").interact()?;
-
-        env_lines.set("METADATA_URI", IVY_METADATA);
-        env_lines.set("USER_HOME", home_str);
-        env_lines.set(
-            "NODE_BLS_KEY_FILE_HOST",
-            bls_json_file_location.to_str().expect("Could not get BLS key file location"),
-        );
-        let mut legacy_keyfile_path = config.default_private_keyfile.clone();
-        legacy_keyfile_path.set_extension("legacy.json");
-        env_lines.set(
-            "NODE_ECDSA_KEY_FILE_HOST",
-            legacy_keyfile_path.to_str().expect("Bad private key path"),
-        );
-        env_lines.set("OPERATOR_BLS_KEY_PASSWORD", &bls_password);
-        env_lines.set("OPERATOR_ECDSA_KEY_PASSWORD", &ecdsa_password);
-        env_lines.save(&env_path)?;
+        download_operator_setup(self.path.clone()).await?;
+        self.build_env(provider, config, pw).await?;
         Ok(())
     }
 
@@ -176,7 +80,12 @@ impl AvsVariant for AltLayer {
         Ok(class >= NodeClass::XL && disk_info >= 50000000000)
     }
 
-    async fn start(&mut self, _quorums: Vec<QuorumType>, _chain: Chain) -> Result<Child, IvyError> {
+    async fn start(
+        &mut self,
+        _quorums: Vec<QuorumType>,
+        _chain: Chain,
+        _keyfile_pw: Option<String>,
+    ) -> Result<Child, IvyError> {
         todo!()
     }
 
@@ -278,22 +187,7 @@ impl AltLayer {
         _keyfile_password: &str,
         chain: Chain,
     ) -> Result<(), IvyError> {
-        let run_path = eigen_path
-            .join("operator_setup")
-            .join(chain.to_string().to_lowercase())
-            .join("mach-avs/op-sepolia");
-        info!("Opting in...");
-        debug!("altlayer opt-in: {}", run_path.display());
-        // WARN: Changing directory here may not be the best strategy.
-        env::set_current_dir(&run_path)?;
-        let run_path = run_path.join("run.sh");
-        let optin = Command::new("sh").arg(run_path).arg("opt-in").status()?;
-        if optin.success() {
-            Ok(())
-        } else {
-            // TODO: Consider a more robust .into()
-            Err(IvyError::CommandError(optin.to_string()))
-        }
+        todo!()
     }
 }
 
@@ -362,4 +256,108 @@ pub async fn download_operator_setup(eigen_path: PathBuf) -> Result<(), IvyError
     }
 
     Ok(())
+}
+
+impl AltLayer {
+    async fn build_env(
+        &self,
+        provider: Arc<IvyProvider>,
+        config: &IvyConfig,
+        _pw: Option<String>,
+    ) -> Result<(), IvyError> {
+        let chain = Chain::try_from(provider.signer().chain_id())?;
+        let rpc_url = config.get_rpc_url(chain)?;
+
+        let mach_avs_path = self.path.join("mach-avs-operator-setup");
+        let avs_run_path = match chain {
+            Chain::Mainnet => mach_avs_path.join("mainnet"),
+            Chain::Holesky => mach_avs_path.join("holesky"),
+            _ => todo!("Unimplemented"),
+        };
+
+        let avs_run_path = avs_run_path.join("mach-avs/op-sepolia");
+        //
+        // .env
+        //
+
+        let env_example_path = avs_run_path.join(".env.example");
+        let env_path = avs_run_path.join(".env");
+
+        if !env_example_path.exists() {
+            error!("The '.env.example' file does not exist at {}. '.env.example' is used for .env templating, please ensure the operator-setup was downloaded to the correct location.", env_example_path.display());
+            return Err(SetupError::NoEnvExample.into());
+        }
+
+        std::fs::copy(env_example_path, env_path.clone())?;
+
+        let ecdsa_address = provider.address();
+        debug!("using provider address {ecdsa_address:?}");
+
+        debug!("configuring env...");
+        let mut env_lines = EnvLines::load(&env_path)?;
+
+        let home_dir = dirs::home_dir().unwrap();
+        let home_str = home_dir.to_str().expect("Could not get home directory");
+
+        let bls_key_name: String = Input::new()
+            .with_prompt(
+                "Input the name of your BLS key file without file extensions - looks in .eigenlayer folder (where eigen cli stores the key)",
+            )
+            .interact_text()?;
+
+        let mut bls_json_file_location = dirs::home_dir().expect("Could not get home directory");
+        bls_json_file_location.push(".eigenlayer/operator_keys");
+        bls_json_file_location.push(bls_key_name);
+        bls_json_file_location.set_extension("bls.key.json");
+        info!("BLS key file location: {:?}", bls_json_file_location);
+
+        let bls_password: String =
+            Password::new().with_prompt("Input the password for your BLS key file").interact()?;
+
+        let node_cache_path = mach_avs_path.join("resources/cache");
+
+        env_lines.set("USER_HOME", home_str);
+        env_lines.set("ETH_RPC_URL", &rpc_url);
+        env_lines.set("OPERATOR_ECDSA_ADDRESS", &format!("{:?}", ecdsa_address));
+        env_lines.set(
+            "NODE_BLS_KEY_FILE_HOST",
+            bls_json_file_location.to_str().expect("Could not get BLS key file location"),
+        );
+        env_lines.set("OPERATOR_BLS_KEY_PASSWORD", &bls_password);
+        env_lines
+            .set("NODE_CACHE_PATH_HOST", node_cache_path.to_str().expect("Could not parse string"));
+        env_lines.save(&env_path)?;
+
+        //
+        // .env.opt
+        //
+
+        let env_example_path = avs_run_path.join(".env.opt-example");
+        let env_path = avs_run_path.join(".env.opt");
+
+        std::fs::copy(env_example_path, env_path.clone())?;
+
+        debug!("Setting env.opt vars");
+        let mut env_lines = EnvLines::load(&env_path)?;
+
+        let ecdsa_password: String =
+            Password::new().with_prompt("Input the password for your ECDSA key file").interact()?;
+
+        env_lines.set("METADATA_URI", IVY_METADATA);
+        env_lines.set("USER_HOME", home_str);
+        env_lines.set(
+            "NODE_BLS_KEY_FILE_HOST",
+            bls_json_file_location.to_str().expect("Could not get BLS key file location"),
+        );
+        let mut legacy_keyfile_path = config.default_private_keyfile.clone();
+        legacy_keyfile_path.set_extension("legacy.json");
+        env_lines.set(
+            "NODE_ECDSA_KEY_FILE_HOST",
+            legacy_keyfile_path.to_str().expect("Bad private key path"),
+        );
+        env_lines.set("OPERATOR_BLS_KEY_PASSWORD", &bls_password);
+        env_lines.set("OPERATOR_ECDSA_KEY_PASSWORD", &ecdsa_password);
+        env_lines.save(&env_path)?;
+        Ok(())
+    }
 }

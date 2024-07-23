@@ -1,6 +1,6 @@
 use ethers::{
     contract::ContractError,
-    providers::{JsonRpcError, MiddlewareError as _},
+    providers::{JsonRpcError, MiddlewareError as _, ProviderError},
     signers::WalletError,
     types::{Bytes, Chain, TryFromPrimitiveError},
     utils::hex::FromHexError,
@@ -67,6 +67,9 @@ pub enum IvyError {
 
     #[error(transparent)]
     ConfigError(#[from] crate::config::ConfigError),
+
+    #[error(transparent)]
+    ProviderError(#[from] ProviderError),
 
     #[error(
         "AVS {0} on chain {1} is currently running. Stop the AVS before using this operation."

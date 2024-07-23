@@ -16,7 +16,7 @@ use ethers::{
     signers::Signer,
     types::{Address, Chain, U256},
 };
-use std::{collections::HashMap, fmt::Debug, fs, path::PathBuf, process::Child, sync::Arc};
+use std::{collections::HashMap, fmt::Debug, path::PathBuf, process::Child, sync::Arc};
 use tracing::{error, info};
 
 pub mod commands;
@@ -31,9 +31,11 @@ pub mod witness;
 pub type QuorumMinMap = HashMap<Chain, HashMap<QuorumType, U256>>;
 
 use self::{
-    contracts::{RegistryCoordinator, RegistryCoordinatorAbi, StakeRegistry, StakeRegistryAbi},
-    eigenda::EigenDA,
-    mach_avs::AltLayer,
+    contracts::{
+        lagrange::LagrangeStakeRegistryAbi, RegistryCoordinator, RegistryCoordinatorAbi,
+        StakeRegistry, StakeRegistryAbi,
+    },
+    instance::AvsType,
 };
 
 // TODO: Convenience functions on AVS type for display purposes, such as name()
@@ -156,6 +158,7 @@ impl AvsProvider {
 
     /// Start the loaded AVS instance. Returns an error if no AVS instance is loaded.
     pub async fn start(&mut self) -> Result<Child, IvyError> {
+        let keyfile_pw = self.keyfile_pw.clone();
         let avs = self.avs_mut()?;
         if avs.running() {
             // TODO: Fix unwrap
@@ -165,12 +168,8 @@ impl AvsProvider {
             ));
         }
         let chain = Chain::try_from(self.provider.signer().chain_id()).unwrap_or_default();
-        let quorums = self.get_bootable_quorums().await?;
-        if quorums.is_empty() {
-            error!("Could not launch EgenDA, no bootable quorums found. Exiting...");
-            return Err(IvyError::NoQuorums);
-        }
-        self.avs_mut()?.start(quorums, chain).await
+        //TODO: Clean up this method
+        self.avs_mut()?.start(Vec::new(), chain, keyfile_pw).await
     }
 
     /// Stop the loaded AVS instance.
@@ -238,10 +237,15 @@ impl AvsProvider {
                 }
             }
             AvsType::Lagrange(inner) => {
-                inner.register()?;
+                if let Some(pw) = &self.keyfile_pw {
+                    inner.register(config, pw)?;
+                } else {
+                    error!("No keyfile password provided. Exiting...");
+                    return Err(IvyError::KeyfilePasswordError);
+                }
             }
             _ => {
-                error!("Unregister is not supported for this AVS type. Exiting...");
+                error!("Register is not supported for this AVS type. Exiting...");
             }
         }
 
@@ -252,6 +256,7 @@ impl AvsProvider {
         let chain = Chain::try_from(self.provider.signer().chain_id()).unwrap_or_default();
         let avs = self.avs()?;
 
+        info!("Unregistering AVS: {:?} | Operator: {:?}", avs.name(), self.provider.address());
         match avs {
             AvsType::EigenDA(inner) => {
                 let quorums = self.get_bootable_quorums().await?;
@@ -299,6 +304,18 @@ impl AvsProvider {
                     return Err(IvyError::KeyfilePasswordError);
                 }
             }
+            AvsType::Lagrange(inner) => {
+                // TODO: Put this in a more sensible place.
+                let lagrange_stake_registry = LagrangeStakeRegistryAbi::new(
+                    inner.stake_registry(chain),
+                    self.provider.clone(),
+                );
+                let tx = lagrange_stake_registry.deregister_operator();
+                info!("Unregister sent, awaiting confirmation...");
+                let pending = tx.send().await?;
+                let mined = pending.await?;
+                info!("Mined: {:?}", mined);
+            }
             _ => {
                 error!("Unregister is not supported for this AVS type. Exiting...");
             }
@@ -340,17 +357,22 @@ impl AvsProvider {
 pub trait AvsVariant: Debug + Send + Sync + 'static {
     /// Perform all first-time setup steps for a given AVS instance. Includes an internal call to
     /// build_env
-    async fn setup(&self, provider: Arc<IvyProvider>, config: &IvyConfig) -> Result<(), IvyError>;
-    /// Builds the ENV file for the specific AVS + Chain combination. Writes changes to the local
-    /// .env file. Check logs for specific file-paths.
-    async fn build_env(
+    async fn setup(
         &self,
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
+        keyfile_pw: Option<String>,
     ) -> Result<(), IvyError>;
     //fn validate_install();
     fn validate_node_size(&self, quorum_percentage: U256) -> Result<bool, IvyError>;
-    async fn start(&mut self, quorums: Vec<QuorumType>, chain: Chain) -> Result<Child, IvyError>;
+    /// Start the AVS instance.
+    async fn start(
+        &mut self,
+        quorums: Vec<QuorumType>,
+        chain: Chain,
+        keyfile_pw: Option<String>,
+    ) -> Result<Child, IvyError>;
+    /// Stop the AVS instance.
     async fn stop(&mut self, chain: Chain) -> Result<(), IvyError>;
     fn name(&self) -> &str;
     fn quorum_min(&self, chain: Chain, quorum_type: QuorumType) -> U256;

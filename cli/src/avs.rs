@@ -18,8 +18,9 @@ pub async fn parse_avs_subcommands(subcmd: AvsCommands, config: &IvyConfig) -> R
             .interact()?;
         let wallet = IvyWallet::from_keystore(config.default_private_keyfile.clone(), &password)?;
         let avs =
-            build_avs_provider(Some(avs), chain, config, Some(wallet), Some(password)).await?;
-        avs.setup(config).await?;
+            build_avs_provider(Some(avs), chain, config, Some(wallet), Some(password.clone()))
+                .await?;
+        avs.setup(config, Some(password)).await?;
         return Ok(());
     }
 
