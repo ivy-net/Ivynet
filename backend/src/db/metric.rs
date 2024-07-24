@@ -51,7 +51,7 @@ impl From<&Metrics> for Metric {
             node_id: Address::zero(),
             name: value.name.clone(),
             value: value.value,
-            attributes: if attr_map.len() > 0 { Some(attr_map) } else { None },
+            attributes: if !attr_map.is_empty() { Some(attr_map) } else { None },
             created_at: None,
         }
     }
