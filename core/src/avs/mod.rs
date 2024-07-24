@@ -333,7 +333,6 @@ pub async fn build_avs_provider(
     let chain = try_parse_chain(chain)?;
     let provider = connect_provider(&config.get_rpc_url(chain)?, wallet).await?;
     let avs_instance: Option<Box<dyn AvsVariant>> = if let Some(avs_id) = id {
-        //Some(AvsType::new(avs_id, chain)?)
         match avs_id {
             "eigenda" => Some(Box::new(EigenDA::new_from_chain(chain))),
             "altlayer" => Some(Box::new(AltLayer::new_from_chain(chain))),
