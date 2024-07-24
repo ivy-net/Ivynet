@@ -36,19 +36,25 @@ const ALTLAYER_REPO_URL: &str =
 #[derive(Debug, Clone)]
 pub struct AltLayer {
     path: PathBuf,
+    chain: Chain,
     running: bool,
 }
 
 impl AltLayer {
-    pub fn new(path: PathBuf) -> Self {
-        Self { path, running: false }
+    pub fn new(path: PathBuf, chain: Chain) -> Self {
+        Self { path, chain, running: false }
+    }
+
+    pub fn new_from_chain(chain: Chain) -> Self {
+        let home_dir = dirs::home_dir().unwrap();
+        Self::new(home_dir.join(ALTLAYER_PATH), chain)
     }
 }
 
 impl Default for AltLayer {
     fn default() -> Self {
         let home_dir = dirs::home_dir().unwrap();
-        Self::new(home_dir.join(ALTLAYER_PATH))
+        Self::new(home_dir.join(ALTLAYER_PATH), Chain::Holesky)
     }
 }
 
@@ -281,6 +287,10 @@ impl AvsVariant for AltLayer {
 
     fn running(&self) -> bool {
         self.running
+    }
+
+    fn name(&self) -> &'static str {
+        "altlayer"
     }
 }
 

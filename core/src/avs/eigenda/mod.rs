@@ -383,6 +383,10 @@ impl AvsVariant for EigenDA {
     fn running(&self) -> bool {
         self.running
     }
+
+    fn name(&self) -> &'static str {
+        "eigenda"
+    }
 }
 
 /// Downloads eigenDA node resources
