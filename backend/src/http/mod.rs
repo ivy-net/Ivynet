@@ -50,6 +50,7 @@ pub async fn serve(
         .route("/organization/invite", post(organization::invite))
         .route("/organization/confirm/{id}", get(organization::confirm))
         .route("/organization/nodes", get(organization::nodes))
+        .route("/organization/nodes/{id}/metrics", get(organization::metrics))
         .with_state(HttpState {
             pool,
             cache,
