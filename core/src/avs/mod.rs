@@ -109,9 +109,9 @@ impl AvsProvider {
     }
 
     /// Get a reference to the current runing AVS instance
-    pub fn avs(&self) -> Result<&Box<dyn AvsVariant>, IvyError> {
+    pub fn avs(&self) -> Result<&dyn AvsVariant, IvyError> {
         if let Some(avs) = &self.avs {
-            Ok(avs)
+            Ok(&**avs)
         } else {
             Err(IvyError::AvsNotInitializedError)
         }

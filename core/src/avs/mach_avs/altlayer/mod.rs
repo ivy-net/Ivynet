@@ -33,6 +33,7 @@ const ALTLAYER_PATH: &str = ".eigenlayer/altlayer";
 const ALTLAYER_REPO_URL: &str =
     "https://github.com/alt-research/mach-avs-operator-setup/archive/refs/heads/master.zip";
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct AltLayer {
     path: PathBuf,
