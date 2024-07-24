@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::error::BackendError;
 
 use chrono::{NaiveDateTime, Utc};
-use ivynet_core::ethers::types::Address;
+use ivynet_core::{ethers::types::Address, grpc::messages::Metrics};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::{query, PgPool};
@@ -37,6 +37,22 @@ impl From<DbMetric> for Metric {
             value: value.value,
             attributes: value.attributes.as_ref().map(|v| v.0.clone()),
             created_at: value.created_at,
+        }
+    }
+}
+
+impl From<&Metrics> for Metric {
+    fn from(value: &Metrics) -> Self {
+        let mut attr_map = HashMap::new();
+        for attr in &value.attributes {
+            attr_map.insert(attr.name.clone(), attr.value.clone());
+        }
+        Self {
+            node_id: Address::zero(),
+            name: value.name.clone(),
+            value: value.value,
+            attributes: if attr_map.len() > 0 { Some(attr_map) } else { None },
+            created_at: None,
         }
     }
 }

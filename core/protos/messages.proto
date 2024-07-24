@@ -11,7 +11,7 @@ message RegistrationCredentials {
 
 message SignedMetrics {
     bytes signature = 1;
-    Metrics metrics = 2;
+    repeated Metrics metrics = 2;
 }
 
 message Metrics {

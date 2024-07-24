@@ -2,7 +2,7 @@ use ethers::{
     contract::ContractError,
     providers::{JsonRpcError, MiddlewareError as _, ProviderError},
     signers::WalletError,
-    types::{Bytes, Chain, TryFromPrimitiveError},
+    types::{Bytes, Chain, SignatureError, TryFromPrimitiveError},
     utils::hex::FromHexError,
 };
 use indicatif::style::TemplateError;
@@ -28,6 +28,9 @@ pub enum IvyError {
     // TODO: Attempt to deprecate, see private_key_string to bytes methods.
     #[error(transparent)]
     HexError(#[from] FromHexError),
+
+    #[error(transparent)]
+    SignatureError(#[from] SignatureError),
 
     #[error(transparent)]
     UrlParseError(#[from] url::ParseError),

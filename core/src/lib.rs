@@ -10,6 +10,7 @@ pub mod grpc;
 pub mod io;
 pub mod metadata;
 pub mod rpc_management;
+pub mod signature;
 pub mod utils;
 pub mod wallet;
 
