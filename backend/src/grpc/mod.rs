@@ -7,7 +7,7 @@ use ivynet_core::{
         self,
         backend::backend_server::{Backend, BackendServer},
         client::{Request, Response},
-        messages::RegistrationCredentials,
+        messages::{RegistrationCredentials, SignedMetrics},
         server, Status,
     },
 };
@@ -43,6 +43,10 @@ impl Backend for BackendService {
         debug!("User {} has registered new node with address {:?}", &req.email, node_id);
 
         Ok(Response::new(()))
+    }
+
+    async fn metrics(&self, _request: Request<SignedMetrics>) -> Result<Response<()>, Status> {
+        Err(Status::unimplemented("Not implemented yet"))
     }
 }
 
