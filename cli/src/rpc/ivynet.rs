@@ -1,5 +1,5 @@
 use ivynet_core::{
-    avs::{instance::AvsType, AvsProvider, AvsVariant},
+    avs::{eigenda::EigenDA, mach_avs::AltLayer, AvsProvider, AvsVariant},
     config::IvyConfig,
     eigen::contracts::delegation_manager::OperatorDetails,
     error::IvyError,
@@ -136,7 +136,12 @@ impl Avs for IvynetService {
         let config = IvyConfig::load_from_default_path().map_err(IvyError::from)?; // TODO: store config with provider
 
         let new_ivy_provider = connect_provider(&config.get_rpc_url(chain)?, Some(signer)).await?;
-        let avs_instance = AvsType::new(&avs, chain)?;
+
+        let avs_instance: Box<dyn AvsVariant> = match avs.as_ref() {
+            "eigenda" => Box::new(EigenDA::new_from_chain(chain)),
+            "altlayer" => Box::new(AltLayer::new_from_chain(chain)),
+            _ => return Err(IvyError::InvalidAvsType(avs.to_string()).into()),
+        };
 
         *provider =
             AvsProvider::new(Some(avs_instance), Arc::new(new_ivy_provider), keyfile_pw.clone())?;
