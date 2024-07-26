@@ -41,7 +41,7 @@ pub async fn create_channel(
     } else {
         endpoint
     }
-    .timeout(std::time::Duration::from_secs(5));
+    .timeout(std::time::Duration::from_secs(60));
     info!("Initialized GRPC channel: {:?}", source);
     match source {
         Source::Path(ref path) => {
