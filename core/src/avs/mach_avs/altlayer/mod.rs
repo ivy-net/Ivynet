@@ -182,10 +182,10 @@ impl AltLayer {
     pub async fn opt_out(
         &self,
         _quorums: Vec<QuorumType>,
-        eigen_path: PathBuf,
+        _eigen_path: PathBuf,
         _private_keyfile: PathBuf,
         _keyfile_password: &str,
-        chain: Chain,
+        _chain: Chain,
     ) -> Result<(), IvyError> {
         todo!()
     }

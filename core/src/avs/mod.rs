@@ -238,14 +238,11 @@ impl AvsProvider {
             }
             AvsType::Lagrange(inner) => {
                 if let Some(pw) = &self.keyfile_pw {
-                    inner.register(config, pw)?;
+                    inner.register(pw)?;
                 } else {
                     error!("No keyfile password provided. Exiting...");
                     return Err(IvyError::KeyfilePasswordError);
                 }
-            }
-            _ => {
-                error!("Register is not supported for this AVS type. Exiting...");
             }
         }
 
@@ -315,9 +312,6 @@ impl AvsProvider {
                 let pending = tx.send().await?;
                 let mined = pending.await?;
                 info!("Mined: {:?}", mined);
-            }
-            _ => {
-                error!("Unregister is not supported for this AVS type. Exiting...");
             }
         }
 

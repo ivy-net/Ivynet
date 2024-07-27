@@ -1,9 +1,10 @@
 /// ZK Coprocessor AVS handler.
-/// Because the Lagrange ZK Coprocessor doesn't have a simple way to configure the network the AVS
-/// is running on (Requires a combination of environment variables, and editing the docker-compose
-/// file directly), this module handles the Lagrage directory somewhat differently, effectively
-/// duplicating it per-network. E.G. `~/.eigenlayer/lagrange/holesky/lagrange-worker` and
-/// `~/.eigenlayer/lagrange/mainnet/lagrange-worker`.
+/// Because the Lagrange ZK Coprocessor doesn't have a simple way to configure the network the
+/// AVS is running on (Requires a combination of environment variables, and editing the
+/// docker-compose file directly), this module handles the Lagrage directory somewhat
+/// differently, effectively duplicating it per-network. E.G.
+/// `~/.eigenlayer/lagrange/holesky/lagrange-worker` and `~/.eigenlayer/lagrange/mainnet/
+/// lagrange-worker`.
 use async_trait::async_trait;
 use dialoguer::Input;
 use ethers::types::{Address, Chain, H160, U256};
@@ -25,24 +26,22 @@ use crate::{
     dialog::get_confirm_password,
     eigen::quorum::QuorumType,
     env_parser::EnvLines,
-    error::IvyError,
-    io::{read_yaml, write_yaml},
+    error::{IvyError, SetupError},
     rpc_management::IvyProvider,
 };
 
 mod config;
-mod docker_compose;
 
 /**
-*
-*   General process for setting up the Lagrange AVS:
-*   Create a lagrange key (No ecdsa dependencies)
-*   Copy the ecdsa key to the lagrange-worker/config path (priv_key.json)
-*   Register the lagrange key + priv_key
-*   Remove priv_key
-*   Start the docker container
-*
-*/
+ *
+ *   General process for setting up the Lagrange AVS:
+ *   Create a lagrange key (No ecdsa dependencies)
+ *   Copy the operator ecdsa key to the lagrange-worker/config path (priv_key.json)
+ *   Register the lagrange key + priv_key
+ *   Remove priv_key
+ *   Start the docker container
+ *
+ */
 
 pub const LAGRANGE_PATH: &str = ".eigenlayer/lagrange";
 
@@ -86,8 +85,8 @@ impl Default for Lagrange {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl AvsVariant for Lagrange {
-    // TODO: This currently creates a new Lagrange key every time it is run; this may be undesirable.
-    // Figure out if this behavior needs to be stabilized.
+    // TODO: This currently creates a new Lagrange key every time it is run; this may be
+    // undesirable. Figure out if this behavior needs to be stabilized.
     async fn setup(
         &self,
         _provider: Arc<IvyProvider>,
@@ -95,17 +94,21 @@ impl AvsVariant for Lagrange {
         _keyfile_pw: Option<String>,
     ) -> Result<(), IvyError> {
         download_operator_setup(self.path.clone()).await?;
-
         println!("Entering Lagrange keyfile password setup...");
         let lagrange_keyfile_pw = get_confirm_password();
-        self.build_env(lagrange_keyfile_pw).await?;
-        self.config_docker_compose(config).await?;
-        generate_lagrange_key(self.path.clone()).await?;
+        self.build_env(config, lagrange_keyfile_pw).await?;
+        generate_lagrange_key(self.run_path()).await?;
 
         // copy ecdsa keyfile to lagrange-worker path
         let keyfile = config.default_private_keyfile.clone();
         let dest_file = self.run_path().join("config/priv_key.json");
         fs::copy(keyfile, dest_file)?;
+
+        // Change worker ID
+        let worker_id: String =
+            Input::new().with_prompt("Please enter a worker ID").interact_text()?;
+
+        change_worker_id(self.run_path(), worker_id)?;
 
         Ok(())
     }
@@ -143,7 +146,8 @@ impl AvsVariant for Lagrange {
     }
 
     // TODO: Should probably be a hashmap
-    fn quorum_min(&self, chain: Chain, quorum_type: QuorumType) -> U256 {
+    #[allow(clippy::all)]
+    fn quorum_min(&self, chain: Chain, _quorum_type: QuorumType) -> U256 {
         match chain {
             _ => unimplemented!(),
         }
@@ -167,6 +171,7 @@ impl AvsVariant for Lagrange {
         }
     }
 
+    #[allow(clippy::all)]
     fn registry_coordinator(&self, chain: Chain) -> Address {
         match chain {
             // TODO: TEMP WHILE WE REWORK THIS STRUCT
@@ -185,7 +190,7 @@ impl AvsVariant for Lagrange {
 
 impl Lagrange {
     /// Registers the lagrange private key with the lagrange network.
-    pub fn register(&self, config: &IvyConfig, keyfile_pw: &str) -> Result<(), IvyError> {
+    pub fn register(&self, keyfile_pw: &str) -> Result<(), IvyError> {
         // Copy keyfile to current dir
         //let private_keyfile = config.default_private_keyfile.clone();
         //let dest_dir = self.run_path().join("config");
@@ -211,33 +216,36 @@ impl Lagrange {
 
     /// Constructor function for Lagrange run dir path
     fn run_path(&self) -> PathBuf {
-        self.path.join("lagrange-worker")
+        self.path.join("lagrange-worker").join(self.chain.as_ref())
     }
 
     /// Builds the .env file for the Lagrange worker
-    async fn build_env(&self, lagrange_keyfile_pw: String) -> Result<(), IvyError> {
-        debug!("configuring env...");
+    async fn build_env(
+        &self,
+        config: &IvyConfig,
+        lagrange_keyfile_pw: String,
+    ) -> Result<(), IvyError> {
+        let env_example_path = self.run_path().join(".env.example");
         let env_path = self.run_path().join(".env");
+
+        if !env_example_path.exists() {
+            error!("The '.env.example' file does not exist at {}. '.env.example' is used for .env templating, please ensure the operator-setup was downloaded to the correct location.", env_example_path.display());
+            return Err(SetupError::NoEnvExample.into());
+        }
+        std::fs::copy(env_example_path, env_path.clone())?;
+
+        debug!("configuring env...");
+        debug!("{}", env_path.display());
         let mut env_lines = EnvLines::load(&env_path)?;
         env_lines.set("AVS__LAGR_PWD", &lagrange_keyfile_pw);
+        env_lines.set("LAGRANGE_RPC_URL", &config.get_rpc_url(self.chain)?);
         env_lines.set("NETWORK", self.chain.as_ref());
         env_lines.save(&env_path)
-    }
-
-    /// Updates the docker-compose file with the correct RPC URL for the instance chain.
-    async fn config_docker_compose(&self, config: &IvyConfig) -> Result<(), IvyError> {
-        let docker_compose_path = self.run_path().join("docker-compose.yaml");
-        let mut docker_compose: docker_compose::Services = read_yaml(&docker_compose_path)?;
-        let rpc_url = config.get_rpc_url(self.chain)?;
-        docker_compose.set_rpc_url(rpc_url);
-        write_yaml(&docker_compose_path, &docker_compose)?;
-        Ok(())
     }
 }
 
 pub async fn generate_lagrange_key(path: PathBuf) -> Result<(), IvyError> {
-    let docker_path = path.join("lagrange-worker");
-    std::env::set_current_dir(docker_path)?;
+    std::env::set_current_dir(path)?;
     let _ = Command::new("docker")
         .arg("compose")
         .arg("run")
@@ -246,9 +254,19 @@ pub async fn generate_lagrange_key(path: PathBuf) -> Result<(), IvyError> {
     Ok(())
 }
 
+// Change worker ID in worker-conf.toml file under /config
+pub fn change_worker_id(path: PathBuf, worker_id: String) -> Result<(), IvyError> {
+    let mut lag_config = config::LagrangeConfig::load(path.join("config/worker-conf.toml"))?;
+
+    lag_config.avs.worker_id = worker_id;
+
+    lag_config.store(path.join("config/worker-conf.toml"))?;
+    Ok(())
+}
+
 pub async fn download_operator_setup(eigen_path: PathBuf) -> Result<(), IvyError> {
     let mut setup = false;
-    let repo_url = "https://github.com/Lagrange-Labs/worker/archive/refs/heads/main.zip";
+    let repo_url = "https://github.com/ivy-net/lagrange-worker/archive/refs/heads/main.zip";
     let temp_path = eigen_path.join("temp");
     let destination_path = eigen_path.join("lagrange-worker");
     if destination_path.exists() {
