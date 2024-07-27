@@ -206,7 +206,7 @@ CLI:
 GRPCurl:
 `grpcurl -unix -plaintext -authority "localhost" ~/.ivynet/ivynet.ipc avs.Avs/Stop`
 
-#### Register 
+#### Register
 
 `ivy_daemon_avs.Avs/Register`
 Register the user's ECDSA account with th AVS instance. This will use the stored keypair from the ivyconfig.toml file to register to the AVS -- exact registration is dependent on the AVS type. Errors if no AVS has been selected or the AVS is already running.
