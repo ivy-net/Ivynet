@@ -1,0 +1,11 @@
+---
+driver:
+  name: gce
+  project_id: ivynet-tests
+  region: us-central1
+  instance_os_type: linux
+  external_access: true
+  auth_kind: machineaccount
+platforms:
+  - name: packer-cloudstation
+    image: 'projects/ubuntu-os-cloud/global/images/family/ubuntu-2404-lts-arm64'
