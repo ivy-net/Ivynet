@@ -62,6 +62,14 @@ packer init cloudstation.pkr.hcl
 ```
 packer build -var 'version=2' cloudstation.pkr.hcl
 ```
+## Ansible
+
+### Molecule
+* In test pass '--tags github' to avoid downloading g1, g2 files.
+* For molecule it can be:
+```
+molecule converge -- --tags github
+```
 
 ## MOTD
 Also in the motd file.
