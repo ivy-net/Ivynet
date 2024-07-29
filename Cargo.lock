@@ -653,6 +653,7 @@ dependencies = [
  "clap",
  "dialoguer",
  "ivynet-core",
+ "reqwest 0.12.5",
  "serde",
  "thiserror",
  "tokio",

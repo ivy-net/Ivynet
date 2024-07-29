@@ -12,8 +12,9 @@ use ivynet_core::{
 };
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use tracing::error;
 
-use crate::{error::Error, rpc::ivynet::IvynetService};
+use crate::{error::Error, rpc::ivynet::IvynetService, telemetry};
 
 pub async fn serve(
     avs: Option<String>,
@@ -33,7 +34,7 @@ pub async fn serve(
         avs.as_deref(),
         &chain,
         config,
-        Some(wallet),
+        Some(wallet.clone()),
         Some(keyfile_pw.to_owned()),
     )
     .await?;
@@ -49,6 +50,10 @@ pub async fn serve(
 
     println!("Starting the IvyNet service at {}...", sock);
 
-    server.serve(sock).await.expect("Failed to start IvyNet Service.");
+    tokio::select! {
+        ret = server.serve(sock) => { error!("Local server error {ret:?}") },
+        ret = telemetry::listen(ivynet_inner) => { error!("Telemetry listener error {ret:?}") }
+    }
+
     Ok(())
 }
