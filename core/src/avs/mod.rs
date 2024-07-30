@@ -23,14 +23,15 @@ pub mod commands;
 pub mod contracts;
 pub mod eigenda;
 pub mod error;
-pub mod instance;
 pub mod mach_avs;
+pub mod witness;
 
 pub type QuorumMinMap = HashMap<Chain, HashMap<QuorumType, U256>>;
 
 use self::{
     contracts::{RegistryCoordinator, RegistryCoordinatorAbi, StakeRegistry, StakeRegistryAbi},
-    instance::AvsType,
+    eigenda::EigenDA,
+    mach_avs::AltLayer,
 };
 
 // TODO: Convenience functions on AVS type for display purposes, such as name()
@@ -40,7 +41,7 @@ use self::{
 pub struct AvsProvider {
     /// Signer and RPC provider
     pub provider: Arc<IvyProvider>,
-    pub avs: Option<AvsType>,
+    pub avs: Option<Box<dyn AvsVariant>>,
     // TODO: Deprecate this if possible, requires conversion of underlying AVS scripts
     pub keyfile_pw: Option<String>,
     pub delegation_manager: DelegationManager,
@@ -50,7 +51,7 @@ pub struct AvsProvider {
 
 impl AvsProvider {
     pub fn new(
-        avs: Option<AvsType>,
+        avs: Option<Box<dyn AvsVariant>>,
         provider: Arc<IvyProvider>,
         keyfile_pw: Option<String>,
     ) -> Result<Self, IvyError> {
@@ -77,7 +78,7 @@ impl AvsProvider {
     }
 
     /// Replace the current AVS instance with a new instance.
-    pub async fn with_avs(&mut self, avs: Option<AvsType>) -> Result<(), IvyError> {
+    pub async fn with_avs(&mut self, avs: Option<Box<dyn AvsVariant>>) -> Result<(), IvyError> {
         let chain = Chain::try_from(self.provider.signer().chain_id()).unwrap_or_default();
         let (stake_registry, registry_coordinator) = if let Some(avs) = &avs {
             let stake_registry =
@@ -108,16 +109,16 @@ impl AvsProvider {
     }
 
     /// Get a reference to the current runing AVS instance
-    pub fn avs(&self) -> Result<&AvsType, IvyError> {
+    pub fn avs(&self) -> Result<&dyn AvsVariant, IvyError> {
         if let Some(avs) = &self.avs {
-            Ok(avs)
+            Ok(&**avs)
         } else {
             Err(IvyError::AvsNotInitializedError)
         }
     }
 
     /// Get a mutable reference to the current runing AVS instance
-    pub fn avs_mut(&mut self) -> Result<&mut AvsType, IvyError> {
+    pub fn avs_mut(&mut self) -> Result<&mut Box<dyn AvsVariant>, IvyError> {
         if let Some(avs) = &mut self.avs {
             Ok(avs)
         } else {
@@ -147,7 +148,7 @@ impl AvsProvider {
     /// Setup the loaded AVS instance. This includes both download and configuration steps.
     pub async fn setup(&self, config: &IvyConfig) -> Result<(), IvyError> {
         self.avs()?.setup(self.provider.clone(), config).await?;
-        info!("setup complete");
+        info!("Setup complete: run 'ivynet avs help' for next steps!");
         Ok(())
     }
 
@@ -311,6 +312,7 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
     ) -> Result<(), IvyError>;
     async fn start(&mut self, quorums: Vec<QuorumType>, chain: Chain) -> Result<Child, IvyError>;
     async fn stop(&mut self, chain: Chain) -> Result<(), IvyError>;
+    fn name(&self) -> &str;
     fn quorum_min(&self, chain: Chain, quorum_type: QuorumType) -> U256;
     fn quorum_candidates(&self, chain: Chain) -> Vec<QuorumType>;
     fn stake_registry(&self, chain: Chain) -> Address;
@@ -330,7 +332,14 @@ pub async fn build_avs_provider(
 ) -> Result<AvsProvider, IvyError> {
     let chain = try_parse_chain(chain)?;
     let provider = connect_provider(&config.get_rpc_url(chain)?, wallet).await?;
-    let avs_instance =
-        if let Some(avs_id) = id { Some(AvsType::new(avs_id, chain)?) } else { None };
+    let avs_instance: Option<Box<dyn AvsVariant>> = if let Some(avs_id) = id {
+        match avs_id {
+            "eigenda" => Some(Box::new(EigenDA::new_from_chain(chain))),
+            "altlayer" => Some(Box::new(AltLayer::new_from_chain(chain))),
+            _ => return Err(IvyError::InvalidAvsType(avs_id.to_string())),
+        }
+    } else {
+        None
+    };
     AvsProvider::new(avs_instance, Arc::new(provider), keyfile_pw)
 }

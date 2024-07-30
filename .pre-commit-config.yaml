@@ -5,16 +5,18 @@ repos:
     rev: v4.6.0
     hooks:
     -   id: trailing-whitespace
+        exclude: specification/
     -   id: end-of-file-fixer
     -   id: mixed-line-ending
         args: ['--fix=lf']
     -   id: check-yaml
     -   id: check-added-large-files
     -   id: check-merge-conflict
--   repo: https://github.com/doublify/pre-commit-rust
-    rev: v1.0
+    -   id: check-case-conflict
+-   repo: https://github.com/ivy-net/pre-commit-rust
+    rev: v1.3
     hooks:
     -   id: fmt
     -   id: cargo-check
-# clippy does not work at the moment
-#   -   id: clippy
+    -   id: clippy
+    -   id: test
