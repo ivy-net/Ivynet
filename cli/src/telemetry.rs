@@ -81,7 +81,7 @@ impl TelemetryParser {
         {
             Some(Metrics {
                 name,
-                attributes: if let Some(attr) = attributes { attr } else { Vec::new() },
+                attributes: attributes.unwrap_or_default(),
                 value,
             })
         } else {
@@ -96,17 +96,13 @@ impl TelemetryParser {
     fn attributes(&mut self) -> Option<Vec<MetricsAttribute>> {
         let mut attributes = Vec::new();
 
-        if self.expecting_special_token(TelemetryToken::OpenBracket).is_none() {
-            return None;
-        }
+        self.expecting_special_token(TelemetryToken::OpenBracket)?;
 
         while let Some(attribute) = self.attribute() {
             attributes.push(attribute);
         }
 
-        if self.expecting_special_token(TelemetryToken::CloseBracket).is_none() {
-            return None;
-        }
+        self.expecting_special_token(TelemetryToken::CloseBracket)?;
         Some(attributes)
     }
 
@@ -115,17 +111,11 @@ impl TelemetryParser {
         _ = self.expecting_special_token(TelemetryToken::Comma);
 
         if let Some(attr_name) = self.expecting_string() {
-            if self.expecting_special_token(TelemetryToken::Equal).is_none() {
-                return None;
-            }
-            if self.expecting_special_token(TelemetryToken::Qoute).is_none() {
-                return None;
-            }
+            self.expecting_special_token(TelemetryToken::Equal)?;
+            self.expecting_special_token(TelemetryToken::Qoute)?;
 
             if let Some(attr_value) = self.expecting_string() {
-                if self.expecting_special_token(TelemetryToken::Qoute).is_none() {
-                    return None;
-                }
+                self.expecting_special_token(TelemetryToken::Qoute)?;
                 return Some(MetricsAttribute { name: attr_name, value: attr_value });
             }
         }
@@ -136,13 +126,13 @@ impl TelemetryParser {
         match self.get_token() {
             Some(tok) => {
                 if tok == token {
-                    return Some(tok);
+                    Some(tok)
                 } else {
                     self.put_token(tok);
-                    return None;
+                    None
                 }
             }
-            None => return None,
+            None => None,
         }
     }
 
