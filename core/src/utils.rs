@@ -19,3 +19,7 @@ pub fn unwrap_or_local(
         }
     }
 }
+
+pub fn gb_to_bytes(gb: u64) -> u64 {
+    gb * 10u64.pow(9)
+}

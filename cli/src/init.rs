@@ -1,5 +1,8 @@
 use dialoguer::{Input, MultiSelect, Password, Select};
-use ivynet_core::{config::IvyConfig, error::IvyError, metadata::Metadata, wallet::IvyWallet};
+use ivynet_core::{
+    config::IvyConfig, dialog::get_confirm_password, error::IvyError, metadata::Metadata,
+    wallet::IvyWallet,
+};
 use std::{fs, path::PathBuf, unreachable};
 
 #[allow(unused_imports)]
@@ -131,21 +134,7 @@ fn set_config_keys(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
                 Password::new().with_prompt("Enter your ECDSA private key").interact()?;
             let keyfile_name: String =
                 Input::new().with_prompt("Enter a name for the keyfile").interact()?;
-            let mut pw: String = Password::new()
-                .with_prompt("Enter a password for keyfile encryption")
-                .interact()?;
-            let mut confirm_pw: String =
-                Password::new().with_prompt("Confirm keyfile password").interact()?;
-
-            let mut pw_confirmed = pw == confirm_pw;
-            while !pw_confirmed {
-                println!("Password and confirmation do not match. Please retry.");
-                pw = Password::new()
-                    .with_prompt("Enter a password for keyfile encryption")
-                    .interact()?;
-                confirm_pw = Password::new().with_prompt("Confirm keyfile password").interact()?;
-                pw_confirmed = pw == confirm_pw;
-            }
+            let pw = get_confirm_password();
             let wallet = IvyWallet::from_private_key(private_key)?;
             let (pub_key_path, prv_key_path) =
                 wallet.encrypt_and_store(&config.get_path(), keyfile_name, pw)?;

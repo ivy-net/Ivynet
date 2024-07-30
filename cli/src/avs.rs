@@ -14,12 +14,13 @@ pub async fn parse_avs_subcommands(subcmd: AvsCommands, config: &IvyConfig) -> R
     // Setup runs local, otherwise construct a client and continue.
     if let AvsCommands::Setup { ref avs, ref chain } = subcmd {
         let password: String = Password::new()
-            .with_prompt("Input the password for your stored ECDSA keyfile")
+            .with_prompt("Input the password for your stored operator ECDSA keyfile")
             .interact()?;
         let wallet = IvyWallet::from_keystore(config.default_private_keyfile.clone(), &password)?;
         let avs =
-            build_avs_provider(Some(avs), chain, config, Some(wallet), Some(password)).await?;
-        avs.setup(config).await?;
+            build_avs_provider(Some(avs), chain, config, Some(wallet), Some(password.clone()))
+                .await?;
+        avs.setup(config, Some(password)).await?;
         return Ok(());
     }
 
@@ -30,11 +31,11 @@ pub async fn parse_avs_subcommands(subcmd: AvsCommands, config: &IvyConfig) -> R
             println!("{:?}", response.into_inner());
         }
         // TODO: Fix timeout issue
-        AvsCommands::Optin {} => {
+        AvsCommands::Register {} => {
             let response = client.avs_mut().opt_in().await?;
             println!("{:?}", response.into_inner());
         }
-        AvsCommands::Optout {} => {
+        AvsCommands::Unregister {} => {
             let response = client.avs_mut().opt_out().await?;
             println!("{:?}", response.into_inner());
         }

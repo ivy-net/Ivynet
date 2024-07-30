@@ -34,7 +34,7 @@ pub struct IvyConfig {
     pub default_public_keyfile: PathBuf,
     /// Metadata for the operator
     pub metadata: Metadata,
-    // Identification key that node uses for server communications
+    /// Identification key that node uses for server communications
     pub identity_key: Option<String>,
 }
 
