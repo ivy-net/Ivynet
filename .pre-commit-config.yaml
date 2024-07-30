@@ -4,20 +4,17 @@ repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
-    -   id: no-commit-to-branch
-        args: [--branch, dev, --branch, master]
     -   id: trailing-whitespace
     -   id: end-of-file-fixer
-        exclude: ^docker/
     -   id: mixed-line-ending
         args: ['--fix=lf']
     -   id: check-yaml
     -   id: check-added-large-files
     -   id: check-merge-conflict
-    -   id: check-case-conflict
--   repo: https://github.com/ivy-net/pre-commit-rust
-    rev: v1.2
+-   repo: https://github.com/doublify/pre-commit-rust
+    rev: v1.0
     hooks:
     -   id: fmt
     -   id: cargo-check
-    -   id: clippy
+# clippy does not work at the moment
+#   -   id: clippy

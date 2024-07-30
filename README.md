@@ -27,6 +27,11 @@ TODO: Ability to install, way better documentation, cleanup of core code
 
 NOTE: Development is happening at pace and there may be bugs - please feel free to open a github issue if any are encountered!
 
+For now,
+
+### Build
+
+Rust and cmake is required to build the code with following commands:
 
 ### Prepare the client
 * Run the build
@@ -34,52 +39,42 @@ NOTE: Development is happening at pace and there may be bugs - please feel free 
 cargo clean
 cargo build -r
 ```
-* Copy binaries to an accessible place (e.g. `~/bin`)
+
+The output is stored in the `target/release` folder.
+To validated that binaries are functional, change directory and check if the outout of the help command.
+
 ```sh
-[[ -d ~/bin ]] || mkdir ~/bin
-cp target/release/ivynet-cli ~/bin
-```
-* Confirm that the build was successful
-```sh
-ivynet-cli --help
+cd target/release
+./ivynet-cli --help
 ```
 
-### Prepare Eigenlayer client key
+### Private Key setup
 
-* Install the eigenlayer CLI
+To setup properly first create/import your Ethereum Key
+
 ```sh
-# Install the Eigenlayer CLI:
-curl -sSfL https://raw.githubusercontent.com/layr-labs/eigenlayer-cli/master/scripts/install.sh | sh -s
-```
-* Create a BLS key with optional password:
-```sh
-eigenlayer operator keys create --key-type bls [keyname]
+ivynet-cli config create-key [KEYNAME] [PASSWORD] --store
+or
+ivynet-cli config import-key [PRIVATE-KEY] [KEYNAME] [PASSWORD]
 ```
 
-### Setup IvyNet client
+### RPC url setup
 
-* Create or import your Ethereum Key (for now the program does not work with the default 'local' network, so an other network has to be specify with `-n option`)
-```sh
-ivynet-cli -n holesky config create-key [KEYNAME] [PASSWORD] --store
-# or
-ivynet-cli -n holesky config import-key [PRIVATE-KEY] [KEYNAME] [PASSWORD]
-```
-* This will store private and public keyfiles to ${HOME}/.ivynet/ as key_name.json and key_name.txt, respectively.
-* Then set the RPC urls for mainnet and/or holesky
+Then set your RPC urls for mainnet and holesky
 ```sh
 ivynet-cli config set-rpc mainnet [URL]
 # and/or
 ivynet-cli -n holesky config set-rpc holesky https://rpc.holesky.ethpandaops.io
 ```
 
+### EigenDA AVS configuration
+
 Then try grabbing your stake:
 
 ```sh
 ivynet-cli --network holesky operator get-stake [ADDRESS]
 ```
-
-
-Before runing the EigenDA AVS, perform first-time setup to populate the .env files:
+and finally booting up the EigenDA AVS!
 
 ```sh
 ivynet-cli config --network holesky avs setup eigenda
