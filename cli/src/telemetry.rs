@@ -79,11 +79,7 @@ impl TelemetryParser {
         if let (Some(name), attributes, Some(value)) =
             (self.name(), self.attributes(), self.value())
         {
-            Some(Metrics {
-                name,
-                attributes: attributes.unwrap_or_default(),
-                value,
-            })
+            Some(Metrics { name, attributes: attributes.unwrap_or_default(), value })
         } else {
             None
         }
