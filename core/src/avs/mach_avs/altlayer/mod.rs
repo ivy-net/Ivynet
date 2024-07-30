@@ -27,6 +27,7 @@ use crate::{
     env_parser::EnvLines,
     error::{IvyError, SetupError},
     rpc_management::IvyProvider,
+    utils::gb_to_bytes,
 };
 
 const ALTLAYER_PATH: &str = ".eigenlayer/altlayer";
@@ -77,7 +78,7 @@ impl AvsVariant for AltLayer {
         let (_, _, disk_info) = config::get_system_information()?;
         let class = node_classes::get_node_class()?;
         // XL node + 50gb disk space
-        Ok(class >= NodeClass::XL && disk_info >= 50000000000)
+        Ok(class >= NodeClass::XL && disk_info >= gb_to_bytes(50))
     }
 
     async fn start(&mut self, _quorums: Vec<QuorumType>, _chain: Chain) -> Result<Child, IvyError> {
@@ -96,7 +97,7 @@ impl AvsVariant for AltLayer {
                 QuorumType::EIGEN => todo!("Unimplemented"),
             },
             Chain::Holesky => match quorum_type {
-                QuorumType::LST => U256::from(10 ^ 18), // one ETH
+                QuorumType::LST => U256::exp10(18), // one ETH
                 QuorumType::EIGEN => todo!("Unimplemented"),
             },
             _ => todo!("Unimplemented"),

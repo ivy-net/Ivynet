@@ -27,6 +27,7 @@ use crate::{
     env_parser::EnvLines,
     error::{IvyError, SetupError},
     rpc_management::IvyProvider,
+    utils::gb_to_bytes,
 };
 
 pub const EIGENDA_PATH: &str = ".eigenlayer/eigenda";
@@ -92,27 +93,27 @@ impl AvsVariant for EigenDA {
         match quorum_percentage {
             x if x < U256::from(3) => {
                 // NOTE: Should these be || operators?
-                if class >= NodeClass::LRG || disk_info >= 20000000000 {
+                if class >= NodeClass::LRG || disk_info >= gb_to_bytes(20) {
                     acceptable = true;
                 }
             }
             x if x < U256::from(20) => {
-                if class >= NodeClass::XL || disk_info >= 150000000000 {
+                if class >= NodeClass::XL || disk_info >= gb_to_bytes(150) {
                     acceptable = true;
                 }
             }
             x if x < U256::from(100) => {
-                if class >= NodeClass::FOURXL || disk_info >= 750000000000 {
+                if class >= NodeClass::FOURXL || disk_info >= gb_to_bytes(750) {
                     acceptable = true;
                 }
             }
             x if x < U256::from(1000) => {
-                if class >= NodeClass::FOURXL || disk_info >= 4000000000000 {
+                if class >= NodeClass::FOURXL || disk_info >= gb_to_bytes(4000) {
                     acceptable = true;
                 }
             }
             x if x > U256::from(2000) => {
-                if class >= NodeClass::FOURXL || disk_info >= 8000000000000 {
+                if class >= NodeClass::FOURXL || disk_info >= gb_to_bytes(8000) {
                     acceptable = true;
                 }
             }
