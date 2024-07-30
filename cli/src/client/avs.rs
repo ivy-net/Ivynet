@@ -4,7 +4,7 @@ use ivynet_core::{
         ivynet_api::{
             ivy_daemon_avs::{
                 avs_client::AvsClient as AvsClientRaw, AvsInfoRequest, AvsInfoResponse,
-                OptinRequest, OptoutRequest, SelectAvsRequest, StartRequest, StopRequest,
+                RegisterRequest, SelectAvsRequest, StartRequest, StopRequest, UnregisterRequest,
             },
             ivy_daemon_types::RpcResponse,
         },
@@ -26,14 +26,14 @@ impl AvsClient {
     }
 
     pub async fn opt_in(&mut self) -> Result<Response<RpcResponse>, IvyError> {
-        let request = Request::new(OptinRequest {});
-        let response = self.0.opt_in(request).await?;
+        let request = Request::new(RegisterRequest {});
+        let response = self.0.register(request).await?;
         Ok(response)
     }
 
     pub async fn opt_out(&mut self) -> Result<Response<RpcResponse>, IvyError> {
-        let request = Request::new(OptoutRequest {});
-        let response = self.0.opt_out(request).await?;
+        let request = Request::new(UnregisterRequest {});
+        let response = self.0.unregister(request).await?;
         Ok(response)
     }
 

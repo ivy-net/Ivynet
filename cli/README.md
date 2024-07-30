@@ -206,30 +206,30 @@ CLI:
 GRPCurl:
 `grpcurl -unix -plaintext -authority "localhost" ~/.ivynet/ivynet.ipc avs.Avs/Stop`
 
-#### Optin
+#### Register
 
-`ivy_daemon_avs.Avs/OptIn`
-Optin to the AVS instance. This will use the stored keypair from the ivyconfig.toml file to optin to the AVS. Errors if no AVS has been selected or the AVS is already running.
+`ivy_daemon_avs.Avs/Register`
+Register the user's ECDSA account with the AVS instance. This will use the stored keypair from the ivyconfig.toml file to register to the AVS -- exact registration is dependent on the AVS type. Errors if no AVS has been selected or the AVS is already running.
 
 CLI:
 `ivynet avs optin`
 
 GRPCurl:
 
-`grpcurl -unix -plaintext -authority "localhost" ~/.ivynet/ivynet.ipc avs.Avs/OptIn`
+`grpcurl -unix -plaintext -authority "localhost" ~/.ivynet/ivynet.ipc avs.Avs/Register`
 
 #### Optout
 
-`ivy_daemon_avs.Avs/OptOut`
-Optout of the AVS instance. This will use the stored keypair from the ivyconfig.toml file to optout of the AVS. Errors if no AVS has been selected or the AVS is already running.
+`ivy_daemon_avs.Avs/Unregister`
+Unregister the AVS instance. This will use the stored keypair from the ivyconfig.toml file to unregister the AVS -- dependent on the AVS type. Errors if no AVS has been selected or the AVS is already running.
 
 CLI:
 
-`ivynet avs optout`
+`ivynet avs unregister`
 
 GRPCurl:
 
-```grpcurl -unix -plaintext -authority "localhost" ~/.ivynet/ivynet.ipc avs.Avs/OptOut```
+```grpcurl -unix -plaintext -authority "localhost" ~/.ivynet/ivynet.ipc avs.Avs/Unregister```
 
 
 ### The Operator Namespace
