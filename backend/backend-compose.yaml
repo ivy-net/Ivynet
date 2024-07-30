@@ -6,6 +6,7 @@ services:
       - 5432:5432
     volumes:
       - psql_vol:/var/lib/postgresql/data
+    user: postgres
     environment:
       POSTGRES_USER: ivy
       POSTGRES_PASSWORD: secret_ivy

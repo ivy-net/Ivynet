@@ -11,8 +11,12 @@ use tonic::Status;
 use zip::result::ZipError;
 
 use crate::{
+<<<<<<< HEAD
     avs::{eigenda::EigenDAError, lagrange::LagrangeError},
     eigen::quorum::QuorumError,
+=======
+    avs::eigenda::EigenDAError, eigen::quorum::QuorumError, grpc::client::ClientError,
+>>>>>>> a802f4a (More fmt)
     rpc_management::IvyProvider,
 };
 
@@ -72,7 +76,11 @@ pub enum IvyError {
     ConfigError(#[from] crate::config::ConfigError),
 
     #[error(transparent)]
+<<<<<<< HEAD
     ProviderError(#[from] ProviderError),
+=======
+    ClientError(#[from] ClientError),
+>>>>>>> a802f4a (More fmt)
 
     #[error(
         "AVS {0} on chain {1} is currently running. Stop the AVS before using this operation."

@@ -11,7 +11,8 @@ use super::{super::db, authorize, organization};
         organization::new,
         organization::get,
         organization::invite,
-        organization::nodes
+        organization::nodes,
+        organization::confirm
     ),
     components(
         schemas(
@@ -23,7 +24,8 @@ use super::{super::db, authorize, organization};
             organization::InvitationResponse,
             organization::ConfirmationResponse,
             organization::InvitationRequest,
-            db::Node
+            db::Node,
+            db::Role
         ),
     ),
     tags(

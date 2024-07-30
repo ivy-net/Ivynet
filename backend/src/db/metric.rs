@@ -84,14 +84,14 @@ impl Metric {
         for metric in metrics {
             query!(
             "INSERT INTO metric (node_id, name, value, attributes, created_at) values ($1, $2, $3, $4, $5)",
-            Some(metric.node_id.as_bytes()),
+            Some(node.node_id.as_bytes()),
             Some(&metric.name),
             Some(metric.value),
             metric.attributes.as_ref().map(|v| json!(v)),
             Some(now)
-        )
-        .execute(pool)
-        .await?;
+            )
+            .execute(pool)
+            .await?;
         }
         Ok(())
     }

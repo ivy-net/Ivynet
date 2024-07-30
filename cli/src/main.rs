@@ -2,9 +2,10 @@ use clap::{Parser, Subcommand};
 use cli::{avs, config, error::Error, init::initialize_ivynet, operator, service, staker};
 use ivynet_core::{avs::commands::AvsCommands, config::IvyConfig, grpc::client::Uri};
 use std::str::FromStr as _;
+use tracing_subscriber::FmtSubscriber;
+
 #[allow(unused_imports)]
-use tracing::{debug, error, warn};
-use tracing_subscriber::{fmt, prelude::*, EnvFilter};
+use tracing::{debug, error, warn, Level};
 
 #[derive(Parser, Debug)]
 #[command(name = "ivy", version, about = "The command line interface for ivynet")]
@@ -25,8 +26,8 @@ struct Args {
     pub server_ca: Option<String>,
 
     /// Decide the level of verbosity for the logs
-    #[arg(long, short, default_value = "debug")]
-    pub logs: String,
+    #[arg(long, env = "LOG_LEVEL", default_value_t = Level::INFO)]
+    pub log_level: Level,
 }
 
 #[derive(Subcommand, Debug)]
@@ -69,10 +70,10 @@ enum Commands {
 async fn main() -> Result<(), Error> {
     let args = Args::parse();
 
-    setup_tracing(&args.logs)?;
+    start_tracing(args.log_level)?;
 
     match args.cmd {
-        Commands::Init => initialize_ivynet()?,
+        Commands::Init => initialize_ivynet(args.server_url, args.server_ca.as_ref()).await?,
         Commands::Config { subcmd } => {
             config::parse_config_subcommands(
                 subcmd,
@@ -94,43 +95,24 @@ async fn main() -> Result<(), Error> {
             let keyfile_pw = dialoguer::Password::new()
                 .with_prompt("Input the password for your stored Operator ECDSA keyfile")
                 .interact()?;
-            service::serve(avs, chain, &config, &keyfile_pw).await?
+            service::serve(
+                avs,
+                chain,
+                &config,
+                &keyfile_pw,
+                args.server_url,
+                args.server_ca.as_ref(),
+            )
+            .await?
         }
     }
 
     Ok(())
 }
 
-// Setup tracing
-fn setup_tracing(logs: &str) -> Result<(), Error> {
-    let mut filter =
-        EnvFilter::builder().parse("ivynet_cli=debug,ivynet_core=debug,tonic=debug")?;
-
-    match logs {
-        "trace" => {
-            filter =
-                EnvFilter::builder().parse("ivynet_cli=trace,ivynet_core=trace,tonic=trace")?;
-        }
-        "debug" => {
-            filter =
-                EnvFilter::builder().parse("ivynet_cli=debug,ivynet_core=debug,tonic=debug")?;
-        }
-        "info" => {
-            filter = EnvFilter::builder().parse("ivynet_cli=info,ivynet_core=info,tonic=info")?;
-        }
-        "warn" => {
-            filter = EnvFilter::builder().parse("ivynet_cli=warn,ivynet_core=warn,tonic=warn")?;
-        }
-        "error" => {
-            filter =
-                EnvFilter::builder().parse("ivynet_cli=error,ivynet_core=error,tonic=error")?;
-        }
-        _ => {
-            println!("Default log level: DEBUG");
-        }
-    }
-    tracing_subscriber::registry().with(fmt::layer()).with(filter).init();
-
+pub fn start_tracing(level: Level) -> Result<(), Error> {
+    let subscriber = FmtSubscriber::builder().with_max_level(level).finish();
+    tracing::subscriber::set_global_default(subscriber)?;
     Ok(())
 }
 

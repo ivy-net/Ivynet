@@ -1,6 +1,14 @@
 use dialoguer::{Input, MultiSelect, Password, Select};
 use ivynet_core::{
-    config::IvyConfig, dialog::get_confirm_password, error::IvyError, metadata::Metadata,
+    config::IvyConfig,
+    error::IvyError,
+    grpc::{
+        backend::backend_client::BackendClient,
+        client::{create_channel, Source, Uri},
+        messages::RegistrationCredentials,
+        tonic::Request,
+    },
+    metadata::Metadata,
     wallet::IvyWallet,
 };
 use std::{fs, path::PathBuf, unreachable};
@@ -11,7 +19,10 @@ use tracing::debug;
 // TODO: Step through piecemeal running/initialization of an empty ivy-config file to ensure
 // sensible error messages throughout
 
-pub fn initialize_ivynet() -> Result<(), IvyError> {
+pub async fn initialize_ivynet(
+    server_url: Uri,
+    server_ca: Option<&String>,
+) -> Result<(), IvyError> {
     // Build IvyConfig file
     println!("Performing ivynet intialization...");
     let setup_types = ["Interactive", "Empty"];
@@ -37,6 +48,9 @@ pub fn initialize_ivynet() -> Result<(), IvyError> {
         let config = set_config_rpcs(config)?;
         let config = set_config_keys(config)?;
         let config = set_config_metadata(config)?;
+        config.store()?;
+
+        let config = set_backend_connection(config, server_url, server_ca).await?;
         config.store()?;
     }
     Ok(())
@@ -115,6 +129,39 @@ fn set_config_rpcs(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
             _ => unreachable!("Unknown RPC key reached"),
         }
     }
+
+    Ok(config)
+}
+
+async fn set_backend_connection(
+    mut config: IvyConfig,
+    server_url: Uri,
+    server_ca: Option<&String>,
+) -> Result<IvyConfig, IvyError> {
+    let client_key = match config.identity_wallet() {
+        Ok(key) => key.address(),
+        _ => {
+            let new_key = IvyWallet::new();
+            config.identity_key = Some(new_key.to_private_key());
+            new_key.address()
+        }
+    };
+    let email = Input::new()
+        .with_prompt("Provide email address to IvyNet system")
+        .interact_text()
+        .expect("No no email provided");
+    let password = Password::new()
+        .with_prompt("Enter a password to IvyNet system")
+        .interact()
+        .expect("No password provided");
+    let mut backend = BackendClient::new(create_channel(Source::Uri(server_url), server_ca).await?);
+    backend
+        .register(Request::new(RegistrationCredentials {
+            email,
+            password,
+            public_key: client_key.as_bytes().to_vec(),
+        }))
+        .await?;
 
     Ok(config)
 }

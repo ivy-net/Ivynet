@@ -1,41 +1,56 @@
 use std::sync::Arc;
 
 use ivynet_core::{
-    avs::{instance::AvsType, AvsProvider},
+    avs::{instance::AvsType, AvsProvider, AvsVariant},
+    config::get_system_information,
     error::IvyError,
-    grpc::messages::{Metrics, MetricsAttribute},
-    rpc_management::IvyProvider,
+    grpc::{
+        backend::backend_client::BackendClient,
+        messages::{Metrics, MetricsAttribute, SignedMetrics},
+        tonic::{transport::Channel, Request},
+    },
+    signature::sign,
+    wallet::IvyWallet,
 };
 use tokio::{
     sync::RwLock,
     time::{sleep, Duration},
 };
-use tracing::debug;
 
-pub async fn listen(avs_provider: Arc<RwLock<AvsProvider>>) -> Result<(), IvyError> {
+const TELEMETRY_INTERVAL_IN_MINUTES: u64 = 1;
+
+pub async fn listen(
+    avs_provider: Arc<RwLock<AvsProvider>>,
+    mut client: BackendClient<Channel>,
+    identity_wallet: IvyWallet,
+) -> Result<(), IvyError> {
     loop {
-        let provider = avs_provider.read().await;
-        let metrics = collect(&provider.avs).await?;
-        debug!("Collected metrics {metrics:?}");
-        if let Some(metrics) = metrics {
-            send(&metrics, &provider.provider).await?;
-        }
-        sleep(Duration::from_secs(5 * 60)).await;
+        let metrics = {
+            let provider = avs_provider.read().await;
+            collect(&provider.avs).await?
+        };
+        _ = send(&metrics, &identity_wallet, &mut client).await;
+
+        sleep(Duration::from_secs(TELEMETRY_INTERVAL_IN_MINUTES * 60)).await;
     }
 }
-async fn collect(avs: &Option<AvsType>) -> Result<Option<Vec<Metrics>>, IvyError> {
+
+async fn collect(avs: &Option<AvsType>) -> Result<Vec<Metrics>, IvyError> {
     // Depending on currently running avs, we decide how to fetch
-    let address = match avs {
-        None => None,
+    let (avs, address, running) = match avs {
+        None => (None, None, false),
         Some(avs_type) => {
             match avs_type {
-                AvsType::EigenDA(_) => Some("http://localhost:9092/metrics"),
-                AvsType::AltLayer(_) => None, //TODO: Still don't know how to fetch data from that one
+                AvsType::EigenDA(avs) => {
+                    (Some("eigenda"), Some("http://localhost:9092/metrics"), avs.running())
+                }
+                AvsType::AltLayer(avs) => (Some("altlayer"), None, avs.running()), /* TODO: Still don't know how to fetch data from
+                                                                                    * that one */
             }
         }
     };
 
-    if let Some(address) = address {
+    let mut metrics = if let Some(address) = address {
         let body = reqwest::get(address).await?.text().await?;
 
         let metrics = body
@@ -43,25 +58,70 @@ async fn collect(avs: &Option<AvsType>) -> Result<Option<Vec<Metrics>>, IvyError
             .filter_map(|line| TelemetryParser::new(line).parse())
             .collect::<Vec<_>>();
 
-        Ok(Some(metrics))
+        metrics
     } else {
-        Ok(None)
-    }
+        Vec::new()
+    };
+
+    // Now we need to add basic metrics
+    let (cpus, ram, free_space) = get_system_information()?;
+
+    metrics.push(Metrics {
+        name: "cpus".to_owned(),
+        value: cpus as f64,
+        attributes: Default::default(),
+    });
+
+    metrics.push(Metrics {
+        name: "ram".to_owned(),
+        value: ram as f64,
+        attributes: Default::default(),
+    });
+
+    metrics.push(Metrics {
+        name: "free_space".to_owned(),
+        value: free_space as f64,
+        attributes: Default::default(),
+    });
+
+    metrics.push(Metrics {
+        name: "running".to_owned(),
+        value: if running { 1.0 } else { 0.0 },
+        attributes: if let Some(avs) = avs {
+            vec![MetricsAttribute { name: "avs".to_owned(), value: avs.to_owned() }]
+        } else {
+            Default::default()
+        },
+    });
+
+    Ok(metrics)
 }
 
-async fn send(_metrics: &[Metrics], _provider: &IvyProvider) -> Result<(), IvyError> {
+async fn send(
+    metrics: &[Metrics],
+    wallet: &IvyWallet,
+    client: &mut BackendClient<Channel>,
+) -> Result<(), IvyError> {
+    let signature = sign(metrics, wallet).await?;
+
+    client
+        .metrics(Request::new(SignedMetrics {
+            signature: signature.to_vec(),
+            metrics: metrics.to_vec(),
+        }))
+        .await?;
     Ok(())
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 enum TelemetryToken {
     Tag(String),
+    Number(f64),
     OpenBracket,
     CloseBracket,
-    Qoute,
+    Quote,
     Equal,
     Comma,
-    Number(f64),
 }
 
 struct TelemetryParser {
@@ -108,10 +168,10 @@ impl TelemetryParser {
 
         if let Some(attr_name) = self.expecting_string() {
             self.expecting_special_token(TelemetryToken::Equal)?;
-            self.expecting_special_token(TelemetryToken::Qoute)?;
+            self.expecting_special_token(TelemetryToken::Quote)?;
 
             if let Some(attr_value) = self.expecting_string() {
-                self.expecting_special_token(TelemetryToken::Qoute)?;
+                self.expecting_special_token(TelemetryToken::Quote)?;
                 return Some(MetricsAttribute { name: attr_name, value: attr_value });
             }
         }
@@ -162,10 +222,9 @@ impl TelemetryParser {
         self.eat_whitespaces();
 
         if self.tokens.is_empty() {
-            let mut chars = self.line.chars();
             let mut string_val = String::new();
 
-            while let Some(c) = chars.nth(self.position) {
+            while let Some(c) = self.line.chars().nth(self.position) {
                 if let Some(token) = TelemetryParser::special_token(c) {
                     if string_val.is_empty() {
                         self.position += 1;
@@ -201,7 +260,7 @@ impl TelemetryParser {
     fn special_token(c: char) -> Option<TelemetryToken> {
         match c {
             '=' => Some(TelemetryToken::Equal),
-            '"' => Some(TelemetryToken::Qoute),
+            '"' => Some(TelemetryToken::Quote),
             ',' => Some(TelemetryToken::Comma),
             '{' => Some(TelemetryToken::OpenBracket),
             '}' => Some(TelemetryToken::CloseBracket),
@@ -210,8 +269,7 @@ impl TelemetryParser {
     }
 
     fn eat_whitespaces(&mut self) {
-        let mut chars = self.line.chars();
-        while let Some(c) = chars.nth(self.position) {
+        while let Some(c) = self.line.chars().nth(self.position) {
             if c.is_whitespace() {
                 self.position += 1;
             } else {
@@ -226,6 +284,75 @@ impl TelemetryParser {
             if c == '#' {
                 self.position = self.line.len();
             }
+        }
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::TelemetryParser;
+
+    #[test]
+    fn test_empty_line() {
+        let metrics = TelemetryParser::new("  ").parse();
+        assert_eq!(metrics, None)
+    }
+
+    #[test]
+    fn test_comment_line() {
+        let metrics = TelemetryParser::new("  # Some commented line we don't care about").parse();
+        assert_eq!(metrics, None)
+    }
+
+    #[test]
+    fn test_simple_entry() {
+        let metrics = TelemetryParser::new("metric_name 12").parse();
+        if let Some(metrics) = metrics {
+            assert_eq!(metrics.name, "metric_name");
+            assert_eq!(metrics.value, 12f64);
+        } else {
+            panic!("Parsed entry returned None");
+        }
+    }
+
+    #[test]
+    fn test_float_entry() {
+        let metrics = TelemetryParser::new("metric_name 12.123").parse();
+        if let Some(metrics) = metrics {
+            assert_eq!(metrics.name, "metric_name");
+            assert_eq!(metrics.value, 12.123f64);
+        } else {
+            panic!("Parsed entry returned None");
+        }
+    }
+
+    #[test]
+    fn test_exp_entry() {
+        let metrics = TelemetryParser::new("metric_name 1.1447e+06").parse();
+        if let Some(metrics) = metrics {
+            assert_eq!(metrics.name, "metric_name");
+            assert_eq!(metrics.value, 1144700.0f64);
+        } else {
+            panic!("Parsed entry returned None");
+        }
+    }
+
+    #[test]
+    fn test_attributed_entry() {
+        let metrics = TelemetryParser::new(
+            r#"metric_name{attr1_name="attr1_value",attr2_name="attr2_value"} 12"#,
+        )
+        .parse();
+        if let Some(metrics) = metrics {
+            assert_eq!(metrics.name, "metric_name");
+            assert_eq!(metrics.value, 12f64);
+            assert_eq!(metrics.attributes.len(), 2);
+            assert_eq!(metrics.attributes[0].name, "attr1_name");
+            assert_eq!(metrics.attributes[0].value, "attr1_value");
+            assert_eq!(metrics.attributes[1].name, "attr2_name");
+            assert_eq!(metrics.attributes[1].value, "attr2_value");
+        } else {
+            panic!("Parsed entry returned None");
         }
     }
 }

@@ -2,7 +2,7 @@ use hyper_util::rt::TokioIo;
 use tokio::net::UnixStream;
 use tonic::transport::{Certificate, Channel, ClientTlsConfig, Endpoint};
 use tower::service_fn;
-use tracing::{debug, info};
+use tracing::debug;
 
 pub use tonic::{transport::Uri, Request, Response};
 
@@ -41,8 +41,8 @@ pub async fn create_channel(
     } else {
         endpoint
     }
-    .timeout(std::time::Duration::from_secs(60));
-    info!("Initialized GRPC channel: {:?}", source);
+    .timeout(std::time::Duration::from_secs(5 * 60));
+    debug!("Initialized GRPC channel: {:?}", source);
     match source {
         Source::Path(ref path) => {
             let mut client = Some(TokioIo::new(UnixStream::connect(&path).await?));

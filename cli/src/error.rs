@@ -7,7 +7,7 @@ pub enum Error {
     DialoguerError(#[from] dialoguer::Error),
 
     #[error(transparent)]
-    TracingFilterParseError(#[from] tracing_subscriber::filter::ParseError),
+    GlobalTracingSetError(#[from] tracing::subscriber::SetGlobalDefaultError),
 
     #[error(transparent)]
     GRPCError(#[from] ivynet_core::grpc::Status),

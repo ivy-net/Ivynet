@@ -62,7 +62,7 @@ impl DbNode {
         query!(
             "INSERT INTO node (node_id, organization_id, created_at, updated_at) values ($1, $2, $3, $4)",
             Some(node_id.as_bytes()),
-            Some(account.user_id),
+            Some(account.organization_id),
             Some(now),
             Some(now)
         )

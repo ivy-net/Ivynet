@@ -4,13 +4,14 @@ use chrono::{NaiveDateTime, Utc};
 use ivynet_core::ethers::types::Address;
 use serde::{Deserialize, Serialize};
 use sqlx::{query, PgPool};
+use utoipa::ToSchema;
 
 use super::{
     node::{DbNode, Node},
     Organization,
 };
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, sqlx::Type, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, PartialOrd, sqlx::Type, Deserialize, Serialize, ToSchema)]
 #[sqlx(type_name = "user_role", rename_all = "lowercase")]
 pub enum Role {
     Owner,
