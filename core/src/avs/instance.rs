@@ -61,56 +61,52 @@ impl AvsVariant for AvsType {
         }
     }
     // TODO: Deprecate
-    // async fn opt_in(
-    //     &self,
-    //     quorums: Vec<QuorumType>,
-    //     eigen_path: PathBuf,
-    //     private_keypath: PathBuf,
-    //     keyfile_password: &str,
-    //     chain: Chain,
-    // ) -> Result<(), IvyError> {
-    //     match self {
-    //         AvsType::EigenDA(avs) => {
-    //             avs.opt_in(quorums, eigen_path, private_keypath, keyfile_password, chain).await
-    //         }
-    //         AvsType::AltLayer(avs) => {
-    //             avs.opt_in(quorums, eigen_path, private_keypath, keyfile_password, chain).await
-    //         }
-    //         AvsType::Lagrange(avs) => {
-    //             avs.opt_in(quorums, eigen_path, private_keypath, keyfile_password, chain).await
-    //         }
-    //     }
-    // }
-    // async fn opt_out(
-    //     &self,
-    //     quorums: Vec<QuorumType>,
-    //     eigen_path: PathBuf,
-    //     private_keypath: PathBuf,
-    //     keyfile_password: &str,
-    //     chain: Chain,
-    // ) -> Result<(), IvyError> {
-    //     match self {
-    //         AvsType::EigenDA(avs) => {
-    //             avs.opt_out(quorums, eigen_path, private_keypath, keyfile_password, chain).await
-    //         }
-    //         AvsType::AltLayer(avs) => {
-    //             avs.opt_out(quorums, eigen_path, private_keypath, keyfile_password, chain).await
-    //         }
-    //         AvsType::Lagrange(avs) => {
-    //             avs.opt_out(quorums, eigen_path, private_keypath, keyfile_password, chain).await
-    //         }
-    //     }
-    // }
-    async fn start(
-        &mut self,
+    async fn register(
+        &self,
         quorums: Vec<QuorumType>,
+        eigen_path: PathBuf,
+        private_keypath: PathBuf,
+        keyfile_password: &str,
         chain: Chain,
-        keyfile_pw: Option<String>,
-    ) -> Result<Child, IvyError> {
+    ) -> Result<(), IvyError> {
         match self {
-            AvsType::EigenDA(avs) => avs.start(quorums, chain, keyfile_pw).await,
-            AvsType::AltLayer(avs) => avs.start(quorums, chain, keyfile_pw).await,
-            AvsType::Lagrange(avs) => avs.start(quorums, chain, keyfile_pw).await,
+            AvsType::EigenDA(avs) => {
+                avs.register(quorums, eigen_path, private_keypath, keyfile_password, chain).await
+            }
+            AvsType::AltLayer(avs) => {
+                avs.register(quorums, eigen_path, private_keypath, keyfile_password, chain).await
+            }
+            AvsType::Lagrange(avs) => {
+                avs.register(quorums, eigen_path, private_keypath, keyfile_password, chain).await
+            }
+        }
+    }
+    async fn unregister(
+        &self,
+        quorums: Vec<QuorumType>,
+        eigen_path: PathBuf,
+        private_keypath: PathBuf,
+        keyfile_password: &str,
+        chain: Chain,
+    ) -> Result<(), IvyError> {
+        match self {
+            AvsType::EigenDA(avs) => {
+                avs.unregister(quorums, eigen_path, private_keypath, keyfile_password, chain).await
+            }
+            AvsType::AltLayer(avs) => {
+                avs.unregister(quorums, eigen_path, private_keypath, keyfile_password, chain).await
+            }
+            AvsType::Lagrange(avs) => {
+                avs.unregister(quorums, eigen_path, private_keypath, keyfile_password, chain).await
+            }
+        }
+    }
+
+    async fn start(&mut self, quorums: Vec<QuorumType>, chain: Chain) -> Result<Child, IvyError> {
+        match self {
+            AvsType::EigenDA(avs) => avs.start(quorums, chain).await,
+            AvsType::AltLayer(avs) => avs.start(quorums, chain).await,
+            AvsType::Lagrange(avs) => avs.start(quorums, chain).await,
         }
     }
     async fn stop(&mut self, chain: Chain) -> Result<(), IvyError> {
@@ -161,6 +157,22 @@ impl AvsVariant for AvsType {
             AvsType::EigenDA(avs) => avs.running(),
             AvsType::AltLayer(avs) => avs.running(),
             AvsType::Lagrange(avs) => avs.running(),
+        }
+    }
+
+    fn name(&self) -> &str {
+        todo!()
+    }
+
+    async fn build_env(
+        &self,
+        provider: Arc<IvyProvider>,
+        config: &IvyConfig,
+    ) -> Result<(), IvyError> {
+        match self {
+            AvsType::EigenDA(avs) => avs.build_env(provider, config).await,
+            AvsType::AltLayer(avs) => avs.build_env(provider, config).await,
+            AvsType::Lagrange(avs) => avs.build_env(provider, config).await,
         }
     }
 }

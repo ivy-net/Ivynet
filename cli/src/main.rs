@@ -1,8 +1,6 @@
 use clap::{Parser, Subcommand};
 use cli::{avs, config, error::Error, init::initialize_ivynet, operator, service, staker};
-use ivynet_core::{
-    avs::commands::AvsCommands, config::IvyConfig, error::IvyError, grpc::client::Uri,
-};
+use ivynet_core::{avs::commands::AvsCommands, config::IvyConfig, grpc::client::Uri};
 use std::str::FromStr as _;
 #[allow(unused_imports)]
 use tracing::{debug, error, warn};

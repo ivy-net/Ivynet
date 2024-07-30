@@ -66,10 +66,10 @@ impl AvsVariant for AltLayer {
         &self,
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
-        pw: Option<String>,
+        _pw: Option<String>,
     ) -> Result<(), IvyError> {
         download_operator_setup(self.path.clone()).await?;
-        self.build_env(provider, config, pw).await?;
+        self.build_env(provider, config).await?;
         Ok(())
     }
 
@@ -80,12 +80,7 @@ impl AvsVariant for AltLayer {
         Ok(class >= NodeClass::XL && disk_info >= 50000000000)
     }
 
-    async fn start(
-        &mut self,
-        _quorums: Vec<QuorumType>,
-        _chain: Chain,
-        _keyfile_pw: Option<String>,
-    ) -> Result<Child, IvyError> {
+    async fn start(&mut self, _quorums: Vec<QuorumType>, _chain: Chain) -> Result<Child, IvyError> {
         todo!()
     }
 
@@ -145,15 +140,13 @@ impl AvsVariant for AltLayer {
     fn name(&self) -> &'static str {
         "altlayer"
     }
-}
 
-impl AltLayer {
     /// Currently, AltLayer Mach AVS is operating in allowlist mode only: https://docs.altlayer.io/altlayer-documentation/altlayer-facilitated-actively-validated-services/xterio-mach-avs-for-xterio-chain/operator-guide
-    pub async fn opt_in(
+    async fn register(
         &self,
         quorums: Vec<QuorumType>,
         eigen_path: PathBuf,
-        _private_keyfile: PathBuf,
+        _private_keypath: PathBuf,
         _keyfile_password: &str,
         chain: Chain,
     ) -> Result<(), IvyError> {
@@ -179,91 +172,21 @@ impl AltLayer {
         }
     }
 
-    pub async fn opt_out(
+    async fn unregister(
         &self,
         _quorums: Vec<QuorumType>,
         _eigen_path: PathBuf,
-        _private_keyfile: PathBuf,
+        _private_keypath: PathBuf,
         _keyfile_password: &str,
         _chain: Chain,
     ) -> Result<(), IvyError> {
         todo!()
     }
-}
 
-pub async fn download_operator_setup(eigen_path: PathBuf) -> Result<(), IvyError> {
-    let mut setup = false;
-    let temp_path = eigen_path.join("temp");
-    let destination_path = eigen_path.join("mach-avs-operator-setup");
-    if destination_path.exists() {
-        //TODO: Doh! Prompting inside the library?
-        let reset_string: String = Input::new()
-            .with_prompt("The operator setup directory already exists. Redownload? (y/n)")
-            .interact_text()?;
-
-        if reset_string == "y" {
-            setup = true;
-            fs::remove_dir_all(destination_path.clone())?;
-            fs::create_dir_all(temp_path.clone())?;
-        }
-    } else {
-        info!("The setup directory does not exist, downloading to {}", temp_path.display());
-        fs::create_dir_all(temp_path.clone())?;
-        setup = true;
-    }
-
-    if setup {
-        info!("Downloading setup files to {}", temp_path.display());
-        let response = reqwest::get(ALTLAYER_REPO_URL).await?;
-
-        let fname = temp_path.join("source.zip");
-        let mut dest = File::create(&fname)?;
-        let bytes = response.bytes().await?;
-        std::io::copy(&mut bytes.as_ref(), &mut dest)?;
-        let reader = BufReader::new(File::open(fname)?);
-        let mut archive = ZipArchive::new(reader)?;
-
-        for i in 0..archive.len() {
-            let mut file = archive.by_index(i)?;
-            let outpath = temp_path.join(file.name());
-            debug!("Extracting to {}", outpath.display());
-
-            if (file.name()).ends_with('/') {
-                std::fs::create_dir_all(&outpath)?;
-            } else {
-                if let Some(p) = outpath.parent() {
-                    if !p.exists() {
-                        std::fs::create_dir_all(p)?;
-                    }
-                }
-                let mut outfile = File::create(&outpath)?;
-                copy(&mut file, &mut outfile)?;
-            }
-        }
-        let first_dir = std::fs::read_dir(&temp_path)?
-            .filter_map(Result::ok)
-            .find(|entry| entry.file_type().unwrap().is_dir());
-        if let Some(first_dir) = first_dir {
-            let old_folder_path = first_dir.path();
-            debug!("{}", old_folder_path.display());
-            std::fs::rename(old_folder_path, destination_path)?;
-        }
-        // Delete the setup directory
-        if temp_path.exists() {
-            info!("Cleaning up setup directory...");
-            std::fs::remove_dir_all(temp_path)?;
-        }
-    }
-
-    Ok(())
-}
-
-impl AltLayer {
     async fn build_env(
         &self,
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
-        _pw: Option<String>,
     ) -> Result<(), IvyError> {
         let chain = Chain::try_from(provider.signer().chain_id())?;
         let rpc_url = config.get_rpc_url(chain)?;
@@ -360,4 +283,71 @@ impl AltLayer {
         env_lines.save(&env_path)?;
         Ok(())
     }
+}
+
+pub async fn download_operator_setup(eigen_path: PathBuf) -> Result<(), IvyError> {
+    let mut setup = false;
+    let temp_path = eigen_path.join("temp");
+    let destination_path = eigen_path.join("mach-avs-operator-setup");
+    if destination_path.exists() {
+        //TODO: Doh! Prompting inside the library?
+        let reset_string: String = Input::new()
+            .with_prompt("The operator setup directory already exists. Redownload? (y/n)")
+            .interact_text()?;
+
+        if reset_string == "y" {
+            setup = true;
+            fs::remove_dir_all(destination_path.clone())?;
+            fs::create_dir_all(temp_path.clone())?;
+        }
+    } else {
+        info!("The setup directory does not exist, downloading to {}", temp_path.display());
+        fs::create_dir_all(temp_path.clone())?;
+        setup = true;
+    }
+
+    if setup {
+        info!("Downloading setup files to {}", temp_path.display());
+        let response = reqwest::get(ALTLAYER_REPO_URL).await?;
+
+        let fname = temp_path.join("source.zip");
+        let mut dest = File::create(&fname)?;
+        let bytes = response.bytes().await?;
+        std::io::copy(&mut bytes.as_ref(), &mut dest)?;
+        let reader = BufReader::new(File::open(fname)?);
+        let mut archive = ZipArchive::new(reader)?;
+
+        for i in 0..archive.len() {
+            let mut file = archive.by_index(i)?;
+            let outpath = temp_path.join(file.name());
+            debug!("Extracting to {}", outpath.display());
+
+            if (file.name()).ends_with('/') {
+                std::fs::create_dir_all(&outpath)?;
+            } else {
+                if let Some(p) = outpath.parent() {
+                    if !p.exists() {
+                        std::fs::create_dir_all(p)?;
+                    }
+                }
+                let mut outfile = File::create(&outpath)?;
+                copy(&mut file, &mut outfile)?;
+            }
+        }
+        let first_dir = std::fs::read_dir(&temp_path)?
+            .filter_map(Result::ok)
+            .find(|entry| entry.file_type().unwrap().is_dir());
+        if let Some(first_dir) = first_dir {
+            let old_folder_path = first_dir.path();
+            debug!("{}", old_folder_path.display());
+            std::fs::rename(old_folder_path, destination_path)?;
+        }
+        // Delete the setup directory
+        if temp_path.exists() {
+            info!("Cleaning up setup directory...");
+            std::fs::remove_dir_all(temp_path)?;
+        }
+    }
+
+    Ok(())
 }

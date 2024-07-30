@@ -89,14 +89,12 @@ impl AvsVariant for Lagrange {
     // undesirable. Figure out if this behavior needs to be stabilized.
     async fn setup(
         &self,
-        _provider: Arc<IvyProvider>,
+        provider: Arc<IvyProvider>,
         config: &IvyConfig,
         _keyfile_pw: Option<String>,
     ) -> Result<(), IvyError> {
         download_operator_setup(self.path.clone()).await?;
-        println!("Entering Lagrange keyfile password setup...");
-        let lagrange_keyfile_pw = get_confirm_password();
-        self.build_env(config, lagrange_keyfile_pw).await?;
+        self.build_env(provider, config).await?;
         generate_lagrange_key(self.run_path()).await?;
 
         // copy ecdsa keyfile to lagrange-worker path
@@ -117,17 +115,7 @@ impl AvsVariant for Lagrange {
         todo!()
     }
 
-    async fn start(
-        &mut self,
-        _quorums: Vec<QuorumType>,
-        _chain: Chain,
-        keyfile_pw: Option<String>,
-    ) -> Result<Child, IvyError> {
-        if let Some(keyfile_pw) = keyfile_pw {
-            std::env::set_var("AVS__ETH_PWD", keyfile_pw);
-        } else {
-            return Err(LagrangeError::KeyfilePasswordNotFound.into());
-        }
+    async fn start(&mut self, _quorums: Vec<QuorumType>, _chain: Chain) -> Result<Child, IvyError> {
         std::env::set_current_dir(self.run_path())?;
         debug!("docker start: {}", self.run_path().display());
         // NOTE: See the limitations of the Stdio::piped() method if this experiences a deadlock
@@ -186,47 +174,60 @@ impl AvsVariant for Lagrange {
     fn running(&self) -> bool {
         self.running
     }
-}
 
-impl Lagrange {
     /// Registers the lagrange private key with the lagrange network.
-    pub fn register(&self, keyfile_pw: &str) -> Result<(), IvyError> {
+    async fn register(
+        &self,
+        _quorums: Vec<QuorumType>,
+        _eigen_path: PathBuf,
+        private_keypath: PathBuf,
+        keyfile_password: &str,
+        _chain: Chain,
+    ) -> Result<(), IvyError> {
         // Copy keyfile to current dir
-        //let private_keyfile = config.default_private_keyfile.clone();
-        //let dest_dir = self.run_path().join("config");
-        //if !dest_dir.exists() {
-        //    fs::create_dir_all(dest_dir.clone())?;
-        //}
-        //let dest_file = dest_dir.join("priv_key.json");
+        let dest_dir = self.run_path().join("config");
+        if !dest_dir.exists() {
+            fs::create_dir_all(dest_dir.clone())?;
+        }
+        let dest_file = dest_dir.join("priv_key.json");
 
-        //debug!("{}", dest_file.display());
-        //fs::copy(private_keyfile, &dest_file)?;
+        debug!("{}", dest_file.display());
+        fs::copy(private_keypath, &dest_file)?;
         // Change dir to run docker file
         std::env::set_current_dir(self.run_path())?;
         // Set local env variable to pass password to docker
-        std::env::set_var("AVS__ETH_PWD", keyfile_pw);
+        std::env::set_var("AVS__ETH_PWD", keyfile_password);
         let _ = Command::new("docker")
             .arg("compose")
             .arg("run")
             .args(["--rm", "worker", "avs", "register"])
             .status()?;
-        //fs::remove_file(dest_file)?;
+        fs::remove_file(dest_file)?;
         Ok(())
     }
 
-    /// Constructor function for Lagrange run dir path
-    fn run_path(&self) -> PathBuf {
-        self.path.join("lagrange-worker").join(self.chain.as_ref())
+    async fn unregister(
+        &self,
+        _quorums: Vec<QuorumType>,
+        _eigen_path: PathBuf,
+        _private_keypath: PathBuf,
+        _keyfile_password: &str,
+        _chain: Chain,
+    ) -> Result<(), IvyError> {
+        todo!("Lagrange hasn't implemented this yet")
     }
 
     /// Builds the .env file for the Lagrange worker
     async fn build_env(
         &self,
+        _provider: Arc<IvyProvider>,
         config: &IvyConfig,
-        lagrange_keyfile_pw: String,
     ) -> Result<(), IvyError> {
         let env_example_path = self.run_path().join(".env.example");
         let env_path = self.run_path().join(".env");
+
+        println!("Entering Lagrange keyfile password setup...");
+        let lagrange_keyfile_pw = get_confirm_password();
 
         if !env_example_path.exists() {
             error!("The '.env.example' file does not exist at {}. '.env.example' is used for .env templating, please ensure the operator-setup was downloaded to the correct location.", env_example_path.display());
@@ -241,6 +242,17 @@ impl Lagrange {
         env_lines.set("LAGRANGE_RPC_URL", &config.get_rpc_url(self.chain)?);
         env_lines.set("NETWORK", self.chain.as_ref());
         env_lines.save(&env_path)
+    }
+
+    fn name(&self) -> &str {
+        todo!()
+    }
+}
+
+impl Lagrange {
+    /// Constructor function for Lagrange run dir path
+    fn run_path(&self) -> PathBuf {
+        self.path.join("lagrange-worker").join(self.chain.as_ref())
     }
 }
 

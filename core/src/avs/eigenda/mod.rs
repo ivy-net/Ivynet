@@ -74,11 +74,11 @@ impl AvsVariant for EigenDA {
         &self,
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
-        pw: Option<String>,
+        _pw: Option<String>,
     ) -> Result<(), IvyError> {
         download_operator_setup(self.path.clone()).await?;
         download_g1_g2(self.path.clone()).await?;
-        self.build_env(provider, config, pw).await?;
+        self.build_env(provider, config).await?;
         Ok(())
     }
 
@@ -121,12 +121,7 @@ impl AvsVariant for EigenDA {
         Ok(acceptable)
     }
 
-    async fn start(
-        &mut self,
-        _quorums: Vec<QuorumType>,
-        chain: Chain,
-        _keyfile_pw: Option<String>,
-    ) -> Result<Child, IvyError> {
+    async fn start(&mut self, quorums: Vec<QuorumType>, chain: Chain) -> Result<Child, IvyError> {
         let docker_path = self.path.join("eigenda-operator-setup");
         let docker_path = match chain {
             Chain::Mainnet => docker_path.join("mainnet"),
@@ -134,7 +129,7 @@ impl AvsVariant for EigenDA {
             _ => todo!("Unimplemented"),
         };
         std::env::set_current_dir(docker_path.clone())?;
-        debug!("docker start: {} |  {}", docker_path.display(), quorum_str);
+        debug!("docker start: {} |  {:?}", docker_path.display(), quorums);
         let build = Command::new("docker-compose").arg("build").arg("--no-cache").status()?; //.arg("compose")
 
         let _ = Command::new("docker-compose").arg("config").status()?;
@@ -216,15 +211,12 @@ impl AvsVariant for EigenDA {
     fn name(&self) -> &'static str {
         "eigenda"
     }
-}
 
-impl EigenDA {
-    //TODO: We may be able to move this to a contract call directly
-    pub async fn opt_in(
+    async fn register(
         &self,
         quorums: Vec<QuorumType>,
         eigen_path: PathBuf,
-        private_keyfile: PathBuf,
+        private_keypath: PathBuf,
         keyfile_password: &str,
         chain: Chain,
     ) -> Result<(), IvyError> {
@@ -252,7 +244,7 @@ impl EigenDA {
             .arg("--operation-type")
             .arg("opt-in")
             .arg("--node-ecdsa-key-file-host")
-            .arg(private_keyfile)
+            .arg(private_keypath)
             .arg("--node-ecdsa-key-password")
             .arg(keyfile_password)
             .arg("--quorums")
@@ -266,11 +258,11 @@ impl EigenDA {
         }
     }
 
-    pub async fn opt_out(
+    async fn unregister(
         &self,
         quorums: Vec<QuorumType>,
         eigen_path: PathBuf,
-        private_keyfile: PathBuf,
+        private_keypath: PathBuf,
         keyfile_password: &str,
         chain: Chain,
     ) -> Result<(), IvyError> {
@@ -298,7 +290,7 @@ impl EigenDA {
             .arg("--operation-type")
             .arg("opt-out")
             .arg("--node-ecdsa-key-file-host")
-            .arg(private_keyfile)
+            .arg(private_keypath)
             .arg("--node-ecdsa-key-password")
             .arg(keyfile_password)
             .arg("--quorums")
@@ -310,6 +302,87 @@ impl EigenDA {
         } else {
             Err(EigenDAError::ScriptError(optin.to_string()).into())
         }
+    }
+
+    async fn build_env(
+        &self,
+        provider: Arc<IvyProvider>,
+        config: &IvyConfig,
+    ) -> Result<(), IvyError> {
+        let chain = Chain::try_from(provider.signer().chain_id())?;
+        let rpc_url = config.get_rpc_url(chain)?;
+
+        let avs_run_path = self.path.join("eigenda-operator-setup");
+        let avs_run_path = match chain {
+            Chain::Mainnet => avs_run_path.join("mainnet"),
+            Chain::Holesky => avs_run_path.join("holesky"),
+            _ => todo!("Unimplemented"),
+        };
+
+        let env_example_path = avs_run_path.join(".env.example");
+        let env_path = avs_run_path.join(".env");
+
+        if !env_example_path.exists() {
+            error!("The '.env.example' file does not exist at {}. '.env.example' is used for .env templating, please ensure the operator-setup was downloaded to the correct location.", env_example_path.display());
+            return Err(SetupError::NoEnvExample.into());
+        }
+        std::fs::copy(env_example_path, env_path.clone())?;
+
+        debug!("configuring env...");
+        let mut env_lines = EnvLines::load(&env_path)?;
+
+        // Node hostname
+        let node_hostname = reqwest::get("https://api.ipify.org").await?.text().await?;
+        info!("Using node hostname: {node_hostname}");
+        // env_lines.set("NODE_HOSTNAME", &node_hostname);
+
+        // Node chain RPC
+        env_lines.set("NODE_CHAIN_RPC", &rpc_url);
+
+        // User home directory
+        let home_dir = dirs::home_dir().expect("Could not get home directory");
+        let home_str = home_dir.to_str().expect("Could not get home directory");
+        env_lines.set("USER_HOME", home_str);
+        // Node resource paths
+        env_lines.set(
+            "NODE_G1_PATH_HOST",
+            r#"${EIGENLAYER_HOME}/eigenda/eigenda-operator-setup/resources/g1.point"#,
+        );
+        env_lines.set(
+            "NODE_G2_PATH_HOST",
+            r#"${EIGENLAYER_HOME}/eigenda/eigenda-operator-setup/resources/g2.point.powerOf2"#,
+        );
+        env_lines.set(
+            "NODE_CACHE_PATH_HOST",
+            r#"${EIGENLAYER_HOME}/eigenda/eigenda-operator-setup/resources/cache"#,
+        );
+
+        // BLS key
+        let bls_key_name: String = Input::new()
+            .with_prompt(
+                "Input the name of your BLS key file without file extensions - looks in .eigenlayer folder (where eigen cli stores the key)",
+            )
+            .interact_text()?;
+
+        let mut bls_json_file_location = dirs::home_dir().expect("Could not get home dir");
+        bls_json_file_location.push(".eigenlayer/operator_keys");
+        bls_json_file_location.push(bls_key_name);
+        bls_json_file_location.set_extension("bls.key.json");
+        debug!("BLS key file location: {:?}", bls_json_file_location);
+
+        // TODO: Remove prompting
+        let bls_password: String =
+            Password::new().with_prompt("Input the password for your BLS key file").interact()?;
+
+        env_lines.set(
+            "NODE_BLS_KEY_FILE_HOST",
+            bls_json_file_location.to_str().expect("Could not get BLS key file location"),
+        );
+        env_lines.set("NODE_BLS_KEY_PASSWORD", &format!("'{}'", bls_password));
+        env_lines.save(&env_path)?;
+        info!(".env file saved to {}", env_path.display());
+
+        Ok(())
     }
 }
 
@@ -400,89 +473,4 @@ pub async fn download_operator_setup(eigen_path: PathBuf) -> Result<(), IvyError
     }
 
     Ok(())
-}
-
-impl EigenDA {
-    // TODO: Consider best place on the host system to store resource files vs simple configs
-    async fn build_env(
-        &self,
-        provider: Arc<IvyProvider>,
-        config: &IvyConfig,
-        _pw: Option<String>,
-    ) -> Result<(), IvyError> {
-        let chain = Chain::try_from(provider.signer().chain_id())?;
-        let rpc_url = config.get_rpc_url(chain)?;
-
-        let avs_run_path = self.path.join("eigenda-operator-setup");
-        let avs_run_path = match chain {
-            Chain::Mainnet => avs_run_path.join("mainnet"),
-            Chain::Holesky => avs_run_path.join("holesky"),
-            _ => todo!("Unimplemented"),
-        };
-
-        let env_example_path = avs_run_path.join(".env.example");
-        let env_path = avs_run_path.join(".env");
-
-        if !env_example_path.exists() {
-            error!("The '.env.example' file does not exist at {}. '.env.example' is used for .env templating, please ensure the operator-setup was downloaded to the correct location.", env_example_path.display());
-            return Err(SetupError::NoEnvExample.into());
-        }
-        std::fs::copy(env_example_path, env_path.clone())?;
-
-        debug!("configuring env...");
-        let mut env_lines = EnvLines::load(&env_path)?;
-
-        // Node hostname
-        let node_hostname = reqwest::get("https://api.ipify.org").await?.text().await?;
-        info!("Using node hostname: {node_hostname}");
-        // env_lines.set("NODE_HOSTNAME", &node_hostname);
-
-        // Node chain RPC
-        env_lines.set("NODE_CHAIN_RPC", &rpc_url);
-
-        // User home directory
-        let home_dir = dirs::home_dir().expect("Could not get home directory");
-        let home_str = home_dir.to_str().expect("Could not get home directory");
-        env_lines.set("USER_HOME", home_str);
-        // Node resource paths
-        env_lines.set(
-            "NODE_G1_PATH_HOST",
-            r#"${EIGENLAYER_HOME}/eigenda/eigenda-operator-setup/resources/g1.point"#,
-        );
-        env_lines.set(
-            "NODE_G2_PATH_HOST",
-            r#"${EIGENLAYER_HOME}/eigenda/eigenda-operator-setup/resources/g2.point.powerOf2"#,
-        );
-        env_lines.set(
-            "NODE_CACHE_PATH_HOST",
-            r#"${EIGENLAYER_HOME}/eigenda/eigenda-operator-setup/resources/cache"#,
-        );
-
-        // BLS key
-        let bls_key_name: String = Input::new()
-            .with_prompt(
-                "Input the name of your BLS key file without file extensions - looks in .eigenlayer folder (where eigen cli stores the key)",
-            )
-            .interact_text()?;
-
-        let mut bls_json_file_location = dirs::home_dir().expect("Could not get home dir");
-        bls_json_file_location.push(".eigenlayer/operator_keys");
-        bls_json_file_location.push(bls_key_name);
-        bls_json_file_location.set_extension("bls.key.json");
-        debug!("BLS key file location: {:?}", bls_json_file_location);
-
-        // TODO: Remove prompting
-        let bls_password: String =
-            Password::new().with_prompt("Input the password for your BLS key file").interact()?;
-
-        env_lines.set(
-            "NODE_BLS_KEY_FILE_HOST",
-            bls_json_file_location.to_str().expect("Could not get BLS key file location"),
-        );
-        env_lines.set("NODE_BLS_KEY_PASSWORD", &format!("'{}'", bls_password));
-        env_lines.save(&env_path)?;
-        info!(".env file saved to {}", env_path.display());
-
-        Ok(())
-    }
 }
