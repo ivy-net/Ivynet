@@ -53,7 +53,7 @@ impl IvyWallet {
         path: &Path,
         name: String,
         password: String,
-    ) -> Result< PathBuf, IvyError> {
+    ) -> Result<PathBuf, IvyError> {
         debug!("{:?}", path);
         let encrypt = LocalWallet::encrypt_keystore(
             path,
@@ -80,7 +80,6 @@ impl IvyWallet {
 
         Ok(prv_key_path)
     }
-    
 
     pub fn to_private_key(&self) -> String {
         self.local_wallet.signer().to_bytes().encode_hex::<String>()
@@ -193,8 +192,8 @@ mod test {
     //     let wallet = IvyWallet::new();
     //     let address = wallet.address();
     //     let (_pub_key_path, prv_key_path) = wallet
-    //         .encrypt_and_store(dir.as_ref(), "temp_key".to_string(), "ThisIsATempKey".to_string())
-    //         .unwrap();
+    //         .encrypt_and_store(dir.as_ref(), "temp_key".to_string(),
+    // "ThisIsATempKey".to_string())         .unwrap();
     //     let wallet2 = IvyWallet::from_keystore(prv_key_path, "ThisIsATempKey").unwrap();
     //     assert_eq!(address, wallet2.address());
     // }
