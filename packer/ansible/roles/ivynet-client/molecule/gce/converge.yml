@@ -4,8 +4,8 @@
   gather_facts: true
   become: true
   vars:
-    ansible_user: ubuntu
-    ansible_ssh_private_key_file: ~/.ssh/google_compute_engine.prv
+    ansible_user: wawrzek_ivynet_dev
+    ansible_ssh_private_key_file:  ~/.ssh/google_compute_engine.prv
   roles:
     - role: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') | basename }}"
   pre_tasks:
