@@ -143,7 +143,7 @@ fn set_config_keys(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
             let wallet = IvyWallet::new();
             let addr = wallet.address();
             println!("Public Address: {:?}", addr);
-
+            config.default_ether_address = addr;
             let keyfile_name: String =
                 Input::new().with_prompt("Enter a name for the keyfile").interact()?;
             let mut pw: String = Password::new()
