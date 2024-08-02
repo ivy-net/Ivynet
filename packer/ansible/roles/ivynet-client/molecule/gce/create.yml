@@ -1,0 +1,14 @@
+---
+- name: Create
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    ssh_user: ubuntu
+    ssh_pub_key: "AAAAB3NzaC1yc2EAAAADAQABAAABgQCgVasqTI7rZtuno6OtGfj5ngf1L+ObAAolTsB2BDzLP5VbX5rdDNfGqOfUXoOqJOQDP06t99EnHUjT3KIgqiSMuC8n85nQ4/VvdOs61glIBJ2wOKJm2rFy6Gjh7PqH2dBLsSo48acfhhFxpcZMyqeMEbF7IqawerZP70G5juToHGdqoADYJKUuYJ2ciIawJ/Z1SjOUVQzsTJLvz0MKrME3hA+KdTSFdLCBmnBg40lBc7BXaIL+5dvjgojNP+wTX2trlMzhQFtTNTzMtasi9od45iUgOfd8wcIv69dJjIlDch7IAlUyNchz8L+ptjHA6viHCpZR8uwliYFEDLvYw/DxeUAaq6FeGu0UMMTGLmJFRHm7ixvdTKEHU4IrnxjrzS9vFf6cJZGd+zdGCNnkz31SUJ1guucOagByQ+aihLG+dyyt295C6k40wciAltRVEU1mQdt/x3wy4zBdAor2AuyLa8h3VfEKi/ykaFQaUkabEGRqDDIvvCqYxFJlcuRvZQ8="
+  tasks:
+    - name: Loop over items in molecule platforms
+      include_tasks: linux.yml
+      loop: "{{ molecule_yml.platforms }}"
+      loop_control:
+        pause: 3

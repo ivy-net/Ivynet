@@ -7,11 +7,10 @@ driver:
   external_access: true
   auth_kind: serviceaccount
   service_account_file: ~/Downloads/ivynet-tests-ceea81669ebb.json
+  # auth_kind: machineaccount
   # service_account_email: 364175035760-compute@developer.gserviceaccount.com
   username: ubuntu
   credentials_file: ~/.ssh/google_compute_engine
 platforms:
-  - name: packer-cloudstation
+  - name: molecule-cloudstation
     image: 'projects/ubuntu-os-cloud/global/images/family/ubuntu-2404-lts-amd64'
-    tags:
-      - default-allow-ssh
