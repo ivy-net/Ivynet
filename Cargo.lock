@@ -2326,6 +2326,7 @@ dependencies = [
  "dirs",
  "ethers",
  "futures-util",
+ "getrandom",
  "hyper 1.4.1",
  "hyper-util",
  "indicatif",

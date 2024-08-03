@@ -30,6 +30,8 @@ use crate::{
 };
 
 pub const EIGENDA_PATH: &str = ".eigenlayer/eigenda";
+pub const EIGENDA_SETUP_REPO: &str =
+    "https://github.com/ivy-net/eigenda-operator-setup/archive/refs/heads/master.zip";
 
 #[derive(ThisError, Debug)]
 pub enum EigenDAError {
@@ -410,8 +412,6 @@ pub async fn download_g1_g2(eigen_path: PathBuf) -> Result<(), IvyError> {
 
 pub async fn download_operator_setup(eigen_path: PathBuf) -> Result<(), IvyError> {
     let mut setup = false;
-    let repo_url =
-        "https://github.com/ivy-net/eigenda-operator-setup/archive/refs/heads/master.zip";
     let temp_path = eigen_path.join("temp");
     let destination_path = eigen_path.join("eigenda-operator-setup");
     if destination_path.exists() {
@@ -432,7 +432,7 @@ pub async fn download_operator_setup(eigen_path: PathBuf) -> Result<(), IvyError
 
     if setup {
         info!("Downloading setup files to {}", temp_path.display());
-        let response = reqwest::get(repo_url).await?;
+        let response = reqwest::get(EIGENDA_SETUP_REPO).await?;
 
         let fname = temp_path.join("source.zip");
         let mut dest = File::create(&fname)?;

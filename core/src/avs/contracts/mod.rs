@@ -10,6 +10,7 @@ abigen!(
     "abi/RegistryCoordinator.json",
     event_derives(serde::Deserialize, serde::Serialize)
 );
+
 abigen!(
     StakeRegistryAbi,
     "abi/StakeRegistry.json",

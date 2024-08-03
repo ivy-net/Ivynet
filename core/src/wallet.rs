@@ -11,7 +11,7 @@ use ethers::{
     signers::{LocalWallet, Signer, WalletError},
     types::{
         transaction::{eip2718::TypedTransaction, eip712::Eip712},
-        Address, H160,
+        Address, H160, H256,
     },
 };
 use serde::{Deserialize, Serialize};
@@ -135,6 +135,12 @@ impl Signer for IvyWallet {
 
     async fn sign_transaction(&self, message: &TypedTransaction) -> Result<Signature, Self::Error> {
         self.local_wallet.sign_transaction(message).await
+    }
+}
+
+impl IvyWallet {
+    pub fn sign_hash(&self, hash: H256) -> Result<Signature, WalletError> {
+        self.local_wallet.sign_hash(hash)
     }
 }
 

@@ -10,7 +10,11 @@ use thiserror::Error;
 use tonic::Status;
 use zip::result::ZipError;
 
-use crate::{avs::eigenda::EigenDAError, eigen::quorum::QuorumError, rpc_management::IvyProvider};
+use crate::{
+    avs::{eigenda::EigenDAError, witness::WitnessError},
+    eigen::quorum::QuorumError,
+    rpc_management::IvyProvider,
+};
 
 #[derive(Debug, Error)]
 pub enum IvyError {
@@ -39,6 +43,9 @@ pub enum IvyError {
 
     #[error(transparent)]
     EigenDAError(#[from] EigenDAError),
+
+    #[error(transparent)]
+    WitnessError(#[from] WitnessError),
 
     #[error(transparent)]
     ZipError(#[from] ZipError),

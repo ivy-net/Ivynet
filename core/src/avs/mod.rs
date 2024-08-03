@@ -23,7 +23,7 @@ pub mod commands;
 pub mod contracts;
 pub mod eigenda;
 pub mod error;
-pub mod mach_avs;
+// pub mod mach_avs; // TEMPORARILY REMOVED
 pub mod witness;
 
 pub type QuorumMinMap = HashMap<Chain, HashMap<QuorumType, U256>>;
@@ -31,7 +31,7 @@ pub type QuorumMinMap = HashMap<Chain, HashMap<QuorumType, U256>>;
 use self::{
     contracts::{RegistryCoordinator, RegistryCoordinatorAbi, StakeRegistry, StakeRegistryAbi},
     eigenda::EigenDA,
-    mach_avs::AltLayer,
+    // mach_avs::AltLayer,
 };
 
 // TODO: Convenience functions on AVS type for display purposes, such as name()
@@ -335,7 +335,7 @@ pub async fn build_avs_provider(
     let avs_instance: Option<Box<dyn AvsVariant>> = if let Some(avs_id) = id {
         match avs_id {
             "eigenda" => Some(Box::new(EigenDA::new_from_chain(chain))),
-            "altlayer" => Some(Box::new(AltLayer::new_from_chain(chain))),
+            // "altlayer" => Some(Box::new(AltLayer::new_from_chain(chain))),
             _ => return Err(IvyError::InvalidAvsType(avs_id.to_string())),
         }
     } else {

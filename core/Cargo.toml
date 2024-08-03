@@ -36,6 +36,7 @@ url = { version = "2.5.1", features = ["serde"] }
 chrono = "0.4"
 async-trait = "0.1.80"
 ivynet-macros = { path = "../macros" }
+getrandom = "0.2"
 
 #grpc
 prost = "0.12"

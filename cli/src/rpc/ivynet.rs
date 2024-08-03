@@ -1,5 +1,5 @@
 use ivynet_core::{
-    avs::{eigenda::EigenDA, mach_avs::AltLayer, AvsProvider, AvsVariant},
+    avs::{eigenda::EigenDA, AvsProvider, AvsVariant},
     config::IvyConfig,
     eigen::contracts::delegation_manager::OperatorDetails,
     error::IvyError,
@@ -121,6 +121,7 @@ impl Avs for IvynetService {
 
     // TODO: Running check stop
     // TODO: On bad netowork, don't change
+    // TODO: On failure, return a non-unknown Tonic code.
     async fn select_avs(
         &self,
         request: Request<SelectAvsRequest>,
@@ -139,7 +140,7 @@ impl Avs for IvynetService {
 
         let avs_instance: Box<dyn AvsVariant> = match avs.as_ref() {
             "eigenda" => Box::new(EigenDA::new_from_chain(chain)),
-            "altlayer" => Box::new(AltLayer::new_from_chain(chain)),
+            // "altlayer" => Box::new(AltLayer::new_from_chain(chain)),
             _ => return Err(IvyError::InvalidAvsType(avs.to_string()).into()),
         };
 
@@ -264,5 +265,80 @@ impl Operator for IvynetService {
         // be stored and passed somewhere outside of the AVS env file as this is a common param
         // needed by many AVS types.
         todo!();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    async fn setup_provider_fixture() -> Result<Arc<RwLock<AvsProvider>>, IvyError> {
+        let signer = IvyWallet::new();
+        let ivy_provider = connect_provider("http://localhost:8545", Some(signer)).await?;
+        let provider = AvsProvider::new(None, Arc::new(ivy_provider), None).unwrap();
+        Ok(Arc::new(RwLock::new(provider)))
+    }
+
+    async fn setup_service_fixture() -> Result<IvynetService, IvyError> {
+        let provider = setup_provider_fixture().await?;
+        Ok(IvynetService::new(provider))
+    }
+
+    mod test_select_avs {
+        use super::*;
+        #[tokio::test]
+        async fn test_select_eigenda() {
+            let service = setup_service_fixture().await.unwrap();
+            let request =
+                SelectAvsRequest { avs: "eigenda".to_string(), chain: "mainnet".to_string() };
+            let response = service.select_avs(Request::new(request)).await.unwrap().into_inner();
+            let expected = RpcResponse {
+                response_type: 0,
+                msg: "AVS set: eigenda on chain mainnet".to_string(),
+            };
+            assert_eq!(response, expected);
+        }
+
+        #[tokio::test]
+        async fn test_select_witness() {
+            let service = setup_service_fixture().await.unwrap();
+            let request =
+                SelectAvsRequest { avs: "witness".to_string(), chain: "mainnet".to_string() };
+            let response = service.select_avs(Request::new(request)).await.unwrap().into_inner();
+            let expected = RpcResponse {
+                response_type: 0,
+                msg: "AVS set: witness on chain mainnet".to_string(),
+            };
+            assert_eq!(response, expected);
+        }
+
+        #[tokio::test]
+        async fn test_select_altlayer() {
+            let service = setup_service_fixture().await.unwrap();
+            let request =
+                SelectAvsRequest { avs: "altlayer".to_string(), chain: "mainnet".to_string() };
+            let response = service.select_avs(Request::new(request)).await.unwrap_err();
+            assert_eq!(response.code(), tonic::Code::Unknown);
+        }
+
+        #[tokio::test]
+        async fn test_select_invalid_avs() {
+            let service = setup_service_fixture().await.unwrap();
+            let request =
+                SelectAvsRequest { avs: "invalid".to_string(), chain: "mainnet".to_string() };
+            let response = service.select_avs(Request::new(request)).await.unwrap_err();
+            println!("response: {:?}", response);
+            assert_eq!(response.code(), tonic::Code::Unknown);
+        }
+
+        #[tokio::test]
+        async fn test_select_invalid_chain() {
+            let service = setup_service_fixture().await.unwrap();
+            let request =
+                SelectAvsRequest { avs: "eigenda".to_string(), chain: "invalid".to_string() };
+            let response = service.select_avs(Request::new(request)).await.unwrap_err();
+            println!("response: {:?}", response);
+            assert_eq!(response.code(), tonic::Code::Unknown);
+        }
     }
 }
