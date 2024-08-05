@@ -59,10 +59,13 @@
       Accept: "application/octet-stream"
     follow_redirects: all
     status_code: [200, 304]
-    dest: "{{ ivynet_client_install_path }}/bin/ivynet"
+    dest: "{{ ivynet_client_install_path }}/bin/{{ item }}"
     owner: root
     group: root
     mode: 0755
+  loop:
+    - ivynet
+    - ivynet-backend
   tags:
     - ivynet
     - github
