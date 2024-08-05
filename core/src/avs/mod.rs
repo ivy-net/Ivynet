@@ -86,7 +86,7 @@ impl AvsProvider {
         avs: Box<dyn AvsVariant>,
         provider: Arc<IvyProvider>,
     ) -> Result<(), IvyError> {
-        self.avs = Some(avs);
+        self.with_avs(Some(avs)).await?;
         self.provider = provider;
         Ok(())
     }
