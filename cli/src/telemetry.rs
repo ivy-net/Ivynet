@@ -27,9 +27,11 @@ pub async fn listen(
     loop {
         let metrics = {
             let provider = avs_provider.read().await;
-            collect(&provider.avs).await?
+            collect(&provider.avs).await
         };
-        _ = send(&metrics, &identity_wallet, &mut client).await;
+        if let Ok(metrics) = metrics {
+            _ = send(&metrics, &identity_wallet, &mut client).await;
+        }
 
         sleep(Duration::from_secs(TELEMETRY_INTERVAL_IN_MINUTES * 60)).await;
     }
