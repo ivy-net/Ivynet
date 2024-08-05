@@ -1,5 +1,4 @@
 use crate::{
-    avs::instance::AvsType,
     config::IvyConfig,
     eigen::{
         contracts::delegation_manager::DelegationManager,
