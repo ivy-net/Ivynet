@@ -16,11 +16,11 @@ pub enum OperatorCommands {
         subcmd: OperatorGetterCommands,
     },
     #[command(name = "register", about = "Register an operator <CHAIN>")]
-    Register {
-        chain: String,
-        delegation_approver: Option<Address>,
-        staker_opt_out_window_blocks: Option<u32>,
-    },
+    // Register {
+    //     chain: String,
+    //     delegation_approver: Option<Address>,
+    //     staker_opt_out_window_blocks: Option<u32>,
+    // },
     #[command(name = "set", about = "Set operator information")]
     Set {
         #[command(subcommand)]
@@ -49,8 +49,8 @@ pub enum OperatorSetterCommands {
     )]
     EcdsaKeyfile { ecdsa_keypath: PathBuf },
     #[command(
-        name = "ecdsa-keyfile",
-        about = "Set ECDSA keyfile path for your operator <KEYFILE_PATH>"
+        name = "bls-keyfile",
+        about = "Set BLS keyfile path for your operator <KEYFILE_PATH>"
     )]
     BlsKeyfile { bls_keypath: PathBuf },
 }
@@ -65,36 +65,37 @@ pub async fn parse_operator_subcommands(
         }
         OperatorCommands::Set { subcmd } => {
             parse_operator_setter_subcommands(subcmd, config).await?;
-        }
-        OperatorCommands::Register { .. } => {
-            todo!();
-            // let password: String = Password::new()
-            //     .with_prompt("Input the password for your stored ECDSA keyfile")
-            //     .interact()?;
-            // let wallet =
-            //     IvyWallet::from_keystore(config.default_private_keyfile.clone(), &password)?;
-            // let earnings_receiver = wallet.address();
-            // let provider = connect_provider(&config.get_rpc_url(chain)?, Some(wallet)).await?;
-            // let manager = DelegationManager::new(Arc::new(provider))?;
+        } /* OperatorCommands::Register { .. } => {
+           *     todo!();
+           *     // let password: String = Password::new()
+           *     //     .with_prompt("Input the password for your stored ECDSA keyfile")
+           *     //     .interact()?;
+           *     // let wallet =
+           *     //     IvyWallet::from_keystore(config.default_private_keyfile.clone(),
+           * &password)?;     // let earnings_receiver = wallet.address();
+           *     // let provider = connect_provider(&config.get_rpc_url(chain)?,
+           * Some(wallet)).await?;
+           *     // let manager = DelegationManager::new(Arc::new(provider))?; */
 
-            // let delegation_approver = delegation_approver.unwrap_or_else(Address::zero);
-            // let staker_opt_out_window_blocks = staker_opt_out_window_blocks.unwrap_or(0_u32);
-            // let metadata_uri = &config.metadata.metadata_uri;
-            // if metadata_uri.is_empty() {
-            //     // TODO: There's probably a better way to check for valid
-            //     // metadata
-            //     return Err(Error::MetadataUriNotFoundError);
-            // }
-            // debug!("Operator register: {delegation_approver:?} | {staker_opt_out_window_blocks} |
-            // {metadata_uri}"); manager
-            //     .register(
-            //         earnings_receiver,
-            //         delegation_approver,
-            //         staker_opt_out_window_blocks,
-            //         metadata_uri,
-            //     )
-            //     .await?;
-        }
+          /*     // let delegation_approver = delegation_approver.unwrap_or_else(Address::zero);
+           *     // let staker_opt_out_window_blocks =
+           * staker_opt_out_window_blocks.unwrap_or(0_u32);
+           *     // let metadata_uri = &config.metadata.metadata_uri;
+           *     // if metadata_uri.is_empty() {
+           *     //     // TODO: There's probably a better way to check for valid
+           *     //     // metadata
+           *     //     return Err(Error::MetadataUriNotFoundError);
+           *     // }
+           *     // debug!("Operator register: {delegation_approver:?} |
+           * {staker_opt_out_window_blocks} |     // {metadata_uri}"); manager
+           *     //     .register(
+           *     //         earnings_receiver,
+           *     //         delegation_approver,
+           *     //         staker_opt_out_window_blocks,
+           *     //         metadata_uri,
+           *     //     )
+           *     //     .await?;
+           * } */
     }
     Ok(())
 }
