@@ -28,7 +28,7 @@ gcloud compute instances add-tags $VMNAME --tags $TAG
 ```
 
 ### SSH
-THE GCP CLI can be also use to login to the VM (because we set OS Login: (https://cloud.google.com/compute/docs/oslogin))
+THE GCP CLI can be also use to login to the VM (because we set OS Login, [see more](https://cloud.google.com/compute/docs/oslogin))
 ```
 gcloud compute ssh --zone "us-central1-a"  --project "ivynet-tests" $VMNAME
 ```
@@ -72,24 +72,6 @@ molecule converge -- --tags github
 ```
 
 ## MOTD
-Also in the motd file.
-===============================================================================
-This is a cloudstation VM dedicated to work with IvyNet Client.
 
-It based on Ubuntu and includes docker, rust and cargo packages.
-
-The code of:
-* eigenda,
-* eigenda-operator-setup,
-* ivynet
-are cloned to the /opt/eigen folder.
-
-Additionally, the
-* eigen-cli
-is downloaded to the /opt/eigen/bin folder.
-
-Finally the
-* g1,
-* g2
-files are in the resources subfolder of the eigenda-operator-setup repository.
-===============================================================================
+Extra information are visible after the login.
+Check the [motd.txt](ansible/roles/ivynet-client/templates/motd.txt.j2)
