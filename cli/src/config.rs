@@ -89,10 +89,8 @@ pub async fn parse_config_subcommands(
         ConfigCommands::ImportPrivateKey { private_key, keyname, password } => {
             let wallet = IvyWallet::from_private_key(private_key)?;
             let (keyname, pass) = get_credentials(keyname, password);
-            let (pub_key_path, prv_key_path) =
-                wallet.encrypt_and_store(&config.get_path(), keyname, pass)?;
+            let prv_key_path = wallet.encrypt_and_store(&config.get_path(), keyname, pass)?;
             config.default_private_keyfile = prv_key_path;
-            config.default_public_keyfile = pub_key_path;
             config.store().map_err(IvyError::from)?;
         }
         ConfigCommands::CreatePrivateKey { store, keyname, password } => {
@@ -103,10 +101,8 @@ pub async fn parse_config_subcommands(
             println!("Public Address: {:?}", addr);
             if store {
                 let (keyname, pass) = get_credentials(keyname, password);
-                let (pub_key_path, prv_key_path) =
-                    wallet.encrypt_and_store(&config.get_path(), keyname, pass)?;
+                let prv_key_path = wallet.encrypt_and_store(&config.get_path(), keyname, pass)?;
                 config.default_private_keyfile = prv_key_path;
-                config.default_public_keyfile = pub_key_path;
                 config.store().map_err(IvyError::from)?;
             }
         }
@@ -122,10 +118,7 @@ pub async fn parse_config_subcommands(
             );
         }
         ConfigCommands::GetDefaultEthAddress => {
-            println!(
-                "Public Key: {:?}",
-                IvyWallet::address_from_file(config.default_public_keyfile.clone())?
-            );
+            println!("Public Key: {:?}", config.default_ether_address.clone());
         }
         ConfigCommands::GetDefaultPrivateKey => {
             let pass =
@@ -246,7 +239,6 @@ mod tests {
             println!("{result:?}",);
             assert!(result.is_ok());
             assert!(test_path.join("testkey.json").exists());
-            assert!(test_path.join("testkey.txt").exists());
 
             let config =
                 IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
@@ -265,9 +257,6 @@ mod tests {
                 toml_data["default_private_keyfile"].as_str(),
                 Some(private_keypath.as_str())
             );
-
-            let public_keypath = format!("{}/testkey.txt", test_path.to_str().unwrap());
-            assert_eq!(toml_data["default_public_keyfile"].as_str(), Some(public_keypath.as_str()));
         })
         .await;
     }
@@ -293,7 +282,6 @@ mod tests {
             println!("{result:?}",);
             assert!(result.is_ok());
             assert!(test_path.join("testkey.json").exists());
-            assert!(test_path.join("testkey.txt").exists());
 
             let config =
                 IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
@@ -312,9 +300,6 @@ mod tests {
                 toml_data["default_private_keyfile"].as_str(),
                 Some(private_keypath.as_str())
             );
-
-            let public_keypath = format!("{}/testkey.txt", test_path.to_str().unwrap());
-            assert_eq!(toml_data["default_public_keyfile"].as_str(), Some(public_keypath.as_str()));
         })
         .await;
     }
