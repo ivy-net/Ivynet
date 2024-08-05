@@ -49,12 +49,10 @@
     - github
 
 - name: Download g1, g2 files
-  ansible.builtin.get_url:
-    dest: "{{ ivynet_client_install_path }}/resources/{{ item }}"
-    url: "https://storage.cloud.google.com/ivynet-builds/{{ item }}"
-    owner: root
-    group: root
-    mode: 0644
+  ansible.builtin.shell:
+    cmd: "gsutil cp gs://ivynet-builds/{{ item }} ."
+    chdir: "{{ ivynet_client_install_path }}/resources"
+    creates: " {{ item }}"
   loop:
     - g1.point
     - g2.point.powerOf2
