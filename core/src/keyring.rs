@@ -1,4 +1,8 @@
-use crate::io::{read_toml, write_toml, IoError};
+use crate::{
+    error::IvyError,
+    io::{read_toml, write_toml, IoError},
+    wallet::IvyWallet,
+};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::PathBuf};
 
@@ -11,15 +15,26 @@ pub struct Keyring {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct EcdsaKeyFile {
+pub struct BlsKeyFile {
     pub name: String,
     pub path: PathBuf,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct BlsKeyFile {
+pub struct EcdsaKeyFile {
     pub name: String,
     pub path: PathBuf,
+}
+
+impl TryInto<IvyWallet> for EcdsaKeyFile {
+    type Error = IvyError;
+
+    /// Attempts to create an IvyWallet from the keyfile. The password is read from the
+    /// environment, and returns an error if it is not found.
+    fn try_into(self) -> Result<IvyWallet, Self::Error> {
+        let pw = std::env::var(&self.name)?;
+        IvyWallet::from_keystore(self.path.clone(), &pw)
+    }
 }
 
 #[derive(thiserror::Error, Debug)]
@@ -38,10 +53,10 @@ impl Keyring {
     fn store(&self) -> Result<(), KeyringError> {
         Ok(write_toml(&self.path, &self)?)
     }
-    fn add_ecdsa_key(&mut self, name: String, path: PathBuf) {
+    fn add_ecdsa_keyfile(&mut self, name: String, path: PathBuf) {
         self.ecdsa_keys.insert(name.clone(), EcdsaKeyFile { name, path });
     }
-    fn add_bls_key(&mut self, name: String, path: PathBuf) {
+    fn add_bls_keyfile(&mut self, name: String, path: PathBuf) {
         self.bls_keys.insert(name.clone(), BlsKeyFile { name, path });
     }
 }

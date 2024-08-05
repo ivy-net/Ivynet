@@ -1,11 +1,7 @@
 mod apidoc;
 mod authorize;
 mod organization;
-
-use std::sync::Arc;
-
 use crate::error::BackendError;
-
 use axum::{
     routing::{get, post},
     Router,
@@ -13,6 +9,7 @@ use axum::{
 use ivynet_core::grpc::client::Uri;
 use sendgrid::v3::Sender;
 use sqlx::PgPool;
+use std::sync::Arc;
 use utoipa::OpenApi as _;
 use utoipa_swagger_ui::SwaggerUi;
 

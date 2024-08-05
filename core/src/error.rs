@@ -23,6 +23,9 @@ pub enum IvyError {
     StdIo(#[from] std::io::Error),
 
     #[error(transparent)]
+    VarError(#[from] std::env::VarError),
+
+    #[error(transparent)]
     WalletError(#[from] WalletError),
 
     // TODO: Attempt to deprecate, see private_key_string to bytes methods.

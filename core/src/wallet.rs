@@ -21,6 +21,7 @@ use tracing::{debug, info};
 use crate::{
     error::IvyError,
     io::{read_json, write_json},
+    keyring::EcdsaKeyFile,
 };
 
 // TODO: Make this a newtype strict and impl deref + derefmut to get signer stuff for free
@@ -30,7 +31,12 @@ pub struct IvyWallet {
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum IvyWalletError {}
+pub enum IvyWalletError {
+    #[error("Missing password")]
+    MissingPassword,
+    #[error("Invalid address")]
+    InvalidAddress,
+}
 
 impl IvyWallet {
     pub fn new() -> Self {

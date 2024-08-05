@@ -1,8 +1,15 @@
-use self::contracts::{witness_hub_abi::SignatureWithSaltAndExpiry, AvsDirectory, WitnessHub};
+use self::{
+    config::WitnessConfig,
+    contracts::{witness_hub_abi::SignatureWithSaltAndExpiry, AvsDirectory, WitnessHub},
+};
 use super::AvsVariant;
 use crate::{
-    avs::witness::contracts::OperatorRegistry, config::IvyConfig, eigen::quorum::QuorumType,
-    error::IvyError, rpc_management::IvyProvider,
+    avs::witness::contracts::OperatorRegistry,
+    config::IvyConfig,
+    eigen::quorum::QuorumType,
+    error::IvyError,
+    keyring::{EcdsaKeyFile, Keyring},
+    rpc_management::IvyProvider,
 };
 use async_trait::async_trait;
 use ethers::{
@@ -96,22 +103,20 @@ pub struct Witness {
     path: PathBuf,
     chain: Chain,
     running: bool,
-    // conifg: WitnessConfig,
-    watchtower: H160,
+    config: WitnessConfig,
 }
 
 impl Witness {
-    pub fn new(path: PathBuf, chain: Chain) -> Self {
-        Self { path, chain, running: false, watchtower: H160::zero() }
+    pub fn new(path: PathBuf, chain: Chain, config: WitnessConfig) -> Self {
+        Self { path, chain, running: false, config }
     }
 
+    /// Create a new Witness instance with a default path of $HOME/.eigenlayer/witness and the
+    /// default witnessconfig.
     pub fn new_from_chain(chain: Chain) -> Self {
         let home_dir = dirs::home_dir().unwrap();
-        Self::new(home_dir.join(WITNESS_PATH), chain)
-    }
-
-    pub fn set_watchtower(&mut self, watchtower: Address) {
-        self.watchtower = watchtower;
+        let config = WitnessConfig::load_from_default_path().unwrap();
+        Self::new(home_dir.join(WITNESS_PATH), chain, config)
     }
 
     pub fn base_path(&self) -> &PathBuf {
@@ -356,8 +361,18 @@ impl Default for Witness {
 
 #[async_trait]
 impl AvsVariant for Witness {
-    async fn setup(&self, provider: Arc<IvyProvider>, config: &IvyConfig) -> Result<(), IvyError> {
-        todo!()
+    async fn setup(
+        &self,
+        provider: Arc<IvyProvider>,
+        config: &IvyConfig,
+        operator_keyfile: EcdsaKeyFile,
+        witness_keyfile: EcdsaKeyFile,
+    ) -> Result<(), IvyError> {
+        // Setup witnessconfig
+        let mut config = WitnessConfig::load_from_default_path()?;
+        config.operator_ecdsa_key_path = operator_keyfile.path;
+        config.watchtower_ecdsa_key_path = witness_keyfile.path;
+        config.store()?;
     }
 
     // TODO: Consider best place on the host system to store resource files vs simple configs
