@@ -1,4 +1,5 @@
 use crate::{
+    avs::instance::AvsType,
     config::IvyConfig,
     eigen::{
         contracts::delegation_manager::DelegationManager,
@@ -83,7 +84,7 @@ impl AvsProvider {
     /// Sets new avs with new provider
     pub async fn set_avs(
         &mut self,
-        avs: AvsType,
+        avs: Box<dyn AvsVariant>,
         provider: Arc<IvyProvider>,
     ) -> Result<(), IvyError> {
         self.avs = Some(avs);

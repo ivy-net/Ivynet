@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use ivynet_core::{
-    avs::{instance::AvsType, AvsProvider, AvsVariant},
+    avs::{AvsProvider, AvsVariant},
     config::get_system_information,
     error::IvyError,
     grpc::{
@@ -35,17 +35,16 @@ pub async fn listen(
     }
 }
 
-async fn collect(avs: &Option<AvsType>) -> Result<Vec<Metrics>, IvyError> {
+async fn collect(avs: &Option<Box<dyn AvsVariant>>) -> Result<Vec<Metrics>, IvyError> {
     // Depending on currently running avs, we decide how to fetch
     let (avs, address, running) = match avs {
         None => (None, None, false),
         Some(avs_type) => {
-            match avs_type {
-                AvsType::EigenDA(avs) => {
-                    (Some("eigenda"), Some("http://localhost:9092/metrics"), avs.running())
+            match avs_type.name() {
+                "eigenda" => {
+                    (Some("eigenda"), Some("http://localhost:9092/metrics"), avs_type.running())
                 }
-                AvsType::AltLayer(avs) => (Some("altlayer"), None, avs.running()), /* TODO: Still don't know how to fetch data from
-                                                                                    * that one */
+                _ => (Some(avs_type.name()), None, avs_type.running()), // * that one */
             }
         }
     };
