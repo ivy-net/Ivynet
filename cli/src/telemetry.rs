@@ -52,14 +52,16 @@ async fn collect(avs: &Option<Box<dyn AvsVariant>>) -> Result<Vec<Metrics>, IvyE
     };
 
     let mut metrics = if let Some(address) = address {
-        let body = reqwest::get(address).await?.text().await?;
+        if let Ok(body) = reqwest::get(address).await?.text().await {
+            let metrics = body
+                .split('\n')
+                .filter_map(|line| TelemetryParser::new(line).parse())
+                .collect::<Vec<_>>();
 
-        let metrics = body
-            .split('\n')
-            .filter_map(|line| TelemetryParser::new(line).parse())
-            .collect::<Vec<_>>();
-
-        metrics
+            metrics
+        } else {
+            Vec::new()
+        }
     } else {
         Vec::new()
     };
