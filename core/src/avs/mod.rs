@@ -24,7 +24,6 @@ pub mod commands;
 pub mod contracts;
 pub mod eigenda;
 pub mod error;
-pub mod instance;
 pub mod lagrange;
 pub mod mach_avs;
 pub mod witness;
