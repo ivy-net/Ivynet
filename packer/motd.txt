@@ -16,5 +16,5 @@ is downloaded to the /opt/eigen/bin folder.
 Finally the
 * g1,
 * g2
-files are in the resources subfolder of the eigenda-operator-setup repository.
+files are in the resources subfolder of the eigenda repository.
 ===============================================================================
