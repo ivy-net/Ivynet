@@ -131,16 +131,18 @@ impl AvsVariant for EigenDA {
         };
         std::env::set_current_dir(docker_path.clone())?;
         debug!("docker start: {} |  {:?}", docker_path.display(), quorums);
-        let build = Command::new("docker-compose").arg("build").arg("--no-cache").status()?; //.arg("compose")
+        let build =
+            Command::new("docker").arg("compose").arg("build").arg("--no-cache").status()?; //.arg("compose")
 
-        let _ = Command::new("docker-compose").arg("config").status()?;
+        let _ = Command::new("docker").arg("compose").arg("config").status()?;
 
         if !build.success() {
             return Err(EigenDAError::ScriptError(build.to_string()).into());
         }
 
         // NOTE: See the limitations of the Stdio::piped() method if this experiences a deadlock
-        let cmd = Command::new("docker-compose").arg("up").arg("--force-recreate").spawn()?;
+        let cmd =
+            Command::new("docker").arg("compose").arg("up").arg("--force-recreate").spawn()?;
         debug!("cmd PID: {:?}", cmd.id());
         self.running = true;
         Ok(cmd)

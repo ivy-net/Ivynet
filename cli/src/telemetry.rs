@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use ivynet_core::{
     avs::{AvsProvider, AvsVariant},
-    config::get_system_information,
+    config::get_detailed_system_information,
     error::IvyError,
     grpc::{
         backend::backend_client::BackendClient,
@@ -67,23 +67,35 @@ async fn collect(avs: &Option<Box<dyn AvsVariant>>) -> Result<Vec<Metrics>, IvyE
     };
 
     // Now we need to add basic metrics
-    let (cpus, ram, free_space) = get_system_information()?;
+    let (cpu_usage, ram_usage, disk_usage, free_space, uptime) = get_detailed_system_information()?;
 
     metrics.push(Metrics {
-        name: "cpus".to_owned(),
-        value: cpus as f64,
+        name: "cpu_usage".to_owned(),
+        value: cpu_usage,
         attributes: Default::default(),
     });
 
     metrics.push(Metrics {
-        name: "ram".to_owned(),
-        value: ram as f64,
+        name: "ram_usage".to_owned(),
+        value: ram_usage as f64,
+        attributes: Default::default(),
+    });
+
+    metrics.push(Metrics {
+        name: "disk_usage".to_owned(),
+        value: disk_usage as f64,
         attributes: Default::default(),
     });
 
     metrics.push(Metrics {
         name: "free_space".to_owned(),
         value: free_space as f64,
+        attributes: Default::default(),
+    });
+
+    metrics.push(Metrics {
+        name: "uptime".to_owned(),
+        value: uptime as f64,
         attributes: Default::default(),
     });
 

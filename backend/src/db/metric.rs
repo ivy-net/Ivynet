@@ -70,6 +70,21 @@ impl Metric {
         Ok(metrics.into_iter().map(|n| n.into()).collect())
     }
 
+    pub async fn get_organized_for_node(
+        pool: &PgPool,
+        node: &Node,
+    ) -> Result<HashMap<String, Metric>, BackendError> {
+        let metrics = Metric::get_all_for_node(pool, node).await?;
+
+        let mut organized = HashMap::new();
+
+        for metric in &metrics {
+            organized.insert(metric.name.clone(), metric.clone());
+        }
+
+        Ok(organized)
+    }
+
     pub async fn record(
         pool: &PgPool,
         node: &Node,

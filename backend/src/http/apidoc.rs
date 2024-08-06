@@ -1,6 +1,6 @@
 use utoipa::OpenApi;
 
-use super::{super::db, authorize, organization};
+use super::{super::db, authorize, client, organization};
 
 #[derive(OpenApi)]
 #[openapi(
@@ -12,7 +12,11 @@ use super::{super::db, authorize, organization};
         organization::get,
         organization::invite,
         organization::nodes,
-        organization::confirm
+        organization::confirm,
+        client::status,
+        client::idling,
+        client::unhealthy,
+        client::info
     ),
     components(
         schemas(
@@ -25,7 +29,12 @@ use super::{super::db, authorize, organization};
             organization::ConfirmationResponse,
             organization::InvitationRequest,
             db::Node,
-            db::Role
+            db::Role,
+            client::Status,
+            client::StatusReport,
+            client::Info,
+            client::InfoReport,
+            client::Metrics
         ),
     ),
     tags(
