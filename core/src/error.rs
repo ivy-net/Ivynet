@@ -63,10 +63,16 @@ pub enum IvyError {
     SetupError(#[from] SetupError),
 
     #[error(transparent)]
+    EnvError(#[from] std::env::VarError),
+
+    #[error(transparent)]
     IoError(#[from] crate::io::IoError),
 
     #[error(transparent)]
     ConfigError(#[from] crate::config::ConfigError),
+
+    #[error(transparent)]
+    KeyringError(#[from] crate::keyring::KeyringError),
 
     #[error(transparent)]
     ProviderError(#[from] ProviderError),

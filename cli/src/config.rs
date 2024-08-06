@@ -9,6 +9,7 @@ use ivynet_core::{
         client::{create_channel, Request, Source, Uri},
         messages::RegistrationCredentials,
     },
+    keyring::{Keyring, KeyringError, DEFAULT_KEY_ID},
     metadata::Metadata,
     utils::try_parse_chain,
     wallet::IvyWallet,
@@ -85,11 +86,12 @@ pub async fn parse_config_subcommands(
     server_url: Uri,
     server_ca: Option<&String>,
 ) -> Result<(), Error> {
+    // TODO: Fix key management here
     match subcmd {
         ConfigCommands::ImportPrivateKey { private_key, keyname, password } => {
             let wallet = IvyWallet::from_private_key(private_key)?;
             let (keyname, pass) = get_credentials(keyname, password);
-            let prv_key_path = wallet.encrypt_and_store(&config.get_path(), keyname, pass)?;
+            let prv_key_path = wallet.encrypt_and_store(&config.get_path(), &keyname, &pass)?;
             config.default_private_keyfile = prv_key_path;
             config.store().map_err(IvyError::from)?;
         }
@@ -101,7 +103,7 @@ pub async fn parse_config_subcommands(
             println!("Public Address: {:?}", addr);
             if store {
                 let (keyname, pass) = get_credentials(keyname, password);
-                let prv_key_path = wallet.encrypt_and_store(&config.get_path(), keyname, pass)?;
+                let prv_key_path = wallet.encrypt_and_store(&config.get_path(), &keyname, &pass)?;
                 config.default_private_keyfile = prv_key_path;
                 config.store().map_err(IvyError::from)?;
             }
@@ -121,9 +123,19 @@ pub async fn parse_config_subcommands(
             println!("Public Key: {:?}", config.default_ether_address.clone());
         }
         ConfigCommands::GetDefaultPrivateKey => {
-            let pass =
-                Password::new().with_prompt("Enter a password to the private key").interact()?;
-            let wallet = IvyWallet::from_keystore(config.default_private_keyfile.clone(), &pass)?;
+            let keyring = Keyring::load_default().map_err(IvyError::from)?;
+            let default_keyfile = keyring
+                .default_ecdsa_keyfile()
+                .ok_or(IvyError::from(KeyringError::KeyfileNotFound(DEFAULT_KEY_ID.to_owned())))?;
+            let wallet = match default_keyfile.try_to_wallet_with_env_password() {
+                Ok(wallet) => wallet,
+                Err(_) => {
+                    let pass = Password::new()
+                        .with_prompt("Enter the password for the default key")
+                        .interact()?;
+                    IvyWallet::from_keystore(default_keyfile.path.clone(), &pass)?
+                }
+            };
             println!("Private key: {:?}", wallet.to_private_key());
         }
         ConfigCommands::SetMetadata { metadata_uri, logo_uri, favicon_uri } => {

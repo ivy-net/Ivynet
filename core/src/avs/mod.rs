@@ -1,13 +1,8 @@
 use crate::{
-    config::IvyConfig,
-    eigen::{
+    config::IvyConfig, eigen::{
         contracts::delegation_manager::DelegationManager,
         quorum::{Quorum, QuorumType},
-    },
-    error::IvyError,
-    rpc_management::{connect_provider, IvyProvider},
-    utils::try_parse_chain,
-    wallet::IvyWallet,
+    }, error::IvyError, keyring::Keyring, rpc_management::{connect_provider, IvyProvider}, utils::try_parse_chain, wallet::IvyWallet
 };
 use async_trait::async_trait;
 use ethers::{
@@ -209,6 +204,8 @@ impl AvsProvider {
         // for } else {
         //     //Register operator for all quorums they're eligible for
         // }
+
+        let keyfile = Keyring::
 
         if let Some(pw) = &self.keyfile_pw {
             self.avs()?

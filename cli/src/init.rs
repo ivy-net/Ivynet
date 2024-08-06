@@ -1,9 +1,14 @@
 use dialoguer::{Input, MultiSelect, Password, Select};
 use ivynet_core::{
-    config::IvyConfig, dialog::get_confirm_password, error::IvyError, metadata::Metadata,
+    config::IvyConfig,
+    dialog::get_confirm_password,
+    error::IvyError,
+    keyring::{Keyring, DEFAULT_KEY_ID},
+    metadata::Metadata,
     wallet::IvyWallet,
 };
 use std::{fs, path::PathBuf, unreachable};
+use tracing::info;
 
 #[allow(unused_imports)]
 use tracing::debug;
@@ -22,6 +27,13 @@ pub fn initialize_ivynet() -> Result<(), IvyError> {
         .items(&setup_types)
         .interact()
         .unwrap();
+    // Initialize keyring
+    let keyring = if !Keyring::default_path().exists() {
+        Keyring::default()
+    } else {
+        Keyring::load(Keyring::default_path())?
+    };
+
     if interactive == 1 {
         // Empty config
         let config = IvyConfig::new();
@@ -35,9 +47,11 @@ pub fn initialize_ivynet() -> Result<(), IvyError> {
 
         // configure RPC addresses
         let config = set_config_rpcs(config)?;
-        let config = set_config_keys(config)?;
         let config = set_config_metadata(config)?;
         config.store()?;
+
+        let keyring = set_config_keyring(keyring)?;
+        keyring.store()?;
     }
     Ok(())
 }
@@ -119,12 +133,69 @@ fn set_config_rpcs(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
     Ok(config)
 }
 
-fn set_config_keys(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
+fn set_config_keyring(mut keyring: Keyring) -> Result<Keyring, IvyError> {
+    info!("Initializing keyring...");
+    keyring = interactive_add_default_keyfile(keyring)?;
+    let mut finished = false;
+    while !finished {
+        let interactive = Select::new()
+            .with_prompt("Would you like to add another keyfile?")
+            .items(&["Yes", "No"])
+            .interact()
+            .unwrap();
+        match interactive {
+            0 => {
+                keyring = interactive_add_new_keyfile(keyring)?;
+            }
+            1 => {
+                finished = true;
+            }
+            _ => unreachable!("Unknown key setup option reached"),
+        }
+    }
+    Ok(keyring)
+}
+
+fn interactive_add_default_keyfile(mut keyring: Keyring) -> Result<Keyring, IvyError> {
     let key_config_types = ["Import", "Create", "Skip"];
     let interactive = Select::new()
         .with_prompt(
-            "Would you like to import a private key, create a new private key, or skip this step?",
+            "Would you like to import a default private key, create a new default private key, or skip this step? This can be done later with the `ivynet keys` command.",
         )
+        .items(&key_config_types)
+        .interact()
+        .unwrap();
+    match interactive {
+        0 => {
+            let private_key: String =
+                Password::new().with_prompt("Enter your ECDSA private key").interact()?;
+            let pw = get_confirm_password();
+            let wallet = IvyWallet::from_private_key(private_key)?;
+            let prv_key_path =
+                wallet.encrypt_and_store(&keyring.keyring_dir()?, DEFAULT_KEY_ID, &pw)?;
+            keyring.add_ecdsa_keyfile(DEFAULT_KEY_ID, prv_key_path);
+        }
+        1 => {
+            let wallet = IvyWallet::new();
+            let addr = wallet.address();
+            println!("Public Address: {:?}", addr);
+            let pw = get_confirm_password();
+            let prv_key_path =
+                wallet.encrypt_and_store(&keyring.keyring_dir()?, DEFAULT_KEY_ID, &pw)?;
+            keyring.add_ecdsa_keyfile(DEFAULT_KEY_ID, prv_key_path);
+        }
+        2 => {
+            println!("Skipping keyfile initialization");
+        }
+        _ => unreachable!("Unknown key setup option reached"),
+    }
+    Ok(keyring)
+}
+
+fn interactive_add_new_keyfile(mut keyring: Keyring) -> Result<Keyring, IvyError> {
+    let key_config_types = ["Import", "Create", "Finish"];
+    let interactive = Select::new()
+        .with_prompt("Would you like to import or create another private key?")
         .items(&key_config_types)
         .interact()
         .unwrap();
@@ -136,41 +207,27 @@ fn set_config_keys(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
                 Input::new().with_prompt("Enter a name for the keyfile").interact()?;
             let pw = get_confirm_password();
             let wallet = IvyWallet::from_private_key(private_key)?;
-            let prv_key_path = wallet.encrypt_and_store(&config.get_path(), keyfile_name, pw)?;
-            config.default_private_keyfile.clone_from(&prv_key_path);
+            let prv_key_path =
+                wallet.encrypt_and_store(&keyring.keyring_dir()?, &keyfile_name, &pw)?;
+            keyring.add_ecdsa_keyfile(&keyfile_name, prv_key_path);
         }
         1 => {
             let wallet = IvyWallet::new();
             let addr = wallet.address();
             println!("Public Address: {:?}", addr);
-            config.default_ether_address = addr;
             let keyfile_name: String =
                 Input::new().with_prompt("Enter a name for the keyfile").interact()?;
-            let mut pw: String = Password::new()
-                .with_prompt("Enter a password for keyfile encryption")
-                .interact()?;
-            let mut confirm_pw: String =
-                Password::new().with_prompt("Confirm keyfile password").interact()?;
-
-            let mut pw_confirmed = pw == confirm_pw;
-            while !pw_confirmed {
-                println!("Password and confirmation do not match. Please retry.");
-                pw = Password::new()
-                    .with_prompt("Enter a password for keyfile encryption")
-                    .interact()?;
-                confirm_pw = Password::new().with_prompt("Confirm keyfile password").interact()?;
-                pw_confirmed = pw == confirm_pw;
-            }
-
-            let prv_key_path = wallet.encrypt_and_store(&config.get_path(), keyfile_name, pw)?;
-            config.default_private_keyfile.clone_from(&prv_key_path);
+            let pw = get_confirm_password();
+            let prv_key_path =
+                wallet.encrypt_and_store(&keyring.keyring_dir()?, &keyfile_name, &pw)?;
+            keyring.add_ecdsa_keyfile(&keyfile_name, prv_key_path);
         }
         2 => {
             println!("Skipping keyfile initialization");
         }
         _ => unreachable!("Unknown key setup option reached"),
     }
-    Ok(config)
+    Ok(keyring)
 }
 
 fn create_config_dir(config_path: PathBuf) -> Result<(), IvyError> {

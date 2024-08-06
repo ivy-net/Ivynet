@@ -8,6 +8,7 @@ pub mod env_parser;
 pub mod error;
 pub mod grpc;
 pub mod io;
+pub mod keyring;
 pub mod metadata;
 pub mod rpc_management;
 pub mod utils;

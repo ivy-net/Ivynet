@@ -27,9 +27,6 @@ pub struct IvyConfig {
     pub holesky_rpc_url: String,
     // RPC URL for local development
     pub local_rpc_url: String,
-    // TODO: See if this nomenclature needs to be changed
-    /// Default operator private key file full path
-    pub default_private_keyfile: PathBuf,
     /// Metadata for the operator
     pub metadata: Metadata,
     /// Identification key that node uses for server communications
@@ -45,7 +42,6 @@ impl Default for IvyConfig {
             mainnet_rpc_url: "https://rpc.flashbots.net/fast".to_string(),
             holesky_rpc_url: "https://eth-holesky.public.blastapi.io".to_string(),
             local_rpc_url: "http://localhost:8545".to_string(),
-            default_private_keyfile: "".into(), // TODO: Option
             metadata: Metadata::default(),
             identity_key: None,
             default_ether_address: H160::default(),
@@ -101,10 +97,6 @@ impl IvyConfig {
 
     pub fn set_address(&mut self, address: H160) {
         self.default_ether_address = address;
-    }
-
-    pub fn set_private_keyfile(&mut self, keyfile: PathBuf) {
-        self.default_private_keyfile = keyfile;
     }
 
     pub fn get_rpc_url(&self, chain: Chain) -> Result<String, IvyError> {
