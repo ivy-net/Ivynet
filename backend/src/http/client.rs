@@ -18,6 +18,10 @@ use crate::{
 use super::{authorize, HttpState};
 
 const EIGEN_PERFORMANCE_METRIC: &str = "eigen_performance_score";
+const CPU_USAGE_METRIC: &str = "cpu_usage";
+const MEMORY_USAGE_METRIC: &str = "ram_usage";
+const DISK_USAGE_METRIC: &str = "disk_usage";
+const UPTIME_METRIC: &str = "uptime";
 const RUNNING_METRIC: &str = "running";
 
 const EIGEN_PERFORMANCE_HEALTHY_THRESHOLD: f64 = 80.0;
@@ -238,13 +242,13 @@ pub async fn info(
 
     let metrics = metric::Metric::get_organized_for_node(&state.pool, &machine).await?;
     let (last_checked, deployed_avs, deployed_avs_chain, operators_pub_key) =
-        if let Some(running) = metrics.get("running") {
+        if let Some(running) = metrics.get(&RUNNING_METRIC.to_owned()) {
             if let Some(attributes) = &running.attributes {
                 (
                     running.created_at,
-                    attributes.get("deployed_avs").cloned(),
-                    attributes.get("deployed_avs_chain").cloned(),
-                    attributes.get("operators_pub_key").cloned(),
+                    attributes.get("avs").cloned(),
+                    attributes.get("chain").cloned(),
+                    attributes.get("operator_key").cloned(),
                 )
             } else {
                 (running.created_at, None, None, None)
@@ -259,18 +263,22 @@ pub async fn info(
             status: "Healthy".to_owned(), // TODO: This is wrong. We don't know what potential
             // statuses are
             metrics: Metrics {
-                cpu_usage: if let Some(cpu) = metrics.get("cpu_usage") { cpu.value } else { 0.0 },
-                memory_usage: if let Some(ram) = metrics.get("ram_usage") {
+                cpu_usage: if let Some(cpu) = metrics.get(&CPU_USAGE_METRIC.to_owned()) {
+                    cpu.value
+                } else {
+                    0.0
+                },
+                memory_usage: if let Some(ram) = metrics.get(&MEMORY_USAGE_METRIC.to_owned()) {
                     ram.value
                 } else {
                     0.0
                 },
-                disk_usage: if let Some(disk) = metrics.get("disk_usage") {
+                disk_usage: if let Some(disk) = metrics.get(&DISK_USAGE_METRIC.to_owned()) {
                     disk.value
                 } else {
                     0.0
                 },
-                uptime: if let Some(uptime) = metrics.get("uptime") {
+                uptime: if let Some(uptime) = metrics.get(&UPTIME_METRIC.to_owned()) {
                     uptime.value as u64
                 } else {
                     0
