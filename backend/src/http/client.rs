@@ -104,7 +104,7 @@ pub async fn status(
             healthy_machines: metrics
                 .iter()
                 .filter_map(|(machine, metrics)| {
-                    if let Some(performace) = metrics.get(&EIGEN_PERFORMANCE_METRIC.to_string()) {
+                    if let Some(performace) = metrics.get(EIGEN_PERFORMANCE_METRIC) {
                         if performace.value >= EIGEN_PERFORMANCE_HEALTHY_THRESHOLD {
                             return Some(machine);
                         }
@@ -116,7 +116,7 @@ pub async fn status(
             unhealthy_machines: metrics
                 .iter()
                 .filter_map(|(machine, metrics)| {
-                    if let Some(performace) = metrics.get(&EIGEN_PERFORMANCE_METRIC.to_string()) {
+                    if let Some(performace) = metrics.get(EIGEN_PERFORMANCE_METRIC) {
                         if performace.value >= EIGEN_PERFORMANCE_HEALTHY_THRESHOLD {
                             return None;
                         }
@@ -127,7 +127,7 @@ pub async fn status(
             idle_machines: metrics
                 .iter()
                 .filter_map(|(machine, metrics)| {
-                    if let Some(performace) = metrics.get(&RUNNING_METRIC.to_string()) {
+                    if let Some(performace) = metrics.get(RUNNING_METRIC) {
                         if performace.value == 1.0 {
                             return None;
                         }
@@ -170,7 +170,7 @@ pub async fn idling(
     Ok(metrics
         .iter()
         .filter_map(|(machine, metrics)| {
-            if let Some(performace) = metrics.get(&RUNNING_METRIC.to_string()) {
+            if let Some(performace) = metrics.get(RUNNING_METRIC) {
                 if performace.value == 1.0 {
                     return None;
                 }
@@ -209,7 +209,7 @@ pub async fn unhealthy(
     Ok(metrics
         .iter()
         .filter_map(|(machine, metrics)| {
-            if let Some(performace) = metrics.get(&EIGEN_PERFORMANCE_METRIC.to_string()) {
+            if let Some(performace) = metrics.get(EIGEN_PERFORMANCE_METRIC) {
                 if performace.value >= EIGEN_PERFORMANCE_HEALTHY_THRESHOLD {
                     return None;
                 }
@@ -242,7 +242,7 @@ pub async fn info(
 
     let metrics = metric::Metric::get_organized_for_node(&state.pool, &machine).await?;
     let (last_checked, deployed_avs, deployed_avs_chain, operators_pub_key) =
-        if let Some(running) = metrics.get(&RUNNING_METRIC.to_owned()) {
+        if let Some(running) = metrics.get(RUNNING_METRIC) {
             if let Some(attributes) = &running.attributes {
                 (
                     running.created_at,
@@ -263,22 +263,22 @@ pub async fn info(
             status: "Healthy".to_owned(), // TODO: This is wrong. We don't know what potential
             // statuses are
             metrics: Metrics {
-                cpu_usage: if let Some(cpu) = metrics.get(&CPU_USAGE_METRIC.to_owned()) {
+                cpu_usage: if let Some(cpu) = metrics.get(CPU_USAGE_METRIC) {
                     cpu.value
                 } else {
                     0.0
                 },
-                memory_usage: if let Some(ram) = metrics.get(&MEMORY_USAGE_METRIC.to_owned()) {
+                memory_usage: if let Some(ram) = metrics.get(MEMORY_USAGE_METRIC) {
                     ram.value
                 } else {
                     0.0
                 },
-                disk_usage: if let Some(disk) = metrics.get(&DISK_USAGE_METRIC.to_owned()) {
+                disk_usage: if let Some(disk) = metrics.get(DISK_USAGE_METRIC) {
                     disk.value
                 } else {
                     0.0
                 },
-                uptime: if let Some(uptime) = metrics.get(&UPTIME_METRIC.to_owned()) {
+                uptime: if let Some(uptime) = metrics.get(UPTIME_METRIC) {
                     uptime.value as u64
                 } else {
                     0
