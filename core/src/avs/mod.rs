@@ -32,8 +32,7 @@ pub type QuorumMinMap = HashMap<Chain, HashMap<QuorumType, U256>>;
 
 use self::{
     contracts::{RegistryCoordinator, RegistryCoordinatorAbi, StakeRegistry, StakeRegistryAbi},
-    eigenda::EigenDA,
-    // mach_avs::AltLayer,
+    eigenda::EigenDA, mach_avs::AltLayer, witness::Witness
 };
 
 // TODO: Convenience functions on AVS type for display purposes, such as name()
@@ -349,6 +348,7 @@ pub async fn build_avs_provider(
             "eigenda" => Some(Box::new(EigenDA::new_from_chain(chain))),
             "altlayer" => Some(Box::new(AltLayer::new_from_chain(chain))),
             "lagrange" => Some(Box::new(Lagrange::new_from_chain(chain))),
+            "witness" => Some(Box::new(Witness::new_from_chain(chain))),
             _ => return Err(IvyError::InvalidAvsType(avs_id.to_string())),
         }
     } else {

@@ -5,7 +5,7 @@ use self::{
 use super::AvsVariant;
 use crate::{
     avs::witness::contracts::OperatorRegistry, config::IvyConfig, eigen::quorum::QuorumType,
-    error::IvyError, rpc_management::IvyProvider,
+    error::IvyError, keys::keyfile::EcdsaKeyfile, rpc_management::IvyProvider,
 };
 use async_trait::async_trait;
 use ethers::{
@@ -17,6 +17,7 @@ use ethers::{
 use ivynet_macros::h160;
 use std::{path::PathBuf, process::Child, sync::Arc};
 use thiserror::Error as ThisError;
+use tokio::sync::watch;
 use tracing::info;
 
 pub mod config;
@@ -148,7 +149,8 @@ impl Witness {
     ) -> Result<(), WitnessError> {
         // TODO: Default is currently set to one month. Create option for override.
         let operator_address = provider.address();
-        let watchtower_address = self.watchtower;
+        let watchtower_address = todo!();
+
         let operator_registry =
             OperatorRegistry::new(self.get_operator_registry_address()?, provider.clone());
 
@@ -162,7 +164,7 @@ impl Witness {
         let expiry = self.get_expiry(provider.clone(), ONE_MONTH).await?;
         let signed_msg: [u8; 65] = self.sign_operator_address(provider, salt, expiry).await?.into();
         let tx_receipt = operator_registry
-            .register_watchtower_as_operator(self.watchtower, salt, expiry, signed_msg.into())
+            .register_watchtower_as_operator(todo!(), salt, expiry, signed_msg.into())
             .send()
             .await?
             .await?;
@@ -207,7 +209,7 @@ impl Witness {
         let signed_msg: [u8; 65] = provider.signer().sign_hash(H256::from(digest_hash))?.into();
 
         let sig_with_data: SignatureWithSaltAndExpiry =
-            SignatureWithSaltAndExpiry { signature: signed_msg.into(), salt: salt.into(), expiry };
+            SignatureWithSaltAndExpiry { signature: signed_msg.into(), salt, expiry };
 
         let tx_receipt = witness_hub
             .register_operator_to_avs(operator_address, sig_with_data)
@@ -258,8 +260,9 @@ impl Witness {
     pub async fn is_watchtower_registered(
         &self,
         provider: Arc<IvyProvider>,
+        config: &WitnessConfig,
     ) -> Result<bool, WitnessError> {
-        let watchtower_address = self.watchtower;
+        let watchtower_address = config.watchtower_address;
         let operator_registry =
             OperatorRegistry::new(self.get_operator_registry_address()?, provider);
         let result = operator_registry.is_valid_watchtower(watchtower_address).await?;
@@ -351,7 +354,7 @@ impl Witness {
 impl Default for Witness {
     fn default() -> Self {
         let home_dir = dirs::home_dir().unwrap();
-        Self::new(home_dir.join(WITNESS_PATH), Chain::Holesky)
+        Self::new(home_dir.join(WITNESS_PATH), Chain::Holesky, todo!())
     }
 }
 
@@ -361,14 +364,10 @@ impl AvsVariant for Witness {
         &self,
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
-        operator_keyfile: EcdsaKeyFile,
-        witness_keyfile: EcdsaKeyFile,
+        operator_password: Option<String>,
     ) -> Result<(), IvyError> {
         // Setup witnessconfig
-        let mut config = WitnessConfig::load_from_default_path()?;
-        config.operator_ecdsa_key_path = operator_keyfile.path;
-        config.watchtower_ecdsa_key_path = witness_keyfile.path;
-        config.store()?;
+        todo!()
     }
 
     // TODO: Consider best place on the host system to store resource files vs simple configs
@@ -387,7 +386,7 @@ impl AvsVariant for Witness {
     }
 
     //TODO: We may be able to move this to a contract call directly
-    async fn opt_in(
+    async fn register(
         &self,
         quorums: Vec<QuorumType>,
         eigen_path: PathBuf,
@@ -398,7 +397,7 @@ impl AvsVariant for Witness {
         todo!()
     }
 
-    async fn opt_out(
+    async fn unregister(
         &self,
         quorums: Vec<QuorumType>,
         eigen_path: PathBuf,

@@ -1,4 +1,7 @@
-use crate::io::{read_toml, write_toml, IoError};
+use crate::{
+    io::{read_toml, write_toml, IoError},
+    keys::keyfile::EcdsaKeyfile,
+};
 use ethers::types::Chain;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, path::PathBuf};
@@ -11,8 +14,8 @@ pub type WitnessChainConfigs = HashMap<Chain, WitnessConfig>;
 pub struct WitnessConfig {
     /// Self-reference to file storage path
     pub path: PathBuf,
-    pub operator_ecdsa_key_path: PathBuf,
-    pub watchtower_ecdsa_key_path: PathBuf,
+    pub operator_ecdsa_file: EcdsaKeyfile,
+    pub watchtower_ecdsa_file: EcdsaKeyfile,
 }
 
 #[derive(Debug, thiserror::Error)]
