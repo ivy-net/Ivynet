@@ -27,6 +27,7 @@ use crate::{
     env_parser::EnvLines,
     error::{IvyError, SetupError},
     rpc_management::IvyProvider,
+    utils::gb_to_bytes,
 };
 
 pub const EIGENDA_PATH: &str = ".eigenlayer/eigenda";
@@ -72,92 +73,15 @@ impl Default for EigenDA {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl AvsVariant for EigenDA {
-    async fn setup(&self, provider: Arc<IvyProvider>, config: &IvyConfig) -> Result<(), IvyError> {
-        download_operator_setup(self.path.clone()).await?;
-        download_g1_g2(self.path.clone()).await?;
-        self.build_env(provider, config).await?;
-        Ok(())
-    }
-
-    // TODO: Consider best place on the host system to store resource files vs simple configs
-    async fn build_env(
+    async fn setup(
         &self,
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
+        _pw: Option<String>,
     ) -> Result<(), IvyError> {
-        let chain = Chain::try_from(provider.signer().chain_id())?;
-        let rpc_url = config.get_rpc_url(chain)?;
-
-        let avs_run_path = self.path.join("eigenda-operator-setup");
-        let avs_run_path = match chain {
-            Chain::Mainnet => avs_run_path.join("mainnet"),
-            Chain::Holesky => avs_run_path.join("holesky"),
-            _ => todo!("Unimplemented"),
-        };
-
-        let env_example_path = avs_run_path.join(".env.example");
-        let env_path = avs_run_path.join(".env");
-
-        if !env_example_path.exists() {
-            error!("The '.env.example' file does not exist at {}. '.env.example' is used for .env templating, please ensure the operator-setup was downloaded to the correct location.", env_example_path.display());
-            return Err(SetupError::NoEnvExample.into());
-        }
-        std::fs::copy(env_example_path, env_path.clone())?;
-
-        debug!("configuring env...");
-        let mut env_lines = EnvLines::load(&env_path)?;
-
-        // Node hostname
-        let node_hostname = reqwest::get("https://api.ipify.org").await?.text().await?;
-        info!("Using node hostname: {node_hostname}");
-        // env_lines.set("NODE_HOSTNAME", &node_hostname);
-
-        // Node chain RPC
-        env_lines.set("NODE_CHAIN_RPC", &rpc_url);
-
-        // User home directory
-        let home_dir = dirs::home_dir().expect("Could not get home directory");
-        let home_str = home_dir.to_str().expect("Could not get home directory");
-        env_lines.set("USER_HOME", home_str);
-        // Node resource paths
-        env_lines.set(
-            "NODE_G1_PATH_HOST",
-            r#"${EIGENLAYER_HOME}/eigenda/eigenda-operator-setup/resources/g1.point"#,
-        );
-        env_lines.set(
-            "NODE_G2_PATH_HOST",
-            r#"${EIGENLAYER_HOME}/eigenda/eigenda-operator-setup/resources/g2.point.powerOf2"#,
-        );
-        env_lines.set(
-            "NODE_CACHE_PATH_HOST",
-            r#"${EIGENLAYER_HOME}/eigenda/eigenda-operator-setup/resources/cache"#,
-        );
-
-        // BLS key
-        let bls_key_name: String = Input::new()
-            .with_prompt(
-                "Input the name of your BLS key file without file extensions - looks in .eigenlayer folder (where eigen cli stores the key)",
-            )
-            .interact_text()?;
-
-        let mut bls_json_file_location = dirs::home_dir().expect("Could not get home dir");
-        bls_json_file_location.push(".eigenlayer/operator_keys");
-        bls_json_file_location.push(bls_key_name);
-        bls_json_file_location.set_extension("bls.key.json");
-        debug!("BLS key file location: {:?}", bls_json_file_location);
-
-        // TODO: Remove prompting
-        let bls_password: String =
-            Password::new().with_prompt("Input the password for your BLS key file").interact()?;
-
-        env_lines.set(
-            "NODE_BLS_KEY_FILE_HOST",
-            bls_json_file_location.to_str().expect("Could not get BLS key file location"),
-        );
-        env_lines.set("NODE_BLS_KEY_PASSWORD", &format!("'{}'", bls_password));
-        env_lines.save(&env_path)?;
-        info!(".env file saved to {}", env_path.display());
-
+        download_operator_setup(self.path.clone()).await?;
+        download_g1_g2(self.path.clone()).await?;
+        self.build_env(provider, config).await?;
         Ok(())
     }
 
@@ -171,27 +95,27 @@ impl AvsVariant for EigenDA {
         match quorum_percentage {
             x if x < U256::from(3) => {
                 // NOTE: Should these be || operators?
-                if class >= NodeClass::LRG || disk_info >= 20000000000 {
+                if class >= NodeClass::LRG || disk_info >= gb_to_bytes(20) {
                     acceptable = true;
                 }
             }
             x if x < U256::from(20) => {
-                if class >= NodeClass::XL || disk_info >= 150000000000 {
+                if class >= NodeClass::XL || disk_info >= gb_to_bytes(150) {
                     acceptable = true;
                 }
             }
             x if x < U256::from(100) => {
-                if class >= NodeClass::FOURXL || disk_info >= 750000000000 {
+                if class >= NodeClass::FOURXL || disk_info >= gb_to_bytes(750) {
                     acceptable = true;
                 }
             }
             x if x < U256::from(1000) => {
-                if class >= NodeClass::FOURXL || disk_info >= 4000000000000 {
+                if class >= NodeClass::FOURXL || disk_info >= gb_to_bytes(4000) {
                     acceptable = true;
                 }
             }
             x if x > U256::from(2000) => {
-                if class >= NodeClass::FOURXL || disk_info >= 8000000000000 {
+                if class >= NodeClass::FOURXL || disk_info >= gb_to_bytes(8000) {
                     acceptable = true;
                 }
             }
@@ -200,104 +124,7 @@ impl AvsVariant for EigenDA {
         Ok(acceptable)
     }
 
-    //TODO: We may be able to move this to a contract call directly
-    async fn opt_in(
-        &self,
-        quorums: Vec<QuorumType>,
-        eigen_path: PathBuf,
-        private_keyfile: PathBuf,
-        keyfile_password: &str,
-        chain: Chain,
-    ) -> Result<(), IvyError> {
-        let quorum_str: Vec<String> =
-            quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
-        let quorum_str = quorum_str.join(",");
-
-        let run_script_dir = eigen_path.join("eigenda-operator-setup");
-        let run_script_dir = match chain {
-            Chain::Mainnet => run_script_dir.join("mainnet"),
-            Chain::Holesky => run_script_dir.join("holesky"),
-            _ => todo!("Unimplemented"),
-        };
-
-        // Child shell scripts may not run correctly if the current directory is not set to their
-        // own path.
-        std::env::set_current_dir(run_script_dir.clone())?;
-        let run_script_path = run_script_dir.join("run.sh");
-
-        info!("Booting quorums: {:#?}", quorums);
-        debug!("{} |  {}", run_script_path.display(), quorum_str);
-
-        let optin = Command::new("sh")
-            .arg(run_script_path)
-            .arg("--operation-type")
-            .arg("opt-in")
-            .arg("--node-ecdsa-key-file-host")
-            .arg(private_keyfile)
-            .arg("--node-ecdsa-key-password")
-            .arg(keyfile_password)
-            .arg("--quorums")
-            .arg(quorum_str)
-            .status()?;
-
-        if optin.success() {
-            Ok(())
-        } else {
-            Err(EigenDAError::ScriptError(optin.to_string()).into())
-        }
-    }
-
-    async fn opt_out(
-        &self,
-        quorums: Vec<QuorumType>,
-        eigen_path: PathBuf,
-        private_keyfile: PathBuf,
-        keyfile_password: &str,
-        chain: Chain,
-    ) -> Result<(), IvyError> {
-        let quorum_str: Vec<String> =
-            quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
-        let quorum_str = quorum_str.join(",");
-
-        let run_script_dir = eigen_path.join("eigenda-operator-setup");
-        let run_script_dir = match chain {
-            Chain::Mainnet => run_script_dir.join("mainnet"),
-            Chain::Holesky => run_script_dir.join("holesky"),
-            _ => todo!("Unimplemented"),
-        };
-
-        // Child shell scripts may not run correctly if the current directory is not set to their
-        // own path.
-        std::env::set_current_dir(run_script_dir.clone())?;
-        let run_script_path = run_script_dir.join("run.sh");
-
-        info!("Booting quorums: {:#?}", quorums);
-        debug!("{} |  {}", run_script_path.display(), quorum_str);
-
-        let optin = Command::new("sh")
-            .arg(run_script_path)
-            .arg("--operation-type")
-            .arg("opt-out")
-            .arg("--node-ecdsa-key-file-host")
-            .arg(private_keyfile)
-            .arg("--node-ecdsa-key-password")
-            .arg(keyfile_password)
-            .arg("--quorums")
-            .arg(quorum_str)
-            .status()?;
-
-        if optin.success() {
-            Ok(())
-        } else {
-            Err(EigenDAError::ScriptError(optin.to_string()).into())
-        }
-    }
-
     async fn start(&mut self, quorums: Vec<QuorumType>, chain: Chain) -> Result<Child, IvyError> {
-        let quorum_str: Vec<String> =
-            quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
-        let quorum_str = quorum_str.join(",");
-
         let docker_path = self.path.join("eigenda-operator-setup");
         let docker_path = match chain {
             Chain::Mainnet => docker_path.join("mainnet"),
@@ -305,7 +132,7 @@ impl AvsVariant for EigenDA {
             _ => todo!("Unimplemented"),
         };
         std::env::set_current_dir(docker_path.clone())?;
-        debug!("docker start: {} |  {}", docker_path.display(), quorum_str);
+        debug!("docker start: {} |  {:?}", docker_path.display(), quorums);
         let build = Command::new("docker-compose").arg("build").arg("--no-cache").status()?; //.arg("compose")
 
         let _ = Command::new("docker-compose").arg("config").status()?;
@@ -387,11 +214,180 @@ impl AvsVariant for EigenDA {
     fn name(&self) -> &'static str {
         "eigenda"
     }
+
+    async fn register(
+        &self,
+        quorums: Vec<QuorumType>,
+        eigen_path: PathBuf,
+        private_keypath: PathBuf,
+        keyfile_password: &str,
+        chain: Chain,
+    ) -> Result<(), IvyError> {
+        let quorum_str: Vec<String> =
+            quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
+        let quorum_str = quorum_str.join(",");
+
+        let run_script_dir = eigen_path.join("eigenda-operator-setup");
+        let run_script_dir = match chain {
+            Chain::Mainnet => run_script_dir.join("mainnet"),
+            Chain::Holesky => run_script_dir.join("holesky"),
+            _ => todo!("Unimplemented"),
+        };
+
+        // Child shell scripts may not run correctly if the current directory is not set to their
+        // own path.
+        std::env::set_current_dir(run_script_dir.clone())?;
+        let run_script_path = run_script_dir.join("run.sh");
+
+        info!("Booting quorums: {:#?}", quorums);
+        debug!("{} |  {}", run_script_path.display(), quorum_str);
+
+        let optin = Command::new("sh")
+            .arg(run_script_path)
+            .arg("--operation-type")
+            .arg("opt-in")
+            .arg("--node-ecdsa-key-file-host")
+            .arg(private_keypath)
+            .arg("--node-ecdsa-key-password")
+            .arg(keyfile_password)
+            .arg("--quorums")
+            .arg(quorum_str)
+            .status()?;
+
+        if optin.success() {
+            Ok(())
+        } else {
+            Err(EigenDAError::ScriptError(optin.to_string()).into())
+        }
+    }
+
+    async fn unregister(
+        &self,
+        quorums: Vec<QuorumType>,
+        eigen_path: PathBuf,
+        private_keypath: PathBuf,
+        keyfile_password: &str,
+        chain: Chain,
+    ) -> Result<(), IvyError> {
+        let quorum_str: Vec<String> =
+            quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
+        let quorum_str = quorum_str.join(",");
+
+        let run_script_dir = eigen_path.join("eigenda-operator-setup");
+        let run_script_dir = match chain {
+            Chain::Mainnet => run_script_dir.join("mainnet"),
+            Chain::Holesky => run_script_dir.join("holesky"),
+            _ => todo!("Unimplemented"),
+        };
+
+        // Child shell scripts may not run correctly if the current directory is not set to their
+        // own path.
+        std::env::set_current_dir(run_script_dir.clone())?;
+        let run_script_path = run_script_dir.join("run.sh");
+
+        info!("Booting quorums: {:#?}", quorums);
+        debug!("{} |  {}", run_script_path.display(), quorum_str);
+
+        let optin = Command::new("sh")
+            .arg(run_script_path)
+            .arg("--operation-type")
+            .arg("opt-out")
+            .arg("--node-ecdsa-key-file-host")
+            .arg(private_keypath)
+            .arg("--node-ecdsa-key-password")
+            .arg(keyfile_password)
+            .arg("--quorums")
+            .arg(quorum_str)
+            .status()?;
+
+        if optin.success() {
+            Ok(())
+        } else {
+            Err(EigenDAError::ScriptError(optin.to_string()).into())
+        }
+    }
+
+    async fn build_env(
+        &self,
+        provider: Arc<IvyProvider>,
+        config: &IvyConfig,
+    ) -> Result<(), IvyError> {
+        let chain = Chain::try_from(provider.signer().chain_id())?;
+        let rpc_url = config.get_rpc_url(chain)?;
+
+        let avs_run_path = self.path.join("eigenda-operator-setup");
+        let avs_run_path = match chain {
+            Chain::Mainnet => avs_run_path.join("mainnet"),
+            Chain::Holesky => avs_run_path.join("holesky"),
+            _ => todo!("Unimplemented"),
+        };
+
+        let env_example_path = avs_run_path.join(".env.example");
+        let env_path = avs_run_path.join(".env");
+
+        if !env_example_path.exists() {
+            error!("The '.env.example' file does not exist at {}. '.env.example' is used for .env templating, please ensure the operator-setup was downloaded to the correct location.", env_example_path.display());
+            return Err(SetupError::NoEnvExample.into());
+        }
+        std::fs::copy(env_example_path, env_path.clone())?;
+
+        debug!("configuring env...");
+        let mut env_lines = EnvLines::load(&env_path)?;
+
+        // Node hostname
+        let node_hostname = reqwest::get("https://api.ipify.org").await?.text().await?;
+        info!("Using node hostname: {node_hostname}");
+        // env_lines.set("NODE_HOSTNAME", &node_hostname);
+
+        // Node chain RPC
+        env_lines.set("NODE_CHAIN_RPC", &rpc_url);
+
+        // User home directory
+        let home_dir = dirs::home_dir().expect("Could not get home directory");
+        let home_str = home_dir.to_str().expect("Could not get home directory");
+        env_lines.set("USER_HOME", home_str);
+        // Node resource paths
+        env_lines.set("NODE_G1_PATH_HOST", r#"${EIGENLAYER_HOME}/eigenda/resources/g1.point"#);
+        env_lines
+            .set("NODE_G2_PATH_HOST", r#"${EIGENLAYER_HOME}/eigenda/resources/g2.point.powerOf2"#);
+        env_lines.set(
+            "NODE_CACHE_PATH_HOST",
+            r#"${EIGENLAYER_HOME}/eigenda/eigenda-operator-setup/resources/cache"#,
+        );
+
+        // BLS key
+        let bls_key_name: String = Input::new()
+            .with_prompt(
+                "Input the name of your BLS key file without file extensions - looks in .eigenlayer folder (where eigen cli stores the key)",
+            )
+            .interact_text()?;
+
+        let mut bls_json_file_location = dirs::home_dir().expect("Could not get home dir");
+        bls_json_file_location.push(".eigenlayer/operator_keys");
+        bls_json_file_location.push(bls_key_name);
+        bls_json_file_location.set_extension("bls.key.json");
+        debug!("BLS key file location: {:?}", bls_json_file_location);
+
+        // TODO: Remove prompting
+        let bls_password: String =
+            Password::new().with_prompt("Input the password for your BLS key file").interact()?;
+
+        env_lines.set(
+            "NODE_BLS_KEY_FILE_HOST",
+            bls_json_file_location.to_str().expect("Could not get BLS key file location"),
+        );
+        env_lines.set("NODE_BLS_KEY_PASSWORD", &format!("'{}'", bls_password));
+        env_lines.save(&env_path)?;
+        info!(".env file saved to {}", env_path.display());
+
+        Ok(())
+    }
 }
 
 /// Downloads eigenDA node resources
 pub async fn download_g1_g2(eigen_path: PathBuf) -> Result<(), IvyError> {
-    let resources_dir = eigen_path.join("eigenda-operator-setup/resources");
+    let resources_dir = eigen_path.join("resources");
+    fs::create_dir_all(resources_dir.clone())?;
     let g1_file_path = resources_dir.join("g1.point");
     let g2_file_path = resources_dir.join("g2.point.powerOf2");
     if g1_file_path.exists() {

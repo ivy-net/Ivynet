@@ -1,12 +1,10 @@
 use clap::{Parser, Subcommand};
+use cli::{avs, config, error::Error, init::initialize_ivynet, operator, service, staker};
 use ivynet_core::{avs::commands::AvsCommands, config::IvyConfig, grpc::client::Uri};
 use std::str::FromStr as _;
-use tracing_subscriber::{fmt, prelude::*, EnvFilter};
-
 #[allow(unused_imports)]
 use tracing::{debug, error, warn};
-
-use cli::{avs, config, error::Error, init::initialize_ivynet, operator, service, staker};
+use tracing_subscriber::{fmt, prelude::*, EnvFilter};
 
 #[derive(Parser, Debug)]
 #[command(name = "ivy", version, about = "The command line interface for ivynet")]
@@ -94,7 +92,7 @@ async fn main() -> Result<(), Error> {
         Commands::Serve { avs, chain } => {
             let config = check_for_config();
             let keyfile_pw = dialoguer::Password::new()
-                .with_prompt("Input the password for your stored ECDSA keyfile")
+                .with_prompt("Input the password for your stored Operator ECDSA keyfile")
                 .interact()?;
             service::serve(avs, chain, &config, &keyfile_pw).await?
         }

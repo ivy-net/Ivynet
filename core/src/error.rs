@@ -1,6 +1,6 @@
 use ethers::{
     contract::ContractError,
-    providers::{JsonRpcError, MiddlewareError as _},
+    providers::{JsonRpcError, MiddlewareError as _, ProviderError},
     signers::WalletError,
     types::{Bytes, Chain, TryFromPrimitiveError},
     utils::hex::FromHexError,
@@ -11,7 +11,7 @@ use tonic::Status;
 use zip::result::ZipError;
 
 use crate::{
-    avs::{eigenda::EigenDAError, witness::WitnessError},
+    avs::{eigenda::EigenDAError, lagrange::LagrangeError, witness::WitnessError},
     eigen::quorum::QuorumError,
     rpc_management::IvyProvider,
 };
@@ -49,6 +49,9 @@ pub enum IvyError {
 
     #[error(transparent)]
     WitnessError(#[from] WitnessError),
+    
+    #[error(transparent)]
+    LagrangeError(#[from] LagrangeError),
 
     #[error(transparent)]
     ZipError(#[from] ZipError),
@@ -70,6 +73,9 @@ pub enum IvyError {
 
     #[error(transparent)]
     ConfigError(#[from] crate::config::ConfigError),
+
+    #[error(transparent)]
+    ProviderError(#[from] ProviderError),
 
     #[error(
         "AVS {0} on chain {1} is currently running. Stop the AVS before using this operation."

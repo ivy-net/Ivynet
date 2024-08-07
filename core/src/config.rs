@@ -1,4 +1,4 @@
-use ethers::types::Chain;
+use ethers::types::{Chain, H160};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -30,12 +30,12 @@ pub struct IvyConfig {
     // TODO: See if this nomenclature needs to be changed
     /// Default operator private key file full path
     pub default_private_keyfile: PathBuf,
-    /// Default operator public key file full path
-    pub default_public_keyfile: PathBuf,
     /// Metadata for the operator
     pub metadata: Metadata,
-    // Identification key that node uses for server communications
+    /// Identification key that node uses for server communications
     pub identity_key: Option<String>,
+    /// Default Public Address
+    pub default_ether_address: H160,
 }
 
 impl Default for IvyConfig {
@@ -46,9 +46,9 @@ impl Default for IvyConfig {
             holesky_rpc_url: "https://eth-holesky.public.blastapi.io".to_string(),
             local_rpc_url: "http://localhost:8545".to_string(),
             default_private_keyfile: "".into(), // TODO: Option
-            default_public_keyfile: "".into(),
             metadata: Metadata::default(),
             identity_key: None,
+            default_ether_address: H160::default(),
         }
     }
 }
@@ -99,8 +99,8 @@ impl IvyConfig {
         Ok(())
     }
 
-    pub fn set_public_keyfile(&mut self, keyfile: PathBuf) {
-        self.default_public_keyfile = keyfile;
+    pub fn set_address(&mut self, address: H160) {
+        self.default_ether_address = address;
     }
 
     pub fn set_private_keyfile(&mut self, keyfile: PathBuf) {

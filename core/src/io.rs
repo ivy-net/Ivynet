@@ -42,6 +42,20 @@ pub enum IoError {
         path: String,
     },
 
+    #[error("YAML serialize error: {source} at path {path}")]
+    YamlSerError {
+        #[source]
+        source: serde_yaml::Error,
+        path: String,
+    },
+
+    #[error("YAML deserialize error: {source} at path {path}")]
+    YamlDeError {
+        #[source]
+        source: serde_yaml::Error,
+        path: String,
+    },
+
     #[error("Directory creation error: {source} at path {path}")]
     DirCreationError {
         #[source]
@@ -77,6 +91,22 @@ pub fn read_toml<T: for<'a> Deserialize<'a>>(path: &PathBuf) -> Result<T, IoErro
 pub fn write_toml<T: Serialize>(path: &PathBuf, data: &T) -> Result<(), IoError> {
     let data = toml::to_string(data)
         .map_err(|e| IoError::TomlSerError { source: e, path: path.display().to_string() })?;
+    fs::write(path, data)
+        .map_err(|e| IoError::FileWriteError { source: e, path: path.display().to_string() })?;
+    Ok(())
+}
+
+pub fn read_yaml<T: for<'a> Deserialize<'a>>(path: &PathBuf) -> Result<T, IoError> {
+    let yaml_str = fs::read_to_string(path)
+        .map_err(|e| IoError::FileReadError { source: e, path: path.display().to_string() })?;
+    let res = serde_yaml::from_str::<T>(&yaml_str)
+        .map_err(|e| IoError::YamlDeError { source: e, path: path.display().to_string() })?;
+    Ok(res)
+}
+
+pub fn write_yaml<T: Serialize>(path: &PathBuf, data: &T) -> Result<(), IoError> {
+    let data = serde_yaml::to_string(data)
+        .map_err(|e| IoError::YamlSerError { source: e, path: path.display().to_string() })?;
     fs::write(path, data)
         .map_err(|e| IoError::FileWriteError { source: e, path: path.display().to_string() })?;
     Ok(())

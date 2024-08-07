@@ -1,7 +1,21 @@
 use clap::Subcommand;
 use std::fmt::Display;
 
-// TODO: use newtype in ivynet_core to wrap and implement clap subcommands
+#[derive(Subcommand, Debug)]
+pub enum RegisterCommands {
+    #[command(
+        name = "optin",
+        about = "opt in to valid quorums with the given AVS. Valid for: EigenDA, AltLayer"
+    )]
+    Optin {},
+    #[command(
+        name = "optout",
+        about = "opt out of valid quorums with the given AVS. Valid for: EigenDA, AltLayer"
+    )]
+    Optout {},
+    #[command(name = "register", about = "register an operator. Valid for: Lagrange")]
+    Register {},
+}
 
 #[derive(Subcommand, Debug)]
 pub enum AvsCommands {
@@ -9,10 +23,16 @@ pub enum AvsCommands {
     Info {},
     #[command(name = "setup", about = "opt in to valid quorums with the given AVS")]
     Setup { avs: String, chain: String },
-    #[command(name = "optin", about = "opt in to valid quorums with the given AVS")]
-    Optin {},
-    #[command(name = "optout", about = "opt out of valid quorums with the given AVS")]
-    Optout {},
+    #[command(
+        name = "register",
+        about = "Register an operator for the loaded AVS. Not valid for all AVS types. See AVS specific dcoumentation for details."
+    )]
+    Register {},
+    #[command(
+        name = "unregister",
+        about = "Unregister an operator for the loaded AVS. Not valid for all AVS types. See AVS specific dcoumentation for details."
+    )]
+    Unregister {},
     #[command(name = "start", about = "Start running an AVS node in a docker container")]
     Start {
         #[clap(required(false), long, requires("chain"))]
@@ -39,8 +59,8 @@ impl Display for AvsCommands {
         match self {
             AvsCommands::Info {} => write!(f, "get information about the currently running AVS"),
             AvsCommands::Setup { avs, chain } => write!(f, "setup {} on chain {}", avs, chain),
-            AvsCommands::Optin {} => write!(f, "optin"),
-            AvsCommands::Optout {} => write!(f, "optout"),
+            AvsCommands::Register {} => write!(f, "register"),
+            AvsCommands::Unregister {} => write!(f, "unregister"),
             AvsCommands::Start { .. } => write!(f, "start"),
             AvsCommands::Stop {} => write!(f, "stop"),
             AvsCommands::CheckStakePercentage { avs, address, network } => {

@@ -1,6 +1,5 @@
 use std::{
     fmt::Debug,
-    fs,
     path::{Path, PathBuf},
     str::FromStr,
 };
@@ -11,7 +10,7 @@ use ethers::{
     signers::{LocalWallet, Signer, WalletError},
     types::{
         transaction::{eip2718::TypedTransaction, eip712::Eip712},
-        Address, H160, H256,
+        Address, H256,
     },
 };
 use serde::{Deserialize, Serialize};
@@ -58,7 +57,7 @@ impl IvyWallet {
         path: &Path,
         name: String,
         password: String,
-    ) -> Result<(PathBuf, PathBuf), IvyError> {
+    ) -> Result<PathBuf, IvyError> {
         debug!("{:?}", path);
         let encrypt = LocalWallet::encrypt_keystore(
             path,
@@ -69,15 +68,17 @@ impl IvyWallet {
         )?;
         debug!("{:?}", encrypt);
 
-        let pub_key_path = path.join(format!("{name}.txt"));
         let prv_key_path = path.join(format!("{name}.json"));
-        let address_write = format!("{:?}", self.local_wallet.address());
 
-        fs::write(pub_key_path.clone(), address_write)?;
+        let Keyfile { crypto, id, version } = read_json(&prv_key_path)?;
+        let keyfile = KeyfileLegacy { address: self.local_wallet.address(), crypto, id, version };
+
+        write_json(&prv_key_path, &keyfile)?;
+        debug!("{:#?}", prv_key_path);
+
         info!("keyfile stored to {}", path.display());
-        create_legacy_keyfile(&prv_key_path, &password)?;
 
-        Ok((pub_key_path, prv_key_path))
+        Ok(prv_key_path)
     }
 
     pub fn to_private_key(&self) -> String {
@@ -90,13 +91,6 @@ impl IvyWallet {
 
     pub fn address(&self) -> Address {
         self.local_wallet.address()
-    }
-
-    // TODO: Deprecate in favor of storing the address in the config file
-    pub fn address_from_file(path: PathBuf) -> Result<H160, IvyError> {
-        let addr: String = fs::read_to_string(path)?;
-        let addr: H160 = H160::from_str(&addr).map_err(|_| IvyError::InvalidAddress)?;
-        Ok(addr)
     }
 }
 
@@ -149,19 +143,6 @@ impl IvyWallet {
     }
 }
 
-pub fn create_legacy_keyfile(path: &PathBuf, password: &str) -> Result<(), IvyError> {
-    debug!("creating legacy keyfile");
-    let wallet = IvyWallet::from_keystore(path.to_owned(), password)?;
-    debug!("wallet loaded");
-    let Keyfile { crypto, id, version } = read_json(path)?;
-    let legacy_keyfile = KeyfileLegacy { address: wallet.address(), crypto, id, version };
-    let mut legacy_keyfile_path = path.to_owned();
-    legacy_keyfile_path.set_extension("legacy.json");
-    debug!("{:#?}", legacy_keyfile_path.clone());
-    write_json(&legacy_keyfile_path, &legacy_keyfile)?;
-    Ok(())
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 struct Keyfile {
     crypto: Value,
@@ -182,20 +163,6 @@ mod test {
     use super::*;
     use tempfile::tempdir;
 
-    /// Creates a new keyfile and calls address_from_file
-    #[test]
-    fn test_address_from_file() {
-        let dir = tempdir().unwrap();
-        let wallet = IvyWallet::new();
-        let address = wallet.address();
-        wallet
-            .encrypt_and_store(dir.as_ref(), "temp_key".to_string(), "ThisIsATempKey".to_string())
-            .unwrap();
-        let addr_path = dir.path().join("temp_key.txt");
-        let derived_address = IvyWallet::address_from_file(addr_path).unwrap();
-        assert_eq!(address, derived_address);
-    }
-
     #[test]
     fn test_wallet_from_private_key() {
         let wallet = IvyWallet::new();
@@ -209,7 +176,7 @@ mod test {
         let dir = tempdir().unwrap();
         let wallet = IvyWallet::new();
         let address = wallet.address();
-        let (_pub_key_path, prv_key_path) = wallet
+        let prv_key_path = wallet
             .encrypt_and_store(dir.as_ref(), "temp_key".to_string(), "ThisIsATempKey".to_string())
             .unwrap();
         let wallet2 = IvyWallet::from_keystore(prv_key_path, "ThisIsATempKey").unwrap();

@@ -7,8 +7,8 @@ use ivynet_core::{
     grpc::{
         ivynet_api::{
             ivy_daemon_avs::{
-                avs_server::Avs, AvsInfoRequest, AvsInfoResponse, OptinRequest, OptoutRequest,
-                SelectAvsRequest, SetupRequest, StartRequest, StopRequest,
+                avs_server::Avs, AvsInfoRequest, AvsInfoResponse, RegisterRequest,
+                SelectAvsRequest, SetupRequest, StartRequest, StopRequest, UnregisterRequest,
             },
             ivy_daemon_operator::{
                 operator_server::Operator, DelegatableSharesRequest, DelegatableSharesResponse,
@@ -91,31 +91,31 @@ impl Avs for IvynetService {
         Ok(Response::new(response))
     }
 
-    async fn opt_in(
+    async fn register(
         &self,
-        _request: Request<OptinRequest>,
+        _request: Request<RegisterRequest>,
     ) -> Result<Response<RpcResponse>, Status> {
         let provider = self.avs_provider.read().await;
         // TODO: ask about storing 'config' in the provider
         let config = IvyConfig::load_from_default_path().map_err(IvyError::from)?;
-        provider.opt_in(&config).await?;
+        provider.register(&config).await?;
 
         // TODO: Opt-in flow
-        let response = RpcResponse { response_type: 0, msg: "Opt-in success.".to_string() };
+        let response = RpcResponse { response_type: 0, msg: "Register success.".to_string() };
         Ok(Response::new(response))
     }
 
-    async fn opt_out(
+    async fn unregister(
         &self,
-        _request: Request<OptoutRequest>,
+        _request: Request<UnregisterRequest>,
     ) -> Result<Response<RpcResponse>, Status> {
         let provider = self.avs_provider.read().await;
         // TODO: ask about storing 'config' in the provider
         let config = IvyConfig::load_from_default_path().map_err(IvyError::from)?;
-        provider.opt_out(&config).await?;
+        provider.unregister(&config).await?;
 
         // TODO: Opt-out flow
-        let response = RpcResponse { response_type: 0, msg: "Opt-out success.".to_string() };
+        let response = RpcResponse { response_type: 0, msg: "Unregister success.".to_string() };
         Ok(Response::new(response))
     }
 
