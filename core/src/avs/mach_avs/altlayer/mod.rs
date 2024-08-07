@@ -6,7 +6,7 @@ use ethers::{
 };
 use ivynet_macros::h160;
 use std::{
-    env,
+    default, env,
     fs::{self, File},
     io::{copy, BufReader},
     path::PathBuf,
@@ -26,6 +26,7 @@ use crate::{
     },
     env_parser::EnvLines,
     error::{IvyError, SetupError},
+    keyring::Keyring,
     rpc_management::IvyProvider,
     utils::gb_to_bytes,
 };
@@ -273,11 +274,13 @@ impl AvsVariant for AltLayer {
             "NODE_BLS_KEY_FILE_HOST",
             bls_json_file_location.to_str().expect("Could not get BLS key file location"),
         );
-        let mut legacy_keyfile_path = config.default_private_keyfile.clone();
-        legacy_keyfile_path.set_extension("legacy.json");
+
+        let keyring = Keyring::load_default()?;
+        let default_keyfile = keyring.default_ecdsa_keyfile()?;
+
         env_lines.set(
             "NODE_ECDSA_KEY_FILE_HOST",
-            legacy_keyfile_path.to_str().expect("Bad private key path"),
+            default_keyfile.path.to_str().expect("Could not get ECDSA key file location"),
         );
         env_lines.set("OPERATOR_BLS_KEY_PASSWORD", &bls_password);
         env_lines.set("OPERATOR_ECDSA_KEY_PASSWORD", &ecdsa_password);

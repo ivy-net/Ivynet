@@ -29,7 +29,12 @@ pub struct IvyWallet {
 }
 
 #[derive(thiserror::Error, Debug)]
-pub enum IvyWalletError {}
+pub enum IvyWalletError {
+    #[error(transparent)]
+    WalletError(#[from] WalletError),
+    #[error("IvyWallet identity key not found")]
+    IdentityKeyError,
+}
 
 impl IvyWallet {
     pub fn new() -> Self {
@@ -37,12 +42,12 @@ impl IvyWallet {
         IvyWallet { local_wallet }
     }
 
-    pub fn from_private_key(private_key_string: String) -> Result<Self, IvyError> {
+    pub fn from_private_key(private_key_string: String) -> Result<Self, IvyWalletError> {
         let local_wallet = LocalWallet::from_str(&private_key_string)?;
         Ok(IvyWallet { local_wallet })
     }
 
-    pub fn from_keystore(path: PathBuf, password: &str) -> Result<Self, IvyError> {
+    pub fn from_keystore(path: PathBuf, password: &str) -> Result<Self, IvyWalletError> {
         let local_wallet = LocalWallet::decrypt_keystore(path, password)?;
         Ok(IvyWallet { local_wallet })
     }

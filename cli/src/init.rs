@@ -172,17 +172,22 @@ fn interactive_add_default_keyfile(mut keyring: Keyring) -> Result<Keyring, IvyE
             let pw = get_confirm_password();
             let wallet = IvyWallet::from_private_key(private_key)?;
             let prv_key_path =
-                wallet.encrypt_and_store(&keyring.keyring_dir()?, DEFAULT_KEY_ID, &pw)?;
-            keyring.add_ecdsa_keyfile(DEFAULT_KEY_ID, prv_key_path);
+                wallet.encrypt_and_store(&keyring.keyring_dir()?, &DEFAULT_KEY_NAME, &pw)?;
+            keyring.add_ecdsa_keyfile(DEFAULT_KEY_NAME, prv_key_path);
         }
         1 => {
             let wallet = IvyWallet::new();
             let addr = wallet.address();
             println!("Public Address: {:?}", addr);
             let pw = get_confirm_password();
-            let prv_key_path =
-                wallet.encrypt_and_store(&keyring.keyring_dir()?, DEFAULT_KEY_ID, &pw)?;
-            keyring.add_ecdsa_keyfile(DEFAULT_KEY_ID, prv_key_path);
+            let prv_key_path = wallet.encrypt_and_store(
+                &keyring.keyring_dir()?,
+                &DEFAULT_KEY_NAME.to_lowercase(),
+                &pw,
+            )?;
+            let keyfile = EcdsaKeyFile {
+                name: DEFAULT_KEY_NAME.to_uppercase(),
+            keyring.add_ecdsa_keyfile(DEFAULT_KEY_NAME, prv_key_path);
         }
         2 => {
             println!("Skipping keyfile initialization");
@@ -207,9 +212,12 @@ fn interactive_add_new_keyfile(mut keyring: Keyring) -> Result<Keyring, IvyError
                 Input::new().with_prompt("Enter a name for the keyfile").interact()?;
             let pw = get_confirm_password();
             let wallet = IvyWallet::from_private_key(private_key)?;
-            let prv_key_path =
-                wallet.encrypt_and_store(&keyring.keyring_dir()?, &keyfile_name, &pw)?;
-            keyring.add_ecdsa_keyfile(&keyfile_name, prv_key_path);
+            let prv_key_path = wallet.encrypt_and_store(
+                &keyring.keyring_dir()?,
+                &keyfile_name.to_lowercase(),
+                &pw,
+            )?;
+            keyring.add_ecdsa_keyfile(&keyfile_name.to_uppercase(), prv_key_path);
         }
         1 => {
             let wallet = IvyWallet::new();
@@ -218,9 +226,12 @@ fn interactive_add_new_keyfile(mut keyring: Keyring) -> Result<Keyring, IvyError
             let keyfile_name: String =
                 Input::new().with_prompt("Enter a name for the keyfile").interact()?;
             let pw = get_confirm_password();
-            let prv_key_path =
-                wallet.encrypt_and_store(&keyring.keyring_dir()?, &keyfile_name, &pw)?;
-            keyring.add_ecdsa_keyfile(&keyfile_name, prv_key_path);
+            let prv_key_path = wallet.encrypt_and_store(
+                &keyring.keyring_dir()?,
+                &keyfile_name.to_lowercase(),
+                &pw,
+            )?;
+            keyring.add_ecdsa_keyfile(&keyfile_name.to_uppercase(), prv_key_path);
         }
         2 => {
             println!("Skipping keyfile initialization");

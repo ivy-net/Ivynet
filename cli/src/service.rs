@@ -1,6 +1,7 @@
 use ivynet_core::{
     avs::build_avs_provider,
     config::IvyConfig,
+    error::IvyError,
     grpc::{
         ivynet_api::{
             ivy_daemon_avs::avs_server::AvsServer,
@@ -8,7 +9,7 @@ use ivynet_core::{
         },
         server::{Endpoint, Server},
     },
-    wallet::IvyWallet,
+    keyring::Keyring,
 };
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -19,24 +20,16 @@ pub async fn serve(
     avs: Option<String>,
     chain: Option<String>,
     config: &IvyConfig,
-    keyfile_pw: &str,
 ) -> Result<(), Error> {
     let sock = Endpoint::Path(config.uds_dir());
 
-    // Keystore load
-    let wallet = IvyWallet::from_keystore(config.default_private_keyfile.clone(), keyfile_pw)?;
-
-    // Avs Service
+    let keyring = Keyring::load_default().map_err(|e| IvyError::from(e))?;
+    let keystore = keyring.default_ecdsa_keyfile().map_err(|e| IvyError::from(e))?;
+    let (wallet, pw) = keystore.try_to_wallet_env_dialog().map_err(|e| IvyError::from(e))?;
     // TODO: This should default to local instead of holesky?
     let chain = chain.unwrap_or_else(|| "holesky".to_string());
-    let avs_provider = build_avs_provider(
-        avs.as_deref(),
-        &chain,
-        config,
-        Some(wallet),
-        Some(keyfile_pw.to_owned()),
-    )
-    .await?;
+    let avs_provider =
+        build_avs_provider(avs.as_deref(), &chain, config, Some(wallet), Some(pw)).await?;
     let ivynet_inner = Arc::new(RwLock::new(avs_provider));
 
     // NOTE: Due to limitations with Prost / GRPC, we create a new server with a reference-counted

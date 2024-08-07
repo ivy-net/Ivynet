@@ -22,7 +22,6 @@ use ivynet_core::{
     },
     rpc_management::connect_provider,
     utils::try_parse_chain,
-    wallet::IvyWallet,
 };
 use std::{iter::zip, sync::Arc};
 use tokio::sync::RwLock;
@@ -229,29 +228,31 @@ impl Operator for IvynetService {
         &self,
         request: Request<SetEcdsaKeyfilePathRequest>,
     ) -> Result<Response<SetEcdsaKeyfilePathResponse>, Status> {
-        let mut provider = self.avs_provider.write().await;
-        if let Some(avs) = &provider.avs {
-            if avs.running() {
-                return Err(Status::failed_precondition("AVS must be stopped to set keyfile path"));
-            }
-        }
+        //     let mut provider = self.avs_provider.write().await;
+        //     if let Some(avs) = &provider.avs {
+        //         if avs.running() {
+        //             return Err(Status::failed_precondition("AVS must be stopped to set keyfile path"));
+        //         }
+        //     }
 
-        let req = request.into_inner();
-        let path = req.keyfile_path;
-        let pass = req.keyfile_password;
+        //     let req = request.into_inner();
+        //     let path = req.keyfile_path;
+        //     let pass = req.keyfile_password;
 
-        let signer = IvyWallet::from_keystore(path.clone().into(), &pass)?;
+        //     let signer =
+        //         IvyWallet::from_keystore(path.clone().into(), &pass).map_err(|e| IvyError::from(e))?;
 
-        // Update provider
-        provider.with_signer(signer)?;
-        provider.with_keyfile_pw(Some(pass))?;
+        //     // Update provider
+        //     provider.with_signer(signer)?;
+        //     provider.with_keyfile_pw(Some(pass))?;
 
-        // Update config file
-        let mut config = IvyConfig::load_from_default_path().map_err(IvyError::from)?;
-        config.default_private_keyfile = path.into();
-        config.store().map_err(IvyError::from)?;
+        //     // Update config file
+        //     let mut config = IvyConfig::load_from_default_path().map_err(IvyError::from)?;
+        //     config.default_private_keyfile = path.into();
+        //     config.store().map_err(IvyError::from)?;
 
-        Ok(Response::new(SetEcdsaKeyfilePathResponse {}))
+        //     Ok(Response::new(SetEcdsaKeyfilePathResponse {}))
+        todo!()
     }
 
     async fn set_bls_keyfile_path(

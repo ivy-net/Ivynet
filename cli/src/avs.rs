@@ -2,7 +2,9 @@ use dialoguer::Password;
 use ivynet_core::{
     avs::{build_avs_provider, commands::AvsCommands},
     config::IvyConfig,
+    error::IvyError,
     grpc::client::{create_channel, Source},
+    keyring::Keyring,
     wallet::IvyWallet,
 };
 
@@ -13,10 +15,12 @@ pub async fn parse_avs_subcommands(subcmd: AvsCommands, config: &IvyConfig) -> R
 
     // Setup runs local, otherwise construct a client and continue.
     if let AvsCommands::Setup { ref avs, ref chain } = subcmd {
-        let password: String = Password::new()
-            .with_prompt("Input the password for your stored operator ECDSA keyfile")
-            .interact()?;
-        let wallet = IvyWallet::from_keystore(config.default_private_keyfile.clone(), &password)?;
+        // TODO: Attempt env
+        let keyring = Keyring::load_default().map_err(|e| IvyError::from(e))?;
+        let keyfile = keyring.default_ecdsa_keyfile().map_err(|e| IvyError::from(e))?;
+        let (wallet, password) =
+            keyfile.try_to_wallet_env_dialog().map_err(|e| IvyError::from(e))?;
+
         let avs =
             build_avs_provider(Some(avs), chain, config, Some(wallet), Some(password.clone()))
                 .await?;

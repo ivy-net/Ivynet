@@ -9,38 +9,36 @@ use ivynet_core::{
         client::{create_channel, Request, Source, Uri},
         messages::RegistrationCredentials,
     },
-    keyring::{Keyring, KeyringError, DEFAULT_KEY_ID},
     metadata::Metadata,
     utils::try_parse_chain,
-    wallet::IvyWallet,
 };
 
 use crate::error::Error;
 
 #[derive(Parser, Debug, Clone)]
 pub enum ConfigCommands {
-    #[command(
-        name = "import-key",
-        about = "Import and save as your default Ethereum private key with a password <PRIVATE_KEY>"
-    )]
-    ImportPrivateKey { private_key: String, keyname: Option<String>, password: Option<String> },
-    #[command(
-        name = "create-key",
-        about = "Create an Ethereum private key to use with Ivynet and optionally store it with a password"
-    )]
-    CreatePrivateKey {
-        #[arg(long)]
-        store: bool,
-        keyname: Option<String>,
-        password: Option<String>,
-    },
-    #[command(
-        name = "get-default-public",
-        about = "Get the current default saved keypair's Ethereum address"
-    )]
-    GetDefaultEthAddress,
-    #[command(name = "get-default-private", about = "Get the current default saved private key")]
-    GetDefaultPrivateKey,
+    // #[command(
+    //     name = "import-key",
+    //     about = "Import and save as your default Ethereum private key with a password <PRIVATE_KEY>"
+    // )]
+    // ImportPrivateKey { private_key: String, keyname: Option<String>, password: Option<String> },
+    // #[command(
+    //     name = "create-key",
+    //     about = "Create an Ethereum private key to use with Ivynet and optionally store it with a password"
+    // )]
+    // CreatePrivateKey {
+    //     #[arg(long)]
+    //     store: bool,
+    //     keyname: Option<String>,
+    //     password: Option<String>,
+    // },
+    // #[command(
+    //     name = "get-default-public",
+    //     about = "Get the current default saved keypair's Ethereum address"
+    // )]
+    // GetDefaultEthAddress,
+    // #[command(name = "get-default-private", about = "Get the current default saved private key")]
+    // GetDefaultPrivateKey,
     #[command(
         name = "set-rpc",
         about = "Set default URLs to use when connecting to 'mainnet', 'holesky', and 'local' RPC urls <CHAIN> <RPC_URL>"
@@ -88,26 +86,6 @@ pub async fn parse_config_subcommands(
 ) -> Result<(), Error> {
     // TODO: Fix key management here
     match subcmd {
-        ConfigCommands::ImportPrivateKey { private_key, keyname, password } => {
-            let wallet = IvyWallet::from_private_key(private_key)?;
-            let (keyname, pass) = get_credentials(keyname, password);
-            let prv_key_path = wallet.encrypt_and_store(&config.get_path(), &keyname, &pass)?;
-            config.default_private_keyfile = prv_key_path;
-            config.store().map_err(IvyError::from)?;
-        }
-        ConfigCommands::CreatePrivateKey { store, keyname, password } => {
-            let wallet = IvyWallet::new();
-            let priv_key = wallet.to_private_key();
-            println!("Private key: {:?}", priv_key);
-            let addr = wallet.address();
-            println!("Public Address: {:?}", addr);
-            if store {
-                let (keyname, pass) = get_credentials(keyname, password);
-                let prv_key_path = wallet.encrypt_and_store(&config.get_path(), &keyname, &pass)?;
-                config.default_private_keyfile = prv_key_path;
-                config.store().map_err(IvyError::from)?;
-            }
-        }
         ConfigCommands::SetRpc { chain, rpc_url } => {
             let chain = try_parse_chain(&chain)?;
             config.set_rpc_url(chain, &rpc_url)?;
@@ -118,25 +96,6 @@ pub async fn parse_config_subcommands(
                 "Url for {chain} is {}",
                 config.get_rpc_url(chain.parse::<Chain>().expect("Wrong network name provided"))?
             );
-        }
-        ConfigCommands::GetDefaultEthAddress => {
-            println!("Public Key: {:?}", config.default_ether_address.clone());
-        }
-        ConfigCommands::GetDefaultPrivateKey => {
-            let keyring = Keyring::load_default().map_err(IvyError::from)?;
-            let default_keyfile = keyring
-                .default_ecdsa_keyfile()
-                .ok_or(IvyError::from(KeyringError::KeyfileNotFound(DEFAULT_KEY_ID.to_owned())))?;
-            let wallet = match default_keyfile.try_to_wallet_with_env_password() {
-                Ok(wallet) => wallet,
-                Err(_) => {
-                    let pass = Password::new()
-                        .with_prompt("Enter the password for the default key")
-                        .interact()?;
-                    IvyWallet::from_keystore(default_keyfile.path.clone(), &pass)?
-                }
-            };
-            println!("Private key: {:?}", wallet.to_private_key());
         }
         ConfigCommands::SetMetadata { metadata_uri, logo_uri, favicon_uri } => {
             let metadata_uri = metadata_uri.unwrap_or("".to_string());
@@ -163,7 +122,7 @@ pub async fn parse_config_subcommands(
         }
         ConfigCommands::Register { email, password } => {
             let config = IvyConfig::load_from_default_path().map_err(IvyError::from)?;
-            let public_key = config.identity_wallet()?.address();
+            let public_key = config.identity_wallet().map_err(|e| IvyError::from(e))?.address();
             let mut backend =
                 BackendClient::new(create_channel(Source::Uri(server_url), server_ca).await?);
             backend
@@ -229,92 +188,92 @@ mod tests {
     }
 
     // Usage example within an async test
-    #[tokio::test]
-    async fn test_import_key() {
-        let test_dir = "test_import_key";
-        build_test_dir(test_dir, |test_path| async move {
-            let config = IvyConfig::new_at_path(test_path.clone());
+    // #[tokio::test]
+    // async fn test_import_key() {
+    //     let test_dir = "test_import_key";
+    //     build_test_dir(test_dir, |test_path| async move {
+    //         let config = IvyConfig::new_at_path(test_path.clone());
 
-            let result = parse_config_subcommands(
-                ConfigCommands::ImportPrivateKey {
-                    private_key: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
-                        .to_string(),
-                    keyname: Some("testkey".to_string()),
-                    password: Some("password".to_string()),
-                },
-                config,
-                "http://localhost:50051".parse().unwrap(),
-                None,
-            )
-            .await;
+    //         let result = parse_config_subcommands(
+    //             ConfigCommands::ImportPrivateKey {
+    //                 private_key: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+    //                     .to_string(),
+    //                 keyname: Some("testkey".to_string()),
+    //                 password: Some("password".to_string()),
+    //             },
+    //             config,
+    //             "http://localhost:50051".parse().unwrap(),
+    //             None,
+    //         )
+    //         .await;
 
-            println!("{result:?}",);
-            assert!(result.is_ok());
-            assert!(test_path.join("testkey.json").exists());
+    //         println!("{result:?}",);
+    //         assert!(result.is_ok());
+    //         assert!(test_path.join("testkey.json").exists());
 
-            let config =
-                IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
-            println!("{config:?}",);
+    //         let config =
+    //             IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
+    //         println!("{config:?}",);
 
-            // Read and parse the TOML file
-            let toml_content = fs::read_to_string(test_path.join("ivy-config.toml"))
-                .await
-                .expect("Failed to read TOML file");
-            let toml_data: toml::Value =
-                toml::from_str(&toml_content).expect("Failed to parse TOML");
+    //         // Read and parse the TOML file
+    //         let toml_content = fs::read_to_string(test_path.join("ivy-config.toml"))
+    //             .await
+    //             .expect("Failed to read TOML file");
+    //         let toml_data: toml::Value =
+    //             toml::from_str(&toml_content).expect("Failed to parse TOML");
 
-            // Perform assertions on TOML keys and values
-            let private_keypath = format!("{}/testkey.json", test_path.to_str().unwrap());
-            assert_eq!(
-                toml_data["default_private_keyfile"].as_str(),
-                Some(private_keypath.as_str())
-            );
-        })
-        .await;
-    }
+    //         // Perform assertions on TOML keys and values
+    //         let private_keypath = format!("{}/testkey.json", test_path.to_str().unwrap());
+    //         assert_eq!(
+    //             toml_data["default_private_keyfile"].as_str(),
+    //             Some(private_keypath.as_str())
+    //         );
+    //     })
+    //     .await;
+    // }
 
-    #[tokio::test]
-    async fn test_create_key() {
-        let test_dir = "test_create_key";
-        build_test_dir(test_dir, |test_path| async move {
-            let config = IvyConfig::new_at_path(test_path.clone());
+    // #[tokio::test]
+    // async fn test_create_key() {
+    //     let test_dir = "test_create_key";
+    //     build_test_dir(test_dir, |test_path| async move {
+    //         let config = IvyConfig::new_at_path(test_path.clone());
 
-            let result = parse_config_subcommands(
-                ConfigCommands::CreatePrivateKey {
-                    store: true,
-                    keyname: Some("testkey".to_string()),
-                    password: Some("password".to_string()),
-                },
-                config,
-                "http://localhost:50051".parse().unwrap(),
-                None,
-            )
-            .await;
+    //         let result = parse_config_subcommands(
+    //             ConfigCommands::CreatePrivateKey {
+    //                 store: true,
+    //                 keyname: Some("testkey".to_string()),
+    //                 password: Some("password".to_string()),
+    //             },
+    //             config,
+    //             "http://localhost:50051".parse().unwrap(),
+    //             None,
+    //         )
+    //         .await;
 
-            println!("{result:?}",);
-            assert!(result.is_ok());
-            assert!(test_path.join("testkey.json").exists());
+    //         println!("{result:?}",);
+    //         assert!(result.is_ok());
+    //         assert!(test_path.join("testkey.json").exists());
 
-            let config =
-                IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
-            println!("{config:?}",);
+    //         let config =
+    //             IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
+    //         println!("{config:?}",);
 
-            // Read and parse the TOML file
-            let toml_content = fs::read_to_string(test_path.join("ivy-config.toml"))
-                .await
-                .expect("Failed to read TOML file");
-            let toml_data: toml::Value =
-                toml::from_str(&toml_content).expect("Failed to parse TOML");
+    //         // Read and parse the TOML file
+    //         let toml_content = fs::read_to_string(test_path.join("ivy-config.toml"))
+    //             .await
+    //             .expect("Failed to read TOML file");
+    //         let toml_data: toml::Value =
+    //             toml::from_str(&toml_content).expect("Failed to parse TOML");
 
-            // Perform assertions on TOML keys and values
-            let private_keypath = format!("{}/testkey.json", test_path.to_str().unwrap());
-            assert_eq!(
-                toml_data["default_private_keyfile"].as_str(),
-                Some(private_keypath.as_str())
-            );
-        })
-        .await;
-    }
+    //         // Perform assertions on TOML keys and values
+    //         let private_keypath = format!("{}/testkey.json", test_path.to_str().unwrap());
+    //         assert_eq!(
+    //             toml_data["default_private_keyfile"].as_str(),
+    //             Some(private_keypath.as_str())
+    //         );
+    //     })
+    //     .await;
+    // }
 
     #[tokio::test]
     async fn test_rpc_functionality() {

@@ -1,8 +1,14 @@
 use crate::{
-    config::IvyConfig, eigen::{
+    config::IvyConfig,
+    eigen::{
         contracts::delegation_manager::DelegationManager,
         quorum::{Quorum, QuorumType},
-    }, error::IvyError, keyring::Keyring, rpc_management::{connect_provider, IvyProvider}, utils::try_parse_chain, wallet::IvyWallet
+    },
+    error::IvyError,
+    keyring::Keyring,
+    rpc_management::{connect_provider, IvyProvider},
+    utils::try_parse_chain,
+    wallet::IvyWallet,
 };
 use async_trait::async_trait;
 use ethers::{
@@ -186,7 +192,7 @@ impl AvsProvider {
         Ok(())
     }
 
-    pub async fn register(&self, config: &IvyConfig) -> Result<(), IvyError> {
+    pub async fn register(&self, _config: &IvyConfig) -> Result<(), IvyError> {
         let chain = Chain::try_from(self.provider.signer().chain_id()).unwrap_or_default();
         let quorums = self.get_bootable_quorums().await?;
         if quorums.is_empty() {
@@ -205,22 +211,19 @@ impl AvsProvider {
         //     //Register operator for all quorums they're eligible for
         // }
 
-        let keyfile = Keyring::
+        // TODO: Set this during the setup phase
+        let keyring = Keyring::load_default()?;
+        let keyfile = keyring.default_ecdsa_keyfile()?;
 
-        if let Some(pw) = &self.keyfile_pw {
-            self.avs()?
-                .register(
-                    quorums,
-                    avs_path.clone(),
-                    config.default_private_keyfile.clone(),
-                    pw,
-                    chain,
-                )
-                .await?;
-        } else {
-            error!("No keyfile password provided. Exiting...");
-            return Err(IvyError::KeyfilePasswordError);
-        }
+        self.avs()?
+            .register(
+                quorums,
+                avs_path.clone(),
+                keyfile.path.clone(),
+                &keyfile.env_password()?,
+                chain,
+            )
+            .await?;
 
         Ok(())
     }
@@ -236,20 +239,18 @@ impl AvsProvider {
 
         let avs_path = self.avs()?.path();
 
-        if let Some(pw) = &self.keyfile_pw {
-            self.avs()?
-                .unregister(
-                    quorums,
-                    avs_path.clone(),
-                    config.default_private_keyfile.clone(),
-                    pw,
-                    chain,
-                )
-                .await?;
-        } else {
-            error!("No keyfile password provided. Exiting...");
-            return Err(IvyError::KeyfilePasswordError);
-        }
+        let keyring = Keyring::load_default()?;
+        let keyfile = keyring.default_ecdsa_keyfile()?;
+
+        self.avs()?
+            .register(
+                quorums,
+                avs_path.clone(),
+                keyfile.path.clone(),
+                &keyfile.env_password()?,
+                chain,
+            )
+            .await?;
 
         Ok(())
     }

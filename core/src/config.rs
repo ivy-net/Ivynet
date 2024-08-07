@@ -112,8 +112,10 @@ impl IvyConfig {
         self.path.clone()
     }
 
-    pub fn identity_wallet(&self) -> Result<IvyWallet, IvyError> {
-        IvyWallet::from_private_key(self.identity_key.clone().ok_or(IvyError::IdentityKeyError)?)
+    pub fn identity_wallet(&self) -> Result<IvyWallet, IvyWalletError> {
+        IvyWallet::from_private_key(
+            self.identity_key.clone().ok_or(IvyWalletError::IdentityKeyError)?,
+        )
     }
 
     pub fn uds_dir(&self) -> String {

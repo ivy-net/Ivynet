@@ -75,6 +75,9 @@ pub enum IvyError {
     KeyringError(#[from] crate::keyring::KeyringError),
 
     #[error(transparent)]
+    IvyWalletError(#[from] crate::wallet::IvyWalletError),
+
+    #[error(transparent)]
     ProviderError(#[from] ProviderError),
 
     #[error(
@@ -126,9 +129,6 @@ pub enum IvyError {
 
     #[error("Malformed config found, ensure ivynet setup was run correctly")]
     MalformedConfigError,
-
-    #[error("IvyWallet identity key not found")]
-    IdentityKeyError,
 
     #[error("No keyfile password found")]
     KeyfilePasswordError,

@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use cli::{avs, config, error::Error, init::initialize_ivynet, operator, service, staker};
+use cli::{avs, config, error::Error, init::initialize_ivynet, keys, operator, service, staker};
 use ivynet_core::{avs::commands::AvsCommands, config::IvyConfig, grpc::client::Uri};
 use std::str::FromStr as _;
 #[allow(unused_imports)]
@@ -38,10 +38,15 @@ enum Commands {
         #[command(subcommand)]
         subcmd: AvsCommands,
     },
-    #[command(name = "config", about = "Manage rpc information, keys, and keyfile settings")]
+    #[command(name = "config", about = "Manage rpc information and global configurtion settings")]
     Config {
         #[command(subcommand)]
         subcmd: config::ConfigCommands,
+    },
+    #[command(name = "keys", about = "Manage your ECDSA and BLS keys")]
+    Keys {
+        #[command(subcommand)]
+        subcmd: keys::KeyCommands,
     },
     #[command(name = "operator", about = "Request information, register, or manage your operator")]
     Operator {
@@ -73,6 +78,7 @@ async fn main() -> Result<(), Error> {
 
     match args.cmd {
         Commands::Init => initialize_ivynet()?,
+        Commands::Keys { subcmd } => keys::parse_key_subcommands(subcmd).await?,
         Commands::Config { subcmd } => {
             config::parse_config_subcommands(
                 subcmd,
@@ -91,10 +97,7 @@ async fn main() -> Result<(), Error> {
         Commands::Avs { subcmd } => avs::parse_avs_subcommands(subcmd, &check_for_config()).await?,
         Commands::Serve { avs, chain } => {
             let config = check_for_config();
-            let keyfile_pw = dialoguer::Password::new()
-                .with_prompt("Input the password for your stored Operator ECDSA keyfile")
-                .interact()?;
-            service::serve(avs, chain, &config, &keyfile_pw).await?
+            service::serve(avs, chain, &config).await?
         }
     }
 
