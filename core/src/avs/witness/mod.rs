@@ -4,12 +4,8 @@ use self::{
 };
 use super::AvsVariant;
 use crate::{
-    avs::witness::contracts::OperatorRegistry,
-    config::IvyConfig,
-    eigen::quorum::QuorumType,
-    error::IvyError,
-    keyring::{EcdsaKeyFile, Keyring},
-    rpc_management::IvyProvider,
+    avs::witness::contracts::OperatorRegistry, config::IvyConfig, eigen::quorum::QuorumType,
+    error::IvyError, rpc_management::IvyProvider,
 };
 use async_trait::async_trait;
 use ethers::{
