@@ -17,12 +17,10 @@ use ethers::{
 use ivynet_macros::h160;
 use std::{path::PathBuf, process::Child, sync::Arc};
 use thiserror::Error as ThisError;
-use tokio::sync::watch;
 use tracing::info;
 
 pub mod config;
 pub mod contracts;
-pub mod util;
 
 /// LIGHT NODE ONLY implemented at the moment
 ///
