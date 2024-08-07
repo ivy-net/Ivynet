@@ -1,0 +1,114 @@
+---
+- name: Get latest release of ivynet-backend
+  community.general.github_release:
+    user: ivy-net
+    repo: ivynet
+    token: "{{ ivynet_backend_github_token }}"
+    action: latest_release
+  register: ivynet_backend_release
+  tags:
+    - ivynet
+    - github
+
+- name: Expose tag of the downloaded assets
+  ansible.builtin.debug:
+    msg: "{{ ivynet_backend_release.tag }} is the tag"
+  tags:
+    - ivynet
+    - github
+
+- name: Get release id
+  ansible.builtin.uri:
+    # yamllint disable-line rule:line-length
+    url: "https://api.github.com/repos/ivy-net/ivynet/releases/tags/{{ ivynet_backend_release.tag }}"
+    method: GET
+    headers:
+      Authorization: "token {{ ivynet_backend_github_token }}"
+    follow_redirects: all
+  register: ivynet_backend_assets_output
+  tags:
+    - ivynet
+    - github
+
+- name: Prepare variable if assets id
+  ansible.builtin.set_fact:
+    # yamllint disable-line rule:line-length
+    ivynet_backend_assets_id: "{{ ivynet_backend_assets_output | community.general.json_query(json_output_query) }}"
+    cacheable: true
+  vars:
+    json_output_query: "json.assets[?name=='ivynet'].id"
+  tags:
+    - ivynet
+    - github
+
+- name: Get assets
+  ansible.builtin.uri:
+    # yamllint disable-line rule:line-length
+    url: "https://api.github.com/repos/ivy-net/ivynet/releases/assets/{{ ivynet_backend_assets_id[0] }}"
+    method: GET
+    headers:
+      Authorization: "token {{ ivynet_backend_github_token }}"
+      Accept: "application/octet-stream"
+    follow_redirects: all
+    status_code: [200, 304]
+    dest: "{{ ivynet_backend_install_path }}/bin/{{ item }}"
+    owner: root
+    group: root
+    mode: 0755
+  loop:
+    - ivynet-backend
+  tags:
+    - ivynet
+    - github
+
+- name: Save ivynet release info
+  ansible.builtin.copy:
+    dest: "{{ ivynet_backend_install_path }}/ivynet.tag"
+    content: |
+      {{ ivynet_backend_release.tag }}
+    owner: root
+    group: root
+    mode: 0444
+  tags:
+    - ivynet
+    - github
+
+- name: Add another bin dir to system-wide $PATH.
+  ansible.builtin.copy:
+    dest: /etc/profile.d/ivy-path.sh
+    content: 'PATH=$PATH:{{ ivynet_backend_install_path }}/bin'
+  tags:
+    - ivynet
+
+      #- name: Git checkout (to get sql scripts)
+      #  ansible.builtin.git:
+      #    repo: "https://{{ivynet_backend_github_token}}@github.com/ivy-net/ivynet.git"
+      #    dest: "{{ ivynet_backend_install_path }}/repo"
+      #
+- name: Configure postgres DB for ivynet
+  community.postgresql.postgresql_db:
+    name: ivy
+  become_user: postgres
+  tags:
+    - ivynet
+    - postgres
+
+- name: Add postgres ivy user
+  community.postgresql.postgresql_user:
+    name: ivy
+    password: "{{ ivynet_backend_postgres_pass }}"
+  become_user: postgres
+  tags:
+    - ivynet
+    - postgres
+
+- name: Run migrations
+  community.postgresql.postgresql_script:
+    path: "{{ item }}"
+    db: ivy
+  become_user: postgres
+  with_fileglob:
+    - "{{ ivynet_backend_migration_path }}/*.sql"
+  tags:
+    - ivynet
+    - postgres

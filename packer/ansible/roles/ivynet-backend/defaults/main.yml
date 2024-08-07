@@ -1,0 +1,15 @@
+---
+# Token to access github
+ivynet_backend_github_token: "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"
+
+# Path where to install binaries and other files
+ivynet_backend_install_path: /opt/ivynet
+
+# Password for postgres user (should be a secret)
+ivynet_backend_postgres_pass: "1vyGrowes!nWinter"
+
+# Postgresql user for Backend
+ivynet_backend_postgres_user: "ivy"
+
+# Path to directory with
+ivynet_backend_migration_path: "../../../../backend/migrations"

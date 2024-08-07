@@ -1,0 +1,69 @@
+---
+- name: Add Docker Module Repository
+  ansible.builtin.deb822_repository:
+    name: docker
+    types: [deb]
+    uris: "https://download.docker.com/linux/{{ ansible_distribution | lower }}"
+    signed_by: "https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg"
+    suites: ["{{ ansible_distribution_release | lower }}"]
+    components: [stable]
+    state: present
+    enabled: true
+  tags:
+    - general
+    - docker
+
+- name: Install packages (for rust and docker)
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    update_cache: true
+  loop:
+    - python3-pip
+    - rustc
+    - cargo
+    - protobuf-compiler
+    - pkg-config
+    - libssl-dev
+    - docker-ce
+    - docker-ce-cli
+    - containerd.io
+    - docker-buildx-plugin
+    - docker-compose-plugin
+  tags:
+    - general
+    - download
+
+- name: Install extra python packages(for github access)
+  ansible.builtin.pip:
+    name: "{{ item }}"
+    state: latest
+    break_system_packages: true
+  loop:
+    - github3.py
+    - psycopg2-binary
+  tags:
+    - general
+    - download
+    - github
+
+- name: Install and configure 3rd party tools
+  ansible.builtin.import_tasks:
+    file: third_party.yml
+
+
+- name: Prepare directories
+  ansible.builtin.file:
+    path: "{{ ivynet_backend_install_path }}/{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: 0755
+  loop:
+    - ''
+    - bin
+  tags:
+    - general
+
+- name: Download ivynet-backend
+  ansible.builtin.import_tasks:
+    file: get_ivynet.yml
