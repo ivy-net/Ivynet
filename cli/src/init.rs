@@ -186,7 +186,9 @@ fn interactive_add_default_keyfile(mut keyring: Keyring) -> Result<Keyring, IvyE
                 &pw,
             )?;
             let keyfile = EcdsaKeyFile {
-                name: DEFAULT_KEY_NAME.to_uppercase(),
+                name: DEFAULT_KEY_NAME.to_string(),
+                
+            }
             keyring.add_ecdsa_keyfile(DEFAULT_KEY_NAME, prv_key_path);
         }
         2 => {
