@@ -345,14 +345,9 @@ impl AvsVariant for EigenDA {
         let home_str = home_dir.to_str().expect("Could not get home directory");
         env_lines.set("USER_HOME", home_str);
         // Node resource paths
-        env_lines.set(
-            "NODE_G1_PATH_HOST",
-            r#"${EIGENLAYER_HOME}/eigenda/eigenda-operator-setup/resources/g1.point"#,
-        );
-        env_lines.set(
-            "NODE_G2_PATH_HOST",
-            r#"${EIGENLAYER_HOME}/eigenda/eigenda-operator-setup/resources/g2.point.powerOf2"#,
-        );
+        env_lines.set("NODE_G1_PATH_HOST", r#"${EIGENLAYER_HOME}/eigenda/resources/g1.point"#);
+        env_lines
+            .set("NODE_G2_PATH_HOST", r#"${EIGENLAYER_HOME}/eigenda/resources/g2.point.powerOf2"#);
         env_lines.set(
             "NODE_CACHE_PATH_HOST",
             r#"${EIGENLAYER_HOME}/eigenda/eigenda-operator-setup/resources/cache"#,
@@ -389,7 +384,8 @@ impl AvsVariant for EigenDA {
 
 /// Downloads eigenDA node resources
 pub async fn download_g1_g2(eigen_path: PathBuf) -> Result<(), IvyError> {
-    let resources_dir = eigen_path.join("eigenda-operator-setup/resources");
+    let resources_dir = eigen_path.join("resources");
+    fs::create_dir_all(resources_dir.clone())?;
     let g1_file_path = resources_dir.join("g1.point");
     let g2_file_path = resources_dir.join("g2.point.powerOf2");
     if g1_file_path.exists() {

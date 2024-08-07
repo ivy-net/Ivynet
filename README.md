@@ -40,13 +40,13 @@ cargo build -r
 
 ```sh
 [[ -d ~/bin ]] || mkdir ~/bin
-cp target/release/ivynet-cli ~/bin
+cp target/release/ivynet ~/bin
 ```
 
 - Confirm that the build was successful
 
 ```sh
-ivynet-cli --help
+ivynet --help
 ```
 
 ### Private Key setup
