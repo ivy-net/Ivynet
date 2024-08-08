@@ -85,3 +85,4 @@ Please refer to the CLI documentation [here](./cli/README.md)
 | Omni         | Waiting on Omni   | NA                         | "Final Testnet" releasing soon  |                                |
 | AltLayer     | NO                | Implemented up to whitelist| Whitelist                       |                                |
 | OpenLayer    | Yes               | Next up                    | NA                              |                                |
+| Lagrange     | Yes - blocked BLS | Implemented                | !!LG has no unregister function!!|                                |
