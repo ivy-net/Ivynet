@@ -69,7 +69,18 @@ packer build -var 'version=2' cloudstation.pkr.hcl
 * For molecule it can be:
 ```
 molecule converge -- --tags github
+
 ```
+
+## Ansible
+
+The ansible config
+```
+[defaults]
+stdout_callback = yaml
+pipelining = True
+```
+Pipelining helps to deal with become postgres user.
 
 ## MOTD
 

@@ -12,4 +12,4 @@ ivynet_backend_postgres_pass: "1vyGrowes!nWinter"
 ivynet_backend_postgres_user: "ivy"
 
 # Path to directory with
-ivynet_backend_migration_path: "../../../../backend/migrations"
+ivynet_backend_migration_path: "{{ ivynet_backend_install_path }}/repo/backend/migrations"
