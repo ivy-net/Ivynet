@@ -1,5 +1,8 @@
 use ivynet_core::{
-    avs::{eigenda::EigenDA, AvsProvider, AvsVariant},
+    avs::{
+        eigenda::EigenDA, lagrange::Lagrange, mach_avs::AltLayer, witness::Witness, AvsProvider,
+        AvsVariant,
+    },
     config::IvyConfig,
     eigen::contracts::delegation_manager::OperatorDetails,
     error::IvyError,
@@ -140,7 +143,9 @@ impl Avs for IvynetService {
 
         let avs_instance: Box<dyn AvsVariant> = match avs.as_ref() {
             "eigenda" => Box::new(EigenDA::new_from_chain(chain)),
-            // "altlayer" => Box::new(AltLayer::new_from_chain(chain)),
+            "altlayer" => Box::new(AltLayer::new_from_chain(chain)),
+            "lagrange" => Box::new(Lagrange::new_from_chain(chain)),
+            "witness" => Box::new(Witness::new_from_chain(chain)),
             _ => return Err(IvyError::InvalidAvsType(avs.to_string()).into()),
         };
 

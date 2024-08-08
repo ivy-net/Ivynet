@@ -136,7 +136,7 @@ fn set_config_keys(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
                 Input::new().with_prompt("Enter a name for the keyfile").interact()?;
             let pw = get_confirm_password();
             let wallet = IvyWallet::from_private_key(private_key)?;
-            let prv_key_path = wallet.encrypt_and_store(&config.get_path(), keyfile_name, pw)?;
+            let prv_key_path = wallet.encrypt_and_store(&config.get_path(), &keyfile_name, &pw)?;
             config.default_private_keyfile.clone_from(&prv_key_path);
         }
         1 => {
@@ -162,7 +162,7 @@ fn set_config_keys(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
                 pw_confirmed = pw == confirm_pw;
             }
 
-            let prv_key_path = wallet.encrypt_and_store(&config.get_path(), keyfile_name, pw)?;
+            let prv_key_path = wallet.encrypt_and_store(&config.get_path(), &keyfile_name, &pw)?;
             config.default_private_keyfile.clone_from(&prv_key_path);
         }
         2 => {

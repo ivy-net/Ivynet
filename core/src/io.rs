@@ -28,6 +28,13 @@ pub enum IoError {
         path: String,
     },
 
+    #[error("JSON parse error: {source} at path {path}")]
+    SerdeRcJsonError {
+        #[source]
+        source: serde_jsonrc::Error,
+        path: String,
+    },
+
     #[error("TOML deserialize error: {source} at path {path}")]
     TomlDeError {
         #[source]

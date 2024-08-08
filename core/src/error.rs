@@ -11,7 +11,7 @@ use tonic::Status;
 use zip::result::ZipError;
 
 use crate::{
-    avs::{eigenda::EigenDAError, lagrange::LagrangeError, witness::WitnessError},
+    avs::{eigenda::EigenDAError, error, lagrange::LagrangeError, witness::WitnessError},
     eigen::quorum::QuorumError,
     rpc_management::IvyProvider,
 };
@@ -49,7 +49,7 @@ pub enum IvyError {
 
     #[error(transparent)]
     WitnessError(#[from] WitnessError),
-    
+
     #[error(transparent)]
     LagrangeError(#[from] LagrangeError),
 
@@ -73,6 +73,9 @@ pub enum IvyError {
 
     #[error(transparent)]
     ConfigError(#[from] crate::config::ConfigError),
+
+    #[error(transparent)]
+    KeyfileError(#[from] crate::keys::keyfile::KeyfileError),
 
     #[error(transparent)]
     ProviderError(#[from] ProviderError),
