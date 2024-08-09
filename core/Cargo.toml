@@ -51,7 +51,7 @@ hyper = { version = "1.4.0", features = ["http1", "server"] }
 which = "6.0.2"
 
 [build-dependencies]
-prost-build = "0.12"
+prost-build = "0.13"
 prost-wkt-build = "0.5"
 tonic-build = "0.11"
 
