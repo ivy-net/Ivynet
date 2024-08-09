@@ -2,6 +2,7 @@ use crate::error::BackendError;
 use sqlx::{pool::PoolOptions, PgPool};
 
 pub mod account;
+pub mod metric;
 pub mod node;
 pub mod organization;
 pub mod verification;

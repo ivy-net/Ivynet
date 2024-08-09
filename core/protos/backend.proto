@@ -7,4 +7,5 @@ import "messages.proto";
 
 service Backend {
     rpc Register(messages.RegistrationCredentials) returns (google.protobuf.Empty);
+    rpc Metrics(messages.SignedMetrics) returns (google.protobuf.Empty);
 }

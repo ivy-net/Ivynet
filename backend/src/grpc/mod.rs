@@ -1,15 +1,19 @@
 use std::sync::Arc;
 
-use crate::{db::Account, error::BackendError};
+use crate::{
+    db::{metric::Metric, node::DbNode, Account},
+    error::BackendError,
+};
 use ivynet_core::{
-    ethers::types::Address,
+    ethers::types::{Address, Signature},
     grpc::{
         self,
         backend::backend_server::{Backend, BackendServer},
         client::{Request, Response},
-        messages::RegistrationCredentials,
+        messages::{RegistrationCredentials, SignedMetrics},
         server, Status,
     },
+    signature::recover,
 };
 use sqlx::PgPool;
 use tracing::debug;
@@ -41,6 +45,31 @@ impl Backend for BackendService {
             .await
             .map_err(|_| Status::not_found(format!("Cannot register new node for {account:?}",)))?;
         debug!("User {} has registered new node with address {:?}", &req.email, node_id);
+
+        Ok(Response::new(()))
+    }
+
+    async fn metrics(&self, request: Request<SignedMetrics>) -> Result<Response<()>, Status> {
+        let req = request.into_inner();
+
+        let node_id = recover(
+            &req.metrics,
+            &Signature::try_from(req.signature.as_slice())
+                .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
+        )
+        .await?;
+
+        let node = DbNode::get(&self.pool, &node_id)
+            .await
+            .map_err(|_| Status::not_found("Node not registered"))?;
+
+        _ = Metric::record(
+            &self.pool,
+            &node,
+            &req.metrics.iter().map(|v| v.into()).collect::<Vec<_>>(),
+        )
+        .await
+        .map_err(|_| Status::internal("Failed while saving metrics"))?;
 
         Ok(Response::new(()))
     }

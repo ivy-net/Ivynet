@@ -2,7 +2,7 @@ use ethers::{
     contract::ContractError,
     providers::{JsonRpcError, MiddlewareError as _, ProviderError},
     signers::WalletError,
-    types::{Bytes, Chain, TryFromPrimitiveError},
+    types::{Bytes, Chain, SignatureError, TryFromPrimitiveError},
     utils::hex::FromHexError,
 };
 use indicatif::style::TemplateError;
@@ -13,6 +13,7 @@ use zip::result::ZipError;
 use crate::{
     avs::{eigenda::EigenDAError, lagrange::LagrangeError},
     eigen::quorum::QuorumError,
+    grpc::client::ClientError,
     rpc_management::IvyProvider,
 };
 
@@ -28,6 +29,9 @@ pub enum IvyError {
     // TODO: Attempt to deprecate, see private_key_string to bytes methods.
     #[error(transparent)]
     HexError(#[from] FromHexError),
+
+    #[error(transparent)]
+    SignatureError(#[from] SignatureError),
 
     #[error(transparent)]
     UrlParseError(#[from] url::ParseError),
@@ -70,6 +74,9 @@ pub enum IvyError {
 
     #[error(transparent)]
     ProviderError(#[from] ProviderError),
+
+    #[error(transparent)]
+    ClientError(#[from] ClientError),
 
     #[error(
         "AVS {0} on chain {1} is currently running. Stop the AVS before using this operation."

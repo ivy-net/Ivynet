@@ -19,6 +19,7 @@ use zip::read::ZipArchive;
 use crate::{
     avs::AvsVariant,
     config::{self, IvyConfig},
+    dockercmd::{docker_cmd, docker_cmd_status},
     download::dl_progress_bar,
     eigen::{
         node_classes::{self, NodeClass},
@@ -131,16 +132,16 @@ impl AvsVariant for EigenDA {
         };
         std::env::set_current_dir(docker_path.clone())?;
         debug!("docker start: {} |  {:?}", docker_path.display(), quorums);
-        let build = Command::new("docker-compose").arg("build").arg("--no-cache").status()?; //.arg("compose")
+        let build = docker_cmd_status(["build", "--no-cache"])?;
 
-        let _ = Command::new("docker-compose").arg("config").status()?;
+        let _ = docker_cmd_status(["config"])?;
 
         if !build.success() {
             return Err(EigenDAError::ScriptError(build.to_string()).into());
         }
 
         // NOTE: See the limitations of the Stdio::piped() method if this experiences a deadlock
-        let cmd = Command::new("docker-compose").arg("up").arg("--force-recreate").spawn()?;
+        let cmd = docker_cmd(["up", "--force-recreate"])?;
         debug!("cmd PID: {:?}", cmd.id());
         self.running = true;
         Ok(cmd)
@@ -155,7 +156,7 @@ impl AvsVariant for EigenDA {
             _ => todo!("Unimplemented"),
         };
         std::env::set_current_dir(docker_path)?;
-        let _ = Command::new("docker-compose").arg("stop").status()?;
+        let _ = docker_cmd_status(["stop"])?;
         self.running = false;
         Ok(())
     }
