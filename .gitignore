@@ -8,5 +8,11 @@
 .env
 /packer/packer.prv
 
-/ivynet-cli/target
-/ivynet-core/target
+# OS
+.DS_store
+
+# Editor/IDE
+/.vscode
+*~
+[._]*.s[a-w][a-z]
+[._]s[a-w][a-z]
