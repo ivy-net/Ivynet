@@ -4,6 +4,7 @@
     name: docker
     types: [deb]
     uris: "https://download.docker.com/linux/{{ ansible_distribution | lower }}"
+    # yamllint disable-line rule:line-length
     signed_by: "https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg"
     suites: ["{{ ansible_distribution_release | lower }}"]
     components: [stable]
@@ -35,7 +36,7 @@
 
 
 - name: Install githbub3.py (for github access)
-  ansible.builtin.pip:
+  ansible.builtin.pip:  # noqa: package-latest
     name: github3.py
     state: latest
     break_system_packages: true
@@ -50,7 +51,7 @@
     state: directory
     owner: root
     group: root
-    mode: 0755
+    mode: "0755"
   loop:
     - ''
     - bin
@@ -72,7 +73,7 @@
     dest: /etc/motd
     owner: root
     group: root
-    mode: 0644
+    mode: "0644"
   tags:
     - general
 
@@ -80,5 +81,8 @@
   ansible.builtin.copy:
     dest: /etc/profile.d/ivy-path.sh
     content: 'PATH=$PATH:{{ ivynet_client_install_path }}/bin'
+  owner: root
+  group: root
+  mode: "0644"
   tags:
     - ivynet

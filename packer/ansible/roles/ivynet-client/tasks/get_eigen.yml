@@ -19,7 +19,7 @@
 - name: Download eigenlayer-cli (in tar.gz)
   ansible.builtin.unarchive:
     # yamllint disable-line rule:line-length
-    src: https://github.com/Layr-Labs/eigenlayer-cli/releases/download/{{eigenlayer_cli_release.tag }}/eigenlayer-cli_{{ eigenlayer_cli_release.tag[1:] }}_linux_amd64.tar.gz
+    src: https://github.com/Layr-Labs/eigenlayer-cli/releases/download/{{ eigenlayer_cli_release.tag }}/eigenlayer-cli_{{ eigenlayer_cli_release.tag[1:] }}_linux_amd64.tar.gz
     dest: /tmp
     remote_src: true
   tags:
@@ -32,14 +32,14 @@
     dest: "{{ ivynet_client_install_path }}/bin"
     owner: root
     group: root
-    mode: 0755
+    mode: "0755"
     remote_src: true
   tags:
     - eigen
     - github
 
 - name: Get EigenDA Operator Setup
-  ansible.builtin.git:
+  ansible.builtin.git: # noqa: latest[git]
     repo: https://github.com/Layr-Labs/eigenda-operator-setup.git
     dest: "{{ ivynet_client_install_path }}/eigenda-operator-setup"
     clone: true
@@ -49,7 +49,7 @@
     - github
 
 - name: Download g1, g2 files
-  ansible.builtin.shell:
+  ansible.builtin.command:
     cmd: "gsutil cp gs://ivynet-builds/{{ item }} ."
     chdir: "{{ ivynet_client_install_path }}/resources"
     creates: " {{ item }}"

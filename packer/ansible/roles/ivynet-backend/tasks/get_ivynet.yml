@@ -54,7 +54,7 @@
     dest: "{{ ivynet_backend_install_path }}/bin/{{ item }}"
     owner: root
     group: root
-    mode: 0755
+    mode: "0755"
   loop:
     - ivynet-backend
   tags:
@@ -68,7 +68,7 @@
       {{ ivynet_backend_release.tag }}
     owner: root
     group: root
-    mode: 0444
+    mode: "0444"
   tags:
     - ivynet
     - github
@@ -77,12 +77,16 @@
   ansible.builtin.copy:
     dest: /etc/profile.d/ivy-path.sh
     content: 'PATH=$PATH:{{ ivynet_backend_install_path }}/bin'
+    owner: root
+    group: root
+    mode: "0644"
   tags:
     - ivynet
 
 - name: Get repo (for migration files)
-  ansible.builtin.git:
-    repo: "https://{{ivynet_backend_github_token}}@github.com/ivy-net/ivynet.git"
+  ansible.builtin.git:  # noqa: latest[git]
+    # yamllint disable-line rule:line-length
+    repo: "https://{{ ivynet_backend_github_token }}@github.com/ivy-net/ivynet.git"
     dest: "{{ ivynet_backend_install_path }}/repo"
   tags:
     - ivynet
@@ -100,6 +104,7 @@
 - name: Configure postgres DB for ivynet
   community.postgresql.postgresql_db:
     name: ivy
+  become: true
   become_user: postgres
   tags:
     - ivynet
@@ -109,6 +114,7 @@
   community.postgresql.postgresql_user:
     name: ivy
     password: "{{ ivynet_backend_postgres_pass }}"
+  become: true
   become_user: postgres
   tags:
     - ivynet
@@ -118,6 +124,7 @@
   community.postgresql.postgresql_script:
     path: "{{ item['path'] }}"
     db: ivy
+  become: true
   become_user: postgres
   loop: "{{ ivynet_backend_sql_files.files }}"
   tags:

@@ -41,14 +41,6 @@
     - ivynet
     - github
 
-      #- name: Show id
-      #  ansible.builtin.debug:
-      #    msg: "{{ ivynet_client_assets_output | community.general.json_query(json_output_query) }}"
-      #  vars:
-      #    json_output_query: "json.assets[?name=='ivynet']"
-      #  tags:
-      #    - github
-      #
 - name: Get asset
   ansible.builtin.uri:
     # yamllint disable-line rule:line-length
@@ -62,7 +54,7 @@
     dest: "{{ ivynet_client_install_path }}/bin/{{ item }}"
     owner: root
     group: root
-    mode: 0755
+    mode: "0755"
   loop:
     - ivynet
     - ivynet-backend
@@ -77,7 +69,7 @@
       {{ ivynet_client_release.tag }}
     owner: root
     group: root
-    mode: 0444
+    mode: "0444"
   tags:
     - ivynet
     - github

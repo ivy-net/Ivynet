@@ -1,5 +1,4 @@
-
-
+---
 - name: Install packages (for memcached and postgres)
   ansible.builtin.apt:
     name: "{{ item }}"
