@@ -67,7 +67,7 @@ curl -sSfL https://raw.githubusercontent.com/layr-labs/eigenlayer-cli/master/scr
 eigenlayer operator keys create --key-type bls [keyname]
 ```
 
-### RPC url setup
+### Setup IvyNet client
 
 Please refer to the CLI documentation [here](./cli/README.md)
 
