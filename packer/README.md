@@ -6,15 +6,29 @@ The VM can be created with a gcloud command.
 See example below.
 The VM type (n2-standard-2) in the example is cheap, but slow when building rust projects.
 
+* Prepare a few variables. First VM name,
+```
+VMNAME=ivy-c
+```
+* next version of cloudstation (I plan to find a way to call 'latest')
 ```
 VERSION=4
-VMNAME=ivy-c
-
+```
+* and finally the tag (or tags) to set firewall
+```
+TAG=holesky-eigenda
+```
+* build machine
+```
 gcloud compute instances create --image ivynet-cloudstation-$VERSION  --zone "us-central1-a" --boot-disk-size 40GB --machine-type n2-standard-2  $VMNAME
+```
+* add the tag to open the firewall
+```
+gcloud compute instances add-tags $VMNAME --tags $TAG
 ```
 
 ### SSH
-THE GCP CLI can be also use to login to the VM:
+THE GCP CLI can be also use to login to the VM (because we set OS Login, [see more](https://cloud.google.com/compute/docs/oslogin))
 ```
 gcloud compute ssh --zone "us-central1-a"  --project "ivynet-tests" $VMNAME
 ```
@@ -48,26 +62,27 @@ packer init cloudstation.pkr.hcl
 ```
 packer build -var 'version=2' cloudstation.pkr.hcl
 ```
+## Ansible
+
+### Molecule
+* In test pass '--tags github' to avoid downloading g1, g2 files.
+* For molecule it can be:
+```
+molecule converge -- --tags github
+
+```
+
+## Ansible
+
+The ansible config
+```
+[defaults]
+stdout_callback = yaml
+pipelining = True
+```
+Pipelining helps to deal with become postgres user.
 
 ## MOTD
-Also in the motd file.
-===============================================================================
-This is a cloudstation VM dedicated to work with IvyNet Client.
 
-It based on Ubuntu and includes docker, rust and cargo packages.
-
-The code of:
-* eigenda,
-* eigenda-operator-setup,
-* ivynet
-are cloned to the /opt/eigen folder.
-
-Additionally, the
-* eigen-cli
-is downloaded to the /opt/eigen/bin folder.
-
-Finally the
-* g1,
-* g2
-files are in the resources subfolder of the eigenda-operator-setup repository.
-===============================================================================
+Extra information are visible after the login.
+Check the [motd.txt](ansible/roles/ivynet-client/templates/motd.txt.j2)

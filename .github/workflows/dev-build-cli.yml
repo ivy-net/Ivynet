@@ -1,5 +1,5 @@
 ---
-name: build dev backend
+name: build dev client
 
 on:
   pull_request:

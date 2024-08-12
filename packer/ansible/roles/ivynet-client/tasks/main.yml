@@ -1,0 +1,88 @@
+---
+- name: Add Docker Module Repository
+  ansible.builtin.deb822_repository:
+    name: docker
+    types: [deb]
+    uris: "https://download.docker.com/linux/{{ ansible_distribution | lower }}"
+    # yamllint disable-line rule:line-length
+    signed_by: "https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg"
+    suites: ["{{ ansible_distribution_release | lower }}"]
+    components: [stable]
+    state: present
+    enabled: true
+  tags:
+    - general
+    - docker
+
+- name: Install packages (for rust and docker)
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    update_cache: true
+  loop:
+    - python3-pip
+    - rustc
+    - cargo
+    - protobuf-compiler
+    - pkg-config
+    - libssl-dev
+    - docker-ce
+    - docker-ce-cli
+    - containerd.io
+    - docker-buildx-plugin
+    - docker-compose-plugin
+  tags:
+    - general
+    - download
+
+
+- name: Install githbub3.py (for github access)
+  ansible.builtin.pip:  # noqa: package-latest
+    name: github3.py
+    state: latest
+    break_system_packages: true
+  tags:
+    - general
+    - download
+    - github
+
+- name: Prepare directories
+  ansible.builtin.file:
+    path: "{{ ivynet_client_install_path }}/{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - ''
+    - bin
+    - resources
+  tags:
+    - general
+
+- name: Download ivynet-cli
+  ansible.builtin.import_tasks:
+    file: get_ivynet.yml
+
+- name: Download eigenlayer resources (cli, point files etc.)
+  ansible.builtin.import_tasks:
+    file: get_eigen.yml
+
+- name: Upload MOTD
+  ansible.builtin.template:
+    src: motd.txt.j2
+    dest: /etc/motd
+    owner: root
+    group: root
+    mode: "0644"
+  tags:
+    - general
+
+- name: Add ivynet bin dir to system-wide $PATH.
+  ansible.builtin.copy:
+    dest: /etc/profile.d/ivy-path.sh
+    content: "PATH=$PATH:{{ ivynet_client_install_path }}/bin"
+    owner: root
+    group: root
+    mode: "0644"
+  tags:
+    - ivynet

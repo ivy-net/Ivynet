@@ -1,0 +1,13 @@
+---
+- name: Install packages (for memcached and postgres)
+  ansible.builtin.apt:
+    name: "{{ item }}"
+    update_cache: true
+  loop:
+    - memcached
+    - libmemcached-tools
+    - postgresql
+  tags:
+    - memcached
+    - postgres
+    - download
