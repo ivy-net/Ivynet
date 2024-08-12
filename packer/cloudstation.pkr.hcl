@@ -35,5 +35,6 @@ build {
 
   provisioner "ansible" {
     playbook_file = "ansible/ivynet_client.yml"
+    extra_arguments = ["--ask-vault-pass"]
   }
 }
