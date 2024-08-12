@@ -12,7 +12,6 @@
       loop:
         - git
         - python3-debian
-        - python3-pip
       tags:
         - github
     - name: Info
