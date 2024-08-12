@@ -16,6 +16,7 @@
         access_configs: "{{ [{'name': 'instance_ip', 'type': 'ONE_TO_ONE_NAT'}] if molecule_yml.driver.external_access else [] }}"
     metadata:
       ssh-keys: "{{ ssh_user }}:{{ ssh_pub_key }}"
+      enable-login: "FALSE"
     labels:
       oslogin: false
     # yamllint disable-line rule:line-length
@@ -40,9 +41,9 @@
       {
         "instance": "{{ server.name }}",
         "address": "{{ server.networkInterfaces.0.accessConfigs.0.natIP }}",
-        "user": "ubuntu",
+        "user": "{{ ssh_user }}",
         "port": "22",
-        "identity_file": "~/.ssh/google_compute_engine.pub",
+        "identity_file": "{{ ssh_pub_key }}",
         "instance_os_type": "{{ molecule_yml.driver.instance_os_type }}",
       }
   register: instance_conf_dict
