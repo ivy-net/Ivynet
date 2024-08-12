@@ -1,6 +1,6 @@
 ---
 # Token to access github
-ivynet_client_github_token: "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"
+ivynet_client_github_token: ""
 
 # Path where to install binaries and other files
 ivynet_client_install_path: /opt/ivynet

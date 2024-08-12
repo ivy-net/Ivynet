@@ -4,22 +4,23 @@ repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
-    -   id: no-commit-to-branch
+      - id: no-commit-to-branch
         args: [--branch, dev, --branch, master]
-    -   id: trailing-whitespace
+      - id: trailing-whitespace
         exclude: specification/
-    -   id: end-of-file-fixer
+      - id: end-of-file-fixer
         exclude: ^docker/
-    -   id: mixed-line-ending
+      - id: mixed-line-ending
         args: ['--fix=lf']
-    -   id: check-yaml
-    -   id: check-added-large-files
-    -   id: check-merge-conflict
-    -   id: check-case-conflict
+      - id: check-yaml
+        args: ['--unsafe']
+      - id: check-added-large-files
+      - id: check-merge-conflict
+      - id: check-case-conflict
 -   repo: https://github.com/ivy-net/pre-commit-rust
     rev: v1.3
     hooks:
-    -   id: fmt
-    -   id: cargo-check
-    -   id: clippy
-    -   id: test
+      - id: fmt
+      - id: cargo-check
+      - id: clippy
+      - id: test
