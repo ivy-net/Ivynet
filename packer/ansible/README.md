@@ -18,7 +18,13 @@ In case of backend, postgres cannot be properly started (systemd).
  ANSIBLE_VAULT_PASSWORD_FILE=$HOME/.vault.txt molecule converge --skip-tags gcp
 ```
 
+### Backend test
+```
+ ANSIBLE_VAULT_PASSWORD_FILE=$HOME/.vault.txt molecule converge --skip-tags db-config
+```
+
 ## TODO
 
-* Check if possible to use Ansible with GCE and OS-Login (Packer manage to do this)
+* Check why sometime molecule does not work with GCP
+* Prepare proper tests for molecule
 * Start to export binaries outside of GitHub (it's going to make roles much easier)
