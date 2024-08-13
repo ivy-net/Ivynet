@@ -149,9 +149,9 @@ pub async fn parse_key_get_subcommands(
         }
         GetCommands::EcdsaPublicKey { keyfile } => {
             let mut path = config.get_path().join(keyfile);
-            path.set_extension(".json");
-            let data = fs::read_to_string(path).unwrap();
-            let v: Value = serde_json::from_str(&data).unwrap();
+            path.set_extension("json");
+            let data = fs::read_to_string(path).expect("No data in json");
+            let v: Value = serde_json::from_str(&data).expect("Could not parse through json");
             println!("{:?}", v["address"])
         }
         GetCommands::GetDefaultEthAddress {} => {
