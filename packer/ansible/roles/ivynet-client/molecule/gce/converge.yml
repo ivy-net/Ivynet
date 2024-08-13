@@ -4,7 +4,7 @@
   gather_facts: true
   become: true
   vars:
-    ansible_user: wawrzek_ivynet_dev
+    ansible_user: ubuntu
     ansible_ssh_private_key_file: ~/.ssh/google_compute_engine.prv
   roles:
     - role: "{{ lookup('env', 'MOLECULE_PROJECT_DIRECTORY') | basename }}"
@@ -16,7 +16,6 @@
       loop:
         - git
         - python3-debian
-        - python3-pip
       tags:
         - github
     - name: Info

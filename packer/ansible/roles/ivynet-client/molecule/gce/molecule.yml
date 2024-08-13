@@ -6,9 +6,7 @@ driver:
   instance_os_type: linux
   external_access: true
   auth_kind: serviceaccount
-  service_account_file: ~/Downloads/ivynet-tests-ceea81669ebb.json
-  # auth_kind: machineaccount
-  # service_account_email: 364175035760-compute@developer.gserviceaccount.com
+  service_account_file: ~/packer.json
   username: ubuntu
   credentials_file: ~/.ssh/google_compute_engine
 platforms:

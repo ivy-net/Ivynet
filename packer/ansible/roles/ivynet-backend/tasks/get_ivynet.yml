@@ -109,6 +109,7 @@
   tags:
     - ivynet
     - postgres
+    - db-config
 
 - name: Add postgres ivy user
   community.postgresql.postgresql_user:
@@ -119,6 +120,7 @@
   tags:
     - ivynet
     - postgres
+    - db-config
 
 - name: Run migrations
   community.postgresql.postgresql_script:
@@ -130,3 +132,4 @@
   tags:
     - ivynet
     - postgres
+    - db-config
