@@ -5,6 +5,6 @@
 
 - name: Restart service
   ansible.builtin.systemd_service:
-    name: memcached
+    name: ivynet-backend
     state: restarted
     enabled: true
