@@ -59,8 +59,6 @@ pub enum GetCommands {
     BlsPrivateKey {},
     #[command(name = "bls-public", about = "Get public bls key")]
     BlsPublicKey {},
-    #[command(name = "default-public", about = "Get the default public key")]
-    GetDefaultEthAddress {},
 }
 
 #[derive(Parser, Debug, Clone)]
@@ -146,14 +144,6 @@ pub async fn parse_key_get_subcommands(
             println!("Private key: {:?}", wallet.to_private_key());
         }
         GetCommands::EcdsaPublicKey {} => {
-            let pass =
-                Password::new().with_prompt("Enter a password to the private key").interact()?;
-
-            let wallet = IvyWallet::from_keystore(config.default_private_keyfile.clone(), &pass)?;
-            println!("Private key: {:?}", wallet.to_private_key());
-            println!("{:?}", config.default_private_keyfile.clone())
-        }
-        GetCommands::GetDefaultEthAddress {} => {
             println!("Public Key: {:?}", config.default_ether_address.clone());
         }
     }
