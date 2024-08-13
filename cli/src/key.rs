@@ -1,6 +1,8 @@
 use clap::Parser;
 use dialoguer::{Input, Password};
 use ivynet_core::{config::IvyConfig, error::IvyError, wallet::IvyWallet};
+use serde_json::Value;
+use std::fs;
 
 use crate::error::Error;
 
@@ -54,11 +56,13 @@ pub enum GetCommands {
     #[command(name = "ecdsa-private", about = "Get a ECDSA key")]
     EcdsaPrivateKey {},
     #[command(name = "ecdsa-public", about = "Get public ECDSA key")]
-    EcdsaPublicKey {},
+    EcdsaPublicKey { keyfile: String },
     #[command(name = "bls-private", about = "Get a BLS key")]
     BlsPrivateKey {},
     #[command(name = "bls-public", about = "Get public bls key")]
     BlsPublicKey {},
+    #[command(name = "default-public", about = "Get the default public key")]
+    GetDefaultEthAddress {},
 }
 
 #[derive(Parser, Debug, Clone)]
@@ -143,7 +147,14 @@ pub async fn parse_key_get_subcommands(
             let wallet = IvyWallet::from_keystore(path, &password)?;
             println!("Private key: {:?}", wallet.to_private_key());
         }
-        GetCommands::EcdsaPublicKey {} => {
+        GetCommands::EcdsaPublicKey { keyfile } => {
+            let mut path = config.get_path().join(keyfile);
+            path.set_extension(".json");
+            let data = fs::read_to_string(path).unwrap();
+            let v: Value = serde_json::from_str(&data).unwrap();
+            println!("{:?}", v["address"])
+        }
+        GetCommands::GetDefaultEthAddress {} => {
             println!("Public Key: {:?}", config.default_ether_address.clone());
         }
     }
