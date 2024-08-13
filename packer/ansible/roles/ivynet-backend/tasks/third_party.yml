@@ -7,7 +7,31 @@
     - memcached
     - libmemcached-tools
     - postgresql
+    - cargo
   tags:
     - memcached
     - postgres
     - download
+    - sqlx
+
+- name: Install SQLX (to run migrtion)
+  community.general.cargo:
+    name: sqlx-cli
+    path: "{{ ivynet_backend_install_path }}"
+    state: latest
+  tags:
+    - download
+    - sqlx
+
+- name: Install extra python packages(for github access)
+  ansible.builtin.pip:  # noqa: package-latest
+    name: "{{ item }}"
+    state: latest
+    break_system_packages: true
+  loop:
+    - github3.py
+    - psycopg2-binary
+  tags:
+    - general
+    - download
+    - github

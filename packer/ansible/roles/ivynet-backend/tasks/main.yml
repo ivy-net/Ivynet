@@ -1,22 +1,4 @@
 ---
-- name: Install extra python packages(for github access)
-  ansible.builtin.pip:  # noqa: package-latest
-    name: "{{ item }}"
-    state: latest
-    break_system_packages: true
-  loop:
-    - github3.py
-    - psycopg2-binary
-  tags:
-    - general
-    - download
-    - github
-
-- name: Install and configure 3rd party tools
-  ansible.builtin.import_tasks:
-    file: third_party.yml
-
-
 - name: Prepare directories
   ansible.builtin.file:
     path: "{{ ivynet_backend_install_path }}/{{ item }}"
@@ -30,6 +12,14 @@
   tags:
     - general
 
+- name: Install and configure 3rd party tools
+  ansible.builtin.import_tasks:
+    file: third_party.yml
+
 - name: Download ivynet-backend
   ansible.builtin.import_tasks:
     file: get_ivynet.yml
+
+- name: Configure DB for backend
+  ansible.builtin.import_tasks:
+    file: setup_db.yml

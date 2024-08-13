@@ -1,0 +1,55 @@
+---
+- name: Get repo (for migration files)
+  ansible.builtin.git:  # noqa: latest[git]
+    # yamllint disable-line rule:line-length
+    repo: "https://{{ ivynet_backend_github_token }}@github.com/ivy-net/ivynet.git"
+    dest: "{{ ivynet_backend_install_path }}/repo"
+  tags:
+    - ivynet
+    - postgres
+
+- name: Configure postgres DB for ivynet
+  community.postgresql.postgresql_db:
+    name: ivynet
+  become: true
+  become_user: postgres
+  tags:
+    - ivynet
+    - postgres
+    - db-config
+
+- name: Add postgres ivy user
+  community.postgresql.postgresql_user:
+    name: "{{ ivynet_backend_postgres_user }}"
+    password: "{{ ivynet_backend_postgres_pass }}"
+  become: true
+  become_user: postgres
+  tags:
+    - ivynet
+    - postgres
+    - db-config
+
+- name: Add privilges to the user
+  community.postgresql.postgresql_privs:
+    database: "{{ ivynet_backend_postgres_db }}"
+    objs: ALL_IN_SCHEMA
+    privs: ALL
+    role: "{{ ivynet_backend_postgres_user }}"
+    state: present
+  become: true
+  become_user: postgres
+  tags:
+    - ivynet
+    - postgres
+    - db-config
+
+- name: Run migrations
+  ansible.builtin.command:
+    cmd: |
+      {{ ivynet_backend_install_path }}/bin/sqlx migrate run --database-url postgresql://{{ ivynet_backend_postgres_user}}:{{ ivynet_backend_postgres_pass }}@localhost:5432/{{ ivynet_backend_postgres_db }}
+    chdir: "{{ ivynet_backend_migration_path }}"
+  tags:
+  - ivynet
+  - postgres
+  - db-config
+  - sqlx
