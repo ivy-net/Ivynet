@@ -150,152 +150,63 @@ fn parse_config_getter_commands(
     Ok(())
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
-//     use std::{future::Future, path::PathBuf};
-//     use tokio::fs;
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::{future::Future, path::PathBuf};
+    use tokio::fs;
 
-//     pub async fn build_test_dir<F, Fut, T>(test_dir: &str, test_logic: F) -> T
-//     where
-//         F: FnOnce(PathBuf) -> Fut,
-//         Fut: Future<Output = T>,
-//     {
-//         let test_path = std::env::current_dir().unwrap().join(format!("testing{}", test_dir));
-//         fs::create_dir_all(&test_path).await.expect("Failed to create testing_temp directory");
-//         let result = test_logic(test_path.clone()).await;
-//         fs::remove_dir_all(test_path).await.expect("Failed to delete testing_temp directory");
+    pub async fn build_test_dir<F, Fut, T>(test_dir: &str, test_logic: F) -> T
+    where
+        F: FnOnce(PathBuf) -> Fut,
+        Fut: Future<Output = T>,
+    {
+        let test_path = std::env::current_dir().unwrap().join(format!("testing{}", test_dir));
+        fs::create_dir_all(&test_path).await.expect("Failed to create testing_temp directory");
+        let result = test_logic(test_path.clone()).await;
+        fs::remove_dir_all(test_path).await.expect("Failed to delete testing_temp directory");
 
-//         result
-//     }
+        result
+    }
 
-// Usage example within an async test
-// #[tokio::test]
-// async fn test_import_key() {
-//     let test_dir = "test_import_key";
-//     build_test_dir(test_dir, |test_path| async move {
-//         let config = IvyConfig::new_at_path(test_path.clone());
+    //Usage example within an async test
 
-//         let result = parse_config_subcommands(
-//             ConfigCommands::ImportPrivateKey {
-//                 private_key: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
-//                     .to_string(),
-//                 keyname: Some("testkey".to_string()),
-//                 password: Some("password".to_string()),
-//             },
-//             config,
-//             "http://localhost:50051".parse().unwrap(),
-//             None,
-//         )
-//         .await;
+    #[tokio::test]
+    async fn test_rpc_functionality() {
+        let test_dir = "test_rpc_functionality";
+        build_test_dir(test_dir, |test_path| async move {
+            let config = IvyConfig::new_at_path(test_path.clone());
 
-//         println!("{result:?}",);
-//         assert!(result.is_ok());
-//         assert!(test_path.join("testkey.json").exists());
+            let result = parse_config_subcommands(
+                ConfigCommands::Set {
+                    command: ConfigSetCommands::Rpc {
+                        chain: "mainnet".to_string(),
+                        rpc_url: "http://localhost:8545".to_string(),
+                    },
+                },
+                config,
+                "http://localhost:50051".parse().unwrap(),
+                None,
+            )
+            .await;
 
-//         let config =
-//             IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
-//         println!("{config:?}",);
+            assert!(result.is_ok());
 
-//         // Read and parse the TOML file
-//         let toml_content = fs::read_to_string(test_path.join("ivy-config.toml"))
-//             .await
-//             .expect("Failed to read TOML file");
-//         let toml_data: toml::Value =
-//             toml::from_str(&toml_content).expect("Failed to parse TOML");
+            let config =
+                IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
 
-//         // Perform assertions on TOML keys and values
-//         let private_keypath = format!("{}/testkey.json", test_path.to_str().unwrap());
-//         assert_eq!(
-//             toml_data["default_private_keyfile"].as_str(),
-//             Some(private_keypath.as_str())
-//         );
-//     })
-//     .await;
-// }
+            let result = parse_config_subcommands(
+                ConfigCommands::Get {
+                    command: ConfigGetCommands::Rpc { chain: "mainnet".to_string() },
+                },
+                config,
+                "http://localhost:50051".parse().unwrap(),
+                None,
+            )
+            .await;
 
-// #[tokio::test]
-// async fn test_create_key() {
-//     let test_dir = "test_create_key";
-//     build_test_dir(test_dir, |test_path| async move {
-//         let config = IvyConfig::new_at_path(test_path.clone());
-
-//         let result = parse_config_subcommands(
-//             ConfigCommands::CreatePrivateKey {
-//                 store: true,
-//                 keyname: Some("testkey".to_string()),
-//                 password: Some("password".to_string()),
-//             },
-//             config,
-//             "http://localhost:50051".parse().unwrap(),
-//             None,
-//         )
-//         .await;
-
-//         println!("{result:?}",);
-//         assert!(result.is_ok());
-//         assert!(test_path.join("testkey.json").exists());
-
-//         let config =
-//             IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
-//         println!("{config:?}",);
-
-//         // Read and parse the TOML file
-//         let toml_content = fs::read_to_string(test_path.join("ivy-config.toml"))
-//             .await
-//             .expect("Failed to read TOML file");
-//         let toml_data: toml::Value =
-//             toml::from_str(&toml_content).expect("Failed to parse TOML");
-
-//         // Perform assertions on TOML keys and values
-//         let private_keypath = format!("{}/testkey.json", test_path.to_str().unwrap());
-//         assert_eq!(
-//             toml_data["default_private_keyfile"].as_str(),
-//             Some(private_keypath.as_str())
-//         );
-//     })
-//     .await;
-// }
-
-// #[tokio::test]
-// // async fn test_rpc_functionality() {
-//     let test_dir = "test_rpc_functionality";
-//     build_test_dir(test_dir, |test_path| async move {
-//         let config = IvyConfig::new_at_path(test_path.clone());
-
-//         let result = parse_config_subcommands(
-//         ConfigCommands::Set {
-//             command: ConfigSetCommands::Rpc {
-//                 chain: "mainnet".to_string(),
-//                 rpc_url: "http://localhost:8545".to_string(),
-//             },
-//         },
-//         config,
-//         "http://localhost:50051".parse().unwrap(),
-//         None,
-//     )
-//     .await;
-
-//         println!("{result:?}",);
-//         assert!(result.is_ok());
-
-//         let config =
-//             IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
-//         println!("{config:?}",);
-
-//         let result = parse_config_subcommands(
-//             ConfigCommands::Get {
-//                 command: ConfigGetCommands, config: &IvyConfig::Rpc { chain:
-// "mainnet".to_string() },             },
-//             config,
-//             "http://localhost:50051".parse().unwrap(),
-//             None,
-//         )
-//         .await;
-
-//         println!("{result:?}",);
-//         assert!(result.is_ok());
-//     })
-//     .await;
-// }
-//}
+            assert!(result.is_ok());
+        })
+        .await;
+    }
+}
