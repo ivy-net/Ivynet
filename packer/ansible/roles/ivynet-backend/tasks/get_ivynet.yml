@@ -36,7 +36,7 @@
     ivynet_backend_assets_id: "{{ ivynet_backend_assets_output | community.general.json_query(json_output_query) }}"
     cacheable: true
   vars:
-    json_output_query: "json.assets[?name=='ivynet'].id"
+    json_output_query: "json.assets[?name=='ivynet-backend'].id"
   tags:
     - ivynet
     - github
@@ -51,12 +51,10 @@
       Accept: "application/octet-stream"
     follow_redirects: all
     status_code: [200, 304]
-    dest: "{{ ivynet_backend_install_path }}/bin/{{ item }}"
+    dest: "{{ ivynet_backend_install_path }}/bin/ivynet-backend }}"
     owner: root
     group: root
     mode: "0755"
-  loop:
-    - ivynet-backend
   tags:
     - ivynet
     - github
