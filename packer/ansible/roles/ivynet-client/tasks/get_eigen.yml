@@ -39,7 +39,7 @@
     - github
 
 - name: Get EigenDA Operator Setup
-  ansible.builtin.git: # noqa: latest[git]
+  ansible.builtin.git:  # noqa: latest[git]
     repo: https://github.com/Layr-Labs/eigenda-operator-setup.git
     dest: "{{ ivynet_client_install_path }}/eigenda-operator-setup"
     clone: true
