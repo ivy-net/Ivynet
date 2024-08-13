@@ -1,5 +1,6 @@
 mod apidoc;
 mod authorize;
+mod client;
 mod organization;
 
 use std::sync::Arc;
@@ -50,6 +51,11 @@ pub async fn serve(
         .route("/organization/invite", post(organization::invite))
         .route("/organization/confirm/{id}", get(organization::confirm))
         .route("/organization/nodes", get(organization::nodes))
+        .route("/organization/nodes/{id}/metrics", get(organization::metrics))
+        .route("/client/status", get(client::status))
+        .route("/client/idle", get(client::idling))
+        .route("/client/unhealthy", get(client::unhealthy))
+        .route("/client/info/{id}", get(client::info))
         .with_state(HttpState {
             pool,
             cache,

@@ -24,6 +24,7 @@ use crate::{
     avs::AvsVariant,
     config::IvyConfig,
     dialog::get_confirm_password,
+    dockercmd::{docker_cmd, docker_cmd_status},
     eigen::quorum::QuorumType,
     env_parser::EnvLines,
     error::{IvyError, SetupError},
@@ -119,8 +120,7 @@ impl AvsVariant for Lagrange {
         std::env::set_current_dir(self.run_path())?;
         debug!("docker start: {}", self.run_path().display());
         // NOTE: See the limitations of the Stdio::piped() method if this experiences a deadlock
-        let cmd =
-            Command::new("docker").arg("compose").arg("up").arg("--force-recreate").spawn()?;
+        let cmd = docker_cmd(["up", "--force-recreate"])?;
         debug!("cmd PID: {:?}", cmd.id());
         self.running = true;
         Ok(cmd)
@@ -128,7 +128,7 @@ impl AvsVariant for Lagrange {
 
     async fn stop(&mut self, _chain: Chain) -> Result<(), IvyError> {
         std::env::set_current_dir(self.run_path())?;
-        let _ = Command::new("docker").arg("compose").arg("stop").status()?;
+        let _ = docker_cmd_status(["stop"])?;
         self.running = false;
         Ok(())
     }

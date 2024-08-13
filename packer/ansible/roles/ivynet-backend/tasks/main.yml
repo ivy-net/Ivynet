@@ -1,0 +1,48 @@
+---
+- name: Prepare directories
+  ansible.builtin.file:
+    path: "{{ ivynet_backend_install_path }}/{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - ''
+    - bin
+  tags:
+    - general
+
+- name: Install and configure 3rd party tools
+  ansible.builtin.import_tasks:
+    file: third_party.yml
+
+- name: Download ivynet-backend
+  ansible.builtin.import_tasks:
+    file: get_ivynet.yml
+
+- name: Configure DB for backend
+  ansible.builtin.import_tasks:
+    file: setup_db.yml
+
+- name: Copy Backend Service file
+  ansible.builtin.template:
+    src: ivynet-backend.service
+    dest: /etc/systemd/system
+    owner: root
+    group: root
+    mode: 0644
+  notify:
+    - Reload daemon
+    - Restart service
+  tags:
+    - general
+    - ivynet
+
+- name: Set Backend service
+  ansible.builtin.systemd_service:
+    name: ivynet-backend
+    state: started
+    enabled: true
+  tags:
+    - general
+    - ivynet

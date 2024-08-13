@@ -49,6 +49,9 @@ pub enum BackendError {
     #[error("Already set")]
     AlreadySet,
 
+    #[error("Invalid node id")]
+    InvalidNodeId,
+
     #[error("Unauthorized")]
     Unauthorized,
 }
@@ -66,6 +69,9 @@ impl IntoResponse for BackendError {
                 .into_response(),
             BackendError::AccountExists => {
                 (StatusCode::CONFLICT, "Account already exists".to_string()).into_response()
+            }
+            BackendError::InvalidNodeId => {
+                (StatusCode::NOT_FOUND, "Node id not found".to_string()).into_response()
             }
             _ => (StatusCode::INTERNAL_SERVER_ERROR, format!("{:?}", self)).into_response(),
         }

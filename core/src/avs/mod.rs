@@ -18,7 +18,7 @@ use ethers::{
 };
 use lagrange::Lagrange;
 use std::{collections::HashMap, fmt::Debug, fs, path::PathBuf, process::Child, sync::Arc};
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 pub mod commands;
 pub mod contracts;
@@ -78,6 +78,17 @@ impl AvsProvider {
             stake_registry,
             registry_coordinator,
         })
+    }
+
+    /// Sets new avs with new provider
+    pub async fn set_avs(
+        &mut self,
+        avs: Box<dyn AvsVariant>,
+        provider: Arc<IvyProvider>,
+    ) -> Result<(), IvyError> {
+        self.with_avs(Some(avs)).await?;
+        self.provider = provider;
+        Ok(())
     }
 
     /// Replace the current AVS instance with a new instance.
@@ -161,7 +172,10 @@ impl AvsProvider {
 
     /// Start the loaded AVS instance. Returns an error if no AVS instance is loaded.
     pub async fn start(&mut self) -> Result<Child, IvyError> {
+        debug!("Starting!");
         let avs = self.avs_mut()?;
+
+        debug!("Checking if running!");
         if avs.running() {
             // TODO: Fix unwrap
             return Err(IvyError::AvsRunningError(
@@ -170,11 +184,14 @@ impl AvsProvider {
             ));
         }
         let chain = Chain::try_from(self.provider.signer().chain_id()).unwrap_or_default();
+
+        debug!("Getting qourums!");
         let quorums = self.get_bootable_quorums().await?;
         if quorums.is_empty() {
             error!("Could not launch EgenDA, no bootable quorums found. Exiting...");
             return Err(IvyError::NoQuorums);
         }
+        debug!("Starting docker!");
         self.avs_mut()?.start(quorums, chain).await
     }
 

@@ -8,3 +8,4 @@ pub mod operator;
 pub mod rpc;
 pub mod service;
 pub mod staker;
+pub mod telemetry;

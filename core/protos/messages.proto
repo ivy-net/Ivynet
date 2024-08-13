@@ -8,3 +8,19 @@ message RegistrationCredentials {
     string password = 2;
     bytes public_key = 3;
 }
+
+message SignedMetrics {
+    bytes signature = 1;
+    repeated Metrics metrics = 2;
+}
+
+message Metrics {
+    string name = 1;
+    double value = 2;
+    repeated MetricsAttribute attributes = 3;
+}
+
+message MetricsAttribute {
+    string name = 1;
+    string value = 2;
+}

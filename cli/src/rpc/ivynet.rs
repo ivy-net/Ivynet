@@ -130,21 +130,21 @@ impl Avs for IvynetService {
         let req = request.into_inner();
         let (avs, chain) = (req.avs, try_parse_chain(&req.chain)?);
 
-        let mut provider = self.avs_provider.write().await;
-        let signer = provider.provider.signer().clone();
-        let keyfile_pw = &provider.keyfile_pw;
-        let config = IvyConfig::load_from_default_path().map_err(IvyError::from)?; // TODO: store config with provider
+        {
+            let mut provider = self.avs_provider.write().await;
+            let signer = provider.provider.signer().clone();
+            let config = IvyConfig::load_from_default_path().map_err(IvyError::from)?; // TODO: store config with provider
 
-        let new_ivy_provider = connect_provider(&config.get_rpc_url(chain)?, Some(signer)).await?;
+            let new_ivy_provider =
+                connect_provider(&config.get_rpc_url(chain)?, Some(signer)).await?;
 
-        let avs_instance: Box<dyn AvsVariant> = match avs.as_ref() {
-            "eigenda" => Box::new(EigenDA::new_from_chain(chain)),
-            "altlayer" => Box::new(AltLayer::new_from_chain(chain)),
-            _ => return Err(IvyError::InvalidAvsType(avs.to_string()).into()),
-        };
-
-        *provider =
-            AvsProvider::new(Some(avs_instance), Arc::new(new_ivy_provider), keyfile_pw.clone())?;
+            let avs_instance: Box<dyn AvsVariant> = match avs.as_ref() {
+                "eigenda" => Box::new(EigenDA::new_from_chain(chain)),
+                "altlayer" => Box::new(AltLayer::new_from_chain(chain)),
+                _ => return Err(IvyError::InvalidAvsType(avs.to_string()).into()),
+            };
+            provider.set_avs(avs_instance, new_ivy_provider.into()).await?;
+        }
 
         let response =
             RpcResponse { response_type: 0, msg: format!("AVS set: {} on chain {}", avs, chain) };
