@@ -32,10 +32,10 @@
 - name: Add privilges to the user
   community.postgresql.postgresql_privs:
     database: "{{ ivynet_backend_postgres_db }}"
-    objs: ALL_IN_SCHEMA
     privs: ALL
+    type: schema
+    objs: public
     role: "{{ ivynet_backend_postgres_user }}"
-    state: present
   become: true
   become_user: postgres
   tags:
