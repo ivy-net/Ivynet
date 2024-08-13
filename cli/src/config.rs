@@ -1,5 +1,4 @@
 use clap::Parser;
-use dialoguer::{Input, Password};
 use ivynet_core::{
     config::{self, IvyConfig},
     error::IvyError,
@@ -11,62 +10,25 @@ use ivynet_core::{
     },
     metadata::Metadata,
     utils::try_parse_chain,
-    wallet::IvyWallet,
 };
 
 use crate::error::Error;
 
 #[derive(Parser, Debug, Clone)]
 pub enum ConfigCommands {
-    #[command(
-        name = "import-key",
-        about = "Import and save as your default Ethereum private key with a password <PRIVATE_KEY>"
-    )]
-    ImportPrivateKey { private_key: String, keyname: Option<String>, password: Option<String> },
-    #[command(
-        name = "create-key",
-        about = "Create an Ethereum private key to use with Ivynet and optionally store it with a password"
-    )]
-    CreatePrivateKey {
-        #[arg(long)]
-        store: bool,
-        keyname: Option<String>,
-        password: Option<String>,
+    #[command(name = "set", about = "Set configuration values for either RPC or metadata")]
+    Set {
+        #[command(subcommand)]
+        command: ConfigSetCommands,
     },
     #[command(
-        name = "get-default-public",
-        about = "Get the current default saved keypair's Ethereum address"
+        name = "get",
+        about = "get configuration values for RPC, metadata, config or get system info"
     )]
-    GetDefaultEthAddress,
-    #[command(name = "get-default-private", about = "Get the current default saved private key")]
-    GetDefaultPrivateKey,
-    #[command(
-        name = "set-rpc",
-        about = "Set default URLs to use when connecting to 'mainnet', 'holesky', and 'local' RPC urls <CHAIN> <RPC_URL>"
-    )]
-    SetRpc { chain: String, rpc_url: String },
-    #[command(
-        name = "get-rpc",
-        about = "Get the current default RPC URL for 'mainnet', 'holesky', or 'local' <CHAIN>"
-    )]
-    GetRpc { chain: String },
-    #[command(
-        name = "get-sys-info",
-        about = "Get the number of CPU cores, memory, and free disk space on the current machine"
-    )]
-    #[command(name = "set-metadata", about = "Set metadata for EigenLayer Operator")]
-    SetMetadata {
-        metadata_uri: Option<String>,
-        logo_uri: Option<String>,
-        favicon_uri: Option<String>,
+    Get {
+        #[command(subcommand)]
+        command: ConfigGetCommands,
     },
-    #[command(name = "get-metadata", about = "Get local metadata")]
-    GetMetadata,
-    #[command(name = "get-config", about = "Get all config data")]
-    GetConfig,
-    #[command(name = "get-sys-info", about = "Get system information")]
-    GetSysInfo,
-
     #[command(name = "register", about = "Register node on IvyNet server")]
     Register {
         /// Email address registered at IvyNet portal
@@ -79,75 +41,44 @@ pub enum ConfigCommands {
     },
 }
 
+#[derive(Parser, Debug, Clone)]
+pub enum ConfigSetCommands {
+    #[command(
+        name = "rpc",
+        about = "Set default URLs to use when connecting to 'mainnet', 'holesky', and 'local' RPC urls <CHAIN> <RPC_URL>"
+    )]
+    Rpc { chain: String, rpc_url: String },
+    #[command(name = "metadata", about = "Set metadata for EigenLayer Operator")]
+    Metadata { metadata_uri: Option<String>, logo_uri: Option<String>, favicon_uri: Option<String> },
+}
+
+#[derive(Parser, Debug, Clone)]
+pub enum ConfigGetCommands {
+    #[command(
+        name = "rpc",
+        about = "Get default URLs to use when connecting to 'mainnet', 'holesky', and 'local' RPC urls <CHAIN>"
+    )]
+    Rpc { chain: String },
+    #[command(name = "metadata", about = "Get local metadata")]
+    Metadata,
+    #[command(name = "config", about = "Get all config data")]
+    Config,
+    #[command(name = "sys-info", about = "Get system information")]
+    SysInfo,
+}
+
 pub async fn parse_config_subcommands(
     subcmd: ConfigCommands,
-    mut config: IvyConfig,
+    config: IvyConfig,
     server_url: Uri,
     server_ca: Option<&String>,
 ) -> Result<(), Error> {
     match subcmd {
-        ConfigCommands::ImportPrivateKey { private_key, keyname, password } => {
-            let wallet = IvyWallet::from_private_key(private_key)?;
-            let (keyname, pass) = get_credentials(keyname, password);
-            let prv_key_path = wallet.encrypt_and_store(&config.get_path(), keyname, pass)?;
-            config.default_private_keyfile = prv_key_path;
-            config.store().map_err(IvyError::from)?;
+        ConfigCommands::Set { command } => {
+            let _ = parse_config_setter_commands(command, config);
         }
-        ConfigCommands::CreatePrivateKey { store, keyname, password } => {
-            let wallet = IvyWallet::new();
-            let priv_key = wallet.to_private_key();
-            println!("Private key: {:?}", priv_key);
-            let addr = wallet.address();
-            println!("Public Address: {:?}", addr);
-            if store {
-                let (keyname, pass) = get_credentials(keyname, password);
-                let prv_key_path = wallet.encrypt_and_store(&config.get_path(), keyname, pass)?;
-                config.default_private_keyfile = prv_key_path;
-                config.store().map_err(IvyError::from)?;
-            }
-        }
-        ConfigCommands::SetRpc { chain, rpc_url } => {
-            let chain = try_parse_chain(&chain)?;
-            config.set_rpc_url(chain, &rpc_url)?;
-            config.store().map_err(IvyError::from)?;
-        }
-        ConfigCommands::GetRpc { chain } => {
-            println!(
-                "Url for {chain} is {}",
-                config.get_rpc_url(chain.parse::<Chain>().expect("Wrong network name provided"))?
-            );
-        }
-        ConfigCommands::GetDefaultEthAddress => {
-            println!("Public Key: {:?}", config.default_ether_address.clone());
-        }
-        ConfigCommands::GetDefaultPrivateKey => {
-            let pass =
-                Password::new().with_prompt("Enter a password to the private key").interact()?;
-            let wallet = IvyWallet::from_keystore(config.default_private_keyfile.clone(), &pass)?;
-            println!("Private key: {:?}", wallet.to_private_key());
-        }
-        ConfigCommands::SetMetadata { metadata_uri, logo_uri, favicon_uri } => {
-            let metadata_uri = metadata_uri.unwrap_or("".to_string());
-            let logo_uri = logo_uri.unwrap_or("".to_string());
-            let favicon_uri = favicon_uri.unwrap_or("".to_string());
-            config.metadata = Metadata::new(&metadata_uri, &logo_uri, &favicon_uri);
-        }
-        ConfigCommands::GetMetadata => {
-            let metadata = &config.metadata;
-            println!("{metadata:?}");
-        }
-        ConfigCommands::GetConfig => {
-            println!("{config:?}")
-        }
-        ConfigCommands::GetSysInfo => {
-            let (cpus, mem_info, disk_info) = config::get_system_information()?;
-            println!(" --- System Information: --- ");
-            println!("CPU Cores: {cpus}");
-            println!("Memory Information:");
-            println!("  Total: {mem_info}");
-            println!("Disk Information:");
-            println!("  Free: {disk_info}");
-            println!(" --------------------------- ");
+        ConfigCommands::Get { command } => {
+            let _ = parse_config_getter_commands(command, &config);
         }
         ConfigCommands::Register { email, password } => {
             let config = IvyConfig::load_from_default_path().map_err(IvyError::from)?;
@@ -167,34 +98,56 @@ pub async fn parse_config_subcommands(
     Ok(())
 }
 
-fn get_credentials(keyname: Option<String>, password: Option<String>) -> (String, String) {
-    match (keyname, password) {
-        (None, None) => (
-            Input::new()
-                .with_prompt("Enter a name for the key")
-                .interact_text()
-                .expect("No keyname provided"),
-            Password::new()
-                .with_prompt("Enter a password to the private key")
-                .interact()
-                .expect("No password provided"),
-        ),
-        (None, Some(pass)) => (
-            Input::new()
-                .with_prompt("Enter a name for the key")
-                .interact_text()
-                .expect("No keyname provided"),
-            pass,
-        ),
-        (Some(keyname), None) => (
-            keyname,
-            Password::new()
-                .with_prompt("Enter a password to the private key")
-                .interact()
-                .expect("No password provided"),
-        ),
-        (Some(keyname), Some(pass)) => (keyname, pass),
+fn parse_config_setter_commands(
+    subsetter: ConfigSetCommands,
+    mut config: IvyConfig,
+) -> Result<(), Error> {
+    match subsetter {
+        ConfigSetCommands::Rpc { chain, rpc_url } => {
+            let chain = try_parse_chain(&chain)?;
+            config.set_rpc_url(chain, &rpc_url)?;
+            config.store().map_err(IvyError::from)?;
+        }
+        ConfigSetCommands::Metadata { metadata_uri, logo_uri, favicon_uri } => {
+            let metadata_uri = metadata_uri.unwrap_or("".to_string());
+            let logo_uri = logo_uri.unwrap_or("".to_string());
+            let favicon_uri = favicon_uri.unwrap_or("".to_string());
+            config.metadata = Metadata::new(&metadata_uri, &logo_uri, &favicon_uri);
+        }
     }
+    Ok(())
+}
+
+fn parse_config_getter_commands(
+    subgetter: ConfigGetCommands,
+    config: &IvyConfig,
+) -> Result<(), Error> {
+    match subgetter {
+        ConfigGetCommands::Rpc { chain } => {
+            println!(
+                "Url for {chain} is {}",
+                config.get_rpc_url(chain.parse::<Chain>().expect("Wrong network name provided"))?
+            );
+        }
+        ConfigGetCommands::Metadata {} => {
+            let metadata = &config.metadata;
+            println!("{metadata:?}");
+        }
+        ConfigGetCommands::SysInfo {} => {
+            let (cpus, mem_info, disk_info) = config::get_system_information()?;
+            println!(" --- System Information: --- ");
+            println!("CPU Cores: {cpus}");
+            println!("Memory Information:");
+            println!("  Total: {mem_info}");
+            println!("Disk Information:");
+            println!("  Free: {disk_info}");
+            println!(" --------------------------- ");
+        }
+        ConfigGetCommands::Config {} => {
+            println!("{config:?}");
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]
@@ -216,93 +169,7 @@ mod tests {
         result
     }
 
-    // Usage example within an async test
-    #[tokio::test]
-    async fn test_import_key() {
-        let test_dir = "test_import_key";
-        build_test_dir(test_dir, |test_path| async move {
-            let config = IvyConfig::new_at_path(test_path.clone());
-
-            let result = parse_config_subcommands(
-                ConfigCommands::ImportPrivateKey {
-                    private_key: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
-                        .to_string(),
-                    keyname: Some("testkey".to_string()),
-                    password: Some("password".to_string()),
-                },
-                config,
-                "http://localhost:50051".parse().unwrap(),
-                None,
-            )
-            .await;
-
-            println!("{result:?}",);
-            assert!(result.is_ok());
-            assert!(test_path.join("testkey.json").exists());
-
-            let config =
-                IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
-            println!("{config:?}",);
-
-            // Read and parse the TOML file
-            let toml_content = fs::read_to_string(test_path.join("ivy-config.toml"))
-                .await
-                .expect("Failed to read TOML file");
-            let toml_data: toml::Value =
-                toml::from_str(&toml_content).expect("Failed to parse TOML");
-
-            // Perform assertions on TOML keys and values
-            let private_keypath = format!("{}/testkey.json", test_path.to_str().unwrap());
-            assert_eq!(
-                toml_data["default_private_keyfile"].as_str(),
-                Some(private_keypath.as_str())
-            );
-        })
-        .await;
-    }
-
-    #[tokio::test]
-    async fn test_create_key() {
-        let test_dir = "test_create_key";
-        build_test_dir(test_dir, |test_path| async move {
-            let config = IvyConfig::new_at_path(test_path.clone());
-
-            let result = parse_config_subcommands(
-                ConfigCommands::CreatePrivateKey {
-                    store: true,
-                    keyname: Some("testkey".to_string()),
-                    password: Some("password".to_string()),
-                },
-                config,
-                "http://localhost:50051".parse().unwrap(),
-                None,
-            )
-            .await;
-
-            println!("{result:?}",);
-            assert!(result.is_ok());
-            assert!(test_path.join("testkey.json").exists());
-
-            let config =
-                IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
-            println!("{config:?}",);
-
-            // Read and parse the TOML file
-            let toml_content = fs::read_to_string(test_path.join("ivy-config.toml"))
-                .await
-                .expect("Failed to read TOML file");
-            let toml_data: toml::Value =
-                toml::from_str(&toml_content).expect("Failed to parse TOML");
-
-            // Perform assertions on TOML keys and values
-            let private_keypath = format!("{}/testkey.json", test_path.to_str().unwrap());
-            assert_eq!(
-                toml_data["default_private_keyfile"].as_str(),
-                Some(private_keypath.as_str())
-            );
-        })
-        .await;
-    }
+    //Usage example within an async test
 
     #[tokio::test]
     async fn test_rpc_functionality() {
@@ -311,9 +178,11 @@ mod tests {
             let config = IvyConfig::new_at_path(test_path.clone());
 
             let result = parse_config_subcommands(
-                ConfigCommands::SetRpc {
-                    chain: "mainnet".to_string(),
-                    rpc_url: "http://localhost:8545".to_string(),
+                ConfigCommands::Set {
+                    command: ConfigSetCommands::Rpc {
+                        chain: "mainnet".to_string(),
+                        rpc_url: "http://localhost:8545".to_string(),
+                    },
                 },
                 config,
                 "http://localhost:50051".parse().unwrap(),
@@ -321,22 +190,21 @@ mod tests {
             )
             .await;
 
-            println!("{result:?}",);
             assert!(result.is_ok());
 
             let config =
                 IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
-            println!("{config:?}",);
 
             let result = parse_config_subcommands(
-                ConfigCommands::GetRpc { chain: "mainnet".to_string() },
+                ConfigCommands::Get {
+                    command: ConfigGetCommands::Rpc { chain: "mainnet".to_string() },
+                },
                 config,
                 "http://localhost:50051".parse().unwrap(),
                 None,
             )
             .await;
 
-            println!("{result:?}",);
             assert!(result.is_ok());
         })
         .await;

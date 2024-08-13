@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
-use cli::{avs, config, error::Error, init::initialize_ivynet, operator, service, staker};
+use cli::{avs, config, error::Error, init::initialize_ivynet, key, operator, service, staker};
 use ivynet_core::{avs::commands::AvsCommands, config::IvyConfig, grpc::client::Uri};
 use std::str::FromStr as _;
 use tracing_subscriber::FmtSubscriber;
@@ -44,6 +44,11 @@ enum Commands {
         #[command(subcommand)]
         subcmd: config::ConfigCommands,
     },
+    #[command(name = "key", about = "Manage keys")]
+    Key {
+        #[command(subcommand)]
+        subcmd: key::KeyCommands,
+    },
     #[command(name = "operator", about = "Request information, register, or manage your operator")]
     Operator {
         #[command(subcommand)]
@@ -83,6 +88,7 @@ async fn main() -> Result<(), Error> {
             )
             .await?;
         }
+        Commands::Key { subcmd } => key::parse_key_subcommands(subcmd, check_for_config()).await?,
         Commands::Operator { subcmd } => {
             operator::parse_operator_subcommands(subcmd, &check_for_config()).await?
         }
