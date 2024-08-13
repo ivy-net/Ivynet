@@ -23,3 +23,26 @@
 - name: Configure DB for backend
   ansible.builtin.import_tasks:
     file: setup_db.yml
+
+- name: Copy Backend Service file
+  ansible.builtin.template:
+    src: ivynet-backend.service
+    dest: /etc/systemd/system
+    owner: root
+    group: root
+    mode: 0644
+  notify:
+    - Reload daemon
+    - Restart service
+  tags:
+    - general
+    - ivynet
+
+- name: Set Backend service
+  ansible.builtin.systemd_service:
+    name: ivynet-backend
+    state: started
+    enabled: true
+  tags:
+    - general
+    - ivynet
