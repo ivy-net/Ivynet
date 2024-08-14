@@ -1,3 +1,4 @@
+---
 services:
   anvil:
     container_name: anvil
@@ -6,7 +7,7 @@ services:
     hostname: anvil
     platform: linux/amd64
     ports:
-        - "8545:8545"
+      - "8545:8545"
     command: --host=0.0.0.0
 
   feed-deployer:
@@ -21,8 +22,8 @@ services:
       - --rpc-url
       - http://anvil:8545
     depends_on:
-        autoimpersonation:
-            condition: service_completed_successfully
+      autoimpersonation:
+        condition: service_completed_successfully
 
   feed-layer:
     platform: linux/amd64
@@ -50,7 +51,7 @@ services:
       - --rpc-url
       - http://anvil:8545
     depends_on:
-        - anvil
+      - anvil
 
   # FoundaryUp based container with local image
   # deploying EigenLayer Contracts

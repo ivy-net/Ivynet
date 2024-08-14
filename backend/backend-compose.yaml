@@ -1,3 +1,4 @@
+---
 services:
   postgres:
     container_name: postgres
@@ -12,10 +13,10 @@ services:
       POSTGRES_PASSWORD: secret_ivy
       POSTGRES_DB: ivynet
   memcached:
-      container_name: memcached
-      image: 'memcached:latest'
-      ports:
-        - 11211:11211
+    container_name: memcached
+    image: 'memcached:latest'
+    ports:
+      - 11211:11211
 
 volumes:
   psql_vol:

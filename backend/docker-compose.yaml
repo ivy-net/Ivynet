@@ -1,3 +1,4 @@
+---
 services:
   postgres:
     container_name: postgres
@@ -17,15 +18,15 @@ services:
       retries: 3
 
   memcached:
-      container_name: memcached
-      image: 'memcached:alpine'
-      ports:
-        - 11211:11211
-      healthcheck:
-        test: echo stats | nc 127.0.0.1 11211
-        interval: 10s
-        timeout: 3s
-        retries: 60
+    container_name: memcached
+    image: 'memcached:alpine'
+    ports:
+      - 11211:11211
+    healthcheck:
+      test: echo stats | nc 127.0.0.1 11211
+      interval: 10s
+      timeout: 3s
+      retries: 60
 
   backend:
     container_name: backend
@@ -35,12 +36,12 @@ services:
       args:
         - CONTEXT_APK=ivynet-backend
     environment:
-        DATABASE_URL: postgresql://ivy:secret_ivy@postgres:5432/ivynet
-        IVY_CACHE_URL: memcache://memcached:11211
-        IVY_MIGRATE: "true"
-        SENDGRID_API_KEY: ${SENDGRID_API_KEY}
-        SENDGRID_ORG_VER_TMP: ${SENDGRID_ORG_VER_TMP}
-        SENDGRID_USER_VER_TMP: ${SENDGRID_USER_VER_TMP}
+      DATABASE_URL: postgresql://ivy:secret_ivy@postgres:5432/ivynet
+      IVY_CACHE_URL: memcache://memcached:11211
+      IVY_MIGRATE: "true"
+      SENDGRID_API_KEY: ${SENDGRID_API_KEY}
+      SENDGRID_ORG_VER_TMP: ${SENDGRID_ORG_VER_TMP}
+      SENDGRID_USER_VER_TMP: ${SENDGRID_USER_VER_TMP}
     depends_on:
       postgres:
         condition: service_healthy
@@ -49,5 +50,6 @@ services:
     ports:
       - "50050:50050"
       - "8080:8080"
+
 volumes:
   psql_vol:
