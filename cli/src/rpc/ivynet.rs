@@ -86,8 +86,7 @@ impl Avs for IvynetService {
 
     async fn stop(&self, _request: Request<StopRequest>) -> Result<Response<RpcResponse>, Status> {
         let mut provider = self.avs_provider.write().await;
-        let chain = provider.chain().await?;
-        provider.stop(chain).await?;
+        provider.stop().await?;
 
         // TODO: Stop flow
         let response = RpcResponse { response_type: 0, msg: "Avs stopped.".to_string() };

@@ -2,9 +2,8 @@ use async_trait::async_trait;
 use dialoguer::{Input, Password};
 use ethers::{
     signers::Signer,
-    types::{Address, Chain, H160, U256},
+    types::{Chain, U256},
 };
-use ivynet_macros::h160;
 use std::{
     env,
     fs::{self, File},
@@ -29,6 +28,8 @@ use crate::{
     rpc_management::IvyProvider,
     utils::gb_to_bytes,
 };
+
+mod contracts;
 
 const ALTLAYER_PATH: &str = ".eigenlayer/altlayer";
 const ALTLAYER_REPO_URL: &str =
@@ -81,14 +82,64 @@ impl AvsVariant for AltLayer {
         Ok(class >= NodeClass::XL && disk_info >= gb_to_bytes(50))
     }
 
-    async fn start(&mut self, _quorums: Vec<QuorumType>, _chain: Chain) -> Result<Child, IvyError> {
+    async fn start(&mut self) -> Result<Child, IvyError> {
         todo!()
     }
 
-    async fn stop(&mut self, _chain: Chain) -> Result<(), IvyError> {
+    async fn stop(&mut self) -> Result<(), IvyError> {
         todo!()
     }
 
+    fn path(&self) -> PathBuf {
+        self.path.clone()
+    }
+
+    fn running(&self) -> bool {
+        self.running
+    }
+
+    fn name(&self) -> &'static str {
+        "altlayer"
+    }
+
+    /// Currently, AltLayer Mach AVS is operating in allowlist mode only: https://docs.altlayer.io/altlayer-documentation/altlayer-facilitated-actively-validated-services/xterio-mach-avs-for-xterio-chain/operator-guide
+    async fn register(
+        &self,
+        _provider: Arc<IvyProvider>,
+        eigen_path: PathBuf,
+        _private_keypath: PathBuf,
+        _keyfile_password: &str,
+    ) -> Result<(), IvyError> {
+        let run_path = eigen_path
+            .join("mach-avs-operator-setup")
+            .join(self.chain.to_string().to_lowercase())
+            .join("mach-avs/op-sepolia");
+        info!("Opting in...");
+        debug!("altlayer opt-in: {}", run_path.display());
+
+        // WARN: Changing directory here may not be the best strategy.
+        env::set_current_dir(&run_path)?;
+        let run_path = run_path.join("run.sh");
+        let optin = Command::new("sh").arg(run_path).arg("opt-in").status()?;
+        if optin.success() {
+            Ok(())
+        } else {
+            Err(IvyError::CommandError(optin.to_string()))
+        }
+    }
+
+    async fn unregister(
+        &self,
+        _provider: Arc<IvyProvider>,
+        _eigen_path: PathBuf,
+        _private_keypath: PathBuf,
+        _keyfile_password: &str,
+    ) -> Result<(), IvyError> {
+        todo!()
+    }
+}
+
+impl AltLayer {
     /// Quorum stake requirements can be found in the AltLayer docs: https://docs.altlayer.io/altlayer-documentation/altlayer-facilitated-actively-validated-services/xterio-mach-avs-for-xterio-chain/operator-guide
     fn quorum_min(&self, chain: Chain, quorum_type: crate::eigen::quorum::QuorumType) -> U256 {
         match chain {
@@ -111,77 +162,6 @@ impl AvsVariant for AltLayer {
             Chain::Holesky => vec![QuorumType::LST],
             _ => todo!("Unimplemented"),
         }
-    }
-
-    /// AltLayer stake registry contracts: https://github.com/alt-research/mach-avs
-    fn stake_registry(&self, chain: Chain) -> Address {
-        match chain {
-            Chain::Mainnet => h160!(0x49296A7D4a76888370CB377CD909Cc73a2f71289),
-            Chain::Holesky => h160!(0x0b3eE1aDc2944DCcBb817f7d77915C7d38F7B858),
-            _ => todo!("Unimplemented"),
-        }
-    }
-
-    /// AltLayer registry coordinator contracts: https://github.com/alt-research/mach-avs
-    fn registry_coordinator(&self, chain: Chain) -> Address {
-        match chain {
-            Chain::Mainnet => h160!(0x561be1AB42170a19f31645F774e6e3862B2139AA),
-            Chain::Holesky => h160!(0x1eA7D160d325B289bF981e0D7aB6Bf3261a0FFf2),
-            _ => todo!("Unimplemented"),
-        }
-    }
-    fn path(&self) -> PathBuf {
-        self.path.clone()
-    }
-
-    fn running(&self) -> bool {
-        self.running
-    }
-
-    fn name(&self) -> &'static str {
-        "altlayer"
-    }
-
-    /// Currently, AltLayer Mach AVS is operating in allowlist mode only: https://docs.altlayer.io/altlayer-documentation/altlayer-facilitated-actively-validated-services/xterio-mach-avs-for-xterio-chain/operator-guide
-    async fn register(
-        &self,
-        quorums: Vec<QuorumType>,
-        eigen_path: PathBuf,
-        _private_keypath: PathBuf,
-        _keyfile_password: &str,
-        chain: Chain,
-    ) -> Result<(), IvyError> {
-        let quorum_str: Vec<String> =
-            quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
-        let _quorum_str = quorum_str.join(",");
-
-        let run_path = eigen_path
-            .join("mach-avs-operator-setup")
-            .join(chain.to_string().to_lowercase())
-            .join("mach-avs/op-sepolia");
-        info!("Opting in...");
-        debug!("altlayer opt-in: {}", run_path.display());
-
-        // WARN: Changing directory here may not be the best strategy.
-        env::set_current_dir(&run_path)?;
-        let run_path = run_path.join("run.sh");
-        let optin = Command::new("sh").arg(run_path).arg("opt-in").status()?;
-        if optin.success() {
-            Ok(())
-        } else {
-            Err(IvyError::CommandError(optin.to_string()))
-        }
-    }
-
-    async fn unregister(
-        &self,
-        _quorums: Vec<QuorumType>,
-        _eigen_path: PathBuf,
-        _private_keypath: PathBuf,
-        _keyfile_password: &str,
-        _chain: Chain,
-    ) -> Result<(), IvyError> {
-        todo!()
     }
 
     async fn build_env(

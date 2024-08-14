@@ -1,11 +1,10 @@
-use std::{ops::Deref, sync::Arc};
-
 use ethers::{
     contract::abigen,
     signers::Signer,
     types::{Address, Chain, H160},
 };
 use ivynet_macros::h160;
+use std::{ops::Deref, sync::Arc};
 
 use crate::{
     eigen::strategy::{holesky::HOLESKY_LST_STRATEGIES, mainnet::MAINNET_LST_STRATEGIES},

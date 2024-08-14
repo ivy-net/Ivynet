@@ -32,7 +32,9 @@ pub type QuorumMinMap = HashMap<Chain, HashMap<QuorumType, U256>>;
 
 use self::{
     contracts::{RegistryCoordinator, RegistryCoordinatorAbi, StakeRegistry, StakeRegistryAbi},
-    eigenda::EigenDA, mach_avs::AltLayer, witness::Witness
+    eigenda::EigenDA,
+    mach_avs::AltLayer,
+    witness::Witness,
 };
 
 // TODO: Convenience functions on AVS type for display purposes, such as name()
@@ -46,8 +48,6 @@ pub struct AvsProvider {
     // TODO: Deprecate this if possible, requires conversion of underlying AVS scripts
     pub keyfile_pw: Option<String>,
     pub delegation_manager: DelegationManager,
-    stake_registry: Option<StakeRegistry>,
-    registry_coordinator: Option<RegistryCoordinator>,
 }
 
 impl AvsProvider {
@@ -57,42 +57,15 @@ impl AvsProvider {
         keyfile_pw: Option<String>,
     ) -> Result<Self, IvyError> {
         let chain = Chain::try_from(provider.signer().chain_id()).unwrap_or_default();
-        let (stake_registry, registry_coordinator) = if let Some(avs) = &avs {
-            let stake_registry = StakeRegistryAbi::new(avs.stake_registry(chain), provider.clone());
-            let registry_coordinator =
-                RegistryCoordinatorAbi::new(avs.registry_coordinator(chain), provider.clone());
-            (Some(stake_registry), Some(registry_coordinator))
-        } else {
-            (None, None)
-        };
         // TODO: Create clean method for initializing delegation manager
 
         let delegation_manager = DelegationManager::new(provider.clone())?;
-        Ok(Self {
-            avs,
-            provider,
-            keyfile_pw,
-            delegation_manager,
-            stake_registry,
-            registry_coordinator,
-        })
+        Ok(Self { avs, provider, keyfile_pw, delegation_manager })
     }
 
     /// Replace the current AVS instance with a new instance.
     pub async fn with_avs(&mut self, avs: Option<Box<dyn AvsVariant>>) -> Result<(), IvyError> {
-        let chain = Chain::try_from(self.provider.signer().chain_id()).unwrap_or_default();
-        let (stake_registry, registry_coordinator) = if let Some(avs) = &avs {
-            let stake_registry =
-                StakeRegistryAbi::new(avs.stake_registry(chain), self.provider.clone());
-            let registry_coordinator =
-                RegistryCoordinatorAbi::new(avs.registry_coordinator(chain), self.provider.clone());
-            (Some(stake_registry), Some(registry_coordinator))
-        } else {
-            (None, None)
-        };
         self.avs = avs;
-        self.registry_coordinator = registry_coordinator;
-        self.stake_registry = stake_registry;
         Ok(())
     }
 
@@ -127,25 +100,6 @@ impl AvsProvider {
         }
     }
 
-    /// Get a reference to the current StakeRegistry contract for the loaded AVS.
-    fn stake_registry(&self) -> Result<&StakeRegistry, IvyError> {
-        if let Some(stake_registry) = &self.stake_registry {
-            Ok(stake_registry)
-        } else {
-            Err(IvyError::AvsNotInitializedError)
-        }
-    }
-
-    /// Get a reference to the current StakeRegistry contract for the loaded AVS.
-    #[allow(dead_code)]
-    fn registry_coordinator(&self) -> Result<&RegistryCoordinator, IvyError> {
-        if let Some(registry_coordinator) = &self.registry_coordinator {
-            Ok(registry_coordinator)
-        } else {
-            Err(IvyError::AvsNotInitializedError)
-        }
-    }
-
     /// Setup the loaded AVS instance. This includes both download and configuration steps.
     pub async fn setup(
         &self,
@@ -167,37 +121,24 @@ impl AvsProvider {
                 Chain::try_from(self.provider.signer().chain_id())?,
             ));
         }
-        let chain = Chain::try_from(self.provider.signer().chain_id()).unwrap_or_default();
-        let quorums = self.get_bootable_quorums().await?;
-        if quorums.is_empty() {
-            error!("Could not launch EgenDA, no bootable quorums found. Exiting...");
-            return Err(IvyError::NoQuorums);
-        }
-        self.avs_mut()?.start(quorums, chain).await
+        self.avs_mut()?.start().await
     }
 
     /// Stop the loaded AVS instance.
-    pub async fn stop(&mut self, chain: Chain) -> Result<(), IvyError> {
-        self.avs_mut()?.stop(chain).await?;
+    pub async fn stop(&mut self) -> Result<(), IvyError> {
+        self.avs_mut()?.stop().await?;
         Ok(())
     }
 
     /// Clear the current AVS instance.
     pub async fn clear_avs(&mut self) -> Result<(), IvyError> {
         self.avs = None;
-        self.stake_registry = None;
-        self.registry_coordinator = None;
         Ok(())
     }
 
     pub async fn register(&self, config: &IvyConfig) -> Result<(), IvyError> {
-        let chain = Chain::try_from(self.provider.signer().chain_id()).unwrap_or_default();
-        let quorums = self.get_bootable_quorums().await?;
-        if quorums.is_empty() {
-            error!("Could not launch EgenDA, no bootable quorums found. Exiting...");
-            return Err(IvyError::NoQuorums);
-        }
-
+        // TODO: Move quorum logic into AVS-specific implementations.
+        // TODO: RIIA path creation? Move to new() func
         let avs_path = self.avs()?.path();
         fs::create_dir_all(avs_path.clone())?;
 
@@ -212,11 +153,10 @@ impl AvsProvider {
         if let Some(pw) = &self.keyfile_pw {
             self.avs()?
                 .register(
-                    quorums,
+                    self.provider.clone(),
                     avs_path.clone(),
                     config.default_private_keyfile.clone(),
                     pw,
-                    chain,
                 )
                 .await?;
         } else {
@@ -228,24 +168,15 @@ impl AvsProvider {
     }
 
     pub async fn unregister(&self, config: &IvyConfig) -> Result<(), IvyError> {
-        let chain = Chain::try_from(self.provider.signer().chain_id()).unwrap_or_default();
-        let quorums = self.get_bootable_quorums().await?;
-        if quorums.is_empty() {
-            error!("Could not launch EgenDA, no bootable quorums found. Exiting...");
-
-            return Err(IvyError::NoQuorums);
-        }
-
         let avs_path = self.avs()?.path();
 
         if let Some(pw) = &self.keyfile_pw {
             self.avs()?
                 .unregister(
-                    quorums,
+                    self.provider.clone(),
                     avs_path.clone(),
                     config.default_private_keyfile.clone(),
                     pw,
-                    chain,
                 )
                 .await?;
         } else {
@@ -254,29 +185,6 @@ impl AvsProvider {
         }
 
         Ok(())
-    }
-
-    pub async fn get_bootable_quorums(&self) -> Result<Vec<QuorumType>, IvyError> {
-        let mut quorums_to_boot: Vec<QuorumType> = Vec::new();
-        let chain = Chain::try_from(self.provider.signer().chain_id()).unwrap_or_default();
-        for quorum_type in self.avs()?.quorum_candidates(chain).iter() {
-            let quorum = Quorum::try_from_type_and_network(*quorum_type, chain)?;
-            let strategies = quorum.to_addresses();
-            let shares = self
-                .delegation_manager
-                .get_operator_shares(self.provider.address(), strategies)
-                .await?;
-            let total_shares = shares.iter().fold(U256::from(0), |acc, x| acc + x); // This may be
-                                                                                    // queryable from stake_registry or registry_coordinator directly?
-            info!("Operator shares for quorum {}: {}", quorum_type, total_shares);
-            let quorum_total =
-                self.stake_registry()?.get_current_total_stake(*quorum_type as u8).await?;
-            let quorum_percentage = total_shares * 10000 / (total_shares + quorum_total);
-            if self.avs()?.validate_node_size(quorum_percentage)? {
-                quorums_to_boot.push(*quorum_type);
-            };
-        }
-        Ok(quorums_to_boot)
     }
 
     pub async fn chain(&self) -> Result<Chain, IvyError> {
@@ -298,36 +206,28 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
 
     //fn validate_install();
     fn validate_node_size(&self, quorum_percentage: U256) -> Result<bool, IvyError>;
+    /// Register an operator for a given AVS. Implements AVS-specific logic.
     async fn register(
         &self,
-        quorums: Vec<QuorumType>,
+        provider: Arc<IvyProvider>,
         eigen_path: PathBuf,
         private_keypath: PathBuf,
         keyfile_password: &str,
-        chain: Chain,
     ) -> Result<(), IvyError>;
+    /// Unregister an operator for a given AVS. Implements AVS-specific logic.
     async fn unregister(
         &self,
-        quorums: Vec<QuorumType>,
+        provider: Arc<IvyProvider>,
         eigen_path: PathBuf,
         private_keypath: PathBuf,
         keyfile_password: &str,
-        chain: Chain,
     ) -> Result<(), IvyError>;
-    async fn start(&mut self, quorums: Vec<QuorumType>, chain: Chain) -> Result<Child, IvyError>;
-    async fn stop(&mut self, chain: Chain) -> Result<(), IvyError>;
-    /// Builds the ENV file for the specific AVS + Chain combination. Writes changes to the local
-    /// .env file. Check logs for specific file-paths.
-    async fn build_env(
-        &self,
-        provider: Arc<IvyProvider>,
-        config: &IvyConfig,
-    ) -> Result<(), IvyError>;
+    /// Start the AVS instance. Returns a Child process handle.
+    async fn start(&mut self) -> Result<Child, IvyError>;
+    /// Stop the AVS instance.
+    async fn stop(&mut self) -> Result<(), IvyError>;
+    /// Return the name of the AVS instance
     fn name(&self) -> &str;
-    fn quorum_min(&self, chain: Chain, quorum_type: QuorumType) -> U256;
-    fn quorum_candidates(&self, chain: Chain) -> Vec<QuorumType>;
-    fn stake_registry(&self, chain: Chain) -> Address;
-    fn registry_coordinator(&self, chain: Chain) -> Address;
     fn path(&self) -> PathBuf;
     /// Return wether or not the AVS is running
     fn running(&self) -> bool;

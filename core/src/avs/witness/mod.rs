@@ -19,7 +19,6 @@ use ethers::{
     signers::WalletError,
     types::{Address, BlockNumber, Bytes, Chain, Signature, H160, H256, U256},
 };
-use ivynet_macros::h160;
 use std::{
     path::PathBuf,
     process::{Child, Command},
@@ -31,7 +30,6 @@ use tracing::{debug, info};
 pub mod config;
 pub mod contracts;
 pub mod run_config;
-pub mod setup;
 
 /// LIGHT NODE ONLY implemented at the moment
 ///
@@ -54,63 +52,6 @@ pub mod setup;
 
 const WITNESS_PATH: &str = ".eigenlayer/witness";
 const ONE_MONTH: u64 = 60 * 60 * 24 * 30;
-
-#[derive(ThisError, Debug)]
-pub enum WitnessError {
-    #[error("Boot script failed: {0}")]
-    ScriptError(String),
-    #[error("Failed to download resource: {0}")]
-    DownloadFailedError(String),
-    #[error("Unsupported chain: {0}")]
-    UnsupportedChainError(String),
-    #[error("Operator not whitelisted: {0}")]
-    NotWhitelistedError(String),
-    #[error("Account already registered: {0}")]
-    AlreadyRegisteredError(String),
-    #[error("Account not registered: {0}")]
-    NotRegisteredError(String),
-    #[error("Contract error: {0}")]
-    ContractError(Bytes),
-    #[error("Json RPC error: {0}")]
-    JsonRpcError(JsonRpcError),
-    #[error("Unknown contract error")]
-    UnknownContractError,
-    #[error("Custom error: {0}")]
-    CustomError(String),
-    #[error(transparent)]
-    WitnessConfigError(#[from] config::WitnessConfigError),
-    #[error(transparent)]
-    ProviderError(#[from] ProviderError),
-    #[error(transparent)]
-    WalletError(#[from] WalletError),
-    #[error(transparent)]
-    IoError(#[from] std::io::Error),
-    #[error(transparent)]
-    KeyfileError(#[from] crate::keys::keyfile::KeyfileError),
-}
-
-impl From<ContractError<IvyProvider>> for WitnessError {
-    fn from(value: ContractError<IvyProvider>) -> Self {
-        match value {
-            ContractError::Revert(bytes) => WitnessError::ContractError(bytes),
-            ContractError::MiddlewareError { e } => {
-                if let Some(err) = e.as_error_response() {
-                    WitnessError::JsonRpcError(err.clone())
-                } else {
-                    WitnessError::UnknownContractError
-                }
-            }
-            ContractError::ProviderError { e } => {
-                if let Some(err) = e.as_error_response() {
-                    WitnessError::JsonRpcError(err.clone())
-                } else {
-                    WitnessError::UnknownContractError
-                }
-            }
-            _ => WitnessError::UnknownContractError,
-        }
-    }
-}
 
 #[derive(Debug, Clone)]
 pub struct Witness {
@@ -180,7 +121,7 @@ impl Witness {
             .address;
 
         let operator_registry =
-            OperatorRegistry::new(self.get_operator_registry_address()?, provider.clone());
+            OperatorRegistry::new(contracts::operator_registry(self.chain)?, provider.clone());
 
         if !self.is_operator_whitelisted(provider.clone()).await? {
             return Err(WitnessError::NotWhitelistedError(format!("{:?}", operator_address)));
@@ -189,7 +130,7 @@ impl Witness {
             return Err(WitnessError::AlreadyRegisteredError(format!("{:?}", operator_address)));
         }
         let salt = self.generate_salt();
-        let expiry = self.get_expiry(provider.clone(), ONE_MONTH).await?;
+        let expiry = self.get_expiry_timestamp(provider.clone(), ONE_MONTH).await?;
         let signed_msg: [u8; 65] = self.sign_operator_address(provider, salt, expiry).await?.into();
         let tx_receipt = operator_registry
             .register_watchtower_as_operator(watchtower_address, salt, expiry, signed_msg.into())
@@ -220,7 +161,7 @@ impl Witness {
             .address;
 
         let operator_registry =
-            OperatorRegistry::new(self.get_operator_registry_address()?, provider.clone());
+            OperatorRegistry::new(contracts::operator_registry(self.chain)?, provider.clone());
 
         if !self.is_operator_whitelisted(provider.clone()).await? {
             return Err(WitnessError::NotWhitelistedError(format!("{:?}", operator_address)));
@@ -246,6 +187,7 @@ impl Witness {
         provider: Arc<IvyProvider>,
     ) -> Result<(), WitnessError> {
         let operator_address = provider.address();
+        let witness_hub_address = contracts::witness_hub(self.chain)?;
 
         if !self.is_operator_whitelisted(provider.clone()).await? {
             return Err(WitnessError::NotWhitelistedError(format!("{:?}", operator_address)));
@@ -253,16 +195,17 @@ impl Witness {
         if !self.is_operator_registered(provider.clone()).await? {
             return Err(WitnessError::AlreadyRegisteredError(format!("{:?}", operator_address)));
         }
-        let witness_hub = WitnessHub::new(self.get_witness_hub_address()?, provider.clone());
-        let avs_directory = AvsDirectory::new(self.get_avs_directory_address()?, provider.clone());
+        let witness_hub = WitnessHub::new(witness_hub_address, provider.clone());
+        let avs_directory =
+            AvsDirectory::new(contracts::avs_directory(self.chain)?, provider.clone());
 
         // Operator signature construction
         let salt = self.generate_salt();
-        let expiry = self.get_expiry(provider.clone(), ONE_MONTH).await?;
+        let expiry = self.get_expiry_timestamp(provider.clone(), ONE_MONTH).await?;
         let digest_hash: [u8; 32] = avs_directory
             .calculate_operator_avs_registration_digest_hash(
                 operator_address,
-                self.get_witness_hub_address()?,
+                witness_hub_address,
                 salt,
                 expiry,
             )
@@ -300,7 +243,7 @@ impl Witness {
         if !self.is_operator_registered(provider.clone()).await? {
             return Err(WitnessError::NotRegisteredError(format!("{:?}", operator_address)));
         }
-        let witness_hub = WitnessHub::new(self.get_witness_hub_address()?, provider.clone());
+        let witness_hub = WitnessHub::new(contracts::witness_hub(self.chain)?, provider.clone());
         let tx_receipt =
             witness_hub.deregister_operator_from_avs(operator_address).send().await?.await?;
         if let Some(receipt) = tx_receipt {
@@ -322,7 +265,7 @@ impl Witness {
     ) -> Result<bool, WitnessError> {
         let operator_address = provider.address();
         let operator_registry =
-            OperatorRegistry::new(self.get_operator_registry_address()?, provider);
+            OperatorRegistry::new(contracts::operator_registry(self.chain)?, provider);
         let result = operator_registry.is_whitelisted(operator_address).await?;
         Ok(result)
     }
@@ -332,8 +275,8 @@ impl Witness {
         provider: Arc<IvyProvider>,
     ) -> Result<bool, WitnessError> {
         let operator_address = provider.address();
-        let avs_directory = AvsDirectory::new(self.get_avs_directory_address()?, provider);
-        let witness_hub_address = self.get_witness_hub_address()?;
+        let avs_directory = AvsDirectory::new(contracts::avs_directory(self.chain)?, provider);
+        let witness_hub_address = contracts::witness_hub(self.chain)?;
         let result =
             avs_directory.avs_operator_status(witness_hub_address, operator_address).await?;
         let result = match result {
@@ -350,7 +293,7 @@ impl Witness {
         watchtower_address: Address,
     ) -> Result<bool, WitnessError> {
         let operator_registry =
-            OperatorRegistry::new(self.get_operator_registry_address()?, provider);
+            OperatorRegistry::new(contracts::operator_registry(self.chain)?, provider);
         let result = operator_registry.is_valid_watchtower(watchtower_address).await?;
         Ok(result)
     }
@@ -363,7 +306,7 @@ impl Witness {
     ) -> Result<Signature, WitnessError> {
         let operator_address = provider.address();
         let operator_registry =
-            OperatorRegistry::new(self.get_operator_registry_address()?, provider.clone());
+            OperatorRegistry::new(contracts::operator_registry(self.chain)?, provider.clone());
         let digest_hash: [u8; 32] = operator_registry
             .calculate_watchtower_registration_message_hash(operator_address, salt, expiry)
             .await?;
@@ -395,7 +338,7 @@ impl Witness {
         salt
     }
 
-    async fn get_expiry(
+    async fn get_expiry_timestamp(
         &self,
         provider: Arc<IvyProvider>,
         expiry: u64,
@@ -409,30 +352,6 @@ impl Witness {
             Ok(expiry)
         } else {
             Err(WitnessError::CustomError("Could not get block number".to_owned()))
-        }
-    }
-
-    fn get_operator_registry_address(&self) -> Result<H160, WitnessError> {
-        match self.chain {
-            Chain::Mainnet => Ok(h160!(0xef1a89841fd189ba28e780a977ca70eb1a5e985d)),
-            Chain::Holesky => Ok(h160!(0x708CBDDdab358c1fa8efB82c75bB4a116F316Def)),
-            _ => Err(WitnessError::UnsupportedChainError(self.chain.to_string())),
-        }
-    }
-
-    fn get_witness_hub_address(&self) -> Result<H160, WitnessError> {
-        match self.chain {
-            Chain::Mainnet => Ok(h160!(0xD25c2c5802198CB8541987b73A8db4c9BCaE5cC7)),
-            Chain::Holesky => Ok(h160!(0xa987EC494b13b21A8a124F8Ac03c9F530648C87D)),
-            _ => Err(WitnessError::UnsupportedChainError(self.chain.to_string())),
-        }
-    }
-
-    fn get_avs_directory_address(&self) -> Result<H160, WitnessError> {
-        match self.chain {
-            Chain::Mainnet => Ok(h160!(0x135dda560e946695d6f155dacafc6f1f25c1f5af)),
-            Chain::Holesky => Ok(h160!(0x055733000064333CaDDbC92763c58BF0192fFeBf)),
-            _ => Err(WitnessError::UnsupportedChainError(self.chain.to_string())),
         }
     }
 }
@@ -481,15 +400,6 @@ impl AvsVariant for Witness {
         Ok(())
     }
 
-    // TODO: Consider best place on the host system to store resource files vs simple configs
-    async fn build_env(
-        &self,
-        provider: Arc<IvyProvider>,
-        config: &IvyConfig,
-    ) -> Result<(), IvyError> {
-        todo!()
-    }
-
     // TODO: This method may need to be abstracted in some way, as not all AVS types encforce
     // quorum_pericentage.
     fn validate_node_size(&self, quorum_percentage: U256) -> Result<bool, IvyError> {
@@ -499,27 +409,25 @@ impl AvsVariant for Witness {
     //TODO: We may be able to move this to a contract call directly
     async fn register(
         &self,
-        quorums: Vec<QuorumType>,
+        provider: Arc<IvyProvider>,
         eigen_path: PathBuf,
         private_keyfile: PathBuf,
         keyfile_password: &str,
-        chain: Chain,
     ) -> Result<(), IvyError> {
         todo!()
     }
 
     async fn unregister(
         &self,
-        quorums: Vec<QuorumType>,
+        provider: Arc<IvyProvider>,
         eigen_path: PathBuf,
         private_keyfile: PathBuf,
         keyfile_password: &str,
-        chain: Chain,
     ) -> Result<(), IvyError> {
         todo!()
     }
 
-    async fn start(&mut self, quorums: Vec<QuorumType>, chain: Chain) -> Result<Child, IvyError> {
+    async fn start(&mut self) -> Result<Child, IvyError> {
         // set current directory
         std::env::set_current_dir(&self.path).map_err(|e| WitnessError::IoError(e))?;
         let child = Command::new("sh")
@@ -532,29 +440,8 @@ impl AvsVariant for Witness {
     }
 
     // TODO: Remove quorums from stop  method if not needed
-    async fn stop(&mut self, chain: Chain) -> Result<(), IvyError> {
+    async fn stop(&mut self) -> Result<(), IvyError> {
         todo!()
-    }
-
-    // TODO: Should probably be a hashmap
-    fn quorum_min(&self, chain: Chain, quorum_type: QuorumType) -> U256 {
-        todo!()
-    }
-
-    // TODO: Consider loading these from a TOML config file or somesuch
-    // TODO: Add Eigen quorum
-    fn quorum_candidates(&self, chain: Chain) -> Vec<QuorumType> {
-        vec![QuorumType::LST]
-    }
-
-    fn stake_registry(&self, chain: Chain) -> Address {
-        // TODO: Dummy value, unused
-        H160::zero()
-    }
-
-    fn registry_coordinator(&self, chain: Chain) -> Address {
-        // TODO: Dummy value, unused
-        H160::zero()
     }
 
     fn path(&self) -> PathBuf {
@@ -578,6 +465,63 @@ fn download_install(witness_path: impl Into<PathBuf>) -> Result<(), WitnessError
         .arg("curl https://witnesschain-com.github.io/install-watchtower-testnet | sh")
         .output()?;
     Ok(())
+}
+
+#[derive(ThisError, Debug)]
+pub enum WitnessError {
+    #[error("Boot script failed: {0}")]
+    ScriptError(String),
+    #[error("Failed to download resource: {0}")]
+    DownloadFailedError(String),
+    #[error("Unsupported chain: {0}")]
+    UnsupportedChainError(String),
+    #[error("Operator not whitelisted: {0}")]
+    NotWhitelistedError(String),
+    #[error("Account already registered: {0}")]
+    AlreadyRegisteredError(String),
+    #[error("Account not registered: {0}")]
+    NotRegisteredError(String),
+    #[error("Contract error: {0}")]
+    ContractError(Bytes),
+    #[error("Json RPC error: {0}")]
+    JsonRpcError(JsonRpcError),
+    #[error("Unknown contract error")]
+    UnknownContractError,
+    #[error("Custom error: {0}")]
+    CustomError(String),
+    #[error(transparent)]
+    WitnessConfigError(#[from] config::WitnessConfigError),
+    #[error(transparent)]
+    ProviderError(#[from] ProviderError),
+    #[error(transparent)]
+    WalletError(#[from] WalletError),
+    #[error(transparent)]
+    IoError(#[from] std::io::Error),
+    #[error(transparent)]
+    KeyfileError(#[from] crate::keys::keyfile::KeyfileError),
+}
+
+impl From<ContractError<IvyProvider>> for WitnessError {
+    fn from(value: ContractError<IvyProvider>) -> Self {
+        match value {
+            ContractError::Revert(bytes) => WitnessError::ContractError(bytes),
+            ContractError::MiddlewareError { e } => {
+                if let Some(err) = e.as_error_response() {
+                    WitnessError::JsonRpcError(err.clone())
+                } else {
+                    WitnessError::UnknownContractError
+                }
+            }
+            ContractError::ProviderError { e } => {
+                if let Some(err) = e.as_error_response() {
+                    WitnessError::JsonRpcError(err.clone())
+                } else {
+                    WitnessError::UnknownContractError
+                }
+            }
+            _ => WitnessError::UnknownContractError,
+        }
+    }
 }
 
 #[cfg(test)]

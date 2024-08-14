@@ -4,7 +4,6 @@ use ethers::{
     signers::Signer,
     types::{Address, Chain, H160, U256},
 };
-use ivynet_macros::h160;
 use std::{
     fs::{self, File},
     io::{copy, BufReader},
@@ -16,13 +15,15 @@ use thiserror::Error as ThisError;
 use tracing::{debug, error, info};
 use zip::read::ZipArchive;
 
+use self::contracts::StakeRegistryAbi;
 use crate::{
     avs::AvsVariant,
     config::{self, IvyConfig},
     download::dl_progress_bar,
     eigen::{
+        contracts::delegation_manager::DelegationManagerAbi,
         node_classes::{self, NodeClass},
-        quorum::QuorumType,
+        quorum::{Quorum, QuorumType},
     },
     env_parser::EnvLines,
     error::{IvyError, SetupError},
@@ -30,9 +31,14 @@ use crate::{
     utils::gb_to_bytes,
 };
 
+mod contracts;
+
 pub const EIGENDA_PATH: &str = ".eigenlayer/eigenda";
 pub const EIGENDA_SETUP_REPO: &str =
     "https://github.com/ivy-net/eigenda-operator-setup/archive/refs/heads/master.zip";
+
+// TODO:
+// Add in qourum checking logic for register/unregister/start
 
 #[derive(ThisError, Debug)]
 pub enum EigenDAError {
@@ -42,12 +48,13 @@ pub enum EigenDAError {
     QuorumValidationError(QuorumType),
     #[error("Failed to download resource: {0}")]
     DownloadFailedError(String),
+    #[error("No bootable quorums found. Please check your operator shares.")]
+    NoBootableQuorumsError,
 }
 
 #[derive(Debug, Clone)]
 pub struct EigenDA {
     path: PathBuf,
-    #[allow(dead_code)]
     chain: Chain,
     running: bool,
 }
@@ -124,15 +131,14 @@ impl AvsVariant for EigenDA {
         Ok(acceptable)
     }
 
-    async fn start(&mut self, quorums: Vec<QuorumType>, chain: Chain) -> Result<Child, IvyError> {
+    async fn start(&mut self) -> Result<Child, IvyError> {
         let docker_path = self.path.join("eigenda-operator-setup");
-        let docker_path = match chain {
+        let docker_path = match self.chain {
             Chain::Mainnet => docker_path.join("mainnet"),
             Chain::Holesky => docker_path.join("holesky"),
             _ => todo!("Unimplemented"),
         };
-        std::env::set_current_dir(docker_path.clone())?;
-        debug!("docker start: {} |  {:?}", docker_path.display(), quorums);
+        std::env::set_current_dir(docker_path)?;
         let build = Command::new("docker-compose").arg("build").arg("--no-cache").status()?; //.arg("compose")
 
         let _ = Command::new("docker-compose").arg("config").status()?;
@@ -148,10 +154,9 @@ impl AvsVariant for EigenDA {
         Ok(cmd)
     }
 
-    // TODO: Remove quorums from stop  method if not needed
-    async fn stop(&mut self, chain: Chain) -> Result<(), IvyError> {
+    async fn stop(&mut self) -> Result<(), IvyError> {
         let docker_path = self.path.join("eigenda-operator-setup");
-        let docker_path = match chain {
+        let docker_path = match self.chain {
             Chain::Mainnet => docker_path.join("mainnet"),
             Chain::Holesky => docker_path.join("holesky"),
             _ => todo!("Unimplemented"),
@@ -160,47 +165,6 @@ impl AvsVariant for EigenDA {
         let _ = Command::new("docker-compose").arg("stop").status()?;
         self.running = false;
         Ok(())
-    }
-
-    // TODO: Should probably be a hashmap
-    fn quorum_min(&self, chain: Chain, quorum_type: QuorumType) -> U256 {
-        match chain {
-            Chain::Mainnet => match quorum_type {
-                QuorumType::LST => U256::from(96 * (10 ^ 18)),
-                QuorumType::EIGEN => todo!("Unimplemented"),
-            },
-            Chain::Holesky => match quorum_type {
-                QuorumType::LST => U256::from(96 * (10 ^ 18)),
-                QuorumType::EIGEN => todo!("Unimplemented"),
-            },
-            _ => todo!("Unimplemented"),
-        }
-    }
-
-    // TODO: Consider loading these from a TOML config file or somesuch
-    // TODO: Add Eigen quorum
-    fn quorum_candidates(&self, chain: Chain) -> Vec<QuorumType> {
-        match chain {
-            Chain::Mainnet => vec![QuorumType::LST],
-            Chain::Holesky => vec![QuorumType::LST],
-            _ => todo!("Unimplemented"),
-        }
-    }
-
-    fn stake_registry(&self, chain: Chain) -> Address {
-        match chain {
-            Chain::Mainnet => h160!(0x006124ae7976137266feebfb3f4d2be4c073139d),
-            Chain::Holesky => h160!(0xBDACD5998989Eec814ac7A0f0f6596088AA2a270),
-            _ => todo!("Unimplemented"),
-        }
-    }
-
-    fn registry_coordinator(&self, chain: Chain) -> Address {
-        match chain {
-            Chain::Mainnet => h160!(0x0baac79acd45a023e19345c352d8a7a83c4e5656),
-            Chain::Holesky => h160!(0x53012C69A189cfA2D9d29eb6F19B32e0A2EA3490),
-            _ => todo!("Unimplemented"),
-        }
     }
 
     fn path(&self) -> PathBuf {
@@ -217,18 +181,21 @@ impl AvsVariant for EigenDA {
 
     async fn register(
         &self,
-        quorums: Vec<QuorumType>,
+        provider: Arc<IvyProvider>,
         eigen_path: PathBuf,
         private_keypath: PathBuf,
         keyfile_password: &str,
-        chain: Chain,
     ) -> Result<(), IvyError> {
+        let quorums = self.get_bootable_quorums(provider.clone()).await?;
+        if quorums.is_empty() {
+            return Err(EigenDAError::NoBootableQuorumsError.into());
+        }
         let quorum_str: Vec<String> =
             quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
         let quorum_str = quorum_str.join(",");
 
         let run_script_dir = eigen_path.join("eigenda-operator-setup");
-        let run_script_dir = match chain {
+        let run_script_dir = match self.chain {
             Chain::Mainnet => run_script_dir.join("mainnet"),
             Chain::Holesky => run_script_dir.join("holesky"),
             _ => todo!("Unimplemented"),
@@ -263,18 +230,18 @@ impl AvsVariant for EigenDA {
 
     async fn unregister(
         &self,
-        quorums: Vec<QuorumType>,
+        provider: Arc<IvyProvider>,
         eigen_path: PathBuf,
         private_keypath: PathBuf,
         keyfile_password: &str,
-        chain: Chain,
     ) -> Result<(), IvyError> {
+        let quorums = self.get_bootable_quorums(provider.clone()).await?;
         let quorum_str: Vec<String> =
             quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
         let quorum_str = quorum_str.join(",");
 
         let run_script_dir = eigen_path.join("eigenda-operator-setup");
-        let run_script_dir = match chain {
+        let run_script_dir = match self.chain {
             Chain::Mainnet => run_script_dir.join("mainnet"),
             Chain::Holesky => run_script_dir.join("holesky"),
             _ => todo!("Unimplemented"),
@@ -305,6 +272,60 @@ impl AvsVariant for EigenDA {
         } else {
             Err(EigenDAError::ScriptError(optin.to_string()).into())
         }
+    }
+}
+
+impl EigenDA {
+    pub async fn get_current_total_stake(
+        &self,
+        provider: Arc<IvyProvider>,
+        quorum_type: u8,
+    ) -> Result<u128, IvyError> {
+        let stake_registry_contract =
+            StakeRegistryAbi::new(contracts::stake_registry(self.chain), provider.clone());
+        let total_stake = stake_registry_contract.get_current_total_stake(quorum_type).await?;
+        Ok(total_stake)
+    }
+
+    // TODO: Check to see if the delegation manager is querying strategies or quorums, also see if
+    // there's a more compact method for this (EG query all strategies at once, or a selected
+    // quorum
+    pub async fn get_operator_shares_for_strategies(
+        &self,
+        provider: Arc<IvyProvider>,
+        strategies: Vec<Address>,
+    ) -> Result<Vec<U256>, IvyError> {
+        let delegation_manager = DelegationManagerAbi::new(
+            contracts::registry_coordinator(self.chain),
+            provider.clone(),
+        );
+        let shares = delegation_manager.get_operator_shares(provider.address(), strategies).await?;
+        Ok(shares)
+    }
+
+    async fn get_bootable_quorums(
+        &self,
+        provider: Arc<IvyProvider>,
+    ) -> Result<Vec<QuorumType>, IvyError> {
+        let mut quorums_to_boot: Vec<QuorumType> = Vec::new();
+        let chain = Chain::try_from(provider.signer().chain_id()).unwrap_or_default();
+        for quorum_type in self.quorum_candidates(chain).iter() {
+            let quorum = Quorum::try_from_type_and_network(*quorum_type, chain)?;
+            let strategies = quorum.to_addresses();
+            let shares =
+                self.get_operator_shares_for_strategies(provider.clone(), strategies).await?;
+            let total_shares = shares.iter().fold(U256::from(0), |acc, x| acc + x); // This may be
+            info!("Operator shares for quorum {}: {}", quorum_type, total_shares);
+            let quorum_total =
+                self.get_current_total_stake(provider.clone(), *quorum_type as u8).await?;
+            quorums_to_boot.push(*quorum_type);
+            // TODO: Reintroduce this check somewhere
+            // let quorum_percentage = total_shares * 10000 / (total_shares + quorum_total);
+            // if self.avs()?.validate_node_size(quorum_percentage)? {
+            //     quorums_to_boot.push(*quorum_type);
+            // };
+        }
+        Ok(quorums_to_boot)
     }
 
     async fn build_env(
@@ -381,6 +402,31 @@ impl AvsVariant for EigenDA {
         info!(".env file saved to {}", env_path.display());
 
         Ok(())
+    }
+
+    // TODO: Should probably be a hashmap
+    fn quorum_min(&self, chain: Chain, quorum_type: QuorumType) -> U256 {
+        match chain {
+            Chain::Mainnet => match quorum_type {
+                QuorumType::LST => U256::from(96 * (10 ^ 18)),
+                QuorumType::EIGEN => todo!("Unimplemented"),
+            },
+            Chain::Holesky => match quorum_type {
+                QuorumType::LST => U256::from(96 * (10 ^ 18)),
+                QuorumType::EIGEN => todo!("Unimplemented"),
+            },
+            _ => todo!("Unimplemented"),
+        }
+    }
+
+    // TODO: Consider loading these from a TOML config file or somesuch
+    // TODO: Add Eigen quorum
+    fn quorum_candidates(&self, chain: Chain) -> Vec<QuorumType> {
+        match chain {
+            Chain::Mainnet => vec![QuorumType::LST],
+            Chain::Holesky => vec![QuorumType::LST],
+            _ => todo!("Unimplemented"),
+        }
     }
 }
 
