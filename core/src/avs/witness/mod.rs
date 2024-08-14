@@ -414,7 +414,8 @@ impl AvsVariant for Witness {
         private_keyfile: PathBuf,
         keyfile_password: &str,
     ) -> Result<(), IvyError> {
-        todo!()
+        self.register_all(provider.clone()).await?;
+        Ok(())
     }
 
     async fn unregister(
