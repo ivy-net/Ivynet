@@ -78,11 +78,15 @@ Please refer to the CLI documentation [here](./cli/README.md)
 
 ## AVS Progress
 
-| AVS          | Whitelist         | Deployment Progress        | Blockers                        | Metrics                        |
-|--------------|-------------------|----------------------------|---------------------------------|--------------------------------|
-| EigenDA      | NA                | Implemented                | NA                              | PR Open                        |
-| WitnessChain | Yes, both         | In Progress                | Keyring upgrades                |                                |
-| Omni         | Waiting on Omni   | NA                         | "Final Testnet" releasing soon  |                                |
-| AltLayer     | NO                | Implemented up to whitelist| Whitelist                       |                                |
-| OpenLayer    | Yes               | Next up                    | NA                              |                                |
+| AVS          | Whitelist         | Deployment Progress        | Blockers                         | Metrics                        |
+|--------------|-------------------|----------------------------|----------------------------------|--------------------------------|
+| EigenDA      | NA                | Implemented                | NA                               | PR Open                        |
+| WitnessChain | Yes, both         | In Progress                | Keyring upgrades                 |                                |
+| Omni         | Waiting on Omni   | NA                         | "Final Testnet" releasing soon   |                                |
+| AltLayer     | NO                | Implemented up to whitelist| Whitelist                        |                                |
+| OpenLayer    | Yes               | Next up                    | NA                               |                                |
 | Lagrange     | Yes - blocked BLS | Implemented                | !!LG has no unregister function!!|                                |
+
+# Extra components
+
+* The [avss](./avss) folder contain attemps to deploy AVS locally.
