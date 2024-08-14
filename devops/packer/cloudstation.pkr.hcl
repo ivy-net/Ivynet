@@ -34,7 +34,7 @@ build {
   sources = ["sources.googlecompute.ivynet-cloudstation"]
 
   provisioner "ansible" {
-    playbook_file = "ansible/ivynet_client.yml"
+    playbook_file = "../ansible/ivynet_client.yml"
     extra_arguments = ["--vault-password-file", "~/.vault.txt"]
   }
 }

@@ -3,6 +3,15 @@
 * ivynet-client -- base for cloudstation - clients binaries, but also rust
 * ivynet-backend -- backend program + third party tools (memcached, postgresql)
 
+## Config
+The ansible config
+```
+[defaults]
+stdout_callback = yaml
+pipelining = True
+```
+Pipelining helps to deal with become postgres user.
+
 ## Vault
 For now I put the github tokens into defaults for both roles.
 That makes easier to run tests and packer.
