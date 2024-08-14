@@ -6,7 +6,7 @@
 # Project
 /eigenda_operator_setup
 .env
-/packer/packer.prv
+*.prv
 
 # OS
 .DS_store

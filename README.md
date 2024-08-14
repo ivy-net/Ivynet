@@ -90,3 +90,4 @@ Please refer to the CLI documentation [here](./cli/README.md)
 # Extra components
 
 * The [avss](./avss) folder contain attemps to deploy AVS locally.
+* In the [devops](./devops) there are various 'devopsy' tools and informations.
