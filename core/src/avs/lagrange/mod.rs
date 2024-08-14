@@ -99,7 +99,7 @@ impl AvsVariant for Lagrange {
         generate_lagrange_key(self.run_path()).await?;
 
         // copy ecdsa keyfile to lagrange-worker path
-        let keyfile = config.default_private_keyfile.clone();
+        let keyfile = config.default_private_ecdsa_keyfile.clone();
         let dest_file = self.run_path().join("config/priv_key.json");
         fs::copy(keyfile, dest_file)?;
 

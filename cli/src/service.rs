@@ -29,7 +29,8 @@ pub async fn serve(
     let sock = Endpoint::Path(config.uds_dir());
 
     // Keystore load
-    let wallet = IvyWallet::from_keystore(config.default_private_keyfile.clone(), keyfile_pw)?;
+    let wallet =
+        IvyWallet::from_keystore(config.default_private_ecdsa_keyfile.clone(), keyfile_pw)?;
     let connection_wallet = config.identity_wallet()?;
 
     // Avs Service

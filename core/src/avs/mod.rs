@@ -233,7 +233,7 @@ impl AvsProvider {
                 .register(
                     quorums,
                     avs_path.clone(),
-                    config.default_private_keyfile.clone(),
+                    config.default_private_ecdsa_keyfile.clone(),
                     pw,
                     chain,
                 )
@@ -262,7 +262,7 @@ impl AvsProvider {
                 .unregister(
                     quorums,
                     avs_path.clone(),
-                    config.default_private_keyfile.clone(),
+                    config.default_private_ecdsa_keyfile.clone(),
                     pw,
                     chain,
                 )

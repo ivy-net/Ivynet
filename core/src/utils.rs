@@ -15,7 +15,7 @@ pub fn unwrap_or_local(
         Some(address) => Ok(address),
         None => {
             warn!("No address provided, defaulting to local wallet address");
-            Ok(config.default_ether_address)
+            Ok(config.default_ecdsa_address)
         }
     }
 }

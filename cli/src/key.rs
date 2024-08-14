@@ -55,14 +55,16 @@ pub enum CreateCommands {
 pub enum GetCommands {
     #[command(name = "ecdsa-private", about = "Get a ECDSA key")]
     EcdsaPrivateKey {},
-    #[command(name = "ecdsa-public", about = "Get public ECDSA key")]
-    EcdsaPublicKey { keyfile: String },
+    #[command(name = "ecdsa-public", about = "Get the public ECDSA address for a specified key")]
+    EcdsaPublicKey { keyname: String },
     #[command(name = "bls-private", about = "Get a BLS key")]
     BlsPrivateKey {},
-    #[command(name = "bls-public", about = "Get public bls key")]
-    BlsPublicKey {},
-    #[command(name = "default-public", about = "Get the default public key")]
-    GetDefaultEthAddress {},
+    #[command(name = "bls-public", about = "Get the default public BLS key")]
+    BlsPublicKey { keyname: String },
+    #[command(name = "default-ecdsa", about = "get the default ECDSA public address")]
+    GetDefaultEcdsaAddress {},
+    #[command(name = "default-bls", about = "get the default ECDSA public address")]
+    GetDefaultBlsAddress {},
 }
 
 #[derive(Parser, Debug, Clone)]
@@ -101,7 +103,8 @@ pub async fn parse_key_import_subcommands(
             let wallet = IvyWallet::from_private_key(private_key)?;
             let (keyname, pass) = get_credentials(keyname, password);
             let prv_key_path = wallet.encrypt_and_store(&config.get_path(), keyname, pass)?;
-            config.default_private_keyfile = prv_key_path;
+            config.default_private_ecdsa_keyfile = prv_key_path;
+            config.default_ecdsa_address = wallet.address();
             config.store().map_err(IvyError::from)?;
         }
     }
@@ -123,7 +126,8 @@ pub async fn parse_key_create_subcommands(
             if store {
                 let (keyname, pass) = get_credentials(keyname, password);
                 let prv_key_path = wallet.encrypt_and_store(&config.get_path(), keyname, pass)?;
-                config.default_private_keyfile = prv_key_path;
+                config.default_private_ecdsa_keyfile = prv_key_path;
+                config.default_ecdsa_address = addr;
                 config.store().map_err(IvyError::from)?;
             }
         }
@@ -137,9 +141,9 @@ pub async fn parse_key_get_subcommands(
 ) -> Result<(), Error> {
     match subcmd {
         GetCommands::BlsPrivateKey {} => {}
-        GetCommands::BlsPublicKey {} => {}
+        GetCommands::BlsPublicKey { keyname: _ } => {}
         GetCommands::EcdsaPrivateKey {} => {
-            let mut path = config.default_private_keyfile;
+            let mut path = config.default_private_ecdsa_keyfile;
             path.set_extension("json");
 
             let password =
@@ -147,15 +151,18 @@ pub async fn parse_key_get_subcommands(
             let wallet = IvyWallet::from_keystore(path, &password)?;
             println!("Private key: {:?}", wallet.to_private_key());
         }
-        GetCommands::EcdsaPublicKey { keyfile } => {
-            let mut path = config.get_path().join(keyfile);
+        GetCommands::EcdsaPublicKey { keyname } => {
+            let mut path = config.get_path().join(keyname);
             path.set_extension("json");
             let data = fs::read_to_string(path).expect("No data in json");
             let v: Value = serde_json::from_str(&data).expect("Could not parse through json");
-            println!("{:?}", v["address"])
+            println!("{}", v["address"])
         }
-        GetCommands::GetDefaultEthAddress {} => {
-            println!("Public Key: {:?}", config.default_ether_address.clone());
+        GetCommands::GetDefaultBlsAddress {} => {
+            println!("Public Key: {:?}", config.default_bls_address.clone());
+        }
+        GetCommands::GetDefaultEcdsaAddress {} => {
+            println!("Public Key: {:?}", config.default_ecdsa_address.clone());
         }
     }
     Ok(())
@@ -171,7 +178,7 @@ pub async fn parse_key_set_subcommands(
             let mut path = config.get_path().join(keyname);
             path.set_extension("json");
             if path.exists() {
-                config.set_private_keyfile(path);
+                config.default_private_ecdsa_keyfile = path;
                 println!("New default private key set")
             } else {
                 println!("File doesn't exist")
