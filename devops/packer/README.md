@@ -62,27 +62,12 @@ packer init cloudstation.pkr.hcl
 ```
 packer build -var 'version=2' cloudstation.pkr.hcl
 ```
-## Ansible
-
-### Molecule
-* In test pass '--tags github' to avoid downloading g1, g2 files.
-* For molecule it can be:
-```
-molecule converge -- --tags github
-
-```
 
 ## Ansible
 
-The ansible config
-```
-[defaults]
-stdout_callback = yaml
-pipelining = True
-```
-Pipelining helps to deal with become postgres user.
+Please check the [README](../ansible/README.md) file for more information.
 
 ## MOTD
 
 Extra information are visible after the login.
-Check the [motd.txt](ansible/roles/ivynet-client/templates/motd.txt.j2)
+Check the [motd.txt](../ansible/roles/ivynet-client/templates/motd.txt.j2)
