@@ -17,10 +17,10 @@ variable "version" {
   description = "Image version"
 }
 
-source "googlecompute" "ivynet-cloudstation" {
+source "googlecompute" "ivynet-backend" {
   source_image_family = "ubuntu-2404-lts-amd64"
   project_id          = "ivynet-tests"
-  zone                = "us-central1-a"
+  zone                = "us-central1-b"
   image_family        = "ivynet-backend"
   image_name          = "ivynet-backend-${var.version}"
   disk_size           = "40"
@@ -31,7 +31,7 @@ source "googlecompute" "ivynet-cloudstation" {
 }
 
 build {
-  sources = ["sources.googlecompute.ivynet-cloudstation"]
+  sources = ["sources.googlecompute.ivynet-backend"]
 
   provisioner "ansible" {
     playbook_file = "../ansible/backend.yml"
