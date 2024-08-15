@@ -1,0 +1,71 @@
+---
+- name: Create GCE instance
+  google.cloud.gcp_compute_instance:
+    auth_kind: "{{ molecule_yml.driver.auth_kind | default(omit, true) }}"
+    disks:
+      - auto_delete: true
+        boot: true
+        initialize_params:
+          image: "{{ item.image }}"
+    machine_type: n2-standard-2
+    name: "{{ item.name }}"
+    network_interfaces:
+      - network:
+          self-link: "default"
+        # yamllint disable-line rule:line-length
+        access_configs: "{{ [{'name': 'instance_ip', 'type': 'ONE_TO_ONE_NAT'}] if molecule_yml.driver.external_access else [] }}"
+    metadata:
+      ssh-keys: "{{ ssh_user }}:{{ ssh_pub_key }}"
+      enable-login: "FALSE"
+    labels:
+      oslogin: false
+    # yamllint disable-line rule:line-length
+    service_account_file: "{{ molecule_yml.driver.service_account_file | default(omit, true) }}"
+    project: "{{ molecule_yml.driver.project_id }}"
+    zone: "{{ item.zone | default(molecule_yml.driver.region + '-b') }}"
+  register: create_sleeper
+  async: 7200
+  poll: 0
+
+- name: Wait for instance(s) creation to complete
+  ansible.builtin.async_status:
+    jid: "{{ create_sleeper.ansible_job_id }}"
+  register: server
+  until: server.finished
+  retries: 300
+  delay: 10
+
+- name: Populate instance config dict Linux
+  ansible.builtin.set_fact:
+    instance_conf_dict:
+      {
+        "instance": "{{ server.name }}",
+        "address": "{{ server.networkInterfaces.0.accessConfigs.0.natIP }}",
+        "user": "{{ ssh_user }}",
+        "port": "22",
+        "identity_file": "{{ ssh_pub_key }}",
+        "instance_os_type": "{{ molecule_yml.driver.instance_os_type }}",
+      }
+  register: instance_conf_dict
+
+
+- name: Convert instance config dict to a list
+  ansible.builtin.set_fact:
+    instance_conf: "[{{ instance_conf_dict.ansible_facts.instance_conf_dict }}]"
+
+- name: Expose
+  ansible.builtin.debug:
+    var: instance_conf
+
+- name: Dump instance config
+  ansible.builtin.copy:
+    content: "{{ instance_conf }}"
+    dest: "{{ molecule_instance_config }}"
+    mode: "0600"
+
+- name: Wait for SSH
+  ansible.builtin.wait_for:
+    port: 22
+    host: "{{ server.networkInterfaces.0.accessConfigs.0.natIP }}"
+    search_regex: SSH
+    delay: 10

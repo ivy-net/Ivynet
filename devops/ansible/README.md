@@ -24,14 +24,19 @@ In case of backend, postgres cannot be properly started (systemd).
 
 ### Client test
 ```
- ANSIBLE_VAULT_PASSWORD_FILE=$HOME/.vault.txt molecule converge --skip-tags gcp
+ANSIBLE_VAULT_PASSWORD_FILE=$HOME/.vault.txt molecule converge -- --skip-tags gcp
 ```
 
 ### Backend test
-```
- ANSIBLE_VAULT_PASSWORD_FILE=$HOME/.vault.txt molecule converge --skip-tags db-config
-```
 
+* simple test with docker
+```
+ANSIBLE_VAULT_PASSWORD_FILE=$HOME/.vault.txt molecule converge -- --skip-tags db-config,systemd
+```
+* full test with GCE instance
+```
+ANSIBLE_PIPELINING=true ANSIBLE_VAULT_PASSWORD_FILE=$HOME/.vault.txt molecule test -s gce
+```
 ## TODO
 
 * Check why sometime molecule does not work with GCP

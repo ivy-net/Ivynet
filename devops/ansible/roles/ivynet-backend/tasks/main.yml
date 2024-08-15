@@ -37,6 +37,7 @@
   tags:
     - general
     - ivynet
+    - systemd
 
 - name: Set Backend service
   ansible.builtin.systemd_service:
@@ -46,3 +47,4 @@
   tags:
     - general
     - ivynet
+    - systemd
