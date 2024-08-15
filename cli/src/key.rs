@@ -2,8 +2,8 @@ use clap::Parser;
 use dialoguer::{Input, Password};
 use ivynet_core::{config::IvyConfig, error::IvyError, ethers::types::H160, wallet::IvyWallet};
 use serde_json::Value;
-use std::{fs, path::PathBuf, str::FromStr};
-use tracing::{error, info};
+use std::{fs, path::PathBuf};
+use tracing::{debug, error};
 
 use crate::error::Error;
 
@@ -154,7 +154,7 @@ pub async fn parse_key_get_subcommands(
 
             if path.exists() {
                 let json = read_json_file(&path)?;
-                info!("{:?}", json.get("address"));
+                println!("{:?}", json.get("address"));
             } else {
                 error!("Keyfile doesn't exist")
             }
@@ -200,8 +200,8 @@ fn read_json_file(path: &PathBuf) -> Result<Value, Error> {
 fn extract_and_decode_pub_key(json: &Value) -> Result<H160, Error> {
     let pub_key =
         json.get("address").expect("No address in json").as_str().expect("Should be a string");
-    info!("Public key: {:?}", pub_key);
-    let decoded_pub_key = H160::from_str(pub_key).expect("Should be able to convert to H160");
+    debug!("Public key: {:?}", pub_key);
+    let decoded_pub_key = pub_key.parse::<H160>().expect("Should be able to convert to H160");
     Ok(decoded_pub_key)
 }
 
