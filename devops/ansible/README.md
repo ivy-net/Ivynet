@@ -39,6 +39,7 @@ ANSIBLE_PIPELINING=true ANSIBLE_VAULT_PASSWORD_FILE=$HOME/.vault.txt molecule te
 ```
 ## TODO
 
+* ensure that client is idempotent
 * Check why sometime molecule does not work with GCP
 * Prepare proper tests for molecule
 * Start to export binaries outside of GitHub (it's going to make roles much easier)

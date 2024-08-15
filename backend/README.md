@@ -16,6 +16,11 @@ To check available endpoints access `http://localhost:8080/swagger-ui` in your b
 Backend depends on sengrid to send emails.
 In order to receive emails from the platform you need to copy `.env.template` file to `.env` and provide proper Sendgrid keys and template ids.
 
+### Sendgrid API key setup
+
+Creating API key for Sendgrip please assign following permissions:
+- Mail Send/Mail Send (Full)
+- Template Engine (RO)
 
 # Backend SQL changes
 
