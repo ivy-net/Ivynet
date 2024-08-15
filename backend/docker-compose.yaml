@@ -32,7 +32,7 @@ services:
     container_name: backend
     build:
       context: .
-      dockerfile: backend/Dockerfile
+      dockerfile: Dockerfile
       args:
         - CONTEXT_APK=ivynet-backend
     environment:
