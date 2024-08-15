@@ -7,6 +7,7 @@
 /eigenda_operator_setup
 .env
 *.prv
+terraform.tfstate*
 
 # OS
 .DS_store
