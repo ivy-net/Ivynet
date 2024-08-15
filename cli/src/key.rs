@@ -154,7 +154,7 @@ pub async fn parse_key_get_subcommands(
 
             if path.exists() {
                 let json = read_json_file(&path)?;
-                println!("{:?}", json.get("address"));
+                println!("{:?}", json.get("address").expect("Cannot find public key"));
             } else {
                 error!("Keyfile doesn't exist")
             }
