@@ -1,6 +1,6 @@
 use clap::Parser;
 use dialoguer::{Input, Password};
-use ivynet_core::{config::IvyConfig, error::IvyError, ethers::types::H160, wallet::IvyWallet};
+use ivynet_core::{config::IvyConfig, ethers::types::H160, wallet::IvyWallet};
 use serde_json::Value;
 use std::{fs, path::PathBuf};
 use tracing::{debug, error};
@@ -103,7 +103,7 @@ pub async fn parse_key_import_subcommands(
             let (keyname, pass) = get_credentials(keyname, password);
             let prv_key_path = wallet.encrypt_and_store(&config.get_path(), keyname, pass)?;
             config.default_private_keyfile = prv_key_path;
-            config.store().map_err(IvyError::from)?;
+            config.store()?;
         }
     }
     Ok(())
@@ -125,7 +125,7 @@ pub async fn parse_key_create_subcommands(
                 let (keyname, pass) = get_credentials(keyname, password);
                 let prv_key_path = wallet.encrypt_and_store(&config.get_path(), keyname, pass)?;
                 config.default_private_keyfile = prv_key_path;
-                config.store().map_err(IvyError::from)?;
+                config.store()?;
             }
         }
     }
@@ -181,7 +181,7 @@ pub async fn parse_key_set_subcommands(
 
                 config.set_private_keyfile(path);
                 config.set_address(decoded_pub_key);
-                config.store().map_err(IvyError::from)?;
+                config.store()?;
                 println!("New default private key set")
             } else {
                 println!("File doesn't exist")
