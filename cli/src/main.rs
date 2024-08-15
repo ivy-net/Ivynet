@@ -28,6 +28,10 @@ struct Args {
     /// Decide the level of verbosity for the logs
     #[arg(long, env = "LOG_LEVEL", default_value_t = Level::INFO)]
     pub log_level: Level,
+
+    /// Skip backend connection
+    #[arg(long, env = "NO_BACKEND", default_value_t = true)]
+    pub no_backend: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -78,7 +82,9 @@ async fn main() -> Result<(), Error> {
     start_tracing(args.log_level)?;
 
     match args.cmd {
-        Commands::Init => initialize_ivynet(args.server_url, args.server_ca.as_ref()).await?,
+        Commands::Init => {
+            initialize_ivynet(args.server_url, args.server_ca.as_ref(), args.no_backend).await?
+        }
         Commands::Config { subcmd } => {
             config::parse_config_subcommands(
                 subcmd,
@@ -108,6 +114,7 @@ async fn main() -> Result<(), Error> {
                 &keyfile_pw,
                 args.server_url,
                 args.server_ca.as_ref(),
+                args.no_backend,
             )
             .await?
         }

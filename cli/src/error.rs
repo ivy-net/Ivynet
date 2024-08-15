@@ -7,6 +7,9 @@ pub enum Error {
     IvyError(#[from] ivynet_core::error::IvyError),
 
     #[error(transparent)]
+    ServerError(#[from] ivynet_core::grpc::server::ServerError),
+
+    #[error(transparent)]
     DialoguerError(#[from] dialoguer::Error),
 
     #[error(transparent)]
