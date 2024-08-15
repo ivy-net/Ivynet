@@ -50,7 +50,7 @@ impl Default for IvyConfig {
             path: DEFAULT_CONFIG_PATH.to_owned(),
             bls_path: dirs::home_dir()
                 .expect("Could not get a home directory")
-                .join(".eigenlayer/operatorkeys"),
+                .join(".eigenlayer/operator_keys"),
             mainnet_rpc_url: "https://rpc.flashbots.net/fast".to_string(),
             holesky_rpc_url: "https://eth-holesky.public.blastapi.io".to_string(),
             local_rpc_url: "http://localhost:8545".to_string(),

@@ -1,8 +1,25 @@
+use aes::Aes128;
+use blsful::{Bls12381G1Impl, PublicKey, SecretKey};
 use clap::Parser;
+use ctr::{
+    cipher::{KeyIvInit, StreamCipher},
+    Ctr128BE,
+};
 use dialoguer::{Input, Password};
-use ivynet_core::{config::IvyConfig, error::IvyError, wallet::IvyWallet};
-use serde_json::Value;
-use std::fs;
+use hex::{decode, encode};
+use ivynet_core::{config::IvyConfig, error::IvyError, ethers::types::H160, wallet::IvyWallet};
+use rand::{distributions::Alphanumeric, Rng};
+use scrypt::{scrypt, Params};
+use serde_json::{json, Value};
+use sha2::{Digest, Sha256};
+use std::{
+    fs,
+    fs::File,
+    io::{Read, Write},
+    path::PathBuf,
+    str::FromStr,
+};
+use tracing::{error, info};
 
 use crate::error::Error;
 
@@ -33,7 +50,7 @@ pub enum KeyCommands {
 #[derive(Parser, Debug, Clone)]
 pub enum ImportCommands {
     #[command(name = "bls", about = "Import a BLS key <PRIVATE_KEY>")]
-    BlsImport {},
+    BlsImport { private_key: String, keyname: Option<String>, password: Option<String> },
     #[command(name = "ecdsa", about = "Import a ECDSA key <PRIVATE_KEY>")]
     EcdsaImport { private_key: String, keyname: Option<String>, password: Option<String> },
 }
@@ -41,7 +58,12 @@ pub enum ImportCommands {
 #[derive(Parser, Debug, Clone)]
 pub enum CreateCommands {
     #[command(name = "bls", about = "Create a BLS key")]
-    BlsCreate {},
+    BlsCreate {
+        #[arg(long)]
+        store: bool,
+        keyname: Option<String>,
+        password: Option<String>,
+    },
     #[command(name = "ecdsa", about = "Create a ECDSA key")]
     EcdsaCreate {
         #[arg(long)]
@@ -98,7 +120,27 @@ pub async fn parse_key_import_subcommands(
     mut config: IvyConfig,
 ) -> Result<(), Error> {
     match subcmd {
-        ImportCommands::BlsImport {} => {}
+        ImportCommands::BlsImport { private_key, keyname, password } => {
+            let (keyname, pass) = get_credentials(keyname, password);
+            let mut array = [0u8; 32];
+            let bytes = private_key.as_bytes();
+            array[..bytes.len().min(32)].copy_from_slice(&bytes[..32.min(bytes.len())]);
+
+            let sk =
+                SecretKey::<Bls12381G1Impl>::from_be_bytes(&array).expect("Invalid private key");
+            let (json_string, addr) = create_file_from_private_key(sk, pass);
+
+            let file_path = config.get_bls_path().join(format!("{}.bls.key.json", keyname));
+            println!("{:?}", file_path);
+
+            let mut file = File::create(&file_path).expect("Couldn't create file");
+            file.write_all(json_string.as_bytes()).expect("Couldn't write to json");
+            println!("BLS Key has been created and saved to: {}", file_path.display());
+
+            config.set_private_bls_keyfile(file_path.clone());
+            config.set_bls_address(addr);
+            config.store().map_err(IvyError::from)?;
+        }
         ImportCommands::EcdsaImport { private_key, keyname, password } => {
             let wallet = IvyWallet::from_private_key(private_key)?;
             let (keyname, pass) = get_credentials(keyname, password);
@@ -116,7 +158,35 @@ pub async fn parse_key_create_subcommands(
     mut config: IvyConfig,
 ) -> Result<(), Error> {
     match subcmd {
-        CreateCommands::BlsCreate {} => {}
+        CreateCommands::BlsCreate { store, keyname, password } => {
+            if store {
+                let (keyname, pass) = get_credentials(keyname, password);
+
+                let (json_string, addr) = create_keypair_and_encrypt(pass);
+                let file_path = config.get_bls_path().join(format!("{}.bls.key.json", keyname));
+                println!("{:?}", file_path);
+
+                println!("Public Address: {}", addr);
+
+                let mut file = File::create(&file_path).expect("Couldn't create file");
+                file.write_all(json_string.as_bytes()).expect("Couldn't write to json");
+                println!("BLS Key has been created and saved to: {}", file_path.display());
+
+                config.set_private_bls_keyfile(file_path.clone());
+                config.set_bls_address(addr);
+                config.store().map_err(IvyError::from)?;
+            } else {
+                let random_password = generate_random_string(16);
+                // Generate the keypair and encrypt the private key without storing
+                let (_json_string, addr) = create_keypair_and_encrypt(random_password);
+
+                // Handle the result in memory, e.g., print or return it
+                println!("Generated BLS Key (in memory):");
+                println!("Public Address: {}", addr);
+
+                // Optionally, return or use the key/address in another way
+            }
+        }
         CreateCommands::EcdsaCreate { store, keyname, password } => {
             let wallet = IvyWallet::new();
             let priv_key = wallet.to_private_key();
@@ -140,23 +210,85 @@ pub async fn parse_key_get_subcommands(
     config: IvyConfig,
 ) -> Result<(), Error> {
     match subcmd {
-        GetCommands::BlsPrivateKey {} => {}
-        GetCommands::BlsPublicKey { keyname: _ } => {}
+        GetCommands::BlsPrivateKey {} => {
+            let pass =
+                Password::new().with_prompt("Enter a password to the private key").interact()?;
+            //let pass = pass.trim();
+            let path = config.default_private_bls_keyfile;
+
+            // Read the JSON file
+            let mut file = File::open(path).expect("");
+            let mut json_data = String::new();
+            file.read_to_string(&mut json_data).expect("json data invalid");
+
+            // Parse the JSON data
+            let parsed_json: Value = serde_json::from_str(&json_data).expect("");
+
+            // Extract fields from JSON
+            let crypto_json = &parsed_json["crypto"];
+            let ciphertext_hex =
+                crypto_json["ciphertext"].as_str().expect("Missing ciphertext field");
+            let iv_hex = crypto_json["cipherparams"]["iv"].as_str().expect("Missing IV field");
+            let salt_hex = crypto_json["kdfparams"]["salt"].as_str().expect("Missing salt field");
+
+            // Convert hex-encoded values to bytes
+            let ciphertext = decode(ciphertext_hex).expect("Failed to decode ciphertext");
+            let iv = decode(iv_hex).expect("Failed to decode IV");
+            let salt = decode(salt_hex).expect("Failed to decode salt");
+
+            // Use the scrypt parameters used for encryption
+            let scrypt_params = Params::new(14, 8, 1, 16).unwrap(); // Match the parameters used during encryption
+
+            // Derive the key from the password
+            let key = derive_key(pass.as_bytes(), &salt, &scrypt_params, 16);
+
+            // Decrypt the ciphertext
+            let decrypted_data = decrypt_data(&ciphertext, &key, &iv);
+            // Convert the decrypted data from bytes to a hex string or utf-8
+
+            match String::from_utf8(decrypted_data) {
+                Ok(decrypted_string) => {
+                    println!("Decrypted BLS Private Key:\n{}", decrypted_string)
+                }
+                Err(e) => println!("Failed to convert decrypted data to UTF-8: {}", e),
+            }
+        }
+        GetCommands::BlsPublicKey { keyname } => {
+            let mut path = config.get_bls_path().join(keyname);
+            path.set_extension("bls.key.json");
+
+            if path.exists() {
+                let data = fs::read_to_string(path).expect("No data in json");
+                let v: Value = serde_json::from_str(&data).expect("Could not parse through json");
+                println!("{}", v["pubKey"])
+            } else {
+                println!("No path found")
+            }
+        }
         GetCommands::EcdsaPrivateKey {} => {
             let mut path = config.default_private_ecdsa_keyfile;
             path.set_extension("json");
 
-            let password =
-                Password::new().with_prompt("Enter a password to the private key").interact()?;
-            let wallet = IvyWallet::from_keystore(path, &password)?;
-            println!("Private key: {:?}", wallet.to_private_key());
+            if path.exists() {
+                let password = Password::new()
+                    .with_prompt("Enter a password to the private key")
+                    .interact()?;
+                let wallet = IvyWallet::from_keystore(path, &password)?;
+                println!("Private key: {:?}", wallet.to_private_key());
+            } else {
+                println!("No path found")
+            }
         }
         GetCommands::EcdsaPublicKey { keyname } => {
             let mut path = config.get_path().join(keyname);
             path.set_extension("json");
-            let data = fs::read_to_string(path).expect("No data in json");
-            let v: Value = serde_json::from_str(&data).expect("Could not parse through json");
-            println!("{}", v["address"])
+
+            if path.exists() {
+                let json = read_json_file(&path)?;
+                info!("{:?}", json.get("address"));
+            } else {
+                error!("Keyfile doesn't exist")
+            }
         }
         GetCommands::GetDefaultBlsAddress {} => {
             println!("Public Key: {:?}", config.default_bls_address.clone());
@@ -177,15 +309,185 @@ pub async fn parse_key_set_subcommands(
         SetCommands::EcdsaSet { keyname } => {
             let mut path = config.get_path().join(keyname);
             path.set_extension("json");
+            println!("Attempting to set key file path: {:?}", path);
+
             if path.exists() {
-                config.default_private_ecdsa_keyfile = path;
+                let json = read_json_file(&path)?;
+                let decoded_pub_key = extract_and_decode_pub_key(&json)?;
+
+                config.set_private_ecdsa_keyfile(path);
+                config.set_ecdsa_address(decoded_pub_key);
+                config.store().map_err(IvyError::from)?;
                 println!("New default private key set")
             } else {
-                println!("File doesn't exist")
+                println!("File doesn't exist at path: {:?}", path);
             }
         }
     }
     Ok(())
+}
+
+pub fn encrypt_data(data: &[u8], key: &[u8], iv: &[u8]) -> Vec<u8> {
+    let mut cipher = Ctr128BE::<Aes128>::new(key.into(), iv.into());
+    let mut buffer = data.to_vec();
+    cipher.apply_keystream(&mut buffer);
+    buffer
+}
+
+fn decrypt_data(encrypted_data: &[u8], key: &[u8], iv: &[u8]) -> Vec<u8> {
+    let mut cipher = Ctr128BE::<Aes128>::new(key.into(), iv.into());
+    let mut buffer = encrypted_data.to_vec();
+    cipher.apply_keystream(&mut buffer);
+    buffer
+}
+
+// Function to derive key from password and parameters
+pub fn derive_key(password: &[u8], salt: &[u8], params: &Params, dklen: usize) -> Vec<u8> {
+    let mut key = vec![0u8; dklen];
+    scrypt(password, salt, params, &mut key).expect("Failed to derive key");
+    key
+}
+
+fn read_json_file(path: &PathBuf) -> Result<Value, Error> {
+    let data = fs::read_to_string(path).expect("No data in json");
+    let json: Value = serde_json::from_str(&data).expect("Could not parse through json");
+    Ok(json)
+}
+
+fn extract_and_decode_pub_key(json: &Value) -> Result<H160, Error> {
+    let pub_key =
+        json.get("address").expect("No address in json").as_str().expect("Should be a string");
+    info!("Public key: {:?}", pub_key);
+    let decoded_pub_key = H160::from_str(pub_key).expect("Should be able to convert to H160");
+    Ok(decoded_pub_key)
+}
+
+fn create_keypair_and_encrypt(password: String) -> (String, String) {
+    // Generate BLS key pair
+    let sk = SecretKey::<Bls12381G1Impl>::new();
+    let pk = PublicKey::<Bls12381G1Impl>::from(&sk);
+
+    // Serialize public key to JSON
+    let pub_key_json = serde_json::to_string(&pk).expect("Failed to serialize PublicKey");
+    let addr = pub_key_json.trim_matches('"');
+
+    // Convert secret key to bytes and encode as hex
+    let sk_bytes = sk.to_be_bytes();
+    let sk_hex = encode(sk_bytes);
+
+    // Generate random IV and salt
+    let mut rng = rand::thread_rng();
+    let iv = rng.gen::<[u8; 16]>();
+    let salt = rng.gen::<[u8; 32]>();
+
+    // Derive key using scrypt
+    let scrypt_params = Params::new(14, 8, 1, 16).unwrap();
+    let key = derive_key(password.as_bytes(), &salt, &scrypt_params, 16);
+
+    // Encrypt the secret key
+    let ciphertext = encrypt_data(sk_hex.as_bytes(), &key, &iv);
+
+    // Generate MAC
+    let mut hasher = Sha256::new();
+    hasher.update(&key);
+    hasher.update(&ciphertext);
+    let mac = encode(hasher.finalize());
+
+    // Construct the crypto JSON object
+    let crypto_json: Value = json!({
+        "cipher": "aes-128-ctr",
+        "ciphertext": encode(&ciphertext),
+        "cipherparams": {
+            "iv": encode(iv)
+        },
+        "kdf": "scrypt",
+        "kdfparams": {
+            "dklen": 16,
+            "n": 16384,
+            "p": 1,
+            "r": 8,
+            "salt": encode(salt)
+        },
+        "mac": mac
+    });
+
+    // Construct the final JSON data object
+    let json_data: Value = json!({
+        "pubKey": addr,
+        "crypto": crypto_json
+    });
+
+    // Serialize to pretty JSON string
+    let json_string =
+        serde_json::to_string_pretty(&json_data).expect("Failed to serialize to JSON");
+
+    println!("Private key: {:?}", sk);
+
+    (json_string, addr.to_string())
+}
+
+fn create_file_from_private_key(
+    private_key: SecretKey<Bls12381G1Impl>,
+    password: String,
+) -> (String, String) {
+    // Derive the public key from the private key
+    let pk = PublicKey::<Bls12381G1Impl>::from(&private_key);
+
+    // Serialize public key to JSON
+    let pub_key_json = serde_json::to_string(&pk).expect("Failed to serialize PublicKey");
+    let addr = pub_key_json.trim_matches('"');
+
+    // Convert secret key to bytes and encode as hex
+    let sk_bytes = private_key.to_be_bytes();
+    let sk_hex = encode(sk_bytes);
+
+    // Generate random IV and salt
+    let mut rng = rand::thread_rng();
+    let iv = rng.gen::<[u8; 16]>();
+    let salt = rng.gen::<[u8; 32]>();
+
+    // Derive key using scrypt
+    let scrypt_params = Params::new(14, 8, 1, 16).unwrap();
+    let key = derive_key(password.as_bytes(), &salt, &scrypt_params, 16);
+
+    // Encrypt the secret key
+    let ciphertext = encrypt_data(sk_hex.as_bytes(), &key, &iv);
+
+    // Generate MAC
+    let mut hasher = Sha256::new();
+    hasher.update(&key);
+    hasher.update(&ciphertext);
+    let mac = encode(hasher.finalize());
+
+    // Construct the crypto JSON object
+    let crypto_json: Value = json!({
+        "cipher": "aes-128-ctr",
+        "ciphertext": encode(&ciphertext),
+        "cipherparams": {
+            "iv": encode(iv)
+        },
+        "kdf": "scrypt",
+        "kdfparams": {
+            "dklen": 16,
+            "n": 16384,
+            "p": 1,
+            "r": 8,
+            "salt": encode(salt)
+        },
+        "mac": mac
+    });
+
+    // Construct the final JSON data object
+    let json_data: Value = json!({
+        "pubKey": addr,
+        "crypto": crypto_json
+    });
+
+    // Serialize to pretty JSON string
+    let json_string =
+        serde_json::to_string_pretty(&json_data).expect("Failed to serialize to JSON");
+
+    (json_string, addr.to_string())
 }
 
 fn get_credentials(keyname: Option<String>, password: Option<String>) -> (String, String) {
@@ -216,6 +518,10 @@ fn get_credentials(keyname: Option<String>, password: Option<String>) -> (String
         ),
         (Some(keyname), Some(pass)) => (keyname, pass),
     }
+}
+
+fn generate_random_string(length: usize) -> String {
+    rand::thread_rng().sample_iter(&Alphanumeric).take(length).map(char::from).collect()
 }
 
 #[cfg(test)]
