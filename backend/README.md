@@ -2,10 +2,10 @@
 
 ## Test with docker compose
 
-To simplify tests the docker compose file with the backend as well all third party dependencies (e.g. memcached or postgres) is provided.
-Run the command from current repository folder to use it;
+To simplify tests for cli and frontet the docker compose file with the backend as well all third party dependencies (e.g. memcached or postgres) is provided.
+Run the command from main repository folder to use it;
 ```sh
-docker-compose  --env-file .env up -d
+docker-compose testing-compose.yaml --env-file .env up -d
 ```
 Dockers will expose both GRPC and HTTP ports.
 
