@@ -91,9 +91,9 @@ pub enum GetCommands {
 
 #[derive(Parser, Debug, Clone)]
 pub enum SetCommands {
-    #[command(name = "bls", about = "Set a BLS key")]
-    BlsSet {},
-    #[command(name = "ecdsa", about = "Set a ECDSA key")]
+    #[command(name = "bls", about = "Set a default BLS key")]
+    BlsSet { keyname: String },
+    #[command(name = "ecdsa", about = "Set a  default ECDSA key")]
     EcdsaSet { keyname: String },
 }
 
@@ -122,10 +122,15 @@ pub async fn parse_key_import_subcommands(
     match subcmd {
         ImportCommands::BlsImport { private_key, keyname, password } => {
             let (keyname, pass) = get_credentials(keyname, password);
-            let mut array = [0u8; 32];
-            let bytes = private_key.as_bytes();
-            array[..bytes.len().min(32)].copy_from_slice(&bytes[..32.min(bytes.len())]);
+            let trimmed_key = &private_key[2..];
 
+            let hex_bytes = hex::decode(trimmed_key).expect("Invalid hex string");
+
+            println!("{:?}", hex_bytes);
+
+            let mut array = [0u8; 32];
+            array[..hex_bytes.len().min(32)].copy_from_slice(&hex_bytes[..32.min(hex_bytes.len())]);
+            println!("{:?}", array);
             let sk =
                 SecretKey::<Bls12381G1Impl>::from_be_bytes(&array).expect("Invalid private key");
             let (json_string, addr) = create_file_from_private_key(sk, pass);
@@ -248,7 +253,7 @@ pub async fn parse_key_get_subcommands(
 
             match String::from_utf8(decrypted_data) {
                 Ok(decrypted_string) => {
-                    println!("Decrypted BLS Private Key:\n{}", decrypted_string)
+                    println!("Decrypted BLS Private Key:\n0x{}", decrypted_string)
                 }
                 Err(e) => println!("Failed to convert decrypted data to UTF-8: {}", e),
             }
@@ -305,7 +310,24 @@ pub async fn parse_key_set_subcommands(
     mut config: IvyConfig,
 ) -> Result<(), Error> {
     match subcmd {
-        SetCommands::BlsSet {} => {}
+        SetCommands::BlsSet { keyname } => {
+            let mut path = config.get_bls_path().join(keyname);
+            path.set_extension("bls.key.json");
+            println!("Attempting to set key file path: {:?}", path);
+            if path.exists() {
+                let json = read_json_file(&path)?;
+                let pub_key = json
+                    .get("pubKey")
+                    .expect("No address in json")
+                    .as_str()
+                    .expect("Should be a string");
+
+                config.set_bls_keyfile(path);
+                config.set_bls_address(pub_key.to_string());
+                config.store().map_err(IvyError::from)?;
+                println!("New default private key set")
+            }
+        }
         SetCommands::EcdsaSet { keyname } => {
             let mut path = config.get_path().join(keyname);
             path.set_extension("json");
