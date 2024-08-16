@@ -137,7 +137,7 @@ pub async fn parse_key_import_subcommands(
             file.write_all(json_string.as_bytes()).expect("Couldn't write to json");
             println!("BLS Key has been created and saved to: {}", file_path.display());
 
-            config.set_private_bls_keyfile(file_path.clone());
+            config.set_bls_keyfile(file_path.clone());
             config.set_bls_address(addr);
             config.store().map_err(IvyError::from)?;
         }
@@ -145,7 +145,7 @@ pub async fn parse_key_import_subcommands(
             let wallet = IvyWallet::from_private_key(private_key)?;
             let (keyname, pass) = get_credentials(keyname, password);
             let prv_key_path = wallet.encrypt_and_store(&config.get_path(), keyname, pass)?;
-            config.default_private_ecdsa_keyfile = prv_key_path;
+            config.default_ecdsa_keyfile = prv_key_path;
             config.default_ecdsa_address = wallet.address();
             config.store().map_err(IvyError::from)?;
         }
@@ -172,11 +172,11 @@ pub async fn parse_key_create_subcommands(
                 file.write_all(json_string.as_bytes()).expect("Couldn't write to json");
                 println!("BLS Key has been created and saved to: {}", file_path.display());
 
-                config.set_private_bls_keyfile(file_path.clone());
+                config.set_bls_keyfile(file_path.clone());
                 config.set_bls_address(addr);
                 config.store().map_err(IvyError::from)?;
             } else {
-                let random_password = generate_random_string(16);
+                let random_password = generate_random_string(32);
                 // Generate the keypair and encrypt the private key without storing
                 let (_json_string, addr) = create_keypair_and_encrypt(random_password);
 
@@ -196,7 +196,7 @@ pub async fn parse_key_create_subcommands(
             if store {
                 let (keyname, pass) = get_credentials(keyname, password);
                 let prv_key_path = wallet.encrypt_and_store(&config.get_path(), keyname, pass)?;
-                config.default_private_ecdsa_keyfile = prv_key_path;
+                config.default_ecdsa_keyfile = prv_key_path;
                 config.default_ecdsa_address = addr;
                 config.store().map_err(IvyError::from)?;
             }
@@ -214,7 +214,7 @@ pub async fn parse_key_get_subcommands(
             let pass =
                 Password::new().with_prompt("Enter a password to the private key").interact()?;
             //let pass = pass.trim();
-            let path = config.default_private_bls_keyfile;
+            let path = config.default_bls_keyfile;
 
             // Read the JSON file
             let mut file = File::open(path).expect("");
@@ -237,10 +237,10 @@ pub async fn parse_key_get_subcommands(
             let salt = decode(salt_hex).expect("Failed to decode salt");
 
             // Use the scrypt parameters used for encryption
-            let scrypt_params = Params::new(14, 8, 1, 16).unwrap(); // Match the parameters used during encryption
+            let scrypt_params = Params::new(18, 8, 1, 32).expect("Invalid parameters"); // Match the parameters used during encryption
 
             // Derive the key from the password
-            let key = derive_key(pass.as_bytes(), &salt, &scrypt_params, 16);
+            let key = derive_key(pass.as_bytes(), &salt, &scrypt_params);
 
             // Decrypt the ciphertext
             let decrypted_data = decrypt_data(&ciphertext, &key, &iv);
@@ -266,7 +266,7 @@ pub async fn parse_key_get_subcommands(
             }
         }
         GetCommands::EcdsaPrivateKey {} => {
-            let mut path = config.default_private_ecdsa_keyfile;
+            let mut path = config.default_ecdsa_keyfile;
             path.set_extension("json");
 
             if path.exists() {
@@ -315,7 +315,7 @@ pub async fn parse_key_set_subcommands(
                 let json = read_json_file(&path)?;
                 let decoded_pub_key = extract_and_decode_pub_key(&json)?;
 
-                config.set_private_ecdsa_keyfile(path);
+                config.set_ecdsa_keyfile(path);
                 config.set_ecdsa_address(decoded_pub_key);
                 config.store().map_err(IvyError::from)?;
                 println!("New default private key set")
@@ -342,8 +342,8 @@ fn decrypt_data(encrypted_data: &[u8], key: &[u8], iv: &[u8]) -> Vec<u8> {
 }
 
 // Function to derive key from password and parameters
-pub fn derive_key(password: &[u8], salt: &[u8], params: &Params, dklen: usize) -> Vec<u8> {
-    let mut key = vec![0u8; dklen];
+pub fn derive_key(password: &[u8], salt: &[u8], params: &Params) -> Vec<u8> {
+    let mut key = vec![0u8; 16];
     scrypt(password, salt, params, &mut key).expect("Failed to derive key");
     key
 }
@@ -381,8 +381,8 @@ fn create_keypair_and_encrypt(password: String) -> (String, String) {
     let salt = rng.gen::<[u8; 32]>();
 
     // Derive key using scrypt
-    let scrypt_params = Params::new(14, 8, 1, 16).unwrap();
-    let key = derive_key(password.as_bytes(), &salt, &scrypt_params, 16);
+    let scrypt_params = Params::new(18, 8, 1, 32).unwrap();
+    let key = derive_key(password.as_bytes(), &salt, &scrypt_params);
 
     // Encrypt the secret key
     let ciphertext = encrypt_data(sk_hex.as_bytes(), &key, &iv);
@@ -402,8 +402,8 @@ fn create_keypair_and_encrypt(password: String) -> (String, String) {
         },
         "kdf": "scrypt",
         "kdfparams": {
-            "dklen": 16,
-            "n": 16384,
+            "dklen": 32,
+            "n": 262144,
             "p": 1,
             "r": 8,
             "salt": encode(salt)
@@ -447,8 +447,8 @@ fn create_file_from_private_key(
     let salt = rng.gen::<[u8; 32]>();
 
     // Derive key using scrypt
-    let scrypt_params = Params::new(14, 8, 1, 16).unwrap();
-    let key = derive_key(password.as_bytes(), &salt, &scrypt_params, 16);
+    let scrypt_params = Params::new(18, 8, 1, 32).expect("Invalid paramaters");
+    let key = derive_key(password.as_bytes(), &salt, &scrypt_params);
 
     // Encrypt the secret key
     let ciphertext = encrypt_data(sk_hex.as_bytes(), &key, &iv);
@@ -468,8 +468,8 @@ fn create_file_from_private_key(
         },
         "kdf": "scrypt",
         "kdfparams": {
-            "dklen": 16,
-            "n": 16384,
+            "dklen": 32,
+            "n": 262144,
             "p": 1,
             "r": 8,
             "salt": encode(salt)

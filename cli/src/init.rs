@@ -185,7 +185,7 @@ fn set_config_keys(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
             let pw = get_confirm_password();
             let wallet = IvyWallet::from_private_key(private_key)?;
             let prv_key_path = wallet.encrypt_and_store(&config.get_path(), keyfile_name, pw)?;
-            config.default_private_ecdsa_keyfile.clone_from(&prv_key_path);
+            config.default_ecdsa_keyfile.clone_from(&prv_key_path);
         }
         1 => {
             let wallet = IvyWallet::new();
@@ -211,7 +211,7 @@ fn set_config_keys(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
             }
 
             let prv_key_path = wallet.encrypt_and_store(&config.get_path(), keyfile_name, pw)?;
-            config.default_private_ecdsa_keyfile.clone_from(&prv_key_path);
+            config.default_ecdsa_keyfile.clone_from(&prv_key_path);
         }
         2 => {
             println!("Skipping keyfile initialization");
