@@ -1,0 +1,14 @@
+path = "/Users/tymoteusz/refac/ivynet/cli/testingtest_create_bls_key"
+bls_path = "/Users/tymoteusz/.eigenlayer/operator_keys"
+mainnet_rpc_url = "https://rpc.flashbots.net/fast"
+holesky_rpc_url = "https://eth-holesky.public.blastapi.io"
+local_rpc_url = "http://localhost:8545"
+default_ecdsa_keyfile = ""
+default_bls_keyfile = "/Users/tymoteusz/.eigenlayer/operator_keys/testkey.bls.key.json"
+default_ecdsa_address = "0x0000000000000000000000000000000000000000"
+default_bls_address = "82099b06a66c310c1f9a9b6be7b8717014ffd8c34c81981d2be31476ace5ab4faa631f98d952f6837acdaea1f02e134f06597837a05624da05ad941c6848ad71e89814dea0a236ce26a94979aca045f469d14a21206054dcaaa318413dbd9c9c"
+
+[metadata]
+metadata_uri = ""
+logo_uri = ""
+favicon_uri = ""
