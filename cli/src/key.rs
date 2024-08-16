@@ -18,8 +18,7 @@ use std::{
     io::{Read, Write},
     path::PathBuf,
 };
-use tracing::{error, debug};
-
+use tracing::{debug, error};
 
 use crate::error::Error;
 
@@ -154,7 +153,7 @@ pub async fn parse_key_import_subcommands(
             config.default_ecdsa_keyfile = prv_key_path;
             config.default_ecdsa_address = wallet.address();
             config.store().map_err(IvyError::from)?;
-}
+        }
     }
     Ok(())
 }
@@ -206,7 +205,7 @@ pub async fn parse_key_create_subcommands(
                 config.default_ecdsa_keyfile = prv_key_path;
                 config.default_ecdsa_address = addr;
                 config.store().map_err(IvyError::from)?;
-}
+            }
         }
     }
     Ok(())
@@ -339,7 +338,6 @@ pub async fn parse_key_set_subcommands(
             if path.exists() {
                 let json = read_json_file(&path)?;
                 let decoded_pub_key = extract_and_decode_pub_key(&json)?;
-
 
                 config.set_ecdsa_keyfile(path);
                 config.set_ecdsa_address(decoded_pub_key);
@@ -515,7 +513,6 @@ fn create_file_from_private_key(
 
     (json_string, addr.to_string())
 }
-
 
 fn get_credentials(keyname: Option<String>, password: Option<String>) -> (String, String) {
     match (keyname, password) {
