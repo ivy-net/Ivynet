@@ -17,9 +17,9 @@ use std::{
     fs::File,
     io::{Read, Write},
     path::PathBuf,
-    str::FromStr,
 };
-use tracing::{error, info};
+use tracing::{error, debug};
+
 
 use crate::error::Error;
 
@@ -150,10 +150,11 @@ pub async fn parse_key_import_subcommands(
             let wallet = IvyWallet::from_private_key(private_key)?;
             let (keyname, pass) = get_credentials(keyname, password);
             let prv_key_path = wallet.encrypt_and_store(&config.get_path(), keyname, pass)?;
+
             config.default_ecdsa_keyfile = prv_key_path;
             config.default_ecdsa_address = wallet.address();
             config.store().map_err(IvyError::from)?;
-        }
+}
     }
     Ok(())
 }
@@ -201,10 +202,11 @@ pub async fn parse_key_create_subcommands(
             if store {
                 let (keyname, pass) = get_credentials(keyname, password);
                 let prv_key_path = wallet.encrypt_and_store(&config.get_path(), keyname, pass)?;
+
                 config.default_ecdsa_keyfile = prv_key_path;
                 config.default_ecdsa_address = addr;
                 config.store().map_err(IvyError::from)?;
-            }
+}
         }
     }
     Ok(())
@@ -290,7 +292,8 @@ pub async fn parse_key_get_subcommands(
 
             if path.exists() {
                 let json = read_json_file(&path)?;
-                info!("{:?}", json.get("address"));
+
+                println!("{:?}", json.get("address").expect("Cannot find public key"));
             } else {
                 error!("Keyfile doesn't exist")
             }
@@ -337,6 +340,7 @@ pub async fn parse_key_set_subcommands(
                 let json = read_json_file(&path)?;
                 let decoded_pub_key = extract_and_decode_pub_key(&json)?;
 
+
                 config.set_ecdsa_keyfile(path);
                 config.set_ecdsa_address(decoded_pub_key);
                 config.store().map_err(IvyError::from)?;
@@ -379,8 +383,8 @@ fn read_json_file(path: &PathBuf) -> Result<Value, Error> {
 fn extract_and_decode_pub_key(json: &Value) -> Result<H160, Error> {
     let pub_key =
         json.get("address").expect("No address in json").as_str().expect("Should be a string");
-    info!("Public key: {:?}", pub_key);
-    let decoded_pub_key = H160::from_str(pub_key).expect("Should be able to convert to H160");
+    debug!("Public key: {:?}", pub_key);
+    let decoded_pub_key = pub_key.parse::<H160>().expect("Should be able to convert to H160");
     Ok(decoded_pub_key)
 }
 
@@ -511,6 +515,7 @@ fn create_file_from_private_key(
 
     (json_string, addr.to_string())
 }
+
 
 fn get_credentials(keyname: Option<String>, password: Option<String>) -> (String, String) {
     match (keyname, password) {

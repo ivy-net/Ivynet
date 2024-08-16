@@ -25,6 +25,7 @@ pub async fn serve(
     keyfile_pw: &str,
     server_url: Uri,
     server_ca: Option<&String>,
+    no_backend: bool,
 ) -> Result<(), Error> {
     let sock = Endpoint::Path(config.uds_dir());
 
@@ -58,9 +59,13 @@ pub async fn serve(
 
     println!("Starting the IvyNet service at {}...", sock);
 
-    tokio::select! {
-        ret = server.serve(sock) => { error!("Local server error {ret:?}") },
-        ret = telemetry::listen(ivynet_inner, backend_client, connection_wallet) => { error!("Telemetry listener error {ret:?}") }
+    if no_backend {
+        server.serve(sock).await?;
+    } else {
+        tokio::select! {
+            ret = server.serve(sock) => { error!("Local server error {ret:?}") },
+            ret = telemetry::listen(ivynet_inner, backend_client, connection_wallet) => { error!("Telemetry listener error {ret:?}") }
+        }
     }
 
     Ok(())
