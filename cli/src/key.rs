@@ -82,9 +82,9 @@ pub enum GetCommands {
     BlsPrivateKey {},
     #[command(name = "bls-public", about = "Get the default public BLS key")]
     BlsPublicKey { keyname: String },
-    #[command(name = "default-ecdsa", about = "get the default ECDSA public address")]
+    #[command(name = "ecdsa-default", about = "Get the default ECDSA public address")]
     GetDefaultEcdsaAddress {},
-    #[command(name = "default-bls", about = "get the default ECDSA public address")]
+    #[command(name = "bls-default", about = "Get the default BLS public address")]
     GetDefaultBlsAddress {},
 }
 
@@ -125,17 +125,14 @@ pub async fn parse_key_import_subcommands(
 
             let hex_bytes = hex::decode(trimmed_key).expect("Invalid hex string");
 
-            println!("{:?}", hex_bytes);
-
             let mut array = [0u8; 32];
             array[..hex_bytes.len().min(32)].copy_from_slice(&hex_bytes[..32.min(hex_bytes.len())]);
-            println!("{:?}", array);
+
             let sk =
                 SecretKey::<Bls12381G1Impl>::from_be_bytes(&array).expect("Invalid private key");
-            let (json_string, addr) = create_file_from_private_key(sk, pass);
+            let (json_string, addr) = create_pub_key_and_encrypt(pass, sk);
 
             let file_path = config.get_bls_path().join(format!("{}.bls.key.json", keyname));
-            println!("{:?}", file_path);
 
             let mut file = File::create(&file_path).expect("Couldn't create file");
             file.write_all(json_string.as_bytes()).expect("Couldn't write to json");
@@ -167,9 +164,11 @@ pub async fn parse_key_create_subcommands(
             if store {
                 let (keyname, pass) = get_credentials(keyname, password);
 
-                let (json_string, addr) = create_keypair_and_encrypt(pass);
+                let sk = SecretKey::<Bls12381G1Impl>::new();
+
+                let (json_string, addr) = create_pub_key_and_encrypt(pass, sk);
                 let file_path = config.get_bls_path().join(format!("{}.bls.key.json", keyname));
-                println!("{:?}", file_path);
+                println!("Saved at: {:?}", file_path);
 
                 println!("Public Address: {}", addr);
 
@@ -183,7 +182,10 @@ pub async fn parse_key_create_subcommands(
             } else {
                 let random_password = generate_random_string(32);
                 // Generate the keypair and encrypt the private key without storing
-                let (_json_string, addr) = create_keypair_and_encrypt(random_password);
+
+                let sk = SecretKey::<Bls12381G1Impl>::new();
+
+                let (_json_string, addr) = create_pub_key_and_encrypt(random_password, sk);
 
                 // Handle the result in memory, e.g., print or return it
                 println!("Generated BLS Key (in memory):");
@@ -386,9 +388,9 @@ fn extract_and_decode_pub_key(json: &Value) -> Result<H160, Error> {
     Ok(decoded_pub_key)
 }
 
-fn create_keypair_and_encrypt(password: String) -> (String, String) {
+fn create_pub_key_and_encrypt(password: String, sk: SecretKey<Bls12381G1Impl>) -> (String, String) {
     // Generate BLS key pair
-    let sk = SecretKey::<Bls12381G1Impl>::new();
+
     let pk = PublicKey::<Bls12381G1Impl>::from(&sk);
 
     // Serialize public key to JSON
@@ -405,7 +407,7 @@ fn create_keypair_and_encrypt(password: String) -> (String, String) {
     let salt = rng.gen::<[u8; 32]>();
 
     // Derive key using scrypt
-    let scrypt_params = Params::new(18, 8, 1, 32).unwrap();
+    let scrypt_params = Params::new(18, 8, 1, 32).expect("Invalid scrypt parameters");
     let key = derive_key(password.as_bytes(), &salt, &scrypt_params);
 
     // Encrypt the secret key
@@ -446,70 +448,6 @@ fn create_keypair_and_encrypt(password: String) -> (String, String) {
         serde_json::to_string_pretty(&json_data).expect("Failed to serialize to JSON");
 
     println!("Private key: {:?}", sk);
-
-    (json_string, addr.to_string())
-}
-
-fn create_file_from_private_key(
-    private_key: SecretKey<Bls12381G1Impl>,
-    password: String,
-) -> (String, String) {
-    // Derive the public key from the private key
-    let pk = PublicKey::<Bls12381G1Impl>::from(&private_key);
-
-    // Serialize public key to JSON
-    let pub_key_json = serde_json::to_string(&pk).expect("Failed to serialize PublicKey");
-    let addr = pub_key_json.trim_matches('"');
-
-    // Convert secret key to bytes and encode as hex
-    let sk_bytes = private_key.to_be_bytes();
-    let sk_hex = encode(sk_bytes);
-
-    // Generate random IV and salt
-    let mut rng = rand::thread_rng();
-    let iv = rng.gen::<[u8; 16]>();
-    let salt = rng.gen::<[u8; 32]>();
-
-    // Derive key using scrypt
-    let scrypt_params = Params::new(18, 8, 1, 32).expect("Invalid paramaters");
-    let key = derive_key(password.as_bytes(), &salt, &scrypt_params);
-
-    // Encrypt the secret key
-    let ciphertext = encrypt_data(sk_hex.as_bytes(), &key, &iv);
-
-    // Generate MAC
-    let mut hasher = Sha256::new();
-    hasher.update(&key);
-    hasher.update(&ciphertext);
-    let mac = encode(hasher.finalize());
-
-    // Construct the crypto JSON object
-    let crypto_json: Value = json!({
-        "cipher": "aes-128-ctr",
-        "ciphertext": encode(&ciphertext),
-        "cipherparams": {
-            "iv": encode(iv)
-        },
-        "kdf": "scrypt",
-        "kdfparams": {
-            "dklen": 32,
-            "n": 262144,
-            "p": 1,
-            "r": 8,
-            "salt": encode(salt)
-        },
-        "mac": mac
-    });
-
-    // Construct the final JSON data object
-    let json_data: Value = json!({
-        "pubKey": addr,
-        "crypto": crypto_json
-    });
-
-    // Serialize to pretty JSON string
-    let json_string =
-        serde_json::to_string_pretty(&json_data).expect("Failed to serialize to JSON");
 
     (json_string, addr.to_string())
 }
@@ -562,7 +500,7 @@ mod tests {
         let test_path = std::env::current_dir().unwrap().join(format!("testing{}", test_dir));
         fs::create_dir_all(&test_path).await.expect("Failed to create testing_temp directory");
         let result = test_logic(test_path.clone()).await;
-        // fs::remove_dir_all(test_path).await.expect("Failed to delete testing_temp directory");
+        fs::remove_dir_all(test_path).await.expect("Failed to delete testing_temp directory");
 
         result
     }
@@ -571,7 +509,7 @@ mod tests {
         let test_dir = "test_import_key";
         build_test_dir(test_dir, |test_path| async move {
             let config = IvyConfig::new_at_path(test_path.clone());
-
+            //config.path
             let result = parse_key_subcommands(
                 KeyCommands::Import {
                     command: ImportCommands::EcdsaImport {
@@ -667,8 +605,9 @@ mod tests {
             .await;
 
             println!("{:?}", result);
+            println!("{:?}", test_path);
             assert!(result.is_ok());
-            assert!(test_path.join("testkey.bls.key.json").exists());
+            assert!(test_path.join("testkey.json").exists());
 
             let config =
                 IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
@@ -682,10 +621,7 @@ mod tests {
 
             // Perform assertions on TOML keys and values
             let private_keypath = format!("{}/testkey.json", test_path.to_str().unwrap());
-            assert_eq!(
-                toml_data["default_private_keyfile"].as_str(),
-                Some(private_keypath.as_str())
-            )
+            assert_eq!(toml_data["default_bls_keyfile"].as_str(), Some(private_keypath.as_str()))
         })
         .await;
     }

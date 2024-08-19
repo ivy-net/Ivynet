@@ -6,7 +6,7 @@ local_rpc_url = "http://localhost:8545"
 default_ecdsa_keyfile = ""
 default_bls_keyfile = "/Users/tymoteusz/.eigenlayer/operator_keys/testkey.bls.key.json"
 default_ecdsa_address = "0x0000000000000000000000000000000000000000"
-default_bls_address = "82099b06a66c310c1f9a9b6be7b8717014ffd8c34c81981d2be31476ace5ab4faa631f98d952f6837acdaea1f02e134f06597837a05624da05ad941c6848ad71e89814dea0a236ce26a94979aca045f469d14a21206054dcaaa318413dbd9c9c"
+default_bls_address = "9759e20e9259f9090c7f4d2c28bd1119601000a31d4e308d918961d2012ae2e2cf5f9f5774d3e160505b236084924b53148ab6c543bb38a4fceeb68721204063e48121648426a3c7be35df5c23d72da3502160a4ab81d7b3533e656736b4ac58"
 
 [metadata]
 metadata_uri = ""
