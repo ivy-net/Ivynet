@@ -24,22 +24,22 @@ use crate::error::Error;
 
 #[derive(Parser, Debug, Clone)]
 pub enum KeyCommands {
-    #[command(name = "import", about = "Import a ECDSA or a BLS key")]
+    #[command(name = "import", about = "Import a ECDSA/BLS private key into a keyfile")]
     Import {
         #[command(subcommand)]
         command: ImportCommands,
     },
-    #[command(name = "create", about = "Create a ECDSA or a BLS key")]
+    #[command(name = "create", about = "Create a ECDSA/BLS private key")]
     Create {
         #[command(subcommand)]
         command: CreateCommands,
     },
-    #[command(name = "get", about = "Get ECDSA/BLS private/public key")]
+    #[command(name = "get", about = "Get ECDSA/BLS key information")]
     Get {
         #[command(subcommand)]
         command: GetCommands,
     },
-    #[command(name = "set", about = "Set EDCSA/BLS key")]
+    #[command(name = "set", about = "Set a EDCSA/BLS key as the default key")]
     Set {
         #[command(subcommand)]
         command: SetCommands,
@@ -48,23 +48,23 @@ pub enum KeyCommands {
 
 #[derive(Parser, Debug, Clone)]
 pub enum ImportCommands {
-    #[command(name = "bls", about = "Import a BLS key <PRIVATE_KEY>")]
-    BlsImport { private_key: String, keyname: Option<String>, password: Option<String> },
-    #[command(name = "ecdsa", about = "Import a ECDSA key <PRIVATE_KEY>")]
+    #[command(name = "ecdsa", about = "Import a ECDSA private key <PRIVATE_KEY>")]
     EcdsaImport { private_key: String, keyname: Option<String>, password: Option<String> },
+    #[command(name = "bls", about = "Import a BLS private key <PRIVATE_KEY>")]
+    BlsImport { private_key: String, keyname: Option<String>, password: Option<String> },
 }
 
 #[derive(Parser, Debug, Clone)]
 pub enum CreateCommands {
-    #[command(name = "bls", about = "Create a BLS key")]
-    BlsCreate {
+    #[command(name = "ecdsa", about = "Create an ECDSA key")]
+    EcdsaCreate {
         #[arg(long)]
         store: bool,
         keyname: Option<String>,
         password: Option<String>,
     },
-    #[command(name = "ecdsa", about = "Create a ECDSA key")]
-    EcdsaCreate {
+    #[command(name = "bls", about = "Create a BLS key")]
+    BlsCreate {
         #[arg(long)]
         store: bool,
         keyname: Option<String>,
@@ -74,25 +74,28 @@ pub enum CreateCommands {
 
 #[derive(Parser, Debug, Clone)]
 pub enum GetCommands {
-    #[command(name = "ecdsa-private", about = "Get a ECDSA key")]
+    #[command(name = "ecdsa-private", about = "Get the default ECDSA private key")]
     EcdsaPrivateKey {},
-    #[command(name = "ecdsa-public", about = "Get the public ECDSA address for a specified key")]
+    #[command(
+        name = "ecdsa-public",
+        about = "Get a specified ECDSA key's public address <KEYNAME>"
+    )]
     EcdsaPublicKey { keyname: String },
-    #[command(name = "bls-private", about = "Get a BLS key")]
-    BlsPrivateKey {},
-    #[command(name = "bls-public", about = "Get the default public BLS key")]
-    BlsPublicKey { keyname: String },
     #[command(name = "ecdsa-default", about = "Get the default ECDSA public address")]
     GetDefaultEcdsaAddress {},
+    #[command(name = "bls-private", about = "Get a BLS key")]
+    BlsPrivateKey {},
+    #[command(name = "bls-public", about = "Get a specified BLS key's public address <KEYNAME>")]
+    BlsPublicKey { keyname: String },
     #[command(name = "bls-default", about = "Get the default BLS public address")]
     GetDefaultBlsAddress {},
 }
 
 #[derive(Parser, Debug, Clone)]
 pub enum SetCommands {
-    #[command(name = "bls", about = "Set a default BLS key")]
+    #[command(name = "bls", about = "Set the default BLS key <KEYNAME>")]
     BlsSet { keyname: String },
-    #[command(name = "ecdsa", about = "Set a  default ECDSA key")]
+    #[command(name = "ecdsa", about = "Set the default ECDSA key <KEYNAME>")]
     EcdsaSet { keyname: String },
 }
 
@@ -168,7 +171,6 @@ pub async fn parse_key_create_subcommands(
 
                 let (json_string, addr) = create_pub_key_and_encrypt(pass, sk);
                 let file_path = config.get_bls_path().join(format!("{}.bls.key.json", keyname));
-                println!("Saved at: {:?}", file_path);
 
                 println!("Public Address: {}", addr);
 
@@ -181,17 +183,13 @@ pub async fn parse_key_create_subcommands(
                 config.store().map_err(IvyError::from)?;
             } else {
                 let random_password = generate_random_string(32);
-                // Generate the keypair and encrypt the private key without storing
 
                 let sk = SecretKey::<Bls12381G1Impl>::new();
 
                 let (_json_string, addr) = create_pub_key_and_encrypt(random_password, sk);
 
-                // Handle the result in memory, e.g., print or return it
                 println!("Generated BLS Key (in memory):");
                 println!("Public Address: {}", addr);
-
-                // Optionally, return or use the key/address in another way
             }
         }
         CreateCommands::EcdsaCreate { store, keyname, password } => {
@@ -505,7 +503,7 @@ mod tests {
         result
     }
     #[tokio::test]
-    async fn test_import_key() {
+    async fn test_import_ecdsa_key() {
         let test_dir = "test_import_key";
         build_test_dir(test_dir, |test_path| async move {
             let config = IvyConfig::new_at_path(test_path.clone());
@@ -547,7 +545,7 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_create_key() {
+    async fn test_create_ecdsa_key() {
         let test_dir = "test_create_key";
         build_test_dir(test_dir, |test_path| async move {
             let config = IvyConfig::new_at_path(test_path.clone());
@@ -585,18 +583,49 @@ mod tests {
         })
         .await;
     }
-
     #[tokio::test]
-    async fn test_create_bls_key() {
-        let test_dir = "test_create_bls_key";
+    async fn test_get_ecdsa_private_key() {
+        let test_dir = "test_get_ecdsa_private_key";
         build_test_dir(test_dir, |test_path| async move {
             let config = IvyConfig::new_at_path(test_path.clone());
 
-            let result = parse_key_subcommands(
+            let _ = parse_key_subcommands(
                 KeyCommands::Create {
-                    command: CreateCommands::BlsCreate {
+                    command: CreateCommands::EcdsaCreate {
                         store: true,
                         keyname: Some("testkey".to_string()),
+                        password: Some("password".to_string()),
+                    },
+                },
+                config.clone(),
+            )
+            .await;
+
+            let result = parse_key_subcommands(
+                KeyCommands::Get { command: GetCommands::EcdsaPrivateKey {} },
+                config,
+            )
+            .await;
+
+            println!("{:?}", result);
+            assert!(result.is_ok());
+        })
+        .await;
+    }
+
+    #[tokio::test]
+    async fn test_import_bls_key() {
+        let test_dir = "testbls_import";
+        build_test_dir(test_dir, |test_path| async move {
+            let mut config = IvyConfig::new_at_path(test_path.clone());
+            config.set_bls_path(test_path.clone()).expect("Invalid Path");
+            let result = parse_key_subcommands(
+                KeyCommands::Import {
+                    command: ImportCommands::BlsImport {
+                        private_key:
+                            "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+                                .to_string(),
+                        keyname: Some("testblsimport".to_string()),
                         password: Some("password".to_string()),
                     },
                 },
@@ -605,9 +634,46 @@ mod tests {
             .await;
 
             println!("{:?}", result);
-            println!("{:?}", test_path);
             assert!(result.is_ok());
-            assert!(test_path.join("testkey.json").exists());
+            assert!(test_path.join("testblsimport.bls.key.json").exists());
+
+            let config =
+                IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
+            println!("{:?}", config);
+
+            let toml_content = fs::read_to_string(test_path.join("ivy-config.toml"))
+                .await
+                .expect("Failed to read TOML file");
+            let toml_data: toml::Value =
+                toml::from_str(&toml_content).expect("Failed to parse TOML");
+
+            let private_keypath =
+                format!("{}/testblsimport.bls.key.json", test_path.to_str().unwrap());
+            assert_eq!(toml_data["default_bls_keyfile"].as_str(), Some(private_keypath.as_str()))
+        })
+        .await;
+    }
+    #[tokio::test]
+    async fn test_create_bls_key() {
+        let test_dir = "testbls_key";
+        build_test_dir(test_dir, |test_path| async move {
+            let mut config = IvyConfig::new_at_path(test_path.clone());
+            config.set_bls_path(test_path.clone()).expect("Invalid Path");
+            let result = parse_key_subcommands(
+                KeyCommands::Create {
+                    command: CreateCommands::BlsCreate {
+                        store: true,
+                        keyname: Some("testblskey".to_string()),
+                        password: Some("password".to_string()),
+                    },
+                },
+                config,
+            )
+            .await;
+
+            println!("{:?}", result);
+            assert!(result.is_ok());
+            assert!(test_path.join("testblskey.bls.key.json").exists());
 
             let config =
                 IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
@@ -620,7 +686,8 @@ mod tests {
                 toml::from_str(&toml_content).expect("Failed to parse TOML");
 
             // Perform assertions on TOML keys and values
-            let private_keypath = format!("{}/testkey.json", test_path.to_str().unwrap());
+            let private_keypath =
+                format!("{}/testblskey.bls.key.json", test_path.to_str().unwrap());
             assert_eq!(toml_data["default_bls_keyfile"].as_str(), Some(private_keypath.as_str()))
         })
         .await;
