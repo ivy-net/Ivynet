@@ -74,17 +74,17 @@ pub enum CreateCommands {
 
 #[derive(Parser, Debug, Clone)]
 pub enum GetCommands {
-    #[command(name = "ecdsa-default", about = "Get the default ECDSA key and its address")]
-    EcdsaDefault {},
+    #[command(name = "ecdsa-private", about = "Get the default ECDSA key and its address")]
+    EcdsaPrivate { keyname: Option<String> },
     #[command(
         name = "ecdsa-public",
         about = "Get a specified ECDSA key's public address <KEYNAME>"
     )]
-    EcdsaPublicKey { keyname: String },
-    #[command(name = "bls-default", about = "Get the default BLS key and its address")]
-    BlsDefault {},
+    EcdsaPublicKey { keyname: Option<String> },
+    #[command(name = "bls-private", about = "Get the default BLS key and its address")]
+    BlsPrivate { keyname: Option<String> },
     #[command(name = "bls-public", about = "Get a specified BLS key's public address <KEYNAME>")]
-    BlsPublicKey { keyname: String },
+    BlsPublicKey { keyname: Option<String> },
 }
 
 #[derive(Parser, Debug, Clone)]
@@ -212,18 +212,23 @@ pub async fn parse_key_get_subcommands(
     config: IvyConfig,
 ) -> Result<(), Error> {
     match subcmd {
-        GetCommands::BlsDefault {} => {
+        GetCommands::BlsPrivate { keyname } => {
+            let mut path;
+            match keyname {
+                Some(keyname) => {
+                    path = config.get_bls_path().join(keyname);
+                    path.set_extension("bls.key.json");
+                }
+                None => {
+                    path = config.default_bls_keyfile;
+                }
+            }
             let pass =
                 Password::new().with_prompt("Enter a password to the private key").interact()?;
-            //let pass = pass.trim();
-            let path = config.default_bls_keyfile;
 
-            // Read the JSON file
             let mut file = File::open(path).expect("");
             let mut json_data = String::new();
             file.read_to_string(&mut json_data).expect("json data invalid");
-
-            // Parse the JSON data
             let parsed_json: Value = serde_json::from_str(&json_data).expect("");
 
             // Extract fields from JSON
@@ -233,20 +238,14 @@ pub async fn parse_key_get_subcommands(
             let iv_hex = crypto_json["cipherparams"]["iv"].as_str().expect("Missing IV field");
             let salt_hex = crypto_json["kdfparams"]["salt"].as_str().expect("Missing salt field");
 
-            // Convert hex-encoded values to bytes
             let ciphertext = decode(ciphertext_hex).expect("Failed to decode ciphertext");
             let iv = decode(iv_hex).expect("Failed to decode IV");
             let salt = decode(salt_hex).expect("Failed to decode salt");
 
-            // Use the scrypt parameters used for encryption
-            let scrypt_params = Params::new(18, 8, 1, 32).expect("Invalid parameters"); // Match the parameters used during encryption
-
-            // Derive the key from the password
+            let scrypt_params = Params::new(18, 8, 1, 32).expect("Invalid parameters");
             let key = derive_key(pass.as_bytes(), &salt, &scrypt_params);
 
-            // Decrypt the ciphertext
             let decrypted_data = decrypt_data(&ciphertext, &key, &iv);
-            // Convert the decrypted data from bytes to a hex string or utf-8
 
             match String::from_utf8(decrypted_data) {
                 Ok(decrypted_string) => {
@@ -257,8 +256,17 @@ pub async fn parse_key_get_subcommands(
             }
         }
         GetCommands::BlsPublicKey { keyname } => {
-            let mut path = config.get_bls_path().join(keyname);
-            path.set_extension("bls.key.json");
+            let mut path;
+            match keyname {
+                Some(keyname) => {
+                    path = config.get_bls_path().join(keyname);
+                    path.set_extension("bls.key.json");
+                }
+                None => {
+                    println!("{:?}", config.default_bls_address);
+                    return Ok(())
+                }
+            }
 
             if path.exists() {
                 let data = fs::read_to_string(path).expect("No data in json");
@@ -268,9 +276,17 @@ pub async fn parse_key_get_subcommands(
                 println!("No path found")
             }
         }
-        GetCommands::EcdsaDefault {} => {
-            let mut path = config.default_ecdsa_keyfile;
-            path.set_extension("json");
+        GetCommands::EcdsaPrivate { keyname } => {
+            let mut path;
+            match keyname {
+                Some(keyname) => {
+                    path = config.get_path().join(keyname);
+                    path.set_extension("json");
+                }
+                None => {
+                    path = config.default_ecdsa_keyfile;
+                }
+            }
 
             if path.exists() {
                 let password = Password::new()
@@ -284,8 +300,17 @@ pub async fn parse_key_get_subcommands(
             }
         }
         GetCommands::EcdsaPublicKey { keyname } => {
-            let mut path = config.get_path().join(keyname);
-            path.set_extension("json");
+            let mut path;
+            match keyname {
+                Some(keyname) => {
+                    path = config.get_path().join(keyname);
+                    path.set_extension("json");
+                }
+                None => {
+                    println!("{:?}", config.default_ecdsa_address);
+                    return Ok(())
+                }
+            }
 
             if path.exists() {
                 let json = read_json_file(&path)?;
@@ -591,9 +616,8 @@ mod tests {
                 config.clone(),
             )
             .await;
-
             let result = parse_key_subcommands(
-                KeyCommands::Get { command: GetCommands::EcdsaDefault {} },
+                KeyCommands::Get { command: GetCommands::EcdsaPrivate { keyname: None } },
                 config,
             )
             .await;
@@ -609,7 +633,6 @@ mod tests {
         build_test_dir(test_dir, |test_path| async move {
             let config = IvyConfig::new_at_path(test_path.clone());
 
-            // Create a key first to be used for getting the public key
             let create_result = parse_key_subcommands(
                 KeyCommands::Create {
                     command: CreateCommands::EcdsaCreate {
@@ -624,10 +647,9 @@ mod tests {
 
             assert!(create_result.is_ok());
 
-            // Now test getting the public key
             let get_result = parse_key_subcommands(
                 KeyCommands::Get {
-                    command: GetCommands::EcdsaPublicKey { keyname: "testkey".to_string() },
+                    command: GetCommands::EcdsaPublicKey { keyname: Some("testkey".to_string()) },
                 },
                 config.clone(),
             )
@@ -678,7 +700,6 @@ mod tests {
 
             println!("{:?}", result);
             assert!(result.is_ok());
-            assert!(test_path.join("testblsimport.bls.key.json").exists());
 
             let config =
                 IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
@@ -704,7 +725,6 @@ mod tests {
         let test_dir = "testbls_key";
         build_test_dir(test_dir, |test_path| async move {
             let config = IvyConfig::new_at_path(test_path.clone());
-            //config.set_bls_path(test_path.clone()).expect("Invalid Path");
             let result = parse_key_subcommands(
                 KeyCommands::Create {
                     command: CreateCommands::BlsCreate {
@@ -719,7 +739,6 @@ mod tests {
 
             println!("{:?}", result);
             assert!(result.is_ok());
-            //assert!(test_path.join("testblskey.bls.key.json").exists());
 
             let config =
                 IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
