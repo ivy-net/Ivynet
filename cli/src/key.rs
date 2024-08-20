@@ -1,8 +1,9 @@
 use clap::Parser;
 use dialoguer::{Input, Password};
-use ivynet_core::{config::IvyConfig, error::IvyError, wallet::IvyWallet};
+use ivynet_core::{config::IvyConfig, ethers::types::H160, wallet::IvyWallet};
 use serde_json::Value;
-use std::fs;
+use std::{fs, path::PathBuf};
+use tracing::{debug, error};
 
 use crate::error::Error;
 
@@ -102,7 +103,7 @@ pub async fn parse_key_import_subcommands(
             let (keyname, pass) = get_credentials(keyname, password);
             let prv_key_path = wallet.encrypt_and_store(&config.get_path(), keyname, pass)?;
             config.default_private_keyfile = prv_key_path;
-            config.store().map_err(IvyError::from)?;
+            config.store()?;
         }
     }
     Ok(())
@@ -124,7 +125,7 @@ pub async fn parse_key_create_subcommands(
                 let (keyname, pass) = get_credentials(keyname, password);
                 let prv_key_path = wallet.encrypt_and_store(&config.get_path(), keyname, pass)?;
                 config.default_private_keyfile = prv_key_path;
-                config.store().map_err(IvyError::from)?;
+                config.store()?;
             }
         }
     }
@@ -150,9 +151,13 @@ pub async fn parse_key_get_subcommands(
         GetCommands::EcdsaPublicKey { keyfile } => {
             let mut path = config.get_path().join(keyfile);
             path.set_extension("json");
-            let data = fs::read_to_string(path).expect("No data in json");
-            let v: Value = serde_json::from_str(&data).expect("Could not parse through json");
-            println!("{:?}", v["address"])
+
+            if path.exists() {
+                let json = read_json_file(&path)?;
+                println!("{:?}", json.get("address").expect("Cannot find public key"));
+            } else {
+                error!("Keyfile doesn't exist")
+            }
         }
         GetCommands::GetDefaultEthAddress {} => {
             println!("Public Key: {:?}", config.default_ether_address.clone());
@@ -171,7 +176,12 @@ pub async fn parse_key_set_subcommands(
             let mut path = config.get_path().join(keyname);
             path.set_extension("json");
             if path.exists() {
+                let json = read_json_file(&path)?;
+                let decoded_pub_key = extract_and_decode_pub_key(&json)?;
+
                 config.set_private_keyfile(path);
+                config.set_address(decoded_pub_key);
+                config.store()?;
                 println!("New default private key set")
             } else {
                 println!("File doesn't exist")
@@ -179,6 +189,20 @@ pub async fn parse_key_set_subcommands(
         }
     }
     Ok(())
+}
+
+fn read_json_file(path: &PathBuf) -> Result<Value, Error> {
+    let data = fs::read_to_string(path).expect("No data in json");
+    let json: Value = serde_json::from_str(&data).expect("Could not parse through json");
+    Ok(json)
+}
+
+fn extract_and_decode_pub_key(json: &Value) -> Result<H160, Error> {
+    let pub_key =
+        json.get("address").expect("No address in json").as_str().expect("Should be a string");
+    debug!("Public key: {:?}", pub_key);
+    let decoded_pub_key = pub_key.parse::<H160>().expect("Should be able to convert to H160");
+    Ok(decoded_pub_key)
 }
 
 fn get_credentials(keyname: Option<String>, password: Option<String>) -> (String, String) {

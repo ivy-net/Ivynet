@@ -23,6 +23,7 @@ use tracing::debug;
 pub async fn initialize_ivynet(
     server_url: Uri,
     server_ca: Option<&String>,
+    skip_login: bool,
 ) -> Result<(), IvyError> {
     // Build IvyConfig file
     println!("Performing ivynet intialization...");
@@ -51,8 +52,10 @@ pub async fn initialize_ivynet(
         let config = set_config_metadata(config)?;
         config.store()?;
 
-        let config = set_backend_connection(config, server_url, server_ca).await?;
-        config.store()?;
+        if !skip_login {
+            let config = set_backend_connection(config, server_url, server_ca).await?;
+            config.store()?;
+        }
     }
     Ok(())
 }

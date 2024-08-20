@@ -1,7 +1,13 @@
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
+    ConfigError(#[from] ivynet_core::config::ConfigError),
+
+    #[error(transparent)]
     IvyError(#[from] ivynet_core::error::IvyError),
+
+    #[error(transparent)]
+    ServerError(#[from] ivynet_core::grpc::server::ServerError),
 
     #[error(transparent)]
     DialoguerError(#[from] dialoguer::Error),
