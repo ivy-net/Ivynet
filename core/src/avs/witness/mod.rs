@@ -6,17 +6,17 @@ use super::AvsVariant;
 use crate::{
     avs::witness::{contracts::OperatorRegistry, run_config::RunConfig},
     config::IvyConfig,
-    eigen::quorum::QuorumType,
     error::IvyError,
     io::{write_json, IoError},
     keys::keyfile::{prompt_ecdsa_keyfile, EcdsaKeyfile},
     rpc_management::IvyProvider,
+    wallet::IvyWallet,
 };
 use async_trait::async_trait;
 use ethers::{
     contract::ContractError,
     providers::{JsonRpcError, Middleware, MiddlewareError as _, ProviderError},
-    signers::WalletError,
+    signers::{Signer, WalletError},
     types::{Address, BlockNumber, Bytes, Chain, Signature, H160, H256, U256},
 };
 use std::{
@@ -25,7 +25,7 @@ use std::{
     sync::Arc,
 };
 use thiserror::Error as ThisError;
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 
 pub mod config;
 pub mod contracts;
@@ -87,15 +87,39 @@ impl Witness {
             .as_ref()
             .ok_or_else(|| WitnessError::CustomError("No watchtower keyfile found".to_owned()))?
             .address;
+        debug!("Register witnees operator: {:?}", operator_address);
         if !self.is_operator_whitelisted(provider.clone()).await? {
+            error!("Operator is not whitelisted for Witnesschain, exiting...");
             return Err(WitnessError::NotWhitelistedError(format!("{:?}", operator_address)));
         }
         if !self.is_watchtower_registered(provider.clone(), watchtower_address).await? {
+            info!("Witness watchtower not registered, registering...");
             self.register_watchtower(provider.clone()).await?;
         }
         if !self.is_operator_registered(provider.clone()).await? {
+            info!("Operator not registered to witness AVS, registering...");
             self.register_operator_to_avs(provider.clone()).await?;
         }
+        info!("Witness onchain registration complete");
+        Ok(())
+    }
+
+    pub async fn deregister_all(&self, provider: Arc<IvyProvider>) -> Result<(), WitnessError> {
+        let watchtower_address = self
+            .config
+            .watchtower_ecdsa_file
+            .as_ref()
+            .ok_or_else(|| WitnessError::CustomError("No watchtower keyfile found".to_owned()))?
+            .address;
+        if self.is_watchtower_registered(provider.clone(), watchtower_address).await? {
+            info!("Deregistering watchtower...");
+            self.deregister_watchtower(provider.clone()).await?;
+        }
+        if self.is_operator_registered(provider.clone()).await? {
+            info!("Deregistering operator from AVS...");
+            self.deregister_operator_from_avs(provider.clone()).await?;
+        }
+        info!("Witness onchain deregistration complete");
         Ok(())
     }
 
@@ -113,27 +137,35 @@ impl Witness {
     ) -> Result<(), WitnessError> {
         // TODO: Default is currently set to one month. Create option for override.
         let operator_address = provider.address();
-        let watchtower_address = self
+        let watchtower_vault = self
             .config
             .watchtower_ecdsa_file
             .as_ref()
             .ok_or_else(|| WitnessError::CustomError("No watchtower keyfile found".to_owned()))?
-            .address;
-
+            .decrypt_env()?;
         let operator_registry =
             OperatorRegistry::new(contracts::operator_registry(self.chain)?, provider.clone());
 
         if !self.is_operator_whitelisted(provider.clone()).await? {
             return Err(WitnessError::NotWhitelistedError(format!("{:?}", operator_address)));
         }
-        if self.is_watchtower_registered(provider.clone(), watchtower_address).await? {
-            return Err(WitnessError::AlreadyRegisteredError(format!("{:?}", operator_address)));
+        if self.is_watchtower_registered(provider.clone(), watchtower_vault.address()).await? {
+            return Err(WitnessError::WatchtowerAlreadyRegistered(format!(
+                "{:?}",
+                watchtower_vault.address()
+            )));
         }
         let salt = self.generate_salt();
         let expiry = self.get_expiry_timestamp(provider.clone(), ONE_MONTH).await?;
-        let signed_msg: [u8; 65] = self.sign_operator_address(provider, salt, expiry).await?.into();
+        let signed_msg: [u8; 65] =
+            self.sign_operator_address(provider, &watchtower_vault, salt, expiry).await?.into();
         let tx_receipt = operator_registry
-            .register_watchtower_as_operator(watchtower_address, salt, expiry, signed_msg.into())
+            .register_watchtower_as_operator(
+                watchtower_vault.address(),
+                salt,
+                expiry,
+                signed_msg.into(),
+            )
             .send()
             .await?
             .await?;
@@ -182,6 +214,8 @@ impl Witness {
     }
 
     // TODO: Expiry as configurable
+    // TODO: Registration is already checked exterior to this function. Remove redundant
+    // is_operator_registered call?
     pub async fn register_operator_to_avs(
         &self,
         provider: Arc<IvyProvider>,
@@ -192,8 +226,11 @@ impl Witness {
         if !self.is_operator_whitelisted(provider.clone()).await? {
             return Err(WitnessError::NotWhitelistedError(format!("{:?}", operator_address)));
         }
-        if !self.is_operator_registered(provider.clone()).await? {
-            return Err(WitnessError::AlreadyRegisteredError(format!("{:?}", operator_address)));
+        if self.is_operator_registered(provider.clone()).await? {
+            return Err(WitnessError::OperatorAlreadyRegisteredToAvs(format!(
+                "{:?}",
+                operator_address
+            )));
         }
         let witness_hub = WitnessHub::new(witness_hub_address, provider.clone());
         let avs_directory =
@@ -215,6 +252,7 @@ impl Witness {
         let sig_with_data: SignatureWithSaltAndExpiry =
             SignatureWithSaltAndExpiry { signature: signed_msg.into(), salt, expiry };
 
+        info!("Registering operator to AVS...");
         let tx_receipt = witness_hub
             .register_operator_to_avs(operator_address, sig_with_data)
             .send()
@@ -298,9 +336,13 @@ impl Witness {
         Ok(result)
     }
 
+    /// Calculates the watchtower registration message hash and signs it with the provided signer.
+    /// The signer should be the private key of the watchtower account for usage in the
+    /// register_watchtower function.
     async fn sign_operator_address(
         &self,
         provider: Arc<IvyProvider>,
+        signer: &IvyWallet,
         salt: [u8; 32],
         expiry: U256,
     ) -> Result<Signature, WitnessError> {
@@ -310,8 +352,7 @@ impl Witness {
         let digest_hash: [u8; 32] = operator_registry
             .calculate_watchtower_registration_message_hash(operator_address, salt, expiry)
             .await?;
-        println!("{:?}", digest_hash);
-        let signed = provider.signer().sign_hash(H256::from(digest_hash))?;
+        let signed = signer.sign_hash(H256::from(digest_hash))?;
         Ok(signed)
     }
 
@@ -425,12 +466,13 @@ impl AvsVariant for Witness {
         private_keyfile: PathBuf,
         keyfile_password: &str,
     ) -> Result<(), IvyError> {
-        todo!()
+        self.deregister_all(provider.clone()).await?;
+        Ok(())
     }
 
     async fn start(&mut self) -> Result<Child, IvyError> {
         // set current directory
-        std::env::set_current_dir(&self.path).map_err(|e| WitnessError::IoError(e))?;
+        std::env::set_current_dir(&self.path).map_err(WitnessError::IoError)?;
         let child = Command::new("sh")
             .current_dir(&self.path)
             .arg("-c")
@@ -478,8 +520,10 @@ pub enum WitnessError {
     UnsupportedChainError(String),
     #[error("Operator not whitelisted: {0}")]
     NotWhitelistedError(String),
-    #[error("Account already registered: {0}")]
-    AlreadyRegisteredError(String),
+    #[error("Watchtower already registered: {0}")]
+    WatchtowerAlreadyRegistered(String),
+    #[error("Operator already registered to avs: {0}")]
+    OperatorAlreadyRegisteredToAvs(String),
     #[error("Account not registered: {0}")]
     NotRegisteredError(String),
     #[error("Contract error: {0}")]
@@ -585,31 +629,6 @@ mod tests {
             .await?;
         let digest_hash = digest_hash.encode_hex();
         println!("{:?}", digest_hash);
-        Ok(())
-    }
-
-    #[tokio::test]
-    async fn test_sign_operator_address() -> Result<(), IvyError> {
-        let config = IvyConfig::load_from_default_path()?;
-        let rpc = config.holesky_rpc_url;
-        let password: String = Password::new()
-            .with_prompt("Input the password for your stored ECDSA keyfile")
-            .interact()
-            .unwrap();
-        let wallet =
-            Some(IvyWallet::from_keystore(config.default_private_keyfile.clone(), &password)?);
-        let provider = Arc::new(connect_provider(&rpc, wallet).await?);
-
-        let salt: [u8; 32] = [
-            1, 3, 3, 7, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-            0, 0, 0,
-        ];
-        let expiry: U256 = 1u64.into();
-        let witness = Witness::default();
-        let signed = witness.sign_operator_address(provider, salt, expiry).await?;
-        let sig: [u8; 65] = signed.into();
-        println!("{:?}", sig);
-
         Ok(())
     }
 }

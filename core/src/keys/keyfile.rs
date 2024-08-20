@@ -22,6 +22,8 @@ pub enum KeyfileError {
     VarError(#[from] std::env::VarError),
     #[error(transparent)]
     DialoguerError(#[from] dialoguer::Error),
+    #[error("Environment variable {0} not found for keyname {1}. Ensure the variable is set or in a .env file.")]
+    EnvVarError(String, String),
 }
 
 impl EcdsaKeyfile {
@@ -33,7 +35,16 @@ impl EcdsaKeyfile {
             .map_err(|_| KeyfileError::KeyfileDecryptionError(self.path.display().to_string()))
     }
     pub fn decrypt_env(&self) -> Result<IvyWallet, KeyfileError> {
-        let password = env::var(self.pw_env_var.clone())?;
+        // check if the env var is set
+        let password = match env::var(&self.pw_env_var) {
+            Ok(pw) => pw,
+            Err(_) => {
+                // Attempt to load from .env if not present
+                dotenvy::var(&self.pw_env_var).map_err(|_| {
+                    KeyfileError::EnvVarError(self.name.clone(), self.pw_env_var.clone())
+                })?
+            }
+        };
         self.decrypt(password)
     }
 }
@@ -57,4 +68,23 @@ pub fn prompt_ecdsa_keyfile() -> Result<EcdsaKeyfile, KeyfileError> {
     let address = wallet.address();
 
     Ok(EcdsaKeyfile::new(path.into(), address, &name, &pw_env_var))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn test_decrypt_keyfile_env() -> Result<(), KeyfileError> {
+        let temp_dir = tempfile::tempdir().unwrap();
+        let name = "test_keyfile";
+        let password = "password";
+        let wallet = IvyWallet::new();
+        let keyfile = wallet.encrypt_and_store(temp_dir.path(), name, password).unwrap();
+        let keyfile = EcdsaKeyfile::new(keyfile, wallet.address(), name, "KEYFILE_PW");
+        let wallet = keyfile.decrypt_env();
+        let err = KeyfileError::EnvVarError("KEYFILE_PW".to_string(), "test_keyfile".to_string());
+        println!("{:?}", err.to_string());
+        panic!("{:?}", err);
+        Ok(())
+    }
 }

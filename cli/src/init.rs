@@ -8,10 +8,12 @@ use std::{fs, path::PathBuf, unreachable};
 #[allow(unused_imports)]
 use tracing::debug;
 
+use crate::error::Error;
+
 // TODO: Step through piecemeal running/initialization of an empty ivy-config file to ensure
 // sensible error messages throughout
 
-pub fn initialize_ivynet() -> Result<(), IvyError> {
+pub fn initialize_ivynet() -> Result<(), Error> {
     // Build IvyConfig file
     println!("Performing ivynet intialization...");
     let setup_types = ["Interactive", "Empty"];
@@ -26,18 +28,18 @@ pub fn initialize_ivynet() -> Result<(), IvyError> {
         // Empty config
         let config = IvyConfig::new();
         create_config_dir(config.get_path())?;
-        config.store()?;
+        config.store().map_err(IvyError::from)?;
         println!("An empty ivynet project has been created at {}", config.get_path().display())
     } else if interactive == 0 {
         let config = IvyConfig::new();
         create_config_dir(config.get_path())?;
-        config.store()?;
+        config.store().map_err(IvyError::from)?;
 
         // configure RPC addresses
         let config = set_config_rpcs(config)?;
         let config = set_config_keys(config)?;
         let config = set_config_metadata(config)?;
-        config.store()?;
+        config.store().map_err(IvyError::from)?;
     }
     Ok(())
 }
