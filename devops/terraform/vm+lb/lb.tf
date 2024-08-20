@@ -6,7 +6,7 @@ resource "google_compute_health_check" "backend" {
     port               = 8080
     port_specification = "USE_FIXED_PORT"
     proxy_header       = "NONE"
-    request_path       = "/health/"
+    request_path       = "/health"
   }
   timeout_sec         = 5
   unhealthy_threshold = 2
