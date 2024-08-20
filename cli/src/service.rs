@@ -31,7 +31,6 @@ pub async fn serve(
 
     // Keystore load
     let wallet = IvyWallet::from_keystore(config.default_private_keyfile.clone(), keyfile_pw)?;
-    let connection_wallet = config.identity_wallet()?;
 
     // Avs Service
     // TODO: This should default to local instead of holesky?
@@ -62,6 +61,7 @@ pub async fn serve(
     if no_backend {
         server.serve(sock).await?;
     } else {
+        let connection_wallet = config.identity_wallet()?;
         tokio::select! {
             ret = server.serve(sock) => { error!("Local server error {ret:?}") },
             ret = telemetry::listen(ivynet_inner, backend_client, connection_wallet) => { error!("Telemetry listener error {ret:?}") }
