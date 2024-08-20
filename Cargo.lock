@@ -718,7 +718,6 @@ dependencies = [
  "clap",
  "ctr",
  "dialoguer",
- "ethers",
  "hex",
  "ivynet-core",
  "rand",

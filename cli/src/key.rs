@@ -7,7 +7,7 @@ use ctr::{
 };
 use dialoguer::{Input, Password};
 use hex::{decode, encode};
-use ivynet_core::{config::IvyConfig, error::IvyError, ethers::types::H160, wallet::IvyWallet};
+use ivynet_core::{config::IvyConfig, ethers::types::H160, wallet::IvyWallet};
 use rand::{distributions::Alphanumeric, Rng};
 use scrypt::{scrypt, Params};
 use serde_json::{json, Value};
@@ -74,21 +74,17 @@ pub enum CreateCommands {
 
 #[derive(Parser, Debug, Clone)]
 pub enum GetCommands {
-    #[command(name = "ecdsa-private", about = "Get the default ECDSA private key")]
-    EcdsaPrivateKey {},
+    #[command(name = "ecdsa-default", about = "Get the default ECDSA key and its address")]
+    EcdsaDefault {},
     #[command(
         name = "ecdsa-public",
         about = "Get a specified ECDSA key's public address <KEYNAME>"
     )]
     EcdsaPublicKey { keyname: String },
-    #[command(name = "ecdsa-default", about = "Get the default ECDSA public address")]
-    GetDefaultEcdsaAddress {},
-    #[command(name = "bls-private", about = "Get a BLS key")]
-    BlsPrivateKey {},
+    #[command(name = "bls-default", about = "Get the default BLS key and its address")]
+    BlsDefault {},
     #[command(name = "bls-public", about = "Get a specified BLS key's public address <KEYNAME>")]
     BlsPublicKey { keyname: String },
-    #[command(name = "bls-default", about = "Get the default BLS public address")]
-    GetDefaultBlsAddress {},
 }
 
 #[derive(Parser, Debug, Clone)]
@@ -143,16 +139,16 @@ pub async fn parse_key_import_subcommands(
 
             config.set_bls_keyfile(file_path.clone());
             config.set_bls_address(addr);
-            config.store().map_err(IvyError::from)?;
+            config.store()?;
         }
         ImportCommands::EcdsaImport { private_key, keyname, password } => {
             let wallet = IvyWallet::from_private_key(private_key)?;
             let (keyname, pass) = get_credentials(keyname, password);
             let prv_key_path = wallet.encrypt_and_store(&config.get_path(), keyname, pass)?;
 
-            config.default_ecdsa_keyfile = prv_key_path;
-            config.default_ecdsa_address = wallet.address();
-            config.store().map_err(IvyError::from)?;
+            config.set_ecdsa_keyfile(prv_key_path);
+            config.set_ecdsa_address(wallet.address());
+            config.store()?;
         }
     }
     Ok(())
@@ -180,7 +176,7 @@ pub async fn parse_key_create_subcommands(
 
                 config.set_bls_keyfile(file_path.clone());
                 config.set_bls_address(addr);
-                config.store().map_err(IvyError::from)?;
+                config.store()?;
             } else {
                 let random_password = generate_random_string(32);
 
@@ -202,9 +198,9 @@ pub async fn parse_key_create_subcommands(
                 let (keyname, pass) = get_credentials(keyname, password);
                 let prv_key_path = wallet.encrypt_and_store(&config.get_path(), keyname, pass)?;
 
-                config.default_ecdsa_keyfile = prv_key_path;
-                config.default_ecdsa_address = addr;
-                config.store().map_err(IvyError::from)?;
+                config.set_ecdsa_keyfile(prv_key_path);
+                config.set_ecdsa_address(addr);
+                config.store()?;
             }
         }
     }
@@ -216,7 +212,7 @@ pub async fn parse_key_get_subcommands(
     config: IvyConfig,
 ) -> Result<(), Error> {
     match subcmd {
-        GetCommands::BlsPrivateKey {} => {
+        GetCommands::BlsDefault {} => {
             let pass =
                 Password::new().with_prompt("Enter a password to the private key").interact()?;
             //let pass = pass.trim();
@@ -254,7 +250,8 @@ pub async fn parse_key_get_subcommands(
 
             match String::from_utf8(decrypted_data) {
                 Ok(decrypted_string) => {
-                    println!("Decrypted BLS Private Key:\n0x{}", decrypted_string)
+                    println!("Decrypted BLS Private Key:\n0x{}", decrypted_string);
+                    println!("Public Key: {:?}", config.default_bls_address.clone());
                 }
                 Err(e) => println!("Failed to convert decrypted data to UTF-8: {}", e),
             }
@@ -271,7 +268,7 @@ pub async fn parse_key_get_subcommands(
                 println!("No path found")
             }
         }
-        GetCommands::EcdsaPrivateKey {} => {
+        GetCommands::EcdsaDefault {} => {
             let mut path = config.default_ecdsa_keyfile;
             path.set_extension("json");
 
@@ -281,6 +278,7 @@ pub async fn parse_key_get_subcommands(
                     .interact()?;
                 let wallet = IvyWallet::from_keystore(path, &password)?;
                 println!("Private key: {:?}", wallet.to_private_key());
+                println!("Public Key: {:?}", config.default_ecdsa_address.clone());
             } else {
                 println!("No path found")
             }
@@ -291,17 +289,10 @@ pub async fn parse_key_get_subcommands(
 
             if path.exists() {
                 let json = read_json_file(&path)?;
-
                 println!("{:?}", json.get("address").expect("Cannot find public key"));
             } else {
                 error!("Keyfile doesn't exist")
             }
-        }
-        GetCommands::GetDefaultBlsAddress {} => {
-            println!("Public Key: {:?}", config.default_bls_address.clone());
-        }
-        GetCommands::GetDefaultEcdsaAddress {} => {
-            println!("Public Key: {:?}", config.default_ecdsa_address.clone());
         }
     }
     Ok(())
@@ -326,7 +317,7 @@ pub async fn parse_key_set_subcommands(
 
                 config.set_bls_keyfile(path);
                 config.set_bls_address(pub_key.to_string());
-                config.store().map_err(IvyError::from)?;
+                config.store()?;
                 println!("New default private key set")
             }
         }
@@ -341,7 +332,7 @@ pub async fn parse_key_set_subcommands(
 
                 config.set_ecdsa_keyfile(path);
                 config.set_ecdsa_address(decoded_pub_key);
-                config.store().map_err(IvyError::from)?;
+                config.store()?;
                 println!("New default private key set")
             } else {
                 println!("File doesn't exist at path: {:?}", path);
@@ -445,7 +436,7 @@ fn create_pub_key_and_encrypt(password: String, sk: SecretKey<Bls12381G1Impl>) -
     let json_string =
         serde_json::to_string_pretty(&json_data).expect("Failed to serialize to JSON");
 
-    println!("Private key: {:?}", sk);
+    println!("Private key: 0x{}", sk_hex.to_string().trim_matches('"'));
 
     (json_string, addr.to_string())
 }
@@ -487,7 +478,7 @@ fn generate_random_string(length: usize) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::{future::Future, path::PathBuf};
+    use std::{future::Future, path::PathBuf, str};
     use tokio::fs;
 
     pub async fn build_test_dir<F, Fut, T>(test_dir: &str, test_logic: F) -> T
@@ -602,7 +593,7 @@ mod tests {
             .await;
 
             let result = parse_key_subcommands(
-                KeyCommands::Get { command: GetCommands::EcdsaPrivateKey {} },
+                KeyCommands::Get { command: GetCommands::EcdsaDefault {} },
                 config,
             )
             .await;
@@ -612,7 +603,60 @@ mod tests {
         })
         .await;
     }
+    #[tokio::test]
+    async fn test_get_public_key() {
+        let test_dir = "test_get_public_key";
+        build_test_dir(test_dir, |test_path| async move {
+            let config = IvyConfig::new_at_path(test_path.clone());
 
+            // Create a key first to be used for getting the public key
+            let create_result = parse_key_subcommands(
+                KeyCommands::Create {
+                    command: CreateCommands::EcdsaCreate {
+                        store: true,
+                        keyname: Some("testkey".to_string()),
+                        password: Some("password".to_string()),
+                    },
+                },
+                config.clone(),
+            )
+            .await;
+
+            assert!(create_result.is_ok());
+
+            // Now test getting the public key
+            let get_result = parse_key_subcommands(
+                KeyCommands::Get {
+                    command: GetCommands::EcdsaPublicKey { keyname: "testkey".to_string() },
+                },
+                config.clone(),
+            )
+            .await;
+
+            assert!(get_result.is_ok());
+
+            let keyfile_path = test_path.join("testkey.json");
+            assert!(keyfile_path.exists());
+
+            let json = read_json_file(&keyfile_path).expect("Failed to read keyfile");
+            let address = json
+                .get("address")
+                .expect("Address field missing in keyfile")
+                .as_str()
+                .expect("Address should be a string");
+
+            let config =
+                IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
+            println!("{:?}", config);
+
+            assert_eq!(
+                address.parse::<H160>().expect("Should be able to convert to H160"),
+                config.default_ecdsa_address,
+                "The public key address does not match the address in the config file"
+            );
+        })
+        .await;
+    }
     #[tokio::test]
     async fn test_import_bls_key() {
         let test_dir = "testbls_import";

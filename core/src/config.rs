@@ -90,7 +90,7 @@ impl IvyConfig {
         write_toml(&config_path, self)?;
         Ok(())
     }
-    // Used for testing
+
     pub fn set_bls_path(&mut self, path: PathBuf) -> Result<(), IvyError> {
         self.bls_path = path;
         Ok(())
