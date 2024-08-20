@@ -11,13 +11,11 @@
     - libssl-dev
     - pkg-config
     - python3-pip
-    - nginx
   tags:
     - memcached
     - postgres
     - download
     - sqlx
-    - nginx
 
 - name: Install SQLX (to run migrtion)
   community.general.cargo:

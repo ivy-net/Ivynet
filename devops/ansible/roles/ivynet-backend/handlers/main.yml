@@ -8,8 +8,3 @@
     name: ivynet-backend
     state: restarted
     enabled: true
-
-- name: Reload Nginx
-  ansible.builtin.systemd_service:
-    name: nginx
-    state: reloaded
