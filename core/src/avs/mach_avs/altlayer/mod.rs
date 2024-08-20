@@ -273,7 +273,7 @@ impl AvsVariant for AltLayer {
             "NODE_BLS_KEY_FILE_HOST",
             bls_json_file_location.to_str().expect("Could not get BLS key file location"),
         );
-        let mut legacy_keyfile_path = config.default_private_keyfile.clone();
+        let mut legacy_keyfile_path = config.default_ecdsa_keyfile.clone();
         legacy_keyfile_path.set_extension("legacy.json");
         env_lines.set(
             "NODE_ECDSA_KEY_FILE_HOST",

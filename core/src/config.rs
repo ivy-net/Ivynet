@@ -21,6 +21,8 @@ use crate::{
 pub struct IvyConfig {
     /// Storage path for serialized config file
     path: PathBuf,
+    /// Storage path for BLS files
+    bls_path: PathBuf,
     /// RPC URL for mainnet
     pub mainnet_rpc_url: String,
     /// RPC URL for holesky
@@ -29,26 +31,35 @@ pub struct IvyConfig {
     pub local_rpc_url: String,
     // TODO: See if this nomenclature needs to be changed
     /// Default operator private key file full path
-    pub default_private_keyfile: PathBuf,
+    pub default_ecdsa_keyfile: PathBuf,
+    /// Default Operator private key file full path bls
+    pub default_bls_keyfile: PathBuf,
     /// Metadata for the operator
     pub metadata: Metadata,
     /// Identification key that node uses for server communications
     pub identity_key: Option<String>,
-    /// Default Public Address
-    pub default_ether_address: H160,
+    /// Default Public ECDSA Address
+    pub default_ecdsa_address: H160,
+    /// Default Public BLS Address
+    pub default_bls_address: String,
 }
 
 impl Default for IvyConfig {
     fn default() -> Self {
         Self {
             path: DEFAULT_CONFIG_PATH.to_owned(),
+            bls_path: dirs::home_dir()
+                .expect("Could not get a home directory")
+                .join(".eigenlayer/operator_keys"),
             mainnet_rpc_url: "https://rpc.flashbots.net/fast".to_string(),
             holesky_rpc_url: "https://eth-holesky.public.blastapi.io".to_string(),
             local_rpc_url: "http://localhost:8545".to_string(),
-            default_private_keyfile: "".into(), // TODO: Option
+            default_ecdsa_keyfile: "".into(), // TODO: Option
+            default_bls_keyfile: "".into(),
             metadata: Metadata::default(),
             identity_key: None,
-            default_ether_address: H160::default(),
+            default_ecdsa_address: H160::default(),
+            default_bls_address: "".into(),
         }
     }
 }
@@ -99,12 +110,20 @@ impl IvyConfig {
         Ok(())
     }
 
-    pub fn set_address(&mut self, address: H160) {
-        self.default_ether_address = address;
+    pub fn set_ecdsa_address(&mut self, address: H160) {
+        self.default_ecdsa_address = address;
     }
 
-    pub fn set_private_keyfile(&mut self, keyfile: PathBuf) {
-        self.default_private_keyfile = keyfile;
+    pub fn set_ecdsa_keyfile(&mut self, keyfile: PathBuf) {
+        self.default_ecdsa_keyfile = keyfile;
+    }
+
+    pub fn set_bls_address(&mut self, address: String) {
+        self.default_bls_address = address;
+    }
+
+    pub fn set_bls_keyfile(&mut self, keyfile: PathBuf) {
+        self.default_bls_keyfile = keyfile;
     }
 
     pub fn get_rpc_url(&self, chain: Chain) -> Result<String, IvyError> {
@@ -118,6 +137,10 @@ impl IvyConfig {
 
     pub fn get_path(&self) -> PathBuf {
         self.path.clone()
+    }
+
+    pub fn get_bls_path(&self) -> PathBuf {
+        self.bls_path.clone()
     }
 
     pub fn identity_wallet(&self) -> Result<IvyWallet, IvyError> {

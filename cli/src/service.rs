@@ -30,7 +30,7 @@ pub async fn serve(
     let sock = Endpoint::Path(config.uds_dir());
 
     // Keystore load
-    let wallet = IvyWallet::from_keystore(config.default_private_keyfile.clone(), keyfile_pw)?;
+    let wallet = IvyWallet::from_keystore(config.default_ecdsa_keyfile.clone(), keyfile_pw)?;
 
     // Avs Service
     // TODO: This should default to local instead of holesky?

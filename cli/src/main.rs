@@ -43,7 +43,7 @@ enum Commands {
         #[command(subcommand)]
         subcmd: AvsCommands,
     },
-    #[command(name = "config", about = "Manage rpc information, keys, and keyfile settings")]
+    #[command(name = "config", about = "Manage rpc and config information")]
     Config {
         #[command(subcommand)]
         subcmd: config::ConfigCommands,

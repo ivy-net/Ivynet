@@ -23,13 +23,13 @@ pub enum ConfigCommands {
     },
     #[command(
         name = "get",
-        about = "get configuration values for RPC, metadata, config or get system info"
+        about = "Get configuration values for RPC, metadata, config or get system info"
     )]
     Get {
         #[command(subcommand)]
         command: ConfigGetCommands,
     },
-    #[command(name = "register", about = "Register node on IvyNet server")]
+    #[command(name = "register", about = "Register node on IvyNet server using IvyNet details")]
     Register {
         /// Email address registered at IvyNet portal
         #[arg(long, env = "IVYNET_EMAIL")]
@@ -113,6 +113,7 @@ fn parse_config_setter_commands(
             let logo_uri = logo_uri.unwrap_or("".to_string());
             let favicon_uri = favicon_uri.unwrap_or("".to_string());
             config.metadata = Metadata::new(&metadata_uri, &logo_uri, &favicon_uri);
+            config.store().map_err(IvyError::from)?;
         }
     }
     Ok(())

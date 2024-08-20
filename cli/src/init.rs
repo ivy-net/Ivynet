@@ -188,13 +188,14 @@ fn set_config_keys(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
             let pw = get_confirm_password();
             let wallet = IvyWallet::from_private_key(private_key)?;
             let prv_key_path = wallet.encrypt_and_store(&config.get_path(), keyfile_name, pw)?;
-            config.default_private_keyfile.clone_from(&prv_key_path);
+            config.default_ecdsa_keyfile.clone_from(&prv_key_path);
+            config.default_ecdsa_address = wallet.address();
         }
         1 => {
             let wallet = IvyWallet::new();
             let addr = wallet.address();
             println!("Public Address: {:?}", addr);
-            config.default_ether_address = addr;
+            config.default_ecdsa_address = addr;
             let keyfile_name: String =
                 Input::new().with_prompt("Enter a name for the keyfile").interact()?;
             let mut pw: String = Password::new()
@@ -214,7 +215,7 @@ fn set_config_keys(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
             }
 
             let prv_key_path = wallet.encrypt_and_store(&config.get_path(), keyfile_name, pw)?;
-            config.default_private_keyfile.clone_from(&prv_key_path);
+            config.default_ecdsa_keyfile.clone_from(&prv_key_path);
         }
         2 => {
             println!("Skipping keyfile initialization");
@@ -232,4 +233,32 @@ fn create_config_dir(config_path: PathBuf) -> Result<(), IvyError> {
 }
 
 #[cfg(test)]
-pub mod test {}
+pub mod test {
+    use super::*;
+    use std::{future::Future, path::PathBuf};
+    use tokio::fs;
+
+    pub async fn build_test_dir<F, Fut, T>(test_dir: &str, test_logic: F) -> T
+    where
+        F: FnOnce(PathBuf) -> Fut,
+        Fut: Future<Output = T>,
+    {
+        let test_path = std::env::current_dir().unwrap().join(format!("testing{}", test_dir));
+        fs::create_dir_all(&test_path).await.expect("Failed to create testing_temp directory");
+        let result = test_logic(test_path.clone()).await;
+        fs::remove_dir_all(test_path).await.expect("Failed to delete testing_temp directory");
+
+        result
+    }
+
+    #[tokio::test]
+    async fn test_config_file_builds_init() {
+        build_test_dir("test_initialization", |test_path| async move {
+            let config = IvyConfig::new_at_path(test_path.clone());
+            config.store().expect("Config not working");
+            let config_file_path = test_path.join("ivy-config.toml");
+            assert!(config_file_path.exists());
+        })
+        .await;
+    }
+}
