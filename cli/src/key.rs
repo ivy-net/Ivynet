@@ -661,8 +661,7 @@ mod tests {
     async fn test_import_bls_key() {
         let test_dir = "testbls_import";
         build_test_dir(test_dir, |test_path| async move {
-            let mut config = IvyConfig::new_at_path(test_path.clone());
-            config.set_bls_path(test_path.clone()).expect("Invalid Path");
+            let config = IvyConfig::new_at_path(test_path.clone());
             let result = parse_key_subcommands(
                 KeyCommands::Import {
                     command: ImportCommands::BlsImport {
@@ -691,9 +690,12 @@ mod tests {
             let toml_data: toml::Value =
                 toml::from_str(&toml_content).expect("Failed to parse TOML");
 
-            let private_keypath =
-                format!("{}/testblsimport.bls.key.json", test_path.to_str().unwrap());
-            assert_eq!(toml_data["default_bls_keyfile"].as_str(), Some(private_keypath.as_str()))
+            let private_keypath = format!(
+                "{}/testblsimport.bls.key.json",
+                config.get_bls_path().to_str().expect("Can't cast to string")
+            );
+            assert_eq!(toml_data["default_bls_keyfile"].as_str(), Some(private_keypath.as_str()));
+            fs::remove_file(config.default_bls_keyfile).await.expect("");
         })
         .await;
     }
@@ -701,8 +703,8 @@ mod tests {
     async fn test_create_bls_key() {
         let test_dir = "testbls_key";
         build_test_dir(test_dir, |test_path| async move {
-            let mut config = IvyConfig::new_at_path(test_path.clone());
-            config.set_bls_path(test_path.clone()).expect("Invalid Path");
+            let config = IvyConfig::new_at_path(test_path.clone());
+            //config.set_bls_path(test_path.clone()).expect("Invalid Path");
             let result = parse_key_subcommands(
                 KeyCommands::Create {
                     command: CreateCommands::BlsCreate {
@@ -717,7 +719,7 @@ mod tests {
 
             println!("{:?}", result);
             assert!(result.is_ok());
-            assert!(test_path.join("testblskey.bls.key.json").exists());
+            //assert!(test_path.join("testblskey.bls.key.json").exists());
 
             let config =
                 IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
@@ -730,9 +732,12 @@ mod tests {
                 toml::from_str(&toml_content).expect("Failed to parse TOML");
 
             // Perform assertions on TOML keys and values
-            let private_keypath =
-                format!("{}/testblskey.bls.key.json", test_path.to_str().unwrap());
-            assert_eq!(toml_data["default_bls_keyfile"].as_str(), Some(private_keypath.as_str()))
+            let private_keypath = format!(
+                "{}/testblskey.bls.key.json",
+                config.get_bls_path().to_str().expect("Can't cast to string")
+            );
+            assert_eq!(toml_data["default_bls_keyfile"].as_str(), Some(private_keypath.as_str()));
+            fs::remove_file(config.default_bls_keyfile).await.expect("");
         })
         .await;
     }
