@@ -6,7 +6,7 @@
     dest: "{{ ivynet_backend_install_path }}/repo"
   tags:
     - ivynet
-    - postgres
+    - db-config
 
 - name: Configure postgres DB for ivynet
   community.postgresql.postgresql_db:
@@ -48,8 +48,9 @@
     cmd: |
       {{ ivynet_backend_install_path }}/bin/sqlx migrate run --database-url postgresql://{{ ivynet_backend_postgres_user}}:{{ ivynet_backend_postgres_pass }}@localhost:5432/{{ ivynet_backend_postgres_db }}
     chdir: "{{ ivynet_backend_migration_path }}"
+  register: migration_out
+  changed_when: migration_out.stdout != ""
   tags:
-  - ivynet
-  - postgres
-  - db-config
-  - sqlx
+    - ivynet
+    - db-config
+    - sqlx

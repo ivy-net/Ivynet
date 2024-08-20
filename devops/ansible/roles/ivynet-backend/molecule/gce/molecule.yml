@@ -1,0 +1,14 @@
+---
+driver:
+  name: gce
+  project_id: ivynet-tests
+  region: us-central1
+  instance_os_type: linux
+  external_access: true
+  auth_kind: serviceaccount
+  service_account_file: ~/packer.json
+  username: ubuntu
+  credentials_file: ~/.ssh/google_compute_engine
+platforms:
+  - name: molecule-backend
+    image: 'projects/ubuntu-os-cloud/global/images/family/ubuntu-2404-lts-amd64'

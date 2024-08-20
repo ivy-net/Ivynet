@@ -8,6 +8,9 @@
     - libmemcached-tools
     - postgresql
     - cargo
+    - libssl-dev
+    - pkg-config
+    - python3-pip
   tags:
     - memcached
     - postgres
@@ -35,3 +38,4 @@
     - general
     - download
     - github
+    - postgres
