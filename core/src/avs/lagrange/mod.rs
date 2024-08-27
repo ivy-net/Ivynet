@@ -7,8 +7,7 @@
 /// lagrange-worker`.
 use async_trait::async_trait;
 use dialoguer::Input;
-use ethers::types::{Address, Chain, H160, U256};
-use ivynet_macros::h160;
+use ethers::types::{Chain, U256};
 use std::{
     fs::{self, File},
     io::{copy, BufReader},
@@ -116,7 +115,7 @@ impl AvsVariant for Lagrange {
         todo!()
     }
 
-    async fn start(&mut self, _quorums: Vec<QuorumType>, _chain: Chain) -> Result<Child, IvyError> {
+    async fn start(&mut self) -> Result<Child, IvyError> {
         std::env::set_current_dir(self.run_path())?;
         debug!("docker start: {}", self.run_path().display());
         // NOTE: See the limitations of the Stdio::piped() method if this experiences a deadlock
@@ -126,45 +125,11 @@ impl AvsVariant for Lagrange {
         Ok(cmd)
     }
 
-    async fn stop(&mut self, _chain: Chain) -> Result<(), IvyError> {
+    async fn stop(&mut self) -> Result<(), IvyError> {
         std::env::set_current_dir(self.run_path())?;
         let _ = docker_cmd_status(["stop"])?;
         self.running = false;
         Ok(())
-    }
-
-    // TODO: Should probably be a hashmap
-    #[allow(clippy::all)]
-    fn quorum_min(&self, chain: Chain, _quorum_type: QuorumType) -> U256 {
-        match chain {
-            _ => unimplemented!(),
-        }
-    }
-
-    // TODO: Consider loading these from a TOML config file or somesuch
-    // TODO: Add Eigen quorum
-    fn quorum_candidates(&self, chain: Chain) -> Vec<QuorumType> {
-        match chain {
-            Chain::Mainnet => vec![QuorumType::LST],
-            Chain::Holesky => vec![QuorumType::LST],
-            _ => todo!("Unimplemented"),
-        }
-    }
-
-    fn stake_registry(&self, chain: Chain) -> Address {
-        match chain {
-            Chain::Mainnet => h160!(0x8dcdCc50Cc00Fe898b037bF61cCf3bf9ba46f15C),
-            Chain::Holesky => h160!(0xf724cDC7C40fd6B59590C624E8F0E5E3843b4BE4),
-            _ => todo!("Unimplemented"),
-        }
-    }
-
-    #[allow(clippy::all)]
-    fn registry_coordinator(&self, chain: Chain) -> Address {
-        match chain {
-            // TODO: TEMP WHILE WE REWORK THIS STRUCT
-            _ => h160!(0x00000000000000000000000000000000DeaDBeef),
-        }
     }
 
     fn path(&self) -> PathBuf {
@@ -178,11 +143,10 @@ impl AvsVariant for Lagrange {
     /// Registers the lagrange private key with the lagrange network.
     async fn register(
         &self,
-        _quorums: Vec<QuorumType>,
+        _provider: Arc<IvyProvider>,
         _eigen_path: PathBuf,
         private_keypath: PathBuf,
         keyfile_password: &str,
-        _chain: Chain,
     ) -> Result<(), IvyError> {
         // Copy keyfile to current dir
         let dest_dir = self.run_path().join("config");
@@ -208,13 +172,23 @@ impl AvsVariant for Lagrange {
 
     async fn unregister(
         &self,
-        _quorums: Vec<QuorumType>,
+        _provider: Arc<IvyProvider>,
         _eigen_path: PathBuf,
         _private_keypath: PathBuf,
         _keyfile_password: &str,
-        _chain: Chain,
     ) -> Result<(), IvyError> {
         todo!("Lagrange hasn't implemented this yet")
+    }
+
+    fn name(&self) -> &str {
+        todo!()
+    }
+}
+
+impl Lagrange {
+    /// Constructor function for Lagrange run dir path
+    fn run_path(&self) -> PathBuf {
+        self.path.join("lagrange-worker").join(self.chain.as_ref())
     }
 
     /// Builds the .env file for the Lagrange worker
@@ -244,15 +218,15 @@ impl AvsVariant for Lagrange {
         env_lines.save(&env_path)
     }
 
-    fn name(&self) -> &str {
-        todo!()
-    }
-}
-
-impl Lagrange {
-    /// Constructor function for Lagrange run dir path
-    fn run_path(&self) -> PathBuf {
-        self.path.join("lagrange-worker").join(self.chain.as_ref())
+    // TODO: Consider loading these from a TOML config file or somesuch
+    // TODO: Add Eigen quorum
+    #[allow(dead_code)]
+    fn quorum_candidates(&self, chain: Chain) -> Vec<QuorumType> {
+        match chain {
+            Chain::Mainnet => vec![QuorumType::LST],
+            Chain::Holesky => vec![QuorumType::LST],
+            _ => todo!("Unimplemented"),
+        }
     }
 }
 

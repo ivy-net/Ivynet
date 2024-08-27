@@ -2418,6 +2418,7 @@ dependencies = [
  "console",
  "dialoguer",
  "dirs",
+ "dotenvy",
  "ethers",
  "futures-util",
  "hyper 1.4.1",
