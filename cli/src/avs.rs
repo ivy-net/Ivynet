@@ -3,6 +3,7 @@ use bollard::{
     Docker,
 };
 use dialoguer::Password;
+//use dialoguer::Input;
 use dirs::home_dir;
 use futures_util::stream::StreamExt;
 use ivynet_core::{
@@ -45,8 +46,7 @@ pub async fn parse_avs_subcommands(subcmd: AvsCommands, config: &IvyConfig) -> R
         }
         // TODO: Fix timeout issue
         AvsCommands::Register {} => {
-            let response = client.avs_mut().opt_in().await?;
-            println!("{:?}", response.into_inner());
+            client.avs_mut().opt_in().await?;
             println!("{}", get_register_logs());
         }
         AvsCommands::Unregister {} => {
@@ -54,9 +54,8 @@ pub async fn parse_avs_subcommands(subcmd: AvsCommands, config: &IvyConfig) -> R
             println!("{:?}", response.into_inner());
         }
         AvsCommands::Start { avs, chain } => {
-            let response = client.avs_mut().start(avs, chain).await?;
+            client.avs_mut().start(avs, chain).await?;
             check_docker_logs_for_errors().await.expect("Couldn't obtain logs");
-            println!("{:?}", response.into_inner());
         }
         AvsCommands::Stop {} => {
             let response = client.avs_mut().stop().await?;
@@ -163,7 +162,7 @@ fn get_register_logs() -> String {
             path.push(".eigenlayer/eigenda/eigenda-operator-setup/holesky/script_output.log");
             path
         }
-        None => return String::new(),
+        None => return "Succesfully registration".to_string(),
     };
 
     if !Path::new(&file_path).exists() {
@@ -176,12 +175,18 @@ fn get_register_logs() -> String {
     };
 
     let reader = io::BufReader::new(file);
-
     for line_result in reader.lines() {
         match line_result {
             Ok(line) => {
                 if line.contains("insufficient funds for transfer") {
                     return "Error: insufficient funds for transfer".to_string();
+                } else if line.contains("failed to read or decrypt the BLS private key") {
+                    if line.contains("could not decrypt key with given password") {
+                        return "Error: Incorrect password given to BLS key".to_string();
+                    } else if line.contains("is a directory") {
+                        return "Error: No valid BLS key found".to_string();
+                    }
+                    return "Error: Non-correct BLS key".to_string();
                 }
             }
             Err(e) => {
