@@ -1,0 +1,83 @@
+---
+services:
+  anvil:
+    container_name: anvil
+    image: ghcr.io/foundry-rs/foundry:latest
+    entrypoint: anvil
+    hostname: anvil
+    platform: linux/amd64
+    ports:
+      - "8545:8545"
+    command: --host=0.0.0.0
+
+  feed-deployer:
+    platform: linux/amd64
+    image: ghcr.io/foundry-rs/foundry:latest
+    entrypoint: cast
+    command:
+      - rpc
+      - anvil_setBalance
+      - 0x123463a4b065722e99115d6c222f267d9cabb524
+      - '10000000000000000000'
+      - --rpc-url
+      - http://anvil:8545
+    depends_on:
+      autoimpersonation:
+        condition: service_completed_successfully
+
+  feed-layer:
+    platform: linux/amd64
+    image: ghcr.io/foundry-rs/foundry:latest
+    entrypoint: cast
+    command:
+      - rpc
+      - anvil_setBalance
+      - 0x860B6912C2d0337ef05bbC89b0C2CB6CbAEAB4A5
+      - '10000000000000000000'
+      - --rpc-url
+      - http://anvil:8545
+    depends_on:
+      feed-deployer:
+        condition: service_completed_successfully
+
+  autoimpersonation:
+    platform: linux/amd64
+    image: ghcr.io/foundry-rs/foundry:latest
+    entrypoint: cast
+    command:
+      - rpc
+      - anvil_autoImpersonateAccount
+      - "true"
+      - --rpc-url
+      - http://anvil:8545
+    depends_on:
+      - anvil
+
+  # FoundaryUp based container with local image
+  # deploying EigenLayer Contracts
+  eigenlayer:
+    platform: linux/amd64
+    image: "public.ecr.aws/ivynet/iv1-eigenlayer:latest"
+    command:
+      - -vvv
+      - --rpc-url
+      - http://anvil:8545
+      - --broadcast
+      - --sig
+      - "run(string memory configFile)"
+      - --unlocked
+      - --sender
+      - 0x123463a4b065722e99115d6c222f267d9cabb524
+      - script/deploy/devnet/M2_Deploy_From_Scratch.s.sol
+      - --
+      - M2_deploy_from_scratch.local.config.json
+    working_dir: /eigenlayer/eigenlayer-contracts
+    volumes:
+      - ../../files/eigenlayer/M2_deploy_from_scratch.local.config.json:/eigenlayer/eigenlayer-contracts/script/configs/devnet/M2_deploy_from_scratch.local.config.json
+      - ../../files/eigenlayer/output.json:/eigenlayer/eigenlayer-contracts/script/output/devnet/M2_from_scratch_deployment_data.json
+      - ../../files/eigenlayer/run-latest.json:/eigenlayer/eigenlayer-contracts/broadcast/M2_Deploy_From_Scratch.s.sol/31337/run-latest.json
+    depends_on:
+      anvil:
+        condition: service_started
+      feed-deployer:
+        condition: service_completed_successfully

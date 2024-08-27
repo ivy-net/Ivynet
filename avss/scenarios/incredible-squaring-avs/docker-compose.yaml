@@ -73,9 +73,9 @@ services:
       - M2_deploy_from_scratch.local.config.json
     working_dir: /eigenlayer/eigenlayer-contracts
     volumes:
-      - ./docker/eigenlayer/M2_deploy_from_scratch.local.config.json:/eigenlayer/eigenlayer-contracts/script/configs/devnet/M2_deploy_from_scratch.local.config.json
-      - ./docker/eigenlayer/output.json:/eigenlayer/eigenlayer-contracts/script/output/devnet/M2_from_scratch_deployment_data.json
-      - ./docker/eigenlayer/run-latest.json:/eigenlayer/eigenlayer-contracts/broadcast/M2_Deploy_From_Scratch.s.sol/31337/run-latest.json
+      - ../../files/eigenlayer/M2_deploy_from_scratch.local.config.json:/eigenlayer/eigenlayer-contracts/script/configs/devnet/M2_deploy_from_scratch.local.config.json
+      - ../../files/eigenlayer/output.json:/eigenlayer/eigenlayer-contracts/script/output/devnet/M2_from_scratch_deployment_data.json
+      - ../../files/eigenlayer/run-latest.json:/eigenlayer/eigenlayer-contracts/broadcast/M2_Deploy_From_Scratch.s.sol/31337/run-latest.json
     depends_on:
       anvil:
         condition: service_started
@@ -98,8 +98,8 @@ services:
       - 0x123463a4b065722e99115d6c222f267d9cabb524
     working_dir: /eigenlayer/incredible-squaring-avs/contracts
     volumes:
-      - ./docker/eigenlayer/output.json:/eigenlayer/incredible-squaring-avs/contracts/script/output/31337/eigenlayer_deployment_output.json
-      - ./docker/incredible-squaring-avs/output.json:/eigenlayer/incredible-squaring-avs/contracts/script/output/31337/credible_squaring_avs_deployment_output.json
+      - ../../files/eigenlayer/output.json:/eigenlayer/incredible-squaring-avs/contracts/script/output/31337/eigenlayer_deployment_output.json
+      - ../../files/incredible-squaring-avs/output.json:/eigenlayer/incredible-squaring-avs/contracts/script/output/31337/credible_squaring_avs_deployment_output.json
     depends_on:
       eigenlayer:
         condition: service_completed_successfully
@@ -115,8 +115,8 @@ services:
       - --ecdsa-private-key
       - 0x2a871d0798f97d79848a013d4936a73bf4cc922c825d33c1cf7073dff6d409c6
     volumes:
-      - ./docker/incredible-squaring-avs/31337/aggregator-docker-compose.yaml:/incredible-squaring/aggregator-docker-compose.yaml
-      - ./docker/incredible-squaring-avs/output.json:/incredible-squaring/contracts/script/output/31337/incredible_squaring_avs_deployment_output.json
+      - ../../files/incredible-squaring-avs/31337/aggregator-docker-compose.yaml:/incredible-squaring/aggregator-docker-compose.yaml
+      - ../../files/incredible-squaring-avs/output.json:/incredible-squaring/contracts/script/output/31337/incredible_squaring_avs_deployment_output.json
     working_dir: /incredible-squaring
     depends_on:
       avs-demo:
@@ -129,8 +129,8 @@ services:
     expose:
       - 9090
     volumes:
-      - ./docker/incredible-squaring-avs/31337/operator-docker-compose.yaml:/incredible-squaring/operator-docker-compose.yaml
-      - ./docker/incredible-squaring-avs/keys:/incredible-squaring/tests/keys
+      - ../../files/incredible-squaring-avs/31337/operator-docker-compose.yaml:/incredible-squaring/operator-docker-compose.yaml
+      - ../../files/incredible-squaring-avs/keys:/incredible-squaring/tests/keys
     working_dir: /incredible-squaring
     depends_on:
       aggregator:
