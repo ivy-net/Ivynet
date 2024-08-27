@@ -7,9 +7,9 @@ use ethers::{
 use ivynet_macros::h160;
 use std::{
     fs::{self, File},
-    io::{copy, BufReader},
+    io::{copy, BufReader, Write},
     path::PathBuf,
-    process::{Child, Command},
+    process::{Child, Command, Output},
     sync::Arc,
 };
 use thiserror::Error as ThisError;
@@ -241,7 +241,7 @@ impl AvsVariant for EigenDA {
         info!("Booting quorums: {:#?}", quorums);
         debug!("{} |  {}", run_script_path.display(), quorum_str);
 
-        let optin = Command::new("sh")
+        let output: Output = Command::new("sh")
             .arg(run_script_path)
             .arg("--operation-type")
             .arg("opt-in")
@@ -251,12 +251,34 @@ impl AvsVariant for EigenDA {
             .arg(keyfile_password)
             .arg("--quorums")
             .arg(quorum_str)
-            .status()?;
+            .output()?;
 
-        if optin.success() {
+        //let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        info!("{:?}", std::env::current_dir().expect(""));
+
+        match File::create("script_output.log") {
+            Ok(mut file) => {
+                if let Err(e) = file.write_all(stderr.as_bytes()) {
+                    info!("Failed to write stdout to file: {}", e);
+                    return Err(IvyError::from(e)); // Return an error if writing to the file fails
+                }
+            }
+            Err(e) => {
+                info!("Failed to create file: {}", e);
+                return Err(IvyError::from(e)); // Return an error if file creation fails
+            }
+        }
+
+        // Log the captured stderr output
+        if !stderr.is_empty() {
+            info!("Script stderr: {}", stderr);
+        }
+
+        if output.status.success() {
             Ok(())
         } else {
-            Err(EigenDAError::ScriptError(optin.to_string()).into())
+            Err(EigenDAError::ScriptError(stderr.into()).into())
         }
     }
 

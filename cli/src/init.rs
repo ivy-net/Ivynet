@@ -49,7 +49,9 @@ pub async fn initialize_ivynet(
         // configure RPC addresses
         let config = set_config_rpcs(config)?;
         let config = set_config_keys(config)?;
-        let config = set_config_metadata(config)?;
+        let mut config = set_config_metadata(config)?;
+        let new_key = IvyWallet::new();
+        config.identity_key = Some(new_key.to_private_key());
         config.store()?;
 
         if !skip_login {
