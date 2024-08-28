@@ -1,3 +1,5 @@
+use anyhow::Error as AnyError;
+use anyhow::Result;
 use clap::{Parser, Subcommand};
 use cli::{avs, config, error::Error, init::initialize_ivynet, key, operator, service, staker};
 use ivynet_core::{avs::commands::AvsCommands, config::IvyConfig, grpc::client::Uri};
@@ -76,10 +78,11 @@ enum Commands {
 }
 
 #[tokio::main]
-async fn main() -> Result<(), Error> {
+async fn main() -> Result<(), AnyError> {
     let args = Args::parse();
 
     start_tracing(args.log_level)?;
+    let config = IvyConfig::load_from_default_path()?;
 
     match args.cmd {
         Commands::Init => {
@@ -88,22 +91,19 @@ async fn main() -> Result<(), Error> {
         Commands::Config { subcmd } => {
             config::parse_config_subcommands(
                 subcmd,
-                check_for_config(),
+                config,
                 args.server_url,
                 args.server_ca.as_ref(),
             )
             .await?;
         }
-        Commands::Key { subcmd } => key::parse_key_subcommands(subcmd, check_for_config()).await?,
+        Commands::Key { subcmd } => key::parse_key_subcommands(subcmd, config).await?,
         Commands::Operator { subcmd } => {
-            operator::parse_operator_subcommands(subcmd, &check_for_config()).await?
+            operator::parse_operator_subcommands(subcmd, &config).await?
         }
-        Commands::Staker { subcmd } => {
-            staker::parse_staker_subcommands(subcmd, &check_for_config()).await?
-        }
-        Commands::Avs { subcmd } => avs::parse_avs_subcommands(subcmd, &check_for_config()).await?,
+        Commands::Staker { subcmd } => staker::parse_staker_subcommands(subcmd, &config).await?,
+        Commands::Avs { subcmd } => avs::parse_avs_subcommands(subcmd, &config).await?,
         Commands::Serve { avs, chain } => {
-            let config = check_for_config();
             let keyfile_pw = dialoguer::Password::new()
                 .with_prompt("Input the password for your stored Operator ECDSA keyfile")
                 .interact()?;
@@ -127,10 +127,4 @@ pub fn start_tracing(level: Level) -> Result<(), Error> {
     let subscriber = FmtSubscriber::builder().with_max_level(level).finish();
     tracing::subscriber::set_global_default(subscriber)?;
     Ok(())
-}
-
-fn check_for_config() -> IvyConfig {
-    IvyConfig::load_from_default_path().unwrap_or_else(|_| {
-        panic!("No config file found. Run 'ivynet init' to start initialization.")
-    })
 }
