@@ -264,7 +264,7 @@ pub async fn parse_key_get_subcommands(
                 }
                 None => {
                     println!("{:?}", config.default_bls_address);
-                    return Ok(())
+                    return Ok(());
                 }
             }
 
@@ -308,7 +308,7 @@ pub async fn parse_key_get_subcommands(
                 }
                 None => {
                     println!("{:?}", config.default_ecdsa_address);
-                    return Ok(())
+                    return Ok(());
                 }
             }
 

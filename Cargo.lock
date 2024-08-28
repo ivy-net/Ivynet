@@ -714,6 +714,7 @@ name = "cli"
 version = "0.1.0"
 dependencies = [
  "aes",
+ "anyhow",
  "blsful",
  "clap",
  "ctr",
@@ -2418,6 +2419,7 @@ dependencies = [
  "console",
  "dialoguer",
  "dirs",
+ "dotenvy",
  "ethers",
  "futures-util",
  "hyper 1.4.1",

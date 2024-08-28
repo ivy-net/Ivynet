@@ -7,56 +7,56 @@ use thiserror::Error as ThisError;
 
 #[derive(ThisError, Debug)]
 pub enum IoError {
-    #[error("File read error: {source} at path {path}")]
+    #[error("File read error at path {path}")]
     FileReadError {
         #[source]
         source: std::io::Error,
         path: String,
     },
 
-    #[error("File write error: {source} at path {path}")]
+    #[error("File write error at path {path}")]
     FileWriteError {
         #[source]
         source: std::io::Error,
         path: String,
     },
 
-    #[error("JSON parse error: {source} at path {path}")]
+    #[error("JSON parse error at path {path}")]
     SerdeJsonError {
         #[source]
         source: serde_json::Error,
         path: String,
     },
 
-    #[error("TOML deserialize error: {source} at path {path}")]
+    #[error("TOML deserialize error at path {path}")]
     TomlDeError {
         #[source]
         source: toml::de::Error,
         path: String,
     },
 
-    #[error("TOML serialize error: {source} at path {path}")]
+    #[error("TOML serialize error at path {path}")]
     TomlSerError {
         #[source]
         source: toml::ser::Error,
         path: String,
     },
 
-    #[error("YAML serialize error: {source} at path {path}")]
+    #[error("YAML serialize error at path {path}")]
     YamlSerError {
         #[source]
         source: serde_yaml::Error,
         path: String,
     },
 
-    #[error("YAML deserialize error: {source} at path {path}")]
+    #[error("YAML deserialize error at path {path}")]
     YamlDeError {
         #[source]
         source: serde_yaml::Error,
         path: String,
     },
 
-    #[error("Directory creation error: {source} at path {path}")]
+    #[error("Directory creation error at path {path}")]
     DirCreationError {
         #[source]
         source: std::io::Error,

@@ -5,6 +5,7 @@
 
 # Project
 /eigenda_operator_setup
+/tmp
 .env
 *.prv
 terraform.tfstate*
