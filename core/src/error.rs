@@ -24,6 +24,9 @@ pub enum IvyError {
     StdIo(#[from] std::io::Error),
 
     #[error(transparent)]
+    SerdeJsonError(#[from] serde_json::Error),
+
+    #[error(transparent)]
     WalletError(#[from] WalletError),
 
     // TODO: Attempt to deprecate, see private_key_string to bytes methods.

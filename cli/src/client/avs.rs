@@ -3,8 +3,9 @@ use ivynet_core::{
     grpc::{
         ivynet_api::{
             ivy_daemon_avs::{
-                avs_client::AvsClient as AvsClientRaw, AvsInfoRequest, AvsInfoResponse,
-                RegisterRequest, SelectAvsRequest, StartRequest, StopRequest, UnregisterRequest,
+                avs_client::AvsClient as AvsClientRaw, AttachRequest, AvsInfoRequest,
+                AvsInfoResponse, RegisterRequest, SelectAvsRequest, StartRequest, StopRequest,
+                UnregisterRequest,
             },
             ivy_daemon_types::RpcResponse,
         },
@@ -25,13 +26,13 @@ impl AvsClient {
         Ok(response)
     }
 
-    pub async fn opt_in(&mut self) -> Result<Response<RpcResponse>, IvyError> {
+    pub async fn register(&mut self) -> Result<Response<RpcResponse>, IvyError> {
         let request = Request::new(RegisterRequest {});
         let response = self.0.register(request).await?;
         Ok(response)
     }
 
-    pub async fn opt_out(&mut self) -> Result<Response<RpcResponse>, IvyError> {
+    pub async fn unregister(&mut self) -> Result<Response<RpcResponse>, IvyError> {
         let request = Request::new(UnregisterRequest {});
         let response = self.0.unregister(request).await?;
         Ok(response)
@@ -42,6 +43,11 @@ impl AvsClient {
         avs: Option<String>,
         chain: Option<String>,
     ) -> Result<Response<RpcResponse>, IvyError> {
+        if let (Some(avs), Some(chain)) = (avs.clone(), chain.clone()) {
+            let request = Request::new(SelectAvsRequest { avs, chain });
+            let _ = self.0.select_avs(request).await?;
+        }
+
         let request = Request::new(StartRequest { avs, chain });
         let response = self.0.start(request).await?;
         Ok(response)
@@ -60,6 +66,22 @@ impl AvsClient {
     ) -> Result<Response<RpcResponse>, IvyError> {
         let request = Request::new(SelectAvsRequest { avs, chain });
         let response = self.0.select_avs(request).await?;
+        Ok(response)
+    }
+
+    pub async fn attach(
+        &mut self,
+        avs: Option<String>,
+        chain: Option<String>,
+    ) -> Result<Response<RpcResponse>, IvyError> {
+        if let (Some(avs), Some(chain)) = (avs.clone(), chain.clone()) {
+            let request = Request::new(SelectAvsRequest { avs, chain });
+            let _ = self.0.select_avs(request).await?;
+        }
+
+        let request = Request::new(AttachRequest { avs, chain });
+        let response = self.0.attach(request).await?;
+
         Ok(response)
     }
 }

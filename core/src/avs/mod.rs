@@ -122,6 +122,17 @@ impl AvsProvider {
         self.avs_mut()?.start().await
     }
 
+    pub async fn attach(&mut self) -> Result<Child, IvyError> {
+        let avs = self.avs_mut()?;
+        if avs.running() {
+            return Err(IvyError::AvsRunningError(
+                avs.name().to_string(),
+                Chain::try_from(self.provider.signer().chain_id())?,
+            ));
+        }
+        self.avs_mut()?.attach().await
+    }
+
     /// Stop the loaded AVS instance.
     pub async fn stop(&mut self) -> Result<(), IvyError> {
         self.avs_mut()?.stop().await?;
@@ -222,6 +233,8 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
     ) -> Result<(), IvyError>;
     /// Start the AVS instance. Returns a Child process handle.
     async fn start(&mut self) -> Result<Child, IvyError>;
+    /// Attach to the AVS instance. Returns a Child process handle.
+    async fn attach(&mut self) -> Result<Child, IvyError>;
     /// Stop the AVS instance.
     async fn stop(&mut self) -> Result<(), IvyError>;
     /// Return the name of the AVS instance

@@ -125,6 +125,16 @@ impl AvsVariant for Lagrange {
         Ok(cmd)
     }
 
+    async fn attach(&mut self) -> Result<Child, IvyError> {
+        //TODO: Better Pathing once invdividual configs are usable
+        std::env::set_current_dir(self.run_path())?;
+        debug!("docker ataching: {}", self.run_path().display());
+        let cmd = docker_cmd(["logs", "-f"])?;
+        debug!("cmd PID: {:?}", cmd.id());
+        self.running = true;
+        Ok(cmd)
+    }
+
     async fn stop(&mut self) -> Result<(), IvyError> {
         std::env::set_current_dir(self.run_path())?;
         let _ = docker_cmd_status(["stop"])?;

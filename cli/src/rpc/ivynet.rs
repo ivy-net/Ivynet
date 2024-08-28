@@ -7,7 +7,7 @@ use ivynet_core::{
     grpc::{
         ivynet_api::{
             ivy_daemon_avs::{
-                avs_server::Avs, AvsInfoRequest, AvsInfoResponse, RegisterRequest,
+                avs_server::Avs, AttachRequest, AvsInfoRequest, AvsInfoResponse, RegisterRequest,
                 SelectAvsRequest, SetupRequest, StartRequest, StopRequest, UnregisterRequest,
             },
             ivy_daemon_operator::{
@@ -78,6 +78,18 @@ impl Avs for IvynetService {
 
         // TODO: Start Flow + not setup fallback
         let response = RpcResponse { response_type: 0, msg: "Avs started.".to_string() };
+        Ok(Response::new(response))
+    }
+
+    async fn attach(
+        &self,
+        _request: Request<AttachRequest>,
+    ) -> Result<Response<RpcResponse>, Status> {
+        let mut provider = self.avs_provider.write().await;
+        provider.attach().await?;
+
+        let response =
+            RpcResponse { response_type: 0, msg: "AVS attached successfully.".to_string() };
         Ok(Response::new(response))
     }
 

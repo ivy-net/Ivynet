@@ -1,5 +1,7 @@
 use async_trait::async_trait;
+use core::str;
 use dialoguer::{Input, Password};
+use dirs::home_dir;
 use ethers::{
     signers::Signer,
     types::{Address, Chain, U256},
@@ -154,7 +156,19 @@ impl AvsVariant for EigenDA {
         Ok(cmd)
     }
 
-    // TODO: Remove quorums from stop  method if not needed
+    async fn attach(&mut self) -> Result<Child, IvyError> {
+        //TODO: Make more robust once path from avs config file is integrated
+        let setup_path =
+            home_dir().unwrap().join(EIGENDA_PATH).join("eigenda-operator-setup/holesky");
+        info!("Path: {:?}", &setup_path);
+        std::env::set_current_dir(&setup_path)?;
+
+        let cmd = docker_cmd(["logs", "-f"])?;
+
+        self.running = true;
+        Ok(cmd)
+    }
+
     async fn stop(&mut self) -> Result<(), IvyError> {
         let docker_path = self.path.join("eigenda-operator-setup");
         let docker_path = match self.chain {

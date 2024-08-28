@@ -32,11 +32,11 @@ pub async fn parse_avs_subcommands(subcmd: AvsCommands, config: &IvyConfig) -> R
         }
         // TODO: Fix timeout issue
         AvsCommands::Register {} => {
-            let response = client.avs_mut().opt_in().await?;
+            let response = client.avs_mut().register().await?;
             println!("{:?}", response.into_inner());
         }
         AvsCommands::Unregister {} => {
-            let response = client.avs_mut().opt_out().await?;
+            let response = client.avs_mut().unregister().await?;
             println!("{:?}", response.into_inner());
         }
         AvsCommands::Start { avs, chain } => {
@@ -49,6 +49,10 @@ pub async fn parse_avs_subcommands(subcmd: AvsCommands, config: &IvyConfig) -> R
         }
         AvsCommands::Select { avs, chain } => {
             let response = client.avs_mut().select_avs(avs, chain).await?;
+            println!("{:?}", response.into_inner());
+        }
+        AvsCommands::Attach { avs, chain } => {
+            let response = client.avs_mut().attach(avs, chain).await?;
             println!("{:?}", response.into_inner());
         }
         AvsCommands::CheckStakePercentage { .. } => todo!(),

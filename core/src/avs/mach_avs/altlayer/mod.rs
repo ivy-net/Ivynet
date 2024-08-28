@@ -84,6 +84,10 @@ impl AvsVariant for AltLayer {
         todo!()
     }
 
+    async fn attach(&mut self) -> Result<Child, IvyError> {
+        todo!()
+    }
+
     async fn stop(&mut self) -> Result<(), IvyError> {
         todo!()
     }
