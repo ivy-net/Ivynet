@@ -124,7 +124,7 @@ impl AvsProvider {
 
     pub async fn attach(&mut self) -> Result<Child, IvyError> {
         let avs = self.avs_mut()?;
-        if avs.running() {
+        if avs.is_running() {
             return Err(IvyError::AvsRunningError(
                 avs.name().to_string(),
                 Chain::try_from(self.provider.signer().chain_id())?,
