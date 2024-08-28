@@ -92,7 +92,7 @@ impl AvsVariant for AltLayer {
         self.path.clone()
     }
 
-    fn running(&self) -> bool {
+    fn is_running(&self) -> bool {
         self.running
     }
 
