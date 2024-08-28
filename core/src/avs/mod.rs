@@ -24,6 +24,7 @@ pub mod eigenda;
 pub mod error;
 pub mod lagrange;
 pub mod mach_avs;
+pub mod openlayer;
 
 pub type QuorumMinMap = HashMap<Chain, HashMap<QuorumType, U256>>;
 

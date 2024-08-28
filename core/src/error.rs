@@ -11,7 +11,7 @@ use tonic::Status;
 use zip::result::ZipError;
 
 use crate::{
-    avs::{eigenda::EigenDAError, lagrange::LagrangeError},
+    avs::{eigenda::EigenDAError, lagrange::LagrangeError, openlayer::OpenLayerError},
     eigen::quorum::QuorumError,
     grpc::client::ClientError,
     rpc_management::IvyProvider,
@@ -50,6 +50,9 @@ pub enum IvyError {
 
     #[error(transparent)]
     LagrangeError(#[from] LagrangeError),
+
+    #[error(transparent)]
+    OpenLayerError(#[from] OpenLayerError),
 
     #[error(transparent)]
     ZipError(#[from] ZipError),
