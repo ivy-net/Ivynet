@@ -48,7 +48,7 @@ impl Avs for IvynetService {
         let provider = self.avs_provider.read().await;
         let avs = &provider.avs;
         let (running, avs_type, chain) = if let Some(avs) = avs {
-            let is_running = avs.running();
+            let is_running = avs.is_running();
             let avs_type = avs.name();
             let chain = Chain::try_from(provider.provider.signer().chain_id())
                 .expect("Unexpected chain ID parse failure");
@@ -242,7 +242,7 @@ impl Operator for IvynetService {
     ) -> Result<Response<SetEcdsaKeyfilePathResponse>, Status> {
         let mut provider = self.avs_provider.write().await;
         if let Some(avs) = &provider.avs {
-            if avs.running() {
+            if avs.is_running() {
                 return Err(Status::failed_precondition("AVS must be stopped to set keyfile path"));
             }
         }

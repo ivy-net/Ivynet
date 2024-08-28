@@ -113,7 +113,7 @@ impl AvsProvider {
     /// Start the loaded AVS instance. Returns an error if no AVS instance is loaded.
     pub async fn start(&mut self) -> Result<Child, IvyError> {
         let avs = self.avs_mut()?;
-        if avs.running() {
+        if avs.is_running() {
             return Err(IvyError::AvsRunningError(
                 avs.name().to_string(),
                 Chain::try_from(self.provider.signer().chain_id())?,
@@ -241,7 +241,7 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
     fn name(&self) -> &str;
     fn path(&self) -> PathBuf;
     /// Return wether or not the AVS is running
-    fn running(&self) -> bool;
+    fn is_running(&self) -> bool;
 }
 
 // TODO: Builder pattern

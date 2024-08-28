@@ -44,9 +44,9 @@ async fn collect(avs: &Option<Box<dyn AvsVariant>>) -> Result<Vec<Metrics>, IvyE
         Some(avs_type) => {
             match avs_type.name() {
                 "eigenda" => {
-                    (Some("eigenda"), Some("http://localhost:9092/metrics"), avs_type.running())
+                    (Some("eigenda"), Some("http://localhost:9092/metrics"), avs_type.is_running())
                 }
-                _ => (Some(avs_type.name()), None, avs_type.running()), // * that one */
+                _ => (Some(avs_type.name()), None, avs_type.is_running()), // * that one */
             }
         }
     };
