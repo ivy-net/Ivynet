@@ -374,3 +374,50 @@ pub async fn build_avs_provider(
     };
     AvsProvider::new(avs_instance, Arc::new(provider), keyfile_pw)
 }
+
+#[cfg(test)]
+mod test_eigenlayer {
+    use super::*;
+    mod local_node {
+        use super::*;
+        use ethers::{
+            types::{SyncingStatus, H160},
+            utils::Anvil,
+        };
+
+        const DELEGATION_MANAGER_ADDRESS: &str = "0x30bdaE426d3CBD42e9d41D23958Fac6AD8310f81";
+
+        #[tokio::test]
+        async fn test_anvil_active() {
+            let rpc = "http://localhost:8545";
+            let provider = connect_provider(rpc, None).await.unwrap();
+            let syncing = provider.syncing().await.unwrap();
+            assert_eq!(syncing, SyncingStatus::IsFalse);
+            let delegation_manager_code = provider
+                .get_code(DELEGATION_MANAGER_ADDRESS.parse::<H160>().unwrap(), None)
+                .await
+                .unwrap();
+            assert!(!delegation_manager_code.is_empty());
+            let empty_address = provider.get_code(H160::random(), None).await.unwrap();
+            assert!(empty_address.is_empty());
+            assert_eq!(provider.get_chainid().await.unwrap(), U256::from(31337));
+        }
+
+        #[tokio::test]
+        async fn test_eigenlayer() {
+            let rpc = "http://localhost:8545";
+            let provider = Arc::new(connect_provider(rpc, None).await.unwrap());
+            let delegation_manager = DelegationManager::new(provider.clone()).unwrap();
+        }
+    }
+
+    mod holesky {
+        use super::*;
+        use std::error::Error;
+
+        #[tokio::test]
+        async fn test_holesky() -> Result<(), Box<dyn Error>> {
+            Ok(())
+        }
+    }
+}
