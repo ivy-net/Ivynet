@@ -38,6 +38,11 @@ url = { version = "2.5.1", features = ["serde"] }
 chrono = "0.4"
 async-trait = "0.1.80"
 ivynet-macros = { path = "../macros" }
+blsful = "2.5.7"
+scrypt = "0.11.0"
+rand = "0.8"
+sha2 = "0.10"
+ctr = "0.9"
 
 #grpc
 prost = "0.12"
@@ -50,6 +55,7 @@ tower = "0.4.13"
 hyper-util = { version = "0.1.6", features = ["full", "tokio"] }
 hyper = { version = "1.4.0", features = ["http1", "server"] }
 which = "6.0.2"
+aes = "0.8.4"
 
 [build-dependencies]
 prost-build = "0.12"
