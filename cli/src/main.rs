@@ -1,5 +1,4 @@
 use anyhow::Error as AnyError;
-use anyhow::Result;
 use clap::{Parser, Subcommand};
 use cli::{avs, config, error::Error, init::initialize_ivynet, key, operator, service, staker};
 use ivynet_core::{avs::commands::AvsCommands, config::IvyConfig, grpc::client::Uri};
