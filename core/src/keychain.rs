@@ -237,10 +237,7 @@ impl Keychain {
     }
 
     fn ecdsa_load(&self, address: Address, password: &str) -> Result<IvyWallet, IvyError> {
-        Ok(IvyWallet::from_keystore(
-            self.path.join(format!("{:?}.ecdsa", address).to_string()),
-            password,
-        )?)
+        Ok(IvyWallet::from_keystore(self.path.join(format!("{:?}.ecdsa", address)), password)?)
     }
 }
 
