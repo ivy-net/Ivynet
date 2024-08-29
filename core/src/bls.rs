@@ -10,7 +10,7 @@ use ctr::{
     cipher::{KeyIvInit, StreamCipher},
     Ctr128BE,
 };
-use ethers::utils::hex::{decode, encode};
+use ethers::utils::hex::{decode, encode, FromHexError};
 use rand::Rng;
 use scrypt::{scrypt, Params};
 use serde_json::{json, Value};
@@ -31,11 +31,17 @@ pub enum BlsKeyError {
     #[error("Key not found")]
     KeyNotFound,
 
+    #[error("Malformed key file")]
+    MalformedKeyFile,
+
     #[error(transparent)]
     JsonError(#[from] serde_json::Error),
 
     #[error(transparent)]
     StdIo(#[from] std::io::Error),
+
+    #[error(transparent)]
+    HexError(#[from] FromHexError),
 }
 
 #[derive(Clone, Debug)]
@@ -87,15 +93,18 @@ impl BlsKey {
 
         // Extract fields from JSON
         let crypto_json = &parsed_json["crypto"];
-        let ciphertext_hex = crypto_json["ciphertext"].as_str().expect("Missing ciphertext field");
-        let iv_hex = crypto_json["cipherparams"]["iv"].as_str().expect("Missing IV field");
-        let salt_hex = crypto_json["kdfparams"]["salt"].as_str().expect("Missing salt field");
+        let ciphertext_hex =
+            crypto_json["ciphertext"].as_str().ok_or(BlsKeyError::MalformedKeyFile)?;
+        let iv_hex =
+            crypto_json["cipherparams"]["iv"].as_str().ok_or(BlsKeyError::MalformedKeyFile)?;
+        let salt_hex =
+            crypto_json["kdfparams"]["salt"].as_str().ok_or(BlsKeyError::MalformedKeyFile)?;
 
-        let ciphertext = decode(ciphertext_hex).expect("Failed to decode ciphertext");
-        let iv = decode(iv_hex).expect("Failed to decode IV");
-        let salt = decode(salt_hex).expect("Failed to decode salt");
+        let ciphertext = decode(ciphertext_hex)?;
+        let iv = decode(iv_hex)?;
+        let salt = decode(salt_hex)?;
 
-        let scrypt_params = Params::new(18, 8, 1, 32).expect("Invalid parameters");
+        let scrypt_params = Params::new(18, 8, 1, 32).unwrap();
         let key = derive_key(password.as_bytes(), &salt, &scrypt_params);
 
         let decrypted_data = decrypt_data(&ciphertext, &key, &iv);

@@ -21,7 +21,7 @@ pub enum Key {
 
 pub enum KeyAddress {
     Ecdsa(Address),
-    Bls(BlsAddress),
+    Bls(Box<BlsAddress>),
 }
 
 pub struct Keychain {
@@ -50,7 +50,7 @@ impl Keychain {
                 match cmps[1] {
                     "bls" => {
                         if let Ok(address) = decode_address(cmps[0]) {
-                            list.push(KeyAddress::Bls(address));
+                            list.push(KeyAddress::Bls(Box::new(address)));
                         }
                     }
                     // PublicKey struct of theirs. Stupid
