@@ -258,13 +258,13 @@ pub async fn build_avs_provider(
 mod test_eigenlayer {
     use super::*;
     mod local_node {
-        use super::*;
-        use ethers::{
-            types::{SyncingStatus, H160},
-            utils::Anvil,
-        };
 
-        const DELEGATION_MANAGER_ADDRESS: &str = "0x30bdaE426d3CBD42e9d41D23958Fac6AD8310f81";
+        use crate::test::common::DEFAULT_OPERATOR_ADDRESS;
+
+        use super::*;
+        use ethers::types::{SyncingStatus, H160};
+
+        const DELEGATION_MANAGER_ADDRESS: &str = "0x6D0a2A4501cbd0DEF6fE15B4932fa02F6118b787";
 
         #[tokio::test]
         async fn test_anvil_active() {
@@ -283,10 +283,14 @@ mod test_eigenlayer {
         }
 
         #[tokio::test]
-        async fn test_eigenlayer() {
+        async fn test_eigenlayer_operator() {
             let rpc = "http://localhost:8545";
             let provider = Arc::new(connect_provider(rpc, None).await.unwrap());
-            let delegation_manager = DelegationManager::new(provider.clone()).unwrap();
+            let delegation_manager = DelegationManager::new(provider).unwrap();
+            let operator_status =
+                delegation_manager.is_operator(*DEFAULT_OPERATOR_ADDRESS).await.unwrap();
+            println!("Operator status: {:?}", operator_status);
+            assert_eq!(operator_status, true);
         }
     }
 

@@ -40,3 +40,8 @@ uninhabited_references = "warn"
 unused_peekable = "warn"
 unused_rounding = "warn"
 useless_let_if_seq = "warn"
+
+[workspace.dependencies]
+serde = { version = "1.0", features = ["derive"] }
+clap = { version = "4.5.7", features = ["derive"] }
+tokio = { version = "1.37.0", features = ["full"] }

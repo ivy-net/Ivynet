@@ -17,3 +17,6 @@ pub mod utils;
 pub mod wallet;
 
 pub use ethers;
+
+#[cfg(test)]
+pub mod test;

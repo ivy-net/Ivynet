@@ -75,7 +75,7 @@ impl DelegationManager {
             Chain::Holesky => Ok(h160!(0xA44151489861Fe9e3055d95adC98FbD462B948e7)),
             Chain::Mainnet => Ok(h160!(0x39053D51B77DC0d36036Fc1fCc8Cb819df8Ef37A)),
             // May not be constant
-            Chain::AnvilHardhat => Ok(h160!(0xA44151489861Fe9e3055d95adC98FbD462B948e7)),
+            Chain::AnvilHardhat => Ok(h160!(0x30bdaE426d3CBD42e9d41D23958Fac6AD8310f81)),
             _ => Err(IvyError::ChainNotSupportedError(chain)),
         }
     }
