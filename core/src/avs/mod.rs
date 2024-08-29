@@ -7,6 +7,7 @@ use crate::{
     wallet::IvyWallet,
 };
 use async_trait::async_trait;
+use config::AvsConfig;
 use ethers::{
     middleware::SignerMiddleware,
     providers::Middleware,
@@ -18,6 +19,7 @@ use std::{collections::HashMap, fmt::Debug, fs, path::PathBuf, process::Child, s
 use tracing::{error, info};
 
 pub mod commands;
+pub mod config;
 pub mod contracts;
 pub mod eigenda;
 pub mod error;
@@ -101,11 +103,12 @@ impl AvsProvider {
 
     /// Setup the loaded AVS instance. This includes both download and configuration steps.
     pub async fn setup(
-        &self,
+        &mut self,
         config: &IvyConfig,
         operator_password: Option<String>,
     ) -> Result<(), IvyError> {
-        self.avs()?.setup(self.provider.clone(), config, operator_password).await?;
+        let provider = self.provider.clone();
+        self.avs_mut()?.setup(provider, config, operator_password).await?;
         info!("Setup complete: run 'ivynet avs help' for next steps!");
         Ok(())
     }
@@ -148,7 +151,7 @@ impl AvsProvider {
     pub async fn register(&self, config: &IvyConfig) -> Result<(), IvyError> {
         // TODO: Move quorum logic into AVS-specific implementations.
         // TODO: RIIA path creation? Move to new() func
-        let avs_path = self.avs()?.path();
+        let avs_path = self.avs()?.base_path();
         fs::create_dir_all(avs_path.clone())?;
 
         // TODO: likely a function call in registry_coordinator
@@ -177,7 +180,7 @@ impl AvsProvider {
     }
 
     pub async fn unregister(&self, config: &IvyConfig) -> Result<(), IvyError> {
-        let avs_path = self.avs()?.path();
+        let avs_path = self.avs()?.base_path();
 
         if let Some(pw) = &self.keyfile_pw {
             self.avs()?
@@ -207,7 +210,7 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
     /// Perform all first-time setup steps for a given AVS instance. Includes an internal call to
     /// build_env
     async fn setup(
-        &self,
+        &mut self,
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
         operator_password: Option<String>,
@@ -239,7 +242,8 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
     async fn stop(&mut self) -> Result<(), IvyError>;
     /// Return the name of the AVS instance
     fn name(&self) -> &str;
-    fn path(&self) -> PathBuf;
+    fn base_path(&self) -> PathBuf;
+    fn avs_setup_path(&mut self) -> PathBuf;
     /// Return wether or not the AVS is running
     fn is_running(&self) -> bool;
 }

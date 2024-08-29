@@ -36,14 +36,14 @@ const ALTLAYER_REPO_URL: &str =
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct AltLayer {
-    path: PathBuf,
+    base_path: PathBuf,
     chain: Chain,
     running: bool,
 }
 
 impl AltLayer {
-    pub fn new(path: PathBuf, chain: Chain) -> Self {
-        Self { path, chain, running: false }
+    pub fn new(base_path: PathBuf, chain: Chain) -> Self {
+        Self { base_path, chain, running: false }
     }
 
     pub fn new_from_chain(chain: Chain) -> Self {
@@ -63,12 +63,12 @@ impl Default for AltLayer {
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl AvsVariant for AltLayer {
     async fn setup(
-        &self,
+        &mut self,
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
         _pw: Option<String>,
     ) -> Result<(), IvyError> {
-        download_operator_setup(self.path.clone()).await?;
+        download_operator_setup(self.base_path.clone()).await?;
         self.build_env(provider, config).await?;
         Ok(())
     }
@@ -92,8 +92,12 @@ impl AvsVariant for AltLayer {
         todo!()
     }
 
-    fn path(&self) -> PathBuf {
-        self.path.clone()
+    fn base_path(&self) -> PathBuf {
+        self.base_path.clone()
+    }
+
+    fn avs_setup_path(&mut self) -> PathBuf {
+        todo!()
     }
 
     fn is_running(&self) -> bool {
@@ -176,7 +180,7 @@ impl AltLayer {
         let chain = Chain::try_from(provider.signer().chain_id())?;
         let rpc_url = config.get_rpc_url(chain)?;
 
-        let mach_avs_path = self.path.join("mach-avs-operator-setup");
+        let mach_avs_path = self.base_path.join("mach-avs-operator-setup");
         let avs_run_path = match chain {
             Chain::Mainnet => mach_avs_path.join("mainnet"),
             Chain::Holesky => mach_avs_path.join("holesky"),

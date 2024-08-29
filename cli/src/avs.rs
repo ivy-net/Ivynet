@@ -17,7 +17,7 @@ pub async fn parse_avs_subcommands(subcmd: AvsCommands, config: &IvyConfig) -> R
             .with_prompt("Input the password for your stored operator ECDSA keyfile")
             .interact()?;
         let wallet = IvyWallet::from_keystore(config.default_ecdsa_keyfile.clone(), &password)?;
-        let avs =
+        let mut avs =
             build_avs_provider(Some(avs), chain, config, Some(wallet), Some(password.clone()))
                 .await?;
         avs.setup(config, Some(password)).await?;

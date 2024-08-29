@@ -57,15 +57,15 @@ pub enum LagrangeError {
 
 #[derive(Debug, Clone)]
 pub struct Lagrange {
-    path: PathBuf,
+    base_path: PathBuf,
     #[allow(dead_code)]
     chain: Chain,
     running: bool,
 }
 
 impl Lagrange {
-    pub fn new(path: PathBuf, chain: Chain) -> Self {
-        Self { path, chain, running: false }
+    pub fn new(base_path: PathBuf, chain: Chain) -> Self {
+        Self { base_path, chain, running: false }
     }
 
     pub fn new_from_chain(chain: Chain) -> Self {
@@ -88,12 +88,12 @@ impl AvsVariant for Lagrange {
     // TODO: This currently creates a new Lagrange key every time it is run; this may be
     // undesirable. Figure out if this behavior needs to be stabilized.
     async fn setup(
-        &self,
+        &mut self,
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
         _keyfile_pw: Option<String>,
     ) -> Result<(), IvyError> {
-        download_operator_setup(self.path.clone()).await?;
+        download_operator_setup(self.base_path.clone()).await?;
         self.build_env(provider, config).await?;
         generate_lagrange_key(self.run_path()).await?;
 
@@ -142,8 +142,12 @@ impl AvsVariant for Lagrange {
         Ok(())
     }
 
-    fn path(&self) -> PathBuf {
-        self.path.clone()
+    fn base_path(&self) -> PathBuf {
+        self.base_path.clone()
+    }
+
+    fn avs_setup_path(&mut self) -> PathBuf {
+        todo!()
     }
 
     fn is_running(&self) -> bool {
@@ -198,7 +202,7 @@ impl AvsVariant for Lagrange {
 impl Lagrange {
     /// Constructor function for Lagrange run dir path
     fn run_path(&self) -> PathBuf {
-        self.path.join("lagrange-worker").join(self.chain.as_ref())
+        self.base_path.join("lagrange-worker").join(self.chain.as_ref())
     }
 
     /// Builds the .env file for the Lagrange worker
