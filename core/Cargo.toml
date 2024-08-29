@@ -56,6 +56,8 @@ hyper-util = { version = "0.1.6", features = ["full", "tokio"] }
 hyper = { version = "1.4.0", features = ["http1", "server"] }
 which = "6.0.2"
 aes = "0.8.4"
+home-dir = "0.1.0"
+env_home = "0.1.0"
 
 [build-dependencies]
 prost-build = "0.12"
