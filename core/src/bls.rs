@@ -112,11 +112,7 @@ impl BlsKey {
         name: String,
         password: String,
     ) -> Result<PathBuf, BlsKeyError> {
-        let pk = self.address();
-
-        // Serialize public key to JSON
-        let pub_key_json = serde_json::to_string(&pk).expect("Failed to serialize PublicKey");
-        let addr = pub_key_json.trim_matches('"');
+        let addr = encode_address(&self.address())?;
 
         // Convert secret key to bytes and encode as hex
         let sk_bytes = self.secret.to_be_bytes();
@@ -168,6 +164,16 @@ impl BlsKey {
         _ = write_json(&file_path, &json_data);
         Ok(file_path)
     }
+}
+
+pub fn encode_address(address: &Address) -> Result<String, BlsKeyError> {
+    let pub_key_json = serde_json::to_string(&address)?;
+    let addr = pub_key_json.trim_matches('"');
+    Ok(addr.to_string())
+}
+
+pub fn decode_address(address: &str) -> Result<Address, BlsKeyError> {
+    Ok(serde_json::from_str(&format!(r#""{address}""#))?)
 }
 
 fn encrypt_data(data: &[u8], key: &[u8], iv: &[u8]) -> Vec<u8> {

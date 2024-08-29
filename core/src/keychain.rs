@@ -1,7 +1,7 @@
 use std::{fs, path::PathBuf};
 
 use crate::{
-    bls::{Address as BlsAddress, BlsKey},
+    bls::{decode_address, encode_address, Address as BlsAddress, BlsKey},
     error::IvyError,
     wallet::IvyWallet,
 };
@@ -49,7 +49,11 @@ impl Keychain {
                 let cmps = filename.to_str().unwrap().split(".").collect::<Vec<&str>>();
                 if cmps.len() == 2 {
                     match cmps[1] {
-                        "bls" => todo!(), // TODO: I have no idea how to parse a string into
+                        "bls" => {
+                            if let Ok(address) = decode_address(cmps[0]) {
+                                list.push(KeyAddress::Bls(address));
+                            }
+                        }
                         // PublicKey struct of theirs. Stupid
                         "ecdsa" => {
                             if let Ok(address) = cmps[0].parse::<Address>() {
@@ -87,11 +91,9 @@ impl Keychain {
 
     fn bls_generate(&self, password: &str) -> BlsKey {
         let bls = BlsKey::new();
-        _ = bls.encrypt_and_store(
-            &self.path,
-            format!("{:?}.bls", bls.address()),
-            password.to_string(),
-        );
+        if let Ok(address) = encode_address(&bls.address()) {
+            _ = bls.encrypt_and_store(&self.path, format!("{}.bls", address), password.to_string());
+        }
         bls
     }
 
@@ -99,14 +101,17 @@ impl Keychain {
         let bls = BlsKey::from_private_key(key.to_string())?;
         _ = bls.encrypt_and_store(
             &self.path,
-            format!("{:?}.bls", bls.address()),
+            format!("{}.bls", encode_address(&bls.address())?),
             password.to_string(),
         );
         Ok(bls)
     }
 
     fn bls_load(&self, address: &BlsAddress, password: &str) -> Result<BlsKey, IvyError> {
-        Ok(BlsKey::from_keystore(self.path.join(format!("{:?}.bls", address)), password)?)
+        Ok(BlsKey::from_keystore(
+            self.path.join(format!("{}.bls", encode_address(&address)?)),
+            password,
+        )?)
     }
 
     fn ecdsa_generate(&self, password: &str) -> IvyWallet {
