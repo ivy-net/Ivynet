@@ -43,6 +43,12 @@ pub struct BlsKey {
     secret: BlsSecret<Bls12381G1Impl>,
 }
 
+impl Default for BlsKey {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl BlsKey {
     pub fn new() -> Self {
         let secret = BlsSecret::<Bls12381G1Impl>::new();

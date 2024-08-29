@@ -43,25 +43,23 @@ impl Keychain {
         let paths = fs::read_dir(&self.path)?;
 
         let mut list = Vec::new();
-        for path in paths {
-            if let Ok(file) = path {
-                let filename = file.file_name();
-                let cmps = filename.to_str().unwrap().split(".").collect::<Vec<&str>>();
-                if cmps.len() == 2 {
-                    match cmps[1] {
-                        "bls" => {
-                            if let Ok(address) = decode_address(cmps[0]) {
-                                list.push(KeyAddress::Bls(address));
-                            }
+        for path in paths.flatten() {
+            let filename = path.file_name();
+            let cmps = filename.to_str().unwrap().split(".").collect::<Vec<&str>>();
+            if cmps.len() == 2 {
+                match cmps[1] {
+                    "bls" => {
+                        if let Ok(address) = decode_address(cmps[0]) {
+                            list.push(KeyAddress::Bls(address));
                         }
-                        // PublicKey struct of theirs. Stupid
-                        "ecdsa" => {
-                            if let Ok(address) = cmps[0].parse::<Address>() {
-                                list.push(KeyAddress::Ecdsa(address));
-                            }
-                        }
-                        _ => {}
                     }
+                    // PublicKey struct of theirs. Stupid
+                    "ecdsa" => {
+                        if let Ok(address) = cmps[0].parse::<Address>() {
+                            list.push(KeyAddress::Ecdsa(address));
+                        }
+                    }
+                    _ => {}
                 }
             }
         }
@@ -109,7 +107,7 @@ impl Keychain {
 
     fn bls_load(&self, address: &BlsAddress, password: &str) -> Result<BlsKey, IvyError> {
         Ok(BlsKey::from_keystore(
-            self.path.join(format!("{}.bls", encode_address(&address)?)),
+            self.path.join(format!("{}.bls", encode_address(address)?)),
             password,
         )?)
     }
@@ -135,6 +133,6 @@ impl Keychain {
     }
 
     fn ecdsa_load(&self, address: Address, password: &str) -> Result<IvyWallet, IvyError> {
-        Ok(IvyWallet::from_keystore(self.path.join(format!("{:?}.ecdsa", address)), password)?)
+        IvyWallet::from_keystore(self.path.join(format!("{:?}.ecdsa", address)), password)
     }
 }
