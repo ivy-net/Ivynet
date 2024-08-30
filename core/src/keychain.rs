@@ -29,7 +29,7 @@ impl Key {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum KeyAddress {
     Ecdsa(Address),
     Bls(Box<BlsAddress>),

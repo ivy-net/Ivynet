@@ -44,7 +44,7 @@ pub enum BlsKeyError {
     HexError(#[from] FromHexError),
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BlsKey {
     secret: BlsSecret<Bls12381G1Impl>,
 }
@@ -126,7 +126,10 @@ impl BlsKey {
         let decrypted_data = decrypt_data(&ciphertext, &key, &iv);
 
         println!("Json data to decrypt {json_data}");
-        let secret_bytes: [u8; 32] = decrypted_data.try_into().unwrap();
+        let secret_bytes: [u8; 32] = decrypted_data.try_into().map_err(|e| {
+            println!("Strange decrypt error {e:?}");
+            BlsKeyError::PrivateKeyInvalid
+        })?;
 
         Self::from_bytes(&secret_bytes)
     }
