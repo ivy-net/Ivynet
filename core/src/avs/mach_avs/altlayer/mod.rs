@@ -80,26 +80,6 @@ impl AvsVariant for AltLayer {
         Ok(class >= NodeClass::XL && disk_info >= gb_to_bytes(50))
     }
 
-    async fn start(&mut self) -> Result<Child, IvyError> {
-        todo!()
-    }
-
-    async fn stop(&mut self) -> Result<(), IvyError> {
-        todo!()
-    }
-
-    fn path(&self) -> PathBuf {
-        self.path.clone()
-    }
-
-    fn is_running(&self) -> bool {
-        self.running
-    }
-
-    fn name(&self) -> &'static str {
-        "altlayer"
-    }
-
     /// Currently, AltLayer Mach AVS is operating in allowlist mode only: https://docs.altlayer.io/altlayer-documentation/altlayer-facilitated-actively-validated-services/xterio-mach-avs-for-xterio-chain/operator-guide
     async fn register(
         &self,
@@ -134,6 +114,29 @@ impl AvsVariant for AltLayer {
         _keyfile_password: &str,
     ) -> Result<(), IvyError> {
         todo!()
+    }
+
+    fn name(&self) -> &'static str {
+        "altlayer"
+    }
+
+    fn path(&self) -> PathBuf {
+        self.path.clone()
+    }
+
+    fn run_path(&self) -> PathBuf {
+        self.path
+            .join("mach-avs-operator-setup")
+            .join(self.chain.to_string().to_lowercase())
+            .join("mach-avs/op-sepolia")
+    }
+
+    fn is_running(&self) -> bool {
+        self.running
+    }
+
+    fn set_running(&mut self, running: bool) {
+        self.running = running;
     }
 }
 
