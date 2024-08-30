@@ -8,7 +8,7 @@ use std::{
     fs::{self, File},
     io::{copy, BufReader},
     path::PathBuf,
-    process::{Child, Command},
+    process::Command,
     sync::Arc,
 };
 use thiserror::Error as ThisError;
@@ -18,7 +18,6 @@ use zip::read::ZipArchive;
 use crate::{
     avs::AvsVariant,
     config::{self, IvyConfig},
-    dockercmd::{docker_cmd, docker_cmd_status},
     download::dl_progress_bar,
     eigen::{
         contracts::delegation_manager::DelegationManagerAbi,
@@ -235,12 +234,11 @@ impl AvsVariant for EigenDA {
 
     fn run_path(&self) -> PathBuf {
         let docker_path = self.path.join("eigenda-operator-setup");
-        let docker_path = match self.chain {
+        match self.chain {
             Chain::Mainnet => docker_path.join("mainnet"),
             Chain::Holesky => docker_path.join("holesky"),
             _ => todo!("Unimplemented"),
-        };
-        docker_path
+        }
     }
 
     fn is_running(&self) -> bool {

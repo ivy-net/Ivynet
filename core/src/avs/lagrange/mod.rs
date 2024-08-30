@@ -12,7 +12,7 @@ use std::{
     fs::{self, File},
     io::{copy, BufReader},
     path::PathBuf,
-    process::{Child, Command},
+    process::Command,
     sync::Arc,
 };
 use thiserror::Error as ThisError;
@@ -23,7 +23,6 @@ use crate::{
     avs::AvsVariant,
     config::IvyConfig,
     dialog::get_confirm_password,
-    dockercmd::{docker_cmd, docker_cmd_status},
     eigen::quorum::QuorumType,
     env_parser::EnvLines,
     error::{IvyError, SetupError},

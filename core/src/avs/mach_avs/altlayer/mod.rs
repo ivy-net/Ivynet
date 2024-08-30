@@ -9,7 +9,7 @@ use std::{
     fs::{self, File},
     io::{copy, BufReader},
     path::PathBuf,
-    process::{Child, Command},
+    process::Command,
     sync::Arc,
 };
 use tracing::{debug, error, info};
