@@ -44,7 +44,7 @@ pub enum BlsKeyError {
     HexError(#[from] FromHexError),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct BlsKey {
     secret: BlsSecret<Bls12381G1Impl>,
 }
@@ -63,6 +63,22 @@ impl BlsKey {
 
     pub fn address(&self) -> Address {
         Address::from(&self.secret)
+    }
+
+    pub fn secret(&self) -> BlsSecret<Bls12381G1Impl> {
+        self.secret.clone()
+    }
+
+    pub fn from_bytes(bytes: &[u8; 32]) -> Result<Self, BlsKeyError> {
+        let maybe_sk = BlsSecret::from_be_bytes(bytes);
+
+        // So so wrong
+        if maybe_sk.is_some().into() {
+            let secret = maybe_sk.unwrap();
+            Ok(Self { secret })
+        } else {
+            Err(BlsKeyError::PrivateKeyInvalid)
+        }
     }
 
     pub fn from_private_key(private_key_string: String) -> Result<Self, BlsKeyError> {
@@ -109,16 +125,10 @@ impl BlsKey {
 
         let decrypted_data = decrypt_data(&ciphertext, &key, &iv);
 
+        println!("Json data to decrypt {json_data}");
         let secret_bytes: [u8; 32] = decrypted_data.try_into().unwrap();
-        let maybe_sk = BlsSecret::from_be_bytes(&secret_bytes);
 
-        // So so wrong
-        if maybe_sk.is_some().into() {
-            let secret = maybe_sk.unwrap();
-            Ok(Self { secret })
-        } else {
-            Err(BlsKeyError::PrivateKeyInvalid)
-        }
+        Self::from_bytes(&secret_bytes)
     }
 
     pub fn encrypt_and_store(
@@ -209,4 +219,21 @@ fn derive_key(password: &[u8], salt: &[u8], params: &Params) -> Vec<u8> {
     let mut key = vec![0u8; 16];
     scrypt(password, salt, params, &mut key).expect("Failed to derive key");
     key
+}
+
+#[cfg(test)]
+pub mod test {
+    use super::*;
+
+    #[test]
+    fn test_bls_key_generation_and_import() {
+        let generated_key = BlsKey::new();
+
+        let generated_secret = generated_key.secret();
+        let generated_secret_bytes = generated_secret.to_be_bytes();
+
+        let imported_key = BlsKey::from_bytes(&generated_secret_bytes).unwrap();
+
+        assert_eq!(generated_key, imported_key);
+    }
 }
