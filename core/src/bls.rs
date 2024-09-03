@@ -238,4 +238,13 @@ pub mod test {
 
         assert_eq!(generated_key, imported_key);
     }
+
+    #[test]
+    fn test_bls_key_import() {
+        let imported_key = BlsKey::from_private_key(
+            "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef".to_string(),
+        );
+
+        assert!(imported_key.is_ok());
+    }
 }
