@@ -35,6 +35,7 @@
     - Reload daemon
     - Restart service
   tags:
+    - ivynet_backend
     - general
     - ivynet
     - systemd
@@ -45,6 +46,7 @@
     state: started
     enabled: true
   tags:
+    - ivynet_backend
     - general
     - ivynet
     - systemd

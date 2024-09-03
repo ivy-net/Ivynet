@@ -5,6 +5,7 @@
     repo: "https://{{ ivynet_backend_github_token }}@github.com/ivy-net/ivynet.git"
     dest: "{{ ivynet_backend_install_path }}/repo"
   tags:
+    - ivynet_backend
     - ivynet
     - db-config
 
@@ -14,6 +15,7 @@
   become: true
   become_user: postgres
   tags:
+    - ivynet_backend
     - ivynet
     - postgres
     - db-config
@@ -25,6 +27,7 @@
   become: true
   become_user: postgres
   tags:
+    - ivynet_backend
     - ivynet
     - postgres
     - db-config
@@ -39,6 +42,7 @@
   become: true
   become_user: postgres
   tags:
+    - ivynet_backend
     - ivynet
     - postgres
     - db-config
@@ -51,6 +55,7 @@
   register: migration_out
   changed_when: migration_out.stdout != ""
   tags:
+    - ivynet_backend
     - ivynet
     - db-config
     - sqlx
