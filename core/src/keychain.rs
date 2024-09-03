@@ -29,7 +29,7 @@ impl Key {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum KeyAddress {
     Ecdsa(Address),
     Bls(Box<BlsAddress>),
@@ -56,7 +56,7 @@ impl Keychain {
         let mut list = Vec::new();
         for path in paths.flatten() {
             let filename = path.file_name();
-            let cmps = filename.to_str().unwrap().split(".").collect::<Vec<&str>>();
+            let cmps = filename.to_str().unwrap().split('.').collect::<Vec<&str>>();
             if cmps.len() == 3 {
                 match cmps[1] {
                     "bls" => {

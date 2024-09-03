@@ -1,9 +1,3 @@
-use std::{
-    fs::File,
-    io::Read,
-    path::{Path, PathBuf},
-};
-
 use aes::Aes128;
 use blsful::{Bls12381G1Impl, PublicKey as BlsPublic, SecretKey as BlsSecret};
 use ctr::{
@@ -15,6 +9,11 @@ use rand::Rng;
 use scrypt::{scrypt, Params};
 use serde_json::{json, Value};
 use sha2::{Digest, Sha256};
+use std::{
+    fs::File,
+    io::Read,
+    path::{Path, PathBuf},
+};
 
 use crate::io::write_json;
 
@@ -44,7 +43,7 @@ pub enum BlsKeyError {
     HexError(#[from] FromHexError),
 }
 
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct BlsKey {
     secret: BlsSecret<Bls12381G1Impl>,
 }
@@ -126,7 +125,8 @@ impl BlsKey {
         let decrypted_data = decrypt_data(&ciphertext, &key, &iv);
 
         println!("Json data to decrypt {json_data}");
-        let secret_bytes: [u8; 32] = decrypted_data.try_into().unwrap();
+        println!("{:?}", decrypted_data);
+        let secret_bytes: [u8; 32] = decode(decrypted_data)?.try_into().expect("freak"); //.decode();
 
         Self::from_bytes(&secret_bytes)
     }
