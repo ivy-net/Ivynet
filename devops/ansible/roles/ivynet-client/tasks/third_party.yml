@@ -11,6 +11,7 @@
     state: present
     enabled: true
   tags:
+    - ivynet_client
     - general
     - docker
 
@@ -31,9 +32,10 @@
     - docker-buildx-plugin
     - docker-compose-plugin
   tags:
+    - ivynet_client
     - general
+    - docker
     - download
-
 
 - name: Install githbub3.py (for github access)
   ansible.builtin.pip:  # noqa: package-latest
@@ -41,6 +43,7 @@
     state: latest
     break_system_packages: true
   tags:
+    - ivynet_client
     - general
     - download
     - github
