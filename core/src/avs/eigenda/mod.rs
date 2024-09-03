@@ -1,25 +1,7 @@
-use async_trait::async_trait;
-use dialoguer::{Input, Password};
-use ethers::{
-    signers::Signer,
-    types::{Address, Chain, H160, U256},
-};
-use ivynet_macros::h160;
-use std::{
-    fs::{self, File},
-    io::{copy, BufReader, Write},
-    path::PathBuf,
-    process::{Child, Command, Output},
-    sync::Arc,
-};
-use thiserror::Error as ThisError;
-use tracing::{debug, error, info};
-use zip::read::ZipArchive;
-
 use crate::{
     avs::AvsVariant,
     config::{self, IvyConfig},
-    dockercmd::{docker_cmd, docker_cmd_status},
+    dockercmd::{docker_cmd, docker_cmd_logs, docker_cmd_status},
     download::dl_progress_bar,
     eigen::{
         node_classes::{self, NodeClass},
@@ -30,6 +12,24 @@ use crate::{
     rpc_management::IvyProvider,
     utils::gb_to_bytes,
 };
+use async_trait::async_trait;
+use dialoguer::{Input, Password};
+use ethers::{
+    signers::Signer,
+    types::{Address, Chain, H160, U256},
+};
+use ivynet_macros::h160;
+use std::{
+    fs::{self, File},
+    io::{copy, BufRead, BufReader},
+    path::PathBuf,
+    process::{Child, Command, Output, Stdio},
+    sync::Arc,
+};
+use thiserror::Error as ThisError;
+use tokio::time::{sleep, Duration};
+use tracing::{debug, error, info};
+use zip::read::ZipArchive;
 
 pub const EIGENDA_PATH: &str = ".eigenlayer/eigenda";
 
@@ -133,16 +133,48 @@ impl AvsVariant for EigenDA {
         std::env::set_current_dir(docker_path.clone())?;
         debug!("docker start: {} |  {:?}", docker_path.display(), quorums);
         let build = docker_cmd_status(["build", "--no-cache"])?;
-
         let _ = docker_cmd_status(["config"])?;
-
         if !build.success() {
             return Err(EigenDAError::ScriptError(build.to_string()).into());
         }
 
         // NOTE: See the limitations of the Stdio::piped() method if this experiences a deadlock
         let cmd = docker_cmd(["up", "--force-recreate"])?;
-        debug!("cmd PID: {:?}", cmd.id());
+        let mut logs_cmd = docker_cmd_logs(["logs"])?;
+
+        let status = logs_cmd.wait()?;
+
+        if !status.success() {
+            return Err(EigenDAError::ScriptError(
+                "No running docker instance detected - Ensure docker is running".to_string(),
+            )
+            .into());
+        }
+
+        sleep(Duration::from_secs(2)).await;
+        let mut logs_cmd = docker_cmd_logs(["logs", "-f"])?;
+        let mut counter = 0;
+        if let Some(stdout) = logs_cmd.stdout.take() {
+            let reader = BufReader::new(stdout);
+            for line in reader.lines() {
+                counter += 1;
+                if counter > 1 {
+                    match line {
+                        Ok(log_line) => {
+                            if log_line.contains("application failed: could not read or decrypt the BLS private key: could not decrypt key with given password") {
+                                return Err(EigenDAError::ScriptError("Error: Incorrect password for BLS key".to_string()).into());
+                            } else if log_line.contains("application failed: could not read or decrypt the BLS private key: read /app/operator_keys/bls_key.json: is a directory") {
+                                return Err(EigenDAError::ScriptError("Error: No BLS key found".to_string()).into());
+                            } else if log_line.contains("Starting metrics server"){
+                                return Ok(cmd);
+                            }
+                        }
+                        Err(e) => eprintln!("Error reading log: {}", e),
+                    }
+                }
+            }
+        }
+
         self.running = true;
         Ok(cmd)
     }
@@ -156,7 +188,7 @@ impl AvsVariant for EigenDA {
             _ => todo!("Unimplemented"),
         };
         std::env::set_current_dir(docker_path)?;
-        let _ = docker_cmd_status(["stop"])?;
+        let _ = docker_cmd_status(["down"])?;
         self.running = false;
         Ok(())
     }
@@ -251,34 +283,23 @@ impl AvsVariant for EigenDA {
             .arg(keyfile_password)
             .arg("--quorums")
             .arg(quorum_str)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
             .output()?;
 
-        //let stdout = String::from_utf8_lossy(&output.stdout);
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        info!("{:?}", std::env::current_dir().expect(""));
+        let stdout_str = String::from_utf8(output.stdout).expect("");
+        let stderr_str = String::from_utf8(output.stderr).expect("");
 
-        match File::create("script_output.log") {
-            Ok(mut file) => {
-                if let Err(e) = file.write_all(stderr.as_bytes()) {
-                    info!("Failed to write stdout to file: {}", e);
-                    return Err(IvyError::from(e)); // Return an error if writing to the file fails
-                }
-            }
-            Err(e) => {
-                info!("Failed to create file: {}", e);
-                return Err(IvyError::from(e)); // Return an error if file creation fails
-            }
-        }
-
-        // Log the captured stderr output
-        if !stderr.is_empty() {
-            info!("Script stderr: {}", stderr);
+        if stdout_str.contains("insufficient funds for transfer") {
+            return Err(
+                EigenDAError::ScriptError("insufficient funds for transfer".to_string()).into()
+            )
         }
 
         if output.status.success() {
             Ok(())
         } else {
-            Err(EigenDAError::ScriptError(stderr.into()).into())
+            Err(EigenDAError::ScriptError(stderr_str).into())
         }
     }
 
