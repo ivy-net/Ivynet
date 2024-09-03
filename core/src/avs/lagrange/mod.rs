@@ -12,7 +12,7 @@ use std::{
     fs::{self, File},
     io::{copy, BufReader},
     path::PathBuf,
-    process::{Child, Command},
+    process::Command,
     sync::Arc,
 };
 use thiserror::Error as ThisError;
@@ -23,7 +23,6 @@ use crate::{
     avs::AvsVariant,
     config::IvyConfig,
     dialog::get_confirm_password,
-    dockercmd::{docker_cmd, docker_cmd_status},
     eigen::quorum::QuorumType,
     env_parser::EnvLines,
     error::{IvyError, SetupError},
@@ -115,31 +114,6 @@ impl AvsVariant for Lagrange {
         todo!()
     }
 
-    async fn start(&mut self) -> Result<Child, IvyError> {
-        std::env::set_current_dir(self.run_path())?;
-        debug!("docker start: {}", self.run_path().display());
-        // NOTE: See the limitations of the Stdio::piped() method if this experiences a deadlock
-        let cmd = docker_cmd(["up", "--force-recreate"])?;
-        debug!("cmd PID: {:?}", cmd.id());
-        self.running = true;
-        Ok(cmd)
-    }
-
-    async fn stop(&mut self) -> Result<(), IvyError> {
-        std::env::set_current_dir(self.run_path())?;
-        let _ = docker_cmd_status(["stop"])?;
-        self.running = false;
-        Ok(())
-    }
-
-    fn path(&self) -> PathBuf {
-        self.path.clone()
-    }
-
-    fn is_running(&self) -> bool {
-        self.running
-    }
-
     /// Registers the lagrange private key with the lagrange network.
     async fn register(
         &self,
@@ -181,16 +155,27 @@ impl AvsVariant for Lagrange {
     }
 
     fn name(&self) -> &str {
-        todo!()
+        "lagrange"
     }
-}
 
-impl Lagrange {
-    /// Constructor function for Lagrange run dir path
+    fn path(&self) -> PathBuf {
+        self.path.clone()
+    }
+
     fn run_path(&self) -> PathBuf {
         self.path.join("lagrange-worker").join(self.chain.as_ref())
     }
 
+    fn is_running(&self) -> bool {
+        self.running
+    }
+
+    fn set_running(&mut self, running: bool) {
+        self.running = running;
+    }
+}
+
+impl Lagrange {
     /// Builds the .env file for the Lagrange worker
     async fn build_env(
         &self,

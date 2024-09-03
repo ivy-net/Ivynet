@@ -8,7 +8,7 @@ use std::{
     fs::{self, File},
     io::{copy, BufReader},
     path::PathBuf,
-    process::{Child, Command},
+    process::Command,
     sync::Arc,
 };
 use thiserror::Error as ThisError;
@@ -18,7 +18,6 @@ use zip::read::ZipArchive;
 use crate::{
     avs::AvsVariant,
     config::{self, IvyConfig},
-    dockercmd::{docker_cmd, docker_cmd_status},
     download::dl_progress_bar,
     eigen::{
         contracts::delegation_manager::DelegationManagerAbi,
@@ -130,56 +129,6 @@ impl AvsVariant for EigenDA {
         Ok(acceptable)
     }
 
-    async fn start(&mut self) -> Result<Child, IvyError> {
-        let docker_path = self.path.join("eigenda-operator-setup");
-        let docker_path = match self.chain {
-            Chain::Mainnet => docker_path.join("mainnet"),
-            Chain::Holesky => docker_path.join("holesky"),
-            _ => todo!("Unimplemented"),
-        };
-        std::env::set_current_dir(docker_path.clone())?;
-        debug!("docker start: {} ", docker_path.display());
-        let build = docker_cmd_status(["build", "--no-cache"])?;
-
-        let _ = docker_cmd_status(["config"])?;
-
-        if !build.success() {
-            return Err(EigenDAError::ScriptError(build.to_string()).into());
-        }
-
-        // NOTE: See the limitations of the Stdio::piped() method if this experiences a deadlock
-        let cmd = docker_cmd(["up", "--force-recreate"])?;
-        debug!("cmd PID: {:?}", cmd.id());
-        self.running = true;
-        Ok(cmd)
-    }
-
-    // TODO: Remove quorums from stop  method if not needed
-    async fn stop(&mut self) -> Result<(), IvyError> {
-        let docker_path = self.path.join("eigenda-operator-setup");
-        let docker_path = match self.chain {
-            Chain::Mainnet => docker_path.join("mainnet"),
-            Chain::Holesky => docker_path.join("holesky"),
-            _ => todo!("Unimplemented"),
-        };
-        std::env::set_current_dir(docker_path)?;
-        let _ = docker_cmd_status(["stop"])?;
-        self.running = false;
-        Ok(())
-    }
-
-    fn path(&self) -> PathBuf {
-        self.path.clone()
-    }
-
-    fn is_running(&self) -> bool {
-        self.running
-    }
-
-    fn name(&self) -> &'static str {
-        "eigenda"
-    }
-
     async fn register(
         &self,
         provider: Arc<IvyProvider>,
@@ -273,6 +222,31 @@ impl AvsVariant for EigenDA {
         } else {
             Err(EigenDAError::ScriptError(optin.to_string()).into())
         }
+    }
+
+    fn name(&self) -> &'static str {
+        "eigenda"
+    }
+
+    fn path(&self) -> PathBuf {
+        self.path.clone()
+    }
+
+    fn run_path(&self) -> PathBuf {
+        let docker_path = self.path.join("eigenda-operator-setup");
+        match self.chain {
+            Chain::Mainnet => docker_path.join("mainnet"),
+            Chain::Holesky => docker_path.join("holesky"),
+            _ => todo!("Unimplemented"),
+        }
+    }
+
+    fn is_running(&self) -> bool {
+        self.running
+    }
+
+    fn set_running(&mut self, running: bool) {
+        self.running = running;
     }
 }
 
