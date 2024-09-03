@@ -126,8 +126,10 @@ impl BlsKey {
 
         println!("Json data to decrypt {json_data}");
         println!("{:?}", decrypted_data);
-        let secret_bytes: [u8; 32] = decode(decrypted_data)?.try_into().expect("freak"); //.decode();
-
+        let secret_bytes: [u8; 32] = decode(decrypted_data)?.try_into().map_err(|e| {
+            println!("Strange decrypt error {e:?}");
+            BlsKeyError::PrivateKeyInvalid
+        })?; 
         Self::from_bytes(&secret_bytes)
     }
 
