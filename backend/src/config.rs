@@ -56,5 +56,5 @@ pub struct Config {
     pub migrate: bool,
 
     #[arg(long)]
-    pub test_account: Option<String>,
+    pub add_organization: Option<String>,
 }
