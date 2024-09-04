@@ -23,7 +23,7 @@ use crate::{
 };
 
 // TODO: Make this a newtype strict and impl deref + derefmut to get signer stuff for free
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct IvyWallet {
     local_wallet: LocalWallet,
 }

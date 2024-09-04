@@ -20,7 +20,7 @@ use zip::read::ZipArchive;
 use crate::{
     avs::AvsVariant,
     config::{self, IvyConfig},
-    dockercmd::{docker_cmd, docker_cmd_status},
+    dockercmd::docker_cmd,
     download::dl_progress_bar,
     eigen::{
         contracts::delegation_manager::DelegationManagerAbi,
@@ -139,30 +139,6 @@ impl AvsVariant for EigenDA {
         Ok(acceptable)
     }
 
-    async fn start(&mut self) -> Result<Child, IvyError> {
-        let docker_path = self.avs_setup_path();
-        let docker_path = match self.chain {
-            Chain::Mainnet => docker_path.join("mainnet"),
-            Chain::Holesky => docker_path.join("holesky"),
-            _ => todo!("Unimplemented"),
-        };
-        std::env::set_current_dir(docker_path.clone())?;
-        debug!("docker start: {} ", docker_path.display());
-        let build = docker_cmd_status(["build", "--no-cache"])?;
-
-        let _ = docker_cmd_status(["config"])?;
-
-        if !build.success() {
-            return Err(EigenDAError::ScriptError(build.to_string()).into());
-        }
-
-        // NOTE: See the limitations of the Stdio::piped() method if this experiences a deadlock
-        let cmd = docker_cmd(["up", "--force-recreate"])?;
-        debug!("cmd PID: {:?}", cmd.id());
-        self.running = true;
-        Ok(cmd)
-    }
-
     async fn attach(&mut self) -> Result<Child, IvyError> {
         //TODO: Make more robust once path from avs config file is integrated
         let setup_path =
@@ -174,37 +150,6 @@ impl AvsVariant for EigenDA {
 
         self.running = true;
         Ok(cmd)
-    }
-
-    async fn stop(&mut self) -> Result<(), IvyError> {
-        let docker_path = self.base_path.join("eigenda-operator-setup");
-        let docker_path = match self.chain {
-            Chain::Mainnet => docker_path.join("mainnet"),
-            Chain::Holesky => docker_path.join("holesky"),
-            _ => todo!("Unimplemented"),
-        };
-        std::env::set_current_dir(docker_path)?;
-        let _ = docker_cmd_status(["stop"])?;
-        self.running = false;
-        Ok(())
-    }
-
-    fn base_path(&self) -> PathBuf {
-        self.base_path.clone()
-    }
-
-    fn avs_setup_path(&mut self) -> PathBuf {
-        let path = self.avs_config.get_path(self.chain);
-        self.avs_config.store();
-        path
-    }
-
-    fn is_running(&self) -> bool {
-        self.running
-    }
-
-    fn name(&self) -> &'static str {
-        EIGENDA_NAME
     }
 
     async fn register(
@@ -300,6 +245,35 @@ impl AvsVariant for EigenDA {
         } else {
             Err(EigenDAError::ScriptError(optin.to_string()).into())
         }
+    }
+
+    fn name(&self) -> &'static str {
+        EIGENDA_NAME
+    }
+
+    fn base_path(&self) -> PathBuf {
+        self.base_path.clone()
+    }
+
+    fn run_path(&self) -> PathBuf {
+        // let path = self.avs_config.get_path(self.chain);
+        // self.avs_config.store();
+        // path
+        // let docker_path = self.path.join("eigenda-operator-setup");
+        // match self.chain {
+        //     Chain::Mainnet => docker_path.join("mainnet"),
+        //     Chain::Holesky => docker_path.join("holesky"),
+        //     _ => todo!("Unimplemented"),
+        // }
+        "".into()
+    }
+
+    fn is_running(&self) -> bool {
+        self.running
+    }
+
+    fn set_running(&mut self, running: bool) {
+        self.running = running;
     }
 }
 

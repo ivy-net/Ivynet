@@ -150,6 +150,9 @@ pub enum IvyError {
     // instead.
     #[error("Invalid address")]
     InvalidAddress,
+
+    #[error(transparent)]
+    BlsError(#[from] crate::bls::BlsKeyError),
 }
 
 #[derive(Debug, Error)]

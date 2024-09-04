@@ -1,5 +1,6 @@
 use crate::{
     config::IvyConfig,
+    dockercmd::{docker_cmd, docker_cmd_status},
     eigen::{contracts::delegation_manager::DelegationManager, quorum::QuorumType},
     error::IvyError,
     rpc_management::{connect_provider, IvyProvider},
@@ -16,7 +17,7 @@ use ethers::{
 };
 use lagrange::Lagrange;
 use std::{collections::HashMap, fmt::Debug, fs, path::PathBuf, process::Child, sync::Arc};
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 pub mod commands;
 pub mod config;
@@ -234,18 +235,46 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
         private_keypath: PathBuf,
         keyfile_password: &str,
     ) -> Result<(), IvyError>;
+
     /// Start the AVS instance. Returns a Child process handle.
-    async fn start(&mut self) -> Result<Child, IvyError>;
+    async fn start(&mut self) -> Result<Child, IvyError> {
+        std::env::set_current_dir(self.run_path())?;
+        debug!("docker start: {}", self.run_path().display());
+        // NOTE: See the limitations of the Stdio::piped() method if this experiences a deadlock
+        let cmd = docker_cmd(["up", "--force-recreate"])?;
+        debug!("cmd PID: {:?}", cmd.id());
+        self.set_running(true);
+        Ok(cmd)
+    }
+
     /// Attach to the AVS instance. Returns a Child process handle.
-    async fn attach(&mut self) -> Result<Child, IvyError>;
+    async fn attach(&mut self) -> Result<Child, IvyError> {
+        //TODO: Better Pathing once invdividual configs are usable
+        std::env::set_current_dir(self.run_path())?;
+        debug!("docker ataching: {}", self.run_path().display());
+        let cmd = docker_cmd(["logs", "-f"])?;
+        debug!("cmd PID: {:?}", cmd.id());
+        self.set_running(true);
+        Ok(cmd)
+    }
+
     /// Stop the AVS instance.
-    async fn stop(&mut self) -> Result<(), IvyError>;
-    /// Return the name of the AVS instance
+    async fn stop(&mut self) -> Result<(), IvyError> {
+        std::env::set_current_dir(self.run_path())?;
+        let _ = docker_cmd_status(["stop"])?;
+        self.set_running(false);
+        Ok(())
+    }
+
     fn name(&self) -> &str;
+    /// Handle to the top-level directory for the AVS instance.
     fn base_path(&self) -> PathBuf;
-    fn avs_setup_path(&mut self) -> PathBuf;
+    /// Return the path to the AVS instance's run directory (usually a docker compose file)
+    fn run_path(&self) -> PathBuf;
     /// Return wether or not the AVS is running
     fn is_running(&self) -> bool;
+    /// Set the running state of the AVS
+    fn set_running(&mut self, running: bool);
 }
 
 // TODO: Builder pattern

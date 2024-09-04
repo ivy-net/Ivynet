@@ -51,7 +51,7 @@ impl AvsConfig {
             .join(format!("{}.toml", avs_name))
     }
 
-    pub fn get_path(&mut self, chain: Chain) -> PathBuf {
+    pub fn get_path(&self, chain: Chain) -> PathBuf {
         if let Some(setup) = self.setup_map.get(&chain) {
             setup.path.clone()
         } else {
@@ -59,9 +59,9 @@ impl AvsConfig {
                 .with_prompt("Input the path for your AVS configuration")
                 .interact()
                 .expect("Can't decode path");
-            let path = PathBuf::from(avs_path);
-            self.setup_map.insert(chain, Setup::new(path.clone(), true));
-            path
+
+            // self.setup_map.insert(chain, Setup::new(path.clone(), true));
+            PathBuf::from(avs_path)
         }
     }
 
