@@ -259,7 +259,7 @@ mod test_eigenlayer {
     use super::*;
     mod local_node {
 
-        use crate::test::common::DEFAULT_OPERATOR_ADDRESS;
+        use crate::test::common::LOCALHOST_OPERATOR_ADDRESS;
 
         use super::*;
         use ethers::types::{SyncingStatus, H160};
@@ -288,9 +288,9 @@ mod test_eigenlayer {
             let provider = Arc::new(connect_provider(rpc, None).await.unwrap());
             let delegation_manager = DelegationManager::new(provider).unwrap();
             let operator_status =
-                delegation_manager.is_operator(*DEFAULT_OPERATOR_ADDRESS).await.unwrap();
+                delegation_manager.is_operator(*LOCALHOST_OPERATOR_ADDRESS).await.unwrap();
             println!("Operator status: {:?}", operator_status);
-            assert_eq!(operator_status, true);
+            assert!(operator_status);
         }
     }
 
