@@ -224,7 +224,7 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
     ) -> Result<(), IvyError>;
 
     /// Start the AVS instance. Returns a Child process handle.
-    async fn start(&mut self) -> Result<Child, IvyError> {
+    fn start(&mut self) -> Result<Child, IvyError> {
         std::env::set_current_dir(self.run_path())?;
         debug!("docker start: {}", self.run_path().display());
         // NOTE: See the limitations of the Stdio::piped() method if this experiences a deadlock
@@ -235,7 +235,7 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
     }
 
     /// Stop the AVS instance.
-    async fn stop(&mut self) -> Result<(), IvyError> {
+    fn stop(&mut self) -> Result<(), IvyError> {
         std::env::set_current_dir(self.run_path())?;
         let _ = docker_cmd_status(["stop"])?;
         self.set_running(false);
