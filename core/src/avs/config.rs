@@ -1,8 +1,9 @@
-use std::{collections::HashMap, path::PathBuf};
+use std::{collections::HashMap, fs::create_dir_all, path::PathBuf};
 
 use ethers::types::Chain;
 use serde::{Deserialize, Serialize};
 use thiserror::Error as ThisError;
+use tracing::info;
 
 use crate::io::{read_toml, write_toml, IoError};
 
@@ -13,7 +14,7 @@ pub struct AvsConfig {
     // Setup map for pathing and is_custom determination
     pub setup_map: HashMap<Chain, Setup>,
     // AVS Specific Settings that can be deserialized
-    pub avs_settings: toml::Value,
+    pub avs_settings: HashMap<Chain, toml::Value>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -23,24 +24,61 @@ pub struct Setup {
 }
 
 impl AvsConfig {
-    fn new(avs_name: &str) -> Self {
-        let empty_value = toml::Value::from("");
+    pub fn new(avs_name: &str) -> Self {
         Self {
             avs_name: String::from(avs_name),
             setup_map: HashMap::new(),
-            avs_settings: empty_value,
+            //Abstract and empty on purpose - avs should use and modify as needed
+            avs_settings: HashMap::new(),
         }
     }
 
-    pub fn load(avs_name: &str) -> Self {
+    pub fn load(avs_name: &str) -> Result<Self, AvsConfigError> {
+        if !AvsConfig::exists(avs_name) {
+            let configs_path = dirs::home_dir()
+                .expect("Could not get a home directory")
+                .join(".ivynet/avs_configs");
+            create_dir_all(configs_path).expect("Could not create AVS configs directory");
+            AvsConfig::new(avs_name).store();
+        }
         let avs_config_path = Self::avs_config_path(avs_name);
-        let avs_config: Self = read_toml(&avs_config_path).unwrap_or_else(|_| Self::new(avs_name));
-        avs_config
+        let avs_config: Self = read_toml(&avs_config_path)?;
+        Ok(avs_config)
+    }
+
+    pub fn exists(name: &str) -> bool {
+        let toml_path = dirs::home_dir()
+            .expect("Could not get a home directory")
+            .join(".ivynet/avs_configs")
+            .join(format!("{}.toml", name));
+        info!("{}", toml_path.exists());
+        toml_path.exists()
+    }
+
+    pub fn ask_for_path() -> PathBuf {
+        let path = dialoguer::Input::<String>::new()
+            .with_prompt(
+                "Enter the path of the directory containining the AVS's docker-compose.yml",
+            )
+            .interact()
+            .expect("Could not get path");
+
+        Self::strip_docker_compose(PathBuf::from(path))
+
+        //TODO: Validate docker-compose.yml exists within directory
+    }
+
+    fn strip_docker_compose(path: PathBuf) -> PathBuf {
+        let mut path = path;
+        if path.ends_with("docker-compose.yml") {
+            path.pop(); // Remove "docker-compose.yml"
+        }
+        path
     }
 
     pub fn store(&self) {
-        write_toml(&Self::avs_config_path(&self.avs_name), self)
-            .expect("Could not write AVS config");
+        let path = &Self::avs_config_path(&self.avs_name);
+        write_toml(path, self).expect("Could not write AVS config");
     }
 
     // Grabs full path using AVS name from main avs configs directory
@@ -52,29 +90,26 @@ impl AvsConfig {
     }
 
     pub fn get_path(&self, chain: Chain) -> PathBuf {
-        if let Some(setup) = self.setup_map.get(&chain) {
-            setup.path.clone()
-        } else {
-            let avs_path: String = dialoguer::Input::new()
-                .with_prompt("Input the path for your AVS configuration")
-                .interact()
-                .expect("Can't decode path");
-
-            // self.setup_map.insert(chain, Setup::new(path.clone(), true));
-            PathBuf::from(avs_path)
-        }
+        self.setup_map
+            .get(&chain)
+            .expect("No path found - please run the setup command")
+            .path
+            .clone()
     }
 
     pub fn set_path(&mut self, chain: Chain, path: PathBuf, is_custom: bool) {
         self.setup_map.insert(chain, Setup::new(path, is_custom));
     }
 
-    pub fn get_settings(&self) -> toml::Value {
-        self.avs_settings.clone()
+    pub fn get_settings(&self, chain: Chain) -> toml::Value {
+        self.avs_settings
+            .get(&chain)
+            .unwrap_or_else(|| panic!("No settings found for {}", chain))
+            .clone()
     }
 
-    pub fn set_settings(&mut self, settings: toml::Value) {
-        self.avs_settings = settings;
+    pub fn set_settings(&mut self, chain: Chain, settings: toml::Value) {
+        self.avs_settings.insert(chain, settings);
     }
 }
 

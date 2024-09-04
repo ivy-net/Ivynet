@@ -35,11 +35,10 @@ use crate::{
 
 use self::contracts::StakeRegistryAbi;
 
-use super::AvsConfig;
+use super::{names::EIGENDA_NAME, AvsConfig};
 
 mod contracts;
 
-pub const EIGENDA_NAME: &str = "eigenda";
 pub const EIGENDA_PATH: &str = ".eigenlayer/eigenda";
 pub const EIGENDA_SETUP_REPO: &str =
     "https://github.com/ivy-net/eigenda-operator-setup/archive/refs/heads/master.zip";
@@ -71,7 +70,8 @@ impl EigenDA {
 
     pub fn new_from_chain(chain: Chain) -> Self {
         let base_path = dirs::home_dir().expect("Could not get home directory").join(EIGENDA_PATH);
-        let avs_config = AvsConfig::load(EIGENDA_NAME);
+        let avs_config =
+            AvsConfig::load(EIGENDA_NAME).expect("Could not load AVS config - go through setup");
         Self::new(base_path, chain, avs_config)
     }
 }
@@ -80,7 +80,8 @@ impl Default for EigenDA {
     fn default() -> Self {
         let home_dir = dirs::home_dir().expect("Could not get home directory");
         let base_path = home_dir.join(EIGENDA_PATH);
-        let avs_config = AvsConfig::load(EIGENDA_NAME);
+        let avs_config =
+            AvsConfig::load(EIGENDA_NAME).expect("Could not load AVS config - go through setup");
         Self::new(base_path, Chain::Holesky, avs_config)
     }
 }
@@ -93,10 +94,15 @@ impl AvsVariant for EigenDA {
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
         _pw: Option<String>,
+        is_custom: bool,
     ) -> Result<(), IvyError> {
-        download_operator_setup(self.base_path.clone()).await?;
-        download_g1_g2(self.base_path.clone()).await?;
-        self.build_env(provider, config).await?;
+        self.build_pathing(is_custom)?;
+        if !is_custom {
+            download_operator_setup(self.base_path.clone()).await?;
+            download_g1_g2(self.base_path.clone()).await?;
+            self.build_env(provider, config).await?;
+        }
+
         Ok(())
     }
 
@@ -256,16 +262,7 @@ impl AvsVariant for EigenDA {
     }
 
     fn run_path(&self) -> PathBuf {
-        // let path = self.avs_config.get_path(self.chain);
-        // self.avs_config.store();
-        // path
-        // let docker_path = self.path.join("eigenda-operator-setup");
-        // match self.chain {
-        //     Chain::Mainnet => docker_path.join("mainnet"),
-        //     Chain::Holesky => docker_path.join("holesky"),
-        //     _ => todo!("Unimplemented"),
-        // }
-        "".into()
+        self.avs_config.get_path(self.chain)
     }
 
     fn is_running(&self) -> bool {
@@ -434,6 +431,24 @@ impl EigenDA {
             Chain::Holesky => vec![QuorumType::LST],
             _ => todo!("Unimplemented"),
         }
+    }
+
+    fn build_pathing(&mut self, is_custom: bool) -> Result<(), IvyError> {
+        let path = if !is_custom {
+            let setup = self.base_path.join("eigenda-operator-setup");
+            match self.chain {
+                Chain::Mainnet => setup.join("mainnet"),
+                Chain::Holesky => setup.join("holesky"),
+                _ => todo!("Unimplemented"),
+            }
+        } else {
+            AvsConfig::ask_for_path()
+        };
+
+        self.avs_config.set_path(self.chain, path, is_custom);
+        self.avs_config.store();
+
+        Ok(())
     }
 }
 

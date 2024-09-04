@@ -16,7 +16,7 @@ use tracing::{debug, error, info};
 use zip::ZipArchive;
 
 use crate::{
-    avs::AvsVariant,
+    avs::{names::ALTLAYER_NAME, AvsVariant},
     config::{self, IvyConfig},
     constants::IVY_METADATA,
     eigen::{
@@ -67,6 +67,7 @@ impl AvsVariant for AltLayer {
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
         _pw: Option<String>,
+        _is_custom: bool,
     ) -> Result<(), IvyError> {
         download_operator_setup(self.base_path.clone()).await?;
         self.build_env(provider, config).await?;
@@ -117,7 +118,7 @@ impl AvsVariant for AltLayer {
     }
 
     fn name(&self) -> &'static str {
-        "altlayer"
+        ALTLAYER_NAME
     }
 
     fn base_path(&self) -> PathBuf {

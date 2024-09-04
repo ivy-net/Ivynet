@@ -9,6 +9,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use config::AvsConfig;
+use dialoguer::Select;
 use ethers::{
     middleware::SignerMiddleware,
     providers::Middleware,
@@ -16,6 +17,7 @@ use ethers::{
     types::{Chain, U256},
 };
 use lagrange::Lagrange;
+use names::{ALTLAYER_NAME, EIGENDA_NAME, LAGRANGE_NAME};
 use std::{collections::HashMap, fmt::Debug, fs, path::PathBuf, process::Child, sync::Arc};
 use tracing::{debug, error, info};
 
@@ -26,6 +28,7 @@ pub mod eigenda;
 pub mod error;
 pub mod lagrange;
 pub mod mach_avs;
+pub mod names;
 
 pub type QuorumMinMap = HashMap<Chain, HashMap<QuorumType, U256>>;
 
@@ -109,7 +112,17 @@ impl AvsProvider {
         operator_password: Option<String>,
     ) -> Result<(), IvyError> {
         let provider = self.provider.clone();
-        self.avs_mut()?.setup(provider, config, operator_password).await?;
+
+        let setup_options = ["New Deployment", "Custom Attachment"];
+        let setup_type = Select::new()
+            .with_prompt(format!("Do you have an existing deployment of {}?", self.avs()?.name()))
+            .items(&setup_options)
+            .interact()
+            .unwrap();
+
+        let is_custom = setup_type == 1;
+
+        self.avs_mut()?.setup(provider, config, operator_password, is_custom).await?;
         info!("Setup complete: run 'ivynet avs help' for next steps!");
         Ok(())
     }
@@ -215,6 +228,7 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
         operator_password: Option<String>,
+        is_custom: bool,
     ) -> Result<(), IvyError>;
 
     //fn validate_install();
@@ -289,9 +303,9 @@ pub async fn build_avs_provider(
     let provider = connect_provider(&config.get_rpc_url(chain)?, wallet).await?;
     let avs_instance: Option<Box<dyn AvsVariant>> = if let Some(avs_id) = id {
         match avs_id {
-            "eigenda" => Some(Box::new(EigenDA::new_from_chain(chain))),
-            "altlayer" => Some(Box::new(AltLayer::new_from_chain(chain))),
-            "lagrange" => Some(Box::new(Lagrange::new_from_chain(chain))),
+            EIGENDA_NAME => Some(Box::new(EigenDA::new_from_chain(chain))),
+            ALTLAYER_NAME => Some(Box::new(AltLayer::new_from_chain(chain))),
+            LAGRANGE_NAME => Some(Box::new(Lagrange::new_from_chain(chain))),
             _ => return Err(IvyError::InvalidAvsType(avs_id.to_string())),
         }
     } else {

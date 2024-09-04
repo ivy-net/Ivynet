@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use ivynet_core::{
-    avs::{AvsProvider, AvsVariant},
+    avs::{names::EIGENDA_NAME, AvsProvider, AvsVariant},
     config::get_detailed_system_information,
     error::IvyError,
     grpc::{
@@ -43,9 +43,11 @@ async fn collect(avs: &Option<Box<dyn AvsVariant>>) -> Result<Vec<Metrics>, IvyE
         None => (None, None, false),
         Some(avs_type) => {
             match avs_type.name() {
-                "eigenda" => {
-                    (Some("eigenda"), Some("http://localhost:9092/metrics"), avs_type.is_running())
-                }
+                EIGENDA_NAME => (
+                    Some(EIGENDA_NAME),
+                    Some("http://localhost:9092/metrics"),
+                    avs_type.is_running(),
+                ),
                 _ => (Some(avs_type.name()), None, avs_type.is_running()), // * that one */
             }
         }
