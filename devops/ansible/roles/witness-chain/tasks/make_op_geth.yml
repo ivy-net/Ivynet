@@ -1,0 +1,58 @@
+---
+- name: Check that geth is build
+  ansible.builtin.stat:
+    # yamllint disable-line rule:line-length
+    path: "{{ witness_chain_path_ivynet }}/bin/op-geth-{{ witness_chain_version_op_geth }}"
+  register: opnode_file
+  tags:
+    - witness_chain
+    - make
+
+# Alternative is to build ones and downlod binariesa
+- name: Build op-geth
+  when:
+    - not opnode_file.stat.exists
+  block:
+    - name: Get Optimism Geth
+      ansible.builtin.git:
+        repo: https://github.com/ethereum-optimism/op-geth.git
+        dest: "{{ witness_chain_path_op }}/op-geth"
+        clone: true
+        update: true
+        version: "{{ witness_chain_git_tag_op_geth }}"
+      tags:
+        - witness_chain
+        - github
+
+    - name: Make op-geth
+      community.general.make:
+        chdir: "{{ witness_chain_path_op }}/op-geth"
+        target: geth
+      tags:
+        - witness_chain
+        - make
+
+    - name: Copy binaries
+      ansible.builtin.copy:
+        src: "{{ witness_chain_path_op }}/op-geth/build/bin/geth"
+        # yamllint disable-line rule:line-length
+        dest: "{{ witness_chain_path_ivynet }}/bin/op-geth-{{ witness_chain_version_op_geth }}"
+        remote_src: true
+        owner: root
+        group: root
+        mode: "0755"
+      tags:
+        - witness_chain
+        - make
+
+    - name: Create symlink
+      ansible.builtin.file:
+        # yamllint disable-line rule:line-length
+        src: "{{ witness_chain_path_ivynet }}/bin/op-geth-{{ witness_chain_version_op_geth }}"
+        dest: "{{ witness_chain_path_ivynet }}/bin/op-geth"
+        owner: root
+        group: root
+        state: link
+      tags:
+        - witness_chain
+        - make

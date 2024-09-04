@@ -1,0 +1,30 @@
+---
+# Checksum for the archive file
+witness_chain_arch_checksum: |
+  71f235fca8b218c935b6a57f8f9c7849bfe4a87039648bbd735df0f12facfaa9
+
+# Name of the file do download
+witness_chain_arch_file: op-sepolia-8-Apr-2024.tar.gz
+
+# URL of the arch file:
+# taken from https://witnesschain-l2-snapshots.s3.amazonaws.com/op-latest
+# yamllint disable-line rule:line-length
+witness_chain_arch_url: https://witnesschain-l2-snapshots.s3.amazonaws.com/{{ witness_chain_arch_file }}
+
+# Location of ivynet folder
+witness_chain_path_ivynet: /opt/ivynet
+
+# Location of witness chain (OP) data folder
+witness_chain_path_op: "{{ witness_chain_path_ivynet }}/op"
+
+# Git Tag for optimism
+witness_chain_git_tag_optimism: "op-node/v{{ witness_chain_version_optimism }}"
+
+# Git Tag for geth (op)
+witness_chain_git_tag_op_geth: "v{{ witness_chain_version_op_geth }}"
+
+# Version of optimism
+witness_chain_version_optimism: 1.9.1
+
+# Version of geth (op)
+witness_chain_version_op_geth: 1.101408.0
