@@ -17,7 +17,7 @@ use ethers::{
     types::{Chain, U256},
 };
 use lagrange::Lagrange;
-use names::{ALTLAYER_NAME, EIGENDA_NAME, LAGRANGE_NAME};
+use names::AvsNames;
 use std::{collections::HashMap, fmt::Debug, fs, path::PathBuf, process::Child, sync::Arc};
 use tracing::{debug, error, info};
 
@@ -302,10 +302,10 @@ pub async fn build_avs_provider(
     let chain = try_parse_chain(chain)?;
     let provider = connect_provider(&config.get_rpc_url(chain)?, wallet).await?;
     let avs_instance: Option<Box<dyn AvsVariant>> = if let Some(avs_id) = id {
-        match avs_id {
-            EIGENDA_NAME => Some(Box::new(EigenDA::new_from_chain(chain))),
-            ALTLAYER_NAME => Some(Box::new(AltLayer::new_from_chain(chain))),
-            LAGRANGE_NAME => Some(Box::new(Lagrange::new_from_chain(chain))),
+        match AvsNames::from(avs_id) {
+            AvsNames::EigenDA => Some(Box::new(EigenDA::new_from_chain(chain))),
+            AvsNames::AltLayer => Some(Box::new(AltLayer::new_from_chain(chain))),
+            AvsNames::LagrangeZK => Some(Box::new(Lagrange::new_from_chain(chain))),
             _ => return Err(IvyError::InvalidAvsType(avs_id.to_string())),
         }
     } else {

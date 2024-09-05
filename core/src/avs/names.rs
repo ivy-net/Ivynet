@@ -1,5 +1,32 @@
-pub const EIGENDA_NAME: &str = "eigenda";
-pub const ALTLAYER_NAME: &str = "altlayer";
-pub const LAGRANGE_NAME: &str = "lagrange";
-pub const WITNESSCHAIN_NAME: &str = "witnesschain";
-pub const OPENLAYER_NAME: &str = "openlayer";
+pub enum AvsNames {
+    EigenDA,
+    AltLayer,
+    LagrangeZK,
+    WitnessChain,
+    OpenLayer,
+}
+
+impl AvsNames {
+    pub fn as_str(&self) -> &str {
+        match self {
+            AvsNames::EigenDA => "eigenda",
+            AvsNames::AltLayer => "altlayer",
+            AvsNames::LagrangeZK => "lagrange",
+            AvsNames::WitnessChain => "witnesschain",
+            AvsNames::OpenLayer => "openlayer",
+        }
+    }
+}
+
+impl From<&str> for AvsNames {
+    fn from(s: &str) -> Self {
+        match s {
+            "eigenda" => AvsNames::EigenDA,
+            "altlayer" => AvsNames::AltLayer,
+            "lagrange" => AvsNames::LagrangeZK,
+            "witnesschain" => AvsNames::WitnessChain,
+            "openlayer" => AvsNames::OpenLayer,
+            _ => panic!("Invalid string for AvsNames"),
+        }
+    }
+}

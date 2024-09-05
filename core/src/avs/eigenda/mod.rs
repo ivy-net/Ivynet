@@ -35,7 +35,7 @@ use crate::{
 
 use self::contracts::StakeRegistryAbi;
 
-use super::{names::EIGENDA_NAME, AvsConfig};
+use super::{names::AvsNames, AvsConfig};
 
 mod contracts;
 
@@ -70,8 +70,8 @@ impl EigenDA {
 
     pub fn new_from_chain(chain: Chain) -> Self {
         let base_path = dirs::home_dir().expect("Could not get home directory").join(EIGENDA_PATH);
-        let avs_config =
-            AvsConfig::load(EIGENDA_NAME).expect("Could not load AVS config - go through setup");
+        let avs_config = AvsConfig::load(AvsNames::EigenDA.as_str())
+            .expect("Could not load AVS config - go through setup");
         Self::new(base_path, chain, avs_config)
     }
 }
@@ -80,8 +80,8 @@ impl Default for EigenDA {
     fn default() -> Self {
         let home_dir = dirs::home_dir().expect("Could not get home directory");
         let base_path = home_dir.join(EIGENDA_PATH);
-        let avs_config =
-            AvsConfig::load(EIGENDA_NAME).expect("Could not load AVS config - go through setup");
+        let avs_config = AvsConfig::load(AvsNames::EigenDA.as_str())
+            .expect("Could not load AVS config - go through setup");
         Self::new(base_path, Chain::Holesky, avs_config)
     }
 }
@@ -254,7 +254,7 @@ impl AvsVariant for EigenDA {
     }
 
     fn name(&self) -> &'static str {
-        EIGENDA_NAME
+        AvsNames::EigenDA.as_str()
     }
 
     fn base_path(&self) -> PathBuf {

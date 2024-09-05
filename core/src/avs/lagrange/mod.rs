@@ -29,7 +29,7 @@ use crate::{
     rpc_management::IvyProvider,
 };
 
-use super::{config::AvsConfig, names::LAGRANGE_NAME};
+use super::{config::AvsConfig, names::AvsNames};
 
 mod config;
 
@@ -72,18 +72,16 @@ impl Lagrange {
 
     pub fn new_from_chain(chain: Chain) -> Self {
         let base_path = dirs::home_dir().expect("Could not get home directory").join(LAGRANGE_PATH);
-        let avs_config =
-            AvsConfig::load(LAGRANGE_NAME).expect("Could not load AVS config - go through setup");
+        let avs_config = AvsConfig::load(AvsNames::LagrangeZK.as_str())
+            .expect("Could not load AVS config - go through setup");
         Self::new(base_path, chain, avs_config)
     }
 }
 
 impl Default for Lagrange {
     fn default() -> Self {
-        // let base_path = dirs::home_dir().expect("Could not get home
-        // directory").join(LAGRANGE_PATH);
-        let avs_config =
-            AvsConfig::load(LAGRANGE_NAME).expect("Could not load AVS config - go through setup");
+        let avs_config = AvsConfig::load(AvsNames::LagrangeZK.as_str())
+            .expect("Could not load AVS config - go through setup");
         Self::new(avs_config.get_path(Chain::Holesky), Chain::Holesky, avs_config)
     }
 }
@@ -164,7 +162,7 @@ impl AvsVariant for Lagrange {
     }
 
     fn name(&self) -> &str {
-        "lagrange"
+        AvsNames::LagrangeZK.as_str()
     }
 
     fn base_path(&self) -> PathBuf {
