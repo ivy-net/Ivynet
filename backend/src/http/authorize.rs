@@ -121,8 +121,6 @@ pub async fn verify(
     cache: &memcache::Client,
     jar: &CookieJar,
 ) -> Result<Account, BackendError> {
-    // First - check if basic auth is set
-    // TODO: Get headers and check basic auth
     if let Some(auth_header) = headers.get("Authorization") {
         let split = auth_header.to_str().map_err(|_| BackendError::BadCredentials)?.split_once(' ');
         match split {
