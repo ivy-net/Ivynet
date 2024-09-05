@@ -68,6 +68,10 @@ impl BlsKey {
         self.secret.clone()
     }
 
+    pub fn secret_as_string(&self) -> String {
+        encode(self.secret.to_be_bytes())
+    }
+
     pub fn from_bytes(bytes: &[u8; 32]) -> Result<Self, BlsKeyError> {
         let maybe_sk = BlsSecret::from_be_bytes(bytes);
 
@@ -183,7 +187,7 @@ impl BlsKey {
             "crypto": crypto_json
         });
 
-        let file_path = path.join(name);
+        let file_path = path.join(format!("{name}.bls.key.json"));
         _ = write_json(&file_path, &json_data);
         Ok(file_path)
     }

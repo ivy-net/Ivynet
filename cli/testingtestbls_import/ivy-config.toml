@@ -1,0 +1,14 @@
+path = "/Users/tymoteusz/blsrefac/ivynet/cli/testingtestbls_import"
+bls_path = "/Users/tymoteusz/.eigenlayer/operator_keys"
+mainnet_rpc_url = "https://rpc.flashbots.net/fast"
+holesky_rpc_url = "https://eth-holesky.public.blastapi.io"
+local_rpc_url = "http://localhost:8545"
+default_ecdsa_keyfile = ""
+default_bls_keyfile = "/Users/tymoteusz/blsrefac/ivynet/cli/testingtestbls_import/testblsimport"
+default_ecdsa_address = "0x0000000000000000000000000000000000000000"
+default_bls_address = "G2Affine(x=Fq2(Fp(0x195e741e8ca297b08b80893105ce42449bdb63cd5199eb033c875533599935659fd4c3fef8ee15857cc7179de9ad6915) + Fp(0x0b443b1cf3eb1b422a984ff67e4a985e79b768b98fa69494f64c0ea73e4c93a21bc215ebe1192d8f95471bd0d70ddbbf) * u), y=Fq2(Fp(0x0241e9b5c85fd64358beae1036241ba09dadfd3c4f73b28a35ea6c3fd17efe02e5ef4d8fb26816117e2a87d7e972b12a) + Fp(0x052b8a65cb3c80f8fbc74de2596419a89f9229253517278c0d9e68daa7f68a16b1f53e0b8adfd7c972b0c9e61b2a5764) * u))"
+
+[metadata]
+metadata_uri = ""
+logo_uri = ""
+favicon_uri = ""
