@@ -6,12 +6,14 @@ use ctr::{
     Ctr128BE,
 };
 use dialoguer::{Input, Password};
-use ivynet_core::{config::IvyConfig, ethers::types::H160, wallet::IvyWallet, bls::{BlsKey,BlsKeyError}};
-use serde_json::Value;
-use std::{
-    fs,
-    path::PathBuf,
+use ivynet_core::{
+    bls::BlsKey, //BlsKeyError
+    config::IvyConfig,
+    ethers::types::H160,
+    wallet::IvyWallet,
 };
+use serde_json::Value;
+use std::{fs, path::PathBuf};
 use tracing::{debug, error};
 
 use crate::error::Error;
@@ -114,8 +116,9 @@ pub async fn parse_key_import_subcommands(
     match subcmd {
         ImportCommands::BlsImport { private_key, keyname, password } => {
             let wallet = BlsKey::from_private_key(private_key).expect("");
-            let (keyname,pass) = get_credentials(keyname,password);
-            let prv_key_path = wallet.encrypt_and_store(&config.get_key_path(), keyname, pass).expect("");
+            let (keyname, pass) = get_credentials(keyname, password);
+            let prv_key_path =
+                wallet.encrypt_and_store(&config.get_key_path(), keyname, pass).expect("");
 
             config.set_bls_keyfile(prv_key_path);
             config.set_bls_address(wallet.address().to_string());
@@ -141,20 +144,21 @@ pub async fn parse_key_create_subcommands(
     match subcmd {
         CreateCommands::BlsCreate { store, keyname, password } => {
             let wallet = BlsKey::new();
-        let priv_key = wallet.secret_as_string();
-        println!("Private key: 0x{:}", priv_key);
-        let addr = wallet.address();
-        println!("Public Address: {:?}", addr.to_string());
+            let priv_key = wallet.secret_as_string();
+            println!("Private key: 0x{:}", priv_key);
+            let addr = wallet.address();
+            println!("Public Address: {:?}", addr.to_string());
 
-        if store {
-            let (keyname, pass) = get_credentials(keyname, password);
-            let prv_key_path = wallet.encrypt_and_store(&config.get_key_path(), keyname, pass).expect("fix later");
+            if store {
+                let (keyname, pass) = get_credentials(keyname, password);
+                let prv_key_path = wallet
+                    .encrypt_and_store(&config.get_key_path(), keyname, pass)
+                    .expect("fix later");
 
-            config.set_bls_keyfile(prv_key_path);
-            config.set_bls_address(addr.to_string());
-            config.store()?;
-        }
-
+                config.set_bls_keyfile(prv_key_path);
+                config.set_bls_address(addr.to_string());
+                config.store()?;
+            }
         }
         CreateCommands::EcdsaCreate { store, keyname, password } => {
             let wallet = IvyWallet::new();
@@ -191,15 +195,15 @@ pub async fn parse_key_get_subcommands(
                     path = config.default_bls_keyfile;
                 }
             }
-            if path.exists(){
-                let password =
-                Password::new().with_prompt("Enter a password to the private key").interact()?;
+            if path.exists() {
+                let password = Password::new()
+                    .with_prompt("Enter a password to the private key")
+                    .interact()?;
 
                 let wallet = BlsKey::from_keystore(path, &password).expect("TODO -- fix with ? ");
                 println!("Private key: 0x{:}", wallet.secret_as_string());
                 println!("Public Key: {:?}", config.default_bls_address.clone())
-            }
-            else{
+            } else {
                 println!("No path found")
             }
         }
@@ -568,8 +572,8 @@ mod tests {
     //         assert!(result.is_ok());
 
     //         let config =
-    //             IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
-    //         println!("{:?}", config);
+    //             IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load
+    // config");         println!("{:?}", config);
 
     //         let toml_content = fs::read_to_string(test_path.join("ivy-config.toml"))
     //             .await
@@ -581,9 +585,9 @@ mod tests {
     //             "{}/testblsimport.bls.key.json",
     //             config.get_key_path().to_str().expect("Can't cast to string")
     //         );
-    //         assert_eq!(toml_data["default_bls_keyfile"].as_str(), Some(private_keypath.as_str()));
-    //         fs::remove_file(config.default_bls_keyfile).await.expect("");
-    //     })
+    //         assert_eq!(toml_data["default_bls_keyfile"].as_str(),
+    // Some(private_keypath.as_str()));         fs::remove_file(config.default_bls_keyfile).
+    // await.expect("");     })
     //     .await;
     // }
     #[tokio::test]

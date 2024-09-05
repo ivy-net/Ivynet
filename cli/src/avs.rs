@@ -5,8 +5,7 @@ use ivynet_core::{
     grpc::client::{create_channel, Source},
     wallet::IvyWallet,
 };
-use std::fs;
-use std::path::PathBuf;
+use std::{fs, path::PathBuf};
 
 use crate::{client::IvynetClient, error::Error};
 
@@ -83,13 +82,10 @@ fn get_all_keyfiles(dir: PathBuf, extension: &str) -> Vec<String> {
     files
 }
 
-fn get_keyfile( dir: PathBuf, extension: &str) -> String{
-
+fn get_keyfile(dir: PathBuf, extension: &str) -> String {
     let keys = get_all_keyfiles(dir, &format!("{}.key.json", extension));
     let interactive = Select::new()
-        .with_prompt(
-            format!("Which {} key would you like to select?", extension)
-        )
+        .with_prompt(format!("Which {} key would you like to select?", extension))
         .items(&keys)
         .interact()
         .unwrap();
