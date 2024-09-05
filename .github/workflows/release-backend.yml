@@ -1,10 +1,10 @@
 ---
-name: Release
+name: Release Backend
 
 on:
   push:
     tags:
-      - "v*.*.*"
+      - "backend-*.*.*"
 
 env:
   CARGO_TERM_COLOR: always
@@ -25,13 +25,14 @@ jobs:
           pkg-config
           libssl-dev
       - name: Run tests
-        run: cargo test
+        run: |
+          cargo test
       - name: Build binaries
-        run: cargo build --release
+        run: |
+          cargo build --release
       - name: Make release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            target/release/ivynet
             target/release/ivynet-backend
-          make_latest: true
+          make_latest: false
