@@ -8,6 +8,7 @@ use utoipa::ToSchema;
 
 use super::{
     node::{DbNode, Node},
+    verification::Verification,
     Organization,
 };
 
@@ -105,7 +106,7 @@ impl Account {
         match sqlx::query_as!(
             Account,
             r#"SELECT user_id, organization_id, email, password, role AS "role!: Role", created_at, updated_at FROM account WHERE email = $1"#,
-            email    )
+            email)
             .fetch_one(pool)
             .await
             {
@@ -114,6 +115,28 @@ impl Account {
                 Err(err) => Err(err.into())
 
             }
+    }
+
+    pub async fn set_verification(
+        pool: &PgPool,
+        email: &str,
+    ) -> Result<Verification, BackendError> {
+        let account = Account::find(pool, email).await?;
+
+        let verification =
+            Verification::new(pool, super::verification::VerificationType::User, account.user_id)
+                .await?;
+
+        Ok(verification)
+    }
+
+    pub async fn find(pool: &PgPool, email: &str) -> Result<Account, BackendError> {
+        Ok(sqlx::query_as!(
+            Account,
+            r#"SELECT user_id, organization_id, email, password, role AS "role!: Role", created_at, updated_at FROM account WHERE email = $1"#,
+            email)
+            .fetch_one(pool)
+            .await?)
     }
 
     pub async fn nodes(&self, pool: &PgPool) -> Result<Vec<Node>, BackendError> {

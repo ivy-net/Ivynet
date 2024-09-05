@@ -196,6 +196,29 @@ pub async fn invite(
     let org = Organization::get(&state.pool, account.organization_id as u64).await?;
     let new_acc = org.invite(&state.pool, &request.email, request.role).await?;
 
+    if let (Some(sender), Some(sender_address), Some(inv_template)) =
+        (state.sender, state.sender_email, state.user_verification_template)
+    {
+        let mut arguments = HashMap::with_capacity(2);
+        arguments.insert("organization_name".to_string(), org.name);
+        //TODO: Setting this url has to be properly set
+        arguments.insert(
+            "confirmation_url".to_string(),
+            format!("{}/organization/confirm/{}", state.root_url, new_acc.verification_id),
+        );
+
+        sender
+            .send(
+                &Message::new(Email::new(&sender_address))
+                    .set_template_id(&inv_template)
+                    .add_personalization(
+                        Personalization::new(Email::new(request.email))
+                            .add_dynamic_template_data(arguments),
+                    ),
+            )
+            .await?;
+    }
+
     Ok(InvitationResponse { id: new_acc.verification_id }.into())
 }
 

@@ -42,6 +42,9 @@ pub struct Config {
     #[arg(long, env = "SENDGRID_USER_VER_TMP")]
     pub user_verification_template: Option<String>,
 
+    #[arg(long, env = "SENDGRID_PASS_RESET_TMP")]
+    pub pass_reset_template: Option<String>,
+
     #[arg(long, env = "IVY_CACHE_URL", value_parser = Uri::from_str, default_value = "memcache://localhost:11211" )]
     pub cache_url: Uri,
 
