@@ -13,6 +13,38 @@ jobs:
     name: build backend
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - run: sudo apt install -y rustc cargo protobuf-compiler pkg-config libssl-dev
-      - run: cargo build --release --bin backend
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Install packages
+        run: >
+          sudo apt install -y
+          rustc
+          cargo
+          protobuf-compiler
+          pkg-config
+          libssl-dev
+      - name: Build binaries
+        run: |
+          cargo build --release --bin backend
+
+  tag-on-version-update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install TOML cli
+        run: |
+          sudo cargo install toml-cli
+      - name: Extract TOML version
+        id: extract-version
+        run: |
+          version=$(toml get backend/Cargo.toml package.version)
+          echo "::set-output name=version::$version"
+      - name: Get latest Backend tag
+        id: extra-tag
+        run: |
+          tag=$(git tag | awk -F- '/backend/ {print $2}')
+          echo "::set-output name=tag::$tag"
+      - name: Create Git tag
+        if: steps.extract-version.outputs.version != steps-tag.outputs.version
+        run: |
+          git tag -f backend-${{ steps.extract-version.outputs.version }}
+          git push origin backend-${{ steps.extract-version.outputs.version }}
