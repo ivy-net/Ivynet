@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use axum::{
     extract::{Path, State},
+    http::HeaderMap,
     Json,
 };
 use axum_extra::extract::CookieJar;
@@ -81,10 +82,11 @@ pub struct Metrics {
     )
 )]
 pub async fn status(
+    headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
 ) -> Result<Json<Status>, BackendError> {
-    let account = authorize::verify(&state.pool, &state.cache, &jar).await?;
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
 
     let machines = account.nodes(&state.pool).await?;
 
@@ -151,10 +153,11 @@ pub async fn status(
     )
 )]
 pub async fn idling(
+    headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
 ) -> Result<Json<Vec<String>>, BackendError> {
-    let account = authorize::verify(&state.pool, &state.cache, &jar).await?;
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
 
     let machines = account.nodes(&state.pool).await?;
 
@@ -190,10 +193,11 @@ pub async fn idling(
     )
 )]
 pub async fn unhealthy(
+    headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
 ) -> Result<Json<Vec<String>>, BackendError> {
-    let account = authorize::verify(&state.pool, &state.cache, &jar).await?;
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
 
     let machines = account.nodes(&state.pool).await?;
 
@@ -229,11 +233,12 @@ pub async fn unhealthy(
     )
 )]
 pub async fn info(
+    headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
     Path(id): Path<String>,
 ) -> Result<Json<Info>, BackendError> {
-    let account = authorize::verify(&state.pool, &state.cache, &jar).await?;
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     let address = id.parse::<Address>().map_err(|_| BackendError::BadId)?;
     let machine = node::DbNode::get(&state.pool, &address).await?;
     if machine.organization_id != account.organization_id {

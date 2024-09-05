@@ -2,6 +2,7 @@ use std::collections::HashMap;
 
 use axum::{
     extract::{Path, State},
+    http::HeaderMap,
     Json,
 };
 use axum_extra::extract::CookieJar;
@@ -126,10 +127,11 @@ pub async fn get(
     )
 )]
 pub async fn nodes(
+    headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
 ) -> Result<Json<Vec<Node>>, BackendError> {
-    let account = authorize::verify(&state.pool, &state.cache, &jar).await?;
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
 
     Ok(DbNode::get_all_for_account(&state.pool, &account).await?.into())
 }
@@ -143,11 +145,12 @@ pub async fn nodes(
     )
 )]
 pub async fn metrics(
+    headers: HeaderMap,
     State(state): State<HttpState>,
     Path(id): Path<String>,
     jar: CookieJar,
 ) -> Result<Json<Vec<Metric>>, BackendError> {
-    let account = authorize::verify(&state.pool, &state.cache, &jar).await?;
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
 
     let node_id = id.parse::<Address>().map_err(|_| BackendError::InvalidNodeId)?;
 
@@ -180,11 +183,12 @@ pub async fn metrics(
     )
 )]
 pub async fn invite(
+    headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
     Json(request): Json<InvitationRequest>,
 ) -> Result<Json<InvitationResponse>, BackendError> {
-    let account = authorize::verify(&state.pool, &state.cache, &jar).await?;
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     if !account.role.is_admin() {
         return Err(BackendError::InsufficientPriviledges);
     }
@@ -207,11 +211,12 @@ pub async fn invite(
     )
 )]
 pub async fn confirm(
+    headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
     Path(id): Path<Uuid>,
 ) -> Result<Json<ConfirmationResponse>, BackendError> {
-    let account = authorize::verify(&state.pool, &state.cache, &jar).await?;
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     if account.role != Role::Owner {
         return Err(BackendError::InsufficientPriviledges);
     }
