@@ -410,7 +410,7 @@ mod tests {
 
             println!("{:?}", result);
             assert!(result.is_ok());
-            assert!(test_path.join("testkey.json").exists());
+            assert!(test_path.join("testkey.ecdsa.key.json").exists());
 
             let config =
                 IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
@@ -424,7 +424,7 @@ mod tests {
                 toml::from_str(&toml_content).expect("Failed to parse TOML");
 
             // Perform assertions on TOML keys and values
-            let private_keypath = format!("{}/testkey.json", test_path.to_str().unwrap());
+            let private_keypath = format!("{}/testkey.ecdsa.key.json", test_path.to_str().unwrap());
             assert_eq!(toml_data["default_ecdsa_keyfile"].as_str(), Some(private_keypath.as_str()));
         })
         .await;
@@ -450,7 +450,7 @@ mod tests {
 
             println!("{:?}", result);
             assert!(result.is_ok());
-            assert!(test_path.join("testkey.json").exists());
+            assert!(test_path.join("testkey.ecdsa.key.json").exists());
 
             let config =
                 IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
@@ -464,7 +464,7 @@ mod tests {
                 toml::from_str(&toml_content).expect("Failed to parse TOML");
 
             // Perform assertions on TOML keys and values
-            let private_keypath = format!("{}/testkey.json", test_path.to_str().unwrap());
+            let private_keypath = format!("{}/testkey.ecdsa.key.json", test_path.to_str().unwrap());
             assert_eq!(toml_data["default_ecdsa_keyfile"].as_str(), Some(private_keypath.as_str()));
         })
         .await;
@@ -527,7 +527,7 @@ mod tests {
 
             assert!(get_result.is_ok());
 
-            let keyfile_path = test_path.join("testkey.json");
+            let keyfile_path = test_path.join("testkey.ecdsa.key.json");
             assert!(keyfile_path.exists());
 
             let json = read_json_file(&keyfile_path).expect("Failed to read keyfile");
@@ -549,47 +549,47 @@ mod tests {
         })
         .await;
     }
-    // #[tokio::test]
-    // async fn test_import_bls_key() {
-    //     let test_dir = "testbls_import";
-    //     build_test_dir(test_dir, |test_path| async move {
-    //         let config = IvyConfig::new_at_path(test_path.clone());
-    //         let result = parse_key_subcommands(
-    //             KeyCommands::Import {
-    //                 command: ImportCommands::BlsImport {
-    //                     private_key:
-    //                         "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
-    //                             .to_string(),
-    //                     keyname: Some("testblsimport".to_string()),
-    //                     password: Some("password".to_string()),
-    //                 },
-    //             },
-    //             config,
-    //         )
-    //         .await;
+    #[tokio::test]
+    async fn test_import_bls_key() {
+        let test_dir = "testbls_import";
+        build_test_dir(test_dir, |test_path| async move {
+            let config = IvyConfig::new_at_path(test_path.clone());
+            let result = parse_key_subcommands(
+                KeyCommands::Import {
+                    command: ImportCommands::BlsImport {
+                        private_key:
+                            "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef"
+                                .to_string(),
+                        keyname: Some("testblsimport".to_string()),
+                        password: Some("password".to_string()),
+                    },
+                },
+                config,
+            )
+            .await;
 
-    //         println!("{:?}", result);
-    //         assert!(result.is_ok());
+            println!("{:?}", result);
+            assert!(result.is_ok());
 
-    //         let config =
-    //             IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load
-    // config");         println!("{:?}", config);
+            let config =
+                IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load
+    config");         println!("{:?}", config);
 
-    //         let toml_content = fs::read_to_string(test_path.join("ivy-config.toml"))
-    //             .await
-    //             .expect("Failed to read TOML file");
-    //         let toml_data: toml::Value =
-    //             toml::from_str(&toml_content).expect("Failed to parse TOML");
+            let toml_content = fs::read_to_string(test_path.join("ivy-config.toml"))
+                .await
+                .expect("Failed to read TOML file");
+            let toml_data: toml::Value =
+                toml::from_str(&toml_content).expect("Failed to parse TOML");
 
-    //         let private_keypath = format!(
-    //             "{}/testblsimport.bls.key.json",
-    //             config.get_key_path().to_str().expect("Can't cast to string")
-    //         );
-    //         assert_eq!(toml_data["default_bls_keyfile"].as_str(),
-    // Some(private_keypath.as_str()));         fs::remove_file(config.default_bls_keyfile).
-    // await.expect("");     })
-    //     .await;
-    // }
+            let private_keypath = format!(
+                "{}/testblsimport.bls.key.json",
+                config.get_key_path().to_str().expect("Can't cast to string")
+            );
+            assert_eq!(toml_data["default_bls_keyfile"].as_str(),
+    Some(private_keypath.as_str()));         fs::remove_file(config.default_bls_keyfile).
+    await.expect("");     })
+        .await;
+    }
     #[tokio::test]
     async fn test_create_bls_key() {
         let test_dir = "testbls_key";
