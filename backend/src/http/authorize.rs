@@ -112,11 +112,11 @@ pub async fn forgot_password(
     if let (Some(sender), Some(sender_address), Some(pass_reset_template)) =
         (state.sender, state.sender_email, state.pass_reset_template)
     {
-        let mut arguments = HashMap::with_capacity(2);
+        let mut arguments = HashMap::with_capacity(1);
         //TODO: Setting this url has to be properly set
         arguments.insert(
             "confirmation_url".to_string(),
-            format!("{}/organization/confirm/{}", state.root_url, verification.verification_id),
+            format!("{}/password_reset/{}", state.root_url, verification.verification_id),
         );
 
         sender

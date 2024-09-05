@@ -83,7 +83,7 @@ pub async fn new(
         arguments.insert("organization_name".to_string(), request.name);
         arguments.insert(
             "confirmation_url".to_string(),
-            format!("{}/organization/confirm/{}", state.root_url, verification.verification_id),
+            format!("{}/organization_confirm/{}", state.root_url, verification.verification_id),
         );
 
         sender
@@ -199,12 +199,12 @@ pub async fn invite(
     if let (Some(sender), Some(sender_address), Some(inv_template)) =
         (state.sender, state.sender_email, state.user_verification_template)
     {
-        let mut arguments = HashMap::with_capacity(2);
+        let mut arguments = HashMap::with_capacity(1);
         arguments.insert("organization_name".to_string(), org.name);
         //TODO: Setting this url has to be properly set
         arguments.insert(
             "confirmation_url".to_string(),
-            format!("{}/organization/confirm/{}", state.root_url, new_acc.verification_id),
+            format!("{}/password_set/{}", state.root_url, new_acc.verification_id),
         );
 
         sender
