@@ -1,10 +1,10 @@
 # Testing Chart
 
 ## Eigenlayer Localhost Testing
-| Test Case             | Description                                  | Notes | Status |
-|-----------------------|----------------------------------------------|-------|--------|
-| Operator Registration | Operator can register as eigenlayer operator |       |        |
-| Operator Has Stake    | Operator stake can be rereived               |       |        |
+| Test Case             | Description                                   | Notes | Status |
+|-----------------------|-----------------------------------------------|-------|--------|
+| Operator Registration | Operator can register as eigenlayer operator  |       |        |
+| Operator Has Stake    | Operator stake can be retreived               |       |        |
 
 ## Eigenda Localhost Testing
 | Test Case               | Description                                   | Notes      | Status |

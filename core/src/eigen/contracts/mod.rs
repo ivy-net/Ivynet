@@ -53,7 +53,7 @@ abigen!(
 // Eigenlayer deployment addresses:
 // https://github.com/Layr-Labs/eigenlayer-contracts?tab=readme-ov-file#deployments
 
-pub fn avs_directory(chain: ethers::types::Chain) -> H160 {
+pub fn avs_directory(chain: Chain) -> H160 {
     match chain {
         Chain::Mainnet => h160!(0x135dda560e946695d6f155dacafc6f1f25c1f5af),
         Chain::Holesky => h160!(0x055733000064333CaDDbC92763c58BF0192fFeBf),
@@ -66,7 +66,7 @@ pub fn avs_directory(chain: ethers::types::Chain) -> H160 {
     }
 }
 
-pub fn delegation_manager(chain: ethers::types::Chain) -> H160 {
+pub fn delegation_manager(chain: Chain) -> H160 {
     match chain {
         Chain::Mainnet => h160!(0x39053D51B77DC0d36036Fc1fCc8Cb819df8Ef37A),
         Chain::Holesky => h160!(0xA44151489861Fe9e3055d95adC98FbD462B948e7),
@@ -79,7 +79,7 @@ pub fn delegation_manager(chain: ethers::types::Chain) -> H160 {
     }
 }
 
-pub fn eigen_pod_manager(chain: ethers::types::Chain) -> H160 {
+pub fn eigen_pod_manager(chain: Chain) -> H160 {
     match chain {
         Chain::Mainnet => h160!(0x91E677b07F7AF907ec9a428aafA9fc14a0d3A338),
         Chain::Holesky => h160!(0x30770d7E3e71112d7A6b7259542D1f680a70e315),
@@ -92,7 +92,7 @@ pub fn eigen_pod_manager(chain: ethers::types::Chain) -> H160 {
     }
 }
 
-pub fn rewards_coordinator(chain: ethers::types::Chain) -> H160 {
+pub fn rewards_coordinator(chain: Chain) -> H160 {
     match chain {
         Chain::Mainnet => h160!(0x7750d328b314EfFa365A0402CcfD489B80B0adda),
         Chain::Holesky => h160!(0xAcc1fb458a1317E886dB376Fc8141540537E68fE),
@@ -105,7 +105,7 @@ pub fn rewards_coordinator(chain: ethers::types::Chain) -> H160 {
     }
 }
 
-pub fn slasher(chain: ethers::types::Chain) -> H160 {
+pub fn slasher(chain: Chain) -> H160 {
     match chain {
         Chain::Mainnet => h160!(0xD92145c07f8Ed1D392c1B88017934E301CC1c3Cd),
         Chain::Holesky => h160!(0xcAe751b75833ef09627549868A04E32679386e7C),
@@ -118,7 +118,7 @@ pub fn slasher(chain: ethers::types::Chain) -> H160 {
     }
 }
 
-pub fn strategy_manager(chain: ethers::types::Chain) -> H160 {
+pub fn strategy_manager(chain: Chain) -> H160 {
     match chain {
         Chain::Mainnet => h160!(0xD92145c07f8Ed1D392c1B88017934E301CC1c3Cd),
         Chain::Holesky => h160!(0xdfB5f6CE42aAA7830E94ECFCcAd411beF4d4D5b6),

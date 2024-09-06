@@ -76,3 +76,13 @@ impl StrategyList for HoleskyLstStrategies {
         }
     }
 }
+
+// TODO: This should be a component of StrategyList
+impl HoleskyLstStrategies {
+    pub fn token(&self) -> Address {
+        match self {
+            HoleskyLstStrategies::Ankreth => h160!(0x8783C9C904e1bdC87d9168AE703c8481E8a477Fd),
+            _ => unimplemented!(),
+        }
+    }
+}
