@@ -1,26 +1,8 @@
 ---
-- name: Get latest release of ivynet-backend
-  community.general.github_release:
-    user: ivy-net
-    repo: ivynet
-    token: "{{ ivynet_backend_github_token }}"
-    action: latest_release
-  register: ivynet_backend_release
-  tags:
-    - ivynet
-    - github
-
-- name: Expose tag of the downloaded assets
-  ansible.builtin.debug:
-    msg: "{{ ivynet_backend_release.tag }} is the tag"
-  tags:
-    - ivynet
-    - github
-
 - name: Get release id
   ansible.builtin.uri:
     # yamllint disable-line rule:line-length
-    url: "https://api.github.com/repos/ivy-net/ivynet/releases/tags/{{ ivynet_backend_release.tag }}"
+    url: "https://api.github.com/repos/ivy-net/ivynet/releases/tags/backend-{{ ivynet_backend_release }}"
     method: GET
     headers:
       Authorization: "token {{ ivynet_backend_github_token }}"
@@ -61,9 +43,10 @@
 
 - name: Save ivynet release info
   ansible.builtin.copy:
-    dest: "{{ ivynet_backend_install_path }}/ivynet.tag"
+    # yamllint disable-line rule:line-length
+    dest: "{{ ivynet_backend_install_path }}/backend-{{ ivynet_backend_release }}"
     content: |
-      {{ ivynet_backend_release.tag }}
+      backend-{{ ivynet_backend_release }}
     owner: root
     group: root
     mode: "0444"

@@ -35,6 +35,11 @@ build {
 
   provisioner "ansible" {
     playbook_file = "../ansible/backend.yml"
-    extra_arguments = ["--vault-password-file", "~/.vault.txt"]
+    extra_arguments = [
+      "--vault-password-file",
+      "~/.vault.txt",
+      "--extra-vars",
+      "{'ivynet_backend': 'backend-${var.version}'}"
+    ]
   }
 }
