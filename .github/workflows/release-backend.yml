@@ -10,7 +10,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  build-binary:
     name: Build and push binaries to github release page
     runs-on: ubuntu-latest
     steps:
@@ -36,3 +36,15 @@ jobs:
           files: |
             target/release/ivynet-backend
           make_latest: false
+
+    build-image:
+      name: Build image with packer
+      runs-on: ubuntu-latest
+      needs: build-binary
+      steps:
+        - name: Checkout repository
+          uses: actions/checkout@v4
+        - name: Run Packer
+          run: |
+            cd devops/packer
+            ./backend.sh
