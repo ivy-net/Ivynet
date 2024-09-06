@@ -31,6 +31,7 @@ async fn main() -> Result<(), BackendError> {
             config.sendgrid_from,
             config.org_verification_template,
             config.user_verification_template,
+            config.pass_reset_template,
             config.http_port,
         );
         let grpc_service =
