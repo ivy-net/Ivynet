@@ -26,9 +26,11 @@ jobs:
           libssl-dev
       - name: Run tests
         run: |
+          cd backend
           cargo test
       - name: Build binaries
         run: |
+          cd backend
           cargo build --release
       - name: Make release
         uses: softprops/action-gh-release@v2
@@ -44,6 +46,10 @@ jobs:
       steps:
         - name: Checkout repository
           uses: actions/checkout@v4
+        - name: Create a file with the vault password
+          run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
+          env:
+            ANSIBLE_VAULT: ${{ secrets.ANSIBLE_VAULT }}
         - name: Run Packer
           run: |
             cd devops/packer
