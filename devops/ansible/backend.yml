@@ -1,5 +1,5 @@
 ---
-- hosts: default
+- hosts: backend
   become: true
   roles:
     - ivynet-backend
