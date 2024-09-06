@@ -1,5 +1,7 @@
 use async_trait::async_trait;
+use core::str;
 use dialoguer::{Input, Password};
+use dirs::home_dir;
 use ethers::{
     signers::Signer,
     types::{Address, Chain, U256},
@@ -8,7 +10,7 @@ use std::{
     fs::{self, File},
     io::{copy, BufReader},
     path::PathBuf,
-    process::Command,
+    process::{Child, Command},
     sync::Arc,
 };
 use thiserror::Error as ThisError;
@@ -18,6 +20,7 @@ use zip::read::ZipArchive;
 use crate::{
     avs::AvsVariant,
     config::{self, IvyConfig},
+    dockercmd::docker_cmd,
     download::dl_progress_bar,
     eigen::{
         contracts::delegation_manager::DelegationManagerAbi,
@@ -31,6 +34,8 @@ use crate::{
 };
 
 use self::contracts::StakeRegistryAbi;
+
+use super::{names::AvsNames, AvsConfig};
 
 mod contracts;
 
@@ -52,26 +57,32 @@ pub enum EigenDAError {
 
 #[derive(Debug, Clone)]
 pub struct EigenDA {
-    path: PathBuf,
+    base_path: PathBuf,
     chain: Chain,
     running: bool,
+    avs_config: AvsConfig,
 }
 
 impl EigenDA {
-    pub fn new(path: PathBuf, chain: Chain) -> Self {
-        Self { path, chain, running: false }
+    pub fn new(base_path: PathBuf, chain: Chain, avs_config: AvsConfig) -> Self {
+        Self { base_path, chain, running: false, avs_config }
     }
 
     pub fn new_from_chain(chain: Chain) -> Self {
-        let home_dir = dirs::home_dir().unwrap();
-        Self::new(home_dir.join(EIGENDA_PATH), chain)
+        let base_path = dirs::home_dir().expect("Could not get home directory").join(EIGENDA_PATH);
+        let avs_config = AvsConfig::load(AvsNames::EigenDA.as_str())
+            .expect("Could not load AVS config - go through setup");
+        Self::new(base_path, chain, avs_config)
     }
 }
 
 impl Default for EigenDA {
     fn default() -> Self {
-        let home_dir = dirs::home_dir().unwrap();
-        Self::new(home_dir.join(EIGENDA_PATH), Chain::Holesky)
+        let home_dir = dirs::home_dir().expect("Could not get home directory");
+        let base_path = home_dir.join(EIGENDA_PATH);
+        let avs_config = AvsConfig::load(AvsNames::EigenDA.as_str())
+            .expect("Could not load AVS config - go through setup");
+        Self::new(base_path, Chain::Holesky, avs_config)
     }
 }
 
@@ -79,14 +90,19 @@ impl Default for EigenDA {
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl AvsVariant for EigenDA {
     async fn setup(
-        &self,
+        &mut self,
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
         _pw: Option<String>,
+        is_custom: bool,
     ) -> Result<(), IvyError> {
-        download_operator_setup(self.path.clone()).await?;
-        download_g1_g2(self.path.clone()).await?;
-        self.build_env(provider, config).await?;
+        self.build_pathing(is_custom)?;
+        if !is_custom {
+            download_operator_setup(self.base_path.clone()).await?;
+            download_g1_g2(self.base_path.clone()).await?;
+            self.build_env(provider, config).await?;
+        }
+
         Ok(())
     }
 
@@ -127,6 +143,19 @@ impl AvsVariant for EigenDA {
             _ => {}
         }
         Ok(acceptable)
+    }
+
+    async fn attach(&mut self) -> Result<Child, IvyError> {
+        //TODO: Make more robust once path from avs config file is integrated
+        let setup_path =
+            home_dir().unwrap().join(EIGENDA_PATH).join("eigenda-operator-setup/holesky");
+        info!("Path: {:?}", &setup_path);
+        std::env::set_current_dir(&setup_path)?;
+
+        let cmd = docker_cmd(["logs", "-f"])?;
+
+        self.running = true;
+        Ok(cmd)
     }
 
     async fn register(
@@ -225,20 +254,15 @@ impl AvsVariant for EigenDA {
     }
 
     fn name(&self) -> &'static str {
-        "eigenda"
+        AvsNames::EigenDA.as_str()
     }
 
-    fn path(&self) -> PathBuf {
-        self.path.clone()
+    fn base_path(&self) -> PathBuf {
+        self.base_path.clone()
     }
 
     fn run_path(&self) -> PathBuf {
-        let docker_path = self.path.join("eigenda-operator-setup");
-        match self.chain {
-            Chain::Mainnet => docker_path.join("mainnet"),
-            Chain::Holesky => docker_path.join("holesky"),
-            _ => todo!("Unimplemented"),
-        }
+        self.avs_config.get_path(self.chain)
     }
 
     fn is_running(&self) -> bool {
@@ -304,19 +328,22 @@ impl EigenDA {
     }
 
     async fn build_env(
-        &self,
+        &mut self,
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
     ) -> Result<(), IvyError> {
         let chain = Chain::try_from(provider.signer().chain_id())?;
         let rpc_url = config.get_rpc_url(chain)?;
 
-        let avs_run_path = self.path.join("eigenda-operator-setup");
+        let avs_run_path = self.base_path.join("eigenda-operator-setup");
         let avs_run_path = match chain {
             Chain::Mainnet => avs_run_path.join("mainnet"),
             Chain::Holesky => avs_run_path.join("holesky"),
             _ => todo!("Unimplemented"),
         };
+
+        self.avs_config.set_path(chain, avs_run_path.clone(), false);
+        self.avs_config.store();
 
         let env_example_path = avs_run_path.join(".env.example");
         let env_path = avs_run_path.join(".env");
@@ -404,6 +431,24 @@ impl EigenDA {
             Chain::Holesky => vec![QuorumType::LST],
             _ => todo!("Unimplemented"),
         }
+    }
+
+    fn build_pathing(&mut self, is_custom: bool) -> Result<(), IvyError> {
+        let path = if !is_custom {
+            let setup = self.base_path.join("eigenda-operator-setup");
+            match self.chain {
+                Chain::Mainnet => setup.join("mainnet"),
+                Chain::Holesky => setup.join("holesky"),
+                _ => todo!("Unimplemented"),
+            }
+        } else {
+            AvsConfig::ask_for_path()
+        };
+
+        self.avs_config.set_path(self.chain, path, is_custom);
+        self.avs_config.store();
+
+        Ok(())
     }
 }
 

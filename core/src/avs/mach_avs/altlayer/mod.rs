@@ -16,7 +16,7 @@ use tracing::{debug, error, info};
 use zip::ZipArchive;
 
 use crate::{
-    avs::AvsVariant,
+    avs::{names::AvsNames, AvsVariant},
     config::{self, IvyConfig},
     constants::IVY_METADATA,
     eigen::{
@@ -36,14 +36,14 @@ const ALTLAYER_REPO_URL: &str =
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct AltLayer {
-    path: PathBuf,
+    base_path: PathBuf,
     chain: Chain,
     running: bool,
 }
 
 impl AltLayer {
-    pub fn new(path: PathBuf, chain: Chain) -> Self {
-        Self { path, chain, running: false }
+    pub fn new(base_path: PathBuf, chain: Chain) -> Self {
+        Self { base_path, chain, running: false }
     }
 
     pub fn new_from_chain(chain: Chain) -> Self {
@@ -63,12 +63,13 @@ impl Default for AltLayer {
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl AvsVariant for AltLayer {
     async fn setup(
-        &self,
+        &mut self,
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
         _pw: Option<String>,
+        _is_custom: bool,
     ) -> Result<(), IvyError> {
-        download_operator_setup(self.path.clone()).await?;
+        download_operator_setup(self.base_path.clone()).await?;
         self.build_env(provider, config).await?;
         Ok(())
     }
@@ -117,15 +118,15 @@ impl AvsVariant for AltLayer {
     }
 
     fn name(&self) -> &'static str {
-        "altlayer"
+        AvsNames::AltLayer.as_str()
     }
 
-    fn path(&self) -> PathBuf {
-        self.path.clone()
+    fn base_path(&self) -> PathBuf {
+        self.base_path.clone()
     }
 
     fn run_path(&self) -> PathBuf {
-        self.path
+        self.base_path
             .join("mach-avs-operator-setup")
             .join(self.chain.to_string().to_lowercase())
             .join("mach-avs/op-sepolia")
@@ -175,7 +176,7 @@ impl AltLayer {
         let chain = Chain::try_from(provider.signer().chain_id())?;
         let rpc_url = config.get_rpc_url(chain)?;
 
-        let mach_avs_path = self.path.join("mach-avs-operator-setup");
+        let mach_avs_path = self.base_path.join("mach-avs-operator-setup");
         let avs_run_path = match chain {
             Chain::Mainnet => mach_avs_path.join("mainnet"),
             Chain::Holesky => mach_avs_path.join("holesky"),

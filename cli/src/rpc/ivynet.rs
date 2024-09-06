@@ -1,5 +1,8 @@
 use ivynet_core::{
-    avs::{eigenda::EigenDA, mach_avs::AltLayer, AvsProvider, AvsVariant},
+    avs::{
+        eigenda::EigenDA, lagrange::Lagrange, mach_avs::AltLayer, names::AvsNames, AvsProvider,
+        AvsVariant,
+    },
     config::IvyConfig,
     eigen::contracts::delegation_manager::OperatorDetails,
     error::IvyError,
@@ -7,7 +10,7 @@ use ivynet_core::{
     grpc::{
         ivynet_api::{
             ivy_daemon_avs::{
-                avs_server::Avs, AvsInfoRequest, AvsInfoResponse, RegisterRequest,
+                avs_server::Avs, AttachRequest, AvsInfoRequest, AvsInfoResponse, RegisterRequest,
                 SelectAvsRequest, SetupRequest, StartRequest, StopRequest, UnregisterRequest,
             },
             ivy_daemon_operator::{
@@ -81,6 +84,18 @@ impl Avs for IvynetService {
         Ok(Response::new(response))
     }
 
+    async fn attach(
+        &self,
+        _request: Request<AttachRequest>,
+    ) -> Result<Response<RpcResponse>, Status> {
+        let mut provider = self.avs_provider.write().await;
+        provider.attach().await?;
+
+        let response =
+            RpcResponse { response_type: 0, msg: "AVS attached successfully.".to_string() };
+        Ok(Response::new(response))
+    }
+
     async fn stop(&self, _request: Request<StopRequest>) -> Result<Response<RpcResponse>, Status> {
         let mut provider = self.avs_provider.write().await;
         provider.stop().await?;
@@ -137,9 +152,10 @@ impl Avs for IvynetService {
             let new_ivy_provider =
                 connect_provider(&config.get_rpc_url(chain)?, Some(signer)).await?;
 
-            let avs_instance: Box<dyn AvsVariant> = match avs.as_ref() {
-                "eigenda" => Box::new(EigenDA::new_from_chain(chain)),
-                "altlayer" => Box::new(AltLayer::new_from_chain(chain)),
+            let avs_instance: Box<dyn AvsVariant> = match AvsNames::from(avs.as_ref()) {
+                AvsNames::EigenDA => Box::new(EigenDA::new_from_chain(chain)),
+                AvsNames::AltLayer => Box::new(AltLayer::new_from_chain(chain)),
+                AvsNames::LagrangeZK => Box::new(Lagrange::new_from_chain(chain)),
                 _ => return Err(IvyError::InvalidAvsType(avs.to_string()).into()),
             };
             provider.set_avs(avs_instance, new_ivy_provider.into()).await?;

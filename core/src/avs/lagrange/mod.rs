@@ -29,6 +29,8 @@ use crate::{
     rpc_management::IvyProvider,
 };
 
+use super::{config::AvsConfig, names::AvsNames};
+
 mod config;
 
 /**
@@ -56,28 +58,31 @@ pub enum LagrangeError {
 
 #[derive(Debug, Clone)]
 pub struct Lagrange {
-    path: PathBuf,
+    base_path: PathBuf,
     #[allow(dead_code)]
     chain: Chain,
     running: bool,
+    avs_config: AvsConfig,
 }
 
 impl Lagrange {
-    pub fn new(path: PathBuf, chain: Chain) -> Self {
-        Self { path, chain, running: false }
+    pub fn new(base_path: PathBuf, chain: Chain, avs_config: AvsConfig) -> Self {
+        Self { base_path, chain, running: false, avs_config }
     }
 
     pub fn new_from_chain(chain: Chain) -> Self {
-        let home_dir = dirs::home_dir().unwrap();
-        Self::new(home_dir.join(LAGRANGE_PATH), chain)
+        let base_path = dirs::home_dir().expect("Could not get home directory").join(LAGRANGE_PATH);
+        let avs_config = AvsConfig::load(AvsNames::LagrangeZK.as_str())
+            .expect("Could not load AVS config - go through setup");
+        Self::new(base_path, chain, avs_config)
     }
 }
 
 impl Default for Lagrange {
     fn default() -> Self {
-        let home_dir = dirs::home_dir().unwrap();
-        let chain_dir = home_dir.join(LAGRANGE_PATH).join("holesky");
-        Self::new(chain_dir, Chain::Holesky)
+        let avs_config = AvsConfig::load(AvsNames::LagrangeZK.as_str())
+            .expect("Could not load AVS config - go through setup");
+        Self::new(avs_config.get_path(Chain::Holesky), Chain::Holesky, avs_config)
     }
 }
 
@@ -87,13 +92,15 @@ impl AvsVariant for Lagrange {
     // TODO: This currently creates a new Lagrange key every time it is run; this may be
     // undesirable. Figure out if this behavior needs to be stabilized.
     async fn setup(
-        &self,
+        &mut self,
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
         _keyfile_pw: Option<String>,
+        is_custom: bool,
     ) -> Result<(), IvyError> {
-        download_operator_setup(self.path.clone()).await?;
-        self.build_env(provider, config).await?;
+        self.build_pathing(is_custom)?;
+        download_operator_setup(self.base_path.clone()).await?;
+        self.build_env(provider, config)?;
         generate_lagrange_key(self.run_path()).await?;
 
         // copy ecdsa keyfile to lagrange-worker path
@@ -155,15 +162,15 @@ impl AvsVariant for Lagrange {
     }
 
     fn name(&self) -> &str {
-        "lagrange"
+        AvsNames::LagrangeZK.as_str()
     }
 
-    fn path(&self) -> PathBuf {
-        self.path.clone()
+    fn base_path(&self) -> PathBuf {
+        self.base_path.clone()
     }
 
     fn run_path(&self) -> PathBuf {
-        self.path.join("lagrange-worker").join(self.chain.as_ref())
+        self.avs_config.get_path(self.chain)
     }
 
     fn is_running(&self) -> bool {
@@ -177,11 +184,7 @@ impl AvsVariant for Lagrange {
 
 impl Lagrange {
     /// Builds the .env file for the Lagrange worker
-    async fn build_env(
-        &self,
-        _provider: Arc<IvyProvider>,
-        config: &IvyConfig,
-    ) -> Result<(), IvyError> {
+    fn build_env(&self, _provider: Arc<IvyProvider>, config: &IvyConfig) -> Result<(), IvyError> {
         let env_example_path = self.run_path().join(".env.example");
         let env_path = self.run_path().join(".env");
 
@@ -212,6 +215,19 @@ impl Lagrange {
             Chain::Holesky => vec![QuorumType::LST],
             _ => todo!("Unimplemented"),
         }
+    }
+
+    fn build_pathing(&mut self, is_custom: bool) -> Result<(), IvyError> {
+        let path = if !is_custom {
+            self.base_path.join("lagrange-worker").join(self.chain.as_ref())
+        } else {
+            AvsConfig::ask_for_path()
+        };
+
+        self.avs_config.set_path(self.chain, path, is_custom);
+        self.avs_config.store();
+
+        Ok(())
     }
 }
 

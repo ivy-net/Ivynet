@@ -47,6 +47,13 @@ pub enum AvsCommands {
         about = "unload the current AVS instance and load in a new instance."
     )]
     Select { avs: String, chain: String },
+    #[command(name = "attach", about = "attach a running AVS node to a docker container")]
+    Attach {
+        #[clap(required(false), long, requires("chain"))]
+        avs: Option<String>,
+        #[clap(required(false), long, requires("avs"))]
+        chain: Option<String>,
+    },
     #[command(
         name = "check-stake-percentage",
         about = "Determine what percentage of the total stake an address would have"
@@ -63,6 +70,9 @@ impl Display for AvsCommands {
             AvsCommands::Unregister {} => write!(f, "unregister"),
             AvsCommands::Start { .. } => write!(f, "start"),
             AvsCommands::Stop {} => write!(f, "stop"),
+            AvsCommands::Attach { .. } => {
+                write!(f, "Attaching to active AVS")
+            }
             AvsCommands::CheckStakePercentage { avs, address, network } => {
                 write!(f, "check stake percentage for {} on {} network", address, network)?;
                 todo!("Use {}", avs)
