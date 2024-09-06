@@ -59,11 +59,11 @@ impl IvyWallet {
             &mut thread_rng(),
             self.local_wallet.signer().to_bytes(),
             &password,
-            Some(&(name.clone() + ".json")),
+            Some(&name),
         )?;
         debug!("{:?}", encrypt);
 
-        let prv_key_path = path.join(format!("{name}.json"));
+        let prv_key_path = path.join(name);
 
         let Keyfile { crypto, id, version } = read_json(&prv_key_path)?;
         let keyfile = KeyfileLegacy { address: self.local_wallet.address(), crypto, id, version };

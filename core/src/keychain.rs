@@ -1,7 +1,7 @@
-use std::{fs, path::PathBuf};
+use std::{fmt::Display, fs, path::PathBuf};
 
 use crate::{
-    bls::{decode_address, encode_address, Address as BlsAddress, BlsKey},
+    bls::{encode_address, Address as BlsAddress, BlsKey},
     error::IvyError,
     wallet::IvyWallet,
 };
@@ -12,6 +12,12 @@ use ethers::types::Address;
 pub enum KeyType {
     Ecdsa,
     Bls,
+}
+
+#[derive(Debug, PartialEq, Eq)]
+pub enum KeyAddress {
+    Ecdsa(Address),
+    Bls(Box<BlsAddress>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -27,12 +33,35 @@ impl Key {
             Key::Bls(key) => KeyAddress::Bls(Box::new(key.address())),
         }
     }
+
+    pub fn ecdsa_address(&self) -> Option<Address> {
+        match &self {
+            Key::Ecdsa(wallet) => Some(wallet.address()),
+            _ => None,
+        }
+    }
+
+    pub fn bls_address(&self) -> Option<BlsAddress> {
+        match &self {
+            Key::Bls(key) => Some(key.address()),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum KeyAddress {
-    Ecdsa(Address),
-    Bls(Box<BlsAddress>),
+pub enum KeyName {
+    Ecdsa(String),
+    Bls(String),
+}
+
+impl Display for KeyName {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            KeyName::Ecdsa(n) => f.write_fmt(format_args!("{n}")),
+            KeyName::Bls(n) => f.write_fmt(format_args!("{n}")),
+        }
+    }
 }
 
 pub struct Keychain {
@@ -50,7 +79,7 @@ impl Keychain {
         Self { path }
     }
 
-    pub fn list(&self) -> Result<Vec<KeyAddress>, IvyError> {
+    pub fn list(&self) -> Result<Vec<KeyName>, IvyError> {
         let paths = fs::read_dir(&self.path)?;
 
         let mut list = Vec::new();
@@ -59,17 +88,9 @@ impl Keychain {
             let cmps = filename.to_str().unwrap().split('.').collect::<Vec<&str>>();
             if cmps.len() == 3 {
                 match cmps[1] {
-                    "bls" => {
-                        if let Ok(address) = decode_address(cmps[0]) {
-                            list.push(KeyAddress::Bls(Box::new(address)));
-                        }
-                    }
+                    "bls" => list.push(KeyName::Bls(cmps[0].to_string())),
                     // PublicKey struct of theirs. Stupid
-                    "ecdsa" => {
-                        if let Ok(address) = cmps[0].parse::<Address>() {
-                            list.push(KeyAddress::Ecdsa(address));
-                        }
-                    }
+                    "ecdsa" => list.push(KeyName::Ecdsa(cmps[0].to_string())),
                     _ => {}
                 }
             }
@@ -77,78 +98,99 @@ impl Keychain {
         Ok(list)
     }
 
-    pub fn generate(&self, key_type: KeyType, password: &str) -> Key {
+    pub fn generate(&self, key_type: KeyType, name: Option<&str>, password: &str) -> Key {
         match key_type {
-            KeyType::Ecdsa => Key::Ecdsa(self.ecdsa_generate(password)),
-            KeyType::Bls => Key::Bls(self.bls_generate(password)),
+            KeyType::Ecdsa => Key::Ecdsa(self.ecdsa_generate(name, password)),
+            KeyType::Bls => Key::Bls(self.bls_generate(name, password)),
         }
     }
 
-    pub fn import(&self, key_type: KeyType, key: &str, password: &str) -> Result<Key, IvyError> {
+    pub fn import(
+        &self,
+        key_type: KeyType,
+        name: Option<&str>,
+        key: &str,
+        password: &str,
+    ) -> Result<Key, IvyError> {
         match key_type {
-            KeyType::Ecdsa => Ok(Key::Ecdsa(self.ecdsa_import(key, password)?)),
-            KeyType::Bls => Ok(Key::Bls(self.bls_import(key, password)?)),
+            KeyType::Ecdsa => Ok(Key::Ecdsa(self.ecdsa_import(name, key, password)?)),
+            KeyType::Bls => Ok(Key::Bls(self.bls_import(name, key, password)?)),
         }
     }
 
-    pub fn load(&self, address: KeyAddress, password: &str) -> Result<Key, IvyError> {
+    pub fn load(&self, address: KeyName, password: &str) -> Result<Key, IvyError> {
         match address {
-            KeyAddress::Ecdsa(address) => Ok(Key::Ecdsa(self.ecdsa_load(address, password)?)),
-            KeyAddress::Bls(address) => Ok(Key::Bls(self.bls_load(&address, password)?)),
+            KeyName::Ecdsa(name) => Ok(Key::Ecdsa(self.ecdsa_load(&name, password)?)),
+            KeyName::Bls(name) => Ok(Key::Bls(self.bls_load(&name, password)?)),
         }
     }
 
-    fn bls_generate(&self, password: &str) -> BlsKey {
+    fn bls_generate(&self, name: Option<&str>, password: &str) -> BlsKey {
         let bls = BlsKey::new();
-        if let Ok(address) = encode_address(&bls.address()) {
-            _ = bls.encrypt_and_store(
-                &self.path,
-                format!("{}.bls.json", address),
-                password.to_string(),
-            );
-        }
+        _ = bls.encrypt_and_store(
+            &self.path,
+            Self::gen_keyname(name, "bls", encode_address(&bls.address()).ok()),
+            password.to_string(),
+        );
         bls
     }
 
-    fn bls_import(&self, key: &str, password: &str) -> Result<BlsKey, IvyError> {
+    fn bls_import(
+        &self,
+        name: Option<&str>,
+        key: &str,
+        password: &str,
+    ) -> Result<BlsKey, IvyError> {
         let bls = BlsKey::from_private_key(key.to_string())?;
         _ = bls.encrypt_and_store(
             &self.path,
-            format!("{}.bls.json", encode_address(&bls.address())?),
+            Self::gen_keyname(name, "bls", encode_address(&bls.address()).ok()),
             password.to_string(),
         );
         Ok(bls)
     }
 
-    fn bls_load(&self, address: &BlsAddress, password: &str) -> Result<BlsKey, IvyError> {
-        Ok(BlsKey::from_keystore(
-            self.path.join(format!("{}.bls.json", encode_address(address)?)),
-            password,
-        )?)
+    fn bls_load(&self, name: &str, password: &str) -> Result<BlsKey, IvyError> {
+        Ok(BlsKey::from_keystore(self.path.join(format!("{name}.bls.json")), password)?)
     }
 
-    fn ecdsa_generate(&self, password: &str) -> IvyWallet {
+    fn ecdsa_generate(&self, name: Option<&str>, password: &str) -> IvyWallet {
         let wallet = IvyWallet::new();
         _ = wallet.encrypt_and_store(
             &self.path,
-            format!("{:?}.ecdsa", wallet.address()),
+            Self::gen_keyname(name, "ecdsa", Some(format!("{:?}", wallet.address()))),
             password.to_string(),
         );
         wallet
     }
 
-    fn ecdsa_import(&self, key: &str, password: &str) -> Result<IvyWallet, IvyError> {
+    fn ecdsa_import(
+        &self,
+        name: Option<&str>,
+        key: &str,
+        password: &str,
+    ) -> Result<IvyWallet, IvyError> {
         let wallet = IvyWallet::from_private_key(key.to_string())?;
         _ = wallet.encrypt_and_store(
             &self.path,
-            format!("{:?}.ecdsa", wallet.address()),
+            Self::gen_keyname(name, "ecdsa", Some(format!("{:?}", wallet.address()))),
             password.to_string(),
         );
         Ok(wallet)
     }
 
-    fn ecdsa_load(&self, address: Address, password: &str) -> Result<IvyWallet, IvyError> {
-        IvyWallet::from_keystore(self.path.join(format!("{:?}.ecdsa.json", address)), password)
+    fn ecdsa_load(&self, name: &str, password: &str) -> Result<IvyWallet, IvyError> {
+        IvyWallet::from_keystore(self.path.join(format!("{name}.ecdsa.json")), password)
+    }
+
+    fn gen_keyname(name: Option<&str>, key_type: &str, address_string: Option<String>) -> String {
+        match name {
+            Some(ref n) => format!("{n}.{key_type}.json"),
+            None => match address_string {
+                Some(n) => format!("{n}.{key_type}.json"),
+                _ => format!("key.{key_type}.json"),
+            },
+        }
     }
 }
 
@@ -179,10 +221,10 @@ pub mod test {
         build_test_dir("keychain_ecdsa", |test_path| async move {
             let keychain = Keychain::new(test_path);
 
-            let ecdsa = keychain.generate(KeyType::Ecdsa, "testpws");
+            let ecdsa = keychain.generate(KeyType::Ecdsa, None, "testpws");
             let all_keys = keychain.list().unwrap();
             assert_eq!(all_keys.len(), 1);
-            assert_eq!(ecdsa.address(), all_keys[0]);
+            assert_eq!(format!("{:?}", ecdsa.ecdsa_address().unwrap()), all_keys[0].to_string());
 
             let loaded_ecdsa = keychain.load(all_keys[0].clone(), "testpws").unwrap();
             assert_eq!(ecdsa, loaded_ecdsa);
@@ -195,12 +237,17 @@ pub mod test {
         build_test_dir("keychain_bls", |test_path| async move {
             let keychain = Keychain::new(test_path);
 
-            let bls = keychain.generate(KeyType::Bls, "testpws");
+            let bls = keychain.generate(KeyType::Bls, None, "testpws");
             let all_keys = keychain.list().unwrap();
             assert_eq!(all_keys.len(), 1);
-            assert_eq!(bls.address(), all_keys[0]);
+            assert_eq!(
+                encode_address(&bls.bls_address().unwrap()).unwrap(),
+                all_keys[0].to_string()
+            );
 
-            let loaded_bls = keychain.load(all_keys[0].clone(), "testpws").unwrap();
+            let loaded_bls = keychain
+                .load(KeyName::Bls(encode_address(&bls.bls_address().unwrap()).unwrap()), "testpws")
+                .unwrap();
             assert_eq!(bls, loaded_bls);
         })
         .await;
@@ -211,14 +258,14 @@ pub mod test {
         build_test_dir("keychain_multi", |test_path| async move {
             let keychain = Keychain::new(test_path);
 
-            let bls = keychain.generate(KeyType::Bls, "testpws");
-            let ecdsa = keychain.generate(KeyType::Ecdsa, "testpws");
+            _ = keychain.generate(KeyType::Bls, Some("mybls"), "testpws");
+            _ = keychain.generate(KeyType::Ecdsa, Some("myecdsa"), "testpws");
             let all_keys = keychain.list().unwrap();
             assert_eq!(all_keys.len(), 2);
             for key in all_keys {
                 match key {
-                    KeyAddress::Bls(_) => assert_eq!(bls.address(), key),
-                    KeyAddress::Ecdsa(_) => assert_eq!(ecdsa.address(), key),
+                    KeyName::Bls(n) => assert_eq!("mybls", &n),
+                    KeyName::Ecdsa(n) => assert_eq!("myecdsa", &n),
                 }
             }
         })
