@@ -455,7 +455,8 @@ mod tests {
     async fn test_import_ecdsa_key() {
         let test_dir = "test_import_key";
         build_test_dir(test_dir, |test_path| async move {
-            let config = IvyConfig::new_at_path(test_path.clone());
+            let mut config = IvyConfig::new_at_path(test_path.clone());
+            config.set_keypath(test_path.clone());
             let result = parse_key_subcommands(
                 KeyCommands::Import {
                     command: ImportCommands::EcdsaImport {
@@ -473,13 +474,12 @@ mod tests {
             println!("{:?}", result);
             assert!(result.is_ok());
             println!("{:?}", test_path);
-            assert!(config.get_key_path().join("testkey.ecdsa.json").exists());
+            assert!(test_path.join("testkey.ecdsa.json").exists());
 
             let config =
                 IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
             println!("{:?}", config);
 
-            // Read and parse the TOML file
             let toml_content = fs::read_to_string(test_path.join("ivy-config.toml"))
                 .await
                 .expect("Failed to read TOML file");
@@ -487,10 +487,8 @@ mod tests {
                 toml::from_str(&toml_content).expect("Failed to parse TOML");
 
             // Perform assertions on TOML keys and values
-            let private_keypath =
-                format!("{}/testkey.ecdsa.json", config.get_key_path().to_str().unwrap());
+            let private_keypath = format!("{}/testkey.ecdsa.json", test_path.to_str().unwrap());
             assert_eq!(toml_data["default_ecdsa_keyfile"].as_str(), Some(private_keypath.as_str()));
-            fs::remove_file(config.default_ecdsa_keyfile).await.expect("");
         })
         .await;
     }
@@ -499,8 +497,8 @@ mod tests {
     async fn test_create_ecdsa_key() {
         let test_dir = "test_create_key";
         build_test_dir(test_dir, |test_path| async move {
-            let config = IvyConfig::new_at_path(test_path.clone());
-
+            let mut config = IvyConfig::new_at_path(test_path.clone());
+            config.set_keypath(test_path.clone());
             let result = parse_key_subcommands(
                 KeyCommands::Create {
                     command: CreateCommands::EcdsaCreate {
@@ -515,7 +513,7 @@ mod tests {
 
             println!("{:?}", result);
             assert!(result.is_ok());
-            assert!(config.get_key_path().join("testkey.ecdsa.json").exists());
+            assert!(test_path.join("testkey.ecdsa.json").exists());
 
             let config =
                 IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
@@ -529,10 +527,8 @@ mod tests {
                 toml::from_str(&toml_content).expect("Failed to parse TOML");
 
             // Perform assertions on TOML keys and values
-            let private_keypath =
-                format!("{}/testkey.ecdsa.json", config.get_key_path().to_str().unwrap());
+            let private_keypath = format!("{}/testkey.ecdsa.json", test_path.to_str().unwrap());
             assert_eq!(toml_data["default_ecdsa_keyfile"].as_str(), Some(private_keypath.as_str()));
-            fs::remove_file(config.default_ecdsa_keyfile).await.expect("");
         })
         .await;
     }
@@ -568,8 +564,8 @@ mod tests {
     async fn test_get_public_key() {
         let test_dir = "test_get_public_key";
         build_test_dir(test_dir, |test_path| async move {
-            let config = IvyConfig::new_at_path(test_path.clone());
-
+            let mut config = IvyConfig::new_at_path(test_path.clone());
+            config.set_keypath(test_path.clone());
             let create_result = parse_key_subcommands(
                 KeyCommands::Create {
                     command: CreateCommands::EcdsaCreate {
@@ -594,7 +590,7 @@ mod tests {
 
             assert!(get_result.is_ok());
 
-            let keyfile_path = config.get_key_path().join("testkey.ecdsa.json");
+            let keyfile_path = test_path.join("testkey.ecdsa.json");
             assert!(keyfile_path.exists());
 
             let json = read_json_file(&keyfile_path).expect("Failed to read keyfile");
@@ -613,7 +609,6 @@ mod tests {
                 config.default_ecdsa_address,
                 "The public key address does not match the address in the config file"
             );
-            fs::remove_file(config.default_ecdsa_keyfile).await.expect("");
         })
         .await;
     }
@@ -621,7 +616,8 @@ mod tests {
     async fn test_import_bls_key() {
         let test_dir = "testbls_import";
         build_test_dir(test_dir, |test_path| async move {
-            let config = IvyConfig::new_at_path(test_path.clone());
+            let mut config = IvyConfig::new_at_path(test_path.clone());
+            config.set_keypath(test_path.clone());
             let result = parse_key_subcommands(
                 KeyCommands::Import {
                     command: ImportCommands::BlsImport {
@@ -651,10 +647,9 @@ mod tests {
 
             let private_keypath = format!(
                 "{}/testblsimport.bls.json",
-                config.get_key_path().to_str().expect("Can't cast to string")
+                test_path.to_str().expect("Can't cast to string")
             );
             assert_eq!(toml_data["default_bls_keyfile"].as_str(), Some(private_keypath.as_str()));
-            fs::remove_file(config.default_bls_keyfile).await.expect("");
         })
         .await;
     }
@@ -662,7 +657,8 @@ mod tests {
     async fn test_create_bls_key() {
         let test_dir = "testbls_key";
         build_test_dir(test_dir, |test_path| async move {
-            let config = IvyConfig::new_at_path(test_path.clone());
+            let mut config = IvyConfig::new_at_path(test_path.clone());
+            config.set_keypath(test_path.clone());
             let result = parse_key_subcommands(
                 KeyCommands::Create {
                     command: CreateCommands::BlsCreate {
@@ -691,10 +687,9 @@ mod tests {
             // Perform assertions on TOML keys and values
             let private_keypath = format!(
                 "{}/testblskey.bls.json",
-                config.get_key_path().to_str().expect("Can't cast to string")
+                test_path.to_str().expect("Can't cast to string")
             );
             assert_eq!(toml_data["default_bls_keyfile"].as_str(), Some(private_keypath.as_str()));
-            fs::remove_file(config.default_bls_keyfile).await.expect("");
         })
         .await;
     }

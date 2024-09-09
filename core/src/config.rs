@@ -124,6 +124,10 @@ impl IvyConfig {
         self.default_bls_keyfile = keyfile;
     }
 
+    pub fn set_keypath(&mut self, new_path: PathBuf) {
+        self.key_path = new_path;
+    }
+
     pub fn get_rpc_url(&self, chain: Chain) -> Result<String, IvyError> {
         match chain {
             Chain::Mainnet => Ok(self.mainnet_rpc_url.clone()),
