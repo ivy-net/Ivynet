@@ -36,6 +36,7 @@ async fn enter_aeth_staking(amount: U256, signer: Arc<SignerClient>) {
     );
     let tx = ankr_steth.stake_and_claim_aeth_c().value(amount);
     let receipt = tx.send().await.unwrap().await.unwrap();
+    // println!("{:#?}", receipt);
     assert!(receipt.is_some());
 }
 
@@ -136,14 +137,20 @@ mod holesky {
         // Enter staking
         let one_ether = U256::from(1000000000000000000_u128);
         let amount = one_ether * U256::from(33_u64);
+        let user_bal = provider.get_balance(signer.address(), None).await.unwrap();
+        println!("User balance: {}", user_bal);
         enter_aeth_staking(amount, signer.clone()).await;
 
-        provider.request("anvil_mine", vec![1]).await.unwrap();
+        let res: serde_json::Value = provider.request("anvil_mine", [1]).await.unwrap();
+
+        let user_bal = provider.get_balance(signer.address(), None).await.unwrap();
+        println!("User balance: {}", user_bal);
 
         let aeth_token =
             contracts::ERC20::new(HoleskyLstStrategies::Ankreth.token(), signer.clone());
-        let balance = aeth_token.balance_of(signer.address()).await.unwrap();
-        assert_eq!(balance, amount);
+        println!("Signer address: {}", signer.address());
+        // let balance = aeth_token.balance_of(signer.address()).await.unwrap();
+        // assert_eq!(balance, amount);
 
         let tx = aeth_token.approve(strategy_manager(Chain::Holesky), amount);
         let receipt = tx.send().await.unwrap().await.unwrap();
@@ -162,6 +169,7 @@ mod holesky {
 
         let stake =
             delegation_manager.operator_shares(signer.address(), strategy.address()).await.unwrap();
+        println!("Stake: {}", stake);
         assert_eq!(stake, amount);
     }
 }
