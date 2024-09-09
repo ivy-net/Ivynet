@@ -1,13 +1,8 @@
 use clap::Parser;
 use ivynet_core::{
     config::{self, IvyConfig},
-    error::IvyError,
     ethers::types::Chain,
-    grpc::{
-        backend::backend_client::BackendClient,
-        client::{create_channel, Request, Source, Uri},
-        messages::RegistrationCredentials,
-    },
+    grpc::client::Uri,
     metadata::Metadata,
     utils::try_parse_chain,
 };
@@ -29,16 +24,6 @@ pub enum ConfigCommands {
         #[command(subcommand)]
         command: ConfigGetCommands,
     },
-    #[command(name = "register", about = "Register node on IvyNet server using IvyNet details")]
-    Register {
-        /// Email address registered at IvyNet portal
-        #[arg(long, env = "IVYNET_EMAIL")]
-        email: String,
-
-        /// Password to IvyNet account
-        #[arg(long, env = "IVYNET_PASSWORD")]
-        password: String,
-    },
 }
 
 #[derive(Parser, Debug, Clone)]
@@ -50,6 +35,12 @@ pub enum ConfigSetCommands {
     Rpc { chain: String, rpc_url: String },
     #[command(name = "metadata", about = "Set metadata for EigenLayer Operator")]
     Metadata { metadata_uri: Option<String>, logo_uri: Option<String>, favicon_uri: Option<String> },
+    #[command(name = "server_url", about = "Set backend server connection url")]
+    ServerUrl { server_url: Uri },
+    #[command(name = "server_ca", about = "Set backend server certificate")]
+    ServerCa { server_ca: String },
+    #[command(name = "identity_key", about = "Set backend connection identity key")]
+    IdentityKey { identity_key: String },
 }
 
 #[derive(Parser, Debug, Clone)]
@@ -65,13 +56,13 @@ pub enum ConfigGetCommands {
     Config,
     #[command(name = "sys-info", about = "Get system information")]
     SysInfo,
+    #[command(name = "backend", about = "Get backend connection information")]
+    Backend,
 }
 
 pub async fn parse_config_subcommands(
     subcmd: ConfigCommands,
     config: IvyConfig,
-    server_url: Uri,
-    server_ca: Option<&String>,
 ) -> Result<(), Error> {
     match subcmd {
         ConfigCommands::Set { command } => {
@@ -79,20 +70,6 @@ pub async fn parse_config_subcommands(
         }
         ConfigCommands::Get { command } => {
             let _ = parse_config_getter_commands(command, &config);
-        }
-        ConfigCommands::Register { email, password } => {
-            let config = IvyConfig::load_from_default_path().map_err(IvyError::from)?;
-            let public_key = config.identity_wallet()?.address();
-            let mut backend =
-                BackendClient::new(create_channel(Source::Uri(server_url), server_ca).await?);
-            backend
-                .register(Request::new(RegistrationCredentials {
-                    email,
-                    password,
-                    public_key: public_key.as_bytes().to_vec(),
-                }))
-                .await?;
-            println!("Node registered");
         }
     };
     Ok(())
@@ -106,14 +83,26 @@ fn parse_config_setter_commands(
         ConfigSetCommands::Rpc { chain, rpc_url } => {
             let chain = try_parse_chain(&chain)?;
             config.set_rpc_url(chain, &rpc_url)?;
-            config.store().map_err(IvyError::from)?;
+            config.store()?;
         }
         ConfigSetCommands::Metadata { metadata_uri, logo_uri, favicon_uri } => {
             let metadata_uri = metadata_uri.unwrap_or("".to_string());
             let logo_uri = logo_uri.unwrap_or("".to_string());
             let favicon_uri = favicon_uri.unwrap_or("".to_string());
             config.metadata = Metadata::new(&metadata_uri, &logo_uri, &favicon_uri);
-            config.store().map_err(IvyError::from)?;
+            config.store()?;
+        }
+        ConfigSetCommands::ServerUrl { server_url } => {
+            config.backend_info.server_url = server_url.to_string();
+            config.store()?;
+        }
+        ConfigSetCommands::ServerCa { server_ca } => {
+            config.backend_info.server_ca = server_ca;
+            config.store()?;
+        }
+        ConfigSetCommands::IdentityKey { identity_key } => {
+            config.backend_info.identity_key = identity_key;
+            config.store()?;
         }
     }
     Ok(())
@@ -146,6 +135,9 @@ fn parse_config_getter_commands(
         }
         ConfigGetCommands::Config {} => {
             println!("{config:?}");
+        }
+        ConfigGetCommands::Backend {} => {
+            println!("{:?}", config.backend_info);
         }
     }
     Ok(())
@@ -186,8 +178,6 @@ mod tests {
                     },
                 },
                 config,
-                "http://localhost:50051".parse().unwrap(),
-                None,
             )
             .await;
 
@@ -201,8 +191,6 @@ mod tests {
                     command: ConfigGetCommands::Rpc { chain: "mainnet".to_string() },
                 },
                 config,
-                "http://localhost:50051".parse().unwrap(),
-                None,
             )
             .await;
 

@@ -1,16 +1,7 @@
 use dialoguer::{Input, MultiSelect, Password, Select};
 use ivynet_core::{
-    config::IvyConfig,
-    dialog::get_confirm_password,
-    error::IvyError,
-    grpc::{
-        backend::backend_client::BackendClient,
-        client::{create_channel, Source, Uri},
-        messages::RegistrationCredentials,
-        tonic::Request,
-    },
-    metadata::Metadata,
-    wallet::IvyWallet,
+    config::IvyConfig, dialog::get_confirm_password, error::IvyError, grpc::client::Uri,
+    metadata::Metadata, wallet::IvyWallet,
 };
 use std::{fs, path::PathBuf, unreachable};
 
@@ -142,30 +133,32 @@ async fn set_backend_connection(
     server_url: Uri,
     server_ca: Option<&String>,
 ) -> Result<IvyConfig, IvyError> {
-    let client_key = match config.identity_wallet() {
+    match config.identity_wallet() {
         Ok(key) => key.address(),
         _ => {
             let new_key = IvyWallet::new();
-            config.identity_key = Some(new_key.to_private_key());
+            config.backend_info.identity_key = new_key.to_private_key();
             new_key.address()
         }
     };
-    let email = Input::new()
-        .with_prompt("Provide email address to IvyNet system")
-        .interact_text()
-        .expect("No no email provided");
-    let password = Password::new()
-        .with_prompt("Enter a password to IvyNet system")
-        .interact()
-        .expect("No password provided");
-    let mut backend = BackendClient::new(create_channel(Source::Uri(server_url), server_ca).await?);
-    backend
-        .register(Request::new(RegistrationCredentials {
-            email,
-            password,
-            public_key: client_key.as_bytes().to_vec(),
-        }))
-        .await?;
+
+    if server_url.to_string().is_empty() {
+        // Ask for server URL
+        let server_url: String = Input::new()
+            .with_prompt("Enter the URL of the IvyNet server you wish to connect to")
+            .interact()?;
+        config.backend_info.server_url = server_url;
+    }
+
+    if server_ca.is_none() {
+        // Ask for server CA
+        let server_ca: String = Input::new()
+            .with_prompt(
+                "Enter the path to the server's CA certificate (leave blank if not needed)",
+            )
+            .interact()?;
+        config.backend_info.server_ca = server_ca;
+    }
 
     Ok(config)
 }

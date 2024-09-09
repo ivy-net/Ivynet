@@ -4,7 +4,7 @@ use clap::Parser;
 use ivynet_core::grpc::client::Uri;
 use tracing::Level;
 
-#[derive(Clone, Parser)]
+#[derive(Clone, Parser, Debug)]
 pub struct Config {
     #[arg(long, env = "IVY_HTTP_PORT", default_value_t = 8080)]
     pub http_port: u16,

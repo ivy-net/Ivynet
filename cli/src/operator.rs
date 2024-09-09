@@ -4,7 +4,7 @@ use ivynet_core::{
     ethers::core::types::Address,
     grpc::client::{create_channel, Source},
 };
-use std::path::PathBuf;
+// use std::path::PathBuf;
 
 use crate::{client::IvynetClient, error::Error};
 
@@ -15,17 +15,17 @@ pub enum OperatorCommands {
         #[command(subcommand)]
         subcmd: OperatorGetterCommands,
     },
-    #[command(name = "register", about = "Register an operator <CHAIN>")]
+    // #[command(name = "register", about = "Register an operator <CHAIN>")]
     // Register {
     //     chain: String,
     //     delegation_approver: Option<Address>,
     //     staker_opt_out_window_blocks: Option<u32>,
     // },
-    #[command(name = "set", about = "Set operator information")]
-    Set {
-        #[command(subcommand)]
-        subcmd: OperatorSetterCommands,
-    },
+    // #[command(name = "set", about = "Set operator information")]
+    // Set {
+    //     #[command(subcommand)]
+    //     subcmd: OperatorSetterCommands,
+    // },
 }
 
 #[derive(Parser, Debug, Clone)]
@@ -41,19 +41,19 @@ pub enum OperatorGetterCommands {
     DelegatableShares { opt_address: Option<Address> },
 }
 
-#[derive(Parser, Debug, Clone)]
-pub enum OperatorSetterCommands {
-    #[command(
-        name = "ecdsa-keyfile",
-        about = "Set ECDSA keyfile path for your operator <KEYFILE_PATH>"
-    )]
-    EcdsaKeyfile { ecdsa_keypath: PathBuf },
-    #[command(
-        name = "bls-keyfile",
-        about = "Set BLS keyfile path for your operator <KEYFILE_PATH>"
-    )]
-    BlsKeyfile { bls_keypath: PathBuf },
-}
+// #[derive(Parser, Debug, Clone)]
+// pub enum OperatorSetterCommands {
+//     #[command(
+//         name = "ecdsa-keyfile",
+//         about = "Set ECDSA keyfile path for your operator <KEYFILE_PATH>"
+//     )]
+//     EcdsaKeyfile { ecdsa_keypath: PathBuf },
+//     #[command(
+//         name = "bls-keyfile",
+//         about = "Set BLS keyfile path for your operator <KEYFILE_PATH>"
+//     )]
+//     BlsKeyfile { bls_keypath: PathBuf },
+// }
 
 pub async fn parse_operator_subcommands(
     subcmd: OperatorCommands,
@@ -62,10 +62,10 @@ pub async fn parse_operator_subcommands(
     match subcmd {
         OperatorCommands::Get { subcmd } => {
             parse_operator_getter_subcommands(subcmd, config).await?;
-        }
-        OperatorCommands::Set { subcmd } => {
-            parse_operator_setter_subcommands(subcmd, config).await?;
-        } /* OperatorCommands::Register { .. } => {
+        } /* OperatorCommands::Set { subcmd } => {
+           *     parse_operator_setter_subcommands(subcmd, config).await?;
+           * } */
+          /* OperatorCommands::Register { .. } => {
            *     todo!();
            *     // let password: String = Password::new()
            *     //     .with_prompt("Input the password for your stored ECDSA keyfile")
@@ -123,20 +123,20 @@ pub async fn parse_operator_getter_subcommands(
     Ok(())
 }
 
-pub async fn parse_operator_setter_subcommands(
-    subsetter: OperatorSetterCommands,
-    _config: &IvyConfig,
-) -> Result<(), Error> {
-    // let sock = Source::Path(config.uds_dir());
-    // let mut client = IvynetClient::from_channel(create_channel(sock, None).await?);
-    match subsetter {
-        OperatorSetterCommands::EcdsaKeyfile { ecdsa_keypath: _ } => {
-            //client.operator_mut().set_ecdsa_keyfile_path(ecdsa_keypath).await?
-            todo!()
-        }
-        OperatorSetterCommands::BlsKeyfile { bls_keypath: _ } => {
-            //client.operator_mut().set_bls_keyfile_path(bls_keypath).await?
-            todo!()
-        }
-    }
-}
+// pub async fn parse_operator_setter_subcommands(
+//     subsetter: OperatorSetterCommands,
+//     _config: &IvyConfig,
+// ) -> Result<(), Error> {
+//     let sock = Source::Path(config.uds_dir());
+//     let mut client = IvynetClient::from_channel(create_channel(sock, None).await?);
+//     match subsetter {
+//         OperatorSetterCommands::EcdsaKeyfile { ecdsa_keypath: _ } => {
+//             //client.operator_mut().set_ecdsa_keyfile_path(ecdsa_keypath).await?
+//             todo!()
+//         }
+//         OperatorSetterCommands::BlsKeyfile { bls_keypath: _ } => {
+//             //client.operator_mut().set_bls_keyfile_path(bls_keypath).await?
+//             todo!()
+//         }
+//     }
+// }

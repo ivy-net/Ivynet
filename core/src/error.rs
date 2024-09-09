@@ -101,6 +101,9 @@ pub enum IvyError {
     #[error("GRPC client error")]
     GRPCClientError,
 
+    #[error("Invalid tonic URI from string")]
+    InvalidUri,
+
     #[error("Folder inaccesible")]
     DirInaccessible,
 
