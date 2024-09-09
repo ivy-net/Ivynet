@@ -46,6 +46,13 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        name: Install packages for TOML (cargo package)
+        run: >
+          sudo apt install -y
+          cargo
+      - name: Install toml (package)
+        run: |
+          cargo install toml-cli
       - name: Create a file with the vault password
         run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
         env:
