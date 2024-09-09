@@ -540,7 +540,7 @@ mod tests {
 
             println!("{:?}", result);
             assert!(result.is_ok());
-            assert!(test_path.join("testkey.json").exists());
+            assert!(test_path.join("testkey").exists());
 
             let config =
                 IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
@@ -554,7 +554,7 @@ mod tests {
                 toml::from_str(&toml_content).expect("Failed to parse TOML");
 
             // Perform assertions on TOML keys and values
-            let private_keypath = format!("{}/testkey.json", test_path.to_str().unwrap());
+            let private_keypath = format!("{}/testkey", test_path.to_str().unwrap());
             assert_eq!(toml_data["default_ecdsa_keyfile"].as_str(), Some(private_keypath.as_str()));
         })
         .await;
@@ -580,7 +580,7 @@ mod tests {
 
             println!("{:?}", result);
             assert!(result.is_ok());
-            assert!(test_path.join("testkey.json").exists());
+            assert!(test_path.join("testkey").exists());
 
             let config =
                 IvyConfig::load(test_path.join("ivy-config.toml")).expect("Failed to load config");
@@ -594,7 +594,7 @@ mod tests {
                 toml::from_str(&toml_content).expect("Failed to parse TOML");
 
             // Perform assertions on TOML keys and values
-            let private_keypath = format!("{}/testkey.json", test_path.to_str().unwrap());
+            let private_keypath = format!("{}/testkey", test_path.to_str().unwrap());
             assert_eq!(toml_data["default_ecdsa_keyfile"].as_str(), Some(private_keypath.as_str()));
         })
         .await;
@@ -657,7 +657,7 @@ mod tests {
 
             assert!(get_result.is_ok());
 
-            let keyfile_path = test_path.join("testkey.json");
+            let keyfile_path = test_path.join("testkey");
             assert!(keyfile_path.exists());
 
             let json = read_json_file(&keyfile_path).expect("Failed to read keyfile");
