@@ -222,7 +222,6 @@ pub async fn parse_key_get_subcommands(
 ) -> Result<(), Error> {
     match subcmd {
         GetCommands::BlsPrivate { keyname } => {
-            let mut path;
             let keyname = keyname.unwrap_or_else(|| {
                 let mut keyname = None;
                 let path = config.default_bls_keyfile.clone();
@@ -236,25 +235,19 @@ pub async fn parse_key_get_subcommands(
                 keyname.unwrap_or_default()
             });
 
-            path = config.get_key_path().join(&keyname);
-            path.set_extension("bls.json");
+            let password = Password::new()
+                .with_prompt("Enter a password to the private key")
+                .interact()
+                .expect("");
 
-            if path.exists() {
-                let password = Password::new()
-                    .with_prompt("Enter a password to the private key")
-                    .interact()
-                    .expect("");
-
-                let keychain = Keychain::default();
-
-                if let Key::Bls(key) = keychain.load(KeyName::Bls(keyname), &password)? {
-                    println!("Private key: {:?}", key.secret());
-                    println!("Public Key: {:?}", config.default_bls_address.clone())
-                } else {
-                    //return Err(KeyError::InvalidKeyType("Not a BLS key".to_string()))
-                }
+            let keychain = Keychain::default();
+            if let Key::Bls(key) = keychain.load(KeyName::Bls(keyname), &password)? {
+                println!("Private key: {:?}", key.secret());
+                println!("Public Key: {:?}", config.default_bls_address.clone())
             } else {
-                println!("No path found")
+                //return Err(KeyError::InvalidKeyType("Not a BLS key".to_string()))
+                //The if let does already throw error:
+                //Error: IO: No such file or directory (os error 2)
             }
         }
 
@@ -279,7 +272,6 @@ pub async fn parse_key_get_subcommands(
             }
         }
         GetCommands::EcdsaPrivate { keyname } => {
-            let mut path;
             let keyname = keyname.unwrap_or_else(|| {
                 let mut keyname = None;
                 let path = config.default_ecdsa_keyfile.clone();
@@ -295,26 +287,19 @@ pub async fn parse_key_get_subcommands(
                 keyname.unwrap_or_default()
             });
 
-            path = config.get_key_path().join(&keyname);
-            path.set_extension("ecdsa.json");
+            let password = Password::new()
+                .with_prompt("Enter a password to the private key")
+                .interact()
+                .expect("");
 
-            if path.exists() {
-                let password = Password::new()
-                    .with_prompt("Enter a password to the private key")
-                    .interact()
-                    .expect("");
-
-                let keychain = Keychain::default();
-                if let Key::Ecdsa(key) = keychain.load(KeyName::Ecdsa(keyname), &password)? {
-                    println!("Private key: {:?}", key.to_private_key());
-                    println!("Public Key: {:?}", config.default_ecdsa_address.clone())
-                }
-                //add else error
-                else {
-                    //return Err(KeyError::InvalidKeyType("Not a BLS key".to_string()))
-                }
+            let keychain = Keychain::default();
+            if let Key::Ecdsa(key) = keychain.load(KeyName::Ecdsa(keyname), &password)? {
+                println!("Private key: {:?}", key.to_private_key());
+                println!("Public Key: {:?}", config.default_ecdsa_address.clone())
             } else {
-                println!("No path found")
+                //return Err(KeyError::InvalidKeyType("Not a BLS key".to_string()))
+                //The if let does already throw error:
+                //Error: IO: No such file or directory (os error 2)
             }
         }
         GetCommands::EcdsaPublicKey { keyname } => {
@@ -348,7 +333,7 @@ pub async fn parse_key_set_subcommands(
     match subcmd {
         SetCommands::BlsSet { keyname } => {
             let mut path = config.get_key_path().join(keyname);
-            path.set_extension("bls.key.json");
+            path.set_extension("bls.json");
             println!("Attempting to set key file path: {:?}", path);
             if path.exists() {
                 let json = read_json_file(&path)?;
@@ -366,7 +351,7 @@ pub async fn parse_key_set_subcommands(
         }
         SetCommands::EcdsaSet { keyname } => {
             let mut path = config.get_path().join(keyname);
-            path.set_extension("json");
+            path.set_extension("ecdsa.json");
             println!("Attempting to set key file path: {:?}", path);
 
             if path.exists() {
