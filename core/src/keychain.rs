@@ -70,7 +70,7 @@ pub struct Keychain {
 
 impl Default for Keychain {
     fn default() -> Self {
-        Self { path: home_dir().expect("System without home directory.") }
+        Self { path: home_dir().expect("System without home directory.").join(".ivynet") }
     }
 }
 

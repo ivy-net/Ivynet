@@ -5,18 +5,23 @@ use ctr::{
     Ctr128BE,
 };
 use dialoguer::{Input, Password};
-use hex::FromHexError;
 use ivynet_core::{
+    bls::BlsKey,
     config::IvyConfig,
-    error::IvyError,
     ethers::types::H160,
     keychain::{Key, KeyAddress, KeyName, KeyType, Keychain},
+    wallet::IvyWallet,
 };
 use serde_json::Value;
 use std::{fs, path::PathBuf};
 use tracing::{debug, error};
 
 use crate::error::Error;
+
+#[derive(Debug)]
+pub enum KeyError {
+    InvalidKeyType(String),
+}
 
 #[derive(Parser, Debug, Clone)]
 pub enum KeyCommands {
@@ -116,13 +121,14 @@ pub async fn parse_key_import_subcommands(
     match subcmd {
         ImportCommands::BlsImport { private_key, keyname, password } => {
             let (keyname, pass) = get_credentials(keyname, password);
-            let keychain = Keychain::new(config.get_key_path());
+            let keychain = Keychain::default();
             let key = keychain.import(KeyType::Bls, Some(&keyname), &private_key, &pass)?;
 
             let addr = match key.address() {
                 KeyAddress::Bls(address) => Ok(address),
-                _ => Err(IvyError::HexError(FromHexError::OddLength)),
-            }?;
+                _ => Err(KeyError::InvalidKeyType("Not a valid BLS public address".to_string())),
+            }
+            .expect("");
             let path = config.get_key_path().join(format!("{}.bls.json", keyname));
 
             config.set_bls_keyfile(path);
@@ -131,13 +137,14 @@ pub async fn parse_key_import_subcommands(
         }
         ImportCommands::EcdsaImport { private_key, keyname, password } => {
             let (keyname, pass) = get_credentials(keyname, password);
-            let keychain = Keychain::new(config.get_key_path());
+            let keychain = Keychain::default();
             let key = keychain.import(KeyType::Ecdsa, Some(&keyname), &private_key, &pass)?;
-
+            println!("{:?}", key.address());
             let addr = match key.address() {
                 KeyAddress::Ecdsa(address) => Ok(address),
-                _ => Err(IvyError::HexError(FromHexError::OddLength)),
-            }?;
+                _ => Err(KeyError::InvalidKeyType("Not a valid ECDSA public address".to_string())),
+            }
+            .expect("");
             let path = config.get_key_path().join(format!("{}.ecdsa.json", keyname));
 
             config.set_ecdsa_keyfile(path);
@@ -154,43 +161,42 @@ pub async fn parse_key_create_subcommands(
 ) -> Result<(), Error> {
     match subcmd {
         CreateCommands::BlsCreate { store, keyname, password } => {
-            let keychain = Keychain::new(config.get_key_path());
+            let keychain = Keychain::default();
             if store {
                 let (keyname, pass) = get_credentials(keyname, password);
                 let key = keychain.generate(KeyType::Bls, Some(&keyname), &pass);
 
                 let addr = match key.address() {
                     KeyAddress::Bls(address) => Ok(address),
-                    _ => Err(IvyError::HexError(FromHexError::OddLength)),
-                }?;
+                    _ => Err(KeyError::InvalidKeyType("Not a valid BLS address".to_string())),
+                }
+                .expect("Invalid bls address");
                 let path = config.get_key_path().join(format!("{}.bls.json", keyname));
 
                 config.set_bls_keyfile(path);
-                config.set_bls_address(format!("{:?}", addr));
+                config.set_bls_address(addr.to_string());
                 config.store()?;
 
                 println!("Public key: {:?}", addr);
                 println!("Private key: {:?}", key);
             } else {
-                let key = keychain.generate(KeyType::Bls, None, "pass");
-                let addr = match key.address() {
-                    KeyAddress::Bls(address) => Ok(address),
-                    _ => Err(IvyError::HexError(FromHexError::OddLength)),
-                }?;
+                let key = BlsKey::new();
+                let addr = key.address();
                 println!("Public key: {:?}", addr);
-                println!("Private key: {:?}", key);
+                println!("Private key: {:?}", key.secret());
             }
         }
         CreateCommands::EcdsaCreate { store, keyname, password } => {
-            let keychain = Keychain::new(config.get_key_path());
             if store {
+                let keychain = Keychain::default();
                 let (keyname, pass) = get_credentials(keyname, password);
                 let key = keychain.generate(KeyType::Ecdsa, Some(&keyname), &pass);
 
                 let addr = match key.address() {
                     KeyAddress::Ecdsa(address) => Ok(address),
-                    _ => Err(IvyError::HexError(FromHexError::OddLength)),
-                }?;
+                    _ => Err(KeyError::InvalidKeyType("Not a valid BLS address".to_string())),
+                }
+                .expect("Invalid Ecdsa address");
                 let path = config.get_key_path().join(format!("{}.ecdsa.json", keyname));
 
                 config.set_ecdsa_keyfile(path);
@@ -200,13 +206,10 @@ pub async fn parse_key_create_subcommands(
                 println!("Public key: {:?}", addr);
                 println!("Private key: {:?}", key);
             } else {
-                let key = keychain.generate(KeyType::Bls, None, "pass");
-                let addr = match key.address() {
-                    KeyAddress::Bls(address) => Ok(address),
-                    _ => Err(IvyError::HexError(FromHexError::OddLength)),
-                }?;
+                let key = IvyWallet::new();
+                let addr = key.address();
                 println!("Public key: {:?}", addr);
-                println!("Private key: {:?}", key);
+                println!("Private key: {:?}", key.to_private_key());
             }
         }
     }
@@ -218,44 +221,43 @@ pub async fn parse_key_get_subcommands(
     config: IvyConfig,
 ) -> Result<(), Error> {
     match subcmd {
-        GetCommands::BlsPrivate { mut keyname } => {
+        GetCommands::BlsPrivate { keyname } => {
             let mut path;
-            match keyname.clone() {
-                Some(keyname) => {
-                    path = config.get_key_path().join(keyname);
-                    path.set_extension("bls.json");
-                }
-                None => {
-                    path = config.default_bls_keyfile.clone();
-                    if let Some(file_stem) = path.file_stem() {
-                        if let Some(stem_str) = file_stem.to_str() {
-                            if let Some(name) = stem_str.split('.').next() {
-                                keyname = Some(name.to_string());
-                            }
+            let keyname = keyname.unwrap_or_else(|| {
+                let mut keyname = None;
+                let path = config.default_bls_keyfile.clone();
+                if let Some(file_stem) = path.file_stem() {
+                    if let Some(stem_str) = file_stem.to_str() {
+                        if let Some(name) = stem_str.split('.').next() {
+                            keyname = Some(name.to_string());
                         }
                     }
                 }
-            }
+                keyname.unwrap_or_default()
+            });
+
+            path = config.get_key_path().join(&keyname);
+            path.set_extension("bls.json");
+
             if path.exists() {
                 let password = Password::new()
                     .with_prompt("Enter a password to the private key")
-                    .interact()?;
+                    .interact()
+                    .expect("");
 
-                let keychain = Keychain::new(config.get_key_path());
+                let keychain = Keychain::default();
 
-                let key =
-                    match keychain.load(KeyName::Bls(keyname.expect("invalid name")), &password)? {
-                        Key::Bls(key) => Some(key),
-                        Key::Ecdsa(_) => None,
-                    }
-                    .expect("Not a Bls keyfile");
-
-                println!("Private key: {:?}", key.secret());
-                println!("Public Key: {:?}", config.default_bls_address.clone())
+                if let Key::Bls(key) = keychain.load(KeyName::Bls(keyname), &password)? {
+                    println!("Private key: {:?}", key.secret());
+                    println!("Public Key: {:?}", config.default_bls_address.clone())
+                } else {
+                    //return Err(KeyError::InvalidKeyType("Not a BLS key".to_string()))
+                }
             } else {
                 println!("No path found")
             }
         }
+
         GetCommands::BlsPublicKey { keyname } => {
             let mut path;
             match keyname {
@@ -276,40 +278,41 @@ pub async fn parse_key_get_subcommands(
                 println!("No path found")
             }
         }
-        GetCommands::EcdsaPrivate { mut keyname } => {
+        GetCommands::EcdsaPrivate { keyname } => {
             let mut path;
-            match keyname.clone() {
-                Some(keyname) => {
-                    path = config.get_key_path().join(keyname);
-                    path.set_extension("ecdsa.json");
-                }
-                None => {
-                    path = config.default_ecdsa_keyfile.clone();
-                    if let Some(file_stem) = path.file_stem() {
-                        if let Some(stem_str) = file_stem.to_str() {
-                            if let Some(name) = stem_str.split('.').next() {
-                                keyname = Some(name.to_string());
-                            }
+            let keyname = keyname.unwrap_or_else(|| {
+                let mut keyname = None;
+                let path = config.default_ecdsa_keyfile.clone();
+
+                if let Some(file_stem) = path.file_stem() {
+                    if let Some(stem_str) = file_stem.to_str() {
+                        if let Some(name) = stem_str.split('.').next() {
+                            keyname = Some(name.to_string());
                         }
                     }
                 }
-            }
+
+                keyname.unwrap_or_default()
+            });
+
+            path = config.get_key_path().join(&keyname);
+            path.set_extension("ecdsa.json");
+
             if path.exists() {
                 let password = Password::new()
                     .with_prompt("Enter a password to the private key")
-                    .interact()?;
+                    .interact()
+                    .expect("");
 
-                let keychain = Keychain::new(config.get_key_path());
-                let key = match keychain
-                    .load(KeyName::Ecdsa(keyname.expect("invalid name")), &password)?
-                {
-                    Key::Ecdsa(key) => Some(key),
-                    Key::Bls(_) => None,
+                let keychain = Keychain::default();
+                if let Key::Ecdsa(key) = keychain.load(KeyName::Ecdsa(keyname), &password)? {
+                    println!("Private key: {:?}", key.to_private_key());
+                    println!("Public Key: {:?}", config.default_ecdsa_address.clone())
                 }
-                .expect("Not a ECDSA keyfile");
-
-                println!("Private key: {:?}", key.to_private_key());
-                println!("Public Key: {:?}", config.default_ecdsa_address.clone())
+                //add else error
+                else {
+                    //return Err(KeyError::InvalidKeyType("Not a BLS key".to_string()))
+                }
             } else {
                 println!("No path found")
             }
@@ -328,7 +331,7 @@ pub async fn parse_key_get_subcommands(
             }
 
             if path.exists() {
-                let json = read_json_file(&path)?;
+                let json = read_json_file(&path).expect("");
                 println!("{:?}", json.get("address").expect("Cannot find public key"));
             } else {
                 error!("{:?} :: Keyfile doesn't exist", path)

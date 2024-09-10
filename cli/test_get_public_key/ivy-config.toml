@@ -1,0 +1,14 @@
+path = "/home/tymek/fixes/ivynet/cli/test_get_public_key"
+key_path = "/home/tymek/fixes/ivynet/cli/test_get_public_key"
+mainnet_rpc_url = "https://rpc.flashbots.net/fast"
+holesky_rpc_url = "https://eth-holesky.public.blastapi.io"
+local_rpc_url = "http://localhost:8545"
+default_ecdsa_keyfile = "/home/tymek/fixes/ivynet/cli/test_get_public_key/testkey.ecdsa.json"
+default_bls_keyfile = ""
+default_ecdsa_address = "0xf1edeabc5555e21eec437fba39bbc492871cc04d"
+default_bls_address = ""
+
+[metadata]
+metadata_uri = ""
+logo_uri = ""
+favicon_uri = ""
