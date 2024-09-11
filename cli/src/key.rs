@@ -1,5 +1,4 @@
 use aes::Aes128;
-use anyhow::Ok;
 use clap::Parser;
 use ctr::{
     cipher::{KeyIvInit, StreamCipher},
@@ -10,12 +9,12 @@ use ivynet_core::{
     bls::BlsKey,
     config::IvyConfig,
     ethers::types::H160,
-    keychain::{self, Key, KeyAddress, KeyName, KeyType, Keychain},
+    keychain::{Key, KeyAddress, KeyName, KeyType, Keychain},
     wallet::IvyWallet,
 };
 use serde_json::Value;
 use std::{fs, path::PathBuf};
-use tracing::{debug, error};
+use tracing::debug;
 
 use crate::error::Error;
 
@@ -244,37 +243,25 @@ pub async fn parse_key_get_subcommands(
             let keychain = Keychain::default();
             if let Key::Bls(key) = keychain.load(KeyName::Bls(keyname), &password)? {
                 println!("Private key: {:?}", key.secret());
-                println!("Public Key: {:?}", config.default_bls_address.clone())
+                println!("Public Key: {:?}", config.default_bls_address.clone());
             } else {
-                //return Err(KeyError::InvalidKeyType("Not a BLS key".to_string()))
-                //The if let does already throw error:
-                //Error: IO: No such file or directory (os error 2)
+                println!("Not a valid BLS key");
             }
+            Ok(())
         }
 
         GetCommands::BlsPublicKey { keyname } => {
-            let mut path;
             match keyname {
                 Some(keyname) => {
                     let keychain = Keychain::default();
-                    let addr = keychain.public_address(Bls());
-                    println!("{:?}", addr);
-                    Ok(())
+                    let addr = keychain.public_address(KeyName::Bls(keyname))?;
+                    println!("{}", addr.trim_matches('"'))
                 }
                 None => {
                     println!("{:?}", config.default_bls_address)
                 }
             }
-
-            let keychain = Keychain::default();
-            if let Key::Bls(key) = keychain.load(KeyName::Bls(keyname), &password)? {
-                println!("Private key: {:?}", key.secret());
-                println!("Public Key: {:?}", config.default_bls_address.clone())
-            } else {
-                //return Err(KeyError::InvalidKeyType("Not a BLS key".to_string()))
-                //The if let does already throw error:
-                //Error: IO: No such file or directory (os error 2)
-            }
+            Ok(())
         }
         GetCommands::EcdsaPrivate { keyname } => {
             let keyname = keyname.unwrap_or_else(|| {
@@ -300,28 +287,26 @@ pub async fn parse_key_get_subcommands(
             let keychain = Keychain::default();
             if let Key::Ecdsa(key) = keychain.load(KeyName::Ecdsa(keyname), &password)? {
                 println!("Private key: {:?}", key.to_private_key());
-                println!("Public Key: {:?}", config.default_ecdsa_address.clone())
+                println!("Public Key: {:?}", config.default_ecdsa_address.clone());
             } else {
-                //return Err(KeyError::InvalidKeyType("Not a BLS key".to_string()))
-                //The if let does already throw error:
-                //Error: IO: No such file or directory (os error 2)
+                println!("Not a valid ECDSA key");
             }
+            Ok(())
         }
         GetCommands::EcdsaPublicKey { keyname } => {
-            let mut path;
             match keyname {
                 Some(keyname) => {
                     let keychain = Keychain::default();
-                    let addr = keychain.public_address(Ecdsa(keyname));
-                    println!("{:?}", addr)
+                    let addr = keychain.public_address(KeyName::Ecdsa(keyname))?;
+                    println!("{}", addr.trim_matches('"'))
                 }
                 None => {
                     println!("{:?}", config.default_ecdsa_address)
                 }
             }
+            Ok(())
         }
     }
-    Ok(())
 }
 
 pub async fn parse_key_set_subcommands(

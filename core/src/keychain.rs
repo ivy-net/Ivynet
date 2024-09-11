@@ -3,16 +3,10 @@ use crate::{
     error::IvyError,
     wallet::IvyWallet,
 };
-use once_cell::sync::Lazy;
 use serde_json::Value;
 use std::{fmt::Display, fs, path::PathBuf};
 
 use ethers::types::Address;
-
-pub static DEFAULT_KEYCHAIN_PATH: Lazy<PathBuf> = Lazy::new(|| {
-    let path = dirs::home_dir().expect("Could not get a home directory");
-    path.join(".ivynet")
-});
 
 pub enum KeyType {
     Ecdsa,
@@ -75,7 +69,7 @@ pub struct Keychain {
 
 impl Default for Keychain {
     fn default() -> Self {
-        Self { path: DEFAULT_KEYCHAIN_PATH.to_path_buf() }
+        Self { path: dirs::home_dir().expect("Could not get a home directory").join(".ivynet") }
     }
 }
 
@@ -130,10 +124,20 @@ impl Keychain {
         }
     }
 
-    pub fn public_address(&self, name: KeyName) -> Result<KeyAddress, IvyError> {
+    pub fn public_address(&self, name: KeyName) -> Result<String, IvyError> {
         match name {
-            KeyName::Ecdsa(name) => Ok(KeyAddress::Ecdsa(self.ecdsa_public_address(&name)?)),
-            KeyName::Bls(name) => Ok(KeyAddress::Bls(self.bls_public_address(&name)?)),
+            KeyName::Ecdsa(name) => {
+                let mut new_path = self.path.join(name);
+                new_path.set_extension("ecdsa.json");
+                let json = self.read_json_file(&new_path)?;
+                Ok(json.get("address").expect("No Address in json").to_string())
+            }
+            KeyName::Bls(name) => {
+                let mut new_path = self.path.join(name);
+                new_path.set_extension("bls.json");
+                let json = self.read_json_file(&new_path)?;
+                Ok(json.get("pubKey").expect("No Public Key in json").to_string())
+            }
         }
     }
 
@@ -166,15 +170,6 @@ impl Keychain {
         Ok(BlsKey::from_keystore(self.path.join(format!("{name}.bls.json")), password)?)
     }
 
-    fn bls_public_address(&self, name: &str) -> Result<BlsAddress, IvyError> {
-        let mut new_path = self.path.join(name);
-        new_path.set_extension("bls.json");
-        let json = self.read_json_file(&new_path).expect("");
-        //println!("{:?}", json.get("address").expect("Cannot find public key"));
-        Ok(json.get("pubKey"))
-        //println!("{}", v["pubKey"])
-    }
-
     fn ecdsa_generate(&self, name: Option<&str>, password: &str) -> IvyWallet {
         let wallet = IvyWallet::new();
         _ = wallet.encrypt_and_store(
@@ -202,14 +197,6 @@ impl Keychain {
 
     fn ecdsa_load(&self, name: &str, password: &str) -> Result<IvyWallet, IvyError> {
         IvyWallet::from_keystore(self.path.join(format!("{name}.ecdsa.json")), password)
-    }
-
-    fn ecdsa_public_address(&self, name: &str) -> Result<Address, IvyError> {
-        let mut new_path = self.path.join(name);
-        new_path.set_extension("ecdsa.json");
-        let json = self.read_json_file(&new_path).expect("");
-        //println!("{:?}", json.get("address").expect("Cannot find public key"));
-        Ok(json.get("address"))
     }
 
     fn gen_keyname(name: Option<&str>, key_type: &str, address_string: Option<String>) -> String {
