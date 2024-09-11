@@ -1,9 +1,5 @@
-use aes::Aes128;
+use crate::error::Error;
 use clap::Parser;
-use ctr::{
-    cipher::{KeyIvInit, StreamCipher},
-    Ctr128BE,
-};
 use dialoguer::{Input, Password};
 use ivynet_core::{
     bls::BlsKey,
@@ -13,11 +9,6 @@ use ivynet_core::{
     keychain::{Key, KeyAddress, KeyName, KeyType, Keychain},
     wallet::IvyWallet,
 };
-use serde_json::Value;
-use std::{fs, path::PathBuf};
-use tracing::debug;
-
-use crate::error::Error;
 
 #[derive(Debug)]
 pub enum KeyError {
@@ -299,7 +290,7 @@ pub async fn parse_key_get_subcommands(
                 Some(keyname) => {
                     let keychain = Keychain::default();
                     let addr = keychain.public_address(KeyName::Ecdsa(keyname))?;
-                    println!("{}", addr.trim_matches('"'))
+                    println!("{}", addr)
                 }
                 None => {
                     println!("{:?}", config.default_ecdsa_address)
@@ -316,63 +307,32 @@ pub async fn parse_key_set_subcommands(
 ) -> Result<(), Error> {
     match subcmd {
         SetCommands::BlsSet { keyname } => {
-            let mut path = config.get_key_path().join(keyname);
+            let mut path = config.get_key_path().join(&keyname);
             path.set_extension("bls.json");
-            println!("Attempting to set key file path: {:?}", path);
             if path.exists() {
-                let json = read_json_file(&path)?;
-                let pub_key = json
-                    .get("pubKey")
-                    .expect("No address in json")
-                    .as_str()
-                    .expect("Should be a string");
-
+                let keychain = Keychain::default();
+                let addr = keychain.public_address(KeyName::Bls(keyname))?;
+                config.set_bls_address(addr);
                 config.set_bls_keyfile(path);
-                config.set_bls_address(pub_key.to_string());
                 config.store()?;
                 println!("New default private key set")
             }
         }
         SetCommands::EcdsaSet { keyname } => {
-            let mut path = config.get_path().join(keyname);
+            let mut path = config.get_key_path().join(&keyname);
             path.set_extension("ecdsa.json");
-            println!("Attempting to set key file path: {:?}", path);
-
             if path.exists() {
-                let json = read_json_file(&path)?;
-                let decoded_pub_key = extract_and_decode_pub_key(&json)?;
-
+                let keychain = Keychain::default();
+                let addr_string = keychain.public_address(KeyName::Ecdsa(keyname))?;
+                let addr = addr_string.parse::<H160>().expect("Should be able to convert to H160");
+                config.set_ecdsa_address(addr);
                 config.set_ecdsa_keyfile(path);
-                config.set_ecdsa_address(decoded_pub_key);
                 config.store()?;
                 println!("New default private key set")
-            } else {
-                println!("File doesn't exist at path: {:?}", path);
             }
         }
     }
     Ok(())
-}
-
-pub fn encrypt_data(data: &[u8], key: &[u8], iv: &[u8]) -> Vec<u8> {
-    let mut cipher = Ctr128BE::<Aes128>::new(key.into(), iv.into());
-    let mut buffer = data.to_vec();
-    cipher.apply_keystream(&mut buffer);
-    buffer
-}
-
-fn read_json_file(path: &PathBuf) -> Result<Value, Error> {
-    let data = fs::read_to_string(path).expect("No data in json");
-    let json: Value = serde_json::from_str(&data).expect("Could not parse through json");
-    Ok(json)
-}
-
-fn extract_and_decode_pub_key(json: &Value) -> Result<H160, Error> {
-    let pub_key =
-        json.get("address").expect("No address in json").as_str().expect("Should be a string");
-    debug!("Public key: {:?}", pub_key);
-    let decoded_pub_key = pub_key.parse::<H160>().expect("Should be able to convert to H160");
-    Ok(decoded_pub_key)
 }
 
 fn get_credentials(keyname: Option<String>, password: Option<String>) -> (String, String) {
