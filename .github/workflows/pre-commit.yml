@@ -46,6 +46,11 @@ jobs:
       - name: Install hooks
         run: |
           pre-commit install --install-hooks
+      - name: Check the path
+        run: |
+          echo "pwd: $PWD"
+          ls -l
+          echo "user: $(whoami)"
       - name: Run Pre-Commit
         run: >
           pre-commit run
