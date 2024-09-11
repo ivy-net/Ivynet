@@ -8,6 +8,7 @@ use dialoguer::{Input, Password};
 use ivynet_core::{
     bls::BlsKey,
     config::IvyConfig,
+    error::IvyError,
     ethers::types::H160,
     keychain::{Key, KeyAddress, KeyName, KeyType, Keychain},
     wallet::IvyWallet,
@@ -245,7 +246,7 @@ pub async fn parse_key_get_subcommands(
                 println!("Private key: {:?}", key.secret());
                 println!("Public Key: {:?}", config.default_bls_address.clone());
             } else {
-                println!("Not a valid BLS key");
+                return Err(Error::IvyError(IvyError::IncorrectKeyTypeError))
             }
             Ok(())
         }
@@ -255,7 +256,7 @@ pub async fn parse_key_get_subcommands(
                 Some(keyname) => {
                     let keychain = Keychain::default();
                     let addr = keychain.public_address(KeyName::Bls(keyname))?;
-                    println!("{}", addr.trim_matches('"'))
+                    println!("{}", addr)
                 }
                 None => {
                     println!("{:?}", config.default_bls_address)
@@ -289,7 +290,7 @@ pub async fn parse_key_get_subcommands(
                 println!("Private key: {:?}", key.to_private_key());
                 println!("Public Key: {:?}", config.default_ecdsa_address.clone());
             } else {
-                println!("Not a valid ECDSA key");
+                return Err(Error::IvyError(IvyError::IncorrectKeyTypeError))
             }
             Ok(())
         }

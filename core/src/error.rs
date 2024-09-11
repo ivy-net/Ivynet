@@ -113,6 +113,9 @@ pub enum IvyError {
     #[error("No AVS is initialized")]
     AvsNotInitializedError,
 
+    #[error("Incorrect key type")]
+    IncorrectKeyTypeError,
+
     #[error("Custom contract error")]
     ContractError(Bytes),
 

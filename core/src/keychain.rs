@@ -125,20 +125,18 @@ impl Keychain {
     }
 
     pub fn public_address(&self, name: KeyName) -> Result<String, IvyError> {
-        match name {
-            KeyName::Ecdsa(name) => {
-                let mut new_path = self.path.join(name);
-                new_path.set_extension("ecdsa.json");
-                let json = self.read_json_file(&new_path)?;
-                Ok(json.get("address").expect("No Address in json").to_string())
-            }
-            KeyName::Bls(name) => {
-                let mut new_path = self.path.join(name);
-                new_path.set_extension("bls.json");
-                let json = self.read_json_file(&new_path)?;
-                Ok(json.get("pubKey").expect("No Public Key in json").to_string())
-            }
-        }
+        let path = self.path.join(match &name {
+            KeyName::Ecdsa(name) => format!("{name}.ecdsa.json"),
+            KeyName::Bls(name) => format!("{name}.bls.json"),
+        });
+        let json = self.read_json_file(&path)?;
+        let address = json
+            .get(match name {
+                KeyName::Ecdsa(_) => "address",
+                KeyName::Bls(_) => "pubKey",
+            })
+            .unwrap();
+        Ok(address.to_string().trim_matches('"').to_string())
     }
 
     fn bls_generate(&self, name: Option<&str>, password: &str) -> BlsKey {
