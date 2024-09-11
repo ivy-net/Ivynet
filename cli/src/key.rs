@@ -299,29 +299,23 @@ pub async fn parse_key_set_subcommands(
 ) -> Result<(), Error> {
     match subcmd {
         SetCommands::BlsSet { keyname } => {
-            let mut path = config.get_key_path().join(&keyname);
-            path.set_extension("bls.json");
-            if path.exists() {
-                let keychain = Keychain::default();
-                let addr = keychain.public_address(KeyName::Bls(keyname))?;
-                config.set_bls_address(addr);
-                config.set_bls_keyfile(path);
-                config.store()?;
-                println!("New default private key set")
-            }
+            let keychain = Keychain::default();
+            let addr = keychain.public_address(KeyName::Bls(keyname.clone()))?;
+            let path = keychain.get_path(KeyName::Bls(keyname));
+            config.set_bls_address(addr);
+            config.set_bls_keyfile(path);
+            config.store()?;
+            println!("New default private key set")
         }
         SetCommands::EcdsaSet { keyname } => {
-            let mut path = config.get_key_path().join(&keyname);
-            path.set_extension("ecdsa.json");
-            if path.exists() {
-                let keychain = Keychain::default();
-                let addr_string = keychain.public_address(KeyName::Ecdsa(keyname))?;
-                let addr = addr_string.parse::<H160>().expect("Should be able to convert to H160");
-                config.set_ecdsa_address(addr);
-                config.set_ecdsa_keyfile(path);
-                config.store()?;
-                println!("New default private key set")
-            }
+            let keychain = Keychain::default();
+            let addr_string = keychain.public_address(KeyName::Ecdsa(keyname.clone()))?;
+            let addr = addr_string.parse::<H160>().map_err(|_| IvyError::H160Error);
+            let path = keychain.get_path(KeyName::Ecdsa(keyname));
+            config.set_ecdsa_address(addr?);
+            config.set_ecdsa_keyfile(path);
+            config.store()?;
+            println!("New default private key set")
         }
     }
     Ok(())

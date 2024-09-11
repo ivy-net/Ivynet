@@ -119,6 +119,9 @@ pub enum IvyError {
     #[error("Incorrect address format")]
     IncorrectAddressError,
 
+    #[error("Can't parse to h160")]
+    H160Error,
+
     #[error("Custom contract error")]
     ContractError(Bytes),
 

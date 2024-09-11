@@ -124,6 +124,13 @@ impl Keychain {
         }
     }
 
+    pub fn get_path(&self, name: KeyName) -> PathBuf {
+        match name {
+            KeyName::Ecdsa(name) => self.path.join(format!("{name}.ecdsa.json")),
+            KeyName::Bls(name) => self.path.join(format!("{name}.bls.json")),
+        }
+    }
+
     pub fn public_address(&self, name: KeyName) -> Result<String, IvyError> {
         let path = self.path.join(match &name {
             KeyName::Ecdsa(name) => format!("{name}.ecdsa.json"),
