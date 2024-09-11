@@ -23,6 +23,7 @@ use crate::{
     avs::AvsVariant,
     config::IvyConfig,
     dialog::get_confirm_password,
+    docker::log::CmdLogSource,
     eigen::quorum::QuorumType,
     env_parser::EnvLines,
     error::{IvyError, SetupError},
@@ -159,6 +160,10 @@ impl AvsVariant for Lagrange {
         _keyfile_password: &str,
     ) -> Result<(), IvyError> {
         todo!("Lagrange hasn't implemented this yet")
+    }
+
+    async fn handle_log(&self, line: &str, src: CmdLogSource) -> Result<(), IvyError> {
+        todo!()
     }
 
     fn name(&self) -> &str {
