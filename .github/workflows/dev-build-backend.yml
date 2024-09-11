@@ -41,7 +41,6 @@ jobs:
 
   build:
     name: build backend
-    needs: packages
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
