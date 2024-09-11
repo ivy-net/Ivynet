@@ -17,7 +17,7 @@ jobs:
       - name: install  dependencies
         run: >
           sudo apt install
-          go
+          golang
           protobuf-compiler
           pkg-config
           libssl-dev
