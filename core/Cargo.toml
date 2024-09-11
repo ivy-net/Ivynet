@@ -54,7 +54,6 @@ tower = "0.4.13"
 hyper-util = { version = "0.1.6", features = ["full", "tokio"] }
 which = "6.0.2"
 aes = "0.8.4"
-env_home = "0.1.0"
 
 [build-dependencies]
 prost-build = "0.12"

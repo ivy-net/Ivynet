@@ -30,8 +30,6 @@ pub struct BackendInfo {
 pub struct IvyConfig {
     /// Storage path for serialized config file
     path: PathBuf,
-    /// Storage path for BLS files
-    bls_path: PathBuf,
     /// RPC URL for mainnet
     pub mainnet_rpc_url: String,
     /// RPC URL for holesky
@@ -57,9 +55,6 @@ impl Default for IvyConfig {
     fn default() -> Self {
         Self {
             path: DEFAULT_CONFIG_PATH.to_owned(),
-            bls_path: dirs::home_dir()
-                .expect("Could not get a home directory")
-                .join(".eigenlayer/operator_keys"),
             mainnet_rpc_url: "https://rpc.flashbots.net/fast".to_string(),
             holesky_rpc_url: "https://eth-holesky.public.blastapi.io".to_string(),
             local_rpc_url: "http://localhost:8545".to_string(),
@@ -150,10 +145,6 @@ impl IvyConfig {
 
     pub fn get_path(&self) -> PathBuf {
         self.path.clone()
-    }
-
-    pub fn get_bls_path(&self) -> PathBuf {
-        self.bls_path.clone()
     }
 
     pub fn identity_wallet(&self) -> Result<IvyWallet, IvyError> {

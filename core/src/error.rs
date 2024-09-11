@@ -104,6 +104,9 @@ pub enum IvyError {
     #[error("Invalid tonic URI from string")]
     InvalidUri,
 
+    #[error("No address field")]
+    AddressFieldError,
+
     #[error("Folder inaccesible")]
     DirInaccessible,
 
@@ -115,6 +118,15 @@ pub enum IvyError {
 
     #[error("No AVS is initialized")]
     AvsNotInitializedError,
+
+    #[error("Incorrect key type")]
+    IncorrectKeyTypeError,
+
+    #[error("Incorrect address format")]
+    IncorrectAddressError,
+
+    #[error("Can't parse to h160")]
+    H160Error,
 
     #[error("Custom contract error")]
     ContractError(Bytes),

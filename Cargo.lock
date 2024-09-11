@@ -713,22 +713,13 @@ checksum = "1462739cb27611015575c0c11df5df7601141071f07518d56fcc1be504cbec97"
 name = "cli"
 version = "0.1.0"
 dependencies = [
- "aes",
  "anyhow",
- "blsful",
  "clap",
- "ctr",
  "dialoguer",
- "hex",
  "ivynet-core",
- "rand",
  "reqwest 0.12.7",
- "scrypt 0.11.0",
- "serde_json",
- "sha2",
  "thiserror",
  "tokio",
- "toml",
  "tracing",
  "tracing-subscriber",
 ]
@@ -1224,12 +1215,6 @@ dependencies = [
  "quote",
  "syn 2.0.77",
 ]
-
-[[package]]
-name = "env_home"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c7f84e12ccf0a7ddc17a6c41c93326024c42920d7ee630d04950e6926645c0fe"
 
 [[package]]
 name = "equivalent"
@@ -2432,7 +2417,6 @@ dependencies = [
  "dialoguer",
  "dirs",
  "dotenvy",
- "env_home",
  "ethers",
  "futures-util",
  "hyper-util",
