@@ -31,9 +31,6 @@ jobs:
           cargo --version
           rustc --version
           whereis rustc
-      - name: Add clippy
-        run: |
-          cargo component add clippy
       - name: Install machete
         run: |
           cargo install cargo-machete
