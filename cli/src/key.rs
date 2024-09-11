@@ -116,7 +116,7 @@ pub async fn parse_key_import_subcommands(
                 _ => Err(IvyError::IncorrectAddressError),
             }?;
 
-            let path = config.get_key_path().join(format!("{}.bls.json", keyname));
+            let path = keychain.get_path(KeyName::Bls(keyname));
 
             config.set_bls_keyfile(path);
             config.set_bls_address(addr.to_string());
@@ -131,7 +131,7 @@ pub async fn parse_key_import_subcommands(
                 KeyAddress::Ecdsa(address) => Ok(address),
                 _ => Err(IvyError::IncorrectAddressError),
             }?;
-            let path = config.get_key_path().join(format!("{}.ecdsa.json", keyname));
+            let path = keychain.get_path(KeyName::Ecdsa(keyname));
 
             config.set_ecdsa_keyfile(path);
             config.set_ecdsa_address(addr);
@@ -156,14 +156,14 @@ pub async fn parse_key_create_subcommands(
                     KeyAddress::Bls(address) => Ok(address),
                     _ => Err(IvyError::IncorrectAddressError),
                 }?;
-                let path = config.get_key_path().join(format!("{}.bls.json", keyname));
+                let path = keychain.get_path(KeyName::Bls(keyname));
 
                 config.set_bls_keyfile(path);
                 config.set_bls_address(addr.to_string());
                 config.store()?;
 
                 println!("Public key: {:?}", addr);
-                println!("Private key: {:?}", key);
+                println!("Private key: {:?}", key.private_key_string());
             } else {
                 let key = BlsKey::new();
                 let addr = key.address();
@@ -175,25 +175,26 @@ pub async fn parse_key_create_subcommands(
             if store {
                 let keychain = Keychain::default();
                 let (keyname, pass) = get_credentials(keyname, password);
+
                 let key = keychain.generate(KeyType::Ecdsa, Some(&keyname), &pass);
 
                 let addr = match key.address() {
                     KeyAddress::Ecdsa(address) => Ok(address),
                     _ => Err(IvyError::IncorrectAddressError),
                 }?;
-                let path = config.get_key_path().join(format!("{}.ecdsa.json", keyname));
+                let path = keychain.get_path(KeyName::Ecdsa(keyname));
 
                 config.set_ecdsa_keyfile(path);
                 config.set_ecdsa_address(addr);
                 config.store()?;
 
                 println!("Public key: {:?}", addr);
-                println!("Private key: {:?}", key);
+                println!("Private key: 0x{}", key.private_key_string());
             } else {
                 let key = IvyWallet::new();
                 let addr = key.address();
                 println!("Public key: {:?}", addr);
-                println!("Private key: {:?}", key.to_private_key());
+                println!("Private key: 0x{}", key.to_private_key());
             }
         }
     }

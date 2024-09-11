@@ -21,8 +21,6 @@ use crate::{
 pub struct IvyConfig {
     /// Storage path for serialized config file
     path: PathBuf,
-    /// Storage path for BLS files
-    key_path: PathBuf,
     /// RPC URL for mainnet
     pub mainnet_rpc_url: String,
     /// RPC URL for holesky
@@ -48,7 +46,6 @@ impl Default for IvyConfig {
     fn default() -> Self {
         Self {
             path: DEFAULT_CONFIG_PATH.to_owned(),
-            key_path: DEFAULT_CONFIG_PATH.to_owned(),
             mainnet_rpc_url: "https://rpc.flashbots.net/fast".to_string(),
             holesky_rpc_url: "https://eth-holesky.public.blastapi.io".to_string(),
             local_rpc_url: "http://localhost:8545".to_string(),
@@ -124,10 +121,6 @@ impl IvyConfig {
         self.default_bls_keyfile = keyfile;
     }
 
-    pub fn set_keypath(&mut self, new_path: PathBuf) {
-        self.key_path = new_path;
-    }
-
     pub fn get_rpc_url(&self, chain: Chain) -> Result<String, IvyError> {
         match chain {
             Chain::Mainnet => Ok(self.mainnet_rpc_url.clone()),
@@ -139,10 +132,6 @@ impl IvyConfig {
 
     pub fn get_path(&self) -> PathBuf {
         self.path.clone()
-    }
-
-    pub fn get_key_path(&self) -> PathBuf {
-        self.key_path.clone()
     }
 
     pub fn identity_wallet(&self) -> Result<IvyWallet, IvyError> {

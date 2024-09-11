@@ -101,6 +101,9 @@ pub enum IvyError {
     #[error("GRPC client error")]
     GRPCClientError,
 
+    #[error("No address field")]
+    AddressFieldError,
+
     #[error("Folder inaccesible")]
     DirInaccessible,
 

@@ -6,7 +6,7 @@ use crate::{
 use serde_json::Value;
 use std::{fmt::Display, fs, path::PathBuf};
 
-use ethers::types::Address;
+use ethers::{types::Address, utils::hex::encode};
 
 pub enum KeyType {
     Ecdsa,
@@ -44,6 +44,13 @@ impl Key {
         match &self {
             Key::Bls(key) => Some(key.address()),
             _ => None,
+        }
+    }
+
+    pub fn private_key_string(&self) -> String {
+        match &self {
+            Key::Bls(key) => encode(key.secret().to_be_bytes()),
+            Key::Ecdsa(wallet) => wallet.to_private_key(),
         }
     }
 }
@@ -137,12 +144,13 @@ impl Keychain {
             KeyName::Bls(name) => format!("{name}.bls.json"),
         });
         let json = self.read_json_file(&path)?;
-        let address = json
-            .get(match name {
-                KeyName::Ecdsa(_) => "address",
-                KeyName::Bls(_) => "pubKey",
-            })
-            .unwrap();
+        let address = match json.get(match name {
+            KeyName::Ecdsa(_) => "address",
+            KeyName::Bls(_) => "pubKey",
+        }) {
+            Some(value) => value,
+            None => return Err(IvyError::AddressFieldError),
+        };
         Ok(address.to_string().trim_matches('"').to_string())
     }
 
