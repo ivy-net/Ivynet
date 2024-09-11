@@ -33,7 +33,7 @@ jobs:
           whereis rustc
       - name: Add clippy
         run: |
-          cargo add clippy
+          cargo component add clippy
       - name: Install machete
         run: |
           cargo install cargo-machete
