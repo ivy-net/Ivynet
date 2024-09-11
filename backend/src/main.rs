@@ -11,9 +11,23 @@ use ivynet_backend::{
 use sqlx::PgPool;
 use tracing::error;
 
+mod version_hash {
+    include!(concat!(env!("OUT_DIR"), "/version.rs"));
+}
+
 #[tokio::main]
 async fn main() -> Result<(), BackendError> {
     let config = Config::parse();
+
+    // It might be just a version read
+    if config.version {
+        println!(
+            "ivynet-backend version is {} ({})",
+            env!("CARGO_PKG_VERSION"),
+            version_hash::VERSION_HASH
+        );
+        return Ok(());
+    }
 
     start_tracing(config.log_level)?;
 
