@@ -30,7 +30,7 @@ jobs:
         run: |
           cargo --version
           rustc --version
-          wheris rustc
+          whereis rustc
       - name: Add clippy
         run: |
           cargo add clippy
