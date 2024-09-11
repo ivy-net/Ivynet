@@ -17,8 +17,6 @@ jobs:
       - name: install  dependencies
         run: >
           sudo apt install
-          # rustc
-          # cargo
           go
           protobuf-compiler
           pkg-config
