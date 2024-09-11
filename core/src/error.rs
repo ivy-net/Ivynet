@@ -116,6 +116,9 @@ pub enum IvyError {
     #[error("Incorrect key type")]
     IncorrectKeyTypeError,
 
+    #[error("Incorrect address format")]
+    IncorrectAddressError,
+
     #[error("Custom contract error")]
     ContractError(Bytes),
 

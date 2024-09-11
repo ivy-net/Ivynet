@@ -10,11 +10,6 @@ use ivynet_core::{
     wallet::IvyWallet,
 };
 
-#[derive(Debug)]
-pub enum KeyError {
-    InvalidKeyType(String),
-}
-
 #[derive(Parser, Debug, Clone)]
 pub enum KeyCommands {
     #[command(name = "import", about = "Import a ECDSA/BLS private key into a keyfile")]
@@ -118,9 +113,9 @@ pub async fn parse_key_import_subcommands(
 
             let addr = match key.address() {
                 KeyAddress::Bls(address) => Ok(address),
-                _ => Err(KeyError::InvalidKeyType("Not a valid BLS public address".to_string())),
-            }
-            .expect("");
+                _ => Err(IvyError::IncorrectAddressError),
+            }?;
+
             let path = config.get_key_path().join(format!("{}.bls.json", keyname));
 
             config.set_bls_keyfile(path);
@@ -134,9 +129,8 @@ pub async fn parse_key_import_subcommands(
             println!("{:?}", key.address());
             let addr = match key.address() {
                 KeyAddress::Ecdsa(address) => Ok(address),
-                _ => Err(KeyError::InvalidKeyType("Not a valid ECDSA public address".to_string())),
-            }
-            .expect("");
+                _ => Err(IvyError::IncorrectAddressError),
+            }?;
             let path = config.get_key_path().join(format!("{}.ecdsa.json", keyname));
 
             config.set_ecdsa_keyfile(path);
@@ -160,9 +154,8 @@ pub async fn parse_key_create_subcommands(
 
                 let addr = match key.address() {
                     KeyAddress::Bls(address) => Ok(address),
-                    _ => Err(KeyError::InvalidKeyType("Not a valid BLS address".to_string())),
-                }
-                .expect("Invalid bls address");
+                    _ => Err(IvyError::IncorrectAddressError),
+                }?;
                 let path = config.get_key_path().join(format!("{}.bls.json", keyname));
 
                 config.set_bls_keyfile(path);
@@ -186,9 +179,8 @@ pub async fn parse_key_create_subcommands(
 
                 let addr = match key.address() {
                     KeyAddress::Ecdsa(address) => Ok(address),
-                    _ => Err(KeyError::InvalidKeyType("Not a valid BLS address".to_string())),
-                }
-                .expect("Invalid Ecdsa address");
+                    _ => Err(IvyError::IncorrectAddressError),
+                }?;
                 let path = config.get_key_path().join(format!("{}.ecdsa.json", keyname));
 
                 config.set_ecdsa_keyfile(path);
@@ -230,7 +222,7 @@ pub async fn parse_key_get_subcommands(
             let password = Password::new()
                 .with_prompt("Enter a password to the private key")
                 .interact()
-                .expect("");
+                .expect("No password provided");
 
             let keychain = Keychain::default();
             if let Key::Bls(key) = keychain.load(KeyName::Bls(keyname), &password)? {
@@ -274,7 +266,7 @@ pub async fn parse_key_get_subcommands(
             let password = Password::new()
                 .with_prompt("Enter a password to the private key")
                 .interact()
-                .expect("");
+                .expect("No password provided");
 
             let keychain = Keychain::default();
             if let Key::Ecdsa(key) = keychain.load(KeyName::Ecdsa(keyname), &password)? {
