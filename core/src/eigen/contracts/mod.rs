@@ -166,7 +166,7 @@ mod tests {
         use super::*;
         #[tokio::test]
         async fn test_holesky_contracts_deployed() {
-            let holesky = fork_holesky_anvil();
+            let holesky = fork_holesky_anvil().await;
 
             test_contract_deployed(avs_directory(Chain::Holesky), holesky.endpoint()).await;
             test_contract_deployed(delegation_manager(Chain::Holesky), holesky.endpoint()).await;
@@ -181,7 +181,7 @@ mod tests {
         use super::*;
         #[tokio::test]
         async fn test_mainnet_contracts_deployed() {
-            let mainnet = fork_mainnet_anvil();
+            let mainnet = fork_mainnet_anvil().await;
 
             test_contract_deployed(avs_directory(Chain::Mainnet), mainnet.endpoint()).await;
             test_contract_deployed(delegation_manager(Chain::Mainnet), mainnet.endpoint()).await;

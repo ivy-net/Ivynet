@@ -74,7 +74,7 @@ mod mainnet {
     #[tokio::test]
     /// Test that an operator can register on the Eigenlayer network.
     async fn test_operator_can_register() {
-        let anvil = fork_mainnet_anvil();
+        let anvil = fork_mainnet_anvil().await;
         let operator_key = anvil.keys()[9].clone();
         let operator = LocalWallet::from(operator_key.clone()).with_chain_id(anvil.chain_id());
         let provider = Provider::try_from(anvil.endpoint()).unwrap();
@@ -104,7 +104,7 @@ mod holesky {
     #[tokio::test]
     /// Test that an operator can register on the Eigenlayer network.
     async fn test_operator_can_register() {
-        let anvil = fork_holesky_anvil();
+        let anvil = fork_holesky_anvil().await;
         let operator_key = anvil.keys()[9].clone();
         let operator = LocalWallet::from(operator_key.clone()).with_chain_id(anvil.chain_id());
         let provider = Provider::try_from(anvil.endpoint()).unwrap();
@@ -127,7 +127,7 @@ mod holesky {
     }
     #[tokio::test]
     async fn test_operator_has_stake() {
-        let anvil = fork_holesky_anvil();
+        let anvil = fork_holesky_anvil().await;
         let operator_key = anvil.keys()[9].clone();
         let operator = LocalWallet::from(operator_key.clone()).with_chain_id(anvil.chain_id());
         let provider = Provider::try_from(anvil.endpoint()).unwrap();

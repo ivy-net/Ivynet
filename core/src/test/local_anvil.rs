@@ -1,5 +1,5 @@
 use ethers::{
-    types::Chain,
+    providers::{Middleware, Provider},
     utils::{Anvil, AnvilInstance},
 };
 
@@ -17,23 +17,20 @@ pub fn fork_local_anvil() -> AnvilInstance {
     Anvil::new().fork("http://localhost:8545").spawn()
 }
 
-pub fn fork_mainnet_anvil() -> AnvilInstance {
+/// Fork mainnet anvil 50 blocks behind chain head.
+pub async fn fork_mainnet_anvil() -> AnvilInstance {
     let config = IvyConfig::load_from_default_path().unwrap();
-    Anvil::new().fork(config.mainnet_rpc_url).spawn()
+    let provider = Provider::try_from(&config.mainnet_rpc_url).unwrap();
+    let chain_head = provider.get_block_number().await.expect("Could not get mainnet block number");
+    Anvil::new().fork(config.mainnet_rpc_url).fork_block_number(chain_head.as_u64() - 50).spawn()
 }
 
-pub fn fork_holesky_anvil() -> AnvilInstance {
+/// Fork holesky anvil 50 blocks behind chain head.
+pub async fn fork_holesky_anvil() -> AnvilInstance {
     let config = IvyConfig::load_from_default_path().unwrap();
-    Anvil::new().fork(config.holesky_rpc_url).spawn()
-}
-
-async fn anvil_instance(chain: Chain) -> ethers::utils::AnvilInstance {
-    match chain {
-        Chain::Mainnet => fork_local_anvil(),
-        Chain::Holesky => fork_holesky_anvil(),
-        Chain::AnvilHardhat => fork_local_anvil(),
-        _ => unimplemented!(),
-    }
+    let provider = Provider::try_from(&config.holesky_rpc_url).unwrap();
+    let chain_head = provider.get_block_number().await.expect("Could not get mainnet block number");
+    Anvil::new().fork(config.holesky_rpc_url).fork_block_number(chain_head.as_u64() - 50).spawn()
 }
 
 #[cfg(test)]
