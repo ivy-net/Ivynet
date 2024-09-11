@@ -1,4 +1,5 @@
 use aes::Aes128;
+use anyhow::Ok;
 use clap::Parser;
 use ctr::{
     cipher::{KeyIvInit, StreamCipher},
@@ -9,7 +10,7 @@ use ivynet_core::{
     bls::BlsKey,
     config::IvyConfig,
     ethers::types::H160,
-    keychain::{Key, KeyAddress, KeyName, KeyType, Keychain},
+    keychain::{self, Key, KeyAddress, KeyName, KeyType, Keychain},
     wallet::IvyWallet,
 };
 use serde_json::Value;
@@ -255,20 +256,24 @@ pub async fn parse_key_get_subcommands(
             let mut path;
             match keyname {
                 Some(keyname) => {
-                    path = config.get_key_path().join(keyname);
-                    path.set_extension("bls.json");
+                    let keychain = Keychain::default();
+                    let addr = keychain.public_address(Bls());
+                    println!("{:?}", addr);
+                    Ok(())
                 }
                 None => {
-                    println!("{:?}", config.default_bls_address);
-                    return Ok(());
+                    println!("{:?}", config.default_bls_address)
                 }
             }
-            if path.exists() {
-                let data = fs::read_to_string(path).expect("No data in json");
-                let v: Value = serde_json::from_str(&data).expect("Could not parse through json");
-                println!("{}", v["pubKey"])
+
+            let keychain = Keychain::default();
+            if let Key::Bls(key) = keychain.load(KeyName::Bls(keyname), &password)? {
+                println!("Private key: {:?}", key.secret());
+                println!("Public Key: {:?}", config.default_bls_address.clone())
             } else {
-                println!("No path found")
+                //return Err(KeyError::InvalidKeyType("Not a BLS key".to_string()))
+                //The if let does already throw error:
+                //Error: IO: No such file or directory (os error 2)
             }
         }
         GetCommands::EcdsaPrivate { keyname } => {
@@ -306,20 +311,13 @@ pub async fn parse_key_get_subcommands(
             let mut path;
             match keyname {
                 Some(keyname) => {
-                    path = config.get_path().join(keyname);
-                    path.set_extension("ecdsa.json");
+                    let keychain = Keychain::default();
+                    let addr = keychain.public_address(Ecdsa(keyname));
+                    println!("{:?}", addr)
                 }
                 None => {
-                    println!("{:?}", config.default_ecdsa_address);
-                    return Ok(());
+                    println!("{:?}", config.default_ecdsa_address)
                 }
-            }
-
-            if path.exists() {
-                let json = read_json_file(&path).expect("");
-                println!("{:?}", json.get("address").expect("Cannot find public key"));
-            } else {
-                error!("{:?} :: Keyfile doesn't exist", path)
             }
         }
     }
