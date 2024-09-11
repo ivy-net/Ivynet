@@ -26,4 +26,4 @@ repos:
       - id: cargo-check
       - id: clippy
       - id: test
-        args: ['-vv']
+        args: ['-v']

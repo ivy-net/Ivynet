@@ -17,7 +17,6 @@ jobs:
       - name: install  dependencies
         run: >
           sudo apt install
-          golang
           protobuf-compiler
           pkg-config
           libssl-dev
@@ -51,10 +50,13 @@ jobs:
           echo "pwd: $PWD"
           ls -l
           echo "user: $(whoami)"
+      - name: Prebuild tests
+        run: |
+          cargo build --tests
       - name: Run Pre-Commit
         run: >
           pre-commit run
           --all-files
           --show-diff-on-failure
           --color=never
-          -vv
+          -v
