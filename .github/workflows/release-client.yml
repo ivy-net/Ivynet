@@ -38,3 +38,26 @@ jobs:
           files: |
             target/release/ivynet
           make_latest: true
+
+build-image:
+    name: Build image with packer
+    runs-on: ubuntu-latest
+    needs: build-binary
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install packages for TOML (cargo package)
+        run: >
+          sudo apt install -y
+          cargo
+      - name: Install toml (package)
+        run: |
+          cargo install toml-cli
+      - name: Create a file with the vault password
+        run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
+        env:
+          ANSIBLE_VAULT: ${{ secrets.ANSIBLE_VAULT }}
+      - name: Run Packer
+        run: |
+          cd devops/packer
+          ./cloudstation.sh

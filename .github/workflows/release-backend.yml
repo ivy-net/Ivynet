@@ -46,7 +46,7 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        name: Install packages for TOML (cargo package)
+      - name: Install packages for TOML (cargo package)
         run: >
           sudo apt install -y
           cargo
