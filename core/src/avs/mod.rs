@@ -266,11 +266,10 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
         debug!("cmd PID: {:?}", cmd.id());
 
         while let Some((line, is_stderr)) = output_stream.next().await {
+            println!("{}", line);
             if is_stderr {
                 self.handle_log(&line, CmdLogSource::StdErr).await?;
-                eprintln!("Stderr | {}", line);
             } else {
-                println!("Stdout | {}", line);
             }
         }
         self.set_running(true);
