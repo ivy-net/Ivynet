@@ -219,6 +219,7 @@ pub mod test {
     use std::future::Future;
 
     use super::*;
+    use ethers::utils::hex::encode;
     use tokio::fs;
 
     pub async fn build_test_dir<F, Fut, T>(test_dir: &str, test_logic: F) -> T
@@ -286,6 +287,30 @@ pub mod test {
                 match key {
                     KeyName::Bls(n) => assert_eq!("mybls", &n),
                     KeyName::Ecdsa(n) => assert_eq!("myecdsa", &n),
+                }
+            }
+        })
+        .await;
+    }
+
+    #[tokio::test]
+    async fn test_public_keys() {
+        build_test_dir("public_keys", |test_path| async move {
+            let keychain = Keychain::new(test_path);
+
+            let ecdsakey = keychain.generate(KeyType::Ecdsa, Some("myecdsa"), "testpws");
+            let blskey = keychain.generate(KeyType::Bls, Some("mybls"), "testpws");
+
+            for key in [ecdsakey, blskey] {
+                match key.address() {
+                    KeyAddress::Ecdsa(addr) => assert_eq!(
+                        format!("0x{}", encode(addr.as_bytes())),
+                        keychain.public_address(KeyName::Ecdsa("myecdsa".to_string())).unwrap()
+                    ),
+                    KeyAddress::Bls(addr) => assert_eq!(
+                        serde_json::to_string(&addr).unwrap().trim_matches('"'),
+                        keychain.public_address(KeyName::Bls("mybls".to_string())).unwrap()
+                    ),
                 }
             }
         })
