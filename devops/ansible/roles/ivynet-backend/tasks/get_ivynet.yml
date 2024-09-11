@@ -50,6 +50,7 @@
     owner: root
     group: root
     mode: "0444"
+  notify: Restart service
   tags:
     - ivynet
     - github

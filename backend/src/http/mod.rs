@@ -8,12 +8,14 @@ use std::sync::Arc;
 use crate::error::BackendError;
 
 use axum::{
+    http::Method,
     routing::{get, post},
     Router,
 };
 use ivynet_core::grpc::client::Uri;
 use sendgrid::v3::Sender;
 use sqlx::PgPool;
+use tower_http::cors::{Any, CorsLayer};
 use utoipa::OpenApi as _;
 use utoipa_swagger_ui::SwaggerUi;
 
@@ -43,7 +45,13 @@ pub async fn serve(
 ) -> Result<(), BackendError> {
     tracing::info!("Starting HTTP server on port {port}");
     let sender = sendgrid_api_key.map(Sender::new);
+
+    let cors = CorsLayer::new()
+        .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
+        .allow_origin(Any);
+
     let app = Router::new()
+        .layer(cors)
         .route("/health", get(|| async { "alive" }))
         .route("/authorize", post(authorize::authorize))
         .route("/authorize/invitation/{id}", get(authorize::check_invitation))

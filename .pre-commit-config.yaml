@@ -22,6 +22,7 @@ repos:
     rev: v1.4
     hooks:
       - id: fmt
+      - id: machete
       - id: cargo-check
       - id: clippy
       - id: test
