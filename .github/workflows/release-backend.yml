@@ -16,14 +16,15 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Install packages for Rust&Cargo
+      - name: Install  dependencies
         run: >
-          sudo apt install -y
-          rustc
-          cargo
+          sudo apt install
           protobuf-compiler
           pkg-config
           libssl-dev
+      - name: Install official Rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       - name: Run tests
         run: |
           cd backend

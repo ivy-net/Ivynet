@@ -27,6 +27,7 @@ jobs:
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       - name: Build binaries
         run: |
+          . "$HOME/.cargo/env"
           cargo build --release
 
 
@@ -41,7 +42,7 @@ jobs:
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       - name: Install TOML cli
         run: |
-          sudo cargo install toml-cli
+          cargo install toml-cli
       - name: Extract TOML version
         id: version-backend
         run: |
@@ -72,7 +73,7 @@ jobs:
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       - name: Install TOML cli
         run: |
-          sudo cargo install toml-cli
+          cargo install toml-cli
       - name: Extract TOML version
         id: version-cli
         run: |
