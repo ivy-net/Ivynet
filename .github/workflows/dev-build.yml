@@ -24,7 +24,7 @@ jobs:
           libssl-dev
       - name: Install official Rust
         run: |
-          curl --proto '=https' -y --tlsv1.2 -sSf https://sh.rustup.rs | sh
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       - name: Build binaries
         run: |
           cargo build --release
@@ -36,6 +36,9 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - name: Install official Rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       - name: Install TOML cli
         run: |
           sudo cargo install toml-cli
@@ -64,6 +67,9 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - name: Install official Rust
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
       - name: Install TOML cli
         run: |
           sudo cargo install toml-cli
