@@ -1,5 +1,5 @@
 ---
-name: Release
+name: Release Client
 
 on:
   push:
@@ -10,7 +10,7 @@ env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  build-binary:
     name: Build and push binaries to github release page
     runs-on: ubuntu-latest
     steps:
