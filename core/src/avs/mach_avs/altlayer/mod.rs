@@ -127,7 +127,8 @@ impl AvsVariant for AltLayer {
     }
 
     async fn handle_log(&self, _line: &str, _src: CmdLogSource) -> Result<(), IvyError> {
-        todo!()
+        // TODO: Implement log handling
+        Ok(())
     }
 
     fn run_path(&self) -> PathBuf {

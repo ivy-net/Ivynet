@@ -163,7 +163,8 @@ impl AvsVariant for Lagrange {
     }
 
     async fn handle_log(&self, _line: &str, _src: CmdLogSource) -> Result<(), IvyError> {
-        todo!()
+        // TODO: Implement log handling
+        Ok(())
     }
 
     fn name(&self) -> &str {
