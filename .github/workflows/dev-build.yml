@@ -23,8 +23,14 @@ jobs:
           pkg-config
           libssl-dev
       - name: Install official Rust
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        run: >
+          curl
+          --proto '=https'
+          --tlsv1.2
+          -sSf
+          https://sh.rustup.rs
+          |
+          sh -s -- -y
       - name: Build binaries
         run: |
           . "$HOME/.cargo/env"
@@ -38,14 +44,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install official Rust
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        run: >
+          curl
+          --proto '=https'
+          --tlsv1.2
+          -sSf
+          https://sh.rustup.rs
+          |
+          sh -s -- -y
       - name: Install TOML cli
         run: |
           cargo install toml-cli
       - name: Extract TOML version
         id: version-backend
         run: |
+          . "$HOME/.cargo/env"
           version=$(toml get backend/Cargo.toml package.version)
           echo "::set-output name=version::$version"
       - name: Get latest git tag
@@ -69,14 +82,21 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Install official Rust
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        run: >
+          curl
+          --proto '=https'
+          --tlsv1.2
+          -sSf
+          https://sh.rustup.rs
+          |
+          sh -s -- -y
       - name: Install TOML cli
         run: |
           cargo install toml-cli
       - name: Extract TOML version
         id: version-cli
         run: |
+          . "$HOME/.cargo/env"
           version=$(toml get cli/Cargo.toml package.version)
           echo "::set-output name=version::$version"
       - name: Get latest tag
