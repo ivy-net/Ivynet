@@ -162,7 +162,7 @@ impl AvsVariant for Lagrange {
         todo!("Lagrange hasn't implemented this yet")
     }
 
-    async fn handle_log(&self, line: &str, src: CmdLogSource) -> Result<(), IvyError> {
+    async fn handle_log(&self, _line: &str, _src: CmdLogSource) -> Result<(), IvyError> {
         todo!()
     }
 

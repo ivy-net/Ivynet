@@ -126,7 +126,7 @@ impl AvsVariant for AltLayer {
         self.base_path.clone()
     }
 
-    async fn handle_log(&self, line: &str, src: CmdLogSource) -> Result<(), IvyError> {
+    async fn handle_log(&self, _line: &str, _src: CmdLogSource) -> Result<(), IvyError> {
         todo!()
     }
 

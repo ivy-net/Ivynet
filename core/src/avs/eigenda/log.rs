@@ -1,9 +1,11 @@
 use regex::Regex;
 
+#[allow(dead_code)]
 pub fn container_regex() -> Regex {
     Regex::new(r"^(\S+)\s+\|").unwrap()
 }
 
+#[allow(dead_code)]
 pub fn datetime_regex() -> Regex {
     Regex::new(r"\s(\w{4} \d{2} \d{2}:\d{2}:\d{2}\.\d{3})\s").unwrap()
 }
