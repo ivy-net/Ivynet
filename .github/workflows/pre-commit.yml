@@ -21,8 +21,11 @@ jobs:
           pkg-config
           libssl-dev
       - name: Install official Rust
-        run: |
-          curl --proto '=https' -y --tlsv1.2 -sSf https://sh.rustup.rs | sh
+        run: >
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs >> temp.sh &&
+          chmod +x temp.sh &&
+          ./temp.sh -y &&
+          rm temp.sh
       - name: Install machete
         run: |
           cargo install cargo-machete
