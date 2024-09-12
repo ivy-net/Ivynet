@@ -16,6 +16,10 @@ use tracing_subscriber::FmtSubscriber;
 #[allow(unused_imports)]
 use tracing::{debug, error, warn, Level};
 
+mod version_hash {
+    include!(concat!(env!("OUT_DIR"), "/version.rs"));
+}
+
 #[derive(Parser, Debug)]
 #[command(name = "ivy", version, about = "The command line interface for ivynet")]
 struct Args {
@@ -44,6 +48,9 @@ struct Args {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
+    #[command(name = "version", about = "Return IvyNet version")]
+    Version,
+
     #[command(name = "init", about = "Ivynet config intiliazation")]
     Init,
     #[command(name = "avs", about = "Request information about an AVS or boot up a node")]
@@ -112,6 +119,13 @@ async fn main() -> Result<(), AnyError> {
     let config = IvyConfig::load_from_default_path().context("Failed to load ivyconfig. Please ensure `~/.ivynet/ivyconfig.toml` exists and is not malformed. If this is your first time running Ivynet, please run `ivynet init` to perform first-time intialization.")?;
 
     match args.cmd {
+        Commands::Version => {
+            println!(
+                "ivynet version is {} ({})",
+                env!("CARGO_PKG_VERSION"),
+                version_hash::VERSION_HASH
+            );
+        }
         Commands::Config { subcmd } => {
             config::parse_config_subcommands(subcmd, config).await?;
         }
