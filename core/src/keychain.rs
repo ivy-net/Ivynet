@@ -1,13 +1,12 @@
-use std::{fmt::Display, fs, path::PathBuf};
-
 use crate::{
     bls::{encode_address, Address as BlsAddress, BlsKey},
     error::IvyError,
     wallet::IvyWallet,
 };
+use serde_json::Value;
+use std::{fmt::Display, fs, path::PathBuf};
 
-use env_home::env_home_dir as home_dir;
-use ethers::types::Address;
+use ethers::{types::Address, utils::hex::encode};
 
 pub enum KeyType {
     Ecdsa,
@@ -47,6 +46,13 @@ impl Key {
             _ => None,
         }
     }
+
+    pub fn private_key_string(&self) -> String {
+        match &self {
+            Key::Bls(key) => encode(key.secret().to_be_bytes()),
+            Key::Ecdsa(wallet) => wallet.to_private_key(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -70,7 +76,7 @@ pub struct Keychain {
 
 impl Default for Keychain {
     fn default() -> Self {
-        Self { path: home_dir().expect("System without home directory.") }
+        Self { path: dirs::home_dir().expect("Could not get a home directory").join(".ivynet") }
     }
 }
 
@@ -123,6 +129,29 @@ impl Keychain {
             KeyName::Ecdsa(name) => Ok(Key::Ecdsa(self.ecdsa_load(&name, password)?)),
             KeyName::Bls(name) => Ok(Key::Bls(self.bls_load(&name, password)?)),
         }
+    }
+
+    pub fn get_path(&self, name: KeyName) -> PathBuf {
+        match name {
+            KeyName::Ecdsa(name) => self.path.join(format!("{name}.ecdsa.json")),
+            KeyName::Bls(name) => self.path.join(format!("{name}.bls.json")),
+        }
+    }
+
+    pub fn public_address(&self, name: KeyName) -> Result<String, IvyError> {
+        let path = self.path.join(match &name {
+            KeyName::Ecdsa(name) => format!("{name}.ecdsa.json"),
+            KeyName::Bls(name) => format!("{name}.bls.json"),
+        });
+        let json = self.read_json_file(&path)?;
+        let address = match json.get(match name {
+            KeyName::Ecdsa(_) => "address",
+            KeyName::Bls(_) => "pubKey",
+        }) {
+            Some(value) => value,
+            None => return Err(IvyError::AddressFieldError),
+        };
+        Ok(address.to_string().trim_matches('"').to_string())
     }
 
     fn bls_generate(&self, name: Option<&str>, password: &str) -> BlsKey {
@@ -192,6 +221,12 @@ impl Keychain {
             },
         }
     }
+
+    fn read_json_file(&self, path: &PathBuf) -> Result<Value, IvyError> {
+        let data = fs::read_to_string(path).expect("No data in json");
+        let json: Value = serde_json::from_str(&data).expect("Could not parse through json");
+        Ok(json)
+    }
 }
 
 #[cfg(test)]
@@ -199,6 +234,7 @@ pub mod test {
     use std::future::Future;
 
     use super::*;
+    use ethers::utils::hex::encode;
     use tokio::fs;
 
     pub async fn build_test_dir<F, Fut, T>(test_dir: &str, test_logic: F) -> T
@@ -266,6 +302,30 @@ pub mod test {
                 match key {
                     KeyName::Bls(n) => assert_eq!("mybls", &n),
                     KeyName::Ecdsa(n) => assert_eq!("myecdsa", &n),
+                }
+            }
+        })
+        .await;
+    }
+
+    #[tokio::test]
+    async fn test_public_keys() {
+        build_test_dir("public_keys", |test_path| async move {
+            let keychain = Keychain::new(test_path);
+
+            let ecdsakey = keychain.generate(KeyType::Ecdsa, Some("myecdsa"), "testpws");
+            let blskey = keychain.generate(KeyType::Bls, Some("mybls"), "testpws");
+
+            for key in [ecdsakey, blskey] {
+                match key.address() {
+                    KeyAddress::Ecdsa(addr) => assert_eq!(
+                        format!("0x{}", encode(addr.as_bytes())),
+                        keychain.public_address(KeyName::Ecdsa("myecdsa".to_string())).unwrap()
+                    ),
+                    KeyAddress::Bls(addr) => assert_eq!(
+                        serde_json::to_string(&addr).unwrap().trim_matches('"'),
+                        keychain.public_address(KeyName::Bls("mybls".to_string())).unwrap()
+                    ),
                 }
             }
         })

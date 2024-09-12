@@ -19,9 +19,11 @@ repos:
       - id: check-merge-conflict
       - id: check-case-conflict
   - repo: https://github.com/ivy-net/pre-commit-rust
-    rev: v1.3
+    rev: v1.4
     hooks:
       - id: fmt
+      - id: machete
       - id: cargo-check
       - id: clippy
       - id: test
+        args: ['-v']

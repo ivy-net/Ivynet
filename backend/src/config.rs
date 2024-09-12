@@ -60,4 +60,7 @@ pub struct Config {
 
     #[arg(long)]
     pub add_organization: Option<String>,
+
+    #[arg(long, default_value_t = false)]
+    pub version: bool,
 }

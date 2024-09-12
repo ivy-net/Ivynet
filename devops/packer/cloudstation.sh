@@ -3,10 +3,10 @@
 # Simple script to create backend image
 # Requires toml cargo package
 
-filename=backend.pkr.hcl
+filename=cloudstation.pkr.hcl
 
 echo "Get verions (tag)"
-version=$(toml get ../../backend/Cargo.toml package.version |tr -d [\"\.])
+version=$(toml get ../../cli/Cargo.toml package.version |tr -d [\"\.])
 
 echo "Activate Ansible"
 source $HOME/bin/ansible/bin/activate
