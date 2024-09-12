@@ -151,6 +151,9 @@ pub enum IvyError {
     #[error("Invalid address")]
     InvalidAddress,
 
+    #[error("Log parse error {0}")]
+    LogParseError(String),
+
     #[error(transparent)]
     BlsError(#[from] crate::bls::BlsKeyError),
 }

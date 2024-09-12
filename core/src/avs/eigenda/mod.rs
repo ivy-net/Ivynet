@@ -7,7 +7,7 @@ use ethers::{
     types::{Address, Chain, U256},
 };
 use std::{
-    fs::{self, File, OpenOptions},
+    fs::{self, File},
     io::{copy, BufReader, Write},
     path::PathBuf,
     sync::Arc,
@@ -22,7 +22,7 @@ use crate::{
     config::{self, IvyConfig},
     docker::{
         dockercmd::docker_cmd,
-        log::{open_logfile, split_log_to_container, CmdLogSource, CmdLogType},
+        log::{open_logfile, CmdLogSource},
     },
     download::dl_progress_bar,
     eigen::{
@@ -36,11 +36,15 @@ use crate::{
     utils::gb_to_bytes,
 };
 
-use self::contracts::StakeRegistryAbi;
+use self::{
+    contracts::StakeRegistryAbi,
+    log::{ansi_sanitization_regex, level_regex},
+};
 
 use super::{names::AvsNames, AvsConfig};
 
 mod contracts;
+mod log;
 
 pub const EIGENDA_PATH: &str = ".eigenlayer/eigenda";
 pub const EIGENDA_SETUP_REPO: &str =
@@ -260,27 +264,31 @@ impl AvsVariant for EigenDA {
 
     // TODO: This can probably be improved somewhat by only checking once if logfiles exist.
     async fn handle_log(&self, log: &str, src: CmdLogSource) -> Result<(), IvyError> {
+        println!("{}", log);
+        let log = ansi_sanitization_regex().replace_all(log, "").to_string();
         match src {
             CmdLogSource::StdOut => {
-                let (container, log) = split_log_to_container(log);
-                let logfile_all =
-                    AvsConfig::log_path(self.name()).join(format!("{}-all.log", container));
-                let mut file = open_logfile(&logfile_all)?;
+                // write to logfile simply capturing all stdout output
+                let all_logfile = AvsConfig::log_path(self.name()).join("all-stdout.log");
+                let mut file = open_logfile(&all_logfile)?;
                 writeln!(file, "{}", log)?;
-                //                 if container == "eigenda-native-node" {
-                //                     let logfile_inf =
-                //                         AvsConfig::log_path(self.name()).join(format!("{}-inf.log", container));
-                //                     let mut file = open_logfile(&logfile_inf)?;
-                //                     writeln!(file, "{}", log)?;
-                //                 }
+
+                let level = match level_regex().captures(&log) {
+                    Some(caps) => caps.get(1).unwrap().as_str(),
+                    None => "unk",
+                };
+                let logfile =
+                    AvsConfig::log_path(self.name()).join(format!("{}.log", level.to_lowercase()));
+                let mut file = open_logfile(&logfile)?;
+                writeln!(file, "{}", log)?;
                 Ok(())
             }
             CmdLogSource::StdErr => {
-                let (container, log) = split_log_to_container(log);
-                let logfile =
-                    AvsConfig::log_path(self.name()).join(format!("{}-stderr.log", container));
-                let mut file = open_logfile(&logfile)?;
+                // Write to logfile simply capturing all stderr output
+                let all_logfile = AvsConfig::log_path(self.name()).join("all-stderr.log");
+                let mut file = open_logfile(&all_logfile)?;
                 writeln!(file, "{}", log)?;
+
                 Ok(())
             }
         }
@@ -306,13 +314,6 @@ impl AvsVariant for EigenDA {
         self.running = running;
     }
 }
-
-/// Accepts a log string with the container name stripped, searches for the log type in the string,
-fn parse_eigenda_node_log_type(log: &str) -> Result<CmdLogType, IvyError> {
-    todo!();
-}
-
-// TODO: Proper log tokenizer.
 
 impl EigenDA {
     pub async fn get_current_total_stake(
