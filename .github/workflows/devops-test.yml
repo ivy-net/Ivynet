@@ -20,6 +20,8 @@ jobs:
       - name: Get latest tag
         id: tag-backend
         run: |
+          git tag
+          git tag | awk -F- '/backend/ {print $2}'| tail -1
           tag=$(git tag | awk -F- '/backend/ {print $2}'| tail -1)
           echo -e "Tag: ${tag}"
           echo "TAG_BACKEND_GIT=${tag}" >> "$GITHUB_OUTPUT"
