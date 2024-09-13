@@ -17,24 +17,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Install official Rust
-        run: >
-          curl
-          --proto '=https'
-          --tlsv1.2
-          sSf
-          https://sh.rustup.rs
-          |
-          sh -s -- -y
-      - name: Install TOML cli
-        run: |
-          . "$HOME/.cargo/env"
-          cargo install toml-cli
-      - name: Extract TOML version
-        id: version-cli
-        run: |
-          version=$(toml get cli/Cargo.toml package.version)
-          echo "TAG_CLI_TOML=${version}" >> "$GITHUB_OUTPUT"
       - name: Get latest tag
         id: tag-cli
         run: |
@@ -45,12 +27,10 @@ jobs:
           TAG_CLI: ${{ steps.tag-cli.outputs.TAG_CLI_GIT }}
         run: |
           echo -e "This is $TAG_CLI"
-      - name: Test conditional
-        if: >
-          steps.version-cli.outputs.TAG_CLI_TOML
-          !=
-          steps.tag-cli.outputs.TAG_CLI_GIT
+          echo -e "client-$TAG_CLI"
+      - name: Print version 2
         env:
-          TAG_CLI: ${{ steps.version-cli.outputs.TAG_CLI_TOML }}
+          TAG_CLI: client-${{ steps.tag-cli.outputs.TAG_CLI_GIT }}
         run: |
           echo -e "This is $TAG_CLI"
+          echo -e "$TAG_CLI"
