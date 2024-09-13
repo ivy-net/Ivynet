@@ -8,8 +8,8 @@ use std::sync::Arc;
 use crate::error::BackendError;
 
 use axum::{
-    http::Method,
-    routing::{get, post},
+    http::StatusCode,
+    routing::{get, options, post},
     Router,
 };
 use ivynet_core::grpc::client::Uri;
@@ -18,6 +18,11 @@ use sqlx::PgPool;
 use tower_http::cors::{Any, CorsLayer};
 use utoipa::OpenApi as _;
 use utoipa_swagger_ui::SwaggerUi;
+
+use axum::{
+    middleware::{self, Next},
+    response::Response,
+};
 
 #[derive(Clone)]
 pub struct HttpState {
@@ -29,6 +34,24 @@ pub struct HttpState {
     pub org_verification_template: Option<String>,
     pub user_verification_template: Option<String>,
     pub pass_reset_template: Option<String>,
+}
+
+async fn add_headers(req: axum::http::Request<axum::body::Body>, next: Next) -> Response {
+    println!("Received request: {:?}", req.method());
+    let response = next.run(req).await;
+    println!("Response status: {:?}", response.status());
+
+    // let headers = response.headers_mut();
+    // headers.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, header::HeaderValue::from_static("*"));
+    // headers.insert(
+    //     header::ACCESS_CONTROL_ALLOW_METHODS,
+    //     header::HeaderValue::from_static("GET, POST, PUT, DELETE, OPTIONS"),
+    // );
+    // headers.insert(
+    //     header::ACCESS_CONTROL_ALLOW_HEADERS,
+    //     header::HeaderValue::from_static("Content-Type, Authorization"),
+    // );
+    response
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -46,14 +69,12 @@ pub async fn serve(
     tracing::info!("Starting HTTP server on port {port}");
     let sender = sendgrid_api_key.map(Sender::new);
 
-    let cors = CorsLayer::new()
-        .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE])
-        .allow_headers(Any)
-        .allow_origin(Any);
+    let cors = CorsLayer::new().allow_methods(Any).allow_headers(Any).allow_origin(Any);
 
     let app = Router::new()
         .layer(cors)
         .route("/health", get(|| async { "alive" }))
+        .route("/authorize", options(handle_options))
         .route("/authorize", post(authorize::authorize))
         .route("/authorize/invitation/{id}", get(authorize::check_invitation))
         .route("/authorize/forgot_password", post(authorize::forgot_password))
@@ -68,6 +89,7 @@ pub async fn serve(
         .route("/client/idle", get(client::idling))
         .route("/client/unhealthy", get(client::unhealthy))
         .route("/client/info/{id}", get(client::info))
+        .layer(middleware::from_fn(add_headers))
         .with_state(HttpState {
             pool,
             cache,
@@ -85,4 +107,8 @@ pub async fn serve(
     let listener = tokio::net::TcpListener::bind(&format!("0.0.0.0:{port}")).await?;
     axum::serve(listener, app).await?;
     Ok(())
+}
+
+async fn handle_options() -> StatusCode {
+    StatusCode::OK
 }
