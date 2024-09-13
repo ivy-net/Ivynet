@@ -23,8 +23,14 @@ jobs:
           pkg-config
           libssl-dev
       - name: Install official Rust
-        run: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        run: >
+          curl
+          --proto '=https'
+          --tlsv1.2
+          -sSf
+          https://sh.rustup.rs
+          |
+          sh -s -- -y
       - name: Run tests
         run: |
           cd backend
@@ -54,6 +60,12 @@ jobs:
       - name: Install toml (package)
         run: |
           cargo install toml-cli
+      - name: Install Ansible
+        run: |
+          sudo apt update
+          sudo apt install software-properties-common
+          sudo add-apt-repository --yes --update ppa:ansible/ansible
+          sudo apt install ansible
       - name: Create a file with the vault password
         run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
         env:

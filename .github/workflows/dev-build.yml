@@ -54,11 +54,12 @@ jobs:
           sh -s -- -y
       - name: Install TOML cli
         run: |
+          . "$HOME/.cargo/env"
           cargo install toml-cli
+          echo "path: $PATH"
       - name: Extract TOML version
         id: version-backend
         run: |
-          . "$HOME/.cargo/env"
           version=$(toml get backend/Cargo.toml package.version)
           echo "::set-output name=version::$version"
       - name: Get latest git tag
@@ -92,11 +93,11 @@ jobs:
           sh -s -- -y
       - name: Install TOML cli
         run: |
+          . "$HOME/.cargo/env"
           cargo install toml-cli
       - name: Extract TOML version
         id: version-cli
         run: |
-          . "$HOME/.cargo/env"
           version=$(toml get cli/Cargo.toml package.version)
           echo "::set-output name=version::$version"
       - name: Get latest tag
