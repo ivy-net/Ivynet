@@ -71,14 +71,12 @@ jobs:
           echo "TAG_BACKEND_GIT=${tag}" >> "$GITHUB_ENV"
       - name: Create new git tag
         if: >
-          ${TAG_BACKEND_GIT}
+          steps.version-backend.outputs.TAG_CLI_TOML
           !=
-          ${TAG_BACKEND_TOML}
+          steps.tag-backend.outputs.TAG_CLI_GIT
         run: |
           git tag -f backend-${{ steps.version-backend.outputs.version }}
           git push origin backend-${{ steps.version-backend.outputs.version }}
-          git tag -f client-${TAG_BACKEND_TOML}
-          git push origin client-${TAG_BACKEND_TOML}
 
   tag-cli:
     name: Tag client
