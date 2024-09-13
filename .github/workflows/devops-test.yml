@@ -32,11 +32,15 @@ jobs:
           cargo install toml-cli
       - name: Test toml
         run: |
+          echo -e "Normal PATH:"
           echo -e "$PATH"
           extra_path=$(echo "$PATH")
-          echo -e "FULL PATH"
+          echo -e "Inside PATH:"
+          echo -e "$extra_path"
+          echo -e "FULL PATH command:"
           $HOME/.cargo/bin/toml --help
+          echo -e "FULL PATH INSIDE command:"
           hh=$($HOME/.cargo/bin/toml --help)
           echo -e "$hh"
-          echo -e "SHORT PATH"
+          echo -e "SHORT PATH command:"
           toml --help
