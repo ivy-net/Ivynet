@@ -72,6 +72,7 @@ where
     let mut lines = BufReader::new(reader).lines();
     while let Ok(Some(line)) = lines.next_line().await {
         if tx.send((line, is_stderr)).is_err() {
+            println!("Failed to send line to channel, breaking channel.");
             break;
         }
     }

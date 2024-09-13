@@ -262,33 +262,37 @@ impl AvsVariant for EigenDA {
         }
     }
 
-    // TODO: This can probably be improved somewhat by only checking once if logfiles exist.
     async fn handle_log(&self, log: &str, src: CmdLogSource) -> Result<(), IvyError> {
         println!("{}", log);
         let log = ansi_sanitization_regex().replace_all(log, "").to_string();
+        let logfile_dir = AvsConfig::log_path(self.name(), self.chain.as_ref());
         match src {
             CmdLogSource::StdOut => {
                 // write to logfile simply capturing all stdout output
-                let all_logfile = AvsConfig::log_path(self.name()).join("all-stdout.log");
+                let all_logfile = logfile_dir.join("stdout.log");
                 let mut file = open_logfile(&all_logfile)?;
                 writeln!(file, "{}", log)?;
-
                 let level = match level_regex().captures(&log) {
                     Some(caps) => caps.get(1).unwrap().as_str(),
-                    None => "unk",
+                    None => "unknown-level",
                 };
-                let logfile =
-                    AvsConfig::log_path(self.name()).join(format!("{}.log", level.to_lowercase()));
+                let logfile_name = match level.to_lowercase().as_str() {
+                    "err" => "error",
+                    "wrn" => "warn",
+                    "inf" => "info",
+                    "dbg" => "debug",
+                    _ => "unknown-level",
+                };
+                let logfile = logfile_dir.join(format!("{}.log", logfile_name));
                 let mut file = open_logfile(&logfile)?;
                 writeln!(file, "{}", log)?;
                 Ok(())
             }
             CmdLogSource::StdErr => {
                 // Write to logfile simply capturing all stderr output
-                let all_logfile = AvsConfig::log_path(self.name()).join("all-stderr.log");
+                let all_logfile = logfile_dir.join("stderr.log");
                 let mut file = open_logfile(&all_logfile)?;
                 writeln!(file, "{}", log)?;
-
                 Ok(())
             }
         }
