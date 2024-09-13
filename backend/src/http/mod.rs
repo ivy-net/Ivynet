@@ -8,7 +8,7 @@ use std::sync::Arc;
 use crate::error::BackendError;
 
 use axum::{
-    http::{self, Method, StatusCode},
+    http::{self, header, Method, StatusCode},
     routing::{get, options, post},
     Router,
 };
@@ -38,19 +38,19 @@ pub struct HttpState {
 
 async fn add_headers(req: axum::http::Request<axum::body::Body>, next: Next) -> Response {
     println!("Received request: {:?}", req.method());
-    let response = next.run(req).await;
+    let mut response = next.run(req).await;
     println!("Response status: {:?}", response.status());
 
-    // let headers = response.headers_mut();
-    // headers.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, header::HeaderValue::from_static("*"));
-    // headers.insert(
-    //     header::ACCESS_CONTROL_ALLOW_METHODS,
-    //     header::HeaderValue::from_static("GET, POST, PUT, DELETE, OPTIONS"),
-    // );
-    // headers.insert(
-    //     header::ACCESS_CONTROL_ALLOW_HEADERS,
-    //     header::HeaderValue::from_static("Content-Type, Authorization"),
-    // );
+    let headers = response.headers_mut();
+    headers.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, header::HeaderValue::from_static("*"));
+    headers.insert(
+        header::ACCESS_CONTROL_ALLOW_METHODS,
+        header::HeaderValue::from_static("GET, POST, PUT, DELETE, OPTIONS"),
+    );
+    headers.insert(
+        header::ACCESS_CONTROL_ALLOW_HEADERS,
+        header::HeaderValue::from_static("Content-Type, Authorization"),
+    );
     response
 }
 
