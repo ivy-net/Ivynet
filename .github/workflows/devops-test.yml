@@ -44,3 +44,11 @@ jobs:
           echo -e "$hh"
           echo -e "SHORT PATH command:"
           toml --help
+      - name: Extract TOML version
+        id: version-cli
+        run: |
+          version=$(toml get cli/Cargo.toml package.version)
+          echo "::set-output name=version::$version"
+      - name: Test version
+        run: |
+          echo "${{ steps.version-cli.outputs.version}}"
