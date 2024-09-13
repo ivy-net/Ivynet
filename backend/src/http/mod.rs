@@ -8,7 +8,7 @@ use std::sync::Arc;
 use crate::error::BackendError;
 
 use axum::{
-    http::StatusCode,
+    http::{self, Method, StatusCode},
     routing::{get, options, post},
     Router,
 };
@@ -69,7 +69,10 @@ pub async fn serve(
     tracing::info!("Starting HTTP server on port {port}");
     let sender = sendgrid_api_key.map(Sender::new);
 
-    let cors = CorsLayer::new().allow_methods(Any).allow_headers(Any).allow_origin(Any);
+    let cors = CorsLayer::new()
+        .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::OPTIONS])
+        .allow_headers([http::header::CONTENT_TYPE, http::header::AUTHORIZATION])
+        .allow_origin(Any);
 
     let app = Router::new()
         .layer(cors)
