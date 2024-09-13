@@ -30,20 +30,6 @@ jobs:
         run: |
           . "$HOME/.cargo/env"
           cargo install toml-cli
-      - name: Test toml
-        run: |
-          echo -e "Normal PATH:"
-          echo -e "$PATH"
-          extra_path=$(echo "$PATH")
-          echo -e "Inside PATH:"
-          echo -e "$extra_path"
-          echo -e "FULL PATH command:"
-          $HOME/.cargo/bin/toml --help
-          echo -e "FULL PATH INSIDE command:"
-          hh=$($HOME/.cargo/bin/toml --help)
-          echo -e "$hh"
-          echo -e "SHORT PATH command:"
-          toml --help
       - name: Extract TOML version
         id: version-cli
         run: |
@@ -52,3 +38,10 @@ jobs:
       - name: Test version
         run: |
           echo "$TAG_CLI"
+      - name: Test conditional
+        if: >
+          ${TAG_CLI_GIT}
+          !=
+          ${TAG_CLI_TOML}
+        run: |
+          echo -e "This is $TAG_CLI_ENV"
