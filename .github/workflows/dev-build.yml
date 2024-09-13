@@ -43,6 +43,8 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
       - name: Install official Rust
         run: >
           curl
@@ -61,20 +63,22 @@ jobs:
         id: version-backend
         run: |
           version=$(toml get backend/Cargo.toml package.version)
-          echo "::set-output name=version::$version"
+          echo "TAG_BACKEND_TOML=${version}" >> "$GITHUB_ENV"
       - name: Get latest git tag
         id: tag-backend
         run: |
           tag=$(git tag | awk -F- '/backend/ {print $2}')
-          echo "::set-output name=tag::$tag"
+          echo "TAG_BACKEND_GIT=${tag}" >> "$GITHUB_ENV"
       - name: Create new git tag
         if: >
-          steps.version-backend.outputs.version
+          ${TAG_BACKEND_GIT}
           !=
-          steps.tag-backend.outputs.tag
+          ${TAG_BACKEND_TOML}
         run: |
           git tag -f backend-${{ steps.version-backend.outputs.version }}
           git push origin backend-${{ steps.version-backend.outputs.version }}
+          git tag -f client-${TAG_BACKEND_TOML}
+          git push origin client-${TAG_BACKEND_TOML}
 
   tag-cli:
     name: Tag client
@@ -82,6 +86,8 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
       - name: Install official Rust
         run: >
           curl
@@ -99,17 +105,19 @@ jobs:
         id: version-cli
         run: |
           version=$(toml get cli/Cargo.toml package.version)
-          echo "::set-output name=version::$version"
+          echo "TAG_CLI_TOML=${version}" >> "$GITHUB_OUTPUT"
       - name: Get latest tag
         id: tag-cli
         run: |
           tag=$(git tag | awk -F- '/client/ {print $2}')
-          echo "::set-output name=tag::$tag"
+          echo "TAG_CLI_GIT=${tag}" >> "$GITHUB_OUTPUT"
       - name: Create git tag
         if: >
-          steps.version-cli.outputs.version
+          steps.version-cli.outputs.TAG_CLI_TOML
           !=
-          steps.tag-cli.outputs.tag
+          steps.tag-cli.outputs.TAG_CLI_GIT
+        env:
+          NEW_TAG: ${{ steps.version-cli.outputs.TAG_CLI_TOML }}
         run: |
-          git tag -f client-${{ steps.version-cli.outputs.version }}
-          git push origin client-${{ steps.version-cli.outputs.version }}
+          git tag -f client-${NEW_TAG}
+          git push origin client-${NEW_TAG}
