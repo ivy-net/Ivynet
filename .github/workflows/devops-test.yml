@@ -34,14 +34,19 @@ jobs:
         id: version-cli
         run: |
           version=$(toml get cli/Cargo.toml package.version)
-          echo "TAG_CLI=${version}" >> "$GITHUB_ENV"
+          echo "TAG_CLI_TOML=${version}" >> "$GITHUB_OUTPUT"
+      - name: Get latest tag
+        id: tag-cli
+        run: |
+          tag=$(git tag | awk -F- '/client/ {print $2}')
+          echo "TAG_CLI_GIT=${tag}" >> "$GITHUB_OUTPUT"
       - name: Test version
         run: |
-          echo "$TAG_CLI"
+          echo -e "This is {{ steps.version-cli.output.TAG_CLI_GIT }}"
       - name: Test conditional
         if: >
-          ${TAG_CLI_GIT}
+          {{ steps.version-cli.outputs.TAG_CLI_TOML }}
           !=
-          ${TAG_CLI_TOML}
+          {{ steps.git-cli.outputs.TAG_CLI_GIT }}
         run: |
-          echo -e "This is $TAG_CLI_ENV"
+          echo -e "This is {{ steps.version-cli.output.TAG_CLI_TOML }}"
