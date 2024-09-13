@@ -31,12 +31,12 @@ jobs:
           . "$HOME/.cargo/env"
           cargo install toml-cli
       - name: Test toml
-        run:
-          echo "$PATH"
+        run: |
+          echo -e "$PATH"
           extra_path=$(echo "$PATH")
-          echo "FULL PATH"
+          echo -e "FULL PATH"
           $HOME/.cargo/bin/toml --help
           hh=$($HOME/.cargo/bin/toml --help)
-          echo "$hh"
-          echo "SHORT PATH"
+          echo -e "$hh"
+          echo -e "SHORT PATH"
           toml --help
