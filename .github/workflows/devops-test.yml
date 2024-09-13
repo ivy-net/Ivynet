@@ -42,7 +42,7 @@ jobs:
           echo "TAG_CLI_GIT=${tag}" >> "$GITHUB_OUTPUT"
       - name: Print version
         env:
-          TAG_CLI: ${{ steps.version-cli.output.TAG_CLI_GIT }}
+          TAG_CLI: ${{ steps.git-cli.output.TAG_CLI_GIT }}
         run: |
           echo -e "This is $TAG_CLI"
       - name: Test conditional
