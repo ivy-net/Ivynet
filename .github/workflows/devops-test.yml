@@ -23,6 +23,8 @@ jobs:
           git log -1 --format='%H'
           git -v
           git tag
+          git pull --tags
+          git tag
           git tag | awk -F- '/backend/ {print $2}'| tail -1
           echo "$(git tag)"
           tag=$(git tag | awk -F- '/backend/ {print $2}'| tail -1)
