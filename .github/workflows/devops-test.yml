@@ -1,0 +1,42 @@
+---
+name: Run PreCommit
+
+on:
+  push:
+    branches-ignore:
+      - dev
+      - master
+    paths:
+      - .github
+      - devops
+
+jobs:
+  devops-tests:
+    name: Various tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Install official Rust
+        run: |
+          curl
+          --proto '=https'
+          --tlsv1.2
+          sSf
+          https://sh.rustup.rs
+          |
+          sh -s -- -y
+      - name: Install TOML cli
+        run: |
+          . "$HOME/.cargo/env"
+          cargo install toml-cli
+      - name: Test toml
+        run:
+          echo "$PATH"
+          extra_path=$(echo "$PATH")
+          echo "FULL PATH"
+          $HOME/.cargo/bin/toml --help
+          hh=$($HOME/.cargo/bin/toml --help)
+          echo "$hh"
+          echo "SHORT PATH"
+          toml --help
