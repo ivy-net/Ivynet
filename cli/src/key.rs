@@ -6,7 +6,7 @@ use ivynet_core::{
     config::IvyConfig,
     error::IvyError,
     ethers::types::H160,
-    keychain::{Key, KeyAddress, KeyName, KeyType, Keychain},
+    keychain::{Key, KeyAddress, KeyType, Keychain},
     wallet::IvyWallet,
 };
 
@@ -63,24 +63,24 @@ pub enum CreateCommands {
 #[derive(Parser, Debug, Clone)]
 pub enum GetCommands {
     #[command(name = "ecdsa-private", about = "Get the default ECDSA key and its address")]
-    EcdsaPrivate { keyname: Option<String> },
+    EcdsaPrivate {},
     #[command(
         name = "ecdsa-public",
         about = "Get a specified ECDSA key's public address <KEYNAME>"
     )]
-    EcdsaPublicKey { keyname: Option<String> },
+    EcdsaPublicKey {},
     #[command(name = "bls-private", about = "Get the default BLS key and its address")]
-    BlsPrivate { keyname: Option<String> },
+    BlsPrivate {},
     #[command(name = "bls-public", about = "Get a specified BLS key's public address <KEYNAME>")]
-    BlsPublicKey { keyname: Option<String> },
+    BlsPublicKey {},
 }
 
 #[derive(Parser, Debug, Clone)]
 pub enum SetCommands {
     #[command(name = "bls", about = "Set the default BLS key <KEYNAME>")]
-    BlsSet { keyname: String },
+    BlsSet {},
     #[command(name = "ecdsa", about = "Set the default ECDSA key <KEYNAME>")]
-    EcdsaSet { keyname: String },
+    EcdsaSet {},
 }
 
 pub async fn parse_key_subcommands(subcmd: KeyCommands, config: IvyConfig) -> Result<(), Error> {
@@ -116,9 +116,7 @@ pub async fn parse_key_import_subcommands(
                 _ => Err(IvyError::IncorrectAddressError),
             }?;
 
-            let path = keychain.get_path(KeyName::Bls(keyname));
-
-            config.set_bls_keyfile(path);
+            config.set_bls_keyfile(keyname.to_string());
             config.set_bls_address(addr.to_string());
             config.store()?;
         }
@@ -131,9 +129,8 @@ pub async fn parse_key_import_subcommands(
                 KeyAddress::Ecdsa(address) => Ok(address),
                 _ => Err(IvyError::IncorrectAddressError),
             }?;
-            let path = keychain.get_path(KeyName::Ecdsa(keyname));
 
-            config.set_ecdsa_keyfile(path);
+            config.set_ecdsa_keyfile(keyname.to_string());
             config.set_ecdsa_address(addr);
             config.store()?;
         }
@@ -156,9 +153,8 @@ pub async fn parse_key_create_subcommands(
                     KeyAddress::Bls(address) => Ok(address),
                     _ => Err(IvyError::IncorrectAddressError),
                 }?;
-                let path = keychain.get_path(KeyName::Bls(keyname));
 
-                config.set_bls_keyfile(path);
+                config.set_bls_keyfile(keyname.to_string());
                 config.set_bls_address(addr.to_string());
                 config.store()?;
 
@@ -182,9 +178,8 @@ pub async fn parse_key_create_subcommands(
                     KeyAddress::Ecdsa(address) => Ok(address),
                     _ => Err(IvyError::IncorrectAddressError),
                 }?;
-                let path = keychain.get_path(KeyName::Ecdsa(keyname));
 
-                config.set_ecdsa_keyfile(path);
+                config.set_ecdsa_keyfile(keyname.to_string());
                 config.set_ecdsa_address(addr);
                 config.store()?;
 
@@ -206,27 +201,16 @@ pub async fn parse_key_get_subcommands(
     config: IvyConfig,
 ) -> Result<(), Error> {
     match subcmd {
-        GetCommands::BlsPrivate { keyname } => {
-            let keyname = keyname.unwrap_or_else(|| {
-                let mut keyname = None;
-                let path = config.default_bls_keyfile.clone();
-                if let Some(file_stem) = path.file_stem() {
-                    if let Some(stem_str) = file_stem.to_str() {
-                        if let Some(name) = stem_str.split('.').next() {
-                            keyname = Some(name.to_string());
-                        }
-                    }
-                }
-                keyname.unwrap_or_default()
-            });
+        GetCommands::BlsPrivate {} => {
+            let keychain = Keychain::default();
+            let keyname = keychain.select_key(KeyType::Bls, config.default_bls_keyfile.clone())?;
 
             let password = Password::new()
                 .with_prompt("Enter a password to the private key")
                 .interact()
                 .expect("No password provided");
 
-            let keychain = Keychain::default();
-            if let Key::Bls(key) = keychain.load(KeyName::Bls(keyname), &password)? {
+            if let Key::Bls(key) = keychain.load(keyname, &password)? {
                 println!("Private key: {:?}", key.secret());
                 println!("Public Key: {:?}", config.default_bls_address.clone());
             } else {
@@ -235,42 +219,26 @@ pub async fn parse_key_get_subcommands(
             Ok(())
         }
 
-        GetCommands::BlsPublicKey { keyname } => {
-            match keyname {
-                Some(keyname) => {
-                    let keychain = Keychain::default();
-                    let addr = keychain.public_address(KeyName::Bls(keyname))?;
-                    println!("{}", addr)
-                }
-                None => {
-                    println!("{:?}", config.default_bls_address)
-                }
-            }
+        GetCommands::BlsPublicKey {} => {
+            let keychain = Keychain::default();
+            let default_key = config.default_bls_keyfile.clone();
+            let keyname = keychain.select_key(KeyType::Bls, default_key)?;
+            let addr = keychain.public_address(keyname)?;
+            println!("Public address: {}", addr);
+
             Ok(())
         }
-        GetCommands::EcdsaPrivate { keyname } => {
-            let keyname = keyname.unwrap_or_else(|| {
-                let mut keyname = None;
-                let path = config.default_ecdsa_keyfile.clone();
-
-                if let Some(file_stem) = path.file_stem() {
-                    if let Some(stem_str) = file_stem.to_str() {
-                        if let Some(name) = stem_str.split('.').next() {
-                            keyname = Some(name.to_string());
-                        }
-                    }
-                }
-
-                keyname.unwrap_or_default()
-            });
+        GetCommands::EcdsaPrivate {} => {
+            let keychain = Keychain::default();
+            let keyname =
+                keychain.select_key(KeyType::Ecdsa, config.default_ecdsa_keyfile.clone())?;
 
             let password = Password::new()
                 .with_prompt("Enter a password to the private key")
                 .interact()
                 .expect("No password provided");
 
-            let keychain = Keychain::default();
-            if let Key::Ecdsa(key) = keychain.load(KeyName::Ecdsa(keyname), &password)? {
+            if let Key::Ecdsa(key) = keychain.load(keyname, &password)? {
                 println!("Private key: {:?}", key.to_private_key());
                 println!("Public Key: {:?}", config.default_ecdsa_address.clone());
             } else {
@@ -278,17 +246,13 @@ pub async fn parse_key_get_subcommands(
             }
             Ok(())
         }
-        GetCommands::EcdsaPublicKey { keyname } => {
-            match keyname {
-                Some(keyname) => {
-                    let keychain = Keychain::default();
-                    let addr = keychain.public_address(KeyName::Ecdsa(keyname))?;
-                    println!("{}", addr)
-                }
-                None => {
-                    println!("{:?}", config.default_ecdsa_address)
-                }
-            }
+        GetCommands::EcdsaPublicKey {} => {
+            let keychain = Keychain::default();
+            let default_key = config.default_ecdsa_keyfile.clone();
+            let keyname = keychain.select_key(KeyType::Ecdsa, default_key)?;
+            let addr = keychain.public_address(keyname)?;
+            println!("Public address: {}", addr);
+
             Ok(())
         }
     }
@@ -299,24 +263,24 @@ pub async fn parse_key_set_subcommands(
     mut config: IvyConfig,
 ) -> Result<(), Error> {
     match subcmd {
-        SetCommands::BlsSet { keyname } => {
+        SetCommands::BlsSet {} => {
             let keychain = Keychain::default();
-            let addr = keychain.public_address(KeyName::Bls(keyname.clone()))?;
-            let path = keychain.get_path(KeyName::Bls(keyname));
+            let keyname = keychain.select_key(KeyType::Bls, None)?;
+            let addr = keychain.public_address(keyname.clone())?;
             config.set_bls_address(addr);
-            config.set_bls_keyfile(path);
+            config.set_bls_keyfile(keyname.to_string());
             config.store()?;
-            println!("New default private key set")
+            println!("New default BLS key set")
         }
-        SetCommands::EcdsaSet { keyname } => {
+        SetCommands::EcdsaSet {} => {
             let keychain = Keychain::default();
-            let addr_string = keychain.public_address(KeyName::Ecdsa(keyname.clone()))?;
+            let keyname = keychain.select_key(KeyType::Ecdsa, None)?;
+            let addr_string = keychain.public_address(keyname.clone())?;
             let addr = addr_string.parse::<H160>().map_err(|_| IvyError::H160Error);
-            let path = keychain.get_path(KeyName::Ecdsa(keyname));
             config.set_ecdsa_address(addr?);
-            config.set_ecdsa_keyfile(path);
+            config.set_ecdsa_keyfile(keyname.to_string());
             config.store()?;
-            println!("New default private key set")
+            println!("New default ECDSA key set")
         }
     }
     Ok(())

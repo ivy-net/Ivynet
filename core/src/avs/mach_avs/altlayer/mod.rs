@@ -25,6 +25,7 @@ use crate::{
     },
     env_parser::EnvLines,
     error::{IvyError, SetupError},
+    keychain::{KeyType, Keychain},
     rpc_management::IvyProvider,
     utils::gb_to_bytes,
 };
@@ -257,7 +258,9 @@ impl AltLayer {
             "NODE_BLS_KEY_FILE_HOST",
             bls_json_file_location.to_str().expect("Could not get BLS key file location"),
         );
-        let mut legacy_keyfile_path = config.default_ecdsa_keyfile.clone();
+        let keychain = Keychain::default();
+        let keyname = keychain.select_key(KeyType::Ecdsa, config.default_ecdsa_keyfile.clone())?;
+        let mut legacy_keyfile_path = keychain.get_path(keyname);
         legacy_keyfile_path.set_extension("legacy.json");
         env_lines.set(
             "NODE_ECDSA_KEY_FILE_HOST",

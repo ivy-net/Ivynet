@@ -3,7 +3,7 @@ use ivynet_core::{
     avs::{build_avs_provider, commands::AvsCommands},
     config::IvyConfig,
     grpc::client::{create_channel, Source},
-    wallet::IvyWallet,
+    keychain::{KeyType, Keychain},
 };
 
 use crate::{client::IvynetClient, error::Error};
@@ -13,14 +13,21 @@ pub async fn parse_avs_subcommands(subcmd: AvsCommands, config: &IvyConfig) -> R
 
     // Setup runs local, otherwise construct a client and continue.
     if let AvsCommands::Setup { ref avs, ref chain } = subcmd {
+        let default_key_path = config.default_ecdsa_keyfile.clone();
+        let keychain = Keychain::default();
+        let keyname = keychain.select_key(KeyType::Ecdsa, default_key_path)?;
+        println!("{}", keyname);
         let password: String = Password::new()
             .with_prompt("Input the password for your stored operator ECDSA keyfile")
             .interact()?;
-        let wallet = IvyWallet::from_keystore(config.default_ecdsa_keyfile.clone(), &password)?;
-        let mut avs =
-            build_avs_provider(Some(avs), chain, config, Some(wallet), Some(password.clone()))
-                .await?;
-        avs.setup(config, Some(password)).await?;
+
+        let key = keychain.load(keyname, &password)?;
+        if let Some(wallet) = key.get_wallet_owned() {
+            let mut avs =
+                build_avs_provider(Some(avs), chain, config, Some(wallet), Some(password.clone()))
+                    .await?;
+            avs.setup(config, Some(password)).await?;
+        };
         return Ok(());
     }
 
@@ -60,7 +67,6 @@ pub async fn parse_avs_subcommands(subcmd: AvsCommands, config: &IvyConfig) -> R
     }
     Ok(())
 }
-
 // TODO:
 // Check error on following flows:
 // - Start without setup (currently returns "no such file")

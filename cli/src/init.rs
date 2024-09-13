@@ -9,6 +9,7 @@ use ivynet_core::{
         messages::RegistrationCredentials,
         tonic::Request,
     },
+    keychain::{KeyType, Keychain},
     metadata::Metadata,
     wallet::IvyWallet,
 };
@@ -186,16 +187,16 @@ fn set_config_keys(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
             let keyfile_name: String =
                 Input::new().with_prompt("Enter a name for the keyfile").interact()?;
             let pw = get_confirm_password();
-            let wallet = IvyWallet::from_private_key(private_key)?;
-            let prv_key_path = wallet.encrypt_and_store(&config.get_path(), keyfile_name, pw)?;
-            config.default_ecdsa_keyfile.clone_from(&prv_key_path);
-            config.default_ecdsa_address = wallet.address();
+
+            let keychain = Keychain::default();
+            let key = keychain.import(KeyType::Ecdsa, Some(&keyfile_name), &private_key, &pw)?;
+
+            if let Some(wallet) = key.get_wallet_owned() {
+                config.default_ecdsa_keyfile = Some(keyfile_name);
+                config.default_ecdsa_address = wallet.address();
+            }
         }
         1 => {
-            let wallet = IvyWallet::new();
-            let addr = wallet.address();
-            println!("Public Address: {:?}", addr);
-            config.default_ecdsa_address = addr;
             let keyfile_name: String =
                 Input::new().with_prompt("Enter a name for the keyfile").interact()?;
             let mut pw: String = Password::new()
@@ -214,8 +215,14 @@ fn set_config_keys(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
                 pw_confirmed = pw == confirm_pw;
             }
 
-            let prv_key_path = wallet.encrypt_and_store(&config.get_path(), keyfile_name, pw)?;
-            config.default_ecdsa_keyfile.clone_from(&prv_key_path);
+            let keychain = Keychain::default();
+            let key = keychain.generate(KeyType::Ecdsa, Some(&keyfile_name), &pw);
+            if let Some(wallet) = key.get_wallet_owned() {
+                config.default_ecdsa_keyfile = Some(keyfile_name);
+                let addr = wallet.address();
+                config.default_ecdsa_address = addr;
+                println!("Public Address: {:?}", addr)
+            }
         }
         2 => {
             println!("Skipping keyfile initialization");

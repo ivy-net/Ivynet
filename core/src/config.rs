@@ -29,9 +29,9 @@ pub struct IvyConfig {
     pub local_rpc_url: String,
     // TODO: See if this nomenclature needs to be changed
     /// Default operator private key file full path
-    pub default_ecdsa_keyfile: PathBuf,
+    pub default_ecdsa_keyfile: Option<String>,
     /// Default Operator private key file full path bls
-    pub default_bls_keyfile: PathBuf,
+    pub default_bls_keyfile: Option<String>,
     /// Metadata for the operator
     pub metadata: Metadata,
     /// Identification key that node uses for server communications
@@ -49,8 +49,8 @@ impl Default for IvyConfig {
             mainnet_rpc_url: "https://rpc.flashbots.net/fast".to_string(),
             holesky_rpc_url: "https://eth-holesky.public.blastapi.io".to_string(),
             local_rpc_url: "http://localhost:8545".to_string(),
-            default_ecdsa_keyfile: "".into(), // TODO: Option
-            default_bls_keyfile: "".into(),
+            default_ecdsa_keyfile: None, // TODO: Option
+            default_bls_keyfile: None,
             metadata: Metadata::default(),
             identity_key: None,
             default_ecdsa_address: H160::default(),
@@ -109,16 +109,16 @@ impl IvyConfig {
         self.default_ecdsa_address = address;
     }
 
-    pub fn set_ecdsa_keyfile(&mut self, keyfile: PathBuf) {
-        self.default_ecdsa_keyfile = keyfile;
+    pub fn set_ecdsa_keyfile(&mut self, keyfile: String) {
+        self.default_ecdsa_keyfile = Some(keyfile);
     }
 
     pub fn set_bls_address(&mut self, address: String) {
         self.default_bls_address = address;
     }
 
-    pub fn set_bls_keyfile(&mut self, keyfile: PathBuf) {
-        self.default_bls_keyfile = keyfile;
+    pub fn set_bls_keyfile(&mut self, keyfile: String) {
+        self.default_bls_keyfile = Some(keyfile);
     }
 
     pub fn get_rpc_url(&self, chain: Chain) -> Result<String, IvyError> {
