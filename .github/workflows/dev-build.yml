@@ -86,9 +86,9 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     steps:
-      - name: Install official Rust
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: Install official Rust
         run: >
           curl
           --proto '=https'
@@ -105,17 +105,19 @@ jobs:
         id: version-cli
         run: |
           version=$(toml get cli/Cargo.toml package.version)
-          echo "TAG_CLI_TOML=${version}" >> "$GITHUB_ENV"
+          echo "TAG_CLI_TOML=${version}" >> "$GITHUB_OUTPUT"
       - name: Get latest tag
         id: tag-cli
         run: |
           tag=$(git tag | awk -F- '/client/ {print $2}')
-          echo "TAG_CLI_GIT=${tag}" >> "$GITHUB_ENV"
+          echo "TAG_CLI_GIT=${tag}" >> "$GITHUB_OUTPUT"
       - name: Create git tag
         if: >
-          ${TAG_CLI_GIT}
+          steps.version-cli.outputs.TAG_CLI_TOML
           !=
-          ${TAG_CLI_TOML}
+          steps.tag-cli.outputs.TAG_CLI_GIT
+        env:
+          NEW_TAG: ${{ steps.version-cli.outputs.TAG_CLI_TOML }}
         run: |
-          git tag -f client-${TAG_CLI_TOML}
-          git push origin client-${TAG_CLI_TOML}
+          git tag -f client-${NEW_TAG}
+          git push origin client-${NEW_TAG}
