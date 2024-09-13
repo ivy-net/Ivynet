@@ -45,8 +45,8 @@ jobs:
           echo -e "This is {{ steps.version-cli.output.TAG_CLI_GIT }}"
       - name: Test conditional
         if: >
-          {{ steps.version-cli.outputs.TAG_CLI_TOML }}
+          steps.version-cli.outputs.TAG_CLI_TOML
           !=
-          {{ steps.git-cli.outputs.TAG_CLI_GIT }}
+          steps.git-cli.outputs.TAG_CLI_GIT
         run: |
           echo -e "This is {{ steps.version-cli.output.TAG_CLI_TOML }}"
