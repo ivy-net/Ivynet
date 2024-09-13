@@ -20,6 +20,8 @@ jobs:
       - name: Get latest tag
         id: tag-backend
         run: |
+          git log -1 --format='%H'
+          git -v
           git tag
           git tag | awk -F- '/backend/ {print $2}'| tail -1
           echo "$(git tag)"
