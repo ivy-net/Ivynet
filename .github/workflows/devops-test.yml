@@ -40,13 +40,17 @@ jobs:
         run: |
           tag=$(git tag | awk -F- '/client/ {print $2}')
           echo "TAG_CLI_GIT=${tag}" >> "$GITHUB_OUTPUT"
-      - name: Test version
+      - name: Print version
+        env:
+          TAG_CLI: ${{ steps.version-cli.output.TAG_CLI_GIT }}
         run: |
-          echo -e "This is {{ steps.version-cli.output.TAG_CLI_GIT }}"
+          echo -e "This is $TAG_CLI"
       - name: Test conditional
         if: >
           steps.version-cli.outputs.TAG_CLI_TOML
           !=
           steps.git-cli.outputs.TAG_CLI_GIT
+        env:
+          TAG_CLI: ${{ steps.version-cli.output.TAG_CLI_TOML }}
         run: |
-          echo -e "This is {{ steps.version-cli.output.TAG_CLI_TOML }}"
+          echo -e "This is $TAG_CLI"
