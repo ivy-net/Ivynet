@@ -21,6 +21,7 @@ jobs:
         id: tag-backend
         run: |
           tag=$(git tag | awk -F- '/backend/ {print $2}')
+          echo -e "${tag}"
           echo "TAG_BACKEND_GIT=${tag}" >> "$GITHUB_OUTPUT"
       - name: Print version
         env:
