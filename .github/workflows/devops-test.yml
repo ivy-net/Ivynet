@@ -1,5 +1,5 @@
 ---
-name: Run PreCommit
+name: DevOps test
 
 on:
   push:
