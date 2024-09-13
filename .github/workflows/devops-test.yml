@@ -48,7 +48,7 @@ jobs:
         id: version-cli
         run: |
           version=$(toml get cli/Cargo.toml package.version)
-          echo "tag=${version}" >> $GITHUB_OUTPUT
+          echo "TAG_CLI=${version}" >> "$GITHUB_ENV"
       - name: Test version
         run: |
-          echo "$tag"
+          echo "$TAG_CLI"
