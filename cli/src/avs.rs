@@ -25,7 +25,9 @@ pub async fn parse_avs_subcommands(subcmd: AvsCommands, config: &IvyConfig) -> R
     }
 
     if let AvsCommands::Inspect { avs, chain, log } = subcmd {
-        let (avs, chain) = if avs.is_none() || chain.is_none() {
+        let (avs, chain) = if let (Some(avs), Some(chain)) = (avs, chain) {
+            (avs, chain)
+        } else {
             let mut client = IvynetClient::from_channel(create_channel(sock, None).await?);
             let info = client.avs_mut().avs_info().await?.into_inner();
             let avs = info.avs_type;
@@ -34,13 +36,11 @@ pub async fn parse_avs_subcommands(subcmd: AvsCommands, config: &IvyConfig) -> R
                 return Err(Error::NoAvsSelectedLogError);
             }
             (avs.to_owned(), chain.to_owned())
-        } else {
-            (avs.unwrap(), chain.unwrap())
         };
 
         // let mut avs = build_avs_provider(Some(&avs), &chain, config, None, None).await?;
         let log_dir = AvsConfig::log_path(&avs, &chain);
-        let log_filename = format!("{}.log", log.to_string());
+        let log_filename = format!("{}.log", log);
         let log_file = log_dir.join(log_filename);
         tail_logs(log_file, 100).await?;
 
