@@ -74,9 +74,11 @@ jobs:
           steps.version-backend.outputs.TAG_CLI_TOML
           !=
           steps.tag-backend.outputs.TAG_CLI_GIT
+        env:
+          NEW_TAG: ${{ steps.version-backend.outputs.TAG_CLI_TOML }}
         run: |
-          git tag -f backend-${{ steps.version-backend.outputs.version }}
-          git push origin backend-${{ steps.version-backend.outputs.version }}
+          git tag -f backend-${NEW_TAG}
+          git push origin backend-${NEW_TAG}
 
   tag-cli:
     name: Tag client
