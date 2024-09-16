@@ -41,7 +41,7 @@ jobs:
           cargo test
       - name: Build binaries
         run: |
-          cd backend
+          cd cli
           cargo build --release
       - name: Make release
         uses: softprops/action-gh-release@v2
