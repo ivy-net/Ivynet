@@ -64,4 +64,4 @@ jobs:
         env:
           NEW_TAG: ${{ steps.version-backend.outputs.TAG_BACKEND_TOML }}
         run:
-          echo "I'm going to use backend-${NEW_TA"
+          echo "I'm going to use backend-${NEW_TAG}"
