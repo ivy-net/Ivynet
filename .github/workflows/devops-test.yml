@@ -38,7 +38,7 @@ jobs:
           echo -e "GIT: $TAG"
       - name: Print version TOML
         env:
-          TAG: backend-${{ steps.tag-backend.outputs.TAG_BACKEND_GIT }}
+          TAG: backend-${{ steps.tag-backend.outputs.TAG_BACKEND_TOML }}
         run: |
           echo -e "This is $TAG"
           echo -e "TOML: $TAG"
