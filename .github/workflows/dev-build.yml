@@ -130,9 +130,9 @@ jobs:
           echo "GIT: ${{ steps.tag-cli.outputs.TAG_CLI_GIT }}"
       - name: Create git tag
         if: >
-          steps.version-cli.TAG_CLI_TOML
+          steps.version-cli.outputs.TAG_CLI_TOML
           !=
-          steps.tag-cli.TAG_CLI_TOML
+          steps.tag-cli.outputs.TAG_CLI_GIT
         env:
           NEW_TAG: client-${{ steps.version-cli.TAG_CLI_TOML }}
         run: |
