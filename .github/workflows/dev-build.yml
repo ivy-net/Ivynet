@@ -66,27 +66,29 @@ jobs:
         id: version-backend
         run: |
           version=$(toml get backend/Cargo.toml package.version | tr -d \")
-          echo "TAG_BACKEND_TOML=${version}" >> "$GITHUB_ENV"
+          echo "TAG_BACKEND_TOML=${version}" >> "$GITHUB_OUTPUT"
           echo "Version: ${version}"
       - name: Get latest git tag
         id: tag-backend
         run: |
           git pull --tags
           tag=$(git tag | awk -F- '/backend/ {print $2}'| tail -1)
-          echo "TAG_BACKEND_GIT=${tag}" >> "$GITHUB_ENV"
+          echo "TAG_BACKEND_GIT=${tag}" >> "$GITHUB_OUTPUT"
           echo "Tag: ${tag}"
       - name: Print versions
         run:
-          echo "TOML: ${{ steps.version-cli.outputs.TAG_BACKEND_TOML }}"
-          echo "CLI: ${{ steps.tag-cli.outputs.TAG_BACKEND_GIT }}"
+          echo "TOML: ${{ steps.version-backend.outputs.TAG_BACKEND_TOML }}"
+          echo "GIT: ${{ steps.tag-backend.outputs.TAG_BACKEND_GIT }}"
       - name: Create new git tag
         if: >
-          TAG_BACKEND_TOML
+          steps.version-backend.outputs.TAG_BACKEND_TOML
           !=
-          TAG_BACKEND_GIT
+          steps.tag-backend.outputs.TAG_BACKEND_GIT
+        env:
+          NEW_TAG: backend-${{ steps.version-backend.outputs.TAG_BACKEND_TOML }}
         run: |
-          git tag -f backend-${TAG_BACKEND_TOML}
-          git push origin backend-${TAG_BACKEND_TOML}
+          git tag -f ${NEW_TAG}
+          git push origin ${NEW_TAG}
 
   tag-cli:
     name: Tag client
@@ -122,11 +124,17 @@ jobs:
           tag=$(git tag | awk -F- '/client/ {print $2}' | tail -1)
           echo "TAG_CLI_GIT=${tag}" >> "$GITHUB_OUTPUT"
           echo "Tag: ${tag}"
+      - name: Print versions
+        run:
+          echo "TOML: ${{ steps.version-cli.outputs.TAG_CLI_TOML }}"
+          echo "GIT: ${{ steps.tag-cli.outputs.TAG_CLI_GIT }}"
       - name: Create git tag
         if: >
-          $TAG_CLI_TOML
+          steps.version-cli.TAG_CLI_TOML
           !=
-          $TAG_CLI_GIT
+          steps.tag-cli.TAG_CLI_TOML
+        env:
+          NEW_TAG: client-${{ steps.version-cli.TAG_CLI_TOML }}
         run: |
-          git tag -f client-${TAG_CLI_TOML}
-          git push origin client-${TAG_CLI_TOML}
+          git tag -f ${NEW_TAG}
+          git push origin ${NEW_TAG}
