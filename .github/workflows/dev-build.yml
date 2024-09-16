@@ -134,7 +134,7 @@ jobs:
           !=
           steps.tag-cli.outputs.TAG_CLI_GIT
         env:
-          NEW_TAG: client-${{ steps.version-cli.TAG_CLI_TOML }}
+          NEW_TAG: client-${{ steps.version-cli.outputs.TAG_CLI_TOML }}
         run: |
           git tag -f ${NEW_TAG}
           git push origin ${NEW_TAG}
