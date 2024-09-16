@@ -69,6 +69,8 @@ jobs:
     name: Test connection to GCP
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
       - name: Install Ansible
         run: |
           sudo apt update
