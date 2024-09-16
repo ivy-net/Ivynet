@@ -145,7 +145,7 @@ fn parse_config_getter_commands(
             println!(" --------------------------- ");
         }
         ConfigGetCommands::Config {} => {
-            println!("{config:?}");
+            println!("{config:#?}");
         }
     }
     Ok(())
