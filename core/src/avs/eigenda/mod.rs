@@ -18,11 +18,20 @@ use tracing::{debug, error, info};
 use zip::read::ZipArchive;
 
 use crate::{
-    avs::AvsVariant, config::{self, IvyConfig}, dockercmd::docker_cmd, download::dl_progress_bar, eigen::{
+    avs::AvsVariant,
+    config::{self, IvyConfig},
+    dockercmd::docker_cmd,
+    download::dl_progress_bar,
+    eigen::{
         contracts::delegation_manager::DelegationManagerAbi,
         node_classes::{self, NodeClass},
         quorum::{Quorum, QuorumType},
-    }, env_parser::EnvLines, error::{IvyError, SetupError}, keychain::{Keychain, KeyType}, rpc_management::IvyProvider, utils::gb_to_bytes
+    },
+    env_parser::EnvLines,
+    error::{IvyError, SetupError},
+    keychain::{KeyType, Keychain},
+    rpc_management::IvyProvider,
+    utils::gb_to_bytes,
 };
 
 use self::contracts::StakeRegistryAbi;
@@ -369,7 +378,7 @@ impl EigenDA {
             "NODE_CACHE_PATH_HOST",
             r#"${EIGENLAYER_HOME}/eigenda/eigenda-operator-setup/resources/cache"#,
         );
-        
+
         // BLS key
         let keychain = Keychain::default();
         let keyname = keychain.select_key(KeyType::Bls, config.default_bls_keyfile.clone())?;
