@@ -89,6 +89,14 @@ impl AvsConfig {
             .join(format!("{}.toml", avs_name))
     }
 
+    pub fn log_path(avs_name: &str, chain: &str) -> PathBuf {
+        dirs::home_dir()
+            .expect("Could not get a home directory")
+            .join(".ivynet/logs")
+            .join(avs_name)
+            .join(chain)
+    }
+
     pub fn get_path(&self, chain: Chain) -> PathBuf {
         self.setup_map
             .get(&chain)

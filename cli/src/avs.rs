@@ -1,12 +1,12 @@
 use dialoguer::Password;
 use ivynet_core::{
-    avs::{build_avs_provider, commands::AvsCommands},
+    avs::{build_avs_provider, commands::AvsCommands, config::AvsConfig},
     config::IvyConfig,
     grpc::client::{create_channel, Source},
     wallet::IvyWallet,
 };
 
-use crate::{client::IvynetClient, error::Error};
+use crate::{client::IvynetClient, error::Error, inspect::tail_logs};
 
 pub async fn parse_avs_subcommands(subcmd: AvsCommands, config: &IvyConfig) -> Result<(), Error> {
     let sock = Source::Path(config.uds_dir());
@@ -21,6 +21,29 @@ pub async fn parse_avs_subcommands(subcmd: AvsCommands, config: &IvyConfig) -> R
             build_avs_provider(Some(avs), chain, config, Some(wallet), Some(password.clone()))
                 .await?;
         avs.setup(config, Some(password)).await?;
+        return Ok(());
+    }
+
+    if let AvsCommands::Inspect { avs, chain, log } = subcmd {
+        let (avs, chain) = if let (Some(avs), Some(chain)) = (avs, chain) {
+            (avs, chain)
+        } else {
+            let mut client = IvynetClient::from_channel(create_channel(sock, None).await?);
+            let info = client.avs_mut().avs_info().await?.into_inner();
+            let avs = info.avs_type;
+            let chain = info.chain;
+            if avs == "None" || chain == "None" {
+                return Err(Error::NoAvsSelectedLogError);
+            }
+            (avs.to_owned(), chain.to_owned())
+        };
+
+        // let mut avs = build_avs_provider(Some(&avs), &chain, config, None, None).await?;
+        let log_dir = AvsConfig::log_path(&avs, &chain);
+        let log_filename = format!("{}.log", log);
+        let log_file = log_dir.join(log_filename);
+        tail_logs(log_file, 100).await?;
+
         return Ok(());
     }
 

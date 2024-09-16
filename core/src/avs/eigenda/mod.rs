@@ -8,19 +8,22 @@ use ethers::{
 };
 use std::{
     fs::{self, File},
-    io::{copy, BufReader},
+    io::{copy, BufReader, Write},
     path::PathBuf,
-    process::{Child, Command},
     sync::Arc,
 };
 use thiserror::Error as ThisError;
+use tokio::process::{Child, Command};
 use tracing::{debug, error, info};
 use zip::read::ZipArchive;
 
 use crate::{
     avs::AvsVariant,
     config::{self, IvyConfig},
-    dockercmd::docker_cmd,
+    docker::{
+        dockercmd::docker_cmd,
+        log::{open_logfile, CmdLogSource},
+    },
     download::dl_progress_bar,
     eigen::{
         contracts::delegation_manager::DelegationManagerAbi,
@@ -33,11 +36,15 @@ use crate::{
     utils::gb_to_bytes,
 };
 
-use self::contracts::StakeRegistryAbi;
+use self::{
+    contracts::StakeRegistryAbi,
+    log::{ansi_sanitization_regex, level_regex},
+};
 
 use super::{names::AvsNames, AvsConfig};
 
 mod contracts;
+mod log;
 
 pub const EIGENDA_PATH: &str = ".eigenlayer/eigenda";
 pub const EIGENDA_SETUP_REPO: &str =
@@ -152,7 +159,7 @@ impl AvsVariant for EigenDA {
         info!("Path: {:?}", &setup_path);
         std::env::set_current_dir(&setup_path)?;
 
-        let cmd = docker_cmd(["logs", "-f"])?;
+        let cmd = docker_cmd(["logs", "-f"]).await?;
 
         self.running = true;
         Ok(cmd)
@@ -198,7 +205,8 @@ impl AvsVariant for EigenDA {
             .arg(keyfile_password)
             .arg("--quorums")
             .arg(quorum_str)
-            .status()?;
+            .status()
+            .await?;
 
         if optin.success() {
             Ok(())
@@ -244,12 +252,49 @@ impl AvsVariant for EigenDA {
             .arg(keyfile_password)
             .arg("--quorums")
             .arg(quorum_str)
-            .status()?;
+            .status()
+            .await?;
 
         if optin.success() {
             Ok(())
         } else {
             Err(EigenDAError::ScriptError(optin.to_string()).into())
+        }
+    }
+
+    async fn handle_log(&self, log: &str, src: CmdLogSource) -> Result<(), IvyError> {
+        println!("{}", log);
+        let log = ansi_sanitization_regex().replace_all(log, "").to_string();
+        let logfile_dir = AvsConfig::log_path(self.name(), self.chain.as_ref());
+        match src {
+            CmdLogSource::StdOut => {
+                // write to logfile simply capturing all stdout output
+                let all_logfile = logfile_dir.join("stdout.log");
+                let mut file = open_logfile(&all_logfile)?;
+                writeln!(file, "{}", log)?;
+                let level = match level_regex().captures(&log) {
+                    Some(caps) => caps.get(1).unwrap().as_str(),
+                    None => "unknown-level",
+                };
+                let logfile_name = match level.to_lowercase().as_str() {
+                    "err" => "error",
+                    "wrn" => "warn",
+                    "inf" => "info",
+                    "dbg" => "debug",
+                    _ => "unknown-level",
+                };
+                let logfile = logfile_dir.join(format!("{}.log", logfile_name));
+                let mut file = open_logfile(&logfile)?;
+                writeln!(file, "{}", log)?;
+                Ok(())
+            }
+            CmdLogSource::StdErr => {
+                // Write to logfile simply capturing all stderr output
+                let all_logfile = logfile_dir.join("stderr.log");
+                let mut file = open_logfile(&all_logfile)?;
+                writeln!(file, "{}", log)?;
+                Ok(())
+            }
         }
     }
 

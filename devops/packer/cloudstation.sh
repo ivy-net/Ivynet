@@ -8,11 +8,11 @@ filename=cloudstation.pkr.hcl
 echo "Get verions (tag)"
 version=$(toml get ../../cli/Cargo.toml package.version |tr -d [\"\.])
 
-echo "Activate Ansible"
-source $HOME/bin/ansible/bin/activate
+echo "Activate Ansible (if necessary)"
+[ -f "$HOME/bin/ansible/bin/activate" ] && source $HOME/bin/ansible/bin/activate
 
 echo "Initialize packer"
-packer init
+packer init ${filename}
 
 echo "Run packer"
 packer build -var "version=${version}" ${filename}

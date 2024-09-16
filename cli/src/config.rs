@@ -134,7 +134,7 @@ fn parse_config_getter_commands(
             println!(" --------------------------- ");
         }
         ConfigGetCommands::Config {} => {
-            println!("{config:?}");
+            println!("{config:#?}");
         }
         ConfigGetCommands::Backend {} => {
             println!("{:?}", config.backend_info);
