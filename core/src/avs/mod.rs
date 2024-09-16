@@ -1,5 +1,9 @@
 use crate::{
     config::IvyConfig,
+    docker::{
+        dockercmd::{docker_cmd, docker_cmd_status, stream_docker_output},
+        log::CmdLogSource,
+    },
     eigen::{contracts::delegation_manager::DelegationManager, quorum::QuorumType},
     error::IvyError,
     rpc_management::{connect_provider, IvyProvider},
@@ -7,6 +11,8 @@ use crate::{
     wallet::IvyWallet,
 };
 use async_trait::async_trait;
+use config::AvsConfig;
+use dialoguer::Select;
 use ethers::{
     middleware::SignerMiddleware,
     providers::Middleware,
@@ -14,15 +20,20 @@ use ethers::{
     types::{Chain, U256},
 };
 use lagrange::Lagrange;
-use std::{collections::HashMap, fmt::Debug, fs, path::PathBuf, process::Child, sync::Arc};
-use tracing::{error, info};
+use names::AvsNames;
+use std::{collections::HashMap, fmt::Debug, fs, path::PathBuf, sync::Arc};
+use tokio::process::Child;
+use tokio_stream::StreamExt;
+use tracing::{debug, error, info};
 
 pub mod commands;
+pub mod config;
 pub mod contracts;
 pub mod eigenda;
 pub mod error;
 pub mod lagrange;
 pub mod mach_avs;
+pub mod names;
 
 pub type QuorumMinMap = HashMap<Chain, HashMap<QuorumType, U256>>;
 
@@ -101,17 +112,28 @@ impl AvsProvider {
 
     /// Setup the loaded AVS instance. This includes both download and configuration steps.
     pub async fn setup(
-        &self,
+        &mut self,
         config: &IvyConfig,
         operator_password: Option<String>,
     ) -> Result<(), IvyError> {
-        self.avs()?.setup(self.provider.clone(), config, operator_password).await?;
+        let provider = self.provider.clone();
+
+        let setup_options = ["New Deployment", "Custom Attachment"];
+        let setup_type = Select::new()
+            .with_prompt(format!("Do you have an existing deployment of {}?", self.avs()?.name()))
+            .items(&setup_options)
+            .interact()
+            .unwrap();
+
+        let is_custom = setup_type == 1;
+
+        self.avs_mut()?.setup(provider, config, operator_password, is_custom).await?;
         info!("Setup complete: run 'ivynet avs help' for next steps!");
         Ok(())
     }
 
     /// Start the loaded AVS instance. Returns an error if no AVS instance is loaded.
-    pub async fn start(&mut self) -> Result<Child, IvyError> {
+    pub async fn start(&mut self) -> Result<(), IvyError> {
         let avs = self.avs_mut()?;
         if avs.is_running() {
             return Err(IvyError::AvsRunningError(
@@ -120,6 +142,17 @@ impl AvsProvider {
             ));
         }
         self.avs_mut()?.start().await
+    }
+
+    pub async fn attach(&mut self) -> Result<Child, IvyError> {
+        let avs = self.avs_mut()?;
+        if avs.is_running() {
+            return Err(IvyError::AvsRunningError(
+                avs.name().to_string(),
+                Chain::try_from(self.provider.signer().chain_id())?,
+            ));
+        }
+        self.avs_mut()?.attach().await
     }
 
     /// Stop the loaded AVS instance.
@@ -137,7 +170,7 @@ impl AvsProvider {
     pub async fn register(&self, config: &IvyConfig) -> Result<(), IvyError> {
         // TODO: Move quorum logic into AVS-specific implementations.
         // TODO: RIIA path creation? Move to new() func
-        let avs_path = self.avs()?.path();
+        let avs_path = self.avs()?.base_path();
         fs::create_dir_all(avs_path.clone())?;
 
         // TODO: likely a function call in registry_coordinator
@@ -166,7 +199,7 @@ impl AvsProvider {
     }
 
     pub async fn unregister(&self, config: &IvyConfig) -> Result<(), IvyError> {
-        let avs_path = self.avs()?.path();
+        let avs_path = self.avs()?.base_path();
 
         if let Some(pw) = &self.keyfile_pw {
             self.avs()?
@@ -196,10 +229,11 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
     /// Perform all first-time setup steps for a given AVS instance. Includes an internal call to
     /// build_env
     async fn setup(
-        &self,
+        &mut self,
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
         operator_password: Option<String>,
+        is_custom: bool,
     ) -> Result<(), IvyError>;
 
     //fn validate_install();
@@ -220,15 +254,58 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
         private_keypath: PathBuf,
         keyfile_password: &str,
     ) -> Result<(), IvyError>;
+
     /// Start the AVS instance. Returns a Child process handle.
-    async fn start(&mut self) -> Result<Child, IvyError>;
+    async fn start(&mut self) -> Result<(), IvyError> {
+        std::env::set_current_dir(self.run_path())?;
+        debug!("docker start: {}", self.run_path().display());
+
+        // NOTE: See the limitations of the Stdio::piped() method if this experiences a deadlock
+        let cmd = &mut docker_cmd(["up", "--force-recreate"]).await?;
+        let mut output_stream = stream_docker_output(cmd).await?;
+        debug!("cmd PID: {:?}", cmd.id());
+
+        while let Some((line, is_stderr)) = output_stream.next().await {
+            if is_stderr {
+                self.handle_log(&line, CmdLogSource::StdErr).await?;
+            } else {
+                self.handle_log(&line, CmdLogSource::StdOut).await?;
+            }
+        }
+        self.set_running(true);
+        Ok(())
+    }
+
+    /// Attach to the AVS instance. Returns a Child process handle.
+    async fn attach(&mut self) -> Result<Child, IvyError> {
+        //TODO: Better Pathing once invdividual configs are usable
+        std::env::set_current_dir(self.run_path())?;
+        debug!("docker ataching: {}", self.run_path().display());
+        let cmd = docker_cmd(["logs", "-f"]).await?;
+        debug!("cmd PID: {:?}", cmd.id());
+        self.set_running(true);
+        Ok(cmd)
+    }
+
     /// Stop the AVS instance.
-    async fn stop(&mut self) -> Result<(), IvyError>;
-    /// Return the name of the AVS instance
+    async fn stop(&mut self) -> Result<(), IvyError> {
+        std::env::set_current_dir(self.run_path())?;
+        let _ = docker_cmd_status(["stop"]).await?;
+        self.set_running(false);
+        Ok(())
+    }
+    /// Handle a log line from the AVS instance.
+    async fn handle_log(&self, line: &str, src: CmdLogSource) -> Result<(), IvyError>;
+    /// Return the name of the AVS instance.
     fn name(&self) -> &str;
-    fn path(&self) -> PathBuf;
+    /// Handle to the top-level directory for the AVS instance.
+    fn base_path(&self) -> PathBuf;
+    /// Return the path to the AVS instance's run directory (usually a docker compose file)
+    fn run_path(&self) -> PathBuf;
     /// Return wether or not the AVS is running
     fn is_running(&self) -> bool;
+    /// Set the running state of the AVS
+    fn set_running(&mut self, running: bool);
 }
 
 // TODO: Builder pattern
@@ -242,10 +319,10 @@ pub async fn build_avs_provider(
     let chain = try_parse_chain(chain)?;
     let provider = connect_provider(&config.get_rpc_url(chain)?, wallet).await?;
     let avs_instance: Option<Box<dyn AvsVariant>> = if let Some(avs_id) = id {
-        match avs_id {
-            "eigenda" => Some(Box::new(EigenDA::new_from_chain(chain))),
-            "altlayer" => Some(Box::new(AltLayer::new_from_chain(chain))),
-            "lagrange" => Some(Box::new(Lagrange::new_from_chain(chain))),
+        match AvsNames::from(avs_id) {
+            AvsNames::EigenDA => Some(Box::new(EigenDA::new_from_chain(chain))),
+            AvsNames::AltLayer => Some(Box::new(AltLayer::new_from_chain(chain))),
+            AvsNames::LagrangeZK => Some(Box::new(Lagrange::new_from_chain(chain))),
             _ => return Err(IvyError::InvalidAvsType(avs_id.to_string())),
         }
     } else {

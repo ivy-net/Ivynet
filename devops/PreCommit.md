@@ -34,6 +34,10 @@ It includes +nightly for fmt and potential to add other commands.
 
 * Install rust tooling (e.g. with rustup https://www.rust-lang.org/tools/install)
 
+### Extra packages
+
+- cargo-machete
+
 ## Pre Commit (on MacOS)
 
 * Install pre-commit

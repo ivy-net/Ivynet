@@ -9,48 +9,64 @@ use ivynet_backend::{
     telemetry::start_tracing,
 };
 use sqlx::PgPool;
-use tracing::{error, warn};
+use tracing::error;
+
+mod version_hash {
+    include!(concat!(env!("OUT_DIR"), "/version.rs"));
+}
 
 #[tokio::main]
 async fn main() -> Result<(), BackendError> {
     let config = Config::parse();
 
+    // It might be just a version read
+    if config.version {
+        println!(
+            "ivynet-backend version is {} ({})",
+            env!("CARGO_PKG_VERSION"),
+            version_hash::VERSION_HASH
+        );
+        return Ok(());
+    }
+
     start_tracing(config.log_level)?;
 
     let pool = Arc::new(configure(&config.db_uri, config.migrate).await?);
-    let cache = memcache::connect(config.cache_url.to_string())?;
 
-    // If there's a test account set, prune all accounts and set this one
-    set_test_account(&pool, config.test_account).await?;
+    if let Some(organization) = config.add_organization {
+        Ok(add_account(&pool, &organization).await?)
+    } else {
+        let cache = memcache::connect(config.cache_url.to_string())?;
+        let http_service = http::serve(
+            pool.clone(),
+            cache,
+            config.root_url,
+            config.sendgrid_api_key,
+            config.sendgrid_from,
+            config.org_verification_template,
+            config.user_verification_template,
+            config.pass_reset_template,
+            config.http_port,
+        );
+        let grpc_service =
+            grpc::serve(pool, config.grpc_tls_cert, config.grpc_tls_key, config.grpc_port);
 
-    let http_service = http::serve(
-        pool.clone(),
-        cache,
-        config.root_url,
-        config.sendgrid_api_key,
-        config.sendgrid_from,
-        config.org_verification_template,
-        config.user_verification_template,
-        config.http_port,
-    );
-    let grpc_service =
-        grpc::serve(pool, config.grpc_tls_cert, config.grpc_tls_key, config.grpc_port);
+        tokio::select! {
+            e = http_service => error!("HTTP server stopped. Reason {e:?}"),
+            e = grpc_service => error!("Executor has stopped. Reason: {e:?}"),
+        }
 
-    tokio::select! {
-        e = http_service => error!("HTTP server stopped. Reason {e:?}"),
-        e = grpc_service => error!("Executor has stopped. Reason: {e:?}"),
+        Ok(())
     }
-
-    Ok(())
 }
 
-async fn set_test_account(pool: &PgPool, account: Option<String>) -> Result<(), BackendError> {
-    if let Some(credentials) = account {
-        let cred_data = credentials.split(':').collect::<Vec<_>>();
+async fn add_account(pool: &PgPool, org: &str) -> Result<(), BackendError> {
+    let org_data = org.split('/').collect::<Vec<_>>();
+    if org_data.len() == 2 {
+        let cred_data = org_data[0].split(':').collect::<Vec<_>>();
         if cred_data.len() == 2 {
-            warn!("Replacing all accounts with testing one {} pass {}", cred_data[0], cred_data[1]);
-            db::Organization::purge(pool).await?;
-            let org = db::Organization::new(pool, "Test Organization", true).await?;
+            println!("Creating organization {} with user {}", org_data[1], cred_data[0]);
+            let org = db::Organization::new(pool, org_data[1], true).await?;
             org.attach_admin(pool, cred_data[0], cred_data[1]).await?;
         }
     }

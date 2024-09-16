@@ -1,0 +1,91 @@
+---
+name: Release Client
+
+on:
+  push:
+    tags:
+      - client-*.*.*
+
+permissions:
+  id-token: write # This is required for requesting the JWT
+  contents: write # This is required for creating a release
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-binary:
+    name: Build and push binaries to github release page
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Refresh source list
+        run: |
+          sudo apt update
+      - name: Install dependencies
+        run: >
+          sudo apt install -y
+          protobuf-compiler
+          pkg-config
+          libssl-dev
+      - name: Install official Rust
+        run: >
+          curl
+          --proto '=https'
+          --tlsv1.2
+          -sSf
+          https://sh.rustup.rs
+          |
+          sh -s -- -y
+      - name: Run tests
+        run: |
+          . "$HOME/.cargo/env"
+          cd cli
+          cargo test
+      - name: Build binaries
+        run: |
+          cd cli
+          cargo build --release
+      - name: Make release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            target/release/ivynet
+          make_latest: true
+
+  build-image:
+    name: Build image with packer
+    runs-on: ubuntu-latest
+    needs: build-binary
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Refresh source list
+        run: |
+          sudo apt update
+      - name: Install packages for TOML (cargo package)
+        run: >
+          sudo apt install -y
+          cargo
+      - name: Install toml (package)
+        run: |
+          cargo install toml-cli
+      - name: Install Ansible
+        run: |
+          sudo apt update
+          sudo apt install -y software-properties-common
+          sudo add-apt-repository --yes --update ppa:ansible/ansible
+          sudo apt install -y ansible
+      - name: Create a file with the vault password
+        run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
+        env:
+          ANSIBLE_VAULT: ${{ secrets.ANSIBLE_VAULT }}
+            #      - name: Authenticate to Google Cloud
+            #        uses: google-github-actions/auth@v2
+            #        with:
+            #          credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
+      - name: Run Packer
+        run: |
+          cd devops/packer
+          ./cloudstation.sh

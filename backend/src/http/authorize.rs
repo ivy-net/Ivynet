@@ -1,8 +1,13 @@
+use std::collections::HashMap;
+
 use axum::{
     extract::{Path, State},
+    http::HeaderMap,
     Json,
 };
 use axum_extra::extract::{cookie::Cookie, CookieJar};
+use base64::Engine as _;
+use sendgrid::v3::{Email, Message, Personalization};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use utoipa::ToSchema;
@@ -22,6 +27,11 @@ use super::HttpState;
 pub struct AuthorizationCredentials {
     pub email: String,
     pub password: String,
+}
+
+#[derive(Deserialize, Debug, Clone, ToSchema)]
+pub struct ForgotPasswordCredentials {
+    pub email: String,
 }
 
 #[derive(Deserialize, Debug, Clone, ToSchema)]
@@ -86,6 +96,44 @@ pub async fn check_invitation(
 
 #[utoipa::path(
     post,
+    path = "/authorize/forgot_password",
+    request_body = ForgotPasswordCredentials,
+    responses(
+        (status = 200, body = bool),
+        (status = 404)
+    )
+)]
+pub async fn forgot_password(
+    State(state): State<HttpState>,
+    Json(credentials): Json<ForgotPasswordCredentials>,
+) -> Result<Json<bool>, BackendError> {
+    let verification = Account::set_verification(&state.pool, &credentials.email).await?;
+
+    if let (Some(sender), Some(sender_address), Some(pass_reset_template)) =
+        (state.sender, state.sender_email, state.pass_reset_template)
+    {
+        let mut arguments = HashMap::with_capacity(1);
+        //TODO: Setting this url has to be properly set
+        arguments.insert(
+            "confirmation_url".to_string(),
+            format!("{}/password_reset/{}", state.root_url, verification.verification_id),
+        );
+
+        sender
+            .send(
+                &Message::new(Email::new(&sender_address))
+                    .set_template_id(&pass_reset_template)
+                    .add_personalization(
+                        Personalization::new(Email::new(credentials.email))
+                            .add_dynamic_template_data(arguments),
+                    ),
+            )
+            .await?;
+    }
+    Ok(true.into())
+}
+#[utoipa::path(
+    post,
     path = "/authorize/set_password",
     request_body = SetPasswordCredentials,
     responses(
@@ -115,11 +163,42 @@ pub async fn set_password(
 
 pub async fn verify(
     pool: &PgPool,
+    headers: &HeaderMap,
     cache: &memcache::Client,
     jar: &CookieJar,
 ) -> Result<Account, BackendError> {
-    let session = jar.get("session_id").ok_or(BackendError::Unauthorized)?.value();
+    if let Some(auth_header) = headers.get("Authorization") {
+        let split = auth_header.to_str().map_err(|_| BackendError::BadCredentials)?.split_once(' ');
+        match split {
+            Some(("Basic", contents)) => {
+                let (username, password) = decode(contents)?;
+                if let Some(pass) = password {
+                    Account::verify(pool, &username, &pass).await
+                } else {
+                    Err(BackendError::Unauthorized)
+                }
+            }
+            _ => Err(BackendError::Unauthorized),
+        }
+    } else {
+        let session = jar.get("session_id").ok_or(BackendError::Unauthorized)?.value();
 
-    let user_id = cache.get(session)?.ok_or(BackendError::Unauthorized)?;
-    Account::get(pool, user_id).await
+        let user_id = cache.get(session)?.ok_or(BackendError::Unauthorized)?;
+        Account::get(pool, user_id).await
+    }
+}
+
+fn decode(input: &str) -> Result<(String, Option<String>), BackendError> {
+    // Decode from base64 into a string
+    let decoded = base64::engine::general_purpose::STANDARD
+        .decode(input)
+        .map_err(|_| BackendError::BadCredentials)?;
+    let decoded = String::from_utf8(decoded).map_err(|_| BackendError::BadCredentials)?;
+
+    // Return depending on if password is present
+    Ok(if let Some((id, password)) = decoded.split_once(':') {
+        (id.to_string(), Some(password.to_string()))
+    } else {
+        (decoded.to_string(), None)
+    })
 }

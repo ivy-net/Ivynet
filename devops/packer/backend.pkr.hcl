@@ -23,7 +23,7 @@ source "googlecompute" "ivynet-backend" {
   zone                = "us-central1-b"
   image_family        = "ivynet-backend"
   image_name          = "ivynet-backend-${var.version}"
-  disk_size           = "40"
+  disk_size           = "200"
   ssh_username        = "packer"
   metadata = {
     "enable-oslogin" : "FALSE"
@@ -35,6 +35,11 @@ build {
 
   provisioner "ansible" {
     playbook_file = "../ansible/backend.yml"
-    extra_arguments = ["--vault-password-file", "~/.vault.txt"]
+    extra_arguments = [
+      "--vault-password-file",
+      "~/.vault.txt",
+      "--extra-vars",
+      "{'ivynet_backend': 'backend-${var.version}'}"
+    ]
   }
 }
