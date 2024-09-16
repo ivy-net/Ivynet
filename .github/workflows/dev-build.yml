@@ -81,14 +81,12 @@ jobs:
           echo "CLI: ${{ steps.tag-cli.outputs.TAG_BACKEND_GIT }}"
       - name: Create new git tag
         if: >
-          steps.version-backend.outputs.TAG_BACKEND_TOML
+          TAG_BACKEND_TOML
           !=
-          steps.tag-backend.outputs.TAG_BACKEND_GIT
-        env:
-          NEW_TAG: ${{ steps.version-backend.outputs.TAG_BACKEND_TOML }}
+          TAG_BACKEND_GIT
         run: |
-          git tag -f backend-${NEW_TAG}
-          git push origin backend-${NEW_TAG}
+          git tag -f backend-${TAG_BACKEND_TOML}
+          git push origin backend-${TAG_BACKEND_TOML}
 
   tag-cli:
     name: Tag client
@@ -126,11 +124,9 @@ jobs:
           echo "Tag: ${tag}"
       - name: Create git tag
         if: >
-          steps.version-cli.outputs.TAG_CLI_TOML
+          $TAG_CLI_TOML
           !=
-          steps.tag-cli.outputs.TAG_CLI_GIT
-        env:
-          NEW_TAG: ${{ steps.version-cli.outputs.TAG_CLI_TOML }}
+          $TAG_CLI_GIT
         run: |
-          git tag -f client-${NEW_TAG}
-          git push origin client-${NEW_TAG}
+          git tag -f client-${TAG_CLI_TOML}
+          git push origin client-${TAG_CLI_TOML}
