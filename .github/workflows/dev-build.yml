@@ -16,9 +16,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: Refresh source list
+        run: |
+          sudo apt update
       - name: Install dependencies
         run: >
-          sudo apt install
+          sudo apt install -y
           protobuf-compiler
           pkg-config
           libssl-dev
@@ -62,13 +65,16 @@ jobs:
       - name: Extract TOML version
         id: version-backend
         run: |
-          version=$(toml get backend/Cargo.toml package.version)
+          version=$(toml get backend/Cargo.toml package.version | tr -d \")
           echo "TAG_BACKEND_TOML=${version}" >> "$GITHUB_ENV"
+          echo "Version: ${version}"
       - name: Get latest git tag
         id: tag-backend
         run: |
-          tag=$(git tag | awk -F- '/backend/ {print $2}')
+          git pull --tags
+          tag=$(git tag | awk -F- '/backend/ {print $2}'| tail -1)
           echo "TAG_BACKEND_GIT=${tag}" >> "$GITHUB_ENV"
+          echo "Tag: ${tag}"
       - name: Create new git tag
         if: >
           steps.version-backend.outputs.TAG_CLI_TOML
@@ -104,13 +110,16 @@ jobs:
       - name: Extract TOML version
         id: version-cli
         run: |
-          version=$(toml get cli/Cargo.toml package.version)
+          version=$(toml get cli/Cargo.toml package.version | tr -d \")
           echo "TAG_CLI_TOML=${version}" >> "$GITHUB_OUTPUT"
+          echo "Version: ${version}"
       - name: Get latest tag
         id: tag-cli
         run: |
-          tag=$(git tag | awk -F- '/client/ {print $2}')
+          git pull --tags
+          tag=$(git tag | awk -F- '/client/ {print $2}' | tail -1)
           echo "TAG_CLI_GIT=${tag}" >> "$GITHUB_OUTPUT"
+          echo "Tag: ${tag}"
       - name: Create git tag
         if: >
           steps.version-cli.outputs.TAG_CLI_TOML

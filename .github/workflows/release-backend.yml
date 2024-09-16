@@ -14,11 +14,16 @@ jobs:
     name: Build and push binaries to github release page
     runs-on: ubuntu-latest
     steps:
+      - run:
+          ansible update
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Install  dependencies
+      - name: Refresh source list
+        run: |
+          sudo apt update
+      - name: Install dependencies
         run: >
-          sudo apt install
+          sudo apt install -y
           protobuf-compiler
           pkg-config
           libssl-dev
@@ -33,6 +38,7 @@ jobs:
           sh -s -- -y
       - name: Run tests
         run: |
+          . "$HOME/.cargo/env"
           cd backend
           cargo test
       - name: Build binaries
@@ -53,6 +59,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      - name: Refresh source list
+        run: |
+          sudo apt update
       - name: Install packages for TOML (cargo package)
         run: >
           sudo apt install -y
@@ -63,7 +72,7 @@ jobs:
       - name: Install Ansible
         run: |
           sudo apt update
-          sudo apt install software-properties-common
+          sudo apt install -y software-properties-common
           sudo add-apt-repository --yes --update ppa:ansible/ansible
           sudo apt install ansible
       - name: Create a file with the vault password

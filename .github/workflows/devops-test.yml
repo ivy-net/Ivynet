@@ -17,40 +17,28 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Install official Rust
-        run: >
-          curl
-          --proto '=https'
-          --tlsv1.2
-          sSf
-          https://sh.rustup.rs
-          |
-          sh -s -- -y
-      - name: Install TOML cli
-        run: |
-          . "$HOME/.cargo/env"
-          cargo install toml-cli
-      - name: Extract TOML version
-        id: version-cli
-        run: |
-          version=$(toml get cli/Cargo.toml package.version)
-          echo "TAG_CLI_TOML=${version}" >> "$GITHUB_OUTPUT"
       - name: Get latest tag
-        id: tag-cli
+        id: tag-backend
         run: |
-          tag=$(git tag | awk -F- '/client/ {print $2}')
-          echo "TAG_CLI_GIT=${tag}" >> "$GITHUB_OUTPUT"
+          git log -1 --format='%H'
+          git -v
+          git tag
+          git pull --tags
+          git tag
+          git tag | awk -F- '/backend/ {print $2}'| tail -1
+          echo "$(git tag)"
+          tag=$(git tag | awk -F- '/backend/ {print $2}'| tail -1)
+          echo -e "Tag: ${tag}"
+          echo "TAG_BACKEND_GIT=${tag}" >> "$GITHUB_OUTPUT"
       - name: Print version
         env:
-          TAG_CLI: ${{ steps.tag-cli.outputs.TAG_CLI_GIT }}
+          TAG: ${{ steps.tag-backend.outputs.TAG_BACKEND_GIT }}
         run: |
-          echo -e "This is $TAG_CLI"
-      - name: Test conditional
-        if: >
-          steps.version-cli.outputs.TAG_CLI_TOML
-          !=
-          steps.tag-cli.outputs.TAG_CLI_GIT
+          echo -e "This is $TAG"
+          echo -e "backend-$TAG"
+      - name: Print version 2
         env:
-          TAG_CLI: ${{ steps.version-cli.outputs.TAG_CLI_TOML }}
+          TAG: backend-${{ steps.tag-backend.outputs.TAG_BACKEND_GIT }}
         run: |
-          echo -e "This is $TAG_CLI"
+          echo -e "This is $TAG"
+          echo -e "$TAG"
