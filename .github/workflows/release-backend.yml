@@ -38,6 +38,7 @@ jobs:
           sh -s -- -y
       - name: Run tests
         run: |
+          . "$HOME/.cargo/env"
           cd backend
           cargo test
       - name: Build binaries

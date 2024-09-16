@@ -36,6 +36,7 @@ jobs:
           sh -s -- -y
       - name: Run tests
         run: |
+          . "$HOME/.cargo/env"
           cd cli
           cargo test
       - name: Build binaries
