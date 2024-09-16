@@ -75,13 +75,17 @@ jobs:
           tag=$(git tag | awk -F- '/backend/ {print $2}'| tail -1)
           echo "TAG_BACKEND_GIT=${tag}" >> "$GITHUB_ENV"
           echo "Tag: ${tag}"
+      - name: Print versions
+        run:
+          echo "TOML: ${{ steps.version-cli.outputs.TAG_BACKEND_TOML }}"
+          echo "CLI: ${{ steps.tag-cli.outputs.TAG_BACKEND_GIT }}"
       - name: Create new git tag
         if: >
-          steps.version-backend.outputs.TAG_CLI_TOML
+          steps.version-backend.outputs.TAG_BACKEND_TOML
           !=
-          steps.tag-backend.outputs.TAG_CLI_GIT
+          steps.tag-backend.outputs.TAG_BACKEND_GIT
         env:
-          NEW_TAG: ${{ steps.version-backend.outputs.TAG_CLI_TOML }}
+          NEW_TAG: ${{ steps.version-backend.outputs.TAG_BACKEND_TOML }}
         run: |
           git tag -f backend-${NEW_TAG}
           git push origin backend-${NEW_TAG}
