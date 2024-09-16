@@ -18,19 +18,11 @@ use tracing::{debug, error, info};
 use zip::read::ZipArchive;
 
 use crate::{
-    avs::AvsVariant,
-    config::{self, IvyConfig},
-    dockercmd::docker_cmd,
-    download::dl_progress_bar,
-    eigen::{
+    avs::AvsVariant, config::{self, IvyConfig}, dockercmd::docker_cmd, download::dl_progress_bar, eigen::{
         contracts::delegation_manager::DelegationManagerAbi,
         node_classes::{self, NodeClass},
         quorum::{Quorum, QuorumType},
-    },
-    env_parser::EnvLines,
-    error::{IvyError, SetupError},
-    rpc_management::IvyProvider,
-    utils::gb_to_bytes,
+    }, env_parser::EnvLines, error::{IvyError, SetupError}, keychain::{Keychain, KeyType}, rpc_management::IvyProvider, utils::gb_to_bytes
 };
 
 use self::contracts::StakeRegistryAbi;
@@ -377,23 +369,23 @@ impl EigenDA {
             "NODE_CACHE_PATH_HOST",
             r#"${EIGENLAYER_HOME}/eigenda/eigenda-operator-setup/resources/cache"#,
         );
-
+        
         // BLS key
-        let bls_key_name: String = Input::new()
-            .with_prompt(
-                "Input the name of your BLS key file without file extensions - looks in .eigenlayer folder (where eigen cli stores the key)",
-            )
-            .interact_text()?;
+        let keychain = Keychain::default();
+        let keyname = keychain.select_key(KeyType::Bls, config.default_bls_keyfile.clone())?;
 
         let mut bls_json_file_location = dirs::home_dir().expect("Could not get home dir");
         bls_json_file_location.push(".eigenlayer/operator_keys");
-        bls_json_file_location.push(bls_key_name);
+        bls_json_file_location.push(keyname.to_string());
         bls_json_file_location.set_extension("bls.key.json");
-        debug!("BLS key file location: {:?}", bls_json_file_location);
+        debug!("BLS key file location: {:?}", &bls_json_file_location);
 
         // TODO: Remove prompting
         let bls_password: String =
             Password::new().with_prompt("Input the password for your BLS key file").interact()?;
+
+        let p = keychain.get_path(keyname);
+        let _ = fs::copy(p, &bls_json_file_location);
 
         env_lines.set(
             "NODE_BLS_KEY_FILE_HOST",
