@@ -35,14 +35,14 @@ jobs:
         id: version-backend
         run: |
           version=$(toml get backend/Cargo.toml package.version | tr -d \")
-          echo "TAG_BACKEND_TOML=${version}" >> "$GITHUB_ENV"
+          echo "TAG_BACKEND_TOML=${version}" >> "$GITHUB_OUTPUT"
           echo "Version: ${version}"
       - name: Get latest git tag
         id: tag-backend
         run: |
           git pull --tags
           tag=$(git tag | awk -F- '/backend/ {print $2}'| tail -1)
-          echo "TAG_BACKEND_GIT=${tag}" >> "$GITHUB_ENV"
+          echo "TAG_BACKEND_GIT=${tag}" >> "$GITHUB_OUTPUT"
           echo "Tag: ${tag}"
       - name: Print version TOML
         env:
@@ -58,8 +58,10 @@ jobs:
           echo -e "GIT: $TAG"
       - name: Test
         if: >
-          $TAG_BACKEND_TOML
+          steps.version-backend.outputs.TAG_BACKEND_TOML
           !=
-          $TAG_BACKEND_GIT
+          steps.tag-backend.outputs.TAG_BACKEND_GIT
+        env:
+          NEW_TAG: ${{ steps.version-backend.outputs.TAG_BACKEND_TOML }}
         run:
-          echo "I'm going to use backend-${TAG_BACKEND_TOML}"
+          echo "I'm going to use backend-${NEW_TA"
