@@ -139,7 +139,6 @@ impl Keychain {
                         }
                     }
                 }
-                key_strings.sort();
                 Ok(key_strings)
             }
             Err(e) => Err(e),
@@ -153,9 +152,11 @@ impl Keychain {
     ) -> Result<KeyName, IvyError> {
         let mut keys = self.keynames_for_display(&key_type)?;
         if let Some(default_key) = default_key {
-            if let Some(pos) = keys.iter().position(|k| *k == default_key) {
-                keys.swap(0, pos);
-            }
+            keys.retain(|k| *k != default_key);
+            keys.sort();
+            keys.insert(0, default_key);
+        } else {
+            keys.sort();
         }
         let keys_display: &[String] = &keys;
 
