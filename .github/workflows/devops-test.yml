@@ -63,5 +63,5 @@ jobs:
           #          steps.tag-backend.outputs.TAG_BACKEND_GIT
           #        env:
           #          NEW_TAG: backend-${{ steps.version-backend.outputs.TAG_BACKEND_TOML }}
-          #        run:
+          #        run: |
           #          echo "I'm going to use ${NEW_TAG}"

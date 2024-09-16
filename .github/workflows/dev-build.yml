@@ -76,7 +76,7 @@ jobs:
           echo "TAG_BACKEND_GIT=${tag}" >> "$GITHUB_OUTPUT"
           echo "Tag: ${tag}"
       - name: Print versions
-        run:
+        run: |
           echo "TOML: ${{ steps.version-backend.outputs.TAG_BACKEND_TOML }}"
           echo "GIT: ${{ steps.tag-backend.outputs.TAG_BACKEND_GIT }}"
       - name: Create new git tag
@@ -125,7 +125,7 @@ jobs:
           echo "TAG_CLI_GIT=${tag}" >> "$GITHUB_OUTPUT"
           echo "Tag: ${tag}"
       - name: Print versions
-        run:
+        run: |
           echo "TOML: ${{ steps.version-cli.outputs.TAG_CLI_TOML }}"
           echo "GIT: ${{ steps.tag-cli.outputs.TAG_CLI_GIT }}"
       - name: Create git tag
