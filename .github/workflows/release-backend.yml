@@ -4,7 +4,7 @@ name: Release Backend
 on:
   push:
     tags:
-      - "backend-*.*.*"
+      - backend-*.*.*
 
 env:
   CARGO_TERM_COLOR: always
