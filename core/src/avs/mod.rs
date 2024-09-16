@@ -1,6 +1,9 @@
 use crate::{
     config::IvyConfig,
-    dockercmd::{docker_cmd, docker_cmd_status},
+    docker::{
+        dockercmd::{docker_cmd, docker_cmd_status, stream_docker_output},
+        log::CmdLogSource,
+    },
     eigen::{contracts::delegation_manager::DelegationManager, quorum::QuorumType},
     error::IvyError,
     rpc_management::{connect_provider, IvyProvider},
@@ -18,7 +21,9 @@ use ethers::{
 };
 use lagrange::Lagrange;
 use names::AvsNames;
-use std::{collections::HashMap, fmt::Debug, fs, path::PathBuf, process::Child, sync::Arc};
+use std::{collections::HashMap, fmt::Debug, fs, path::PathBuf, sync::Arc};
+use tokio::process::Child;
+use tokio_stream::StreamExt;
 use tracing::{debug, error, info};
 
 pub mod commands;
@@ -128,7 +133,7 @@ impl AvsProvider {
     }
 
     /// Start the loaded AVS instance. Returns an error if no AVS instance is loaded.
-    pub async fn start(&mut self) -> Result<Child, IvyError> {
+    pub async fn start(&mut self) -> Result<(), IvyError> {
         let avs = self.avs_mut()?;
         if avs.is_running() {
             return Err(IvyError::AvsRunningError(
@@ -251,14 +256,24 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
     ) -> Result<(), IvyError>;
 
     /// Start the AVS instance. Returns a Child process handle.
-    async fn start(&mut self) -> Result<Child, IvyError> {
+    async fn start(&mut self) -> Result<(), IvyError> {
         std::env::set_current_dir(self.run_path())?;
         debug!("docker start: {}", self.run_path().display());
+
         // NOTE: See the limitations of the Stdio::piped() method if this experiences a deadlock
-        let cmd = docker_cmd(["up", "--force-recreate"])?;
+        let cmd = &mut docker_cmd(["up", "--force-recreate"]).await?;
+        let mut output_stream = stream_docker_output(cmd).await?;
         debug!("cmd PID: {:?}", cmd.id());
+
+        while let Some((line, is_stderr)) = output_stream.next().await {
+            if is_stderr {
+                self.handle_log(&line, CmdLogSource::StdErr).await?;
+            } else {
+                self.handle_log(&line, CmdLogSource::StdOut).await?;
+            }
+        }
         self.set_running(true);
-        Ok(cmd)
+        Ok(())
     }
 
     /// Attach to the AVS instance. Returns a Child process handle.
@@ -266,7 +281,7 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
         //TODO: Better Pathing once invdividual configs are usable
         std::env::set_current_dir(self.run_path())?;
         debug!("docker ataching: {}", self.run_path().display());
-        let cmd = docker_cmd(["logs", "-f"])?;
+        let cmd = docker_cmd(["logs", "-f"]).await?;
         debug!("cmd PID: {:?}", cmd.id());
         self.set_running(true);
         Ok(cmd)
@@ -275,11 +290,13 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
     /// Stop the AVS instance.
     async fn stop(&mut self) -> Result<(), IvyError> {
         std::env::set_current_dir(self.run_path())?;
-        let _ = docker_cmd_status(["stop"])?;
+        let _ = docker_cmd_status(["stop"]).await?;
         self.set_running(false);
         Ok(())
     }
-
+    /// Handle a log line from the AVS instance.
+    async fn handle_log(&self, line: &str, src: CmdLogSource) -> Result<(), IvyError>;
+    /// Return the name of the AVS instance.
     fn name(&self) -> &str;
     /// Handle to the top-level directory for the AVS instance.
     fn base_path(&self) -> PathBuf;
