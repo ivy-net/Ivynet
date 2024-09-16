@@ -9,7 +9,7 @@ echo "Get verions (tag)"
 version=$(toml get ../../backend/Cargo.toml package.version |tr -d [\"\.])
 
 echo "Activate Ansible (if necessary)"
-[[ -f "$HOME/bin/ansible/bin/activate" ]] && source $HOME/bin/ansible/bin/activate
+[ -f "$HOME/bin/ansible/bin/activate" ] && source $HOME/bin/ansible/bin/activate
 
 echo "Initialize packer"
 packer init ${filename}

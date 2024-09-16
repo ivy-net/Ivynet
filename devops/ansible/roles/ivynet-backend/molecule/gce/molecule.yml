@@ -6,7 +6,7 @@ driver:
   instance_os_type: linux
   external_access: true
   auth_kind: serviceaccount
-  service_account_file: ~/devops-automation-key.json
+  service_account_file: ~/.devops-automation-key.json
   username: ubuntu
   credentials_file: ~/.ssh/google_compute_engine
 platforms:
