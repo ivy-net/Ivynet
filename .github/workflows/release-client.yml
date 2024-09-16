@@ -16,9 +16,12 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Install  dependencies
+      - name: Refresh source list
+        run: |
+          apt update
+      - name: Install dependencies
         run: >
-          sudo apt install
+          sudo apt install -y
           protobuf-compiler
           pkg-config
           libssl-dev
@@ -33,7 +36,7 @@ jobs:
           sh -s -- -y
       - name: Run tests
         run: |
-          cd client
+          cd cli
           cargo test
       - name: Build binaries
         run: |
@@ -53,6 +56,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      - name: Refresh source list
+        run: |
+          apt update
       - name: Install packages for TOML (cargo package)
         run: >
           sudo apt install -y
@@ -65,7 +71,7 @@ jobs:
           sudo apt update
           sudo apt install software-properties-common
           sudo add-apt-repository --yes --update ppa:ansible/ansible
-          sudo apt install ansible
+          sudo apt install -y ansible
       - name: Create a file with the vault password
         run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
         env:
