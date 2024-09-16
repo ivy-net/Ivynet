@@ -4,7 +4,7 @@ name: Release Client
 on:
   push:
     tags:
-      - "client-*.*.*"
+      - client-*.*.*
 
 env:
   CARGO_TERM_COLOR: always
