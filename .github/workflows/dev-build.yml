@@ -16,9 +16,12 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: Refresh source list
+        run: |
+          sudo apt update
       - name: Install dependencies
         run: >
-          sudo apt install
+          sudo apt install -y
           protobuf-compiler
           pkg-config
           libssl-dev
