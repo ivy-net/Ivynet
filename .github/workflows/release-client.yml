@@ -6,6 +6,10 @@ on:
     tags:
       - client-*.*.*
 
+permissions:
+  id-token: write # This is required for requesting the JWT
+  contents: write # This is required for creating a release
+
 env:
   CARGO_TERM_COLOR: always
 
