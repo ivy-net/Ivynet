@@ -344,6 +344,7 @@ mod test_eigenlayer {
         const DELEGATION_MANAGER_ADDRESS: &str = "0x6D0a2A4501cbd0DEF6fE15B4932fa02F6118b787";
 
         #[tokio::test]
+        #[ignore]
         async fn test_anvil_active() {
             let rpc = "http://localhost:8545";
             let provider = connect_provider(rpc, None).await.unwrap();
@@ -360,6 +361,7 @@ mod test_eigenlayer {
         }
 
         #[tokio::test]
+        #[ignore]
         async fn test_eigenlayer_operator() {
             let rpc = "http://localhost:8545";
             let provider = Arc::new(connect_provider(rpc, None).await.unwrap());

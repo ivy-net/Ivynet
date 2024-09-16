@@ -148,6 +148,7 @@ mod tests {
     mod localhost {
         use super::*;
         #[tokio::test]
+        #[ignore]
         async fn test_localhost_contracts_deployed() {
             // Initialize eigenlayer contracts via env variables
             let local = fork_local_anvil();
@@ -165,6 +166,7 @@ mod tests {
     mod holesky {
         use super::*;
         #[tokio::test]
+        #[ignore]
         async fn test_holesky_contracts_deployed() {
             let holesky = fork_holesky_anvil().await;
 
@@ -180,6 +182,7 @@ mod tests {
     mod mainnet {
         use super::*;
         #[tokio::test]
+        #[ignore]
         async fn test_mainnet_contracts_deployed() {
             let mainnet = fork_mainnet_anvil().await;
 

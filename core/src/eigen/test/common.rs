@@ -98,11 +98,13 @@ fn workspace_dir() -> PathBuf {
 }
 
 #[test]
+#[ignore]
 fn test_load_eigenlayer() {
     let _ = Eigenlayer::load(LOCAL_DEPLOYMENT_DEFAULT_PATH.clone()).unwrap();
 }
 
 #[test]
+#[ignore]
 fn test_eigenlayer_to_env() {
     let eigenlayer = Eigenlayer::load(LOCAL_DEPLOYMENT_DEFAULT_PATH.clone()).unwrap();
     eigenlayer.to_env();

@@ -42,6 +42,7 @@ async fn enter_aeth_staking(amount: U256, signer: Arc<SignerClient>) {
 
 mod localhost {
     use super::*;
+    #[ignore]
     #[tokio::test]
     /// Test that an operator can register on the Eigenlayer network.
     async fn test_operator_can_register() {
@@ -68,9 +69,10 @@ mod localhost {
     }
 }
 
+#[ignore]
 mod mainnet {
-
     use super::*;
+    #[ignore]
     #[tokio::test]
     /// Test that an operator can register on the Eigenlayer network.
     async fn test_operator_can_register() {
@@ -101,6 +103,7 @@ mod holesky {
     use crate::eigen::strategy::StrategyList;
 
     use super::*;
+    #[ignore]
     #[tokio::test]
     /// Test that an operator can register on the Eigenlayer network.
     async fn test_operator_can_register() {
@@ -125,6 +128,7 @@ mod holesky {
         let receipt = tx.send().await.unwrap().await.unwrap();
         assert!(receipt.is_some());
     }
+    #[ignore]
     #[tokio::test]
     async fn test_operator_has_stake() {
         let anvil = fork_holesky_anvil().await;

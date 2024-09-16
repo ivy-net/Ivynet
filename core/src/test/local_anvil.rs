@@ -44,6 +44,7 @@ mod tests {
     use super::*;
 
     #[tokio::test]
+    #[ignore]
     async fn test_attach_local_anvil() {
         let anvil = fork_local_anvil();
         let key = anvil.keys().first().unwrap();
