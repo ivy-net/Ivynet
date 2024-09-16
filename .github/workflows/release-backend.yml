@@ -20,7 +20,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Refresh source list
         run: |
-          apt update
+          sudo apt update
       - name: Install dependencies
         run: >
           sudo apt install -y
@@ -61,7 +61,7 @@ jobs:
         uses: actions/checkout@v4
       - name: Refresh source list
         run: |
-          apt update
+          sudo apt update
       - name: Install packages for TOML (cargo package)
         run: >
           sudo apt install -y
