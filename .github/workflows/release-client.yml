@@ -6,6 +6,10 @@ on:
     tags:
       - client-*.*.*
 
+permissions:
+  id-token: write # This is required for requesting the JWT
+  contents: write # This is required for creating a release
+
 env:
   CARGO_TERM_COLOR: always
 
@@ -41,7 +45,7 @@ jobs:
           cargo test
       - name: Build binaries
         run: |
-          cd backend
+          cd cli
           cargo build --release
       - name: Make release
         uses: softprops/action-gh-release@v2
@@ -70,13 +74,17 @@ jobs:
       - name: Install Ansible
         run: |
           sudo apt update
-          sudo apt install software-properties-common
+          sudo apt install -y software-properties-common
           sudo add-apt-repository --yes --update ppa:ansible/ansible
           sudo apt install -y ansible
       - name: Create a file with the vault password
         run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
         env:
           ANSIBLE_VAULT: ${{ secrets.ANSIBLE_VAULT }}
+            #      - name: Authenticate to Google Cloud
+            #        uses: google-github-actions/auth@v2
+            #        with:
+            #          credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
       - name: Run Packer
         run: |
           cd devops/packer
