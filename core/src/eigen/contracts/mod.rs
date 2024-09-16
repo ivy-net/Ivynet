@@ -136,8 +136,10 @@ mod tests {
     use crate::test::local_anvil::{fork_holesky_anvil, fork_local_anvil, fork_mainnet_anvil};
 
     use super::*;
-    use ethers::providers::{Middleware, Provider};
-    use ethers::types::Chain;
+    use ethers::{
+        providers::{Middleware, Provider},
+        types::Chain,
+    };
 
     async fn test_contract_deployed(contract_address: H160, rpc: String) {
         let provider = Provider::try_from(rpc).unwrap();

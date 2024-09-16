@@ -230,7 +230,7 @@ pub async fn parse_key_get_subcommands(
                 println!("Private key: {:?}", key.secret());
                 println!("Public Key: {:?}", config.default_bls_address.clone());
             } else {
-                return Err(Error::IvyError(IvyError::IncorrectKeyTypeError))
+                return Err(Error::IvyError(IvyError::IncorrectKeyTypeError));
             }
             Ok(())
         }
@@ -274,7 +274,7 @@ pub async fn parse_key_get_subcommands(
                 println!("Private key: {:?}", key.to_private_key());
                 println!("Public Key: {:?}", config.default_ecdsa_address.clone());
             } else {
-                return Err(Error::IvyError(IvyError::IncorrectKeyTypeError))
+                return Err(Error::IvyError(IvyError::IncorrectKeyTypeError));
             }
             Ok(())
         }

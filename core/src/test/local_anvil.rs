@@ -35,14 +35,12 @@ pub async fn fork_holesky_anvil() -> AnvilInstance {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use ethers::{
         providers::{Middleware, Provider},
         signers::{LocalWallet, Signer},
         types::U256,
     };
-
-    use super::*;
-
     #[tokio::test]
     #[ignore]
     async fn test_attach_local_anvil() {

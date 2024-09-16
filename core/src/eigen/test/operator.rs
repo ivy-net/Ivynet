@@ -1,17 +1,23 @@
-use crate::eigen::contracts::{
-    delegation_manager, strategy_manager, DelegationManagerAbi, StrategyManagerAbi,
-};
-use crate::eigen::strategy::holesky::HoleskyLstStrategies;
-use crate::test::contracts;
 use crate::{
-    eigen::contracts::OperatorDetails,
-    test::local_anvil::{fork_holesky_anvil, fork_local_anvil, fork_mainnet_anvil},
+    eigen::{
+        contracts::{
+            delegation_manager, strategy_manager, DelegationManagerAbi, OperatorDetails,
+            StrategyManagerAbi,
+        },
+        strategy::holesky::HoleskyLstStrategies,
+    },
+    test::{
+        contracts,
+        local_anvil::{fork_holesky_anvil, fork_local_anvil, fork_mainnet_anvil},
+    },
 };
-use ethers::middleware::SignerMiddleware;
-use ethers::providers::{Http, Middleware, Provider};
-use ethers::signers::{LocalWallet, Signer};
-use ethers::types::{Chain, H160, U256};
-use ethers::utils::AnvilInstance;
+use ethers::{
+    middleware::SignerMiddleware,
+    providers::{Http, Middleware, Provider},
+    signers::{LocalWallet, Signer},
+    types::{Chain, H160, U256},
+    utils::AnvilInstance,
+};
 use std::sync::Arc;
 
 type SignerClient = SignerMiddleware<Provider<Http>, LocalWallet>;
