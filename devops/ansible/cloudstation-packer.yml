@@ -1,0 +1,5 @@
+---
+- hosts: gcp_project_github_cli
+  become: true
+  roles:
+    - ivynet-client

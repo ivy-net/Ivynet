@@ -10,8 +10,8 @@ on:
 
 
 permissions:
-  id-token: write # This is required for requesting the JWT
-  contents: write # This is required for creating a release
+  id-token: write  # This is required for requesting the JWT
+  contents: write  # This is required for creating a release
 
 jobs:
 
@@ -44,7 +44,6 @@ jobs:
           . "$HOME/.cargo/env"
           cargo build --release
 
-
   tag-backend:
     name: Tag backend
     if: github.event.pull_request.merged == true
@@ -53,6 +52,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ssh-key: "${{ secrets.ED_25519 }}"
       - name: Install official Rust
         run: >
           curl
@@ -103,6 +104,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ssh-key: "${{ secrets.ED_25519 }}"
       - name: Install official Rust
         run: >
           curl
