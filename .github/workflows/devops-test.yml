@@ -17,12 +17,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: pwd, ls
-        run: |
-          pwd
-          ls -a ~
-          touch test2
-          touch ~/test.1
+        with:
+          ssh-key: "${{ secrets.ED_25519 }}"
       - name: Install official Rust
         run: >
           curl
@@ -32,6 +28,7 @@ jobs:
           https://sh.rustup.rs
           |
           sh -s -- -y
+
           #      - name: Install TOML cli
           #        run: |
           #          . "$HOME/.cargo/env"

@@ -44,7 +44,6 @@ jobs:
           . "$HOME/.cargo/env"
           cargo build --release
 
-
   tag-backend:
     name: Tag backend
     if: github.event.pull_request.merged == true
