@@ -40,7 +40,7 @@ build {
   sources = ["sources.googlecompute.ivynet-backend"]
 
   provisioner "ansible" {
-    playbook_file = "backend.yml"
+    playbook_file = "../ansible/backend.yml"
     extra_arguments = [
       "--inventory",
       "gcp.yml",
