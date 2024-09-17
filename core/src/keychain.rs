@@ -159,7 +159,7 @@ impl Keychain {
             keys.sort();
         }
 
-        if keys.is_empty(){
+        if keys.is_empty() {
             return Err(IvyError::NoKeyFoundError)
         }
         let keys_display: &[String] = &keys;
