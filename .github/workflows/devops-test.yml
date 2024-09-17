@@ -104,4 +104,4 @@ jobs:
         run: |
           cd devops/packer
           packer init $CONFIG
-          packer build -var "version=012" ${CONFIG}
+          packer build -var "version=013" ${CONFIG}
