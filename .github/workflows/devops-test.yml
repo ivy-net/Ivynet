@@ -91,6 +91,7 @@ jobs:
           PACKER_CREDS: '${{ secrets.PACKER_GCP_CREDENTIALS }}'
           CREDS_FILE: ~/.packer_gcp.json
         run: |
+          touch "${CREDS_FILE}"
           echo "${PACKER_CREDS}" > "${CREDS_FILE}"
       - name: Run Packer
         env:
