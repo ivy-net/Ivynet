@@ -25,7 +25,7 @@ source "googlecompute" "ivynet-backend" {
   image_name          = "ivynet-backend-${var.version}"
   instance_name       = "packer-backend-${var.version}"
   disk_size           = "200"
-  ssh_username        = packer
+  ssh_username        = "packer"
   labels = {
     "creator" : "packer",
     "area" : "backend",
