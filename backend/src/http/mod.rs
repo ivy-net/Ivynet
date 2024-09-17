@@ -8,7 +8,7 @@ use std::sync::Arc;
 use crate::error::BackendError;
 
 use axum::{
-    http::{self, header, Method, StatusCode},
+    http::{self, Method, StatusCode},
     routing::{get, options, post},
     Router,
 };
@@ -18,11 +18,6 @@ use sqlx::PgPool;
 use tower_http::cors::{Any, CorsLayer};
 use utoipa::OpenApi as _;
 use utoipa_swagger_ui::SwaggerUi;
-
-use axum::{
-    middleware::{self, Next},
-    response::Response,
-};
 
 #[derive(Clone)]
 pub struct HttpState {
@@ -34,24 +29,6 @@ pub struct HttpState {
     pub org_verification_template: Option<String>,
     pub user_verification_template: Option<String>,
     pub pass_reset_template: Option<String>,
-}
-
-async fn add_headers(req: axum::http::Request<axum::body::Body>, next: Next) -> Response {
-    println!("Received request: {:?}", req.method());
-    let mut response = next.run(req).await;
-    println!("Response status: {:?}", response.status());
-
-    let headers = response.headers_mut();
-    headers.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, header::HeaderValue::from_static("*"));
-    headers.insert(
-        header::ACCESS_CONTROL_ALLOW_METHODS,
-        header::HeaderValue::from_static("GET, POST, PUT, DELETE, OPTIONS"),
-    );
-    headers.insert(
-        header::ACCESS_CONTROL_ALLOW_HEADERS,
-        header::HeaderValue::from_static("Content-Type, Authorization"),
-    );
-    response
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -66,16 +43,53 @@ pub async fn serve(
     pass_reset_template: Option<String>,
     port: u16,
 ) -> Result<(), BackendError> {
-    tracing::info!("Starting HTTP server on port {port}");
+    let second_port = port + 1;
+    tracing::info!("Starting HTTP server on port {port} and API service on {second_port}");
     let sender = sendgrid_api_key.map(Sender::new);
 
-    let cors = CorsLayer::new()
+    let state = HttpState {
+        pool,
+        cache,
+        sender,
+        sender_email,
+        root_url,
+        org_verification_template,
+        user_verification_template,
+        pass_reset_template,
+    };
+
+    let app = create_router();
+
+    let cors_ivynet = CorsLayer::new()
+        .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::OPTIONS])
+        .allow_headers([http::header::CONTENT_TYPE, http::header::AUTHORIZATION])
+        .allow_origin("https://ivynet.dev".parse::<http::HeaderValue>().unwrap())
+        .allow_credentials(true);
+
+    let cors_any_origin = CorsLayer::new()
         .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::OPTIONS])
         .allow_headers([http::header::CONTENT_TYPE, http::header::AUTHORIZATION])
         .allow_origin(Any);
 
-    let app = Router::new()
-        .layer(cors)
+    let app_ivynet = app.clone().layer(cors_ivynet).with_state(state.clone());
+    let app_any = app.layer(cors_any_origin).with_state(state);
+
+    let (ivynet_result, any_result) =
+        tokio::join!(start_server(app_ivynet, port), start_server(app_any, second_port));
+
+    ivynet_result?;
+    any_result?;
+    Ok(())
+}
+
+async fn start_server(app: Router, port: u16) -> Result<(), BackendError> {
+    let listener = tokio::net::TcpListener::bind(&format!("0.0.0.0:{port}")).await?;
+    axum::serve(listener, app).await?;
+    Ok(())
+}
+
+fn create_router() -> Router<HttpState> {
+    Router::new()
         .route("/health", get(|| async { "alive" }))
         .route("/authorize", options(handle_options))
         .route("/authorize", post(authorize::authorize))
@@ -92,24 +106,9 @@ pub async fn serve(
         .route("/client/idle", get(client::idling))
         .route("/client/unhealthy", get(client::unhealthy))
         .route("/client/info/{id}", get(client::info))
-        .layer(middleware::from_fn(add_headers))
-        .with_state(HttpState {
-            pool,
-            cache,
-            sender,
-            sender_email,
-            root_url,
-            org_verification_template,
-            user_verification_template,
-            pass_reset_template,
-        })
         .merge(
             SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", apidoc::ApiDoc::openapi()),
-        );
-
-    let listener = tokio::net::TcpListener::bind(&format!("0.0.0.0:{port}")).await?;
-    axum::serve(listener, app).await?;
-    Ok(())
+        )
 }
 
 async fn handle_options() -> StatusCode {
