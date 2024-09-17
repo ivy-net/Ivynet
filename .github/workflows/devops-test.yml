@@ -89,9 +89,9 @@ jobs:
       - name: Google credentials for Packer
         env:
           PACKER_CREDS: '${{ secrets.PACKER_GCP_CREDENTIALS }}'
-          GOOGLE_APPLICATION_CREDENTIALS: ~/.packer_gcp.json
+          CREDS_FILE: ~/.packer_gcp.json
         run: |
-          echo "${PACKER_CREDS}" > "${GOOGLE_APPLICATION_CREDENTIALS}"
+          echo "${PACKER_CREDS}" > "${CREDS_FILE}"
       - name: Run Packer
         env:
           CONFIG: backend.pkr.hcl
