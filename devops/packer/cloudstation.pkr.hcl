@@ -23,8 +23,7 @@ source "googlecompute" "ivynet-cloudstation" {
   zone                = "us-central1-a"
   image_family        = "ivynet-cloudstation"
   image_name          = "ivynet-cloudstation-${var.version}"
-  disk_size = "40"
-  ssh_username        = "packer"
+  disk_size = "200"
   metadata = {
     "enable-oslogin" : "FALSE"
   }
