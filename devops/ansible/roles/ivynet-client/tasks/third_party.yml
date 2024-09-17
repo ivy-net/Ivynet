@@ -4,7 +4,7 @@
     name: docker
     types: [deb]
     uris: "https://download.docker.com/linux/{{ ansible_distribution | lower }}"
-    # yamllint disable-line rule:line-length
+# yamllint disable-line rule:line-length
     signed_by: "https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg"
     suites: ["{{ ansible_distribution_release | lower }}"]
     components: [stable]
@@ -30,6 +30,7 @@
     - containerd.io
     - docker-buildx-plugin
     - docker-compose-plugin
+    - python3-jmespath
   tags:
     - general
     - download
