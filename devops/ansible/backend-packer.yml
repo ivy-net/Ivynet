@@ -1,5 +1,5 @@
 ---
-- hosts: gcp_project_github-backend
+- hosts: gcp_project_github_backend
   become: true
   roles:
     - ivynet-backend

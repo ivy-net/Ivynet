@@ -29,7 +29,7 @@ source "googlecompute" "ivynet-backend" {
   labels = {
     "creator" : "packer",
     "area" : "backend",
-    "project" : "github-backend"
+    "project" : "github_backend"
   }
   metadata = {
     "enable-oslogin" : "FALSE"
