@@ -77,33 +77,31 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-          #      - name: Install Ansible
-          #        run: |
-          #          sudo apt update
-          #          sudo apt install -y software-properties-common
-          #          sudo add-apt-repository --yes --update ppa:ansible/ansible
-          #          sudo apt install -y ansible
-          #      - name: Create a file with the vault password
-          #        run: |
-          #          echo "$ANSIBLE_VAULT" > ~/.vault.txt
-          #        env:
-          #          ANSIBLE_VAULT: ${{ secrets.ANSIBLE_VAULT }}
-          #      - name: Authenticate to Google Cloud
-          #        uses: google-github-actions/auth@v2
-          #        with:
-          #          credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
-          #      - name: Google credentials for Packer
-          #        env:
-          #          PACKER_CREDS: '${{ secrets.PACKER_GCP_CREDENTIALS }}'
-          #          CREDS_FILE: ${HOME}/.packer_gcp.json
-          #        run: |
-          #          touch "${CREDS_FILE}"
-          #          echo "${PACKER_CREDS}" > "${CREDS_FILE}"
-          #      - name: Run Packer
-          #        env:
-          #          CONFIG: backend.pkr.hcl
-          #          GOOGLE_APPLICATION_CREDENTIALS: ~/.packer_gcp.json
-          #        run: |
-          #          cd devops/packer
-          #          packer init $CONFIG
-          #          packer build -var "version=012" ${CONFIG}
+      - name: Install Ansible
+        run: |
+          sudo apt update
+          sudo apt install -y software-properties-common
+          sudo add-apt-repository --yes --update ppa:ansible/ansible
+          sudo apt install -y ansible
+      - name: Create a file with the vault password
+        run: |
+          echo "$ANSIBLE_VAULT" > ~/.vault.txt
+        env:
+          ANSIBLE_VAULT: ${{ secrets.ANSIBLE_VAULT }}
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
+      - name: Google credentials for Packer
+        env:
+          PACKER_CREDS: '${{ secrets.PACKER_GCP_CREDENTIALS }}'
+        run: |
+          echo "${PACKER_CREDS}" >  ~/.packer_gcp.json
+      - name: Run Packer
+        env:
+          CONFIG: backend.pkr.hcl
+          GOOGLE_APPLICATION_CREDENTIALS: ~/.packer_gcp.json
+        run: |
+          cd devops/packer
+          packer init $CONFIG
+          packer build -var "version=012" ${CONFIG}
