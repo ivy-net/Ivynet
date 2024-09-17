@@ -28,18 +28,17 @@ jobs:
           https://sh.rustup.rs
           |
           sh -s -- -y
-
-          #      - name: Install TOML cli
-          #        run: |
-          #          . "$HOME/.cargo/env"
-          #          cargo install toml-cli
-          #          echo "path: $PATH"
-          #      - name: Get version from TOML
-          #        id: version-backend
-          #        run: |
-          #          version=$(toml get backend/Cargo.toml package.version | tr -d \")
-          #          echo "TAG_BACKEND_TOML=${version}" >> "$GITHUB_OUTPUT"
-          #          echo "Version: ${version}"
+      - name: Install TOML cli
+        run: |
+          . "$HOME/.cargo/env"
+          cargo install toml-cli
+          echo "path: $PATH"
+      - name: Get version from TOML
+        id: version-backend
+        run: |
+          version=$(toml get backend/Cargo.toml package.version | tr -d \")
+          echo "TAG_BACKEND_TOML=${version}" >> "$GITHUB_OUTPUT"
+          echo "Version: ${version}"
           #      - name: Get latest git tag
           #        id: tag-backend
           #        run: |
