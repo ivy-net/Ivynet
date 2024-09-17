@@ -17,6 +17,10 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: pwd, ls
+        run: |
+          pwd
+          ls ~
       - name: Install official Rust
         run: >
           curl
