@@ -122,14 +122,10 @@ async fn main() -> Result<(), AnyError> {
         Commands::Staker { subcmd } => staker::parse_staker_subcommands(subcmd, &config).await?,
         Commands::Avs { subcmd } => avs::parse_avs_subcommands(subcmd, &config).await?,
         Commands::Serve { avs, chain } => {
-            let keyfile_pw = dialoguer::Password::new()
-                .with_prompt("Input the password for your stored Operator ECDSA keyfile")
-                .interact()?;
             service::serve(
                 avs,
                 chain,
                 &config,
-                &keyfile_pw,
                 args.server_url,
                 args.server_ca.as_ref(),
                 args.no_backend,

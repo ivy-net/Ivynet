@@ -49,7 +49,7 @@ impl Default for IvyConfig {
             mainnet_rpc_url: "https://rpc.flashbots.net/fast".to_string(),
             holesky_rpc_url: "https://eth-holesky.public.blastapi.io".to_string(),
             local_rpc_url: "http://localhost:8545".to_string(),
-            default_ecdsa_keyfile: None, // TODO: Option
+            default_ecdsa_keyfile: None,
             default_bls_keyfile: None,
             metadata: Metadata::default(),
             identity_key: None,

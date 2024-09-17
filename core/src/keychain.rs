@@ -158,7 +158,20 @@ impl Keychain {
         } else {
             keys.sort();
         }
+
+        if keys.is_empty(){
+            return Err(IvyError::NoKeyFoundError)
+        }
         let keys_display: &[String] = &keys;
+
+        if keys.len() == 1 {
+            let keyname = &keys[0];
+            println!("Selected {keyname} keyfile");
+            return match key_type {
+                KeyType::Ecdsa => Ok(KeyName::Ecdsa(keyname.to_string())),
+                KeyType::Bls => Ok(KeyName::Bls(keyname.to_string())),
+            };
+        }
 
         let interactive = Select::new()
             .with_prompt("Which Key would you like to use?")

@@ -22,7 +22,6 @@ pub async fn serve(
     avs: Option<String>,
     chain: Option<String>,
     config: &IvyConfig,
-    keyfile_pw: &str,
     server_url: Uri,
     server_ca: Option<&String>,
     no_backend: bool,
@@ -32,7 +31,10 @@ pub async fn serve(
     // Keystore load
     let keychain = Keychain::default();
     let keyname = keychain.select_key(KeyType::Ecdsa, config.default_ecdsa_keyfile.clone())?;
-    let key = keychain.load(keyname, keyfile_pw)?;
+    let keyfile_pw = dialoguer::Password::new()
+        .with_prompt("Input the password for your stored Operator ECDSA keyfile")
+        .interact()?;
+    let key = keychain.load(keyname, &keyfile_pw)?;
     if let Some(wallet) = key.get_wallet_owned() {
         // Avs Service
         // TODO: This should default to local instead of holesky?
