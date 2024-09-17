@@ -10,8 +10,8 @@ on:
 
 
 permissions:
-  id-token: write # This is required for requesting the JWT
-  contents: write # This is required for creating a release
+  id-token: write  # This is required for requesting the JWT
+  contents: write  # This is required for creating a release
 
 jobs:
 
@@ -103,6 +103,8 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          ssh-key: "${{ secrets.ED_25519 }}"
       - name: Install official Rust
         run: >
           curl
