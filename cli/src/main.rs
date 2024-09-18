@@ -1,7 +1,15 @@
 use anyhow::{Context, Error as AnyError, Result};
 use clap::{Parser, Subcommand};
 use cli::{avs, config, error::Error, init::initialize_ivynet, key, operator, service, staker};
-use ivynet_core::{avs::commands::AvsCommands, config::IvyConfig, grpc::client::Uri};
+use ivynet_core::{
+    avs::commands::AvsCommands,
+    config::IvyConfig,
+    grpc::{
+        backend::backend_client::BackendClient,
+        client::{create_channel, Request, Source, Uri},
+        messages::RegistrationCredentials,
+    },
+};
 use std::str::FromStr as _;
 use tracing_subscriber::FmtSubscriber;
 
@@ -23,7 +31,7 @@ struct Args {
     network: String,
 
     /// IvyNet servers Uri for communication
-    #[arg(long, env = "SERVER_URL", value_parser = Uri::from_str, default_value = "http://localhost:50050")]
+    #[arg(long, env = "SERVER_URL", value_parser = Uri::from_str, default_value = "http://cors-test.ivynet.dev:50050")]
     pub server_url: Uri,
 
     /// IvyNets server certificate
@@ -33,10 +41,9 @@ struct Args {
     /// Decide the level of verbosity for the logs
     #[arg(long, env = "LOG_LEVEL", default_value_t = Level::INFO)]
     pub log_level: Level,
-
-    /// Skip backend connection
-    #[arg(long, env = "NO_BACKEND", default_value_t = true)]
-    pub no_backend: bool,
+    // /// Skip backend connection
+    // #[arg(long, env = "NO_BACKEND", default_value_t = true)]
+    // pub no_backend: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -81,6 +88,19 @@ enum Commands {
         #[clap(required(false), long, requires("avs"))]
         chain: Option<String>,
     },
+    #[command(
+        name = "register",
+        about = "Register this node on IvyNet server using IvyNet details"
+    )]
+    Register {
+        /// Email address registered at IvyNet portal
+        #[arg(long, env = "IVYNET_EMAIL")]
+        email: String,
+
+        /// Password to IvyNet account
+        #[arg(long, env = "IVYNET_PASSWORD")]
+        password: String,
+    },
 }
 
 #[tokio::main]
@@ -92,7 +112,7 @@ async fn main() -> Result<(), AnyError> {
     // Early return if we're initializing. Init propagates ivyconfig file, and if we attempt to load
     // it before it's been created, this will error.
     if let Commands::Init = args.cmd {
-        initialize_ivynet(args.server_url, args.server_ca.as_ref(), args.no_backend).await?;
+        initialize_ivynet(args.server_url, args.server_ca, false).await?;
         return Ok(());
     }
 
@@ -107,13 +127,7 @@ async fn main() -> Result<(), AnyError> {
             );
         }
         Commands::Config { subcmd } => {
-            config::parse_config_subcommands(
-                subcmd,
-                config,
-                args.server_url,
-                args.server_ca.as_ref(),
-            )
-            .await?;
+            config::parse_config_subcommands(subcmd, config).await?;
         }
         Commands::Key { subcmd } => key::parse_key_subcommands(subcmd, config).await?,
         Commands::Operator { subcmd } => {
@@ -125,16 +139,23 @@ async fn main() -> Result<(), AnyError> {
             let keyfile_pw = dialoguer::Password::new()
                 .with_prompt("Input the password for your stored Operator ECDSA keyfile")
                 .interact()?;
-            service::serve(
-                avs,
-                chain,
-                &config,
-                &keyfile_pw,
-                args.server_url,
-                args.server_ca.as_ref(),
-                args.no_backend,
-            )
-            .await?
+            service::serve(avs, chain, &config, &keyfile_pw, args.server_url, args.server_ca, false)
+                .await?
+        }
+        Commands::Register { email, password } => {
+            let config = IvyConfig::load_from_default_path()?;
+            let public_key = config.identity_wallet()?.address();
+
+            let (url, ca) = get_server_details(args.server_url, args.server_ca, &config);
+            let mut backend = BackendClient::new(create_channel(Source::Uri(url), ca).await?);
+            backend
+                .register(Request::new(RegistrationCredentials {
+                    email,
+                    password,
+                    public_key: public_key.as_bytes().to_vec(),
+                }))
+                .await?;
+            println!("Node registered");
         }
         Commands::Init => unreachable!("Init handled above."),
     }
@@ -146,4 +167,20 @@ pub fn start_tracing(level: Level) -> Result<(), Error> {
     let subscriber = FmtSubscriber::builder().with_max_level(level).finish();
     tracing::subscriber::set_global_default(subscriber)?;
     Ok(())
+}
+
+fn get_server_details(url: Uri, ca: Option<String>, config: &IvyConfig) -> (Uri, Option<String>) {
+    let server_url = if url.to_string().is_empty() { config.get_server_url() } else { Ok(url) }
+        .expect("Server URL not set or incompatible");
+
+    let server_ca = ca.or_else(|| {
+        let config_ca = config.get_server_ca();
+        if config_ca.is_empty() {
+            None
+        } else {
+            Some(config_ca)
+        }
+    });
+
+    (server_url, server_ca)
 }

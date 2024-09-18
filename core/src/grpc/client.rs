@@ -20,7 +20,7 @@ pub enum ClientError {
 
 pub async fn create_channel(
     source: Source,
-    tls_ca: Option<&String>,
+    tls_ca: Option<String>,
 ) -> Result<Channel, ClientError> {
     debug!("Initializing GRPC channel: {:?}", source);
     let endpoint = match source {
