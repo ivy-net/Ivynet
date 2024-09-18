@@ -58,12 +58,14 @@ pub async fn initialize_ivynet(
         }
     }
 
-    println!("IvyNet initialization complete.");
+    println!("----- IvyNet initialization complete -----");
     println!("You can now run `ivynet serve` to start the IvyNet service.");
     println!("You can also run `ivynet config` to view your configuration, or look in the ~/.ivynet directory.");
+    println!("------------------------------------------");
     Ok(())
 }
 
+#[allow(dead_code)]
 fn set_config_metadata(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
     let mut metadata = Metadata::default();
     let metadata_fields = ["Metadata URI", "Logo URI", "Favicon URI"];

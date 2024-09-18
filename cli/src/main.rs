@@ -31,7 +31,7 @@ struct Args {
     network: String,
 
     /// IvyNet servers Uri for communication
-    #[arg(long, env = "SERVER_URL", value_parser = Uri::from_str, default_value = "http://cors-test.ivynet.dev/")]
+    #[arg(long, env = "SERVER_URL", value_parser = Uri::from_str, default_value = "http://cors-test.ivynet.dev:50050")]
     pub server_url: Uri,
 
     /// IvyNets server certificate
