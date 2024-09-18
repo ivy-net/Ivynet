@@ -11,6 +11,43 @@ on:
       - devops/**
 
 jobs:
+  update-test:
+    name: Ansible Update test servers
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Install official Rust
+        run: >
+          curl
+          --proto '=https'
+          --tlsv1.2
+          -sSf
+          https://sh.rustup.rs
+          |
+          sh -s -- -y
+      - name: Install TOML cli
+        run: |
+          . "$HOME/.cargo/env"
+          cargo install toml-cli
+      - name: Install Ansible
+        run: |
+          sudo apt install -y software-properties-common
+          sudo add-apt-repository --yes --update ppa:ansible/ansible
+          sudo apt install -y ansible
+      - name: Create a file with the vault password
+        run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
+        env:
+          ANSIBLE_VAULT: ${{ secrets.ANSIBLE_VAULT }}
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
+#      - name: Run ansible
+#        run: |
+#          cd devops/ansible
+#          ./backend_update.sh
+
   devops-tests:
     name: Various tests
     runs-on: ubuntu-latest
