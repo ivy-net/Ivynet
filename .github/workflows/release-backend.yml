@@ -117,3 +117,4 @@ jobs:
         run: |
           cd devops/ansible
           ./backend_update.sh
+          ./backend_update.sh
