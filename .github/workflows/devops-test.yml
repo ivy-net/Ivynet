@@ -30,7 +30,6 @@ jobs:
         run: |
           . "$HOME/.cargo/env"
           cargo install toml-cli
-
       - name: Install Ansible
         run: |
           sudo apt install -y software-properties-common
