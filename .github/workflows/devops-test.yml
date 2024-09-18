@@ -43,10 +43,10 @@ jobs:
         uses: google-github-actions/auth@v2
         with:
           credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
-      - name: Run ansible
-        run: |
-          cd devops/ansible
-          ./backend_update.sh
+#      - name: Run ansible
+#        run: |
+#          cd devops/ansible
+#          ./backend_update.sh
 
   devops-tests:
     name: Various tests
