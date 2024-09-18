@@ -31,7 +31,7 @@ struct Args {
     network: String,
 
     /// IvyNet servers Uri for communication
-    #[arg(long, env = "SERVER_URL", value_parser = Uri::from_str, default_value = "http://localhost:50050")]
+    #[arg(long, env = "SERVER_URL", value_parser = Uri::from_str, default_value = "http://cors-test.ivynet.dev/")]
     pub server_url: Uri,
 
     /// IvyNets server certificate
@@ -112,7 +112,7 @@ async fn main() -> Result<(), AnyError> {
     // Early return if we're initializing. Init propagates ivyconfig file, and if we attempt to load
     // it before it's been created, this will error.
     if let Commands::Init = args.cmd {
-        initialize_ivynet(args.server_url, args.server_ca.as_ref(), false).await?;
+        initialize_ivynet(args.server_url, args.server_ca, false).await?;
         return Ok(());
     }
 

@@ -1,7 +1,16 @@
 use dialoguer::{Input, MultiSelect, Password, Select};
 use ivynet_core::{
-    config::IvyConfig, dialog::get_confirm_password, error::IvyError, grpc::client::Uri,
-    metadata::Metadata, wallet::IvyWallet,
+    config::IvyConfig,
+    dialog::get_confirm_password,
+    error::IvyError,
+    grpc::{
+        backend::backend_client::BackendClient,
+        client::{create_channel, Source, Uri},
+        messages::RegistrationCredentials,
+        tonic::Request,
+    },
+    metadata::Metadata,
+    wallet::IvyWallet,
 };
 use std::{fs, path::PathBuf, unreachable};
 
@@ -13,7 +22,7 @@ use tracing::debug;
 
 pub async fn initialize_ivynet(
     server_url: Uri,
-    server_ca: Option<&String>,
+    server_ca: Option<String>,
     skip_login: bool,
 ) -> Result<(), IvyError> {
     // Build IvyConfig file
@@ -40,7 +49,7 @@ pub async fn initialize_ivynet(
         // configure RPC addresses
         let config = set_config_rpcs(config)?;
         let config = set_config_keys(config)?;
-        let config = set_config_metadata(config)?;
+        // let config = set_config_metadata(config)?;
         config.store()?;
 
         if !skip_login {
@@ -48,6 +57,10 @@ pub async fn initialize_ivynet(
             config.store()?;
         }
     }
+
+    println!("IvyNet initialization complete.");
+    println!("You can now run `ivynet serve` to start the IvyNet service.");
+    println!("You can also run `ivynet config` to view your configuration, or look in the ~/.ivynet directory.");
     Ok(())
 }
 
@@ -131,9 +144,9 @@ fn set_config_rpcs(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
 async fn set_backend_connection(
     mut config: IvyConfig,
     server_url: Uri,
-    server_ca: Option<&String>,
+    mut server_ca: Option<String>,
 ) -> Result<IvyConfig, IvyError> {
-    match config.identity_wallet() {
+    let client_key = match config.identity_wallet() {
         Ok(key) => key.address(),
         _ => {
             let new_key = IvyWallet::new();
@@ -142,6 +155,7 @@ async fn set_backend_connection(
         }
     };
 
+    println!("Server URL: {}", server_url);
     if server_url.to_string().is_empty() {
         // Ask for server URL
         let server_url: String = Input::new()
@@ -152,13 +166,31 @@ async fn set_backend_connection(
 
     if server_ca.is_none() {
         // Ask for server CA
-        let server_ca: String = Input::new()
-            .with_prompt(
-                "Enter the path to the server's CA certificate (leave blank if not needed)",
-            )
-            .interact()?;
-        config.backend_info.server_ca = server_ca;
+        let input_ca: String = Input::new()
+            .with_prompt("Enter the path to the server's CA certificate (leave blank to bypass)")
+            .allow_empty(true)
+            .interact_text()?;
+        server_ca = if input_ca.is_empty() { None } else { Some(input_ca) };
+        config.backend_info.server_ca = server_ca.clone().unwrap_or("".to_string());
     }
+
+    let email = Input::new()
+        .with_prompt("Provide email address to IvyNet system")
+        .interact_text()
+        .expect("No no email provided");
+    let password = Password::new()
+        .with_prompt("Enter a password to IvyNet system")
+        .interact()
+        .expect("No password provided");
+    let mut backend =
+        BackendClient::new(create_channel(Source::Uri(server_url), server_ca.clone()).await?);
+    backend
+        .register(Request::new(RegistrationCredentials {
+            email,
+            password,
+            public_key: client_key.as_bytes().to_vec(),
+        }))
+        .await?;
 
     Ok(config)
 }
