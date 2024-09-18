@@ -8,7 +8,7 @@ use std::sync::Arc;
 use crate::error::BackendError;
 
 use axum::{
-    http::{header, HeaderMap, HeaderValue, StatusCode},
+    http::{header, HeaderValue, StatusCode},
     middleware::{self, Next},
     routing::{get, options, post},
     Router,
