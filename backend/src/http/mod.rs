@@ -8,21 +8,20 @@ use std::sync::Arc;
 use crate::error::BackendError;
 
 use axum::{
-    http::{self, header, Method, StatusCode},
+    extract::Request,
+    http::{header, HeaderValue, StatusCode},
+    middleware::{self, Next},
+    response::Response,
     routing::{get, options, post},
     Router,
 };
 use ivynet_core::grpc::client::Uri;
 use sendgrid::v3::Sender;
 use sqlx::PgPool;
-use tower_http::cors::{Any, CorsLayer};
+use url::Url;
+
 use utoipa::OpenApi as _;
 use utoipa_swagger_ui::SwaggerUi;
-
-use axum::{
-    middleware::{self, Next},
-    response::Response,
-};
 
 #[derive(Clone)]
 pub struct HttpState {
@@ -34,24 +33,6 @@ pub struct HttpState {
     pub org_verification_template: Option<String>,
     pub user_verification_template: Option<String>,
     pub pass_reset_template: Option<String>,
-}
-
-async fn add_headers(req: axum::http::Request<axum::body::Body>, next: Next) -> Response {
-    println!("Received request: {:?}", req.method());
-    let mut response = next.run(req).await;
-    println!("Response status: {:?}", response.status());
-
-    let headers = response.headers_mut();
-    headers.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, header::HeaderValue::from_static("*"));
-    headers.insert(
-        header::ACCESS_CONTROL_ALLOW_METHODS,
-        header::HeaderValue::from_static("GET, POST, PUT, DELETE, OPTIONS"),
-    );
-    headers.insert(
-        header::ACCESS_CONTROL_ALLOW_HEADERS,
-        header::HeaderValue::from_static("Content-Type, Authorization"),
-    );
-    response
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -69,13 +50,32 @@ pub async fn serve(
     tracing::info!("Starting HTTP server on port {port}");
     let sender = sendgrid_api_key.map(Sender::new);
 
-    let cors = CorsLayer::new()
-        .allow_methods([Method::GET, Method::POST, Method::PUT, Method::DELETE, Method::OPTIONS])
-        .allow_headers([http::header::CONTENT_TYPE, http::header::AUTHORIZATION])
-        .allow_origin(Any);
+    let state = HttpState {
+        pool,
+        cache,
+        sender,
+        sender_email,
+        root_url,
+        org_verification_template,
+        user_verification_template,
+        pass_reset_template,
+    };
 
-    let app = Router::new()
-        .layer(cors)
+    let app = create_router();
+
+    let app = app
+        .clone()
+        .with_state(state.clone())
+        .layer(middleware::from_fn(check_origin))
+        .layer(middleware::from_fn(add_headers));
+
+    let listener = tokio::net::TcpListener::bind(&format!("0.0.0.0:{port}")).await?;
+    axum::serve(listener, app).await?;
+    Ok(())
+}
+
+fn create_router() -> Router<HttpState> {
+    Router::new()
         .route("/health", get(|| async { "alive" }))
         .route("/authorize", options(handle_options))
         .route("/authorize", post(authorize::authorize))
@@ -92,26 +92,71 @@ pub async fn serve(
         .route("/client/idle", get(client::idling))
         .route("/client/unhealthy", get(client::unhealthy))
         .route("/client/info/{id}", get(client::info))
-        .layer(middleware::from_fn(add_headers))
-        .with_state(HttpState {
-            pool,
-            cache,
-            sender,
-            sender_email,
-            root_url,
-            org_verification_template,
-            user_verification_template,
-            pass_reset_template,
-        })
         .merge(
             SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", apidoc::ApiDoc::openapi()),
-        );
-
-    let listener = tokio::net::TcpListener::bind(&format!("0.0.0.0:{port}")).await?;
-    axum::serve(listener, app).await?;
-    Ok(())
+        )
 }
 
 async fn handle_options() -> StatusCode {
     StatusCode::OK
+}
+
+async fn check_origin(mut request: Request, next: Next) -> Response {
+    let headers = request.headers();
+
+    println!("Headers: {:#?}", headers);
+
+    let is_ivynet = request
+        .headers()
+        .get(header::ORIGIN)
+        .and_then(|h| h.to_str().ok())
+        .and_then(|s| Url::parse(s).ok())
+        .map(|url| {
+            println!("----------------------------URL FACTS-----------------------------");
+            println!("URL: {:#?}", url);
+            println!("Domain: {:#?}", url.domain());
+            println!("Scheme: {:#?}", url.scheme());
+            url.scheme() == "https" &&
+                url.domain().map_or(false, |domain| {
+                    domain == "ivynet.dev" || domain.ends_with(".ivynet.dev")
+                })
+        })
+        .unwrap_or(false);
+
+    println!("\n Is ivynet: {:#?} \n", is_ivynet);
+
+    request.extensions_mut().insert(is_ivynet);
+
+    let response = next.run(request).await;
+
+    println!("Response {:#?}", response);
+
+    response
+}
+
+async fn add_headers(req: Request, next: Next) -> Response {
+    let is_ivynet = req.extensions().get::<bool>().copied().unwrap_or(false);
+    let mut res = next.run(req).await;
+    let headers = res.headers_mut();
+
+    headers.insert(
+        header::ACCESS_CONTROL_ALLOW_METHODS,
+        HeaderValue::from_static("GET, POST, PUT, DELETE, OPTIONS"),
+    );
+    headers.insert(
+        header::ACCESS_CONTROL_ALLOW_HEADERS,
+        HeaderValue::from_static("Content-Type, Authorization"),
+    );
+
+    if is_ivynet {
+        headers.insert(
+            header::ACCESS_CONTROL_ALLOW_ORIGIN,
+            HeaderValue::from_static("https://*.ivynet.dev"),
+        );
+        headers.insert(header::ACCESS_CONTROL_ALLOW_CREDENTIALS, HeaderValue::from_static("true"));
+    } else {
+        headers.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static("*"));
+    }
+
+    res
 }
