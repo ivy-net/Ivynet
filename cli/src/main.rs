@@ -31,7 +31,7 @@ struct Args {
     network: String,
 
     /// IvyNet servers Uri for communication
-    #[arg(long, env = "SERVER_URL", value_parser = Uri::from_str, default_value = "http://localhost:50050")]
+    #[arg(long, env = "SERVER_URL", value_parser = Uri::from_str, default_value = "http://cors-test.ivynet.dev:50050")]
     pub server_url: Uri,
 
     /// IvyNets server certificate
@@ -41,9 +41,9 @@ struct Args {
     /// Decide the level of verbosity for the logs
     #[arg(long, env = "LOG_LEVEL", default_value_t = Level::INFO)]
     pub log_level: Level,
-    /// Skip backend connection
-    #[arg(long, env = "NO_BACKEND", default_value_t = true)]
-    pub no_backend: bool,
+    // / Skip backend connection
+    // #[arg(long, env = "NO_BACKEND", default_value_t = true)]
+    // pub no_backend: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -139,16 +139,8 @@ async fn main() -> Result<(), AnyError> {
             let keyfile_pw = dialoguer::Password::new()
                 .with_prompt("Input the password for your stored Operator ECDSA keyfile")
                 .interact()?;
-            service::serve(
-                avs,
-                chain,
-                &config,
-                &keyfile_pw,
-                args.server_url,
-                args.server_ca,
-                args.no_backend,
-            )
-            .await?
+            service::serve(avs, chain, &config, &keyfile_pw, args.server_url, args.server_ca, false)
+                .await?
         }
         Commands::Register { email, password } => {
             let config = IvyConfig::load_from_default_path()?;
