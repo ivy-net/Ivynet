@@ -24,7 +24,7 @@ pub async fn serve(
     config: &IvyConfig,
     keyfile_pw: &str,
     server_url: Uri,
-    server_ca: Option<&String>,
+    server_ca: Option<String>,
     no_backend: bool,
 ) -> Result<(), Error> {
     let sock = Endpoint::Path(config.uds_dir());

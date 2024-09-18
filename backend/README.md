@@ -5,7 +5,9 @@
 To simplify tests for cli and frontet the docker compose file with the backend as well all third party dependencies (e.g. memcached or postgres) is provided.
 Run the command from main repository folder to use it;
 ```sh
-docker-compose -f testing-compose.yaml
+docker-compose -f testing-compose.yaml up -d
+
+cargo run -- --add-organization testuser@ivynet.dev:test1234/testorg
 ```
 Dockers will expose both GRPC and HTTP ports.
 
