@@ -14,23 +14,23 @@
     - general
     - docker
 
-- name: Install packages (for rust and docker)
+- name: Install packages (for rust, docker and ansible)
   ansible.builtin.apt:
     name: "{{ item }}"
     update_cache: true
   loop:
-    - python3-pip
-    - rustc
     - cargo
-    - protobuf-compiler
-    - pkg-config
     - libssl-dev
+    - pkg-config
+    - protobuf-compiler
+    - rustc
     - docker-ce
     - docker-ce-cli
     - containerd.io
     - docker-buildx-plugin
     - docker-compose-plugin
     - python3-jmespath
+    - python3-pip
   tags:
     - general
     - download

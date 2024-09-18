@@ -1,15 +1,16 @@
 ---
-- name: Install packages (for memcached and postgres)
+- name: Install packages (for cargo, memcached, postgres and ansible)
   ansible.builtin.apt:
     name: "{{ item }}"
     update_cache: true
   loop:
-    - memcached
-    - libmemcached-tools
-    - postgresql
     - cargo
     - libssl-dev
     - pkg-config
+    - libmemcached-tools
+    - memcached
+    - postgresql
+    - python3-jmespath
     - python3-pip
   tags:
     - memcached
