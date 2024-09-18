@@ -58,10 +58,10 @@ pub async fn initialize_ivynet(
         }
     }
 
-    println!("----- IvyNet initialization complete -----");
+    println!("\n----- IvyNet initialization complete -----");
     println!("You can now run `ivynet serve` to start the IvyNet service.");
     println!("You can also run `ivynet config` to view your configuration, or look in the ~/.ivynet directory.");
-    println!("------------------------------------------");
+    println!("------------------------------------------\n");
     Ok(())
 }
 
