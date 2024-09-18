@@ -8,7 +8,7 @@ use std::sync::Arc;
 use crate::error::BackendError;
 
 use axum::{
-    http::{header, HeaderMap, StatusCode},
+    http::{header, HeaderMap, HeaderValue, StatusCode},
     middleware::{self, Next},
     routing::{get, options, post},
     Router,
@@ -47,8 +47,7 @@ pub async fn serve(
     pass_reset_template: Option<String>,
     port: u16,
 ) -> Result<(), BackendError> {
-    let second_port = port + 1;
-    tracing::info!("Starting HTTP server on port {port} and API service on {second_port}");
+    tracing::info!("Starting HTTP server on port {port}");
     let sender = sendgrid_api_key.map(Sender::new);
 
     let state = HttpState {
@@ -128,40 +127,27 @@ async fn check_origin(mut request: Request, next: Next) -> Response {
 
 async fn add_headers(req: Request, next: Next) -> Response {
     let is_ivynet = req.extensions().get::<bool>().copied().unwrap_or(false);
+    let mut res = next.run(req).await;
+    let headers = res.headers_mut();
 
-    println!("Received request: {:?}", req.method());
-    let mut response = next.run(req).await;
-    println!("Response status: {:?}", response.status());
-
-    let headers: &mut HeaderMap = response.headers_mut();
-    headers.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, header::HeaderValue::from_static("*"));
     headers.insert(
         header::ACCESS_CONTROL_ALLOW_METHODS,
-        header::HeaderValue::from_static("GET, POST, PUT, DELETE, OPTIONS"),
+        HeaderValue::from_static("GET, POST, PUT, DELETE, OPTIONS"),
     );
     headers.insert(
         header::ACCESS_CONTROL_ALLOW_HEADERS,
-        header::HeaderValue::from_static("Content-Type, Authorization"),
+        HeaderValue::from_static("Content-Type, Authorization"),
     );
 
     if is_ivynet {
-        add_ivynet_headers(headers).await;
+        headers.insert(
+            header::ACCESS_CONTROL_ALLOW_ORIGIN,
+            HeaderValue::from_static("https://*.ivynet.dev"),
+        );
+        headers.insert(header::ACCESS_CONTROL_ALLOW_CREDENTIALS, HeaderValue::from_static("true"));
     } else {
-        add_api_headers(headers).await;
+        headers.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static("*"));
     }
 
-    response
-}
-
-async fn add_api_headers(headers: &mut HeaderMap) {
-    headers.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, header::HeaderValue::from_static("*"));
-}
-
-async fn add_ivynet_headers(headers: &mut HeaderMap) {
-    headers.insert(
-        header::ACCESS_CONTROL_ALLOW_ORIGIN,
-        header::HeaderValue::from_static("https://*.ivynet.dev"),
-    );
-    headers
-        .insert(header::ACCESS_CONTROL_ALLOW_CREDENTIALS, header::HeaderValue::from_static("true"));
+    res
 }
