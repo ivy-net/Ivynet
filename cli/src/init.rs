@@ -27,6 +27,25 @@ pub async fn initialize_ivynet(
 ) -> Result<(), IvyError> {
     // Build IvyConfig file
     println!("Performing ivynet intialization...");
+
+    let config = IvyConfig::new();
+    if config.get_file().exists() {
+        let overwrite = Select::new()
+            .with_prompt("An ivynet config file already exists. Would you like to overwrite it, overwrite it and create a backup, or exit?")
+            .default(0)
+            .items(&["Overwrite", "Overwrite and backup", "Exit"])
+            .interact()
+            .unwrap();
+        if overwrite == 0 {
+        } else if overwrite == 1 {
+            let backup_path = config.get_path().join("ivy-config.toml.bak");
+        println!("Backing up existing ivynet config file to {}", backup_path.display());
+            fs::copy(config.get_file(), backup_path)?;
+        } else {
+            return Ok(());
+        }
+    }
+
     let setup_types = ["Interactive", "Empty"];
     let interactive = Select::new()
         .with_prompt(
@@ -37,12 +56,10 @@ pub async fn initialize_ivynet(
         .unwrap();
     if interactive == 1 {
         // Empty config
-        let config = IvyConfig::new();
         create_config_dir(config.get_path())?;
         config.store()?;
         println!("An empty ivynet project has been created at {}", config.get_path().display())
     } else if interactive == 0 {
-        let config = IvyConfig::new();
         create_config_dir(config.get_path())?;
         config.store()?;
 
