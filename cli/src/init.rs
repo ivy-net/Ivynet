@@ -39,7 +39,7 @@ pub async fn initialize_ivynet(
         if overwrite == 0 {
         } else if overwrite == 1 {
             let backup_path = config.get_path().join("ivy-config.toml.bak");
-        println!("Backing up existing ivynet config file to {}", backup_path.display());
+            println!("Backing up existing ivynet config file to {}", backup_path.display());
             fs::copy(config.get_file(), backup_path)?;
         } else {
             return Ok(());
