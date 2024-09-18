@@ -108,10 +108,19 @@ async fn check_origin(mut request: Request, next: Next) -> Response {
 
     let is_ivynet = request
         .headers()
-        .get("Origin")
+        .get(header::ORIGIN)
         .and_then(|h| h.to_str().ok())
         .and_then(|s| Url::parse(s).ok())
-        .map(|url| url.domain() == Some("ivynet.dev") && url.scheme() == "https")
+        .map(|url| {
+            println!("----------------------------URL FACTS-----------------------------");
+            println!("URL: {:#?}", url);
+            println!("Domain: {:#?}", url.domain());
+            println!("Scheme: {:#?}", url.scheme());
+            url.scheme() == "https" &&
+                url.domain().map_or(false, |domain| {
+                    domain == "ivynet.dev" || domain.ends_with(".ivynet.dev")
+                })
+        })
         .unwrap_or(false);
 
     println!("\n Is ivynet: {:#?} \n", is_ivynet);
