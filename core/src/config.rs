@@ -147,6 +147,16 @@ impl IvyConfig {
         self.path.clone()
     }
 
+    /// Get the path to the directory containing the ivy-config.toml file.
+    pub fn get_dir(&self) -> PathBuf {
+        self.path.clone()
+    }
+
+    /// Get the path to the ivy-config.toml file.
+    pub fn get_file(&self) -> PathBuf {
+        self.path.join("ivy-config.toml")
+    }
+
     pub fn identity_wallet(&self) -> Result<IvyWallet, IvyError> {
         IvyWallet::from_private_key(self.backend_info.identity_key.clone())
     }
