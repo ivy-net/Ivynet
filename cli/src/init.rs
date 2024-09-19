@@ -22,11 +22,30 @@ use tracing::debug;
 
 pub async fn initialize_ivynet(
     server_url: Uri,
-    server_ca: Option<&String>,
+    server_ca: Option<String>,
     skip_login: bool,
 ) -> Result<(), IvyError> {
     // Build IvyConfig file
     println!("Performing ivynet intialization...");
+
+    let config = IvyConfig::new();
+    if config.get_file().exists() {
+        let overwrite = Select::new()
+            .with_prompt("An ivynet config file already exists. Would you like to overwrite it, overwrite it and create a backup, or exit?")
+            .default(0)
+            .items(&["Overwrite", "Overwrite and backup", "Exit"])
+            .interact()
+            .unwrap();
+        if overwrite == 0 {
+        } else if overwrite == 1 {
+            let backup_path = config.get_path().join("ivy-config.toml.bak");
+            println!("Backing up existing ivynet config file to {}", backup_path.display());
+            fs::copy(config.get_file(), backup_path)?;
+        } else {
+            return Ok(());
+        }
+    }
+
     let setup_types = ["Interactive", "Empty"];
     let interactive = Select::new()
         .with_prompt(
@@ -37,19 +56,17 @@ pub async fn initialize_ivynet(
         .unwrap();
     if interactive == 1 {
         // Empty config
-        let config = IvyConfig::new();
         create_config_dir(config.get_path())?;
         config.store()?;
         println!("An empty ivynet project has been created at {}", config.get_path().display())
     } else if interactive == 0 {
-        let config = IvyConfig::new();
         create_config_dir(config.get_path())?;
         config.store()?;
 
         // configure RPC addresses
         let config = set_config_rpcs(config)?;
         let config = set_config_keys(config)?;
-        let config = set_config_metadata(config)?;
+        // let config = set_config_metadata(config)?;
         config.store()?;
 
         if !skip_login {
@@ -57,9 +74,15 @@ pub async fn initialize_ivynet(
             config.store()?;
         }
     }
+
+    println!("\n----- IvyNet initialization complete -----");
+    println!("You can now run `ivynet serve` to start the IvyNet service.");
+    println!("You can also run `ivynet config` to view your configuration, or look in the ~/.ivynet directory.");
+    println!("------------------------------------------\n");
     Ok(())
 }
 
+#[allow(dead_code)]
 fn set_config_metadata(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
     let mut metadata = Metadata::default();
     let metadata_fields = ["Metadata URI", "Logo URI", "Favicon URI"];
@@ -140,16 +163,36 @@ fn set_config_rpcs(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
 async fn set_backend_connection(
     mut config: IvyConfig,
     server_url: Uri,
-    server_ca: Option<&String>,
+    mut server_ca: Option<String>,
 ) -> Result<IvyConfig, IvyError> {
     let client_key = match config.identity_wallet() {
         Ok(key) => key.address(),
         _ => {
             let new_key = IvyWallet::new();
-            config.identity_key = Some(new_key.to_private_key());
+            config.backend_info.identity_key = new_key.to_private_key();
             new_key.address()
         }
     };
+
+    println!("Server URL: {}", server_url);
+    if server_url.to_string().is_empty() {
+        // Ask for server URL
+        let server_url: String = Input::new()
+            .with_prompt("Enter the URL of the IvyNet server you wish to connect to")
+            .interact()?;
+        config.backend_info.server_url = server_url;
+    }
+
+    if server_ca.is_none() {
+        // Ask for server CA
+        let input_ca: String = Input::new()
+            .with_prompt("Enter the path to the server's CA certificate (leave blank to bypass)")
+            .allow_empty(true)
+            .interact_text()?;
+        server_ca = if input_ca.is_empty() { None } else { Some(input_ca) };
+        config.backend_info.server_ca = server_ca.clone().unwrap_or("".to_string());
+    }
+
     let email = Input::new()
         .with_prompt("Provide email address to IvyNet system")
         .interact_text()
@@ -158,7 +201,8 @@ async fn set_backend_connection(
         .with_prompt("Enter a password to IvyNet system")
         .interact()
         .expect("No password provided");
-    let mut backend = BackendClient::new(create_channel(Source::Uri(server_url), server_ca).await?);
+    let mut backend =
+        BackendClient::new(create_channel(Source::Uri(server_url), server_ca.clone()).await?);
     backend
         .register(Request::new(RegistrationCredentials {
             email,

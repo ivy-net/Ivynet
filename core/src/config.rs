@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use sysinfo::{Disks, System};
 use thiserror::Error as ThisError;
+use tonic::transport::Uri;
 
 pub static DEFAULT_CONFIG_PATH: Lazy<PathBuf> = Lazy::new(|| {
     let path = dirs::home_dir().expect("Could not get a home directory");
@@ -16,6 +17,14 @@ use crate::{
     metadata::Metadata,
     wallet::{IvyWallet, IvyWalletError},
 };
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct BackendInfo {
+    pub server_url: String,
+    pub server_ca: String,
+    /// Identification key that node uses for server communications
+    pub identity_key: String,
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct IvyConfig {
@@ -34,12 +43,12 @@ pub struct IvyConfig {
     pub default_bls_keyfile: PathBuf,
     /// Metadata for the operator
     pub metadata: Metadata,
-    /// Identification key that node uses for server communications
-    pub identity_key: Option<String>,
     /// Default Public ECDSA Address
     pub default_ecdsa_address: H160,
     /// Default Public BLS Address
     pub default_bls_address: String,
+    /// Web server information
+    pub backend_info: BackendInfo,
 }
 
 impl Default for IvyConfig {
@@ -52,9 +61,13 @@ impl Default for IvyConfig {
             default_ecdsa_keyfile: "".into(), // TODO: Option
             default_bls_keyfile: "".into(),
             metadata: Metadata::default(),
-            identity_key: None,
             default_ecdsa_address: H160::default(),
             default_bls_address: "".into(),
+            backend_info: BackendInfo {
+                server_url: "".into(),
+                server_ca: "".into(),
+                identity_key: "".into(),
+            },
         }
     }
 }
@@ -134,8 +147,35 @@ impl IvyConfig {
         self.path.clone()
     }
 
+    /// Get the path to the directory containing the ivy-config.toml file.
+    pub fn get_dir(&self) -> PathBuf {
+        self.path.clone()
+    }
+
+    /// Get the path to the ivy-config.toml file.
+    pub fn get_file(&self) -> PathBuf {
+        self.path.join("ivy-config.toml")
+    }
+
     pub fn identity_wallet(&self) -> Result<IvyWallet, IvyError> {
-        IvyWallet::from_private_key(self.identity_key.clone().ok_or(IvyError::IdentityKeyError)?)
+        IvyWallet::from_private_key(self.backend_info.identity_key.clone())
+    }
+
+    pub fn set_server_url(&mut self, url: String) -> Result<(), IvyError> {
+        self.backend_info.server_url = url;
+        Ok(())
+    }
+
+    pub fn get_server_url(&self) -> Result<Uri, IvyError> {
+        Uri::try_from(self.backend_info.server_url.clone()).map_err(|_| IvyError::InvalidUri)
+    }
+
+    pub fn set_server_ca(&mut self, ca: String) {
+        self.backend_info.server_ca = ca;
+    }
+
+    pub fn get_server_ca(&self) -> String {
+        self.backend_info.server_ca.clone()
     }
 
     pub fn uds_dir(&self) -> String {

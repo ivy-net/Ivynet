@@ -5,7 +5,7 @@
 
 filename=backend.pkr.hcl
 
-echo "Get verions (tag)"
+echo "Find the backend version in Cargo.toml"
 version=$(toml get ../../backend/Cargo.toml package.version |tr -d [\"\.])
 
 echo "Activate Ansible (if necessary)"
