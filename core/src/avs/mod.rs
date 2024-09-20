@@ -122,6 +122,7 @@ impl AvsProvider {
         let setup_type = Select::new()
             .with_prompt(format!("Do you have an existing deployment of {}?", self.avs()?.name()))
             .items(&setup_options)
+            .default(0)
             .interact()
             .unwrap();
 
