@@ -1,5 +1,5 @@
 ---
-- hosts: default
+- hosts: gcp_area_client
   become: true
   roles:
     - ivynet-client
