@@ -29,7 +29,7 @@ source "googlecompute" "ivynet-cloudstation" {
   labels = {
     "creator" : "packer",
     "area" : "client",
-    "project" : "github-client"
+    "project" : "github_client"
   }
   metadata = {
     "enable-oslogin" : "FALSE"
