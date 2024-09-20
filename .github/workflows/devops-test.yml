@@ -56,26 +56,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           ssh-key: "${{ secrets.ED_25519 }}"
-#      - name: Install official Rust
-#        run: >
-#          curl
-#          --proto '=https'
-#          --tlsv1.2
-#          -sSf
-#          https://sh.rustup.rs
-#          |
-#          sh -s -- -y
-#      - name: Install TOML cli
-#        run: |
-#          . "$HOME/.cargo/env"
-#          cargo install toml-cli
-#          echo "path: $PATH"
-#      - name: Get version from TOML
-#        id: version-backend
-#        run: |
-#          version=$(toml get backend/Cargo.toml package.version | tr -d \")
-#          echo "TAG_BACKEND_TOML=${version}" >> "$GITHUB_OUTPUT"
-#          echo "Version: ${version}"
       - name: Get latest git tag
         id: tag-backend
         run: |
@@ -83,58 +63,47 @@ jobs:
           tag=$(git tag | awk -F- '/backend/ {print $2}'| tail -1)
           echo "TAG_BACKEND_GIT=${tag}" >> "$GITHUB_OUTPUT"
           echo "Tag: ${tag}"
-#      - name: Print version TOML
-#        env:
-#          TAG: backend-${{ steps.version-backend.outputs.TAG_BACKEND_TOML }}
-#        run: |
-#          echo -e "VAR: $TAG_BACKEND_TOML"
-#          echo -e "TAG: $TAG"
-#      - name: Print version GIT
-#        env:
-#          TAG: ${{ steps.tag-backend.outputs.TAG_BACKEND_GIT }}
-#        run: |
-#          echo -e "VAR: TAG_BACKEND_GIT"
-#          echo -e "GIT: $TAG"
-#      - name: Test
-#        if: >
-#          steps.version-backend.outputs.TAG_BACKEND_TOML
-#          !=
-#          steps.tag-backend.outputs.TAG_BACKEND_GIT
-#        env:
-#          NEW_TAG: backend-${{ steps.version-backend.outputs.TAG_BACKEND_TOML }}
-#        run: |
-#          echo "I'm going to use ${NEW_TAG}"
-#  gcp:
-#    name: Test connection to GCP
-#    runs-on: ubuntu-latest
-#    steps:
-#      - name: Checkout code
-#        uses: actions/checkout@v4
-#      - name: Install Ansible
-#        run: |
-#          sudo apt update
-#          sudo apt install -y software-properties-common
-#          sudo add-apt-repository --yes --update ppa:ansible/ansible
-#          sudo apt install -y ansible
-#      - name: Create a file with the vault password
-#        run: |
-#          echo "$ANSIBLE_VAULT" > ~/.vault.txt
-#        env:
-#          ANSIBLE_VAULT: ${{ secrets.ANSIBLE_VAULT }}
-#      - name: Authenticate to Google Cloud
-#        uses: google-github-actions/auth@v2
-#        with:
-#          credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
-#      - name: Google credentials for Packer
-#        env:
-#          PACKER_CREDS: '${{ secrets.PACKER_GCP_CREDENTIALS }}'
-#        run: |
-#          echo "${PACKER_CREDS}" >  /tmp/packer_gcp.json
-#      - name: Run Packer
-#        env:
-#          CONFIG: backend.pkr.hcl
-#          GOOGLE_APPLICATION_CREDENTIALS: /tmp/packer_gcp.json
-#        run: |
-#          cd devops/packer
-#          packer init $CONFIG
-#          packer build -var "version=013" ${CONFIG}
+
+  build-image:
+    name: Build image with packer
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Refresh source list
+        run: |
+          sudo apt update
+      - name: Install packages for TOML (cargo package)
+        run: >
+          sudo apt install -y
+          cargo
+      - name: Install toml (package)
+        run: |
+          cargo install toml-cli
+      - name: Install Ansible
+        run: |
+          sudo apt install -y software-properties-common
+          sudo add-apt-repository --yes --update ppa:ansible/ansible
+          sudo apt install -y ansible python3-jmespath
+      - name: Create a file with the vault password
+        run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
+        env:
+          ANSIBLE_VAULT: ${{ secrets.ANSIBLE_VAULT }}
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
+      - name: Google credentials for Packer
+        env:
+          PACKER_CREDS: '${{ secrets.PACKER_GCP_CREDENTIALS }}'
+        run: |
+          echo "${PACKER_CREDS}" >  /tmp/packer_gcp.json
+      - name: Run Packer
+        env:
+          CONFIG: cloudstation.pkr.hcl
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/packer_gcp.json
+          version: 001
+        run: |
+          cd devops/packer
+          packer init ${CONFIG}
+          packer build -var "version=${version}" ${filename}
