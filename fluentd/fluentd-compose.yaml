@@ -1,0 +1,10 @@
+services:
+  fluentd:
+    image: fluentd:latest
+    user: root 
+    volumes:
+      - ./conf:/fluentd/etc
+      - ./log:/var/log/fluentd
+    ports:
+      - "24224:24224"
+      - "24224:24224/udp"
