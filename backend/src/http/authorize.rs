@@ -64,7 +64,12 @@ pub async fn authorize(
             state.cache.set(&uuid, account.user_id, 15 * 60)?;
 
             Ok((
-                jar.add(Cookie::new("session_id", uuid.clone())),
+                jar.add({
+                    let mut session_cookie = Cookie::new("session_id", uuid.clone());
+                    session_cookie.set_secure(true);
+                    session_cookie.set_same_site(None);
+                    session_cookie
+                }),
                 AuthorizationResponse { uuid }.into(),
             ))
         }
