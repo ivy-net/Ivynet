@@ -57,7 +57,7 @@ which = "6.0.2"
 aes = "0.8.4"
 
 [build-dependencies]
-prost-build = "0.12"
+prost-build = "0.13"
 prost-wkt-build = "0.5"
 tonic-build = "0.11"
 
