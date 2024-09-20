@@ -40,7 +40,7 @@ build {
   sources = ["sources.googlecompute.ivynet-cloudstation"]
 
   provisioner "ansible" {
-    playbook_file = "../ansible/ivynet_client.yml"
+    playbook_file = "../ansible/cloudstation-packer.yml"
     extra_arguments = [
       "--inventory",
       "gcp.yml",
