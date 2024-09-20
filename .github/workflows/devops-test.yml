@@ -63,6 +63,15 @@ jobs:
           tag=$(git tag | awk -F- '/backend/ {print $2}'| tail -1)
           echo "TAG_BACKEND_GIT=${tag}" >> "$GITHUB_OUTPUT"
           echo "Tag: ${tag}"
+      - name: Inject packages
+        run: >
+          pipx inject ansible-core
+          jmespath
+          google-auth
+          requests
+      - name: List packages
+        run: |
+          pipx list
 
   build-image:
     name: Build image with packer
@@ -78,9 +87,11 @@ jobs:
           sudo apt install -y
           cargo
       - name: Install extra python packages
-        run: |
-          pipx inject ansible-core jmespath
-          pipx inject ansible-core google-auth
+        run: >
+          pipx inject ansible-core
+          jmespath
+          google-auth
+          requests
       - name: List collections
         run: |
           ansible-galaxy collection list
