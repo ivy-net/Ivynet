@@ -79,7 +79,7 @@ jobs:
           cargo
       - name: Install extra python packages
         run: |
-          pipx inject ansible-core python3-jmespath
+          pipx inject ansible-core jmespath
           pipx inject ansible-core google-auth
       - name: List collections
         run: |
