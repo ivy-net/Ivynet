@@ -77,12 +77,13 @@ jobs:
         run: >
           sudo apt install -y
           cargo
-          python3-jmespath
-      - name: Check Ansible version 1
+      - name: Install extra python packages
         run: |
-          ansible --version
-          whereis ansible
-          python --version
+          pipx inject ansible-core python3-jmespath
+          pipx inject ansible-core google-auth
+      - name: List collections
+        run: |
+          ansible-galaxy collection list
       - name: Install toml (package)
         run: |
           cargo install toml-cli
@@ -91,11 +92,6 @@ jobs:
           sudo apt install -y software-properties-common
           sudo add-apt-repository --yes --update ppa:ansible/ansible
           sudo apt install -y ansible
-      - name: Check Ansible version 2
-        run: |
-          ansible --version
-          whereis ansible
-          python --version
       - name: Create a file with the vault password
         run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
         env:
