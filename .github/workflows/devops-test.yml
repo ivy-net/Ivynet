@@ -71,7 +71,7 @@ jobs:
           requests
       - name: List packages
         run: |
-          pipx list
+          pipx list --include-injected
 
   build-image:
     name: Build image with packer
