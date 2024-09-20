@@ -18,6 +18,7 @@ use axum::{
 use ivynet_core::grpc::client::Uri;
 use sendgrid::v3::Sender;
 use sqlx::PgPool;
+use tracing::{debug, info};
 use url::Url;
 
 use utoipa::OpenApi as _;
@@ -47,7 +48,7 @@ pub async fn serve(
     pass_reset_template: Option<String>,
     port: u16,
 ) -> Result<(), BackendError> {
-    tracing::info!("Starting HTTP server on port {port}");
+    info!("Starting HTTP server on port {port}");
     let sender = sendgrid_api_key.map(Sender::new);
 
     let state = HttpState {
@@ -104,7 +105,7 @@ async fn handle_options() -> StatusCode {
 async fn check_origin(mut request: Request, next: Next) -> Response {
     let headers = request.headers();
 
-    println!("Headers: {:#?}", headers);
+    debug!("Headers: {:#?}", headers);
 
     let is_ivynet = request
         .headers()
@@ -112,24 +113,24 @@ async fn check_origin(mut request: Request, next: Next) -> Response {
         .and_then(|h| h.to_str().ok())
         .and_then(|s| Url::parse(s).ok())
         .map(|url| {
-            println!("----------------------------URL FACTS-----------------------------");
-            println!("URL: {:#?}", url);
-            println!("Domain: {:#?}", url.domain());
-            println!("Scheme: {:#?}", url.scheme());
-            url.scheme() == "https" &&
-                url.domain().map_or(false, |domain| {
+            debug!("----------------------------URL FACTS-----------------------------");
+            debug!("URL: {:#?}", url);
+            debug!("Domain: {:#?}", url.domain());
+            debug!("Scheme: {:#?}", url.scheme());
+            url.scheme() == "https"
+                && url.domain().map_or(false, |domain| {
                     domain == "ivynet.dev" || domain.ends_with(".ivynet.dev")
                 })
         })
         .unwrap_or(false);
 
-    println!("\n Is ivynet: {:#?} \n", is_ivynet);
+    debug!("\n Is ivynet: {:#?} \n", is_ivynet);
 
     request.extensions_mut().insert(is_ivynet);
 
     let response = next.run(request).await;
 
-    println!("Response {:#?}", response);
+    debug!("Response {:#?}", response);
 
     response
 }
@@ -148,6 +149,15 @@ async fn add_headers(req: Request, next: Next) -> Response {
         HeaderValue::from_static("Content-Type, Authorization"),
     );
 
+    headers.insert(header::CONTENT_SECURITY_POLICY, HeaderValue::from_static("script-src 'self'"));
+    headers.insert(header::STRICT_TRANSPORT_SECURITY, HeaderValue::from_static("max-age=31536000"));
+    headers.insert(
+        header::REFERRER_POLICY,
+        HeaderValue::from_static("strict-origin-when-cross-origin"),
+    );
+    headers.insert(header::X_CONTENT_TYPE_OPTIONS, HeaderValue::from_static("nosniff"));
+    headers.insert(header::X_FRAME_OPTIONS, HeaderValue::from_static("SAMEORIGIN"));
+    headers.insert(header::X_XSS_PROTECTION, HeaderValue::from_static("1; mode=block"));
     if is_ivynet {
         headers.insert(
             header::ACCESS_CONTROL_ALLOW_ORIGIN,
