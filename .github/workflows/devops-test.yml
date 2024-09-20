@@ -29,7 +29,7 @@ jobs:
       - name: Install TOML cli
         run: |
           . "$HOME/.cargo/env"
-          cargo install toml-cli python-
+          cargo install toml-cli
       - name: Install Ansible
         run: |
           sudo apt install -y software-properties-common
