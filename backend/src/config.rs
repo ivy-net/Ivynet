@@ -4,7 +4,12 @@ use clap::Parser;
 use ivynet_core::grpc::client::Uri;
 use tracing::Level;
 
+mod version_hash {
+    include!(concat!(env!("OUT_DIR"), "/version.rs"));
+}
+
 #[derive(Clone, Parser, Debug)]
+#[command(name = "ivynet-backend", version = version_hash::VERSION_HASH, about = "The IvyNet backend system")]
 pub struct Config {
     #[arg(long, env = "IVY_HTTP_PORT", default_value_t = 8080)]
     pub http_port: u16,
@@ -60,7 +65,4 @@ pub struct Config {
 
     #[arg(long)]
     pub add_organization: Option<String>,
-
-    #[arg(long, default_value_t = false)]
-    pub version: bool,
 }
