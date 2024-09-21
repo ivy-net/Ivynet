@@ -1,3 +1,4 @@
+use anyhow::{Context, Error as AnyError, Result};
 use dialoguer::Password;
 use ivynet_core::{
     avs::{build_avs_provider, commands::AvsCommands, config::AvsConfig},
@@ -8,7 +9,10 @@ use ivynet_core::{
 
 use crate::{client::IvynetClient, error::Error, inspect::tail_logs};
 
-pub async fn parse_avs_subcommands(subcmd: AvsCommands, config: &IvyConfig) -> Result<(), Error> {
+pub async fn parse_avs_subcommands(
+    subcmd: AvsCommands,
+    config: &IvyConfig,
+) -> Result<(), AnyError> {
     let sock = Source::Path(config.uds_dir());
 
     // Setup runs local, otherwise construct a client and continue.
@@ -33,7 +37,7 @@ pub async fn parse_avs_subcommands(subcmd: AvsCommands, config: &IvyConfig) -> R
             let avs = info.avs_type;
             let chain = info.chain;
             if avs == "None" || chain == "None" {
-                return Err(Error::NoAvsSelectedLogError);
+                return Err(Error::NoAvsSelectedLogError.into());
             }
             (avs.to_owned(), chain.to_owned())
         };
@@ -46,8 +50,8 @@ pub async fn parse_avs_subcommands(subcmd: AvsCommands, config: &IvyConfig) -> R
 
         return Ok(());
     }
-
-    let mut client = IvynetClient::from_channel(create_channel(sock, None).await?);
+    let channel = create_channel(sock, None).await.context("Failed to connect to the ivynet daemon. Please ensure the daemon is running and is connected to ~/.ivynet/ivynet.ipc")?;
+    let mut client = IvynetClient::from_channel(channel);
     match subcmd {
         AvsCommands::Info {} => {
             let response = client.avs_mut().avs_info().await?;
