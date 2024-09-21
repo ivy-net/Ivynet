@@ -1,3 +1,4 @@
+---
 plugin: google.cloud.gcp_compute
 zones:
   - us-central1-a
@@ -14,13 +15,10 @@ scopes:
   - 'https://www.googleapis.com/auth/cloud-platform'
   - 'https://www.googleapis.com/auth/compute.readonly'
 keyed_groups:
-  # Create groups from GCE labels
   - prefix: gcp
     key: labels
 hostnames:
-  # List host by name instead of the default public ip
   - name
   - public_ip
 compose:
-  # To connect to public IP
   ansible_host: networkInterfaces[0].accessConfigs[0].natIP
