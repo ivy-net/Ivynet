@@ -43,7 +43,7 @@ build {
     playbook_file = "../ansible/backend-packer.yml"
     extra_arguments = [
       "--inventory",
-      "gcp.yml",
+      "../ansible/packer_gcp.yml",
       "--vault-password-file",
       "~/.vault.txt",
       "--extra-vars",

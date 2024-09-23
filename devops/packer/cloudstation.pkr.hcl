@@ -43,7 +43,7 @@ build {
     playbook_file = "../ansible/cloudstation-packer.yml"
     extra_arguments = [
       "--inventory",
-      "../ansible/gcp.yml",
+      "../ansible/packer_gcp.yml",
       "--vault-password-file",
       "~/.vault.txt",
     ]
