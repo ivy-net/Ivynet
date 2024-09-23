@@ -3,6 +3,7 @@ use crate::{
     error::IvyError,
     wallet::IvyWallet,
 };
+use dialoguer::Select;
 use serde_json::Value;
 use std::{fmt::Display, fs, path::PathBuf};
 
@@ -26,6 +27,22 @@ pub enum Key {
 }
 
 impl Key {
+    pub fn get_wallet_owned(&self) -> Option<IvyWallet> {
+        if let Key::Ecdsa(wallet) = self {
+            Some(wallet.clone())
+        } else {
+            None
+        }
+    }
+
+    pub fn get_bls_key_owned(&self) -> Option<BlsKey> {
+        if let Key::Bls(bls_key) = self {
+            Some(bls_key.clone())
+        } else {
+            None
+        }
+    }
+
     pub fn address(&self) -> KeyAddress {
         match &self {
             Key::Ecdsa(wallet) => KeyAddress::Ecdsa(wallet.address()),
@@ -104,6 +121,69 @@ impl Keychain {
         Ok(list)
     }
 
+    pub fn keynames_for_display(&self, key_type: &KeyType) -> Result<Vec<String>, IvyError> {
+        let mut key_strings = Vec::new();
+        match self.list() {
+            Ok(keys) => {
+                for keyname in keys {
+                    match key_type {
+                        KeyType::Ecdsa => {
+                            if let KeyName::Ecdsa(name) = keyname {
+                                key_strings.push(name)
+                            }
+                        }
+                        KeyType::Bls => {
+                            if let KeyName::Bls(name) = keyname {
+                                key_strings.push(name)
+                            }
+                        }
+                    }
+                }
+                Ok(key_strings)
+            }
+            Err(e) => Err(e),
+        }
+    }
+
+    pub fn select_key(
+        &self,
+        key_type: KeyType,
+        default_key: Option<String>,
+    ) -> Result<KeyName, IvyError> {
+        let mut keys = self.keynames_for_display(&key_type)?;
+        if let Some(default_key) = default_key {
+            keys.retain(|k| *k != default_key);
+            keys.sort();
+            keys.insert(0, default_key);
+        } else {
+            keys.sort();
+        }
+
+        if keys.is_empty() {
+            return Err(IvyError::NoKeyFoundError)
+        }
+        let keys_display: &[String] = &keys;
+
+        if keys.len() == 1 {
+            let keyname = &keys[0];
+            println!("Selected {keyname} keyfile");
+            return match key_type {
+                KeyType::Ecdsa => Ok(KeyName::Ecdsa(keyname.to_string())),
+                KeyType::Bls => Ok(KeyName::Bls(keyname.to_string())),
+            };
+        }
+        let interactive = Select::new()
+            .with_prompt("Which Key would you like to use?")
+            .items(keys_display)
+            .interact()?;
+
+        let keyname = &keys_display[interactive];
+
+        match key_type {
+            KeyType::Ecdsa => Ok(KeyName::Ecdsa(keyname.to_string())),
+            KeyType::Bls => Ok(KeyName::Bls(keyname.to_string())),
+        }
+    }
     pub fn generate(&self, key_type: KeyType, name: Option<&str>, password: &str) -> Key {
         match key_type {
             KeyType::Ecdsa => Key::Ecdsa(self.ecdsa_generate(name, password)),

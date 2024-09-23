@@ -32,6 +32,7 @@ use crate::{
     },
     env_parser::EnvLines,
     error::{IvyError, SetupError},
+    keychain::{KeyType, Keychain},
     rpc_management::IvyProvider,
     utils::gb_to_bytes,
 };
@@ -424,22 +425,21 @@ impl EigenDA {
         );
 
         // BLS key
-        let bls_key_name: String = Input::new()
-            .with_prompt(
-                "Input the name of your BLS key file without file extensions - looks in .eigenlayer folder (where eigen cli stores the key)",
-            )
-            .interact_text()?;
+        let keychain = Keychain::default();
+        let keyname = keychain.select_key(KeyType::Bls, config.default_bls_keyfile.clone())?;
 
         let mut bls_json_file_location = dirs::home_dir().expect("Could not get home dir");
         bls_json_file_location.push(".eigenlayer/operator_keys");
-        bls_json_file_location.push(bls_key_name);
+        bls_json_file_location.push(keyname.to_string());
         bls_json_file_location.set_extension("bls.key.json");
-        debug!("BLS key file location: {:?}", bls_json_file_location);
+        debug!("BLS key file location: {:?}", &bls_json_file_location);
 
         // TODO: Remove prompting
         let bls_password: String =
             Password::new().with_prompt("Input the password for your BLS key file").interact()?;
 
+        let p = keychain.get_path(keyname);
+        let _ = fs::copy(p, &bls_json_file_location);
         env_lines.set(
             "NODE_BLS_KEY_FILE_HOST",
             bls_json_file_location.to_str().expect("Could not get BLS key file location"),

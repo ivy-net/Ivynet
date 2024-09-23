@@ -27,6 +27,7 @@ use crate::{
     eigen::quorum::QuorumType,
     env_parser::EnvLines,
     error::{IvyError, SetupError},
+    keychain::{KeyType, Keychain},
     rpc_management::IvyProvider,
 };
 
@@ -105,7 +106,9 @@ impl AvsVariant for Lagrange {
         generate_lagrange_key(self.run_path()).await?;
 
         // copy ecdsa keyfile to lagrange-worker path
-        let keyfile = config.default_ecdsa_keyfile.clone();
+        let keychain = Keychain::default();
+        let keyname = keychain.select_key(KeyType::Ecdsa, config.default_ecdsa_keyfile.clone())?;
+        let keyfile = keychain.get_path(keyname);
         let dest_file = self.run_path().join("config/priv_key.json");
         fs::copy(keyfile, dest_file)?;
 

@@ -6,6 +6,7 @@ use crate::{
     },
     eigen::{contracts::delegation_manager::DelegationManager, quorum::QuorumType},
     error::IvyError,
+    keychain::{KeyType, Keychain},
     rpc_management::{connect_provider, IvyProvider},
     utils::try_parse_chain,
     wallet::IvyWallet,
@@ -182,15 +183,12 @@ impl AvsProvider {
         //     //Register operator for all quorums they're eligible for
         // }
 
+        let keychain = Keychain::default();
+        let keyname = keychain.select_key(KeyType::Ecdsa, config.default_ecdsa_keyfile.clone())?;
+        let keypath = keychain.get_path(keyname);
+
         if let Some(pw) = &self.keyfile_pw {
-            self.avs()?
-                .register(
-                    self.provider.clone(),
-                    avs_path.clone(),
-                    config.default_ecdsa_keyfile.clone(),
-                    pw,
-                )
-                .await?;
+            self.avs()?.register(self.provider.clone(), avs_path.clone(), keypath, pw).await?;
         } else {
             error!("No keyfile password provided. Exiting...");
             return Err(IvyError::KeyfilePasswordError);
@@ -202,15 +200,12 @@ impl AvsProvider {
     pub async fn unregister(&self, config: &IvyConfig) -> Result<(), IvyError> {
         let avs_path = self.avs()?.base_path();
 
+        let keychain = Keychain::default();
+        let keyname = keychain.select_key(KeyType::Ecdsa, config.default_ecdsa_keyfile.clone())?;
+        let keypath = keychain.get_path(keyname);
+
         if let Some(pw) = &self.keyfile_pw {
-            self.avs()?
-                .unregister(
-                    self.provider.clone(),
-                    avs_path.clone(),
-                    config.default_ecdsa_keyfile.clone(),
-                    pw,
-                )
-                .await?;
+            self.avs()?.unregister(self.provider.clone(), avs_path.clone(), keypath, pw).await?;
         } else {
             error!("No keyfile password provided. Exiting...");
             return Err(IvyError::KeyfilePasswordError);
