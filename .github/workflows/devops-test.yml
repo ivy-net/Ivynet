@@ -17,24 +17,10 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-#      - name: Install official Rust
-#        run: >
-#          curl
-#          --proto '=https'
-#          --tlsv1.2
-#          -sSf
-#          https://sh.rustup.rs
-#          |
-#          sh -s -- -y
       - name: Install TOML cli
         run: |
           . "$HOME/.cargo/env"
           cargo install toml-cli
-#      - name: Install Ansible
-#        run: |
-#          sudo apt install -y software-properties-common
-#          sudo add-apt-repository --yes --update ppa:ansible/ansible
-#          sudo apt install -y ansible
       - name: Create a file with the vault password
         run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
         env:
@@ -92,13 +78,6 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Refresh source list
-        run: |
-          sudo apt update
-      - name: Install packages for TOML (cargo package)
-        run: >
-          sudo apt install -y
-          cargo
       - name: Install extra python packages
         run: >
           pipx inject ansible-core
@@ -108,11 +87,6 @@ jobs:
       - name: Install toml (package)
         run: |
           cargo install toml-cli
-#      - name: Install Ansible
-#        run: |
-#          sudo apt install -y software-properties-common
-#          sudo add-apt-repository --yes --update ppa:ansible/ansible
-#          sudo apt install -y ansible
       - name: Create a file with the vault password
         run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
         env:
@@ -126,11 +100,17 @@ jobs:
           PACKER_CREDS: '${{ secrets.PACKER_GCP_CREDENTIALS }}'
         run: |
           echo "${PACKER_CREDS}" >  /tmp/packer_gcp.json
+      - name: Geyt private key
+        env:
+          SSH_FILE: /tmp/id_rsa
+        run: |
+          jq -r private_key /tmp/packer_gcp.json > ${SSH_FILE}
+          chmod 600 ${SSH_FILE}
       - name: Run Packer
         env:
           CONFIG: cloudstation.pkr.hcl
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/packer_gcp.json
-          version: "006"
+          version: "002"
         run: |
           cd devops/packer
           sed -i.bak 's/gcp.yml/packer_gcp.yml/' cloudstation.pkr.hcl
