@@ -203,6 +203,7 @@ async fn set_backend_connection(
         .expect("No password provided");
     let mut backend =
         BackendClient::new(create_channel(Source::Uri(server_url), server_ca.clone()).await?);
+    
     backend
         .register(Request::new(RegistrationCredentials {
             email,

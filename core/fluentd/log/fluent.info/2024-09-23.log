@@ -1,0 +1,3 @@
+{"pid":16,"ppid":7,"worker":0,"message":"starting fluentd worker pid=16 ppid=7 worker=0"}
+{"port":24224,"bind":"0.0.0.0","message":"listening port port=24224 bind=\"0.0.0.0\""}
+{"worker":0,"message":"fluentd worker is now running worker=0"}

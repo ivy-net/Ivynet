@@ -1,5 +1,42 @@
 # Full deployment testing
 
+## Building Manually
+- Ensure that the [sqlx-cli](https://crates.io/crates/sqlx-cli) cargo package is installed, and the sqlx command is in the PATH.
+
+Full build process from project root:
+
+```sh
+cd backend
+docker-compose -f backend-compose.yaml up  -d
+export DATABASE_URL=postgresql://ivy:secret_ivy@localhost:5432/ivynet
+sqlx migrate run 
+cargo build --release
+cargo run --release
+```
+
+1.  CD into the `backend` directory and bring up the backend postgres instance:
+```sh
+cd backend
+docker-compose -f backend-compose.yaml up  -d
+```
+
+2. When the database is up, ensure the `DATABASE_URL` environment variable is pointed to the database:
+```sh
+export DATABASE_URL=postgresql://ivy:secret_ivy@localhost:5432/ivynet
+```
+
+3. Prepare the migrations with the command:
+```sh
+sqlx migrate prepare
+```
+
+4. Build and run the backend service:
+```sh
+cargo build --release
+cargo run --release
+```
+
+
 ## Test with docker compose
 
 To simplify tests for cli and frontet the docker compose file with the backend as well all third party dependencies (e.g. memcached or postgres) is provided.
