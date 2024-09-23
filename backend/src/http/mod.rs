@@ -12,7 +12,7 @@ use axum::{
     http::{header, HeaderValue, StatusCode},
     middleware::{self, Next},
     response::Response,
-    routing::{get, options, post},
+    routing::{delete, get, options, post},
     Router,
 };
 use ivynet_core::grpc::client::Uri;
@@ -93,6 +93,7 @@ fn create_router() -> Router<HttpState> {
         .route("/client/idle", get(client::idling))
         .route("/client/unhealthy", get(client::unhealthy))
         .route("/client/info/:id", get(client::info))
+        .route("/client/node/:id", delete(client::delete))
         .merge(
             SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", apidoc::ApiDoc::openapi()),
         )
@@ -117,8 +118,8 @@ async fn check_origin(mut request: Request, next: Next) -> Response {
             debug!("URL: {:#?}", url);
             debug!("Domain: {:#?}", url.domain());
             debug!("Scheme: {:#?}", url.scheme());
-            url.scheme() == "https" &&
-                url.domain().map_or(false, |domain| {
+            url.scheme() == "https"
+                && url.domain().map_or(false, |domain| {
                     domain == "ivynet.dev" || domain.ends_with(".ivynet.dev")
                 })
         })
