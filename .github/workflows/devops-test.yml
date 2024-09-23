@@ -63,6 +63,10 @@ jobs:
           tag=$(git tag | awk -F- '/backend/ {print $2}'| tail -1)
           echo "TAG_BACKEND_GIT=${tag}" >> "$GITHUB_OUTPUT"
           echo "Tag: ${tag}"
+      - name: Install TOML cli
+        run: |
+          . "$HOME/.cargo/env"
+          cargo install toml-cli
       - name: Inject packages
         run: >
           pipx inject ansible-core
@@ -72,6 +76,15 @@ jobs:
       - name: List packages
         run: |
           pipx list --include-injected
+      - name: List collections
+        run: |
+          ansible-galaxy collection list
+        name: Version backend
+        id: version-backend
+        run: |
+          version=$(toml get backend/Cargo.toml package.version | tr -d \")
+          echo "TAG_BACKEND_TOML=${version}" >> "$GITHUB_OUTPUT"
+          echo "Version: ${version}"
 
   build-image:
     name: Build image with packer
@@ -92,9 +105,6 @@ jobs:
           jmespath
           google-auth
           requests
-      - name: List collections
-        run: |
-          ansible-galaxy collection list
       - name: Install toml (package)
         run: |
           cargo install toml-cli
@@ -120,7 +130,7 @@ jobs:
         env:
           CONFIG: cloudstation.pkr.hcl
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/packer_gcp.json
-          version: "005"
+          version: "006"
         run: |
           cd devops/packer
           sed -i.bak 's/gcp.yml/packer_gcp.yml/' cloudstation.pkr.hcl
