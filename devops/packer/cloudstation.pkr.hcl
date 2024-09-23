@@ -18,15 +18,14 @@ variable "version" {
 }
 
 source "googlecompute" "ivynet-cloudstation" {
-  source_image_family       = "ubuntu-2404-lts-amd64"
-  project_id                = "ivynet-tests"
-  zone                      = "us-central1-b"
-  image_family              = "ivynet-cloudstation"
-  image_name                = "ivynet-cloudstation-${var.version}"
-  instance_name             = "packer-cloudstation-${var.version}"
-  disk_size                 = "200"
-  ssh_username              = "packer"
-  ssh_clear_authorized_keys = true
+  source_image_family = "ubuntu-2404-lts-amd64"
+  project_id          = "ivynet-tests"
+  zone                = "us-central1-b"
+  image_family        = "ivynet-cloudstation"
+  image_name          = "ivynet-cloudstation-${var.version}"
+  instance_name       = "packer-cloudstation-${var.version}"
+  disk_size           = "200"
+  ssh_username        = "packer"
   labels = {
     "creator" : "packer",
     "area" : "client",

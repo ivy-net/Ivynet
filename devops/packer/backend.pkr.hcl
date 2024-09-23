@@ -42,8 +42,6 @@ build {
   provisioner "ansible" {
     playbook_file = "../ansible/backend-packer.yml"
     extra_arguments = [
-      "--inventory",
-      "../ansible/packer_gcp.yml",
       "--vault-password-file",
       "~/.vault.txt",
       "--extra-vars",

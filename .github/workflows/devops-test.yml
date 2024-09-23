@@ -104,7 +104,7 @@ jobs:
         env:
           CONFIG: cloudstation.pkr.hcl
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/packer_gcp.json
-          version: "002"
+          version: "003"
         run: |
           cd devops/packer
           packer init ${CONFIG}

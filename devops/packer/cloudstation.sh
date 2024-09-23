@@ -5,17 +5,14 @@
 
 filename=cloudstation.pkr.hcl
 
-echo "Get verions (tag)"
+echo "Find the backend version in Cargo.toml"
 version=$(toml get ../../cli/Cargo.toml package.version |tr -d [\"\.])
-version="003"
+
 echo "Activate Ansible (if necessary)"
 [ -f "$HOME/bin/ansible/bin/activate" ] && source $HOME/bin/ansible/bin/activate
 
 echo "Initialize packer"
 packer init ${filename}
 
-#echo "Adjust gcp credentials (if necessary)"
-#[ -f /tmp/packer_gcp.json ] && sed -i.bak 's/gcp.yml/gcp_packer.yml/' cloudstation.pkr.hcl
-
 echo "Run packer"
-packer build -var "version=${version}" -debug ${filename}
+packer build -var "version=${version}" ${filename}
