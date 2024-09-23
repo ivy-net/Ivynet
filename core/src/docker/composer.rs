@@ -40,6 +40,7 @@ async fn test_swarm() {
     println!("Swarm name: {}", swarm.name());
     swarm.up().unwrap();
     swarm.ls().unwrap();
+    swarm.set_logging_driver("fluentd", "fluentd-address=localhost:24224").unwrap();
 }
 
 pub struct DockerSwarmHandle {
@@ -53,7 +54,7 @@ impl DockerSwarmHandle {
     fn name(&self) -> String {
         self.path.file_stem().unwrap().to_str().unwrap().to_string()
     }
-    fn up(&self) -> Result<(), DockerError> {
+    fn up(&self) -> Result<(), DockerSwarmError> {
         println!("pwd: {:?}", std::env::current_dir()?);
         println!("target exists: {:?}", self.path.exists());
         let output = std::process::Command::new("docker")
@@ -61,15 +62,38 @@ impl DockerSwarmHandle {
             .output()?;
         println!("{:#?}", output);
         if !output.status.success() {
-            return Err(DockerError::ComposeUpFailed);
+            return Err(DockerSwarmError::SwarmInitFailed);
         }
         Ok(())
     }
-    fn ls(&self) -> Result<Vec<DockerService>, DockerError> {
+    fn ls(&self) -> Result<Vec<DockerService>, DockerSwarmError> {
         let output = std::process::Command::new("docker").args(["service", "ls"]).output()?;
         let services = parse_docker_service_ls(&String::from_utf8_lossy(&output.stdout));
         println!("Services: {:#?}", services);
         Ok(services)
+    }
+    fn set_logging_driver(&self, driver: &str, opt: &str) -> Result<(), DockerSwarmError> {
+        println!("{}", self.name());
+        let services = self.ls()?;
+        for service in services {
+            println!("Updating service: {}", service.name);
+            let output = std::process::Command::new("docker")
+                .args([
+                    "service",
+                    "update",
+                    "--log-driver",
+                    driver,
+                    "--log-opt",
+                    opt,
+                    &service.name,
+                ])
+                .output()?;
+            println!("{:#?}", output);
+            if !output.status.success() {
+                return Err(DockerSwarmError::SetLoggingDriverFailed);
+            }
+        }
+        Ok(())
     }
 }
 
@@ -77,6 +101,12 @@ impl DockerSwarmHandle {
 pub enum DockerSwarmError {
     #[error("Swarm already initialized")]
     SwarmAlreadyInitialized,
+
+    #[error("Swarm initialization failed")]
+    SwarmInitFailed,
+
+    #[error("Set logging driver failed")]
+    SetLoggingDriverFailed,
 
     #[error(transparent)]
     Io(#[from] std::io::Error),
@@ -143,7 +173,6 @@ fn parse_docker_service_ls(output: &str) -> Vec<DockerService> {
         .map(|&col| header.find(col).expect(&format!("Column '{}' not found", col)))
         .collect();
 
-    // Parse each line
     lines
         .filter_map(|line| {
             if line.trim().is_empty() {
