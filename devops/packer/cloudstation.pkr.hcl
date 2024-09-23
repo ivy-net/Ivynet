@@ -21,6 +21,8 @@ variable "version" {
   description = "Image version"
 }
 
+data "sshkey" "install" {
+}
 
 source "googlecompute" "ivynet-cloudstation" {
   source_image_family       = "ubuntu-2404-lts-amd64"
