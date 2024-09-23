@@ -240,7 +240,7 @@ pub async fn delete(
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     let address = id.parse::<Address>().map_err(|_| BackendError::BadId)?;
     let machine = node::DbNode::get(&state.pool, &address).await?;
-    if machine.organization_id != account.organization_id {
+    if machine.organization_id != account.organization_id || !account.role.can_write() {
         return Err(BackendError::Unauthorized);
     }
 
