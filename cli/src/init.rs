@@ -212,6 +212,7 @@ async fn set_backend_connection(
         }))
         .await?;
 
+    println!("Node properly registered with key {:?}", client_key);
     Ok(config)
 }
 
