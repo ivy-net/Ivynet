@@ -116,16 +116,11 @@ jobs:
           PACKER_CREDS: '${{ secrets.PACKER_GCP_CREDENTIALS }}'
         run: |
           echo "${PACKER_CREDS}" >  /tmp/packer_gcp.json
-      - name: Ansible inventory
-        run: |
-          cd devops/ansible
-          ansible-inventory -i packer_gcp.yml --graph
-
       - name: Run Packer
         env:
           CONFIG: cloudstation.pkr.hcl
           GOOGLE_APPLICATION_CREDENTIALS: /tmp/packer_gcp.json
-          version: "004"
+          version: "005"
         run: |
           cd devops/packer
           sed -i.bak 's/gcp.yml/packer_gcp.yml/' cloudstation.pkr.hcl
