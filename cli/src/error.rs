@@ -28,5 +28,5 @@ pub enum Error {
     MetadataUriNotFoundError,
 
     #[error(transparent)]
-    DockerComposeError(#[from] crate::service::DockerComposeError),
+    DockerSwarmError(#[from] ivynet_core::docker::composer::DockerSwarmError),
 }

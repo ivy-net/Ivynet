@@ -171,6 +171,9 @@ pub enum IvyError {
 
     #[error(transparent)]
     BlsError(#[from] crate::bls::BlsKeyError),
+
+    #[error(transparent)]
+    DockerSwarmError(#[from] crate::docker::composer::DockerSwarmError),
 }
 
 #[derive(Debug, Error)]

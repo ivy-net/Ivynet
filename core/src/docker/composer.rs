@@ -8,10 +8,10 @@ pub struct DockerInstanceBuilder {
 }
 
 impl DockerInstanceBuilder {
-    fn new(path: String) -> Self {
-        Self { path }
+    pub fn new(path: &str) -> Self {
+        Self { path: path.to_string() }
     }
-    async fn swarm(self) -> Result<DockerSwarmHandle, DockerSwarmError> {
+    pub async fn swarm(self) -> Result<DockerSwarmHandle, DockerSwarmError> {
         let path = std::path::PathBuf::from(self.path);
         let swarm_is_active = Command::new("docker").args(["swarm", "ca"]).output().await?;
         if swarm_is_active.status.success() {
@@ -27,7 +27,7 @@ impl DockerInstanceBuilder {
         }
         Ok(DockerSwarmHandle::new(path))
     }
-    fn compose(self) -> Result<DockerComposeHandle, DockerError> {
+    pub fn compose(self) -> Result<DockerComposeHandle, DockerError> {
         let path = std::fs::canonicalize(std::path::PathBuf::from(self.path))?;
         Ok(DockerComposeHandle::new(path))
     }
@@ -35,7 +35,7 @@ impl DockerInstanceBuilder {
 
 #[tokio::test]
 async fn test_swarm() {
-    let builder = DockerInstanceBuilder::new("./fluentd/fluentd-compose.yaml".to_string());
+    let builder = DockerInstanceBuilder::new("./fluentd/fluentd-compose.yaml");
     let swarm = builder.swarm().await.unwrap();
     println!("Swarm name: {}", swarm.name());
     swarm.up().unwrap();
@@ -48,13 +48,13 @@ pub struct DockerSwarmHandle {
 }
 
 impl DockerSwarmHandle {
-    fn new(path: std::path::PathBuf) -> Self {
+    pub fn new(path: std::path::PathBuf) -> Self {
         Self { path }
     }
-    fn name(&self) -> String {
+    pub fn name(&self) -> String {
         self.path.file_stem().unwrap().to_str().unwrap().to_string()
     }
-    fn up(&self) -> Result<(), DockerSwarmError> {
+    pub fn up(&self) -> Result<(), DockerSwarmError> {
         println!("pwd: {:?}", std::env::current_dir()?);
         println!("target exists: {:?}", self.path.exists());
         let output = std::process::Command::new("docker")
@@ -66,13 +66,13 @@ impl DockerSwarmHandle {
         }
         Ok(())
     }
-    fn ls(&self) -> Result<Vec<DockerService>, DockerSwarmError> {
+    pub fn ls(&self) -> Result<Vec<DockerService>, DockerSwarmError> {
         let output = std::process::Command::new("docker").args(["service", "ls"]).output()?;
         let services = parse_docker_service_ls(&String::from_utf8_lossy(&output.stdout));
         println!("Services: {:#?}", services);
         Ok(services)
     }
-    fn set_logging_driver(&self, driver: &str, opt: &str) -> Result<(), DockerSwarmError> {
+    pub fn set_logging_driver(&self, driver: &str, opt: &str) -> Result<(), DockerSwarmError> {
         println!("{}", self.name());
         let services = self.ls()?;
         for service in services {
@@ -153,7 +153,7 @@ impl DockerComposeHandle {
 
 /// Parsed output of `docker service ls`
 #[derive(Debug)]
-struct DockerService {
+pub struct DockerService {
     id: String,
     name: String,
     mode: String,
