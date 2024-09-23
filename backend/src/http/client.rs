@@ -9,7 +9,6 @@ use axum_extra::extract::CookieJar;
 use chrono::NaiveDateTime;
 use ivynet_core::ethers::types::Address;
 use serde::Serialize;
-use tracing::debug;
 use utoipa::ToSchema;
 
 use crate::{
