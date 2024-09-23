@@ -100,12 +100,6 @@ jobs:
           PACKER_CREDS: '${{ secrets.PACKER_GCP_CREDENTIALS }}'
         run: |
           echo "${PACKER_CREDS}" >  /tmp/packer_gcp.json
-      - name: Geyt private key
-        env:
-          SSH_FILE: /tmp/id_rsa
-        run: |
-          jq -r private_key /tmp/packer_gcp.json > ${SSH_FILE}
-          chmod 600 ${SSH_FILE}
       - name: Run Packer
         env:
           CONFIG: cloudstation.pkr.hcl
