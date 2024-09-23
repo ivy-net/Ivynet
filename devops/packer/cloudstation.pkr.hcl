@@ -8,10 +8,6 @@ packer {
       source  = "github.com/hashicorp/ansible"
       version = "~> 1"
     }
-    sshkey = {
-      source  = "github.com/ivoronin/sshkey"
-      version = "~> 1"
-    }
   }
 }
 
@@ -33,7 +29,6 @@ source "googlecompute" "ivynet-cloudstation" {
   instance_name             = "packer-cloudstation-${var.version}"
   disk_size                 = "200"
   ssh_username              = "packer"
-  ssh_private_key_file      = data.sshkey.install.private_key_path
   ssh_clear_authorized_keys = true
   labels = {
     "creator" : "packer",
@@ -51,10 +46,6 @@ build {
   provisioner "ansible" {
     playbook_file = "../ansible/cloudstation-packer.yml"
     extra_arguments = [
-      "--inventory",
-      "../ansible/packer_gcp.yml",
-      "-–private-key",
-      data.sshkey.install.private_key_path,
       "--vault-password-file",
       "~/.vault.txt",
     ]

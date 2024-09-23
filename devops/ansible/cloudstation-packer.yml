@@ -1,7 +1,5 @@
 ---
-- hosts: gcp_project_github_client
+- hosts: defaults
   become: true
-  vars:
-    ansible_user: packer
   roles:
     - ivynet-client
