@@ -9,7 +9,7 @@ projects:
 filters:
   - status = RUNNING
   - scheduling.automaticRestart = true AND status = RUNNING
-service_account_file: ~/.devops-automation-key.json
+service_account_file: /tmp/packer_gcp.json
 auth_kind: serviceaccount
 scopes:
   - 'https://www.googleapis.com/auth/cloud-platform'

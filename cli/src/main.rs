@@ -21,7 +21,7 @@ mod version_hash {
 }
 
 #[derive(Parser, Debug)]
-#[command(name = "ivy", version, about = "The command line interface for ivynet")]
+#[command(name = "ivy", version = version_hash::VERSION_HASH, about = "The command line interface for ivynet")]
 struct Args {
     #[command(subcommand)]
     cmd: Commands,
@@ -31,7 +31,7 @@ struct Args {
     network: String,
 
     /// IvyNet servers Uri for communication
-    #[arg(long, env = "SERVER_URL", value_parser = Uri::from_str, default_value = "http://localhost:50050")]
+    #[arg(long, env = "SERVER_URL", value_parser = Uri::from_str, default_value = "https://api1.test.ivynet.dev:50050")]
     pub server_url: Uri,
 
     /// IvyNets server certificate
@@ -41,16 +41,14 @@ struct Args {
     /// Decide the level of verbosity for the logs
     #[arg(long, env = "LOG_LEVEL", default_value_t = Level::INFO)]
     pub log_level: Level,
+
     /// Skip backend connection
-    #[arg(long, env = "NO_BACKEND", default_value_t = true)]
+    #[arg(long, env = "NO_BACKEND", default_value_t = false)]
     pub no_backend: bool,
 }
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    #[command(name = "version", about = "Return IvyNet version")]
-    Version,
-
     #[command(name = "init", about = "Ivynet config intiliazation")]
     Init,
     #[command(name = "avs", about = "Request information about an AVS or boot up a node")]
@@ -112,20 +110,13 @@ async fn main() -> Result<(), AnyError> {
     // Early return if we're initializing. Init propagates ivyconfig file, and if we attempt to load
     // it before it's been created, this will error.
     if let Commands::Init = args.cmd {
-        initialize_ivynet(args.server_url, args.server_ca, false).await?;
+        initialize_ivynet(args.server_url, args.server_ca, args.no_backend).await?;
         return Ok(());
     }
 
     let config = IvyConfig::load_from_default_path().context("Failed to load ivyconfig. Please ensure `~/.ivynet/ivyconfig.toml` exists and is not malformed. If this is your first time running Ivynet, please run `ivynet init` to perform first-time intialization.")?;
 
     match args.cmd {
-        Commands::Version => {
-            println!(
-                "ivynet version is {} ({})",
-                env!("CARGO_PKG_VERSION"),
-                version_hash::VERSION_HASH
-            );
-        }
         Commands::Config { subcmd } => {
             config::parse_config_subcommands(subcmd, config).await?;
         }

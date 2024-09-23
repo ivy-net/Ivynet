@@ -51,6 +51,7 @@ pub async fn initialize_ivynet(
         .with_prompt(
             "Would you like to perform setup in interactive mode, or generate an empty config?",
         )
+        .default(0)
         .items(&setup_types)
         .interact()
         .unwrap();
@@ -212,6 +213,7 @@ async fn set_backend_connection(
         }))
         .await?;
 
+    println!("Node properly registered with key {:?}", client_key);
     Ok(config)
 }
 
@@ -222,6 +224,7 @@ fn set_config_keys(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
             "Would you like to import a private key, create a new private key, or skip this step?",
         )
         .items(&key_config_types)
+        .default(0)
         .interact()
         .unwrap();
     match interactive {
