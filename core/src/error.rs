@@ -86,6 +86,9 @@ pub enum IvyError {
     )]
     AvsRunningError(String, Chain),
 
+    #[error("No valid key was found. Please create a key before trying again.")]
+    NoKeyFoundError,
+
     #[error("AVS already started")]
     AvsNotLoadedError,
 

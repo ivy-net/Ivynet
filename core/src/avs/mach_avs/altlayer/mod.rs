@@ -26,6 +26,7 @@ use crate::{
     },
     env_parser::EnvLines,
     error::{IvyError, SetupError},
+    keychain::{KeyType, Keychain},
     rpc_management::IvyProvider,
     utils::gb_to_bytes,
 };
@@ -213,21 +214,20 @@ impl AltLayer {
         let home_dir = dirs::home_dir().unwrap();
         let home_str = home_dir.to_str().expect("Could not get home directory");
 
-        let bls_key_name: String = Input::new()
-            .with_prompt(
-                "Input the name of your BLS key file without file extensions - looks in .eigenlayer folder (where eigen cli stores the key)",
-            )
-            .interact_text()?;
+        let keychain = Keychain::default();
+        let keyname = keychain.select_key(KeyType::Bls, config.default_bls_keyfile.clone())?;
 
         let mut bls_json_file_location = dirs::home_dir().expect("Could not get home directory");
         bls_json_file_location.push(".eigenlayer/operator_keys");
-        bls_json_file_location.push(bls_key_name);
+        bls_json_file_location.push(keyname.to_string());
         bls_json_file_location.set_extension("bls.key.json");
-        info!("BLS key file location: {:?}", bls_json_file_location);
+        info!("BLS key file location: {:?}", &bls_json_file_location);
 
         let bls_password: String =
             Password::new().with_prompt("Input the password for your BLS key file").interact()?;
 
+        let p = keychain.get_path(keyname);
+        let _ = fs::copy(p, &bls_json_file_location);
         let node_cache_path = mach_avs_path.join("resources/cache");
 
         env_lines.set("USER_HOME", home_str);
@@ -263,8 +263,9 @@ impl AltLayer {
             "NODE_BLS_KEY_FILE_HOST",
             bls_json_file_location.to_str().expect("Could not get BLS key file location"),
         );
-        let mut legacy_keyfile_path = config.default_ecdsa_keyfile.clone();
-        legacy_keyfile_path.set_extension("legacy.json");
+        let keychain = Keychain::default();
+        let keyname = keychain.select_key(KeyType::Ecdsa, config.default_ecdsa_keyfile.clone())?;
+        let legacy_keyfile_path = keychain.get_path(keyname);
         env_lines.set(
             "NODE_ECDSA_KEY_FILE_HOST",
             legacy_keyfile_path.to_str().expect("Bad private key path"),
