@@ -12,7 +12,7 @@ use axum::{
     http::{header, HeaderValue, StatusCode},
     middleware::{self, Next},
     response::Response,
-    routing::{get, options, post},
+    routing::{delete, get, options, post},
     Router,
 };
 use ivynet_core::grpc::client::Uri;
@@ -80,19 +80,20 @@ fn create_router() -> Router<HttpState> {
         .route("/health", get(|| async { "alive" }))
         .route("/authorize", options(handle_options))
         .route("/authorize", post(authorize::authorize))
-        .route("/authorize/invitation/{id}", get(authorize::check_invitation))
+        .route("/authorize/invitation/:id", get(authorize::check_invitation))
         .route("/authorize/forgot_password", post(authorize::forgot_password))
         .route("/authorize/set_password", post(authorize::set_password))
         .route("/organization", post(organization::new))
-        .route("/organization/{id}", get(organization::get))
+        .route("/organization/:id", get(organization::get))
         .route("/organization/invite", post(organization::invite))
-        .route("/organization/confirm/{id}", get(organization::confirm))
+        .route("/organization/confirm/:id", get(organization::confirm))
         .route("/organization/nodes", get(organization::nodes))
-        .route("/organization/nodes/{id}/metrics", get(organization::metrics))
+        .route("/organization/nodes/:id/metrics", get(organization::metrics))
         .route("/client/status", get(client::status))
         .route("/client/idle", get(client::idling))
         .route("/client/unhealthy", get(client::unhealthy))
-        .route("/client/info/{id}", get(client::info))
+        .route("/client/info/:id", get(client::info))
+        .route("/client/node/:id", delete(client::delete))
         .merge(
             SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", apidoc::ApiDoc::openapi()),
         )
