@@ -30,15 +30,6 @@ jobs:
           protobuf-compiler
           pkg-config
           libssl-dev
-      - name: Install official Rust
-        run: >
-          curl
-          --proto '=https'
-          --tlsv1.2
-          -sSf
-          https://sh.rustup.rs
-          |
-          sh -s -- -y
       - name: Build binaries
         run: |
           . "$HOME/.cargo/env"
@@ -54,15 +45,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           ssh-key: "${{ secrets.ED_25519 }}"
-      - name: Install official Rust
-        run: >
-          curl
-          --proto '=https'
-          --tlsv1.2
-          -sSf
-          https://sh.rustup.rs
-          |
-          sh -s -- -y
       - name: Install TOML cli
         run: |
           . "$HOME/.cargo/env"
@@ -106,15 +88,6 @@ jobs:
         uses: actions/checkout@v4
         with:
           ssh-key: "${{ secrets.ED_25519 }}"
-      - name: Install official Rust
-        run: >
-          curl
-          --proto '=https'
-          --tlsv1.2
-          -sSf
-          https://sh.rustup.rs
-          |
-          sh -s -- -y
       - name: Install TOML cli
         run: |
           . "$HOME/.cargo/env"
