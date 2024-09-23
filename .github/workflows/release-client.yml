@@ -55,6 +55,12 @@ jobs:
       - name: Refresh source list
         run: |
           sudo apt update
+      - name: Inject packages
+        run: >
+          pipx inject ansible-core
+          jmespath
+          google-auth
+          requests
       - name: Install toml (package)
         run: |
           cargo install toml-cli
