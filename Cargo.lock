@@ -2415,7 +2415,7 @@ checksum = "49f1f14873335454500d59611f1cf4a4b0f786f9ac11f4312a78e4cf2566695b"
 
 [[package]]
 name = "ivynet-backend"
-version = "0.1.11"
+version = "0.1.12"
 dependencies = [
  "axum 0.7.6",
  "axum-extra",
@@ -2431,6 +2431,7 @@ dependencies = [
  "sqlx",
  "thiserror",
  "tokio",
+ "tower-http",
  "tracing",
  "tracing-subscriber",
  "url",
@@ -5354,6 +5355,20 @@ dependencies = [
  "tower-layer",
  "tower-service",
  "tracing",
+]
+
+[[package]]
+name = "tower-http"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8437150ab6bbc8c5f0f519e3d5ed4aa883a83dd4cdd3d1b21f9482936046cb97"
+dependencies = [
+ "bitflags 2.6.0",
+ "bytes",
+ "http 1.1.0",
+ "pin-project-lite",
+ "tower-layer",
+ "tower-service",
 ]
 
 [[package]]

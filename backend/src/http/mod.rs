@@ -18,6 +18,7 @@ use axum::{
 use ivynet_core::grpc::client::Uri;
 use sendgrid::v3::Sender;
 use sqlx::PgPool;
+use tower_http::cors::CorsLayer;
 use tracing::{debug, info};
 use url::Url;
 
@@ -67,6 +68,7 @@ pub async fn serve(
     let app = app
         .clone()
         .with_state(state.clone())
+        .layer(CorsLayer::very_permissive())
         .layer(middleware::from_fn(check_origin))
         .layer(middleware::from_fn(add_headers));
 
@@ -118,8 +120,8 @@ async fn check_origin(mut request: Request, next: Next) -> Response {
             debug!("URL: {:#?}", url);
             debug!("Domain: {:#?}", url.domain());
             debug!("Scheme: {:#?}", url.scheme());
-            url.scheme() == "https" &&
-                url.domain().map_or(false, |domain| {
+            url.scheme() == "https"
+                && url.domain().map_or(false, |domain| {
                     domain == "ivynet.dev" || domain.ends_with(".ivynet.dev")
                 })
         })
