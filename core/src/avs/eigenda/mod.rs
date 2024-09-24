@@ -425,11 +425,10 @@ impl EigenDA {
         );
 
         // BLS key
-        let keychain = Keychain::default();
-        let keyname = keychain.select_key(KeyType::Bls, config.default_bls_keyfile.clone())?;
-
         let mut bls_json_file_location = dirs::home_dir().expect("Could not get home dir");
         bls_json_file_location.push(".eigenlayer/operator_keys");
+        let keychain = Keychain::new(bls_json_file_location.clone());
+        let keyname = keychain.select_key(KeyType::Bls, None)?;
         bls_json_file_location.push(keyname.to_string());
         bls_json_file_location.set_extension("bls.key.json");
         debug!("BLS key file location: {:?}", &bls_json_file_location);
@@ -438,8 +437,6 @@ impl EigenDA {
         let bls_password: String =
             Password::new().with_prompt("Input the password for your BLS key file").interact()?;
 
-        let p = keychain.get_path(keyname);
-        let _ = fs::copy(p, &bls_json_file_location);
         env_lines.set(
             "NODE_BLS_KEY_FILE_HOST",
             bls_json_file_location.to_str().expect("Could not get BLS key file location"),
