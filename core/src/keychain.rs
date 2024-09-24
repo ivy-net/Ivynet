@@ -109,10 +109,9 @@ impl Keychain {
         for path in paths.flatten() {
             let filename = path.file_name();
             let cmps = filename.to_str().unwrap().split('.').collect::<Vec<&str>>();
-            if cmps.len() == 3 {
+            if cmps.len() == 3 || cmps.len() == 4 {
                 match cmps[1] {
                     "bls" => list.push(KeyName::Bls(cmps[0].to_string())),
-                    // PublicKey struct of theirs. Stupid
                     "ecdsa" => list.push(KeyName::Ecdsa(cmps[0].to_string())),
                     _ => {}
                 }
