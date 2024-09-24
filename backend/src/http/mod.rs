@@ -59,16 +59,15 @@ pub async fn serve(
         pass_reset_template,
     };
 
-    let app = create_router();
-
-    let app =
-        app.clone().with_state(state.clone()).layer(CorsLayer::very_permissive().allow_methods([
+    let app = create_router().with_state(state.clone()).layer(
+        CorsLayer::very_permissive().allow_methods([
             Method::GET,
             Method::POST,
             Method::DELETE,
             Method::PUT,
             Method::OPTIONS,
-        ]));
+        ]),
+    );
 
     let listener = tokio::net::TcpListener::bind(&format!("0.0.0.0:{port}")).await?;
     axum::serve(listener, app).await?;
