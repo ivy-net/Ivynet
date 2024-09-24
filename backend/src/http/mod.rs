@@ -8,19 +8,15 @@ use std::sync::Arc;
 use crate::error::BackendError;
 
 use axum::{
-    extract::Request,
-    http::{header, HeaderValue, StatusCode},
-    middleware::{self, Next},
-    response::Response,
-    routing::{delete, get, options, post},
+    http::Method,
+    routing::{delete, get, post},
     Router,
 };
 use ivynet_core::grpc::client::Uri;
 use sendgrid::v3::Sender;
 use sqlx::PgPool;
 use tower_http::cors::CorsLayer;
-use tracing::{debug, info};
-use url::Url;
+use tracing::info;
 
 use utoipa::OpenApi as _;
 use utoipa_swagger_ui::SwaggerUi;
@@ -63,14 +59,15 @@ pub async fn serve(
         pass_reset_template,
     };
 
-    let app = create_router();
-
-    let app = app
-        .clone()
-        .with_state(state.clone())
-        .layer(CorsLayer::very_permissive())
-        .layer(middleware::from_fn(check_origin))
-        .layer(middleware::from_fn(add_headers));
+    let app = create_router().with_state(state.clone()).layer(
+        CorsLayer::very_permissive().allow_methods([
+            Method::GET,
+            Method::POST,
+            Method::DELETE,
+            Method::PUT,
+            Method::OPTIONS,
+        ]),
+    );
 
     let listener = tokio::net::TcpListener::bind(&format!("0.0.0.0:{port}")).await?;
     axum::serve(listener, app).await?;
@@ -80,7 +77,6 @@ pub async fn serve(
 fn create_router() -> Router<HttpState> {
     Router::new()
         .route("/health", get(|| async { "alive" }))
-        .route("/authorize", options(handle_options))
         .route("/authorize", post(authorize::authorize))
         .route("/authorize/invitation/:id", get(authorize::check_invitation))
         .route("/authorize/forgot_password", post(authorize::forgot_password))
@@ -99,77 +95,4 @@ fn create_router() -> Router<HttpState> {
         .merge(
             SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", apidoc::ApiDoc::openapi()),
         )
-}
-
-async fn handle_options() -> StatusCode {
-    StatusCode::OK
-}
-
-async fn check_origin(mut request: Request, next: Next) -> Response {
-    let headers = request.headers();
-
-    debug!("Headers: {:#?}", headers);
-
-    let is_ivynet = request
-        .headers()
-        .get(header::ORIGIN)
-        .and_then(|h| h.to_str().ok())
-        .and_then(|s| Url::parse(s).ok())
-        .map(|url| {
-            debug!("----------------------------URL FACTS-----------------------------");
-            debug!("URL: {:#?}", url);
-            debug!("Domain: {:#?}", url.domain());
-            debug!("Scheme: {:#?}", url.scheme());
-            url.scheme() == "https"
-                && url.domain().map_or(false, |domain| {
-                    domain == "ivynet.dev" || domain.ends_with(".ivynet.dev")
-                })
-        })
-        .unwrap_or(false);
-
-    debug!("\n Is ivynet: {:#?} \n", is_ivynet);
-
-    request.extensions_mut().insert(is_ivynet);
-
-    let response = next.run(request).await;
-
-    debug!("Response {:#?}", response);
-
-    response
-}
-
-async fn add_headers(req: Request, next: Next) -> Response {
-    let is_ivynet = req.extensions().get::<bool>().copied().unwrap_or(false);
-    let mut res = next.run(req).await;
-    let headers = res.headers_mut();
-
-    headers.insert(
-        header::ACCESS_CONTROL_ALLOW_METHODS,
-        HeaderValue::from_static("GET, POST, PUT, DELETE, OPTIONS"),
-    );
-    headers.insert(
-        header::ACCESS_CONTROL_ALLOW_HEADERS,
-        HeaderValue::from_static("Content-Type, Authorization"),
-    );
-
-    headers.insert(header::CONTENT_SECURITY_POLICY, HeaderValue::from_static("script-src 'self'"));
-    headers.insert(header::STRICT_TRANSPORT_SECURITY, HeaderValue::from_static("max-age=31536000"));
-    headers.insert(
-        header::REFERRER_POLICY,
-        HeaderValue::from_static("strict-origin-when-cross-origin"),
-    );
-    headers.insert(header::X_CONTENT_TYPE_OPTIONS, HeaderValue::from_static("nosniff"));
-    headers.insert(header::X_FRAME_OPTIONS, HeaderValue::from_static("SAMEORIGIN"));
-    headers.insert(header::X_XSS_PROTECTION, HeaderValue::from_static("1; mode=block"));
-    if is_ivynet {
-        headers.insert(
-            header::ACCESS_CONTROL_ALLOW_ORIGIN,
-            HeaderValue::from_static("https://*.ivynet.dev"),
-        );
-        headers.insert(header::ACCESS_CONTROL_ALLOW_CREDENTIALS, HeaderValue::from_static("true"));
-    } else {
-        headers.insert(header::ACCESS_CONTROL_ALLOW_ORIGIN, HeaderValue::from_static("*"));
-    }
-
-    res
 }
