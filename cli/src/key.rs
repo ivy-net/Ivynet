@@ -63,24 +63,24 @@ pub enum CreateCommands {
 #[derive(Parser, Debug, Clone)]
 pub enum GetCommands {
     #[command(name = "ecdsa-private", about = "Get the default ECDSA key and its address")]
-    EcdsaPrivate {},
+    EcdsaPrivate,
     #[command(
         name = "ecdsa-public",
         about = "Get a specified ECDSA key's public address <KEYNAME>"
     )]
-    EcdsaPublicKey {},
+    EcdsaPublicKey,
     #[command(name = "bls-private", about = "Get the default BLS key and its address")]
-    BlsPrivate {},
+    BlsPrivate,
     #[command(name = "bls-public", about = "Get a specified BLS key's public address <KEYNAME>")]
-    BlsPublicKey {},
+    BlsPublicKey,
 }
 
 #[derive(Parser, Debug, Clone)]
 pub enum SetCommands {
     #[command(name = "bls", about = "Set the default BLS key <KEYNAME>")]
-    BlsSet {},
+    BlsSet,
     #[command(name = "ecdsa", about = "Set the default ECDSA key <KEYNAME>")]
-    EcdsaSet {},
+    EcdsaSet,
 }
 
 pub async fn parse_key_subcommands(subcmd: KeyCommands, config: IvyConfig) -> Result<(), Error> {
