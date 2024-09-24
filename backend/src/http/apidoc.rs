@@ -17,7 +17,8 @@ use super::{super::db, authorize, client, organization};
         client::status,
         client::idling,
         client::unhealthy,
-        client::info
+        client::info,
+        client::delete
     ),
     components(
         schemas(

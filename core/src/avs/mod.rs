@@ -283,10 +283,10 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
         Ok(cmd)
     }
 
-    /// Stop the AVS instance.
+    /// Bring the AVS instance down.
     async fn stop(&mut self) -> Result<(), IvyError> {
         std::env::set_current_dir(self.run_path())?;
-        let _ = docker_cmd_status(["stop"]).await?;
+        let _ = docker_cmd_status(["down"]).await?;
         self.set_running(false);
         Ok(())
     }

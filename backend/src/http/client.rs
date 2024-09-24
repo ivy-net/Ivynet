@@ -9,7 +9,6 @@ use axum_extra::extract::CookieJar;
 use chrono::NaiveDateTime;
 use ivynet_core::ethers::types::Address;
 use serde::Serialize;
-use tracing::debug;
 use utoipa::ToSchema;
 
 use crate::{
@@ -224,6 +223,31 @@ pub async fn unhealthy(
         .collect::<Vec<_>>()
         .into())
 }
+#[utoipa::path(
+    delete,
+    path = "/client/node/{id}",
+    responses(
+        (status = 200),
+        (status = 404)
+    )
+)]
+pub async fn delete(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Path(id): Path<String>,
+) -> Result<(), BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let address = id.parse::<Address>().map_err(|_| BackendError::BadId)?;
+    let machine = node::DbNode::get(&state.pool, &address).await?;
+    if machine.organization_id != account.organization_id || !account.role.can_write() {
+        return Err(BackendError::Unauthorized);
+    }
+
+    node::DbNode::delete(&state.pool, &address).await?;
+
+    Ok(())
+}
 
 #[utoipa::path(
     post,
@@ -239,11 +263,8 @@ pub async fn info(
     jar: CookieJar,
     Path(id): Path<String>,
 ) -> Result<Json<Info>, BackendError> {
-    debug!("Info!");
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    debug!("Address string is {id}");
     let address = id.parse::<Address>().map_err(|_| BackendError::BadId)?;
-    debug!("Address parsed to {address:?}!");
     let machine = node::DbNode::get(&state.pool, &address).await?;
     if machine.organization_id != account.organization_id {
         return Err(BackendError::Unauthorized);
