@@ -15,7 +15,6 @@ use ethers::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tracing::{debug, info};
 
 use crate::{
     error::IvyError,
@@ -53,15 +52,13 @@ impl IvyWallet {
         name: String,
         password: String,
     ) -> Result<PathBuf, IvyError> {
-        debug!("{:?}", path);
-        let encrypt = LocalWallet::encrypt_keystore(
+        _ = LocalWallet::encrypt_keystore(
             path,
             &mut thread_rng(),
             self.local_wallet.signer().to_bytes(),
             &password,
             Some(&name),
         )?;
-        debug!("{:?}", encrypt);
 
         let prv_key_path = path.join(name);
 
@@ -69,9 +66,6 @@ impl IvyWallet {
         let keyfile = KeyfileLegacy { address: self.local_wallet.address(), crypto, id, version };
 
         write_json(&prv_key_path, &keyfile)?;
-        debug!("{:#?}", prv_key_path);
-
-        info!("keyfile stored to {}", path.display());
 
         Ok(prv_key_path)
     }
