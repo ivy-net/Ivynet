@@ -34,7 +34,7 @@ resource "google_compute_backend_service" "grpc" {
   health_checks                   = [google_compute_health_check.backend.id]
   load_balancing_scheme           = "EXTERNAL_MANAGED"
   port_name                       = "grpc"
-  protocol                        = "HTTP"
+  protocol                        = "HTTP2"
   session_affinity                = "NONE"
   timeout_sec                     = 30
   backend {
