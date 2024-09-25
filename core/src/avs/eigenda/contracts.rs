@@ -37,3 +37,11 @@ pub(super) fn registry_coordinator(chain: Chain) -> Address {
         _ => todo!("Unimplemented"),
     }
 }
+
+pub(super) fn delegation_manager(chain: Chain) -> Address {
+    match chain {
+        Chain::Mainnet => h160!(0x39053D51B77DC0d36036Fc1fCc8Cb819df8Ef37A),
+        Chain::Holesky => h160!(0xA44151489861Fe9e3055d95adC98FbD462B948e7),
+        _ => todo!("Unimplemented"),
+    }
+}
