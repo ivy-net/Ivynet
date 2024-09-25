@@ -10,6 +10,7 @@
     - libmemcached-tools
     - memcached
     - postgresql
+    - python3-jmespath
     - python3-pip
   tags:
     - memcached

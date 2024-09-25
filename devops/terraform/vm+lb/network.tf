@@ -42,7 +42,7 @@ resource "google_compute_managed_ssl_certificate" "api" {
 }
 
 resource "google_dns_managed_zone" "test" {
-  name = "test"
+  name     = "test"
   dns_name = var.dns_zone
 }
 
@@ -51,5 +51,5 @@ resource "google_dns_record_set" "backend" {
   type         = "A"
   ttl          = 300
   managed_zone = google_dns_managed_zone.test.name
-  rrdatas      = [google_compute_global_forwarding_rule.backend.ip_address]
+  rrdatas      = [google_compute_global_forwarding_rule.http.ip_address]
 }

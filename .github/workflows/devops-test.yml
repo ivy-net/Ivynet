@@ -72,40 +72,40 @@ jobs:
           echo "TAG_BACKEND_TOML=${version}" >> "$GITHUB_OUTPUT"
           echo "Version: ${version}"
 
-  build-image:
-    name: Build image with packer
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Install extra python packages
-        run: >
-          pipx inject ansible-core
-          jmespath
-          google-auth
-          requests
-      - name: Install toml (package)
-        run: |
-          cargo install toml-cli
-      - name: Create a file with the vault password
-        run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
-        env:
-          ANSIBLE_VAULT: ${{ secrets.ANSIBLE_VAULT }}
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
-      - name: Google credentials for Packer
-        env:
-          PACKER_CREDS: '${{ secrets.PACKER_GCP_CREDENTIALS }}'
-        run: |
-          echo "${PACKER_CREDS}" >  /tmp/packer_gcp.json
-      - name: Run Packer
-        env:
-          CONFIG: cloudstation.pkr.hcl
-          GOOGLE_APPLICATION_CREDENTIALS: /tmp/packer_gcp.json
-          version: "003"
-        run: |
-          cd devops/packer
-          packer init ${CONFIG}
-          packer build -var "version=${version}" ${CONFIG}
+#  build-image:
+#    name: Build image with packer
+#    runs-on: ubuntu-latest
+#    steps:
+#      - name: Checkout repository
+#        uses: actions/checkout@v4
+#      - name: Install extra python packages
+#        run: >
+#          pipx inject ansible-core
+#          jmespath
+#          google-auth
+#          requests
+#      - name: Install toml (package)
+#        run: |
+#          cargo install toml-cli
+#      - name: Create a file with the vault password
+#        run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
+#        env:
+#          ANSIBLE_VAULT: ${{ secrets.ANSIBLE_VAULT }}
+#      - name: Authenticate to Google Cloud
+#        uses: google-github-actions/auth@v2
+#        with:
+#          credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
+#      - name: Google credentials for Packer
+#        env:
+#          PACKER_CREDS: '${{ secrets.PACKER_GCP_CREDENTIALS }}'
+#        run: |
+#          echo "${PACKER_CREDS}" >  /tmp/packer_gcp.json
+#      - name: Run Packer
+#        env:
+#          CONFIG: cloudstation.pkr.hcl
+#          GOOGLE_APPLICATION_CREDENTIALS: /tmp/packer_gcp.json
+#          version: "003"
+#        run: |
+#          cd devops/packer
+#          packer init ${CONFIG}
+#          packer build -var "version=${version}" ${CONFIG}
