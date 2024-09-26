@@ -1,6 +1,5 @@
 use crate::error::Error;
 use clap::Parser;
-use dialoguer::{Input, Password};
 use ivynet_core::{
     bls::BlsKey,
     config::IvyConfig,
@@ -37,9 +36,9 @@ pub enum KeyCommands {
 #[derive(Parser, Debug, Clone)]
 pub enum ImportCommands {
     #[command(name = "ecdsa", about = "Import a ECDSA private key <PRIVATE_KEY>")]
-    EcdsaImport { private_key: String, keyname: Option<String>, password: Option<String> },
+    EcdsaImport { private_key: String },
     #[command(name = "bls", about = "Import a BLS private key <PRIVATE_KEY>")]
-    BlsImport { private_key: String, keyname: Option<String>, password: Option<String> },
+    BlsImport { private_key: String },
 }
 
 #[derive(Parser, Debug, Clone)]
@@ -48,15 +47,11 @@ pub enum CreateCommands {
     EcdsaCreate {
         #[arg(long)]
         store: bool,
-        keyname: Option<String>,
-        password: Option<String>,
     },
     #[command(name = "bls", about = "Create a BLS key")]
     BlsCreate {
         #[arg(long)]
         store: bool,
-        keyname: Option<String>,
-        password: Option<String>,
     },
 }
 
@@ -106,9 +101,10 @@ pub async fn parse_key_import_subcommands(
     mut config: IvyConfig,
 ) -> Result<(), Error> {
     match subcmd {
-        ImportCommands::BlsImport { private_key, keyname, password } => {
-            let (keyname, pass) = get_credentials(keyname, password);
+        ImportCommands::BlsImport { private_key } => {
             let keychain = Keychain::default();
+            let keyname = keychain.get_keyname(KeyType::Bls)?;
+            let pass = keychain.get_password(true)?;
             let key = keychain.import(KeyType::Bls, Some(&keyname), &private_key, &pass)?;
 
             let addr = match key.address() {
@@ -120,10 +116,12 @@ pub async fn parse_key_import_subcommands(
             config.set_bls_address(addr.to_string());
             config.store()?;
         }
-        ImportCommands::EcdsaImport { private_key, keyname, password } => {
-            let (keyname, pass) = get_credentials(keyname, password);
+        ImportCommands::EcdsaImport { private_key } => {
             let keychain = Keychain::default();
+            let keyname = keychain.get_keyname(KeyType::Ecdsa)?;
+            let pass = keychain.get_password(true)?;
             let key = keychain.import(KeyType::Ecdsa, Some(&keyname), &private_key, &pass)?;
+
             println!("{:?}", key.address());
             let addr = match key.address() {
                 KeyAddress::Ecdsa(address) => Ok(address),
@@ -143,10 +141,11 @@ pub async fn parse_key_create_subcommands(
     mut config: IvyConfig,
 ) -> Result<(), Error> {
     match subcmd {
-        CreateCommands::BlsCreate { store, keyname, password } => {
+        CreateCommands::BlsCreate { store } => {
             let keychain = Keychain::default();
             if store {
-                let (keyname, pass) = get_credentials(keyname, password);
+                let keyname = keychain.get_keyname(KeyType::Bls)?;
+                let pass = keychain.get_password(true)?;
                 let key = keychain.generate(KeyType::Bls, Some(&keyname), &pass);
 
                 let addr = match key.address() {
@@ -167,10 +166,11 @@ pub async fn parse_key_create_subcommands(
                 println!("Private key: {:?}", key.secret());
             }
         }
-        CreateCommands::EcdsaCreate { store, keyname, password } => {
+        CreateCommands::EcdsaCreate { store } => {
             if store {
                 let keychain = Keychain::default();
-                let (keyname, pass) = get_credentials(keyname, password);
+                let keyname = keychain.get_keyname(KeyType::Ecdsa)?;
+                let pass = keychain.get_password(true)?;
 
                 let key = keychain.generate(KeyType::Ecdsa, Some(&keyname), &pass);
 
@@ -204,11 +204,7 @@ pub async fn parse_key_get_subcommands(
         GetCommands::BlsPrivate {} => {
             let keychain = Keychain::default();
             let keyname = keychain.select_key(KeyType::Bls, config.default_bls_keyfile.clone())?;
-
-            let password = Password::new()
-                .with_prompt("Enter a password to the private key")
-                .interact()
-                .expect("No password provided");
+            let password = keychain.get_password(false)?;
 
             if let Key::Bls(key) = keychain.load(keyname, &password)? {
                 println!("Private key: {:?}", key.secret());
@@ -232,11 +228,7 @@ pub async fn parse_key_get_subcommands(
             let keychain = Keychain::default();
             let keyname =
                 keychain.select_key(KeyType::Ecdsa, config.default_ecdsa_keyfile.clone())?;
-
-            let password = Password::new()
-                .with_prompt("Enter a password to the private key")
-                .interact()
-                .expect("No password provided");
+            let password = keychain.get_password(false)?;
 
             if let Key::Ecdsa(key) = keychain.load(keyname, &password)? {
                 println!("Private key: {:?}", key.to_private_key());
@@ -284,34 +276,4 @@ pub async fn parse_key_set_subcommands(
         }
     }
     Ok(())
-}
-
-fn get_credentials(keyname: Option<String>, password: Option<String>) -> (String, String) {
-    match (keyname, password) {
-        (None, None) => (
-            Input::new()
-                .with_prompt("Enter a name for the key")
-                .interact_text()
-                .expect("No keyname provided"),
-            Password::new()
-                .with_prompt("Enter a password to the private key")
-                .interact()
-                .expect("No password provided"),
-        ),
-        (None, Some(pass)) => (
-            Input::new()
-                .with_prompt("Enter a name for the key")
-                .interact_text()
-                .expect("No keyname provided"),
-            pass,
-        ),
-        (Some(keyname), None) => (
-            keyname,
-            Password::new()
-                .with_prompt("Enter a password to the private key")
-                .interact()
-                .expect("No password provided"),
-        ),
-        (Some(keyname), Some(pass)) => (keyname, pass),
-    }
 }

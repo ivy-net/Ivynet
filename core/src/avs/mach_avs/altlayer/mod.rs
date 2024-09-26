@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use dialoguer::{Input, Password};
+use dialoguer::Input;
 use ethers::{
     signers::Signer,
     types::{Chain, U256},
@@ -223,8 +223,7 @@ impl AltLayer {
         bls_json_file_location.set_extension("bls.key.json");
         info!("BLS key file location: {:?}", &bls_json_file_location);
 
-        let bls_password: String =
-            Password::new().with_prompt("Input the password for your BLS key file").interact()?;
+        let bls_password = keychain.get_password(false)?;
 
         let p = keychain.get_path(keyname);
         let _ = fs::copy(p, &bls_json_file_location);
@@ -254,8 +253,7 @@ impl AltLayer {
         debug!("Setting env.opt vars");
         let mut env_lines = EnvLines::load(&env_path)?;
 
-        let ecdsa_password: String =
-            Password::new().with_prompt("Input the password for your ECDSA key file").interact()?;
+        let ecdsa_password = keychain.get_password(false)?;
 
         env_lines.set("METADATA_URI", IVY_METADATA);
         env_lines.set("USER_HOME", home_str);

@@ -1,5 +1,4 @@
 use anyhow::{Context, Error as AnyError, Result};
-use dialoguer::Password;
 use ivynet_core::{
     avs::{build_avs_provider, commands::AvsCommands, config::AvsConfig},
     config::IvyConfig,
@@ -18,14 +17,12 @@ pub async fn parse_avs_subcommands(
     // Setup runs local, otherwise construct a client and continue.
     if let AvsCommands::Setup { ref avs, ref chain } = subcmd {
         let default_key_path = config.default_ecdsa_keyfile.clone();
+
         let keychain = Keychain::default();
         let keyname = keychain.select_key(KeyType::Ecdsa, default_key_path)?;
-        println!("{}", keyname);
-        let password: String = Password::new()
-            .with_prompt("Input the password for your stored operator ECDSA keyfile")
-            .interact()?;
-
+        let password = keychain.get_password(false)?;
         let key = keychain.load(keyname, &password)?;
+
         if let Some(wallet) = key.get_wallet_owned() {
             let mut avs =
                 build_avs_provider(Some(avs), chain, config, Some(wallet), Some(password.clone()))

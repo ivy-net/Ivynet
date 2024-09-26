@@ -30,9 +30,7 @@ pub async fn serve(
 
     let keychain = Keychain::default();
     let keyname = keychain.select_key(KeyType::Ecdsa, config.default_ecdsa_keyfile.clone())?;
-    let keyfile_pw = dialoguer::Password::new()
-        .with_prompt("Input the password for your stored Operator ECDSA keyfile")
-        .interact()?;
+    let keyfile_pw = keychain.get_password(false)?;
     let key = keychain.load(keyname, &keyfile_pw)?;
     if let Some(wallet) = key.get_wallet_owned() {
         // Avs Service

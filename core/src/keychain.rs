@@ -3,7 +3,7 @@ use crate::{
     error::IvyError,
     wallet::IvyWallet,
 };
-use dialoguer::Select;
+use dialoguer::{Input, Password, Select};
 use serde_json::Value;
 use std::{fmt::Display, fs, path::PathBuf};
 
@@ -104,9 +104,12 @@ impl Keychain {
 
     pub fn list(&self) -> Result<Vec<KeyName>, IvyError> {
         let paths = fs::read_dir(&self.path)?;
-
         let mut list = Vec::new();
         for path in paths.flatten() {
+            if !path.path().is_file() {
+                continue;
+            }
+
             let filename = path.file_name();
             let cmps = filename.to_str().unwrap().split('.').collect::<Vec<&str>>();
             if cmps.len() == 3 || cmps.len() == 4 {
@@ -174,6 +177,7 @@ impl Keychain {
         let interactive = Select::new()
             .with_prompt("Which Key would you like to use?")
             .items(keys_display)
+            .default(0)
             .interact()?;
 
         let keyname = &keys_display[interactive];
@@ -183,6 +187,7 @@ impl Keychain {
             KeyType::Bls => Ok(KeyName::Bls(keyname.to_string())),
         }
     }
+
     pub fn generate(&self, key_type: KeyType, name: Option<&str>, password: &str) -> Key {
         match key_type {
             KeyType::Ecdsa => Key::Ecdsa(self.ecdsa_generate(name, password)),
@@ -259,7 +264,12 @@ impl Keychain {
     }
 
     fn bls_load(&self, name: &str, password: &str) -> Result<BlsKey, IvyError> {
-        Ok(BlsKey::from_keystore(self.path.join(format!("{name}.bls.json")), password)?)
+        let first_file = self.path.join(format!("{name}.bls.json"));
+        if let Ok(key) = BlsKey::from_keystore(first_file, password) {
+            return Ok(key);
+        }
+        let second_file = self.path.join(format!("{name}.bls.key.json"));
+        Ok(BlsKey::from_keystore(second_file, password)?)
     }
 
     fn ecdsa_generate(&self, name: Option<&str>, password: &str) -> IvyWallet {
@@ -305,6 +315,70 @@ impl Keychain {
         let data = fs::read_to_string(path).expect("No data in json");
         let json: Value = serde_json::from_str(&data).expect("Could not parse through json");
         Ok(json)
+    }
+
+    pub fn get_password(&self, require_confirmation: bool) -> Result<String, IvyError> {
+        let mut pw: String =
+            Password::new().with_prompt("Enter a password for keyfile encryption").interact()?;
+
+        if require_confirmation {
+            let mut confirm_pw: String =
+                Password::new().with_prompt("Confirm keyfile password").interact()?;
+
+            let mut pw_confirmed = pw == confirm_pw;
+            while !pw_confirmed {
+                println!("Password and confirmation do not match. Please retry.");
+                pw = Password::new()
+                    .with_prompt("Enter a password for keyfile encryption")
+                    .interact()?;
+                confirm_pw = Password::new().with_prompt("Confirm keyfile password").interact()?;
+                pw_confirmed = pw == confirm_pw;
+            }
+        }
+        Ok(pw)
+    }
+
+    pub fn get_keyname(&self, key_type: KeyType) -> Result<String, IvyError> {
+        let mut keyname: String = Input::new()
+            .with_prompt("Enter a name for the key")
+            .interact_text()
+            .expect("No keyname provided");
+
+        let knvec = self.list()?;
+        loop {
+            let mut flag = true;
+            for kn in &knvec {
+                let match_keyname = match key_type {
+                    KeyType::Ecdsa => KeyName::Ecdsa(keyname.clone()),
+                    KeyType::Bls => KeyName::Bls(keyname.clone()),
+                };
+
+                if kn == &match_keyname {
+                    flag = false;
+                    let overrides = ["Override", "Don't Override"];
+                    let interactive = Select::new()
+                        .with_prompt("That keyname already exists. Would you like to override it?")
+                        .items(&overrides)
+                        .default(1)
+                        .interact()
+                        .unwrap();
+
+                    if interactive == 0 {
+                        return Ok(keyname)
+                    }
+                    keyname = Input::new()
+                        .with_prompt("Enter a different name for the key")
+                        .interact_text()
+                        .expect("No keyname provided");
+
+                    break;
+                }
+            }
+            if flag {
+                break;
+            }
+        }
+        Ok(keyname)
     }
 }
 

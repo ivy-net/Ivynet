@@ -1,7 +1,6 @@
 use dialoguer::{Input, MultiSelect, Password, Select};
 use ivynet_core::{
     config::IvyConfig,
-    dialog::get_confirm_password,
     error::IvyError,
     grpc::{
         backend::backend_client::BackendClient,
@@ -229,12 +228,11 @@ fn set_config_keys(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
         .unwrap();
     match interactive {
         0 => {
+            let keychain = Keychain::default();
             let private_key: String =
                 Password::new().with_prompt("Enter your ECDSA private key").interact()?;
-            let keyfile_name: String =
-                Input::new().with_prompt("Enter a name for the keyfile").interact()?;
-            let pw = get_confirm_password();
-            let keychain = Keychain::default();
+            let keyfile_name: String = keychain.get_keyname(KeyType::Ecdsa)?;
+            let pw = keychain.get_password(true)?;
             let key = keychain.import(KeyType::Ecdsa, Some(&keyfile_name), &private_key, &pw)?;
 
             if let Some(wallet) = key.get_wallet_owned() {
@@ -243,24 +241,9 @@ fn set_config_keys(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
             }
         }
         1 => {
-            let keyfile_name: String =
-                Input::new().with_prompt("Enter a name for the keyfile").interact()?;
-            let mut pw: String = Password::new()
-                .with_prompt("Enter a password for keyfile encryption")
-                .interact()?;
-            let mut confirm_pw: String =
-                Password::new().with_prompt("Confirm keyfile password").interact()?;
-
-            let mut pw_confirmed = pw == confirm_pw;
-            while !pw_confirmed {
-                println!("Password and confirmation do not match. Please retry.");
-                pw = Password::new()
-                    .with_prompt("Enter a password for keyfile encryption")
-                    .interact()?;
-                confirm_pw = Password::new().with_prompt("Confirm keyfile password").interact()?;
-                pw_confirmed = pw == confirm_pw;
-            }
             let keychain = Keychain::default();
+            let keyfile_name = keychain.get_keyname(KeyType::Ecdsa)?;
+            let pw = keychain.get_password(true)?;
             let key = keychain.generate(KeyType::Ecdsa, Some(&keyfile_name), &pw);
             if let Some(wallet) = key.get_wallet_owned() {
                 config.default_ecdsa_keyfile = Some(keyfile_name);

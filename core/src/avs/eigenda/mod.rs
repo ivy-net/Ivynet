@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use core::str;
-use dialoguer::{Input, Password};
+use dialoguer::Input;
 use dirs::home_dir;
 use ethers::{
     signers::Signer,
@@ -434,8 +434,7 @@ impl EigenDA {
         debug!("BLS key file location: {:?}", &bls_json_file_location);
 
         // TODO: Remove prompting
-        let bls_password: String =
-            Password::new().with_prompt("Input the password for your BLS key file").interact()?;
+        let bls_password = keychain.get_password(false)?;
 
         env_lines.set(
             "NODE_BLS_KEY_FILE_HOST",

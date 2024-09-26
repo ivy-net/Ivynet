@@ -2434,7 +2434,6 @@ dependencies = [
  "tower-http",
  "tracing",
  "tracing-subscriber",
- "url",
  "utoipa",
  "utoipa-swagger-ui",
  "uuid 1.10.0",
