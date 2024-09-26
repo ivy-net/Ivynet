@@ -12,6 +12,20 @@ resource "google_compute_health_check" "backend" {
   unhealthy_threshold = 2
 }
 
+resource "google_compute_health_check" "grpc" {
+  name               = "backend-grpc-check"
+  check_interval_sec = 5
+  healthy_threshold  = 2
+  grpc_health_check {
+    port               = 50050
+    port_specification = "USE_FIXED_PORT"
+  }
+  timeout_sec         = 5
+  unhealthy_threshold = 2
+}
+
+
+
 resource "google_compute_backend_service" "http" {
   name                            = "ivynet-http-service"
   connection_draining_timeout_sec = 0
@@ -61,10 +75,10 @@ resource "google_compute_target_https_proxy" "http" {
   ssl_certificates = [google_compute_managed_ssl_certificate.api.id]
 }
 
-resource "google_compute_target_http_proxy" "grpc" {
+resource "google_compute_target_https_proxy" "grpc" {
   name             = "web-map-grpc"
   url_map          = google_compute_url_map.grpc.id
-//  ssl_certificates = [google_compute_managed_ssl_certificate.api.id]
+  ssl_certificates = [google_compute_managed_ssl_certificate.api.id]
 }
 
 resource "google_compute_global_forwarding_rule" "http" {
@@ -82,5 +96,5 @@ resource "google_compute_global_forwarding_rule" "grpc" {
   ip_address            = google_compute_global_address.loadbalancer.id
   load_balancing_scheme = "EXTERNAL_MANAGED"
   port_range            = "50050"
-  target                = google_compute_target_http_proxy.grpc.id
+  target                = google_compute_target_https_proxy.grpc.id
 }
