@@ -37,6 +37,10 @@ resource "google_compute_firewall" "allow_proxy" {
     ports    = ["8080"]
     protocol = "tcp"
   }
+  allow {
+    ports    = ["50050"]
+    protocol = "tcp"
+  }
   direction     = "INGRESS"
   network       = google_compute_network.backend.id
   priority      = 1000

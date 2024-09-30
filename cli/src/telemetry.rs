@@ -16,6 +16,7 @@ use tokio::{
     sync::RwLock,
     time::{sleep, Duration},
 };
+use tracing::info;
 
 const TELEMETRY_INTERVAL_IN_MINUTES: u64 = 1;
 
@@ -30,6 +31,7 @@ pub async fn listen(
             collect(&provider.avs).await
         };
         if let Ok(metrics) = metrics {
+            info!("Sending metrics...");
             _ = send(&metrics, &identity_wallet, &mut client).await;
         }
 
@@ -38,6 +40,7 @@ pub async fn listen(
 }
 
 async fn collect(avs: &Option<Box<dyn AvsVariant>>) -> Result<Vec<Metrics>, IvyError> {
+    info!("Checking metrics...");
     // Depending on currently running avs, we decide how to fetch
     let (avs, address, running) = match avs {
         None => (None, None, false),
@@ -53,14 +56,19 @@ async fn collect(avs: &Option<Box<dyn AvsVariant>>) -> Result<Vec<Metrics>, IvyE
         }
     };
 
+    info!("Collecting metrics for {address:?} ({running})...");
     let mut metrics = if let Some(address) = address {
-        if let Ok(body) = reqwest::get(address).await?.text().await {
-            let metrics = body
-                .split('\n')
-                .filter_map(|line| TelemetryParser::new(line).parse())
-                .collect::<Vec<_>>();
+        if let Ok(resp) = reqwest::get(address).await {
+            if let Ok(body) = resp.text().await {
+                let metrics = body
+                    .split('\n')
+                    .filter_map(|line| TelemetryParser::new(line).parse())
+                    .collect::<Vec<_>>();
 
-            metrics
+                metrics
+            } else {
+                Vec::new()
+            }
         } else {
             Vec::new()
         }

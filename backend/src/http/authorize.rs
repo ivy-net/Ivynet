@@ -5,7 +5,10 @@ use axum::{
     http::HeaderMap,
     Json,
 };
-use axum_extra::extract::{cookie::Cookie, CookieJar};
+use axum_extra::extract::{
+    cookie::{Cookie, SameSite},
+    CookieJar,
+};
 use base64::Engine as _;
 use sendgrid::v3::{Email, Message, Personalization};
 use serde::{Deserialize, Serialize};
@@ -64,7 +67,12 @@ pub async fn authorize(
             state.cache.set(&uuid, account.user_id, 15 * 60)?;
 
             Ok((
-                jar.add(Cookie::new("session_id", uuid.clone())),
+                jar.add({
+                    let mut session_cookie = Cookie::new("session_id", uuid.clone());
+                    session_cookie.set_secure(true);
+                    session_cookie.set_same_site(SameSite::None);
+                    session_cookie
+                }),
                 AuthorizationResponse { uuid }.into(),
             ))
         }

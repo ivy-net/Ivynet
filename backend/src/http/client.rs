@@ -223,6 +223,31 @@ pub async fn unhealthy(
         .collect::<Vec<_>>()
         .into())
 }
+#[utoipa::path(
+    delete,
+    path = "/client/node/{id}",
+    responses(
+        (status = 200),
+        (status = 404)
+    )
+)]
+pub async fn delete(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Path(id): Path<String>,
+) -> Result<(), BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let address = id.parse::<Address>().map_err(|_| BackendError::BadId)?;
+    let machine = node::DbNode::get(&state.pool, &address).await?;
+    if machine.organization_id != account.organization_id || !account.role.can_write() {
+        return Err(BackendError::Unauthorized);
+    }
+
+    node::DbNode::delete(&state.pool, &address).await?;
+
+    Ok(())
+}
 
 #[utoipa::path(
     post,

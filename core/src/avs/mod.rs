@@ -1,11 +1,12 @@
 use crate::{
     config::IvyConfig,
     docker::{
-        dockercmd::{docker_cmd, docker_cmd_status, stream_docker_output},
+        dockercmd::{docker_cmd, docker_cmd_status},
         log::CmdLogSource,
     },
     eigen::{contracts::delegation_manager::DelegationManager, quorum::QuorumType},
     error::IvyError,
+    keychain::{KeyType, Keychain},
     rpc_management::{connect_provider, IvyProvider},
     utils::try_parse_chain,
     wallet::IvyWallet,
@@ -23,7 +24,6 @@ use lagrange::Lagrange;
 use names::AvsNames;
 use std::{collections::HashMap, fmt::Debug, fs, path::PathBuf, sync::Arc};
 use tokio::process::Child;
-use tokio_stream::StreamExt;
 use tracing::{debug, error, info};
 
 pub mod commands;
@@ -122,6 +122,7 @@ impl AvsProvider {
         let setup_type = Select::new()
             .with_prompt(format!("Do you have an existing deployment of {}?", self.avs()?.name()))
             .items(&setup_options)
+            .default(0)
             .interact()
             .unwrap();
 
@@ -181,15 +182,12 @@ impl AvsProvider {
         //     //Register operator for all quorums they're eligible for
         // }
 
+        let keychain = Keychain::default();
+        let keyname = keychain.select_key(KeyType::Ecdsa, config.default_ecdsa_keyfile.clone())?;
+        let keypath = keychain.get_path(keyname);
+
         if let Some(pw) = &self.keyfile_pw {
-            self.avs()?
-                .register(
-                    self.provider.clone(),
-                    avs_path.clone(),
-                    config.default_ecdsa_keyfile.clone(),
-                    pw,
-                )
-                .await?;
+            self.avs()?.register(self.provider.clone(), avs_path.clone(), keypath, pw).await?;
         } else {
             error!("No keyfile password provided. Exiting...");
             return Err(IvyError::KeyfilePasswordError);
@@ -201,15 +199,12 @@ impl AvsProvider {
     pub async fn unregister(&self, config: &IvyConfig) -> Result<(), IvyError> {
         let avs_path = self.avs()?.base_path();
 
+        let keychain = Keychain::default();
+        let keyname = keychain.select_key(KeyType::Ecdsa, config.default_ecdsa_keyfile.clone())?;
+        let keypath = keychain.get_path(keyname);
+
         if let Some(pw) = &self.keyfile_pw {
-            self.avs()?
-                .unregister(
-                    self.provider.clone(),
-                    avs_path.clone(),
-                    config.default_ecdsa_keyfile.clone(),
-                    pw,
-                )
-                .await?;
+            self.avs()?.unregister(self.provider.clone(), avs_path.clone(), keypath, pw).await?;
         } else {
             error!("No keyfile password provided. Exiting...");
             return Err(IvyError::KeyfilePasswordError);
@@ -262,16 +257,7 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
 
         // NOTE: See the limitations of the Stdio::piped() method if this experiences a deadlock
         let cmd = &mut docker_cmd(["up", "--force-recreate"]).await?;
-        let mut output_stream = stream_docker_output(cmd).await?;
         debug!("cmd PID: {:?}", cmd.id());
-
-        while let Some((line, is_stderr)) = output_stream.next().await {
-            if is_stderr {
-                self.handle_log(&line, CmdLogSource::StdErr).await?;
-            } else {
-                self.handle_log(&line, CmdLogSource::StdOut).await?;
-            }
-        }
         self.set_running(true);
         Ok(())
     }
@@ -287,10 +273,10 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
         Ok(cmd)
     }
 
-    /// Stop the AVS instance.
+    /// Bring the AVS instance down.
     async fn stop(&mut self) -> Result<(), IvyError> {
         std::env::set_current_dir(self.run_path())?;
-        let _ = docker_cmd_status(["stop"]).await?;
+        let _ = docker_cmd_status(["down"]).await?;
         self.set_running(false);
         Ok(())
     }

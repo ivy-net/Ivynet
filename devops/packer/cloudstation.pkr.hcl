@@ -29,7 +29,7 @@ source "googlecompute" "ivynet-cloudstation" {
   labels = {
     "creator" : "packer",
     "area" : "client",
-    "project" : "github-client"
+    "project" : "github_client"
   }
   metadata = {
     "enable-oslogin" : "FALSE"
@@ -40,10 +40,8 @@ build {
   sources = ["sources.googlecompute.ivynet-cloudstation"]
 
   provisioner "ansible" {
-    playbook_file = "../ansible/ivynet_client.yml"
+    playbook_file = "../ansible/cloudstation-packer.yml"
     extra_arguments = [
-      "--inventory",
-      "gcp.yml",
       "--vault-password-file",
       "~/.vault.txt",
     ]
