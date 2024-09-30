@@ -724,6 +724,7 @@ dependencies = [
  "ivynet-core",
  "linemux",
  "reqwest 0.12.7",
+ "rustix",
  "thiserror",
  "tokio",
  "tracing",
