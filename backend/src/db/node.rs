@@ -58,13 +58,15 @@ impl DbNode {
         pool: &PgPool,
         account: &Account,
         node_id: &Address,
+        name: &str,
     ) -> Result<(), BackendError> {
         let now: NaiveDateTime = Utc::now().naive_utc();
 
         query!(
-            "INSERT INTO node (node_id, organization_id, created_at, updated_at) values ($1, $2, $3, $4)",
+            "INSERT INTO node (node_id, organization_id, name, created_at, updated_at) values ($1, $2, $3, $4, $5)",
             Some(node_id.as_bytes()),
             Some(account.organization_id),
+            name,
             Some(now),
             Some(now)
         )

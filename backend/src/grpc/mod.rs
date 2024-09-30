@@ -41,7 +41,7 @@ impl Backend for BackendService {
             })?;
         let node_id = Address::from_slice(&req.public_key);
         account
-            .attach_node(&self.pool, &node_id)
+            .attach_node(&self.pool, &node_id, &req.hostname)
             .await
             .map_err(|_| Status::not_found(format!("Cannot register new node for {account:?}",)))?;
         debug!("User {} has registered new node with address {:?}", &req.email, node_id);
