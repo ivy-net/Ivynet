@@ -12,6 +12,7 @@ use super::account::Account;
 pub struct Node {
     pub node_id: Address,
     pub organization_id: i64,
+    pub name: String,
     pub created_at: Option<NaiveDateTime>,
     pub updated_at: Option<NaiveDateTime>,
 }
@@ -20,6 +21,7 @@ pub struct Node {
 pub struct DbNode {
     pub node_id: Vec<u8>,
     pub organization_id: i64,
+    pub name: Option<String>,
     pub created_at: Option<NaiveDateTime>,
     pub updated_at: Option<NaiveDateTime>,
 }
@@ -31,7 +33,7 @@ impl DbNode {
     ) -> Result<Vec<Node>, BackendError> {
         let nodes = sqlx::query_as!(
             DbNode,
-            "SELECT node_id, organization_id, created_at, updated_at FROM node WHERE organization_id = $1",
+            "SELECT node_id, organization_id, name, created_at, updated_at FROM node WHERE organization_id = $1",
             account.organization_id
         )
         .fetch_all(pool) // -> Vec<Country>
@@ -43,7 +45,7 @@ impl DbNode {
     pub async fn get(pool: &PgPool, node_id: &Address) -> Result<Node, BackendError> {
         let node = sqlx::query_as!(
             DbNode,
-            "SELECT node_id, organization_id, created_at, updated_at FROM node WHERE node_id = $1",
+            "SELECT node_id, organization_id, name, created_at, updated_at FROM node WHERE node_id = $1",
             node_id.as_bytes()
         )
         .fetch_one(pool)
@@ -71,6 +73,17 @@ impl DbNode {
         Ok(())
     }
 
+    pub async fn set_name(
+        pool: &PgPool,
+        node_id: &Address,
+        name: &str,
+    ) -> Result<(), BackendError> {
+        query!("UPDATE node SET name = $1 WHERE node_id = $2", name, node_id.as_bytes())
+            .execute(pool)
+            .await?;
+        Ok(())
+    }
+
     pub async fn delete(pool: &PgPool, node_id: &Address) -> Result<(), BackendError> {
         query!("DELETE FROM node WHERE node_id = $1", node_id.as_bytes()).execute(pool).await?;
         Ok(())
@@ -87,6 +100,7 @@ impl From<DbNode> for Node {
         Self {
             node_id: Address::from_slice(&value.node_id),
             organization_id: value.organization_id,
+            name: value.name.unwrap_or(format!("{:?}", Address::from_slice(&value.node_id))),
             created_at: value.created_at,
             updated_at: value.updated_at,
         }

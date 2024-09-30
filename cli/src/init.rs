@@ -205,10 +205,13 @@ async fn set_backend_connection(
         .expect("No password provided");
     let mut backend =
         BackendClient::new(create_channel(Source::Uri(server_url), server_ca.clone()).await?);
+    let hostname = { String::from_utf8(rustix::system::uname().nodename().to_bytes().to_vec()) }
+        .expect("Cannot fetch hostname from the node");
     backend
         .register(Request::new(RegistrationCredentials {
             email,
             password,
+            hostname,
             public_key: client_key.as_bytes().to_vec(),
         }))
         .await?;
