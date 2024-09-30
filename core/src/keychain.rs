@@ -162,7 +162,7 @@ impl Keychain {
         }
 
         if keys.is_empty() {
-            return Err(IvyError::NoKeyFoundError)
+            return Err(IvyError::NoKeyFoundError);
         }
         let keys_display: &[String] = &keys;
 
@@ -227,6 +227,7 @@ impl Keychain {
             KeyName::Ecdsa(name) => format!("{name}.ecdsa.json"),
             KeyName::Bls(name) => format!("{name}.bls.json"),
         });
+        println!("Reading path {path:?}");
         let json = self.read_json_file(&path)?;
         let address = match json.get(match name {
             KeyName::Ecdsa(_) => "address",
