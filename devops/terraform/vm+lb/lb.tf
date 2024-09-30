@@ -25,7 +25,6 @@ resource "google_compute_health_check" "grpc" {
 }
 
 
-
 resource "google_compute_backend_service" "http" {
   name                            = "ivynet-http-service"
   connection_draining_timeout_sec = 0
@@ -45,8 +44,8 @@ resource "google_compute_backend_service" "http" {
 resource "google_compute_backend_service" "grpc" {
   name                            = "ivynet-grpc-service"
   connection_draining_timeout_sec = 0
-  health_checks                   = [google_compute_health_check.backend.id]
-  load_balancing_scheme           = "EXTERNAL_MANAGED"
+  health_checks                   = [google_compute_health_check.grpc.id]
+  load_balancing_scheme           = "EXTERNAL"
   port_name                       = "grpc"
   protocol                        = "HTTP2"
   session_affinity                = "NONE"
@@ -55,6 +54,9 @@ resource "google_compute_backend_service" "grpc" {
     group           = google_compute_instance_group.backend.id
     balancing_mode  = "UTILIZATION"
     capacity_scaler = 1.0
+  }
+  log_config {
+    enable = true
   }
 }
 
@@ -94,7 +96,7 @@ resource "google_compute_global_forwarding_rule" "grpc" {
   name                  = "grpc-content-rule"
   ip_protocol           = "TCP"
   ip_address            = google_compute_global_address.loadbalancer.id
-  load_balancing_scheme = "EXTERNAL_MANAGED"
+  load_balancing_scheme = "EXTERNAL"
   port_range            = "50050"
   target                = google_compute_target_https_proxy.grpc.id
 }
