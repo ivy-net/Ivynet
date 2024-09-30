@@ -16,7 +16,7 @@ resource "google_compute_health_check" "grpc" {
   name               = "backend-grpc-check"
   check_interval_sec = 5
   healthy_threshold  = 2
-  grpc_health_check {
+  http2_health_check {
     port               = 50050
     port_specification = "USE_FIXED_PORT"
   }
@@ -54,6 +54,7 @@ resource "google_compute_backend_service" "grpc" {
     group           = google_compute_instance_group.backend.id
     balancing_mode  = "UTILIZATION"
     capacity_scaler = 1.0
+    max_utilization = 0.8
   }
   log_config {
     enable = true
@@ -80,6 +81,7 @@ resource "google_compute_target_https_proxy" "http" {
 resource "google_compute_target_https_proxy" "grpc" {
   name             = "web-map-grpc"
   url_map          = google_compute_url_map.grpc.id
+  quic_override    = "DISABLE"
   ssl_certificates = [google_compute_managed_ssl_certificate.api.id]
 }
 
