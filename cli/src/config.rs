@@ -11,19 +11,24 @@ use crate::error::Error;
 
 #[derive(Parser, Debug, Clone)]
 pub enum ConfigCommands {
-    #[command(name = "set", about = "Set configuration values for either RPC or metadata")]
+    #[command(
+        name = "set",
+        about = "Set configuration values for either RPC, backend connection, or metadata"
+    )]
     Set {
         #[command(subcommand)]
         command: ConfigSetCommands,
     },
     #[command(
         name = "get",
-        about = "Get configuration values for RPC, metadata, config or get system info"
+        about = "Get configuration values for RPC, metadata, backend connection, or system info"
     )]
     Get {
         #[command(subcommand)]
         command: ConfigGetCommands,
     },
+    #[command(name = "view", about = "View the entire config")]
+    View,
 }
 
 #[derive(Parser, Debug, Clone)]
@@ -52,8 +57,6 @@ pub enum ConfigGetCommands {
     Rpc { chain: String },
     #[command(name = "metadata", about = "Get local metadata")]
     Metadata,
-    #[command(name = "config", about = "Get all config data")]
-    Config,
     #[command(name = "sys-info", about = "Get system information")]
     SysInfo,
     #[command(name = "backend", about = "Get backend connection information")]
@@ -66,10 +69,13 @@ pub async fn parse_config_subcommands(
 ) -> Result<(), Error> {
     match subcmd {
         ConfigCommands::Set { command } => {
-            let _ = parse_config_setter_commands(command, config);
+            parse_config_setter_commands(command, config)?;
         }
         ConfigCommands::Get { command } => {
-            let _ = parse_config_getter_commands(command, &config);
+            parse_config_getter_commands(command, &config)?;
+        }
+        ConfigCommands::View => {
+            println!("{config:#?}");
         }
     };
     Ok(())
@@ -132,9 +138,6 @@ fn parse_config_getter_commands(
             println!("Disk Information:");
             println!("  Free: {disk_info}");
             println!(" --------------------------- ");
-        }
-        ConfigGetCommands::Config {} => {
-            println!("{config:#?}");
         }
         ConfigGetCommands::Backend {} => {
             println!("{:?}", config.backend_info);
