@@ -13,4 +13,4 @@ echo "Activate Ansible (if necessary)"
 
 echo "Run the playbook"
 echo "ansible-playbook -i gcp.yml --extra-vars ivynet_backend_release=${version} --vault-password-file ~/.vault.txt" backend.yml
-ansible-playbook -i gcp.yml --extra-vars "ivynet_backend_release=${version} ansible_user=${remote_user}" --vault-password-file ~/.vault.txt backend.yml
+ansible-playbook -i gcp.yml --extra-vars "ivynet_backend_release=${version} ansible_user=${remote_user} ivynet_backend_logs_lowlevel=DEBUG" --vault-password-file ~/.vault.txt backend.yml
