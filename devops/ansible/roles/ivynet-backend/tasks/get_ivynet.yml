@@ -33,7 +33,7 @@
       Accept: "application/octet-stream"
     follow_redirects: all
     status_code: [200, 304]
-    dest: "{{ ivynet_backend_install_path }}/bin/ivynet-backend"
+    dest: "{{ ivynet_backend_path_install }}/bin/ivynet-backend"
     owner: root
     group: root
     mode: "0755"
@@ -44,7 +44,7 @@
 - name: Save ivynet release info
   ansible.builtin.copy:
     # yamllint disable-line rule:line-length
-    dest: "{{ ivynet_backend_install_path }}/backend-{{ ivynet_backend_release }}"
+    dest: "{{ ivynet_backend_path_install }}/backend-{{ ivynet_backend_release }}"
     content: |
       backend-{{ ivynet_backend_release }}
     owner: root
@@ -58,7 +58,7 @@
 - name: Add another bin dir to system-wide $PATH.
   ansible.builtin.copy:
     dest: /etc/profile.d/ivy-path.sh
-    content: 'PATH=$PATH:{{ ivynet_backend_install_path }}/bin'
+    content: 'PATH=$PATH:{{ ivynet_backend_path_install }}/bin'
     owner: root
     group: root
     mode: "0644"

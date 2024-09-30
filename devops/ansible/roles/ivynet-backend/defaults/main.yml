@@ -9,15 +9,18 @@ ivynet_backend_github_token: !vault |
           37306335386139313035366663623066636135323139643166386638653532626563623264376165
           3866393766616537613266336166323234616535343537663537
 
-
-# Path where to install binaries and other files
-ivynet_backend_install_path: /opt/ivynet
-
 # Logs level for IvyNet internals
 ivynet_backend_logs_lowlevel: ""
 
+# Path where to install binaries and other files
+#
+ivynet_backend_path_install: /opt/ivynet
+
 # Path to directory with SQL migration
-ivynet_backend_migration_path: "{{ ivynet_backend_install_path }}/repo/backend"
+ivynet_backend_path_migration: "{{ ivynet_backend_path_install }}/repo/backend"
+
+# Path to directory with secrets
+ivynet_backend_path_secrets: "{{ ivynet_backend_path_secret }}"
 
 # DB for ivynet
 ivynet_backend_postgres_db: "ivynet"

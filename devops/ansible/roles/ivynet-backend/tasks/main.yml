@@ -1,7 +1,7 @@
 ---
 - name: Prepare directories
   ansible.builtin.file:
-    path: "{{ ivynet_backend_install_path }}/{{ item }}"
+    path: "{{ ivynet_backend_path_install }}/{{ item }}"
     state: directory
     owner: root
     group: root
@@ -17,7 +17,7 @@
     file: third_party.yml
 
 - name: Download ivynet-backend
-  ansible.builtin.import_tasks:
+  ansible.builtin.imporit_tasks:
     file: get_ivynet.yml
 
 - name: Configure DB for backend
@@ -26,7 +26,7 @@
 
 - name: Copy Backend Service file
   ansible.builtin.template:
-    src: ivynet-backend.service
+    src: ivynet-backend.service.j2
     dest: /etc/systemd/system
     owner: root
     group: root
