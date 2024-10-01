@@ -102,7 +102,7 @@ pub async fn new(
 
 #[utoipa::path(
     get,
-    path = "/organization/{id}",
+    path = "/organization/:id",
     params(
         ("id", description = "Organization id")
     ),
@@ -138,7 +138,7 @@ pub async fn nodes(
 
 #[utoipa::path(
     get,
-    path = "/organization/nodes/{id}/metrics",
+    path = "/organization/nodes/:id/metrics",
     responses(
         (status = 200, body = [Metric]),
         (status = 404)
@@ -224,7 +224,7 @@ pub async fn invite(
 
 #[utoipa::path(
     post,
-    path = "/organization/confirm/{id}",
+    path = "/organization/confirm/:id",
     params(
         ("id", description = "Verification id for organization")
     ),

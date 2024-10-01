@@ -8,7 +8,7 @@ use axum::{
 use axum_extra::extract::CookieJar;
 use chrono::NaiveDateTime;
 use ivynet_core::ethers::types::Address;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::{
@@ -26,6 +26,11 @@ const UPTIME_METRIC: &str = "uptime";
 const RUNNING_METRIC: &str = "running";
 
 const EIGEN_PERFORMANCE_HEALTHY_THRESHOLD: f64 = 80.0;
+
+#[derive(Deserialize, Debug, Clone, ToSchema)]
+pub struct NameChangeRequest {
+    pub name: String,
+}
 
 // TODO: We still need to define how we handle errors in avs
 #[derive(Serialize, Debug, Clone)]
@@ -56,6 +61,7 @@ pub struct Info {
 #[derive(Serialize, ToSchema, Clone, Debug, Default)]
 pub struct InfoReport {
     pub machine_id: String,
+    pub name: String,
     pub status: String,
     pub metrics: Metrics,
     pub last_checked: Option<NaiveDateTime>,
@@ -74,7 +80,7 @@ pub struct Metrics {
 }
 
 #[utoipa::path(
-    post,
+    get,
     path = "/client/status",
     responses(
         (status = 200, body = Status),
@@ -145,7 +151,7 @@ pub async fn status(
 }
 
 #[utoipa::path(
-    post,
+    get,
     path = "/client/idle",
     responses(
         (status = 200, body = Vec<String>),
@@ -223,9 +229,37 @@ pub async fn unhealthy(
         .collect::<Vec<_>>()
         .into())
 }
+
+#[utoipa::path(
+    post,
+    path = "/client/node/:id",
+    responses(
+        (status = 200),
+        (status = 404)
+    )
+)]
+pub async fn set_name(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Path(id): Path<String>,
+    Json(request): Json<NameChangeRequest>,
+) -> Result<(), BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let address = id.parse::<Address>().map_err(|_| BackendError::BadId)?;
+    let machine = node::DbNode::get(&state.pool, &address).await?;
+    if machine.organization_id != account.organization_id || !account.role.can_write() {
+        return Err(BackendError::Unauthorized);
+    }
+
+    node::DbNode::set_name(&state.pool, &address, &request.name).await?;
+    node::DbNode::delete(&state.pool, &address).await?;
+
+    Ok(())
+}
 #[utoipa::path(
     delete,
-    path = "/client/node/{id}",
+    path = "/client/node/:id",
     responses(
         (status = 200),
         (status = 404)
@@ -250,8 +284,8 @@ pub async fn delete(
 }
 
 #[utoipa::path(
-    post,
-    path = "/client/info/{id}",
+    get,
+    path = "/client/info/:id",
     responses(
         (status = 200, body = Info),
         (status = 404)
@@ -290,6 +324,7 @@ pub async fn info(
         error: Vec::new(),
         result: InfoReport {
             machine_id: id,
+            name: machine.name,
             status: "Healthy".to_owned(), // TODO: This is wrong. We don't know what potential
             // statuses are
             metrics: Metrics {
