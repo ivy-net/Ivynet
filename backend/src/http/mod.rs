@@ -91,6 +91,7 @@ fn create_router() -> Router<HttpState> {
         .route("/client/idle", get(client::idling))
         .route("/client/unhealthy", get(client::unhealthy))
         .route("/client/info/:id", get(client::info))
+        .route("/client/node/:id", post(client::set_name))
         .route("/client/node/:id", delete(client::delete))
         .merge(
             SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", apidoc::ApiDoc::openapi()),

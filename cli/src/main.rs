@@ -133,13 +133,16 @@ async fn main() -> Result<(), AnyError> {
         Commands::Register { email, password } => {
             let config = IvyConfig::load_from_default_path()?;
             let public_key = config.identity_wallet()?.address();
-
+            let hostname =
+                { String::from_utf8(rustix::system::uname().nodename().to_bytes().to_vec()) }?;
             let (url, ca) = get_server_details(args.server_url, args.server_ca, &config);
+
             let mut backend = BackendClient::new(create_channel(Source::Uri(url), ca).await?);
             backend
                 .register(Request::new(RegistrationCredentials {
                     email,
                     password,
+                    hostname,
                     public_key: public_key.as_bytes().to_vec(),
                 }))
                 .await?;

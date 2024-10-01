@@ -143,8 +143,13 @@ impl Account {
         DbNode::get_all_for_account(pool, self).await
     }
 
-    pub async fn attach_node(&self, pool: &PgPool, node_id: &Address) -> Result<(), BackendError> {
-        DbNode::create(pool, self, node_id).await
+    pub async fn attach_node(
+        &self,
+        pool: &PgPool,
+        node_id: &Address,
+        name: &str,
+    ) -> Result<(), BackendError> {
+        DbNode::create(pool, self, node_id, name).await
     }
 
     pub async fn new(
