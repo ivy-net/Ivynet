@@ -86,13 +86,14 @@ fn create_router() -> Router<HttpState> {
         .route("/organization/invite", post(organization::invite))
         .route("/organization/confirm/:id", get(organization::confirm))
         .route("/organization/nodes", get(organization::nodes))
-        .route("/organization/nodes/:id/metrics", get(organization::metrics))
         .route("/client/status", get(client::status))
         .route("/client/idle", get(client::idling))
         .route("/client/unhealthy", get(client::unhealthy))
-        .route("/client/info/:id", get(client::info))
-        .route("/client/node/:id", post(client::set_name))
-        .route("/client/node/:id", delete(client::delete))
+        .route("/client/:id/metrics", get(client::metrics))
+        .route("/client/:id/info/", get(client::info))
+        .route("/client/:id", get(client::info))
+        .route("/client/:id", post(client::set_name))
+        .route("/client/:id", delete(client::delete))
         .merge(
             SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", apidoc::ApiDoc::openapi()),
         )
