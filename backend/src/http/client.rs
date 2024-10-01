@@ -232,7 +232,7 @@ pub async fn unhealthy(
 
 #[utoipa::path(
     post,
-    path = "/client/node/:id",
+    path = "/client/:id",
     responses(
         (status = 200),
         (status = 404)
@@ -259,7 +259,7 @@ pub async fn set_name(
 }
 #[utoipa::path(
     delete,
-    path = "/client/node/:id",
+    path = "/client/:id",
     responses(
         (status = 200),
         (status = 404)
@@ -285,7 +285,44 @@ pub async fn delete(
 
 #[utoipa::path(
     get,
-    path = "/client/info/:id",
+    path = "/client/:id/metrics",
+    responses(
+        (status = 200, body = [Metric]),
+        (status = 404)
+    )
+)]
+pub async fn metrics(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    Path(id): Path<String>,
+    jar: CookieJar,
+) -> Result<Json<Vec<metric::Metric>>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+
+    let node_id = id.parse::<Address>().map_err(|_| BackendError::InvalidNodeId)?;
+
+    let account_nodes = node::DbNode::get_all_for_account(&state.pool, &account).await?;
+
+    let node = {
+        let mut ret = None;
+        for node in account_nodes {
+            if node.node_id == node_id {
+                ret = Some(node);
+                break;
+            }
+        }
+        ret
+    };
+    if let Some(node) = node {
+        Ok(metric::Metric::get_all_for_node(&state.pool, &node).await?.into())
+    } else {
+        Err(BackendError::InvalidNodeId)
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/client/:id",
     responses(
         (status = 200, body = Info),
         (status = 404)
