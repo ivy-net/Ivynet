@@ -20,7 +20,7 @@ ivynet_backend_path_install: /opt/ivynet
 ivynet_backend_path_migration: "{{ ivynet_backend_path_install }}/repo/backend"
 
 # Path to directory with secrets
-ivynet_backend_path_secrets: "{{ ivynet_backend_path_install }}/secrets/"
+ivynet_backend_path_secrets: "{{ ivynet_backend_path_install }}/secrets"
 
 # DB for ivynet
 ivynet_backend_postgres_db: "ivynet"
@@ -32,7 +32,7 @@ ivynet_backend_postgres_pass: "1vyGrowes_nWinter"
 ivynet_backend_postgres_user: "ivy"
 
 # Backend release
-ivynet_backend_release: "0.1.1"
+ivynet_backend_release: "0.1.14"
 
 # Sengrid API key
 ivynet_backend_sengrid_key: !vault |

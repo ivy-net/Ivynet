@@ -5,7 +5,7 @@ After=network.target
 [Service]
 ExecStart={{ ivynet_backend_path_install }}/bin/ivynet-backend --db-uri postgresql://{{ ivynet_backend_postgres_user}}:{{ ivynet_backend_postgres_pass }}@localhost:5432/{{ ivynet_backend_postgres_db }}  --sendgrid-api-key {{ ivynet_backend_sengrid_key }}
 
-EnvironmentFile={{ ivynet_backend_path_secrets }}/.env
+EnvironmentFile={{ ivynet_backend_path_secrets }}/env
 Type=simple
 Restart=always
 
