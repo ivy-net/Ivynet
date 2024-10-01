@@ -1,5 +1,5 @@
 ---
-- name: Set ssl directory
+- name: Set  directory
   ansible.builtin.file:
     path: "{{ ivynet_backend_path_secrets }}"
     state: directory
@@ -10,14 +10,14 @@
     - ssl
 
 - name: Create private key (RSA, 4096 bits)
-  community.crypto.openssl_privatekey:
-    path: "{{ ivynet_backend_path_install }}/self.key"
+  community.crypto.open_privatekey:
+    path: "{{ ivynet_backend_path_secrets }}/self.key"
   tags:
     - ssl
 
 - name: Create certificate signing request (CSR) for self-signed certificate
-  community.crypto.openssl_csr_pipe:
-    privatekey_path: "{{ ivynet_backend_path_install }}/ssl/self.key"
+  community.crypto.openssl_csr:
+    privatekey_path: "{{ ivynet_backend_path_secrets }}/self.key"
     common_name: self.ivynet.dev
     organization_name: IvyNet
     subject_alt_name:
@@ -30,9 +30,9 @@
 
 - name: Create self-signed certificate from CSR
   community.crypto.x509_certificate:
-    path: "{{ ivynet_backend_path_install }}/ssl/self.pem"
+    path: "{{ ivynet_backend_path_secrets }}/self.pem"
     csr_content: "{{ csr.csr }}"
-    privatekey_path: "{{ ivynet_backend_path_install }}/ssl/self.key"
+    privatekey_path: "{{ ivynet_backend_path_secrets }}/self.key"
     provider: selfsigned
   tags:
     - ssl

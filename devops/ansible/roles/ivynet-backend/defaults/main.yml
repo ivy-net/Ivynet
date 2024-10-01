@@ -20,7 +20,7 @@ ivynet_backend_path_install: /opt/ivynet
 ivynet_backend_path_migration: "{{ ivynet_backend_path_install }}/repo/backend"
 
 # Path to directory with secrets
-ivynet_backend_path_secrets: "{{ ivynet_backend_path_secret }}"
+ivynet_backend_path_secrets: "{{ ivynet_backend_path_install }}/secrets/"
 
 # DB for ivynet
 ivynet_backend_postgres_db: "ivynet"

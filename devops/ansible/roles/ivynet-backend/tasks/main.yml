@@ -17,12 +17,16 @@
     file: third_party.yml
 
 - name: Download ivynet-backend
-  ansible.builtin.imporit_tasks:
+  ansible.builtin.import_tasks:
     file: get_ivynet.yml
 
 - name: Configure DB for backend
   ansible.builtin.import_tasks:
     file: setup_db.yml
+
+- name: Configure SSL
+  ansible.builtin.import_tasks:
+    file: ssl.yml
 
 - name: Copy Backend Service file
   ansible.builtin.template:
