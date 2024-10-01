@@ -49,6 +49,9 @@ pub struct IvyConfig {
     pub default_bls_address: String,
     /// Web server information
     pub backend_info: BackendInfo,
+    /// Running AVS (or AVS's when multiple are supported)
+    /// This is just for recovering from a crash of the daemon
+    pub running_avs: Option<(String, Chain)>,
 }
 
 impl Default for IvyConfig {
@@ -68,6 +71,7 @@ impl Default for IvyConfig {
                 server_ca: "".into(),
                 identity_key: "".into(),
             },
+            running_avs: None,
         }
     }
 }
@@ -180,6 +184,10 @@ impl IvyConfig {
 
     pub fn uds_dir(&self) -> String {
         format!("{}/ivynet.ipc", self.path.display())
+    }
+
+    pub fn set_running_avs(&mut self, avs: String, chain: Chain) {
+        self.running_avs = Some((avs, chain));
     }
 }
 

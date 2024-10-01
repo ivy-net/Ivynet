@@ -56,6 +56,8 @@ pub async fn serve(
         );
 
         let server = Server::new(avs_server, None, None).add_service(operator_server);
+        println!("Starting server from {:#?}", sock.to_string());
+        println!("Run `ivynet help` in another terminal window for next steps!");
         if no_backend {
             server.serve(sock).await?;
         } else {
@@ -65,6 +67,8 @@ pub async fn serve(
                 ret = telemetry::listen(ivynet_inner, backend_client, connection_wallet) => { error!("Telemetry listener error {ret:?}") }
             }
         }
+
+        println!("Server started");
     }
     Ok(())
 }
