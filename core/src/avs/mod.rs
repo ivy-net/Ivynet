@@ -1,7 +1,7 @@
 use crate::{
     config::IvyConfig,
     docker::{
-        dockercmd::{docker_cmd, docker_cmd_status, stream_docker_output},
+        dockercmd::{docker_cmd, docker_cmd_status},
         log::CmdLogSource,
     },
     eigen::{contracts::delegation_manager::DelegationManager, quorum::QuorumType},
@@ -24,7 +24,6 @@ use lagrange::Lagrange;
 use names::AvsNames;
 use std::{collections::HashMap, fmt::Debug, fs, path::PathBuf, sync::Arc};
 use tokio::process::Child;
-use tokio_stream::StreamExt;
 use tracing::{debug, error, info};
 
 pub mod commands;
@@ -258,16 +257,7 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
 
         // NOTE: See the limitations of the Stdio::piped() method if this experiences a deadlock
         let cmd = &mut docker_cmd(["up", "--force-recreate"]).await?;
-        let mut output_stream = stream_docker_output(cmd).await?;
         debug!("cmd PID: {:?}", cmd.id());
-
-        while let Some((line, is_stderr)) = output_stream.next().await {
-            if is_stderr {
-                self.handle_log(&line, CmdLogSource::StdErr).await?;
-            } else {
-                self.handle_log(&line, CmdLogSource::StdOut).await?;
-            }
-        }
         self.set_running(true);
         Ok(())
     }

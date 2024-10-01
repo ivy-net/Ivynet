@@ -173,6 +173,7 @@ impl AvsVariant for EigenDA {
         private_keypath: PathBuf,
         keyfile_password: &str,
     ) -> Result<(), IvyError> {
+        println!("Resgistering the EigenDA operator");
         let quorums = self.get_bootable_quorums(provider.clone()).await?;
         if quorums.is_empty() {
             return Err(EigenDAError::NoBootableQuorumsError.into());
@@ -180,7 +181,7 @@ impl AvsVariant for EigenDA {
         let quorum_str: Vec<String> =
             quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
         let quorum_str = quorum_str.join(",");
-
+        println!("Fetched quorums...");
         let run_script_dir = eigen_path.join("eigenda-operator-setup");
         let run_script_dir = match self.chain {
             Chain::Mainnet => run_script_dir.join("mainnet"),
@@ -340,10 +341,8 @@ impl EigenDA {
         provider: Arc<IvyProvider>,
         strategies: Vec<Address>,
     ) -> Result<Vec<U256>, IvyError> {
-        let delegation_manager = DelegationManagerAbi::new(
-            contracts::registry_coordinator(self.chain),
-            provider.clone(),
-        );
+        let delegation_manager =
+            DelegationManagerAbi::new(contracts::delegation_manager(self.chain), provider.clone());
         let shares = delegation_manager.get_operator_shares(provider.address(), strategies).await?;
         Ok(shares)
     }
