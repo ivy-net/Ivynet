@@ -6,7 +6,6 @@ use axum::{
     Json,
 };
 use axum_extra::extract::CookieJar;
-use ivynet_core::ethers::types::Address;
 use sendgrid::v3::{Email, Message, Personalization};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -14,7 +13,6 @@ use uuid::Uuid;
 
 use crate::{
     db::{
-        metric::Metric,
         node::DbNode,
         verification::{Verification, VerificationType},
         Account, Node, Organization, Role,
@@ -134,43 +132,6 @@ pub async fn nodes(
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
 
     Ok(DbNode::get_all_for_account(&state.pool, &account).await?.into())
-}
-
-#[utoipa::path(
-    get,
-    path = "/organization/nodes/:id/metrics",
-    responses(
-        (status = 200, body = [Metric]),
-        (status = 404)
-    )
-)]
-pub async fn metrics(
-    headers: HeaderMap,
-    State(state): State<HttpState>,
-    Path(id): Path<String>,
-    jar: CookieJar,
-) -> Result<Json<Vec<Metric>>, BackendError> {
-    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-
-    let node_id = id.parse::<Address>().map_err(|_| BackendError::InvalidNodeId)?;
-
-    let account_nodes = DbNode::get_all_for_account(&state.pool, &account).await?;
-
-    let node = {
-        let mut ret = None;
-        for node in account_nodes {
-            if node.node_id == node_id {
-                ret = Some(node);
-                break;
-            }
-        }
-        ret
-    };
-    if let Some(node) = node {
-        Ok(Metric::get_all_for_node(&state.pool, &node).await?.into())
-    } else {
-        Err(BackendError::InvalidNodeId)
-    }
 }
 
 #[utoipa::path(

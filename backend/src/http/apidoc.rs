@@ -18,6 +18,7 @@ use super::{super::db, authorize, client, organization};
         client::idling,
         client::unhealthy,
         client::info,
+        client::metrics,
         client::delete
     ),
     components(
