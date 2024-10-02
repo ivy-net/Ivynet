@@ -39,6 +39,7 @@ jobs:
       - name: Extract SSH private key and Run Ansible
         env:
           remote_user: sa_102565665346187890919
+          ANSIBLE_HOST_KEY_CHECKING: false
         run: |
           echo jq -r .private_key ${GOOGLE_GHA_CREDS_PATH} > /tmp/sa.prv
           chmod 600 /tmp/sa.prv
