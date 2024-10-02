@@ -43,7 +43,7 @@ jobs:
           echo jq -r .private_key ${GOOGLE_GHA_CREDS_PATH} > /tmp/sa.prv
           chmod 600 /tmp/sa.prv
           cd devops/ansible
-          cp ${GOOGLE_GHA_CREDS_PATH}'/' sa.json
+          cp ${GOOGLE_GHA_CREDS_PATH} sa.json
           sed -i.bak 's/\~\/\.devops\-automation-key/sa/' gcp.yml
           ansible -m ping -i gcp.yml -e "ansible_ssh_private_key_file=/tmp/sa.prv" all
 #          ./backend_update.sh
