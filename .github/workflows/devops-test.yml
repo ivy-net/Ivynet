@@ -26,13 +26,23 @@ jobs:
         env:
           ANSIBLE_VAULT: ${{ secrets.ANSIBLE_VAULT }}
       - name: Authenticate to Google Cloud
+        id: google-creds
         uses: google-github-actions/auth@v2
         with:
           credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
-#      - name: Run ansible
-#        run: |
-#          cd devops/ansible
+      - name: Extract SSH private key and Run Ansible
+        env:
+          CREDS_FILE=${{ steps.google.creds.outputs.credentials_file_path }}
+        run: |
+          echo jq -r .private_key ${CREDS_FILE} > /tmp/sa.prv
+      - name: Run ansible
+        env:
+          remote_user:
+        run: |
+          cd devops/ansible
+          ansible -m ping -i gcp.yml -u sa_115871541056681726933 -e "ansible_ssh_private_key_file=/tmp/sa.prv" all
 #          ./backend_update.sh
+#          ansible-playbook -i gcp.yml --extra-vars "ivynet_backend_release=${version} ansible_user=${remote_user} ivynet_backend_logs_lowlevel=DEBUG" --vault-password-file ~/.vault.txt backend.yml
 
   devops-tests:
     name: Various tests
