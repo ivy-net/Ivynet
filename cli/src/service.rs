@@ -29,7 +29,7 @@ pub async fn serve(
     let sock = Endpoint::Path(config.uds_dir());
 
     let keychain = Keychain::default();
-    let keyname = keychain.select_key(KeyType::Ecdsa, config.default_ecdsa_keyfile.clone())?;
+    let keyname = keychain.select_key(KeyType::Ecdsa)?;
     let keyfile_pw = dialoguer::Password::new()
         .with_prompt("Input the password for your stored Operator ECDSA keyfile")
         .interact()?;

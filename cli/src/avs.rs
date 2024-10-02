@@ -17,9 +17,8 @@ pub async fn parse_avs_subcommands(
 
     // Setup runs local, otherwise construct a client and continue.
     if let AvsCommands::Setup { ref avs, ref chain } = subcmd {
-        let default_key_path = config.default_ecdsa_keyfile.clone();
         let keychain = Keychain::default();
-        let keyname = keychain.select_key(KeyType::Ecdsa, default_key_path)?;
+        let keyname = keychain.select_key(KeyType::Ecdsa)?;
         println!("{}", keyname);
         let password: String = Password::new()
             .with_prompt("Input the password for your stored operator ECDSA keyfile")

@@ -261,11 +261,6 @@ impl Operator for IvynetService {
         provider.with_signer(signer)?;
         provider.with_keyfile_pw(Some(pass))?;
 
-        // Update config file
-        let mut config = IvyConfig::load_from_default_path().map_err(IvyError::from)?;
-        config.default_ecdsa_keyfile = path.into();
-        config.store().map_err(IvyError::from)?;
-
         Ok(Response::new(SetEcdsaKeyfilePathResponse {}))
     }
 

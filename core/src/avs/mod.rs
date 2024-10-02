@@ -168,7 +168,7 @@ impl AvsProvider {
         Ok(())
     }
 
-    pub async fn register(&self, config: &IvyConfig) -> Result<(), IvyError> {
+    pub async fn register(&self, _config: &IvyConfig) -> Result<(), IvyError> {
         // TODO: Move quorum logic into AVS-specific implementations.
         // TODO: RIIA path creation? Move to new() func
         let avs_path = self.avs()?.base_path();
@@ -183,7 +183,7 @@ impl AvsProvider {
         // }
 
         let keychain = Keychain::default();
-        let keyname = keychain.select_key(KeyType::Ecdsa, config.default_ecdsa_keyfile.clone())?;
+        let keyname = keychain.select_key(KeyType::Ecdsa)?;
         let keypath = keychain.get_path(keyname);
 
         if let Some(pw) = &self.keyfile_pw {
@@ -196,11 +196,11 @@ impl AvsProvider {
         Ok(())
     }
 
-    pub async fn unregister(&self, config: &IvyConfig) -> Result<(), IvyError> {
+    pub async fn unregister(&self, _config: &IvyConfig) -> Result<(), IvyError> {
         let avs_path = self.avs()?.base_path();
 
         let keychain = Keychain::default();
-        let keyname = keychain.select_key(KeyType::Ecdsa, config.default_ecdsa_keyfile.clone())?;
+        let keyname = keychain.select_key(KeyType::Ecdsa)?;
         let keypath = keychain.get_path(keyname);
 
         if let Some(pw) = &self.keyfile_pw {

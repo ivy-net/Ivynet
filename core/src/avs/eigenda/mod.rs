@@ -424,12 +424,8 @@ impl EigenDA {
         );
 
         // BLS key
-        let mut bls_json_file_location = dirs::home_dir().expect("Could not get home dir");
-        bls_json_file_location.push(".eigenlayer/operator_keys");
-        let keychain = Keychain::new(bls_json_file_location.clone());
-        let keyname = keychain.select_key(KeyType::Bls, None)?;
-        bls_json_file_location.push(keyname.to_string());
-        bls_json_file_location.set_extension("bls.key.json");
+        let keychain = Keychain::default();
+        let bls_json_file_location = keychain.get_path(keychain.select_key(KeyType::Bls)?);
         debug!("BLS key file location: {:?}", &bls_json_file_location);
 
         // TODO: Remove prompting

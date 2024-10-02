@@ -26,4 +26,7 @@ pub enum Error {
 
     #[error("Metadata Uri Not Found")]
     MetadataUriNotFoundError,
+
+    #[error("Invalid selection")]
+    InvalidSelection,
 }
