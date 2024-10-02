@@ -43,7 +43,7 @@ jobs:
           echo jq -r .private_key ${GOOGLE_GHA_CREDS_PATH} > /tmp/sa.prv
           chmod 600 /tmp/sa.prv
           cd devops/ansible
-          sed -i.bak 's/\~\/\.devops-automation-key\.json/'${GOOGLE_GHA_CREDS_PATH}'/' gcp.yml
+          sed -i.bak 's/\~\/\.devops\-automation-key\.json/'${GOOGLE_GHA_CREDS_PATH}'/' gcp.yml
           ansible -m ping -i gcp.yml -e "ansible_ssh_private_key_file=/tmp/sa.prv" all
 #          ./backend_update.sh
 #          ansible-playbook -i gcp.yml --extra-vars "ivynet_backend_release=${version} ansible_user=${remote_user} ivynet_backend_logs_lowlevel=DEBUG" --vault-password-file ~/.vault.txt backend.yml
