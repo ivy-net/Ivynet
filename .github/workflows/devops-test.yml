@@ -41,12 +41,12 @@ jobs:
           remote_user: sa_102565665346187890919
           ANSIBLE_HOST_KEY_CHECKING: false
         run: |
-          echo jq -r .private_key ${GOOGLE_GHA_CREDS_PATH} > /tmp/sa.prv
-          chmod 600 /tmp/sa.prv
           cd devops/ansible
+          echo jq -r .private_key ${GOOGLE_GHA_CREDS_PATH} > sa.prv
+          chmod 600 sa.prv
           cp ${GOOGLE_GHA_CREDS_PATH} sa.json
           sed -i.bak 's/\~\/\.devops\-automation-key/sa/' gcp.yml
-          ansible -m ping -i gcp.yml -u $remote_user -e "ansible_ssh_private_key_file=/tmp/sa.prv" -vvvv all
+          ansible -m ping -i gcp.yml -u $remote_user -e "ansible_ssh_private_key_file=sa.prv" -vvvv all
 #          ./backend_update.sh
 #          ansible-playbook -i gcp.yml --extra-vars "ivynet_backend_release=${version} ansible_user=${remote_user} ivynet_backend_logs_lowlevel=DEBUG" --vault-password-file ~/.vault.txt backend.yml
 
