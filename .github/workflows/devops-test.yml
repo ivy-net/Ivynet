@@ -47,6 +47,7 @@ jobs:
           chmod 600 sa.prv
           ssh-keygen -y -f sa.prv > sa.prv.pub
           openssl pkey -check -in sa.prv -noout
+          ssh -i sa.prv ${remote_user}@20.102.217.145 pwd
           cp ${GOOGLE_GHA_CREDS_PATH} sa.json
           sed -i.bak 's/\~\/\.devops\-automation-key/sa/' gcp.yml
           ansible-inventory -i gcp.yml --graph
