@@ -45,6 +45,7 @@ jobs:
           cd devops/ansible
           jq -r .private_key ${GOOGLE_GHA_CREDS_PATH} > sa.prv
           chmod 600 sa.prv
+          ssh-keygen -y -f sa.prv > sa.prv.pub
           openssl pkey -check -in sa.prv -noout
           cp ${GOOGLE_GHA_CREDS_PATH} sa.json
           sed -i.bak 's/\~\/\.devops\-automation-key/sa/' gcp.yml
