@@ -38,15 +38,13 @@ jobs:
           credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
       - name: Extract SSH private key and Run Ansible
         env:
+          remote_user: sa_102565665346187890919
           CREDS_FILE: ${{ steps.google.creds.outputs.credentials_file_path }}
         run: |
           echo jq -r .private_key ${CREDS_FILE} > /tmp/sa.prv
           chmod 600 /tmp/sa.prv
-      - name: Run ansible
-        env:
-          remote_user: sa_102565665346187890919
-        run: |
           cd devops/ansible
+          sed -i.bak 's/~\/\.devops-automation-key\.json/'${CREDS_FILE}'/' gcp.yml
           ansible -m ping -i gcp.yml -e "ansible_ssh_private_key_file=/tmp/sa.prv" all
 #          ./backend_update.sh
 #          ansible-playbook -i gcp.yml --extra-vars "ivynet_backend_release=${version} ansible_user=${remote_user} ivynet_backend_logs_lowlevel=DEBUG" --vault-password-file ~/.vault.txt backend.yml
