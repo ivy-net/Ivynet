@@ -17,11 +17,17 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-      - name: Install TOML cli
-        run: |
-          . "$HOME/.cargo/env"
-          cargo install toml-cli
-      - name: Create a file with the vault password
+      - name: Inject packages
+        run: >
+          pipx inject ansible-core
+          jmespath
+          google-auth
+          requests
+#      - name: Install TOML cli
+#        run: |
+#          . "$HOME/.cargo/env"
+#          cargo install toml-cli
+#      - name: Create a file with the vault password
         run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
         env:
           ANSIBLE_VAULT: ${{ secrets.ANSIBLE_VAULT }}
@@ -35,6 +41,7 @@ jobs:
           CREDS_FILE: ${{ steps.google.creds.outputs.credentials_file_path }}
         run: |
           echo jq -r .private_key ${CREDS_FILE} > /tmp/sa.prv
+          chmod 600 /tmp/sa.prv
       - name: Run ansible
         env:
           remote_user: sa_115871541056681726933
