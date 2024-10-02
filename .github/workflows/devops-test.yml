@@ -27,7 +27,7 @@ jobs:
 #        run: |
 #          . "$HOME/.cargo/env"
 #          cargo install toml-cli
-#      - name: Create a file with the vault password
+      - name: Create a file with the vault password
         run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
         env:
           ANSIBLE_VAULT: ${{ secrets.ANSIBLE_VAULT }}
