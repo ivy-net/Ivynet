@@ -42,6 +42,7 @@ jobs:
           ANSIBLE_HOST_KEY_CHECKING: false
           ANSIBLE_PIPELINING: true
         run: |
+          gcloud auth activate-service-account  --key-file=${GOOGLE_GHA_CREDS_PATH}
           cd devops/ansible
           jq -r .private_key ${GOOGLE_GHA_CREDS_PATH} > sa.prv
           chmod 600 sa.prv
