@@ -48,7 +48,7 @@ jobs:
           chmod 600 sa.prv
           ssh-keygen -y -f sa.prv > sa.prv.pub
           openssl pkey -check -in sa.prv -noout
-          gcloud compute ssh --ssh-key-file=sa.prv --project ivynet-tests --command "pwd" test1
+          gcloud compute ssh --zone us-centra1-b --ssh-key-file=sa.prv --project ivynet-tests --command "pwd" test1
           ssh -i sa.prv -o StrictHostKeyChecking=no ${remote_user}@34.122.110.167 pwd
           cp ${GOOGLE_GHA_CREDS_PATH} sa.json
           sed -i.bak 's/\~\/\.devops\-automation-key/sa/' gcp.yml
