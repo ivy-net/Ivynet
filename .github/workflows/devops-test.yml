@@ -42,20 +42,44 @@ jobs:
           ANSIBLE_HOST_KEY_CHECKING: false
           ANSIBLE_PIPELINING: true
         run: |
-          gcloud auth activate-service-account  --key-file=${GOOGLE_GHA_CREDS_PATH}
+          gcloud auth activate-service-account \
+           --key-file=${GOOGLE_GHA_CREDS_PATH}
           cd devops/ansible
           jq -r .private_key ${GOOGLE_GHA_CREDS_PATH} > sa.prv
           chmod 600 sa.prv
           ssh-keygen -y -f sa.prv > sa.prv.pub
           openssl pkey -check -in sa.prv -noout
-          gcloud compute ssh --zone us-central1-b --ssh-key-file=sa.prv --project ivynet-tests --command "pwd" test1
-          ssh -i sa.prv -o StrictHostKeyChecking=no ${remote_user}@34.122.110.167 pwd
+          ssh \
+           -i sa.prv \
+           -o StrictHostKeyChecking=no \
+           ${remote_user}@34.28.69.247 \
+           pwd
           cp ${GOOGLE_GHA_CREDS_PATH} sa.json
           sed -i.bak 's/\~\/\.devops\-automation-key/sa/' gcp.yml
           ansible-inventory -i gcp.yml --graph
-          ansible -m ping -i gcp.yml -u ${remote_user} -e "ansible_ssh_private_key_file=sa.prv" all -vv
+          ansible \
+           -m ping \
+           -i gcp.yml \
+           -u ${remote_user} \
+           -e "ansible_ssh_private_key_file=sa.prv" \
+           -vv \
+           all
+
+#          gcloud compute ssh \
+#          --zone us-central1-b \
+#          --ssh-key-file=sa.prv \
+#          --project ivynet-tests \
+#          --command "pwd" \
+#          test2
+
 #          ./backend_update.sh
-#          ansible-playbook -i gcp.yml --extra-vars "ivynet_backend_release=${version} ansible_user=${remote_user} ivynet_backend_logs_lowlevel=DEBUG" --vault-password-file ~/.vault.txt backend.yml
+
+#          ansible-playbook \
+#          -i gcp.yml \
+#          -u ${remote_user} \
+#          -e "ivynet_backend_release=${version}"\
+#          --vault-password-file ~/.vault.txt \
+#          backend.yml
 
 #  devops-tests:
 #    name: Various tests
