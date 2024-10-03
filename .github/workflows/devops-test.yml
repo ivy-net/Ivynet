@@ -56,7 +56,7 @@ jobs:
           ssh \
            -i sa.prv \
            -o StrictHostKeyChecking=no \
-           ${remote_user}@{$ip} \
+           ${remote_user}@${ip} \
            pwd
           cp ${GOOGLE_GHA_CREDS_PATH} sa.json
           sed -i.bak 's/\~\/\.devops\-automation-key/sa/' gcp.yml
