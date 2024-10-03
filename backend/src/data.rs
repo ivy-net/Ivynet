@@ -8,7 +8,7 @@ pub fn filter_metrics(metrics: &[Metric]) -> Result<Vec<Metric>, BackendError> {
     })?;
 
     match avs.as_str() {
-        "eigenda" => Ok(filter_metrics_by_names(metrics, &condensed_eigenda_metrics_names())),
+        "eigenda" => Ok(filter_metrics_by_names(metrics, &CONDENSED_EIGENDA_METRICS_NAMES)),
         _ => Err(BackendError::CondensedMetricsNotFound(format!(
             "No condensed metrics found for AVS: {}, use the /metrics/all endpoint instead",
             avs
@@ -17,11 +17,7 @@ pub fn filter_metrics(metrics: &[Metric]) -> Result<Vec<Metric>, BackendError> {
 }
 
 fn filter_metrics_by_names(metrics: &[Metric], allowed_names: &[&str]) -> Vec<Metric> {
-    metrics
-        .iter()
-        .filter(|metric| allowed_names.iter().any(|&name| metric.name.contains(name)))
-        .cloned()
-        .collect()
+    metrics.iter().filter(|metric| allowed_names.contains(&metric.name.as_str())).cloned().collect()
 }
 
 fn find_running_avs(metrics: &[Metric]) -> Option<String> {
@@ -31,16 +27,14 @@ fn find_running_avs(metrics: &[Metric]) -> Option<String> {
         .and_then(|metric| metric.attributes.as_ref()?.get("avs").cloned())
 }
 
-fn condensed_eigenda_metrics_names() -> Vec<&'static str> {
-    vec![
-        "eigen_performance_score",
-        "node_reachability_status",
-        "cpu_usage",
-        "disk_usage",
-        "uptime",
-        "ram_usage",
-    ]
-}
+const CONDENSED_EIGENDA_METRICS_NAMES: [&str; 6] = [
+    "eigen_performance_score",
+    "node_reachability_status",
+    "cpu_usage",
+    "disk_usage",
+    "uptime",
+    "ram_usage",
+];
 
 #[cfg(test)]
 mod tests {
