@@ -43,22 +43,24 @@ jobs:
         run: |
           gcloud auth activate-service-account \
            --key-file=${GOOGLE_GHA_CREDS_PATH}
-          gcloud config set project ivynet-tests
           export remote_user=$(gcloud compute os-login describe-profile \
            --format "value(posixAccounts.username)")
           cd devops/ansible
           jq -r .private_key ${GOOGLE_GHA_CREDS_PATH} > sa.prv
           chmod 600 sa.prv
-          ssh-keygen -y -f sa.prv > sa.prv.pub
           cp ${GOOGLE_GHA_CREDS_PATH} sa.json
           sed -i.bak 's/\~\/\.devops\-automation-key/sa/' gcp.yml
-          vm=($(gcloud compute instances list \
-           --filter="labels.env=gha AND labels.area=backend" \
-           --format "value(name, zone.basename())"))
-          gcloud compute ssh ${vm[0]} \
-           --zone ${vm[1]} \
-           --ssh-key-file sa.prv
+          ssh-agent > ~/.ssh-env
+          source ~/.ssh-env
+          ssh-add sa.prv
           ./backend_update.sh
+#          ssh-keygen -y -f sa.prv > sa.prv.pub
+#          vm=($(gcloud compute instances list \
+#           --filter="labels.env=gha AND labels.area=backend" \
+#           --format "value(name, zone.basename())"))
+#          gcloud compute ssh ${vm[0]} \
+#           --zone ${vm[1]} \
+#           --ssh-key-file sa.prv
 
 #  devops-tests:
 #    name: Various tests
