@@ -12,6 +12,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::{
+    data,
     db::{metric, node},
     error::BackendError,
 };
@@ -291,7 +292,48 @@ pub async fn delete(
         (status = 404)
     )
 )]
-pub async fn metrics(
+pub async fn metrics_condensed(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    Path(id): Path<String>,
+    jar: CookieJar,
+) -> Result<Json<Vec<metric::Metric>>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+
+    let node_id = id.parse::<Address>().map_err(|_| BackendError::InvalidNodeId)?;
+
+    let account_nodes = node::DbNode::get_all_for_account(&state.pool, &account).await?;
+
+    let node = {
+        let mut ret = None;
+        for node in account_nodes {
+            if node.node_id == node_id {
+                ret = Some(node);
+                break;
+            }
+        }
+        ret
+    };
+    let all_metrics = if let Some(node) = node {
+        Ok(metric::Metric::get_all_for_node(&state.pool, &node).await?)
+    } else {
+        Err(BackendError::InvalidNodeId)
+    }?;
+
+    let filtered_metrics = data::filter_metrics(&all_metrics)?;
+
+    Ok(Json(filtered_metrics))
+}
+
+#[utoipa::path(
+    get,
+    path = "/client/:id/metrics/all",
+    responses(
+        (status = 200, body = [Metric]),
+        (status = 404)
+    )
+)]
+pub async fn metrics_all(
     headers: HeaderMap,
     State(state): State<HttpState>,
     Path(id): Path<String>,
