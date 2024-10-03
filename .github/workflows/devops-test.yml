@@ -38,26 +38,17 @@ jobs:
           credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
       - name: Extract SSH private key and Run Ansible
         env:
-          remote_user: sa_102565665346187890919
           ANSIBLE_HOST_KEY_CHECKING: false
           ANSIBLE_PIPELINING: true
         run: |
           gcloud auth activate-service-account \
            --key-file=${GOOGLE_GHA_CREDS_PATH}
-          gcloud compute os-login describe-profile
+          remote_user=$(gcloud compute os-login describe-profile \
+           --format "value(posixAccounts.username)")
           cd devops/ansible
           jq -r .private_key ${GOOGLE_GHA_CREDS_PATH} > sa.prv
           chmod 600 sa.prv
           ssh-keygen -y -f sa.prv > sa.prv.pub
-          name=$(gcloud compute instances list \
-           --filter="labels.env=gha AND labels.area=backend" \
-           --format="value(name)")
-          gcloud compute ssh \
-          --zone us-central1-b \
-          --ssh-key-file=sa.prv \
-          --project ivynet-tests \
-          --command "pwd" \
-           ${name}
           ip=$(gcloud compute instances list \
            --filter="labels.env=gha AND labels.area=backend" \
            --format="value(networkInterfaces[0].accessConfigs[0].natIP)")
