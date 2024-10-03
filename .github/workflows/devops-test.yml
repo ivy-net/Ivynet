@@ -23,10 +23,10 @@ jobs:
           jmespath
           google-auth
           requests
-#      - name: Install TOML cli
-#        run: |
-#          . "$HOME/.cargo/env"
-#          cargo install toml-cli
+      - name: Install TOML cli
+        run: |
+          . "$HOME/.cargo/env"
+          cargo install toml-cli
       - name: Create a file with the vault password
         run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
         env:
@@ -43,12 +43,12 @@ jobs:
         run: |
           gcloud auth activate-service-account \
            --key-file=${GOOGLE_GHA_CREDS_PATH}
-          export remote_user=\
-           $(gcloud compute os-login describe-profile \
+          export remote_user=$(gcloud compute os-login describe-profile \
            --format "value(posixAccounts.username)")
           cd devops/ansible
           jq -r .private_key ${GOOGLE_GHA_CREDS_PATH} > sa.prv
           chmod 600 sa.prv
+          sed -i.bak 's/\~\/\.devops\-automation-key/sa/' gcp.yml
           ./backend_update.sh
 
 #  devops-tests:
