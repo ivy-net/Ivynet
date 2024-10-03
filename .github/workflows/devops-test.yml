@@ -52,7 +52,7 @@ jobs:
           ip=$(gcloud compute instances list \
            --filter="labels.env=gha AND labels.area=backend" \
            --format="value(networkInterfaces[0].accessConfigs[0].natIP)")
-          echo "User: ${remote_user} @ IP: ${ip}"
+          echo "User: '${remote_user}' @ IP: '${ip}'"
           ssh \
            -i sa.prv \
            -o StrictHostKeyChecking=no \
