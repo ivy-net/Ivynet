@@ -44,21 +44,27 @@ jobs:
         run: |
           gcloud auth activate-service-account \
            --key-file=${GOOGLE_GHA_CREDS_PATH}
+          gcloud compute os-login describe-profile
           cd devops/ansible
           jq -r .private_key ${GOOGLE_GHA_CREDS_PATH} > sa.prv
           chmod 600 sa.prv
           ssh-keygen -y -f sa.prv > sa.prv.pub
-          openssl pkey -check -in sa.prv -noout
+          name=$(gcloud compute instances list \
+           --filter="labels.env=gha AND labels.area=backend" \
+           --format="value(name)")
           gcloud compute ssh \
           --zone us-central1-b \
           --ssh-key-file=sa.prv \
           --project ivynet-tests \
           --command "pwd" \
-          test2
+           $(name)
+          ip=$(gcloud compute instances list \
+           --filter="labels.env=gha AND labels.area=backend" \
+           --format="value(networkInterfaces[0].accessConfigs[0].natIP)")
           ssh \
            -i sa.prv \
            -o StrictHostKeyChecking=no \
-           ${remote_user}@34.28.69.247 \
+           ${remote_user}@{$ip} \
            pwd
           cp ${GOOGLE_GHA_CREDS_PATH} sa.json
           sed -i.bak 's/\~\/\.devops\-automation-key/sa/' gcp.yml
