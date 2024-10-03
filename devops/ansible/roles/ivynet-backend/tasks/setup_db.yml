@@ -3,7 +3,7 @@
   ansible.builtin.git:  # noqa: latest[git]
 # yamllint disable-line rule:line-length
     repo: "https://{{ ivynet_backend_github_token }}@github.com/ivy-net/ivynet.git"
-    dest: "{{ ivynet_backend_install_path }}/repo"
+    dest: "{{ ivynet_backend_path_install }}/repo"
   tags:
     - ivynet
     - db-config
@@ -46,12 +46,12 @@
 - name: Run migrations
   ansible.builtin.command:
     cmd: >
-      {{ ivynet_backend_install_path }}/bin/sqlx
+      {{ ivynet_backend_path_install }}/bin/sqlx
       migrate
       run
       --database-url
       postgresql://{{ ivynet_backend_postgres_user }}:{{ ivynet_backend_postgres_pass }}@localhost:5432/{{ ivynet_backend_postgres_db }}
-    chdir: "{{ ivynet_backend_migration_path }}"
+    chdir: "{{ ivynet_backend_path_migration }}"
   register: migration_out
   changed_when: migration_out.stdout != ""
   tags:
