@@ -1,11 +1,9 @@
 use crate::{db::metric::Metric, error::BackendError};
 
 pub fn filter_metrics(metrics: &[Metric]) -> Result<Vec<Metric>, BackendError> {
-    let avs = find_running_avs(metrics).ok_or_else(|| {
-        BackendError::NoRunningAvsFound(
-            "No running AVS found when searching for condensed metrics".to_string(),
-        )
-    })?;
+    let avs = find_running_avs(metrics).ok_or(BackendError::NoRunningAvsFound(
+        "No running AVS found when searching for condensed metrics".to_owned(),
+    ))?;
 
     match avs.as_str() {
         "eigenda" => Ok(filter_metrics_by_names(metrics, &CONDENSED_EIGENDA_METRICS_NAMES)),
@@ -37,7 +35,7 @@ const CONDENSED_EIGENDA_METRICS_NAMES: [&str; 6] = [
 ];
 
 #[cfg(test)]
-mod tests {
+mod metrics_filtering_tests {
     use super::*;
     use std::{fs::File, io::BufReader};
 
@@ -49,19 +47,21 @@ mod tests {
     }
 
     #[test]
-    fn test_find_avs_name() {
-        let metrics: Vec<Metric> = load_metrics_json("test/json/eigenda_metrics.json").unwrap();
+    fn test_find_avs_name() -> Result<(), Box<dyn std::error::Error>> {
+        let metrics: Vec<Metric> = load_metrics_json("test/json/eigenda_metrics.json")?;
 
         let name = super::find_running_avs(&metrics).unwrap();
         assert_eq!(name, "eigenda");
+        Ok(())
     }
 
     #[test]
-    fn test_filter_metrics() {
-        let metrics: Vec<Metric> = load_metrics_json("test/json/eigenda_metrics.json").unwrap();
+    fn test_filter_metrics() -> Result<(), Box<dyn std::error::Error>> {
+        let metrics: Vec<Metric> = load_metrics_json("test/json/eigenda_metrics.json")?;
 
-        let filtered_metrics = super::filter_metrics(&metrics).unwrap();
+        let filtered_metrics = super::filter_metrics(&metrics)?;
         println!("{:#?}", filtered_metrics);
-        assert_eq!(filtered_metrics.len(), 7);
+        assert!(filtered_metrics.len() == 7);
+        Ok(())
     }
 }
