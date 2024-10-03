@@ -38,11 +38,16 @@ jobs:
         run: |
           cd backend
           cargo build --release
+      - name: Pack migrations
+        run: |
+          cd backend
+          tar -czf migrations.tar.gz migrations
       - name: Make release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             target/release/ivynet-backend
+            migrations.tar.gz
           make_latest: false
 
   build-image:

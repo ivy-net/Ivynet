@@ -51,7 +51,7 @@
       run
       --database-url
       postgresql://{{ ivynet_backend_postgres_user }}:{{ ivynet_backend_postgres_pass }}@localhost:5432/{{ ivynet_backend_postgres_db }}
-    chdir: "{{ ivynet_backend_path_migration }}"
+    chdir: "{{ ivynet_backend_path_resources }}"
   register: migration_out
   changed_when: migration_out.stdout != ""
   tags:

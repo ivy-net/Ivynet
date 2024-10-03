@@ -12,7 +12,7 @@
     - ivynet
     - github
 
-- name: Prepare variable if assets id
+- name: Prepare variable with backend assets id
   ansible.builtin.set_fact:
 # yamllint disable-line rule:line-length
     ivynet_backend_assets_id: "{{ ivynet_backend_assets_output | community.general.json_query(json_output_query) }}"
@@ -23,7 +23,7 @@
     - ivynet
     - github
 
-- name: Get assets
+- name: Get binaries
   ansible.builtin.uri:
 # yamllint disable-line rule:line-length
     url: "https://api.github.com/repos/ivy-net/ivynet/releases/assets/{{ ivynet_backend_assets_id[0] }}"
@@ -37,6 +37,48 @@
     owner: root
     group: root
     mode: "0755"
+  tags:
+    - ivynet
+    - github
+
+- name: Prepare variable with migrations assets id
+  ansible.builtin.set_fact:
+# yamllint disable-line rule:line-length
+    ivynet_migrations_assets_id: "{{ ivynet_backend_assets_output | community.general.json_query(json_output_query) }}"
+    cacheable: true
+  vars:
+    json_output_query: "json.assets[?name=='migrations.tar.gz'].id"
+  tags:
+    - ivynet
+    - github
+
+- name: Get migrations
+  ansible.builtin.uri:
+# yamllint disable-line rule:line-length
+    url: "https://api.github.com/repos/ivy-net/ivynet/releases/assets/{{ ivynet_migrations_assets_id[0] }}"
+    method: GET
+    headers:
+      Authorization: "token {{ ivynet_backend_github_token }}"
+      Accept: "application/octet-stream"
+    follow_redirects: all
+    status_code: [200, 304]
+# yamllint disable-line rule:line-length
+    dest: "{{ ivynet_backend_path_install }}/resources/migrations-{{ ivynet_backend_release }}.tar.gz"
+    owner: root
+    group: root
+    mode: "0755"
+  tags:
+    - ivynet
+    - github
+
+- name: Unpack migrations
+  ansible.builtin.unarchive:
+# yamllint disable-line rule:line-length
+    src: "{{ ivynet_backend_path_resources }}/migrations-{{ ivynet_backend_release }}.tar.gz"
+    dest: "{{ ivynet_backend_path_resources }}"
+    remote_src: true
+    owner: root
+    group: root
   tags:
     - ivynet
     - github
