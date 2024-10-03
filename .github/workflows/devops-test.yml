@@ -49,6 +49,12 @@ jobs:
           chmod 600 sa.prv
           ssh-keygen -y -f sa.prv > sa.prv.pub
           openssl pkey -check -in sa.prv -noout
+          gcloud compute ssh \
+          --zone us-central1-b \
+          --ssh-key-file=sa.prv \
+          --project ivynet-tests \
+          --command "pwd" \
+          test2
           ssh \
            -i sa.prv \
            -o StrictHostKeyChecking=no \
@@ -64,13 +70,6 @@ jobs:
            -e "ansible_ssh_private_key_file=sa.prv" \
            -vv \
            all
-
-#          gcloud compute ssh \
-#          --zone us-central1-b \
-#          --ssh-key-file=sa.prv \
-#          --project ivynet-tests \
-#          --command "pwd" \
-#          test2
 
 #          ./backend_update.sh
 
