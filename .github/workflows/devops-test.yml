@@ -43,40 +43,13 @@ jobs:
         run: |
           gcloud auth activate-service-account \
            --key-file=${GOOGLE_GHA_CREDS_PATH}
-          remote_user=$(gcloud compute os-login describe-profile \
+          export remote_user=\
+           $(gcloud compute os-login describe-profile \
            --format "value(posixAccounts.username)")
           cd devops/ansible
           jq -r .private_key ${GOOGLE_GHA_CREDS_PATH} > sa.prv
           chmod 600 sa.prv
-          ssh-keygen -y -f sa.prv > sa.prv.pub
-          ip=$(gcloud compute instances list \
-           --filter="labels.env=gha AND labels.area=backend" \
-           --format="value(networkInterfaces[0].accessConfigs[0].natIP)")
-          echo "User: '${remote_user}' @ IP: '${ip}'"
-          ssh \
-           -i sa.prv \
-           -o StrictHostKeyChecking=no \
-           ${remote_user}@${ip} \
-           pwd
-          cp ${GOOGLE_GHA_CREDS_PATH} sa.json
-          sed -i.bak 's/\~\/\.devops\-automation-key/sa/' gcp.yml
-          ansible-inventory -i gcp.yml --graph
-          ansible \
-           -m ping \
-           -i gcp.yml \
-           -u ${remote_user} \
-           -e "ansible_ssh_private_key_file=sa.prv" \
-           -vv \
-           all
-
-#          ./backend_update.sh
-
-#          ansible-playbook \
-#          -i gcp.yml \
-#          -u ${remote_user} \
-#          -e "ivynet_backend_release=${version}"\
-#          --vault-password-file ~/.vault.txt \
-#          backend.yml
+          ./backend_update.sh
 
 #  devops-tests:
 #    name: Various tests
