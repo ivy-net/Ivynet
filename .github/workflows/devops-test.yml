@@ -57,7 +57,7 @@ jobs:
           --ssh-key-file=sa.prv \
           --project ivynet-tests \
           --command "pwd" \
-           $(name)
+           ${name}
           ip=$(gcloud compute instances list \
            --filter="labels.env=gha AND labels.area=backend" \
            --format="value(networkInterfaces[0].accessConfigs[0].natIP)")
