@@ -2556,6 +2556,7 @@ dependencies = [
  "clap",
  "ivynet-core",
  "memcache",
+ "semver",
  "sendgrid",
  "serde",
  "serde_json",

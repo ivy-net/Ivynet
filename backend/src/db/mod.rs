@@ -4,6 +4,7 @@ use sqlx::{pool::PoolOptions, PgPool};
 pub mod account;
 pub mod metric;
 pub mod node;
+pub mod node_data;
 pub mod organization;
 pub mod verification;
 

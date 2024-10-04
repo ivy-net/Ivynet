@@ -1,6 +1,6 @@
 use ivynet_core::{
     avs::{
-        eigenda::EigenDA, lagrange::Lagrange, mach_avs::AltLayer, names::AvsNames, AvsProvider,
+        eigenda::EigenDA, lagrange::Lagrange, mach_avs::AltLayer, names::AvsName, AvsProvider,
         AvsVariant,
     },
     config::IvyConfig,
@@ -152,10 +152,10 @@ impl Avs for IvynetService {
             let new_ivy_provider =
                 connect_provider(&config.get_rpc_url(chain)?, Some(signer)).await?;
 
-            let avs_instance: Box<dyn AvsVariant> = match AvsNames::from(avs.as_ref()) {
-                AvsNames::EigenDA => Box::new(EigenDA::new_from_chain(chain)),
-                AvsNames::AltLayer => Box::new(AltLayer::new_from_chain(chain)),
-                AvsNames::LagrangeZK => Box::new(Lagrange::new_from_chain(chain)),
+            let avs_instance: Box<dyn AvsVariant> = match AvsName::from(avs.as_ref()) {
+                AvsName::EigenDA => Box::new(EigenDA::new_from_chain(chain)),
+                AvsName::AltLayer => Box::new(AltLayer::new_from_chain(chain)),
+                AvsName::LagrangeZK => Box::new(Lagrange::new_from_chain(chain)),
                 _ => return Err(IvyError::InvalidAvsType(avs.to_string()).into()),
             };
             provider.set_avs(avs_instance, new_ivy_provider.into()).await?;

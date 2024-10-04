@@ -16,7 +16,7 @@ use tracing::{debug, error, info};
 use zip::ZipArchive;
 
 use crate::{
-    avs::{names::AvsNames, AvsVariant},
+    avs::{names::AvsName, AvsVariant},
     config::{self, IvyConfig},
     constants::IVY_METADATA,
     docker::log::CmdLogSource,
@@ -120,7 +120,7 @@ impl AvsVariant for AltLayer {
     }
 
     fn name(&self) -> &'static str {
-        AvsNames::AltLayer.as_str()
+        AvsName::AltLayer.as_str()
     }
 
     fn base_path(&self) -> PathBuf {
