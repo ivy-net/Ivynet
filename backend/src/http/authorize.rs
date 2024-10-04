@@ -10,6 +10,7 @@ use axum_extra::extract::{
     CookieJar,
 };
 use base64::Engine as _;
+use ivynet_core::ethers::types::Address;
 use sendgrid::v3::{Email, Message, Personalization};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
@@ -18,6 +19,7 @@ use uuid::Uuid;
 
 use crate::{
     db::{
+        node::DbNode,
         verification::{Verification, VerificationType},
         Account,
     },
@@ -209,4 +211,19 @@ fn decode(input: &str) -> Result<(String, Option<String>), BackendError> {
     } else {
         (decoded.to_string(), None)
     })
+}
+
+pub async fn verify_node_ownership(
+    account: &Account,
+    State(state): State<HttpState>,
+    Path(id): Path<String>,
+) -> Result<Address, BackendError> {
+    // Get identity of the node
+    let node_id = id.parse::<Address>().map_err(|_| BackendError::BadId)?;
+    // Check legitimacy request for specific node
+    let node = DbNode::get(&state.pool, &node_id).await?;
+    if node.organization_id == account.organization_id {
+        return Ok(node_id);
+    }
+    Err(BackendError::Unauthorized)
 }

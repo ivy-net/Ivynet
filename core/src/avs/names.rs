@@ -1,3 +1,5 @@
+use std::fmt;
+
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -21,6 +23,12 @@ impl AvsName {
     }
 }
 
+impl fmt::Display for AvsName {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
 impl From<&str> for AvsName {
     fn from(s: &str) -> Self {
         match s {
@@ -31,5 +39,11 @@ impl From<&str> for AvsName {
             "openlayer" => AvsName::OpenLayer,
             _ => panic!("Invalid string for AvsName"),
         }
+    }
+}
+
+impl From<&String> for AvsName {
+    fn from(s: &String) -> Self {
+        Self::from(s.as_str())
     }
 }
