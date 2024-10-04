@@ -17,7 +17,7 @@ ivynet_backend_logs_lowlevel: ""
 ivynet_backend_path_install: /opt/ivynet
 
 # Path to directory with SQL migration
-ivynet_backend_path_migration: "{{ ivynet_backend_path_install }}/repo/backend"
+ivynet_backend_path_resources: "{{ ivynet_backend_path_install }}/resources"
 
 # Path to directory with secrets
 ivynet_backend_path_secrets: "{{ ivynet_backend_path_install }}/secrets"

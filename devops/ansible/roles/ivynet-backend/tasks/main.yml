@@ -1,14 +1,15 @@
 ---
 - name: Prepare directories
   ansible.builtin.file:
-    path: "{{ ivynet_backend_path_install }}/{{ item }}"
+    path: "{{ item }}"
     state: directory
     owner: root
     group: root
     mode: "0755"
   loop:
-    - ''
-    - bin
+    - "{{ ivynet_backend_path_install }}"
+    - "{{ ivynet_backend_path_install }}/bin"
+    - "{{ ivynet_backend_path_resources }}"
   tags:
     - general
 
