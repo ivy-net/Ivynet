@@ -1,4 +1,0 @@
-[backend]
-34.41.152.22 ansible_user=wawrzek_ivynet_dev
-[test]
-34.66.210.60 ansible_user=wawrzek_ivynet_dev
