@@ -11,29 +11,6 @@ on:
       - devops/**
 
 jobs:
-  update-test:
-    name: Ansible Update test servers
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Install TOML cli
-        run: |
-          . "$HOME/.cargo/env"
-          cargo install toml-cli
-      - name: Create a file with the vault password
-        run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
-        env:
-          ANSIBLE_VAULT: ${{ secrets.ANSIBLE_VAULT }}
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
-#      - name: Run ansible
-#        run: |
-#          cd devops/ansible
-#          ./backend_update.sh
-
   devops-tests:
     name: Various tests
     runs-on: ubuntu-latest
@@ -49,63 +26,25 @@ jobs:
           tag=$(git tag | awk -F- '/backend/ {print $2}'| tail -1)
           echo "TAG_BACKEND_GIT=${tag}" >> "$GITHUB_OUTPUT"
           echo "Tag: ${tag}"
-      - name: Install TOML cli
-        run: |
-          . "$HOME/.cargo/env"
-          cargo install toml-cli
-      - name: Inject packages
-        run: >
-          pipx inject ansible-core
-          jmespath
-          google-auth
-          requests
-      - name: List packages
-        run: |
-          pipx list --include-injected
-      - name: List collections
-        run: |
-          ansible-galaxy collection list
-      - name: Version backend
-        id: version-backend
-        run: |
-          version=$(toml get backend/Cargo.toml package.version | tr -d \")
-          echo "TAG_BACKEND_TOML=${version}" >> "$GITHUB_OUTPUT"
-          echo "Version: ${version}"
-
-#  build-image:
-#    name: Build image with packer
-#    runs-on: ubuntu-latest
-#    steps:
-#      - name: Checkout repository
-#        uses: actions/checkout@v4
-#      - name: Install extra python packages
+#      - name: Install TOML cli
+#        run: |
+#          . "$HOME/.cargo/env"
+#          cargo install toml-cli
+#      - name: Inject packages
 #        run: >
 #          pipx inject ansible-core
 #          jmespath
 #          google-auth
 #          requests
-#      - name: Install toml (package)
+#      - name: List packages
 #        run: |
-#          cargo install toml-cli
-#      - name: Create a file with the vault password
-#        run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
-#        env:
-#          ANSIBLE_VAULT: ${{ secrets.ANSIBLE_VAULT }}
-#      - name: Authenticate to Google Cloud
-#        uses: google-github-actions/auth@v2
-#        with:
-#          credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
-#      - name: Google credentials for Packer
-#        env:
-#          PACKER_CREDS: '${{ secrets.PACKER_GCP_CREDENTIALS }}'
+#          pipx list --include-injected
+#      - name: List collections
 #        run: |
-#          echo "${PACKER_CREDS}" >  /tmp/packer_gcp.json
-#      - name: Run Packer
-#        env:
-#          CONFIG: cloudstation.pkr.hcl
-#          GOOGLE_APPLICATION_CREDENTIALS: /tmp/packer_gcp.json
-#          version: "003"
+#          ansible-galaxy collection list
+#      - name: Version backend
+#        id: version-backend
 #        run: |
-#          cd devops/packer
-#          packer init ${CONFIG}
-#          packer build -var "version=${version}" ${CONFIG}
+#          version=$(toml get backend/Cargo.toml package.version | tr -d \")
+#          echo "TAG_BACKEND_TOML=${version}" >> "$GITHUB_OUTPUT"
+#          echo "Version: ${version}"

@@ -12,7 +12,7 @@
     - ivynet
     - github
 
-- name: Prepare variable if assets id
+- name: Prepare variable with backend assets id
   ansible.builtin.set_fact:
 # yamllint disable-line rule:line-length
     ivynet_backend_assets_id: "{{ ivynet_backend_assets_output | community.general.json_query(json_output_query) }}"
@@ -23,7 +23,7 @@
     - ivynet
     - github
 
-- name: Get assets
+- name: Get binaries
   ansible.builtin.uri:
 # yamllint disable-line rule:line-length
     url: "https://api.github.com/repos/ivy-net/ivynet/releases/assets/{{ ivynet_backend_assets_id[0] }}"
