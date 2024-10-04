@@ -4,7 +4,12 @@ use clap::Parser;
 use ivynet_core::grpc::client::Uri;
 use tracing::Level;
 
-#[derive(Clone, Parser)]
+mod version_hash {
+    include!(concat!(env!("OUT_DIR"), "/version.rs"));
+}
+
+#[derive(Clone, Parser, Debug)]
+#[command(name = "ivynet-backend", version = version_hash::VERSION_HASH, about = "The IvyNet backend system")]
 pub struct Config {
     #[arg(long, env = "IVY_HTTP_PORT", default_value_t = 8080)]
     pub http_port: u16,
@@ -42,6 +47,9 @@ pub struct Config {
     #[arg(long, env = "SENDGRID_USER_VER_TMP")]
     pub user_verification_template: Option<String>,
 
+    #[arg(long, env = "SENDGRID_PASS_RESET_TMP")]
+    pub pass_reset_template: Option<String>,
+
     #[arg(long, env = "IVY_CACHE_URL", value_parser = Uri::from_str, default_value = "memcache://localhost:11211" )]
     pub cache_url: Uri,
 
@@ -56,5 +64,5 @@ pub struct Config {
     pub migrate: bool,
 
     #[arg(long)]
-    pub test_account: Option<String>,
+    pub add_organization: Option<String>,
 }

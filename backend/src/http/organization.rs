@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use axum::{
     extract::{Path, State},
+    http::HeaderMap,
     Json,
 };
 use axum_extra::extract::CookieJar;
-use ivynet_core::ethers::types::Address;
 use sendgrid::v3::{Email, Message, Personalization};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -13,7 +13,6 @@ use uuid::Uuid;
 
 use crate::{
     db::{
-        metric::Metric,
         node::DbNode,
         verification::{Verification, VerificationType},
         Account, Node, Organization, Role,
@@ -82,7 +81,7 @@ pub async fn new(
         arguments.insert("organization_name".to_string(), request.name);
         arguments.insert(
             "confirmation_url".to_string(),
-            format!("{}/organization/confirm/{}", state.root_url, verification.verification_id),
+            format!("{}/organization_confirm/{}", state.root_url, verification.verification_id),
         );
 
         sender
@@ -101,7 +100,7 @@ pub async fn new(
 
 #[utoipa::path(
     get,
-    path = "/organization/{id}",
+    path = "/organization/:id",
     params(
         ("id", description = "Organization id")
     ),
@@ -126,48 +125,13 @@ pub async fn get(
     )
 )]
 pub async fn nodes(
+    headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
 ) -> Result<Json<Vec<Node>>, BackendError> {
-    let account = authorize::verify(&state.pool, &state.cache, &jar).await?;
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
 
     Ok(DbNode::get_all_for_account(&state.pool, &account).await?.into())
-}
-
-#[utoipa::path(
-    get,
-    path = "/organization/nodes/{id}/metrics",
-    responses(
-        (status = 200, body = [Metric]),
-        (status = 404)
-    )
-)]
-pub async fn metrics(
-    State(state): State<HttpState>,
-    Path(id): Path<String>,
-    jar: CookieJar,
-) -> Result<Json<Vec<Metric>>, BackendError> {
-    let account = authorize::verify(&state.pool, &state.cache, &jar).await?;
-
-    let node_id = id.parse::<Address>().map_err(|_| BackendError::InvalidNodeId)?;
-
-    let account_nodes = DbNode::get_all_for_account(&state.pool, &account).await?;
-
-    let node = {
-        let mut ret = None;
-        for node in account_nodes {
-            if node.node_id == node_id {
-                ret = Some(node);
-                break;
-            }
-        }
-        ret
-    };
-    if let Some(node) = node {
-        Ok(Metric::get_all_for_node(&state.pool, &node).await?.into())
-    } else {
-        Err(BackendError::InvalidNodeId)
-    }
 }
 
 #[utoipa::path(
@@ -180,11 +144,12 @@ pub async fn metrics(
     )
 )]
 pub async fn invite(
+    headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
     Json(request): Json<InvitationRequest>,
 ) -> Result<Json<InvitationResponse>, BackendError> {
-    let account = authorize::verify(&state.pool, &state.cache, &jar).await?;
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     if !account.role.is_admin() {
         return Err(BackendError::InsufficientPriviledges);
     }
@@ -192,12 +157,35 @@ pub async fn invite(
     let org = Organization::get(&state.pool, account.organization_id as u64).await?;
     let new_acc = org.invite(&state.pool, &request.email, request.role).await?;
 
+    if let (Some(sender), Some(sender_address), Some(inv_template)) =
+        (state.sender, state.sender_email, state.user_verification_template)
+    {
+        let mut arguments = HashMap::with_capacity(1);
+        arguments.insert("organization_name".to_string(), org.name);
+        //TODO: Setting this url has to be properly set
+        arguments.insert(
+            "confirmation_url".to_string(),
+            format!("{}/password_set/{}", state.root_url, new_acc.verification_id),
+        );
+
+        sender
+            .send(
+                &Message::new(Email::new(&sender_address))
+                    .set_template_id(&inv_template)
+                    .add_personalization(
+                        Personalization::new(Email::new(request.email))
+                            .add_dynamic_template_data(arguments),
+                    ),
+            )
+            .await?;
+    }
+
     Ok(InvitationResponse { id: new_acc.verification_id }.into())
 }
 
 #[utoipa::path(
     post,
-    path = "/organization/confirm/{id}",
+    path = "/organization/confirm/:id",
     params(
         ("id", description = "Verification id for organization")
     ),
@@ -207,11 +195,12 @@ pub async fn invite(
     )
 )]
 pub async fn confirm(
+    headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
     Path(id): Path<Uuid>,
 ) -> Result<Json<ConfirmationResponse>, BackendError> {
-    let account = authorize::verify(&state.pool, &state.cache, &jar).await?;
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     if account.role != Role::Owner {
         return Err(BackendError::InsufficientPriviledges);
     }

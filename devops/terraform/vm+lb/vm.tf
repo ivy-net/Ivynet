@@ -26,5 +26,10 @@ resource "google_compute_instance_group" "backend" {
     name = "http"
     port = "8080"
   }
+
+  named_port {
+    name = "grpc"
+    port = "50050"
+  }
   zone = "${var.region}-${var.zone}"
 }

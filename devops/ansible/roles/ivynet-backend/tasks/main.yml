@@ -1,14 +1,15 @@
 ---
 - name: Prepare directories
   ansible.builtin.file:
-    path: "{{ ivynet_backend_install_path }}/{{ item }}"
+    path: "{{ item }}"
     state: directory
     owner: root
     group: root
     mode: "0755"
   loop:
-    - ''
-    - bin
+    - "{{ ivynet_backend_path_install }}"
+    - "{{ ivynet_backend_path_install }}/bin"
+    - "{{ ivynet_backend_path_resources }}"
   tags:
     - general
 
@@ -24,13 +25,31 @@
   ansible.builtin.import_tasks:
     file: setup_db.yml
 
-- name: Copy Backend Service file
+- name: Configure SSL
+  ansible.builtin.import_tasks:
+    file: ssl.yml
+
+- name: Copy Env file
   ansible.builtin.template:
-    src: ivynet-backend.service
-    dest: /etc/systemd/system
+    src: env.j2
+    dest: "{{ ivynet_backend_path_secrets }}/env"
     owner: root
     group: root
-    mode: 0644
+    mode: "0600"
+  notify:
+    - Restart service
+  tags:
+    - general
+    - ivynet
+    - systemd
+
+- name: Copy Backend Service file
+  ansible.builtin.template:
+    src: ivynet-backend.service.j2
+    dest: /etc/systemd/system/ivynet-backend.service
+    owner: root
+    group: root
+    mode: "0644"
   notify:
     - Reload daemon
     - Restart service
@@ -40,11 +59,17 @@
     - ivynet
     - systemd
 
+- name: Populate service facts
+  ansible.builtin.service_facts:
+
 - name: Set Backend service
   ansible.builtin.systemd_service:
     name: ivynet-backend
     state: started
     enabled: true
+    daemon_reload: true
+  when:
+    - "'ivynet-backend.service' not in services"
   tags:
     - ivynet_backend
     - general

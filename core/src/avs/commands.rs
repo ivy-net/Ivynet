@@ -47,11 +47,30 @@ pub enum AvsCommands {
         about = "unload the current AVS instance and load in a new instance."
     )]
     Select { avs: String, chain: String },
+    #[command(name = "attach", about = "attach a running AVS node to a docker container")]
+    Attach {
+        #[clap(required(false), long, requires("chain"))]
+        avs: Option<String>,
+        #[clap(required(false), long, requires("avs"))]
+        chain: Option<String>,
+    },
     #[command(
         name = "check-stake-percentage",
         about = "Determine what percentage of the total stake an address would have"
     )]
     CheckStakePercentage { avs: String, address: String, network: String },
+    #[command(
+        name = "inspect",
+        about = "inspect logs from a given AVS. Defaults to currently selected AVS and chain if not provided"
+    )]
+    Inspect {
+        #[clap(required(false), long, requires("chain"))]
+        avs: Option<String>,
+        #[clap(required(false), long, requires("avs"))]
+        chain: Option<String>,
+        #[command(subcommand)]
+        log: LogCommands,
+    },
 }
 
 impl Display for AvsCommands {
@@ -63,6 +82,9 @@ impl Display for AvsCommands {
             AvsCommands::Unregister {} => write!(f, "unregister"),
             AvsCommands::Start { .. } => write!(f, "start"),
             AvsCommands::Stop {} => write!(f, "stop"),
+            AvsCommands::Attach { .. } => {
+                write!(f, "Attaching to active AVS")
+            }
             AvsCommands::CheckStakePercentage { avs, address, network } => {
                 write!(f, "check stake percentage for {} on {} network", address, network)?;
                 todo!("Use {}", avs)
@@ -70,6 +92,38 @@ impl Display for AvsCommands {
             AvsCommands::Select { avs, chain } => {
                 write!(f, "set AVS to {} on chain {}", avs, chain)
             }
+            AvsCommands::Inspect { avs: _, chain: _, log } => {
+                write!(f, "inspect logs, with log type: {:?}", log)
+            }
+        }
+    }
+}
+
+#[derive(Subcommand, Debug)]
+pub enum LogCommands {
+    #[command(name = "stdout", about = "get all stdout logs")]
+    STDOUT,
+    #[command(name = "stderr", about = "get all stderr logs")]
+    STDERR,
+    #[command(name = "debug", about = "get debug logs from stdout")]
+    DEBUG,
+    #[command(name = "info", about = "get info logs from stdout")]
+    INFO,
+    #[command(name = "warn", about = "get warning logs from stdout")]
+    WARN,
+    #[command(name = "error", about = "get error logs from stdout")]
+    ERROR,
+}
+
+impl Display for LogCommands {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LogCommands::STDOUT => write!(f, "stdout"),
+            LogCommands::STDERR => write!(f, "stderr"),
+            LogCommands::DEBUG => write!(f, "debug"),
+            LogCommands::INFO => write!(f, "info"),
+            LogCommands::WARN => write!(f, "warn"),
+            LogCommands::ERROR => write!(f, "error"),
         }
     }
 }

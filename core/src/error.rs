@@ -24,6 +24,9 @@ pub enum IvyError {
     StdIo(#[from] std::io::Error),
 
     #[error(transparent)]
+    SerdeJsonError(#[from] serde_json::Error),
+
+    #[error(transparent)]
     WalletError(#[from] WalletError),
 
     // TODO: Attempt to deprecate, see private_key_string to bytes methods.
@@ -83,6 +86,9 @@ pub enum IvyError {
     )]
     AvsRunningError(String, Chain),
 
+    #[error("No valid key was found. Please create a key before trying again.")]
+    NoKeyFoundError,
+
     #[error("AVS already started")]
     AvsNotLoadedError,
 
@@ -98,6 +104,12 @@ pub enum IvyError {
     #[error("GRPC client error")]
     GRPCClientError,
 
+    #[error("Invalid tonic URI from string")]
+    InvalidUri,
+
+    #[error("No address field")]
+    AddressFieldError,
+
     #[error("Folder inaccesible")]
     DirInaccessible,
 
@@ -109,6 +121,15 @@ pub enum IvyError {
 
     #[error("No AVS is initialized")]
     AvsNotInitializedError,
+
+    #[error("Incorrect key type")]
+    IncorrectKeyTypeError,
+
+    #[error("Incorrect address format")]
+    IncorrectAddressError,
+
+    #[error("Can't parse to h160")]
+    H160Error,
 
     #[error("Custom contract error")]
     ContractError(Bytes),
@@ -147,6 +168,12 @@ pub enum IvyError {
     // instead.
     #[error("Invalid address")]
     InvalidAddress,
+
+    #[error("Log parse error {0}")]
+    LogParseError(String),
+
+    #[error(transparent)]
+    BlsError(#[from] crate::bls::BlsKeyError),
 }
 
 #[derive(Debug, Error)]

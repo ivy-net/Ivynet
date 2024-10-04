@@ -1,7 +1,8 @@
 # See https://pre-commit.com for more information
 # See https://pre-commit.com/hooks.html for more hooks
+---
 repos:
--   repo: https://github.com/pre-commit/pre-commit-hooks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v4.6.0
     hooks:
       - id: no-commit-to-branch
@@ -17,10 +18,12 @@ repos:
       - id: check-added-large-files
       - id: check-merge-conflict
       - id: check-case-conflict
--   repo: https://github.com/ivy-net/pre-commit-rust
-    rev: v1.3
+  - repo: https://github.com/ivy-net/pre-commit-rust
+    rev: v1.4
     hooks:
       - id: fmt
+      - id: machete
       - id: cargo-check
       - id: clippy
       - id: test
+        args: ['-v']

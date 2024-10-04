@@ -15,7 +15,6 @@ use ethers::{
 };
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use tracing::{debug, info};
 
 use crate::{
     error::IvyError,
@@ -23,7 +22,7 @@ use crate::{
 };
 
 // TODO: Make this a newtype strict and impl deref + derefmut to get signer stuff for free
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct IvyWallet {
     local_wallet: LocalWallet,
 }
@@ -53,25 +52,20 @@ impl IvyWallet {
         name: String,
         password: String,
     ) -> Result<PathBuf, IvyError> {
-        debug!("{:?}", path);
-        let encrypt = LocalWallet::encrypt_keystore(
+        _ = LocalWallet::encrypt_keystore(
             path,
             &mut thread_rng(),
             self.local_wallet.signer().to_bytes(),
             &password,
-            Some(&(name.clone() + ".json")),
+            Some(&name),
         )?;
-        debug!("{:?}", encrypt);
 
-        let prv_key_path = path.join(format!("{name}.json"));
+        let prv_key_path = path.join(name);
 
         let Keyfile { crypto, id, version } = read_json(&prv_key_path)?;
         let keyfile = KeyfileLegacy { address: self.local_wallet.address(), crypto, id, version };
 
         write_json(&prv_key_path, &keyfile)?;
-        debug!("{:#?}", prv_key_path);
-
-        info!("keyfile stored to {}", path.display());
 
         Ok(prv_key_path)
     }

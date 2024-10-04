@@ -6,7 +6,8 @@ import "google/protobuf/descriptor.proto";
 message RegistrationCredentials {
     string email = 1;
     string password = 2;
-    bytes public_key = 3;
+    string hostname = 3;
+    bytes public_key = 4;
 }
 
 message SignedMetrics {

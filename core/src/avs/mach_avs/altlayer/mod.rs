@@ -9,22 +9,24 @@ use std::{
     fs::{self, File},
     io::{copy, BufReader},
     path::PathBuf,
-    process::{Child, Command},
+    process::Command,
     sync::Arc,
 };
 use tracing::{debug, error, info};
 use zip::ZipArchive;
 
 use crate::{
-    avs::AvsVariant,
+    avs::{names::AvsNames, AvsVariant},
     config::{self, IvyConfig},
     constants::IVY_METADATA,
+    docker::log::CmdLogSource,
     eigen::{
         node_classes::{self, NodeClass},
         quorum::QuorumType,
     },
     env_parser::EnvLines,
     error::{IvyError, SetupError},
+    keychain::{KeyType, Keychain},
     rpc_management::IvyProvider,
     utils::gb_to_bytes,
 };
@@ -36,14 +38,14 @@ const ALTLAYER_REPO_URL: &str =
 #[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct AltLayer {
-    path: PathBuf,
+    base_path: PathBuf,
     chain: Chain,
     running: bool,
 }
 
 impl AltLayer {
-    pub fn new(path: PathBuf, chain: Chain) -> Self {
-        Self { path, chain, running: false }
+    pub fn new(base_path: PathBuf, chain: Chain) -> Self {
+        Self { base_path, chain, running: false }
     }
 
     pub fn new_from_chain(chain: Chain) -> Self {
@@ -63,12 +65,13 @@ impl Default for AltLayer {
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl AvsVariant for AltLayer {
     async fn setup(
-        &self,
+        &mut self,
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
         _pw: Option<String>,
+        _is_custom: bool,
     ) -> Result<(), IvyError> {
-        download_operator_setup(self.path.clone()).await?;
+        download_operator_setup(self.base_path.clone()).await?;
         self.build_env(provider, config).await?;
         Ok(())
     }
@@ -78,26 +81,6 @@ impl AvsVariant for AltLayer {
         let class = node_classes::get_node_class()?;
         // XL node + 50gb disk space
         Ok(class >= NodeClass::XL && disk_info >= gb_to_bytes(50))
-    }
-
-    async fn start(&mut self) -> Result<Child, IvyError> {
-        todo!()
-    }
-
-    async fn stop(&mut self) -> Result<(), IvyError> {
-        todo!()
-    }
-
-    fn path(&self) -> PathBuf {
-        self.path.clone()
-    }
-
-    fn is_running(&self) -> bool {
-        self.running
-    }
-
-    fn name(&self) -> &'static str {
-        "altlayer"
     }
 
     /// Currently, AltLayer Mach AVS is operating in allowlist mode only: https://docs.altlayer.io/altlayer-documentation/altlayer-facilitated-actively-validated-services/xterio-mach-avs-for-xterio-chain/operator-guide
@@ -134,6 +117,34 @@ impl AvsVariant for AltLayer {
         _keyfile_password: &str,
     ) -> Result<(), IvyError> {
         todo!()
+    }
+
+    fn name(&self) -> &'static str {
+        AvsNames::AltLayer.as_str()
+    }
+
+    fn base_path(&self) -> PathBuf {
+        self.base_path.clone()
+    }
+
+    async fn handle_log(&self, _line: &str, _src: CmdLogSource) -> Result<(), IvyError> {
+        // TODO: Implement log handling
+        Ok(())
+    }
+
+    fn run_path(&self) -> PathBuf {
+        self.base_path
+            .join("mach-avs-operator-setup")
+            .join(self.chain.to_string().to_lowercase())
+            .join("mach-avs/op-sepolia")
+    }
+
+    fn is_running(&self) -> bool {
+        self.running
+    }
+
+    fn set_running(&mut self, running: bool) {
+        self.running = running;
     }
 }
 
@@ -172,7 +183,7 @@ impl AltLayer {
         let chain = Chain::try_from(provider.signer().chain_id())?;
         let rpc_url = config.get_rpc_url(chain)?;
 
-        let mach_avs_path = self.path.join("mach-avs-operator-setup");
+        let mach_avs_path = self.base_path.join("mach-avs-operator-setup");
         let avs_run_path = match chain {
             Chain::Mainnet => mach_avs_path.join("mainnet"),
             Chain::Holesky => mach_avs_path.join("holesky"),
@@ -203,21 +214,20 @@ impl AltLayer {
         let home_dir = dirs::home_dir().unwrap();
         let home_str = home_dir.to_str().expect("Could not get home directory");
 
-        let bls_key_name: String = Input::new()
-            .with_prompt(
-                "Input the name of your BLS key file without file extensions - looks in .eigenlayer folder (where eigen cli stores the key)",
-            )
-            .interact_text()?;
+        let keychain = Keychain::default();
+        let keyname = keychain.select_key(KeyType::Bls, config.default_bls_keyfile.clone())?;
 
         let mut bls_json_file_location = dirs::home_dir().expect("Could not get home directory");
         bls_json_file_location.push(".eigenlayer/operator_keys");
-        bls_json_file_location.push(bls_key_name);
+        bls_json_file_location.push(keyname.to_string());
         bls_json_file_location.set_extension("bls.key.json");
-        info!("BLS key file location: {:?}", bls_json_file_location);
+        info!("BLS key file location: {:?}", &bls_json_file_location);
 
         let bls_password: String =
             Password::new().with_prompt("Input the password for your BLS key file").interact()?;
 
+        let p = keychain.get_path(keyname);
+        let _ = fs::copy(p, &bls_json_file_location);
         let node_cache_path = mach_avs_path.join("resources/cache");
 
         env_lines.set("USER_HOME", home_str);
@@ -253,8 +263,9 @@ impl AltLayer {
             "NODE_BLS_KEY_FILE_HOST",
             bls_json_file_location.to_str().expect("Could not get BLS key file location"),
         );
-        let mut legacy_keyfile_path = config.default_ecdsa_keyfile.clone();
-        legacy_keyfile_path.set_extension("legacy.json");
+        let keychain = Keychain::default();
+        let keyname = keychain.select_key(KeyType::Ecdsa, config.default_ecdsa_keyfile.clone())?;
+        let legacy_keyfile_path = keychain.get_path(keyname);
         env_lines.set(
             "NODE_ECDSA_KEY_FILE_HOST",
             legacy_keyfile_path.to_str().expect("Bad private key path"),

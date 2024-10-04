@@ -1,0 +1,46 @@
+---
+- name: Set  directory
+  ansible.builtin.file:
+    path: "{{ ivynet_backend_path_secrets }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  tags:
+    - ssl
+
+- name: Check if pem file exists
+  ansible.builtin.stat:
+    path: "{{ ivynet_backend_path_secrets }}/self.pem"
+  register: pem
+
+- block:
+  - name: Create private key (RSA, 4096 bits)
+    community.crypto.openssl_privatekey:
+      path: "{{ ivynet_backend_path_secrets }}/self.key"
+    tags:
+      - ssl
+
+  - name: Create certificate signing request (CSR) for self-signed certificate
+    community.crypto.openssl_csr_pipe:
+      privatekey_path: "{{ ivynet_backend_path_secrets }}/self.key"
+      common_name: self.ivynet.dev
+      organization_name: IvyNet
+      subject_alt_name:
+        - "DNS:api1.test.ivynet.dev"
+        - "DNS:self.test.ivynet.dev"
+        - "DNS:test.ivynet.dev"
+    register: csr
+    tags:
+      - ssl
+
+  - name: Create self-signed certificate from CSR
+    community.crypto.x509_certificate:
+      path: "{{ ivynet_backend_path_secrets }}/self.pem"
+      csr_content: "{{ csr.csr }}"
+      privatekey_path: "{{ ivynet_backend_path_secrets }}/self.key"
+      provider: selfsigned
+    tags:
+      - ssl
+  when:
+    - not pem.stat.exists

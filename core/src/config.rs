@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use sysinfo::{Disks, System};
 use thiserror::Error as ThisError;
+use tonic::transport::Uri;
 
 pub static DEFAULT_CONFIG_PATH: Lazy<PathBuf> = Lazy::new(|| {
     let path = dirs::home_dir().expect("Could not get a home directory");
@@ -18,11 +19,17 @@ use crate::{
 };
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct BackendInfo {
+    pub server_url: String,
+    pub server_ca: String,
+    /// Identification key that node uses for server communications
+    pub identity_key: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct IvyConfig {
     /// Storage path for serialized config file
     path: PathBuf,
-    /// Storage path for BLS files
-    bls_path: PathBuf,
     /// RPC URL for mainnet
     pub mainnet_rpc_url: String,
     /// RPC URL for holesky
@@ -31,35 +38,36 @@ pub struct IvyConfig {
     pub local_rpc_url: String,
     // TODO: See if this nomenclature needs to be changed
     /// Default operator private key file full path
-    pub default_ecdsa_keyfile: PathBuf,
+    pub default_ecdsa_keyfile: Option<String>,
     /// Default Operator private key file full path bls
-    pub default_bls_keyfile: PathBuf,
+    pub default_bls_keyfile: Option<String>,
     /// Metadata for the operator
     pub metadata: Metadata,
-    /// Identification key that node uses for server communications
-    pub identity_key: Option<String>,
     /// Default Public ECDSA Address
     pub default_ecdsa_address: H160,
     /// Default Public BLS Address
     pub default_bls_address: String,
+    /// Web server information
+    pub backend_info: BackendInfo,
 }
 
 impl Default for IvyConfig {
     fn default() -> Self {
         Self {
             path: DEFAULT_CONFIG_PATH.to_owned(),
-            bls_path: dirs::home_dir()
-                .expect("Could not get a home directory")
-                .join(".eigenlayer/operator_keys"),
             mainnet_rpc_url: "https://rpc.flashbots.net/fast".to_string(),
             holesky_rpc_url: "https://eth-holesky.public.blastapi.io".to_string(),
             local_rpc_url: "http://localhost:8545".to_string(),
-            default_ecdsa_keyfile: "".into(), // TODO: Option
-            default_bls_keyfile: "".into(),
+            default_ecdsa_keyfile: None,
+            default_bls_keyfile: None,
             metadata: Metadata::default(),
-            identity_key: None,
             default_ecdsa_address: H160::default(),
             default_bls_address: "".into(),
+            backend_info: BackendInfo {
+                server_url: "".into(),
+                server_ca: "".into(),
+                identity_key: "".into(),
+            },
         }
     }
 }
@@ -114,16 +122,16 @@ impl IvyConfig {
         self.default_ecdsa_address = address;
     }
 
-    pub fn set_ecdsa_keyfile(&mut self, keyfile: PathBuf) {
-        self.default_ecdsa_keyfile = keyfile;
+    pub fn set_ecdsa_keyfile(&mut self, keyfile: String) {
+        self.default_ecdsa_keyfile = Some(keyfile);
     }
 
     pub fn set_bls_address(&mut self, address: String) {
         self.default_bls_address = address;
     }
 
-    pub fn set_bls_keyfile(&mut self, keyfile: PathBuf) {
-        self.default_bls_keyfile = keyfile;
+    pub fn set_bls_keyfile(&mut self, keyfile: String) {
+        self.default_bls_keyfile = Some(keyfile);
     }
 
     pub fn get_rpc_url(&self, chain: Chain) -> Result<String, IvyError> {
@@ -139,12 +147,35 @@ impl IvyConfig {
         self.path.clone()
     }
 
-    pub fn get_bls_path(&self) -> PathBuf {
-        self.bls_path.clone()
+    /// Get the path to the directory containing the ivy-config.toml file.
+    pub fn get_dir(&self) -> PathBuf {
+        self.path.clone()
+    }
+
+    /// Get the path to the ivy-config.toml file.
+    pub fn get_file(&self) -> PathBuf {
+        self.path.join("ivy-config.toml")
     }
 
     pub fn identity_wallet(&self) -> Result<IvyWallet, IvyError> {
-        IvyWallet::from_private_key(self.identity_key.clone().ok_or(IvyError::IdentityKeyError)?)
+        IvyWallet::from_private_key(self.backend_info.identity_key.clone())
+    }
+
+    pub fn set_server_url(&mut self, url: String) -> Result<(), IvyError> {
+        self.backend_info.server_url = url;
+        Ok(())
+    }
+
+    pub fn get_server_url(&self) -> Result<Uri, IvyError> {
+        Uri::try_from(self.backend_info.server_url.clone()).map_err(|_| IvyError::InvalidUri)
+    }
+
+    pub fn set_server_ca(&mut self, ca: String) {
+        self.backend_info.server_ca = ca;
+    }
+
+    pub fn get_server_ca(&self) -> String {
+        self.backend_info.server_ca.clone()
     }
 
     pub fn uds_dir(&self) -> String {

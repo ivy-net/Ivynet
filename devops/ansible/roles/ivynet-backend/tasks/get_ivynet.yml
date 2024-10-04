@@ -1,28 +1,8 @@
 ---
-- name: Get latest release of ivynet-backend
-  community.general.github_release:
-    user: ivy-net
-    repo: ivynet
-    token: "{{ ivynet_backend_github_token }}"
-    action: latest_release
-  register: ivynet_backend_release
-  tags:
-    - ivynet_backend
-    - ivynet
-    - github
-
-- name: Expose tag of the downloaded assets
-  ansible.builtin.debug:
-    msg: "{{ ivynet_backend_release.tag }} is the tag"
-  tags:
-    - ivynet_backend
-    - ivynet
-    - github
-
 - name: Get release id
   ansible.builtin.uri:
-    # yamllint disable-line rule:line-length
-    url: "https://api.github.com/repos/ivy-net/ivynet/releases/tags/{{ ivynet_backend_release.tag }}"
+# yamllint disable-line rule:line-length
+    url: "https://api.github.com/repos/ivy-net/ivynet/releases/tags/backend-{{ ivynet_backend_release }}"
     method: GET
     headers:
       Authorization: "token {{ ivynet_backend_github_token }}"
@@ -33,9 +13,9 @@
     - ivynet
     - github
 
-- name: Prepare variable if assets id
+- name: Prepare variable with backend assets id
   ansible.builtin.set_fact:
-    # yamllint disable-line rule:line-length
+# yamllint disable-line rule:line-length
     ivynet_backend_assets_id: "{{ ivynet_backend_assets_output | community.general.json_query(json_output_query) }}"
     cacheable: true
   vars:
@@ -45,9 +25,9 @@
     - ivynet
     - github
 
-- name: Get assets
+- name: Get binaries
   ansible.builtin.uri:
-    # yamllint disable-line rule:line-length
+# yamllint disable-line rule:line-length
     url: "https://api.github.com/repos/ivy-net/ivynet/releases/assets/{{ ivynet_backend_assets_id[0] }}"
     method: GET
     headers:
@@ -55,7 +35,7 @@
       Accept: "application/octet-stream"
     follow_redirects: all
     status_code: [200, 304]
-    dest: "{{ ivynet_backend_install_path }}/bin/ivynet-backend"
+    dest: "{{ ivynet_backend_path_install }}/bin/ivynet-backend"
     owner: root
     group: root
     mode: "0755"
@@ -66,21 +46,24 @@
 
 - name: Save ivynet release info
   ansible.builtin.copy:
-    dest: "{{ ivynet_backend_install_path }}/ivynet.tag"
+# yamllint disable-line rule:line-length
+    dest: "{{ ivynet_backend_path_install }}/backend-{{ ivynet_backend_release }}"
     content: |
-      {{ ivynet_backend_release.tag }}
+      backend-{{ ivynet_backend_release }}
     owner: root
     group: root
     mode: "0444"
+  notify: Restart service
   tags:
     - ivynet_backend
     - ivynet
     - github
+    - systemd
 
 - name: Add another bin dir to system-wide $PATH.
   ansible.builtin.copy:
     dest: /etc/profile.d/ivy-path.sh
-    content: 'PATH=$PATH:{{ ivynet_backend_install_path }}/bin'
+    content: 'PATH=$PATH:{{ ivynet_backend_path_install }}/bin'
     owner: root
     group: root
     mode: "0644"

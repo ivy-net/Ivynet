@@ -21,6 +21,9 @@ pub enum Error {
     #[error(transparent)]
     GRPCClientError(#[from] ivynet_core::grpc::client::ClientError),
 
+    #[error("No AVS selected for log viewing. Please select an AVS first, or specify the AVS and chain you would like to view logs for.")]
+    NoAvsSelectedLogError,
+
     #[error("Metadata Uri Not Found")]
     MetadataUriNotFoundError,
 }

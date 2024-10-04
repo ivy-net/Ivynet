@@ -8,6 +8,7 @@ use super::{super::db, authorize, client, organization};
         authorize::authorize,
         authorize::check_invitation,
         authorize::set_password,
+        authorize::forgot_password,
         organization::new,
         organization::get,
         organization::invite,
@@ -16,13 +17,17 @@ use super::{super::db, authorize, client, organization};
         client::status,
         client::idling,
         client::unhealthy,
-        client::info
+        client::info,
+        client::metrics_condensed,
+        client::metrics_all,
+        client::delete
     ),
     components(
         schemas(
             authorize::AuthorizationCredentials,
             authorize::SetPasswordCredentials,
             authorize::AuthorizationResponse,
+            authorize::ForgotPasswordCredentials,
             organization::CreationResult,
             organization::CreationRequest,
             organization::InvitationResponse,

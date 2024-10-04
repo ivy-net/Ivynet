@@ -1,0 +1,136 @@
+---
+name: Release Backend
+
+on:
+  push:
+    tags:
+      - backend-*.*.*
+
+permissions:
+  id-token: write  # This is required for requesting the JWT
+  contents: write  # This is required for creating a release
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-binary:
+    name: Build and push binaries to github release page
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Refresh source list
+        run: |
+          sudo apt update
+      - name: Install dependencies
+        run: >
+          sudo apt install -y
+          protobuf-compiler
+          pkg-config
+          libssl-dev
+      - name: Run tests
+        run: |
+          . "$HOME/.cargo/env"
+          cd backend
+          cargo test
+      - name: Build binaries
+        run: |
+          cd backend
+          cargo build --release
+      - name: Pack migrations
+        run: |
+          cd backend
+          tar -czf migrations.tar.gz migrations
+      - name: Make release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            target/release/ivynet-backend
+            migrations.tar.gz
+          make_latest: false
+
+  build-image:
+    name: Build image with packer
+    runs-on: ubuntu-latest
+    needs: build-binary
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Refresh source list
+        run: |
+          sudo apt update
+      - name: Inject packages
+        run: >
+          pipx inject ansible-core
+          jmespath
+          google-auth
+          requests
+      - name: Install toml (package)
+        run: |
+          cargo install toml-cli
+      - name: Create a file with the vault password
+        run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
+        env:
+          ANSIBLE_VAULT: ${{ secrets.ANSIBLE_VAULT }}
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
+      - name: Google credentials for Packer
+        env:
+          PACKER_CREDS: '${{ secrets.PACKER_GCP_CREDENTIALS }}'
+        run: |
+          echo "${PACKER_CREDS}" >  /tmp/packer_gcp.json
+      - name: Run Packer
+        env:
+          CONFIG: backend.pkr.hcl
+          GOOGLE_APPLICATION_CREDENTIALS: /tmp/packer_gcp.json
+        run: |
+          cd devops/packer
+          ./backend.sh
+
+  update-test:
+    name: Ansible Update test servers
+    runs-on: ubuntu-latest
+    needs: build-binary
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Inject packages
+        run: >
+          pipx inject ansible-core
+          jmespath
+          google-auth
+          requests
+      - name: Install TOML cli
+        run: |
+          . "$HOME/.cargo/env"
+          cargo install toml-cli
+      - name: Create a file with the vault password
+        run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
+        env:
+          ANSIBLE_VAULT: ${{ secrets.ANSIBLE_VAULT }}
+      - name: Authenticate to Google Cloud
+        id: google-creds
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
+      - name: Run Ansible (after preparations)
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: false
+          ANSIBLE_PIPELINING: true
+        run: |
+          gcloud auth activate-service-account \
+           --key-file=${GOOGLE_GHA_CREDS_PATH}
+          export remote_user=$(gcloud compute os-login describe-profile \
+           --format "value(posixAccounts.username)")
+          cd devops/ansible
+          jq -r .private_key ${GOOGLE_GHA_CREDS_PATH} > sa.prv
+          chmod 600 sa.prv
+          cp ${GOOGLE_GHA_CREDS_PATH} sa.json
+          sed -i.bak 's/\~\/\.devops\-automation-key/sa/' gcp.yml
+          ssh-agent > ~/.ssh-env
+          source ~/.ssh-env
+          ssh-add sa.prv
+          ./backend_update.sh

@@ -1,15 +1,16 @@
 ---
-- name: Install packages (for memcached and postgres)
+- name: Install packages (for cargo, memcached, postgres and ansible)
   ansible.builtin.apt:
     name: "{{ item }}"
     update_cache: true
   loop:
-    - memcached
-    - libmemcached-tools
-    - postgresql
     - cargo
     - libssl-dev
     - pkg-config
+    - libmemcached-tools
+    - memcached
+    - postgresql
+    - python3-jmespath
     - python3-pip
   tags:
     - ivynet_backend
@@ -21,8 +22,10 @@
 - name: Install SQLX (to run migrtion)
   community.general.cargo:
     name: sqlx-cli
-    path: "{{ ivynet_backend_install_path }}"
+    path: "{{ ivynet_backend_path_install }}"
     state: latest
+  vars:
+    ansible_command_timeout: 1200
   tags:
     - ivynet_backend
     - download

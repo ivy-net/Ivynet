@@ -1,24 +1,29 @@
 use async_trait::async_trait;
+use core::str;
 use dialoguer::{Input, Password};
+use dirs::home_dir;
 use ethers::{
     signers::Signer,
     types::{Address, Chain, U256},
 };
 use std::{
     fs::{self, File},
-    io::{copy, BufReader},
+    io::{copy, BufReader, Write},
     path::PathBuf,
-    process::{Child, Command},
     sync::Arc,
 };
 use thiserror::Error as ThisError;
+use tokio::process::{Child, Command};
 use tracing::{debug, error, info};
 use zip::read::ZipArchive;
 
 use crate::{
     avs::AvsVariant,
     config::{self, IvyConfig},
-    dockercmd::{docker_cmd, docker_cmd_status},
+    docker::{
+        dockercmd::docker_cmd,
+        log::{open_logfile, CmdLogSource},
+    },
     download::dl_progress_bar,
     eigen::{
         contracts::delegation_manager::DelegationManagerAbi,
@@ -27,13 +32,20 @@ use crate::{
     },
     env_parser::EnvLines,
     error::{IvyError, SetupError},
+    keychain::{KeyType, Keychain},
     rpc_management::IvyProvider,
     utils::gb_to_bytes,
 };
 
-use self::contracts::StakeRegistryAbi;
+use self::{
+    contracts::StakeRegistryAbi,
+    log::{ansi_sanitization_regex, level_regex},
+};
+
+use super::{names::AvsNames, AvsConfig};
 
 mod contracts;
+mod log;
 
 pub const EIGENDA_PATH: &str = ".eigenlayer/eigenda";
 pub const EIGENDA_SETUP_REPO: &str =
@@ -53,26 +65,32 @@ pub enum EigenDAError {
 
 #[derive(Debug, Clone)]
 pub struct EigenDA {
-    path: PathBuf,
+    base_path: PathBuf,
     chain: Chain,
     running: bool,
+    avs_config: AvsConfig,
 }
 
 impl EigenDA {
-    pub fn new(path: PathBuf, chain: Chain) -> Self {
-        Self { path, chain, running: false }
+    pub fn new(base_path: PathBuf, chain: Chain, avs_config: AvsConfig) -> Self {
+        Self { base_path, chain, running: false, avs_config }
     }
 
     pub fn new_from_chain(chain: Chain) -> Self {
-        let home_dir = dirs::home_dir().unwrap();
-        Self::new(home_dir.join(EIGENDA_PATH), chain)
+        let base_path = dirs::home_dir().expect("Could not get home directory").join(EIGENDA_PATH);
+        let avs_config = AvsConfig::load(AvsNames::EigenDA.as_str())
+            .expect("Could not load AVS config - go through setup");
+        Self::new(base_path, chain, avs_config)
     }
 }
 
 impl Default for EigenDA {
     fn default() -> Self {
-        let home_dir = dirs::home_dir().unwrap();
-        Self::new(home_dir.join(EIGENDA_PATH), Chain::Holesky)
+        let home_dir = dirs::home_dir().expect("Could not get home directory");
+        let base_path = home_dir.join(EIGENDA_PATH);
+        let avs_config = AvsConfig::load(AvsNames::EigenDA.as_str())
+            .expect("Could not load AVS config - go through setup");
+        Self::new(base_path, Chain::Holesky, avs_config)
     }
 }
 
@@ -80,14 +98,19 @@ impl Default for EigenDA {
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl AvsVariant for EigenDA {
     async fn setup(
-        &self,
+        &mut self,
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
         _pw: Option<String>,
+        is_custom: bool,
     ) -> Result<(), IvyError> {
-        download_operator_setup(self.path.clone()).await?;
-        download_g1_g2(self.path.clone()).await?;
-        self.build_env(provider, config).await?;
+        self.build_pathing(is_custom)?;
+        if !is_custom {
+            download_operator_setup(self.base_path.clone()).await?;
+            download_g1_g2(self.base_path.clone()).await?;
+            self.build_env(provider, config).await?;
+        }
+
         Ok(())
     }
 
@@ -130,54 +153,17 @@ impl AvsVariant for EigenDA {
         Ok(acceptable)
     }
 
-    async fn start(&mut self) -> Result<Child, IvyError> {
-        let docker_path = self.path.join("eigenda-operator-setup");
-        let docker_path = match self.chain {
-            Chain::Mainnet => docker_path.join("mainnet"),
-            Chain::Holesky => docker_path.join("holesky"),
-            _ => todo!("Unimplemented"),
-        };
-        std::env::set_current_dir(docker_path.clone())?;
-        debug!("docker start: {} ", docker_path.display());
-        let build = docker_cmd_status(["build", "--no-cache"])?;
+    async fn attach(&mut self) -> Result<Child, IvyError> {
+        //TODO: Make more robust once path from avs config file is integrated
+        let setup_path =
+            home_dir().unwrap().join(EIGENDA_PATH).join("eigenda-operator-setup/holesky");
+        info!("Path: {:?}", &setup_path);
+        std::env::set_current_dir(&setup_path)?;
 
-        let _ = docker_cmd_status(["config"])?;
+        let cmd = docker_cmd(["logs", "-f"]).await?;
 
-        if !build.success() {
-            return Err(EigenDAError::ScriptError(build.to_string()).into());
-        }
-
-        // NOTE: See the limitations of the Stdio::piped() method if this experiences a deadlock
-        let cmd = docker_cmd(["up", "--force-recreate"])?;
-        debug!("cmd PID: {:?}", cmd.id());
         self.running = true;
         Ok(cmd)
-    }
-
-    // TODO: Remove quorums from stop  method if not needed
-    async fn stop(&mut self) -> Result<(), IvyError> {
-        let docker_path = self.path.join("eigenda-operator-setup");
-        let docker_path = match self.chain {
-            Chain::Mainnet => docker_path.join("mainnet"),
-            Chain::Holesky => docker_path.join("holesky"),
-            _ => todo!("Unimplemented"),
-        };
-        std::env::set_current_dir(docker_path)?;
-        let _ = docker_cmd_status(["stop"])?;
-        self.running = false;
-        Ok(())
-    }
-
-    fn path(&self) -> PathBuf {
-        self.path.clone()
-    }
-
-    fn is_running(&self) -> bool {
-        self.running
-    }
-
-    fn name(&self) -> &'static str {
-        "eigenda"
     }
 
     async fn register(
@@ -187,6 +173,7 @@ impl AvsVariant for EigenDA {
         private_keypath: PathBuf,
         keyfile_password: &str,
     ) -> Result<(), IvyError> {
+        println!("Resgistering the EigenDA operator");
         let quorums = self.get_bootable_quorums(provider.clone()).await?;
         if quorums.is_empty() {
             return Err(EigenDAError::NoBootableQuorumsError.into());
@@ -194,7 +181,7 @@ impl AvsVariant for EigenDA {
         let quorum_str: Vec<String> =
             quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
         let quorum_str = quorum_str.join(",");
-
+        println!("Fetched quorums...");
         let run_script_dir = eigen_path.join("eigenda-operator-setup");
         let run_script_dir = match self.chain {
             Chain::Mainnet => run_script_dir.join("mainnet"),
@@ -220,7 +207,8 @@ impl AvsVariant for EigenDA {
             .arg(keyfile_password)
             .arg("--quorums")
             .arg(quorum_str)
-            .status()?;
+            .status()
+            .await?;
 
         if optin.success() {
             Ok(())
@@ -266,13 +254,70 @@ impl AvsVariant for EigenDA {
             .arg(keyfile_password)
             .arg("--quorums")
             .arg(quorum_str)
-            .status()?;
+            .status()
+            .await?;
 
         if optin.success() {
             Ok(())
         } else {
             Err(EigenDAError::ScriptError(optin.to_string()).into())
         }
+    }
+
+    async fn handle_log(&self, log: &str, src: CmdLogSource) -> Result<(), IvyError> {
+        println!("{}", log);
+        let log = ansi_sanitization_regex().replace_all(log, "").to_string();
+        let logfile_dir = AvsConfig::log_path(self.name(), self.chain.as_ref());
+        match src {
+            CmdLogSource::StdOut => {
+                // write to logfile simply capturing all stdout output
+                let all_logfile = logfile_dir.join("stdout.log");
+                let mut file = open_logfile(&all_logfile)?;
+                writeln!(file, "{}", log)?;
+                let level = match level_regex().captures(&log) {
+                    Some(caps) => caps.get(1).unwrap().as_str(),
+                    None => "unknown-level",
+                };
+                let logfile_name = match level.to_lowercase().as_str() {
+                    "err" => "error",
+                    "wrn" => "warn",
+                    "inf" => "info",
+                    "dbg" => "debug",
+                    _ => "unknown-level",
+                };
+                let logfile = logfile_dir.join(format!("{}.log", logfile_name));
+                let mut file = open_logfile(&logfile)?;
+                writeln!(file, "{}", log)?;
+                Ok(())
+            }
+            CmdLogSource::StdErr => {
+                // Write to logfile simply capturing all stderr output
+                let all_logfile = logfile_dir.join("stderr.log");
+                let mut file = open_logfile(&all_logfile)?;
+                writeln!(file, "{}", log)?;
+                Ok(())
+            }
+        }
+    }
+
+    fn name(&self) -> &'static str {
+        AvsNames::EigenDA.as_str()
+    }
+
+    fn base_path(&self) -> PathBuf {
+        self.base_path.clone()
+    }
+
+    fn run_path(&self) -> PathBuf {
+        self.avs_config.get_path(self.chain)
+    }
+
+    fn is_running(&self) -> bool {
+        self.running
+    }
+
+    fn set_running(&mut self, running: bool) {
+        self.running = running;
     }
 }
 
@@ -296,10 +341,8 @@ impl EigenDA {
         provider: Arc<IvyProvider>,
         strategies: Vec<Address>,
     ) -> Result<Vec<U256>, IvyError> {
-        let delegation_manager = DelegationManagerAbi::new(
-            contracts::registry_coordinator(self.chain),
-            provider.clone(),
-        );
+        let delegation_manager =
+            DelegationManagerAbi::new(contracts::delegation_manager(self.chain), provider.clone());
         let shares = delegation_manager.get_operator_shares(provider.address(), strategies).await?;
         Ok(shares)
     }
@@ -330,19 +373,22 @@ impl EigenDA {
     }
 
     async fn build_env(
-        &self,
+        &mut self,
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
     ) -> Result<(), IvyError> {
         let chain = Chain::try_from(provider.signer().chain_id())?;
         let rpc_url = config.get_rpc_url(chain)?;
 
-        let avs_run_path = self.path.join("eigenda-operator-setup");
+        let avs_run_path = self.base_path.join("eigenda-operator-setup");
         let avs_run_path = match chain {
             Chain::Mainnet => avs_run_path.join("mainnet"),
             Chain::Holesky => avs_run_path.join("holesky"),
             _ => todo!("Unimplemented"),
         };
+
+        self.avs_config.set_path(chain, avs_run_path.clone(), false);
+        self.avs_config.store();
 
         let env_example_path = avs_run_path.join(".env.example");
         let env_path = avs_run_path.join(".env");
@@ -378,17 +424,13 @@ impl EigenDA {
         );
 
         // BLS key
-        let bls_key_name: String = Input::new()
-            .with_prompt(
-                "Input the name of your BLS key file without file extensions - looks in .eigenlayer folder (where eigen cli stores the key)",
-            )
-            .interact_text()?;
-
         let mut bls_json_file_location = dirs::home_dir().expect("Could not get home dir");
         bls_json_file_location.push(".eigenlayer/operator_keys");
-        bls_json_file_location.push(bls_key_name);
+        let keychain = Keychain::new(bls_json_file_location.clone());
+        let keyname = keychain.select_key(KeyType::Bls, None)?;
+        bls_json_file_location.push(keyname.to_string());
         bls_json_file_location.set_extension("bls.key.json");
-        debug!("BLS key file location: {:?}", bls_json_file_location);
+        debug!("BLS key file location: {:?}", &bls_json_file_location);
 
         // TODO: Remove prompting
         let bls_password: String =
@@ -430,6 +472,24 @@ impl EigenDA {
             Chain::Holesky => vec![QuorumType::LST],
             _ => todo!("Unimplemented"),
         }
+    }
+
+    fn build_pathing(&mut self, is_custom: bool) -> Result<(), IvyError> {
+        let path = if !is_custom {
+            let setup = self.base_path.join("eigenda-operator-setup");
+            match self.chain {
+                Chain::Mainnet => setup.join("mainnet"),
+                Chain::Holesky => setup.join("holesky"),
+                _ => todo!("Unimplemented"),
+            }
+        } else {
+            AvsConfig::ask_for_path()
+        };
+
+        self.avs_config.set_path(self.chain, path, is_custom);
+        self.avs_config.store();
+
+        Ok(())
     }
 }
 
