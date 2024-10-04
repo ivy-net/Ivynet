@@ -2,13 +2,11 @@
 name: Run PreCommit
 
 on:
-  push:
-    branches-ignore:
-      - dev
-      - master
-
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
 jobs:
   pre-commit:
+    if: github.event.pull_request.draft == false
     name: pre-commit checks
     runs-on: ubuntu-latest
     steps:
