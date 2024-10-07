@@ -10,7 +10,7 @@ use ivynet_core::{
         self,
         backend::backend_server::{Backend, BackendServer},
         client::{Request, Response},
-        messages::{RegistrationCredentials, SignedMetrics},
+        messages::{RegistrationCredentials, SignedLogs, SignedMetrics},
         server, Status,
     },
     signature::recover,
@@ -46,6 +46,11 @@ impl Backend for BackendService {
             .map_err(|_| Status::not_found(format!("Cannot register new node for {account:?}",)))?;
         debug!("User {} has registered new node with address {:?}", &req.email, node_id);
 
+        Ok(Response::new(()))
+    }
+
+    async fn logs(&self, _request: Request<SignedLogs>) -> Result<Response<()>, Status> {
+        // TODO: Implement parsing of the logs
         Ok(Response::new(()))
     }
 
