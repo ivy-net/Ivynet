@@ -84,6 +84,7 @@ pub struct Metrics {
     pub error: Vec<String>, // TODO: No idea what to do with it yet
 }
 
+/// Get an overview of which nodes are healthy, unhealthy, idle, and erroring
 #[utoipa::path(
     get,
     path = "/client/status",
@@ -153,6 +154,7 @@ pub async fn status(
     .into())
 }
 
+/// Get an overview of which nodes are idle
 #[utoipa::path(
     get,
     path = "/client/idle",
@@ -191,6 +193,7 @@ pub async fn idling(
         .into())
 }
 
+/// Get an overview of which nodes are unhealthy
 #[utoipa::path(
     post,
     path = "/client/unhealthy",
@@ -229,9 +232,10 @@ pub async fn unhealthy(
         .into())
 }
 
+/// Set the name of a node
 #[utoipa::path(
     post,
-    path = "/client/:id",
+    path = "/client/:id/:name",
     responses(
         (status = 200),
         (status = 404)
@@ -256,6 +260,8 @@ pub async fn set_name(
 
     Ok(())
 }
+
+/// Delete a node from the database
 #[utoipa::path(
     delete,
     path = "/client/:id",
@@ -282,6 +288,7 @@ pub async fn delete(
     Ok(())
 }
 
+/// Get condensed metrics for a specific node
 #[utoipa::path(
     get,
     path = "/client/:id/metrics",
@@ -323,6 +330,7 @@ pub async fn metrics_condensed(
     Ok(Json(filtered_metrics))
 }
 
+/// Get all metrics for a specific node
 #[utoipa::path(
     get,
     path = "/client/:id/metrics/all",
@@ -360,6 +368,7 @@ pub async fn metrics_all(
     }
 }
 
+/// Get info on a specific node
 #[utoipa::path(
     get,
     path = "/client/:id",
@@ -476,8 +485,7 @@ pub async fn get_all_node_data(
 pub async fn get_node_data_for_avs(
     headers: HeaderMap,
     State(state): State<HttpState>,
-    Path(id): Path<String>,
-    Path(avs): Path<String>,
+    Path((id, avs)): Path<(String, String)>,
     jar: CookieJar,
 ) -> Result<Json<Vec<NodeData>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
@@ -491,6 +499,7 @@ pub async fn get_node_data_for_avs(
     Ok(Json(nodes_data))
 }
 
+/// Delete all data for a specific node
 #[utoipa::path(
     delete,
     path = "/client/:id/data",
@@ -514,6 +523,7 @@ pub async fn delete_node_data(
     Ok(())
 }
 
+/// Delete all data for a specific AVS running on a node
 #[utoipa::path(
     delete,
     path = "/client/:id/data/:avs",
@@ -525,9 +535,8 @@ pub async fn delete_node_data(
 pub async fn delete_avs_node_data(
     headers: HeaderMap,
     State(state): State<HttpState>,
-    Path(avs): Path<String>,
+    Path((id, avs)): Path<(String, String)>,
     jar: CookieJar,
-    Path(id): Path<String>,
 ) -> Result<(), BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     let node_id =

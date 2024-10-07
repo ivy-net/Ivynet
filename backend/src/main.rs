@@ -3,11 +3,13 @@ use std::sync::Arc;
 use clap::Parser as _;
 use ivynet_backend::{
     config::Config,
-    db::{self, configure},
+    db::{self, avs_data::DbAvsData, configure},
     error::BackendError,
     grpc, http,
     telemetry::start_tracing,
 };
+use ivynet_core::avs::names::AvsName;
+use semver::Version;
 use sqlx::PgPool;
 use tracing::error;
 
@@ -21,6 +23,8 @@ async fn main() -> Result<(), BackendError> {
 
     if let Some(organization) = config.add_organization {
         Ok(add_account(&pool, &organization).await?)
+    } else if let Some(avs_data) = config.set_version {
+        Ok(set_avs_version(&pool, &avs_data).await?)
     } else {
         let cache = memcache::connect(config.cache_url.to_string())?;
         let http_service = http::serve(
@@ -56,5 +60,13 @@ async fn add_account(pool: &PgPool, org: &str) -> Result<(), BackendError> {
             org.attach_admin(pool, cred_data[0], cred_data[1]).await?;
         }
     }
+    Ok(())
+}
+
+async fn set_avs_version(pool: &sqlx::PgPool, avs_data: &str) -> Result<(), BackendError> {
+    let avs_data = avs_data.split(':').collect::<Vec<_>>();
+    let name = AvsName::from(avs_data[0]);
+    let version = Version::parse(avs_data[1]).expect("Cannot parse version");
+    DbAvsData::set_avs_version(pool, &name, &version).await?;
     Ok(())
 }
