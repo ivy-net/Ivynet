@@ -255,6 +255,8 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
         std::env::set_current_dir(self.run_path())?;
         debug!("docker start: {}", self.run_path().display());
 
+        // Inject logging driver
+
         // NOTE: See the limitations of the Stdio::piped() method if this experiences a deadlock
         let cmd = &mut docker_cmd(["up", "--force-recreate"]).await?;
         debug!("cmd PID: {:?}", cmd.id());

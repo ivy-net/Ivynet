@@ -1,5 +1,6 @@
 use std::{
     ffi::OsStr,
+    ops::{Deref, DerefMut},
     path::PathBuf,
     pin::Pin,
     process::ExitStatus,
@@ -55,5 +56,40 @@ impl Stream for DockerStream {
     fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
         let inner = self.get_mut();
         inner.0.poll_recv(cx)
+    }
+}
+
+pub struct DockerCmd(Command);
+
+impl Deref for DockerCmd {
+    type Target = Command;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+impl DerefMut for DockerCmd {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl DockerCmd {
+    pub fn new() -> Self {
+        let cmd = if which::which("docker-compose").is_ok() {
+            Command::new("docker-compose")
+        } else {
+            let mut cmd = Command::new("docker");
+            cmd.arg("compose");
+            cmd
+        };
+        Self(cmd)
+    }
+}
+
+impl Default for DockerCmd {
+    fn default() -> Self {
+        Self::new()
     }
 }

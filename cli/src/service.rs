@@ -1,7 +1,7 @@
 use ivynet_core::{
     avs::build_avs_provider,
     config::IvyConfig,
-    docker::dockercmd::docker_cmd_status,
+    docker::dockercmd::{docker_cmd_status, DockerCmdBuilder},
     grpc::{
         backend::backend_client::BackendClient,
         client::{create_channel, Uri},
@@ -59,13 +59,8 @@ pub async fn serve(
         std::env::set_var("FLUENTD_PATH", fluentd_path.to_str().unwrap());
         info!("Serving logs at {:?}", fluentd_path);
         // Start the container
-        let fluentd = docker_cmd_status(&["up"], Some(fluentd_path)).await?;
-        if !fluentd.success() {
-            warn!("Failed to start fluentd container for logging. Continuing...");
-            warn!("{:#?}", fluentd);
-        } else {
-            info!("Fluentd logging container started");
-        }
+        let fluentd = DockerCmdBuilder::new().args(&["up"]).current_dir(&fluentd_path).spawn()?;
+        info!("Fluentd logging container started");
 
         // NOTE: Due to limitations with Prost / GRPC, we create a new server with a
         // reference-counted handle to the inner type for each server, as opposed to cloning
