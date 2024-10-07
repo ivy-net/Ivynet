@@ -1,7 +1,7 @@
 use ivynet_core::{
     avs::build_avs_provider,
     config::IvyConfig,
-    docker::dockercmd::{docker_cmd_status, DockerCmdBuilder},
+    docker::dockercmd::{docker_cmd_status, DockerCmd},
     grpc::{
         backend::backend_client::BackendClient,
         client::{create_channel, Uri},
@@ -59,7 +59,7 @@ pub async fn serve(
         std::env::set_var("FLUENTD_PATH", fluentd_path.to_str().unwrap());
         info!("Serving logs at {:?}", fluentd_path);
         // Start the container
-        let fluentd = DockerCmdBuilder::new().args(&["up"]).current_dir(&fluentd_path).spawn()?;
+        let fluentd = DockerCmd::new().args(&["up"]).current_dir(&fluentd_path).spawn()?;
         info!("Fluentd logging container started");
 
         // NOTE: Due to limitations with Prost / GRPC, we create a new server with a
