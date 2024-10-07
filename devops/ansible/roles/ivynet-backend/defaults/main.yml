@@ -25,6 +25,9 @@ ivynet_backend_path_secrets: "{{ ivynet_backend_path_install }}/secrets"
 # DB for ivynet
 ivynet_backend_postgres_db: "ivynet"
 
+# DB host
+ivynet_backend_postgres_host: localhost
+
 # Password for postgres user (should be a secret)
 ivynet_backend_postgres_pass: "1vyGrowes_nWinter"
 
@@ -32,10 +35,10 @@ ivynet_backend_postgres_pass: "1vyGrowes_nWinter"
 ivynet_backend_postgres_user: "ivy"
 
 # Backend release
-ivynet_backend_release: "0.1.14"
+ivynet_backend_release: "0.1.16"
 
 # Sengrid API key
-ivynet_backend_sengrid_key: !vault |
+ivynet_backend_sendgrid_key: !vault |
           $ANSIBLE_VAULT;1.1;AES256
           33643630366631316635313564303431383730633039616135663939616437633730653334623232
           3234663830663535653730393638363834623661666331630a386136633761653761383564666464
