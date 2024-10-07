@@ -11,6 +11,7 @@ pub mod error;
 pub mod fluentd;
 pub mod grpc;
 pub mod io;
+pub mod ivy_yaml;
 pub mod keychain;
 pub mod keys;
 pub mod metadata;
