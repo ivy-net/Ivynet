@@ -28,5 +28,5 @@ pub enum Error {
     MetadataUriNotFoundError,
 
     #[error(transparent)]
-    DockerSwarmError(#[from] ivynet_core::docker::composer::DockerSwarmError),
+    StdIo(#[from] std::io::Error),
 }

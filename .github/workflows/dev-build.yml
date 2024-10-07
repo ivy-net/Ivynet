@@ -60,7 +60,7 @@ jobs:
         id: tag-backend
         run: |
           git pull --tags
-          tag=$(git tag | awk -F- '/backend/ {print $2}'| tail -1)
+          tag=$(git tag | awk -F- '/backend/ {print $2}'| sort -V | tail -1)
           echo "TAG_BACKEND_GIT=${tag}" >> "$GITHUB_OUTPUT"
           echo "Tag: ${tag}"
       - name: Print versions
@@ -102,7 +102,7 @@ jobs:
         id: tag-cli
         run: |
           git pull --tags
-          tag=$(git tag | awk -F- '/client/ {print $2}' | tail -1)
+          tag=$(git tag | awk -F- '/client/ {print $2}' | sort -V | tail -1)
           echo "TAG_CLI_GIT=${tag}" >> "$GITHUB_OUTPUT"
           echo "Tag: ${tag}"
       - name: Print versions

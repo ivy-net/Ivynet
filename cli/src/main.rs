@@ -127,30 +127,22 @@ async fn main() -> Result<(), AnyError> {
         Commands::Staker { subcmd } => staker::parse_staker_subcommands(subcmd, &config).await?,
         Commands::Avs { subcmd } => avs::parse_avs_subcommands(subcmd, &config).await?,
         Commands::Serve { avs, chain } => {
-            let keyfile_pw = dialoguer::Password::new()
-                .with_prompt("Input the password for your stored Operator ECDSA keyfile")
-                .interact()?;
-            service::serve(
-                avs,
-                chain,
-                &config,
-                &keyfile_pw,
-                args.server_url,
-                args.server_ca,
-                args.no_backend,
-            )
-            .await?
+            service::serve(avs, chain, &config, args.server_url, args.server_ca, args.no_backend)
+                .await?
         }
         Commands::Register { email, password } => {
             let config = IvyConfig::load_from_default_path()?;
             let public_key = config.identity_wallet()?.address();
-
+            let hostname =
+                { String::from_utf8(rustix::system::uname().nodename().to_bytes().to_vec()) }?;
             let (url, ca) = get_server_details(args.server_url, args.server_ca, &config);
+
             let mut backend = BackendClient::new(create_channel(Source::Uri(url), ca).await?);
             backend
                 .register(Request::new(RegistrationCredentials {
                     email,
                     password,
+                    hostname,
                     public_key: public_key.as_bytes().to_vec(),
                 }))
                 .await?;

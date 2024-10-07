@@ -32,6 +32,7 @@ use crate::{
     },
     env_parser::EnvLines,
     error::{IvyError, SetupError},
+    keychain::{KeyType, Keychain},
     rpc_management::IvyProvider,
     utils::gb_to_bytes,
 };
@@ -172,6 +173,7 @@ impl AvsVariant for EigenDA {
         private_keypath: PathBuf,
         keyfile_password: &str,
     ) -> Result<(), IvyError> {
+        println!("Resgistering the EigenDA operator");
         let quorums = self.get_bootable_quorums(provider.clone()).await?;
         if quorums.is_empty() {
             return Err(EigenDAError::NoBootableQuorumsError.into());
@@ -179,7 +181,7 @@ impl AvsVariant for EigenDA {
         let quorum_str: Vec<String> =
             quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
         let quorum_str = quorum_str.join(",");
-
+        println!("Fetched quorums...");
         let run_script_dir = eigen_path.join("eigenda-operator-setup");
         let run_script_dir = match self.chain {
             Chain::Mainnet => run_script_dir.join("mainnet"),
@@ -339,10 +341,8 @@ impl EigenDA {
         provider: Arc<IvyProvider>,
         strategies: Vec<Address>,
     ) -> Result<Vec<U256>, IvyError> {
-        let delegation_manager = DelegationManagerAbi::new(
-            contracts::registry_coordinator(self.chain),
-            provider.clone(),
-        );
+        let delegation_manager =
+            DelegationManagerAbi::new(contracts::delegation_manager(self.chain), provider.clone());
         let shares = delegation_manager.get_operator_shares(provider.address(), strategies).await?;
         Ok(shares)
     }
@@ -424,17 +424,13 @@ impl EigenDA {
         );
 
         // BLS key
-        let bls_key_name: String = Input::new()
-            .with_prompt(
-                "Input the name of your BLS key file without file extensions - looks in .eigenlayer folder (where eigen cli stores the key)",
-            )
-            .interact_text()?;
-
         let mut bls_json_file_location = dirs::home_dir().expect("Could not get home dir");
         bls_json_file_location.push(".eigenlayer/operator_keys");
-        bls_json_file_location.push(bls_key_name);
+        let keychain = Keychain::new(bls_json_file_location.clone());
+        let keyname = keychain.select_key(KeyType::Bls, None)?;
+        bls_json_file_location.push(keyname.to_string());
         bls_json_file_location.set_extension("bls.key.json");
-        debug!("BLS key file location: {:?}", bls_json_file_location);
+        debug!("BLS key file location: {:?}", &bls_json_file_location);
 
         // TODO: Remove prompting
         let bls_password: String =

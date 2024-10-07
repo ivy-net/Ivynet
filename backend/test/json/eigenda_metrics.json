@@ -1,0 +1,720 @@
+[
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 0.005,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 0.025,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 0.1,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 0.5,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 2.5,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 10.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_sum",
+      "value": 42639451345.0,
+      "attributes": {
+        "avs_name": "da-node",
+        "method": "eth_blockNumber",
+        "client_version": "Geth/v1.13.12-stable-02eb36af/linux-amd64/go1.20.6"
+      },
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 0.005,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 0.025,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 0.1,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 0.5,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 2.5,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 10.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_sum",
+      "value": 20700733918.0,
+      "attributes": {
+        "avs_name": "da-node",
+        "method": "eth_call",
+        "client_version": "Geth/v1.13.12-stable-02eb36af/linux-amd64/go1.20.6"
+      },
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 0.005,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 0.025,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_count",
+      "value": 132.0,
+      "attributes": {
+        "method": "eth_call",
+        "avs_name": "da-node",
+        "client_version": "Geth/v1.13.12-stable-02eb36af/linux-amd64/go1.20.6"
+      },
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 0.01,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 0.05,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 0.25,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 0.5,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 1.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 2.5,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 5.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 10.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_sum",
+      "value": 154431511.0,
+      "attributes": {
+        "method": "eth_chainId",
+        "client_version": "Geth/v1.13.12-stable-02eb36af/linux-amd64/go1.20.6",
+        "avs_name": "da-node"
+      },
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_count",
+      "value": 1.0,
+      "attributes": {
+        "method": "eth_chainId",
+        "client_version": "Geth/v1.13.12-stable-02eb36af/linux-amd64/go1.20.6",
+        "avs_name": "da-node"
+      },
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_total",
+      "value": 122.0,
+      "attributes": {
+        "method": "eth_blockNumber",
+        "avs_name": "da-node",
+        "client_version": "Geth/v1.13.12-stable-02eb36af/linux-amd64/go1.20.6"
+      },
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_total",
+      "value": 132.0,
+      "attributes": {
+        "avs_name": "da-node",
+        "method": "eth_call",
+        "client_version": "Geth/v1.13.12-stable-02eb36af/linux-amd64/go1.20.6"
+      },
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_total",
+      "value": 1.0,
+      "attributes": {
+        "avs_name": "da-node",
+        "client_version": "Geth/v1.13.12-stable-02eb36af/linux-amd64/go1.20.6",
+        "method": "eth_chainId"
+      },
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_gc_duration_seconds",
+      "value": 0.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_gc_duration_seconds",
+      "value": 0.25,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_gc_duration_seconds",
+      "value": 0.5,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_gc_duration_seconds",
+      "value": 0.75,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_gc_duration_seconds",
+      "value": 1.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_gc_duration_seconds_sum",
+      "value": 0.026173974,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_gc_duration_seconds_count",
+      "value": 188.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_goroutines",
+      "value": 23.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_performance_score",
+      "value": 100.0,
+      "attributes": {
+        "avs_name": "da-node"
+      },
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 0.01,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 0.05,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 0.25,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 1.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 5.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_count",
+      "value": 122.0,
+      "attributes": {
+        "method": "eth_blockNumber",
+        "avs_name": "da-node",
+        "client_version": "Geth/v1.13.12-stable-02eb36af/linux-amd64/go1.20.6"
+      },
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 0.01,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 0.05,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 0.25,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 1.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 5.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "eigen_rpc_request_duration_seconds_bucket",
+      "value": 0.1,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_info",
+      "value": 1.0,
+      "attributes": {
+        "version": "go1.21.1"
+      },
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_memstats_alloc_bytes_total",
+      "value": 1487505000.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_memstats_frees_total",
+      "value": 821597.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_memstats_heap_alloc_bytes",
+      "value": 544911168.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_memstats_heap_inuse_bytes",
+      "value": 547831808.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_memstats_heap_released_bytes",
+      "value": 487694336.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_memstats_last_gc_time_seconds",
+      "value": 1727757723.9412832,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_memstats_mallocs_total",
+      "value": 864473.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_memstats_mcache_sys_bytes",
+      "value": 31200.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_memstats_mspan_sys_bytes",
+      "value": 277032.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_memstats_other_sys_bytes",
+      "value": 1991427.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_memstats_stack_sys_bytes",
+      "value": 1048576.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_threads",
+      "value": 17.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "node_eigenda_node_socket_updates_total",
+      "value": 0.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "node_reachability_status",
+      "value": 0.0,
+      "attributes": {
+        "service": "retrieval"
+      },
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "process_max_fds",
+      "value": 1048576.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "process_resident_memory_bytes",
+      "value": 658894848.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "process_virtual_memory_bytes",
+      "value": 2376912896.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "cpu_usage",
+      "value": 0.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "disk_usage",
+      "value": 323298337792.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "uptime",
+      "value": 38547.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_memstats_alloc_bytes",
+      "value": 544911168.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_memstats_buck_hash_sys_bytes",
+      "value": 1485989.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_memstats_gc_sys_bytes",
+      "value": 22581848.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_memstats_heap_idle_bytes",
+      "value": 541638656.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_memstats_heap_objects",
+      "value": 42876.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_memstats_heap_sys_bytes",
+      "value": 1089470464.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_memstats_lookups_total",
+      "value": 0.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_memstats_mcache_inuse_bytes",
+      "value": 28800.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_memstats_mspan_inuse_bytes",
+      "value": 265272.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_memstats_next_gc_bytes",
+      "value": 1090596320.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_memstats_stack_inuse_bytes",
+      "value": 1048576.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "go_memstats_sys_bytes",
+      "value": 1116886536.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "node_db_write_throughput_bytes_per_second",
+      "value": 0.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "node_reachability_status",
+      "value": 0.0,
+      "attributes": {
+        "service": "dispersal"
+      },
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "process_cpu_seconds_total",
+      "value": 39.18,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "process_open_fds",
+      "value": 17.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "process_start_time_seconds",
+      "value": 1727735613.68,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "process_virtual_memory_max_bytes",
+      "value": 1.8446744073709552e19,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "ram_usage",
+      "value": 587848122368.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "free_space",
+      "value": 1706167098368.0,
+      "attributes": null,
+      "created_at": "2024-10-01T04:42:05.038679"
+    },
+    {
+      "node_id": "0x0ab01373e7f752ce8e07488942660a1fcc8e7722",
+      "name": "running",
+      "value": 0.0,
+      "attributes": {
+        "avs": "eigenda"
+      },
+      "created_at": "2024-10-01T04:42:05.038679"
+    }
+  ]

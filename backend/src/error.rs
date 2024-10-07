@@ -31,6 +31,12 @@ pub enum BackendError {
     #[error(transparent)]
     MigrateError(#[from] sqlx::migrate::MigrateError),
 
+    #[error("Condensed metrics not found: {0}")]
+    CondensedMetricsNotFound(String),
+
+    #[error("No running AVS found: {0}")]
+    NoRunningAvsFound(String),
+
     #[error("No internal ID attached to GRPC message")]
     NoInternalId,
 

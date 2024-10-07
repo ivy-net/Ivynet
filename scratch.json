@@ -1,0 +1,32 @@
+Output { status: ExitStatus(unix_wait_status(4352)), stdout: "#0 building with \"default\" instance using docker driver\n\n#1 [fluentd internal] load build definition from Dockerfile.fluentd\n#1 tra
+nsferring dockerfile: 140B done\n#1 DONE 0.1s\n\n#2 [fluentd internal
+	] load metadata for docker.io/fluent/fluentd:v1.17-1\n#2 DONE 1.0s\n\n#3 [fluentd internal
+	] load .dockerignore\n#3 transferring context:\
+n#3 transferring context: 2B done\n#3 DONE 0.2s\n\n#4 [fluentd 1/2
+	] FROM docker.io/fluent/fluentd:v1.17-1@sha256: 39f225e5b0315aa9bb9a79c724c74a03fe48f5f77c57c21623b41b210908d969\n#4 resolve docker.io/fluent
+/fluentd:v1.17-1@sha256: 39f225e5b0315aa9bb9a79c724c74a03fe48f5f77c57c21623b41b210908d969 0.1s done\n#4 sha256: 39f225e5b0315aa9bb9a79c724c74a03fe48f5f77c57c21623b41b210908d969 1.36kB / 1.36kB done\n#4 sha256
+: 67514a40e5bc7fbe7bb292fa9095ca53aaeda582862286303b0dec556255260e 4.23kB / 4.23kB done\n#4 sha256: 96fc35afda24c126d32870349e1cf782b1c6e7a53022286c17cfad3e331c85c8 1.35kB / 1.35kB 0.3s\n#4 sha256:e23a44a1dc2
+d80d68900ad59d3913c11cc86bfc968a6788d82305785cca9189d 406B / 406B 0.2s done\n#4 sha256:bb9b933a13166c1a67ae63cd6451223a0db9789a5140ee3365e8105e63a8f6eb 0B / 10.01MB 0.3s\n#4 sha256: 96fc35afda24c126d32870349
+e1cf782b1c6e7a53022286c17cfad3e331c85c8 1.35kB / 1.35kB 0.3s done\n#4 sha256:bb9b933a13166c1a67ae63cd6451223a0db9789a5140ee3365e8105e63a8f6eb 4.19MB / 10.01MB 0.5s\n#4 sha256:bafc8f8bd5b3206574f5124e0efbe63
+16163849eed87e8054676adbb70bae851 0B / 456B 0.5s\n#4 sha256:bb9b933a13166c1a67ae63cd6451223a0db9789a5140ee3365e8105e63a8f6eb 7.34MB / 10.01MB 0.6s\n#4 sha256:bb9b933a13166c1a67ae63cd6451223a0db9789a5140ee33
+65e8105e63a8f6eb 10.01MB / 10.01MB 0.7s\n#4 sha256:bafc8f8bd5b3206574f5124e0efbe6316163849eed87e8054676adbb70bae851 456B / 456B 0.6s done\n#4 extracting sha256:bb9b933a13166c1a67ae63cd6451223a0db9789a5140ee
+3365e8105e63a8f6eb\n#4 sha256:bb9b933a13166c1a67ae63cd6451223a0db9789a5140ee3365e8105e63a8f6eb 10.01MB / 10.01MB 0.7s done\n#4 extracting sha256:bb9b933a13166c1a67ae63cd6451223a0db9789a5140ee3365e8105e63a8f
+6eb 0.4s done\n#4 extracting sha256: 96fc35afda24c126d32870349e1cf782b1c6e7a53022286c17cfad3e331c85c8\n#4 extracting sha256: 96fc35afda24c126d32870349e1cf782b1c6e7a53022286c17cfad3e331c85c8 done\n#4 extractin
+g sha256:e23a44a1dc2d80d68900ad59d3913c11cc86bfc968a6788d82305785cca9189d\n#4 extracting sha256:e23a44a1dc2d80d68900ad59d3913c11cc86bfc968a6788d82305785cca9189d done\n#4 extracting sha256:bafc8f8bd5b3206574
+f5124e0efbe6316163849eed87e8054676adbb70bae851\n#4 extracting sha256:bafc8f8bd5b3206574f5124e0efbe6316163849eed87e8054676adbb70bae851 done\n#4 DONE 2.7s\n\n#5 [fluentd 2/2
+	] RUN fluent-gem install fluent-plu
+gin-grpc\n#5 3.872 ERROR:  While executing gem ... (Gem: :FilePermissionError)\n#5 3.872     You don't have write permissions for the /usr/lib/ruby/gems/3.2.0 directory.\n#5 3.872 \t/usr/lib/ruby/3.2.0/rubyg
+ems/installer.rb: 715:in `verify_gem_home'\n#5 3.872 \t/usr/lib/ruby/3.2.0/rubygems/installer.rb: 905:in `pre_install_checks'\n#5 3.872 \t/usr/lib/ruby/3.2.0/rubygems/installer.rb: 303:in `install'\n#5 3.872 \
+t/usr/lib/ruby/3.2.0/rubygems/resolver/specification.rb: 105:in `install'\n#5 3.872 \t/usr/lib/ruby/3.2.0/rubygems/request_set.rb: 195:in `block in install'\n#5 3.872 \t/usr/lib/ruby/3.2.0/rubygems/request_se
+t.rb: 183:in `each'\n#5 3.872 \t/usr/lib/ruby/3.2.0/rubygems/request_set.rb: 183:in `install'\n#5 3.872 \t/usr/lib/ruby/3.2.0/rubygems/commands/install_command.rb: 215:in `install_gem'\n#5 3.872 \t/usr/lib/rub
+y/3.2.0/rubygems/commands/install_command.rb: 231:in `block in install_gems'\n#5 3.872 \t/usr/lib/ruby/3.2.0/rubygems/commands/install_command.rb: 224:in `each'\n#5 3.872 \t/usr/lib/ruby/3.2.0/rubygems/comman
+ds/install_command.rb: 224:in `install_gems'\n#5 3.872 \t/usr/lib/ruby/3.2.0/rubygems/commands/install_command.rb: 170:in `execute'\n#5 3.872 \t/usr/lib/ruby/3.2.0/rubygems/command.rb: 328:in `invoke_with_buil
+d_args'\n#5 3.872 \t/usr/lib/ruby/3.2.0/rubygems/command_manager.rb: 253:in `invoke_command'\n#5 3.872 \t/usr/lib/ruby/3.2.0/rubygems/command_manager.rb: 193:in `process_args'\n#5 3.872 \t/usr/lib/ruby/3.2.0/
+rubygems/command_manager.rb: 151:in `run'\n#5 3.872 \t/usr/lib/ruby/3.2.0/rubygems/gem_runner.rb: 52:in `run'\n#5 3.872 \t/usr/lib/ruby/gems/3.2.0/gems/fluentd-1.17.1/bin/fluent-gem: 6:in `<top (required)>'\n#
+5 3.872 \t/usr/bin/fluent-gem: 25:in `load'\n#5 3.872 \t/usr/bin/fluent-gem: 25:in `<main>'\n#5 ERROR: process \"/bin/sh -c fluent-gem install fluent-plugin-grpc\" did not complete successfully: exit code: 1\
+n------\n > [fluentd 2/2] RUN fluent-gem install fluent-plugin-grpc:\n3.872 \t/usr/lib/ruby/3.2.0/rubygems/commands/install_command.rb:224:in `install_gems'\n3.872 \t/usr/lib/ruby/3.2.0/rubygems/commands/in
+stall_command.rb: 170:in `execute'\n3.872 \t/usr/lib/ruby/3.2.0/rubygems/command.rb: 328:in `invoke_with_build_args'\n3.872 \t/usr/lib/ruby/3.2.0/rubygems/command_manager.rb: 253:in `invoke_command'\n3.872 \t/
+usr/lib/ruby/3.2.0/rubygems/command_manager.rb: 193:in `process_args'\n3.872 \t/usr/lib/ruby/3.2.0/rubygems/command_manager.rb: 151:in `run'\n3.872 \t/usr/lib/ruby/3.2.0/rubygems/gem_runner.rb: 52:in `run'\n3.
+872 \t/usr/lib/ruby/gems/3.2.0/gems/fluentd-1.17.1/bin/fluent-gem: 6:in `<top (required)>'\n3.872 \t/usr/bin/fluent-gem: 25:in `load'\n3.872 \t/usr/bin/fluent-gem: 25:in `<main>'\n------\n", stderr: "failed to
+ solve: process \"/bin/sh -c fluent-gem install fluent-plugin-grpc\" did not complete successfully: exit code: 1\n"
+}

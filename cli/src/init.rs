@@ -3,12 +3,14 @@ use ivynet_core::{
     config::IvyConfig,
     dialog::get_confirm_password,
     error::IvyError,
+    fluentd::{make_fluentd_compose, make_fluentd_conf, make_fluentd_dockerfile},
     grpc::{
         backend::backend_client::BackendClient,
         client::{create_channel, Source, Uri},
         messages::RegistrationCredentials,
         tonic::Request,
     },
+    keychain::{KeyType, Keychain},
     metadata::Metadata,
     wallet::IvyWallet,
 };
@@ -28,7 +30,7 @@ pub async fn initialize_ivynet(
     // Build IvyConfig file
     println!("Performing ivynet intialization...");
 
-    let config = IvyConfig::new();
+    let mut config = IvyConfig::new();
     if config.get_file().exists() {
         let overwrite = Select::new()
             .with_prompt("An ivynet config file already exists. Would you like to overwrite it, overwrite it and create a backup, or exit?")
@@ -65,16 +67,27 @@ pub async fn initialize_ivynet(
         config.store()?;
 
         // configure RPC addresses
-        let config = set_config_rpcs(config)?;
-        let config = set_config_keys(config)?;
+        config = set_config_rpcs(config)?;
+        config = set_config_keys(config)?;
         // let config = set_config_metadata(config)?;
         config.store()?;
 
         if !skip_login {
-            let config = set_backend_connection(config, server_url, server_ca).await?;
+            config = set_backend_connection(config, server_url, server_ca).await?;
             config.store()?;
         }
     }
+
+    ///////////////////////////////
+    //  Setup Container Logging  //
+    ///////////////////////////////
+
+    println!("Initializing logging service files...");
+
+    make_fluentd_compose(config.get_dir());
+    make_fluentd_dockerfile(config.get_dir());
+    make_fluentd_conf(config.get_dir());
+    println!("Logging service files created at {}", config.get_dir().display());
 
     println!("\n----- IvyNet initialization complete -----");
     println!("You can now run `ivynet serve` to start the IvyNet service.");
@@ -204,11 +217,13 @@ async fn set_backend_connection(
         .expect("No password provided");
     let mut backend =
         BackendClient::new(create_channel(Source::Uri(server_url), server_ca.clone()).await?);
-    
+    let hostname = { String::from_utf8(rustix::system::uname().nodename().to_bytes().to_vec()) }
+        .expect("Cannot fetch hostname from the node");
     backend
         .register(Request::new(RegistrationCredentials {
             email,
             password,
+            hostname,
             public_key: client_key.as_bytes().to_vec(),
         }))
         .await?;
@@ -234,16 +249,15 @@ fn set_config_keys(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
             let keyfile_name: String =
                 Input::new().with_prompt("Enter a name for the keyfile").interact()?;
             let pw = get_confirm_password();
-            let wallet = IvyWallet::from_private_key(private_key)?;
-            let prv_key_path = wallet.encrypt_and_store(&config.get_path(), keyfile_name, pw)?;
-            config.default_ecdsa_keyfile.clone_from(&prv_key_path);
-            config.default_ecdsa_address = wallet.address();
+            let keychain = Keychain::default();
+            let key = keychain.import(KeyType::Ecdsa, Some(&keyfile_name), &private_key, &pw)?;
+
+            if let Some(wallet) = key.get_wallet_owned() {
+                config.default_ecdsa_keyfile = Some(keyfile_name);
+                config.default_ecdsa_address = wallet.address();
+            }
         }
         1 => {
-            let wallet = IvyWallet::new();
-            let addr = wallet.address();
-            println!("Public Address: {:?}", addr);
-            config.default_ecdsa_address = addr;
             let keyfile_name: String =
                 Input::new().with_prompt("Enter a name for the keyfile").interact()?;
             let mut pw: String = Password::new()
@@ -261,9 +275,14 @@ fn set_config_keys(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
                 confirm_pw = Password::new().with_prompt("Confirm keyfile password").interact()?;
                 pw_confirmed = pw == confirm_pw;
             }
-
-            let prv_key_path = wallet.encrypt_and_store(&config.get_path(), keyfile_name, pw)?;
-            config.default_ecdsa_keyfile.clone_from(&prv_key_path);
+            let keychain = Keychain::default();
+            let key = keychain.generate(KeyType::Ecdsa, Some(&keyfile_name), &pw);
+            if let Some(wallet) = key.get_wallet_owned() {
+                config.default_ecdsa_keyfile = Some(keyfile_name);
+                let addr = wallet.address();
+                config.default_ecdsa_address = addr;
+                println!("Public Address: {:?}", addr)
+            }
         }
         2 => {
             println!("Skipping keyfile initialization");

@@ -8,11 +8,11 @@ use axum::{
 use axum_extra::extract::CookieJar;
 use chrono::NaiveDateTime;
 use ivynet_core::ethers::types::Address;
-use serde::Serialize;
-use tracing::debug;
+use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::{
+    data,
     db::{metric, node},
     error::BackendError,
 };
@@ -27,6 +27,11 @@ const UPTIME_METRIC: &str = "uptime";
 const RUNNING_METRIC: &str = "running";
 
 const EIGEN_PERFORMANCE_HEALTHY_THRESHOLD: f64 = 80.0;
+
+#[derive(Deserialize, Debug, Clone, ToSchema)]
+pub struct NameChangeRequest {
+    pub name: String,
+}
 
 // TODO: We still need to define how we handle errors in avs
 #[derive(Serialize, Debug, Clone)]
@@ -57,6 +62,7 @@ pub struct Info {
 #[derive(Serialize, ToSchema, Clone, Debug, Default)]
 pub struct InfoReport {
     pub machine_id: String,
+    pub name: String,
     pub status: String,
     pub metrics: Metrics,
     pub last_checked: Option<NaiveDateTime>,
@@ -75,7 +81,7 @@ pub struct Metrics {
 }
 
 #[utoipa::path(
-    post,
+    get,
     path = "/client/status",
     responses(
         (status = 200, body = Status),
@@ -146,7 +152,7 @@ pub async fn status(
 }
 
 #[utoipa::path(
-    post,
+    get,
     path = "/client/idle",
     responses(
         (status = 200, body = Vec<String>),
@@ -227,7 +233,138 @@ pub async fn unhealthy(
 
 #[utoipa::path(
     post,
-    path = "/client/info/{id}",
+    path = "/client/:id",
+    responses(
+        (status = 200),
+        (status = 404)
+    )
+)]
+pub async fn set_name(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Path(id): Path<String>,
+    Json(request): Json<NameChangeRequest>,
+) -> Result<(), BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let address = id.parse::<Address>().map_err(|_| BackendError::BadId)?;
+    let machine = node::DbNode::get(&state.pool, &address).await?;
+    if machine.organization_id != account.organization_id || !account.role.can_write() {
+        return Err(BackendError::Unauthorized);
+    }
+
+    node::DbNode::set_name(&state.pool, &address, &request.name).await?;
+    node::DbNode::delete(&state.pool, &address).await?;
+
+    Ok(())
+}
+#[utoipa::path(
+    delete,
+    path = "/client/:id",
+    responses(
+        (status = 200),
+        (status = 404)
+    )
+)]
+pub async fn delete(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Path(id): Path<String>,
+) -> Result<(), BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let address = id.parse::<Address>().map_err(|_| BackendError::BadId)?;
+    let machine = node::DbNode::get(&state.pool, &address).await?;
+    if machine.organization_id != account.organization_id || !account.role.can_write() {
+        return Err(BackendError::Unauthorized);
+    }
+
+    node::DbNode::delete(&state.pool, &address).await?;
+
+    Ok(())
+}
+
+#[utoipa::path(
+    get,
+    path = "/client/:id/metrics",
+    responses(
+        (status = 200, body = [Metric]),
+        (status = 404)
+    )
+)]
+pub async fn metrics_condensed(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    Path(id): Path<String>,
+    jar: CookieJar,
+) -> Result<Json<Vec<metric::Metric>>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+
+    let node_id = id.parse::<Address>().map_err(|_| BackendError::InvalidNodeId)?;
+
+    let account_nodes = node::DbNode::get_all_for_account(&state.pool, &account).await?;
+
+    let node = {
+        let mut ret = None;
+        for node in account_nodes {
+            if node.node_id == node_id {
+                ret = Some(node);
+                break;
+            }
+        }
+        ret
+    };
+    let all_metrics = if let Some(node) = node {
+        Ok(metric::Metric::get_all_for_node(&state.pool, &node).await?)
+    } else {
+        Err(BackendError::InvalidNodeId)
+    }?;
+
+    let filtered_metrics = data::filter_metrics(&all_metrics)?;
+
+    Ok(Json(filtered_metrics))
+}
+
+#[utoipa::path(
+    get,
+    path = "/client/:id/metrics/all",
+    responses(
+        (status = 200, body = [Metric]),
+        (status = 404)
+    )
+)]
+pub async fn metrics_all(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    Path(id): Path<String>,
+    jar: CookieJar,
+) -> Result<Json<Vec<metric::Metric>>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+
+    let node_id = id.parse::<Address>().map_err(|_| BackendError::InvalidNodeId)?;
+
+    let account_nodes = node::DbNode::get_all_for_account(&state.pool, &account).await?;
+
+    let node = {
+        let mut ret = None;
+        for node in account_nodes {
+            if node.node_id == node_id {
+                ret = Some(node);
+                break;
+            }
+        }
+        ret
+    };
+    if let Some(node) = node {
+        Ok(metric::Metric::get_all_for_node(&state.pool, &node).await?.into())
+    } else {
+        Err(BackendError::InvalidNodeId)
+    }
+}
+
+#[utoipa::path(
+    get,
+    path = "/client/:id",
     responses(
         (status = 200, body = Info),
         (status = 404)
@@ -239,11 +376,8 @@ pub async fn info(
     jar: CookieJar,
     Path(id): Path<String>,
 ) -> Result<Json<Info>, BackendError> {
-    debug!("Info!");
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    debug!("Address string is {id}");
     let address = id.parse::<Address>().map_err(|_| BackendError::BadId)?;
-    debug!("Address parsed to {address:?}!");
     let machine = node::DbNode::get(&state.pool, &address).await?;
     if machine.organization_id != account.organization_id {
         return Err(BackendError::Unauthorized);
@@ -269,6 +403,7 @@ pub async fn info(
         error: Vec::new(),
         result: InfoReport {
             machine_id: id,
+            name: machine.name,
             status: "Healthy".to_owned(), // TODO: This is wrong. We don't know what potential
             // statuses are
             metrics: Metrics {
