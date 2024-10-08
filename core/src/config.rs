@@ -1,4 +1,4 @@
-use ethers::types::{Chain, H160};
+use ethers::types::Chain;
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -36,17 +36,8 @@ pub struct IvyConfig {
     pub holesky_rpc_url: String,
     // RPC URL for local development
     pub local_rpc_url: String,
-    // TODO: See if this nomenclature needs to be changed
-    /// Default operator private key file full path
-    pub default_ecdsa_keyfile: Option<String>,
-    /// Default Operator private key file full path bls
-    pub default_bls_keyfile: Option<String>,
     /// Metadata for the operator
     pub metadata: Metadata,
-    /// Default Public ECDSA Address
-    pub default_ecdsa_address: H160,
-    /// Default Public BLS Address
-    pub default_bls_address: String,
     /// Web server information
     pub backend_info: BackendInfo,
 }
@@ -58,11 +49,7 @@ impl Default for IvyConfig {
             mainnet_rpc_url: "https://rpc.flashbots.net/fast".to_string(),
             holesky_rpc_url: "https://eth-holesky.public.blastapi.io".to_string(),
             local_rpc_url: "http://localhost:8545".to_string(),
-            default_ecdsa_keyfile: None,
-            default_bls_keyfile: None,
             metadata: Metadata::default(),
-            default_ecdsa_address: H160::default(),
-            default_bls_address: "".into(),
             backend_info: BackendInfo {
                 server_url: "".into(),
                 server_ca: "".into(),
@@ -118,22 +105,6 @@ impl IvyConfig {
         Ok(())
     }
 
-    pub fn set_ecdsa_address(&mut self, address: H160) {
-        self.default_ecdsa_address = address;
-    }
-
-    pub fn set_ecdsa_keyfile(&mut self, keyfile: String) {
-        self.default_ecdsa_keyfile = Some(keyfile);
-    }
-
-    pub fn set_bls_address(&mut self, address: String) {
-        self.default_bls_address = address;
-    }
-
-    pub fn set_bls_keyfile(&mut self, keyfile: String) {
-        self.default_bls_keyfile = Some(keyfile);
-    }
-
     pub fn get_rpc_url(&self, chain: Chain) -> Result<String, IvyError> {
         match chain {
             Chain::Mainnet => Ok(self.mainnet_rpc_url.clone()),
@@ -161,9 +132,8 @@ impl IvyConfig {
         IvyWallet::from_private_key(self.backend_info.identity_key.clone())
     }
 
-    pub fn set_server_url(&mut self, url: String) -> Result<(), IvyError> {
+    pub fn set_server_url(&mut self, url: String) {
         self.backend_info.server_url = url;
-        Ok(())
     }
 
     pub fn get_server_url(&self) -> Result<Uri, IvyError> {

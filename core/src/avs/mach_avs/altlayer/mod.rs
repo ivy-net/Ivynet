@@ -215,7 +215,7 @@ impl AltLayer {
         let home_str = home_dir.to_str().expect("Could not get home directory");
 
         let keychain = Keychain::default();
-        let keyname = keychain.select_key(KeyType::Bls, config.default_bls_keyfile.clone())?;
+        let keyname = keychain.select_key(KeyType::Bls)?;
 
         let mut bls_json_file_location = dirs::home_dir().expect("Could not get home directory");
         bls_json_file_location.push(".eigenlayer/operator_keys");
@@ -264,7 +264,7 @@ impl AltLayer {
             bls_json_file_location.to_str().expect("Could not get BLS key file location"),
         );
         let keychain = Keychain::default();
-        let keyname = keychain.select_key(KeyType::Ecdsa, config.default_ecdsa_keyfile.clone())?;
+        let keyname = keychain.select_key(KeyType::Ecdsa)?;
         let legacy_keyfile_path = keychain.get_path(keyname);
         env_lines.set(
             "NODE_ECDSA_KEY_FILE_HOST",
