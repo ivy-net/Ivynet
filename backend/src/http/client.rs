@@ -221,8 +221,10 @@ pub async fn unhealthy(
     Ok(metrics
         .iter()
         .filter_map(|(machine, metrics)| {
-            if let Some(performace) = metrics.get(EIGEN_PERFORMANCE_METRIC) {
-                if performace.value >= EIGEN_PERFORMANCE_HEALTHY_THRESHOLD {
+            if let (Some(running), Some(performace)) =
+                (metrics.get(EIGEN_PERFORMANCE_METRIC), metrics.get(RUNNING_METRIC))
+            {
+                if running.value < 1.0 || performace.value >= EIGEN_PERFORMANCE_HEALTHY_THRESHOLD {
                     return None;
                 }
             }
