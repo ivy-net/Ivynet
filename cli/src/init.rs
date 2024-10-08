@@ -1,7 +1,6 @@
 use dialoguer::{Input, MultiSelect, Password, Select};
 use ivynet_core::{
     config::IvyConfig,
-    dialog::get_confirm_password,
     error::IvyError,
     grpc::{
         backend::backend_client::BackendClient,

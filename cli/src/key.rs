@@ -90,6 +90,7 @@ pub async fn import_key() -> Result<(), Error> {
     match Select::new()
         .with_prompt("Choose what type of key you would like to import")
         .items(&["BLS", "ECDSA"])
+        .default(0)
         .interact()
         .expect("No key type has been chosen") {
             0 /* BLS */ => import_bls().await,
@@ -103,6 +104,7 @@ pub async fn import_bls() -> Result<(), Error> {
     match Select::new()
         .with_prompt("Would you like to import a bls keys folder, a single file or a private key?")
         .items(&["Folder", "File", "Private key"])
+        .default(0)
         .interact()
         .expect("Wrong source chosen") {
             0 /* Folder */ => import_from_folder(KeyType::Bls),
@@ -117,6 +119,7 @@ pub async fn import_ecdsa() -> Result<(), Error> {
     match Select::new()
         .with_prompt("Would you like to import a ecdsa keys folder, a single file a private key, or from mnemonic?")
         .items(&["Folder", "File", "Private key", "Mnemonic"])
+        .default(0)
         .interact()
         .expect("Wrong source chosen") {
             0 /* Folder */ => import_from_folder(KeyType::Ecdsa),
