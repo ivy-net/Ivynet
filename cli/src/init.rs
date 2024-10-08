@@ -72,7 +72,7 @@ pub async fn initialize_ivynet(
 
         // configure RPC addresses
         let config = set_config_rpcs(config)?;
-        set_config_keys()?;
+        set_config_keys().await?;
         // let config = set_config_metadata(config)?;
         config.store()?;
 
@@ -225,7 +225,7 @@ async fn set_backend_connection(
     Ok(config)
 }
 
-fn set_config_keys() -> Result<(), IvyError> {
+async fn set_config_keys() -> Result<(), IvyError> {
     let key_config_types = ["Import", "Create", "Skip"];
     let interactive = Select::new()
         .with_prompt(
@@ -237,13 +237,7 @@ fn set_config_keys() -> Result<(), IvyError> {
         .unwrap();
     match interactive {
         0 => {
-            let private_key: String =
-                Password::new().with_prompt("Enter your ECDSA private key").interact()?;
-            let keyfile_name: String =
-                Input::new().with_prompt("Enter a name for the keyfile").interact()?;
-            let pw = get_confirm_password();
-            let keychain = Keychain::default();
-            let _ = keychain.import(KeyType::Ecdsa, Some(&keyfile_name), &private_key, &pw)?;
+            super::key::import_ecdsa().await.map_err(|_| IvyError::KeyfilePasswordError)?;
         }
         1 => {
             let keyfile_name: String =

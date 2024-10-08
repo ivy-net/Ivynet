@@ -217,10 +217,12 @@ impl Keychain {
         key_type: KeyType,
         password: &str,
     ) -> Result<(String, Key), IvyError> {
-        let name = if let Some(n) = path.to_str().expect("Unparsable path").split(".").next() {
+        let name = if let Some(n) =
+            path.file_name().unwrap().to_str().expect("Unparsable path").split(".").next()
+        {
             n.to_string()
         } else {
-            path.to_str().unwrap().to_string()
+            path.file_name().unwrap().to_str().unwrap().to_string()
         };
         match key_type {
             KeyType::Ecdsa => {

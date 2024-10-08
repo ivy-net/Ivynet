@@ -98,7 +98,7 @@ pub async fn import_key() -> Result<(), Error> {
         }
 }
 
-async fn import_bls() -> Result<(), Error> {
+pub async fn import_bls() -> Result<(), Error> {
     // TODO: We should do a duplicate checks here as well
     match Select::new()
         .with_prompt("Would you like to import a bls keys folder, a single file or a private key?")
@@ -113,7 +113,7 @@ async fn import_bls() -> Result<(), Error> {
     Ok(())
 }
 
-async fn import_ecdsa() -> Result<(), Error> {
+pub async fn import_ecdsa() -> Result<(), Error> {
     match Select::new()
         .with_prompt("Would you like to import a ecdsa keys folder, a single file a private key, or from mnemonic?")
         .items(&["Folder", "File", "Private key", "Mnemonic"])
