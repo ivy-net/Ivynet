@@ -181,6 +181,7 @@ impl Keychain {
         let interactive = Select::new()
             .with_prompt("Which Key would you like to use?")
             .items(keys_display)
+            .default(0)
             .interact()?;
 
         let keyname = &keys_display[interactive];
