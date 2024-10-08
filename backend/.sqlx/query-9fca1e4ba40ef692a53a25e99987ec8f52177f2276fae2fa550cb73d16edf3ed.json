@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM node_data WHERE node_id = $1 AND avs_name = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bytea",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9fca1e4ba40ef692a53a25e99987ec8f52177f2276fae2fa550cb73d16edf3ed"
+}

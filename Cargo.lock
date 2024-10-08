@@ -2547,7 +2547,7 @@ checksum = "49f1f14873335454500d59611f1cf4a4b0f786f9ac11f4312a78e4cf2566695b"
 
 [[package]]
 name = "ivynet-backend"
-version = "0.1.17"
+version = "0.1.18"
 dependencies = [
  "axum 0.7.6",
  "axum-extra",
@@ -2556,6 +2556,7 @@ dependencies = [
  "clap",
  "ivynet-core",
  "memcache",
+ "semver",
  "sendgrid",
  "serde",
  "serde_json",
