@@ -47,7 +47,7 @@ jobs:
         with:
           files: |
             target/release/ivynet-backend
-            migrations.tar.gz
+            backend/migrations.tar.gz
           make_latest: false
 
   build-image:
