@@ -7,7 +7,7 @@ use ethers::{
 use crate::{error::IvyError, grpc::messages::Metrics, wallet::IvyWallet};
 
 pub async fn sign(metrics: &[Metrics], wallet: &IvyWallet) -> Result<Signature, IvyError> {
-    Ok(sign_hash(build_message(metrics).await?, wallet)?)
+    sign_hash(build_message(metrics).await?, wallet)
 }
 
 pub async fn sign_string(string: &str, wallet: &IvyWallet) -> Result<Signature, IvyError> {
