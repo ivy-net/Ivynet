@@ -117,9 +117,9 @@ pub async fn status(
         error: Vec::new(),
         result: StatusReport {
             total_machines: machines.len(),
-            healthy_machines: healthy_nodes.iter().map(ToString::to_string).collect(),
-            unhealthy_machines: unhealthy_nodes.iter().map(ToString::to_string).collect(),
-            idle_machines: idle_nodes.iter().map(ToString::to_string).collect(),
+            healthy_machines: healthy_nodes.iter().map(|node| format!("{node:?}")).collect(),
+            unhealthy_machines: unhealthy_nodes.iter().map(|node| format!("{node:?}")).collect(),
+            idle_machines: idle_nodes.iter().map(|node| format!("{node:?}")).collect(),
             updateable_machines: Vec::new(), // TODO: How to get these?
             erroring_machines: Vec::new(),   // TODO: When we will solve error issues
         },
