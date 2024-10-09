@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::{
-    data,
+    data::{self, NodeStatus},
     db::{
         metric::Metric,
         node,
@@ -54,17 +54,17 @@ pub struct Status {
     pub result: StatusReport,
 }
 
-#[derive(Serialize, ToSchema, Clone, Debug, Default)]
+#[derive(Serialize, ToSchema, Clone, Debug)]
 pub struct Info {
     pub error: Vec<StatusError>,
     pub result: InfoReport,
 }
 
-#[derive(Serialize, ToSchema, Clone, Debug, Default)]
+#[derive(Serialize, ToSchema, Clone, Debug)]
 pub struct InfoReport {
     pub machine_id: String,
     pub name: String,
-    pub status: String,
+    pub status: NodeStatus,
     pub metrics: Metrics,
     pub last_checked: Option<NaiveDateTime>,
 }
@@ -368,8 +368,7 @@ pub async fn info(
         result: InfoReport {
             machine_id: id,
             name: machine.name,
-            status: "Healthy".to_owned(), // TODO: This is wrong. We don't know what potential
-            // statuses are
+            status: data::get_node_status(metrics.clone()), //TODO: This could still be improved
             metrics: Metrics {
                 cpu_usage: if let Some(cpu) = metrics.get(CPU_USAGE_METRIC) {
                     cpu.value

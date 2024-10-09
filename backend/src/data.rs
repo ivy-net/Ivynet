@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 
 use ivynet_core::ethers::types::H160;
+use serde::Serialize;
+use utoipa::ToSchema;
 
 use crate::{db::metric::Metric, error::BackendError};
 
@@ -8,6 +10,15 @@ const RUNNING_METRIC: &str = "running";
 const EIGEN_PERFORMANCE_METRIC: &str = "eigen_performance_score";
 
 const EIGEN_PERFORMANCE_HEALTHY_THRESHOLD: f64 = 80.0;
+
+#[derive(Serialize, ToSchema, Clone, Debug)]
+pub enum NodeStatus {
+    Healthy,
+    Unhealthy,
+    Idle,
+    Error,
+    UpdateNeeded,
+}
 
 /// Condense list of metrics into a smaller list of metrics for the frontend
 pub fn condense_metrics(metrics: &[Metric]) -> Result<Vec<Metric>, BackendError> {
@@ -79,6 +90,35 @@ pub fn categorize_node_health(
     }
 
     (healthy_machines, unhealthy_machines)
+}
+
+/// Look up NodeStatus of a specific node
+pub fn get_node_status_from_id(
+    node_id: H160,
+    node_metrics_map: &HashMap<H160, HashMap<String, Metric>>,
+) -> NodeStatus {
+    if let Some(metrics_map) = node_metrics_map.get(&node_id) {
+        return get_node_status(metrics_map.clone())
+    }
+
+    NodeStatus::Error
+}
+
+pub fn get_node_status(metrics: HashMap<String, Metric>) -> NodeStatus {
+    if let Some(running_metric) = metrics.get(RUNNING_METRIC) {
+        if running_metric.value > 0.0 {
+            if let Some(performance_metric) = metrics.get(EIGEN_PERFORMANCE_METRIC) {
+                if performance_metric.value >= EIGEN_PERFORMANCE_HEALTHY_THRESHOLD {
+                    return NodeStatus::Healthy;
+                } else {
+                    return NodeStatus::Unhealthy;
+                }
+            }
+        } else {
+            return NodeStatus::Idle;
+        }
+    }
+    NodeStatus::Error
 }
 
 const CONDENSED_EIGENDA_METRICS_NAMES: [&str; 6] = [
