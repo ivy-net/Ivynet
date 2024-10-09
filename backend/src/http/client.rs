@@ -154,7 +154,7 @@ pub async fn idling(
 
     let (_, idle_nodes) = data::categorize_running_nodes(node_metrics_map.clone());
 
-    Ok(Json(idle_nodes.iter().map(ToString::to_string).collect()))
+    Ok(Json(idle_nodes.iter().map(|node| format!("{node:?}")).collect()))
 }
 
 /// Get an overview of which nodes are unhealthy
@@ -186,7 +186,7 @@ pub async fn unhealthy(
     let (_, unhealthy_nodes) =
         data::categorize_node_health(running_nodes.clone(), node_metrics_map.clone());
 
-    Ok(Json(unhealthy_nodes.iter().map(ToString::to_string).collect()))
+    Ok(Json(unhealthy_nodes.iter().map(|node| format!("{node:?}")).collect()))
 }
 
 /// Get an overview of which nodes are healthy
@@ -218,7 +218,7 @@ pub async fn healthy(
     let (healthy_nodes, _) =
         data::categorize_node_health(running_nodes.clone(), node_metrics_map.clone());
 
-    Ok(Json(healthy_nodes.iter().map(ToString::to_string).collect()))
+    Ok(Json(healthy_nodes.iter().map(|node| format!("{node:?}")).collect()))
 }
 
 /// Set the name of a node
