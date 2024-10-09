@@ -3,7 +3,10 @@ use std::collections::HashMap;
 use crate::error::BackendError;
 
 use chrono::{NaiveDateTime, Utc};
-use ivynet_core::{ethers::types::Address, grpc::messages::Metrics};
+use ivynet_core::{
+    ethers::types::{Address, H160},
+    grpc::messages::Metrics,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use sqlx::{query, PgPool};
@@ -58,11 +61,14 @@ impl From<&Metrics> for Metric {
 }
 
 impl Metric {
-    pub async fn get_all_for_node(pool: &PgPool, node: &Node) -> Result<Vec<Metric>, BackendError> {
+    pub async fn get_all_for_node(
+        pool: &PgPool,
+        node_id: H160,
+    ) -> Result<Vec<Metric>, BackendError> {
         let metrics = sqlx::query_as!(
             DbMetric,
             r#"SELECT node_id, name, value, attributes as "attributes: sqlx::types::Json<HashMap<String,String>>" , created_at FROM metric WHERE node_id = $1"#,
-            node.node_id.as_bytes()
+            node_id.as_bytes()
         )
         .fetch_all(pool) // -> Vec<Country>
         .await?;
@@ -74,7 +80,7 @@ impl Metric {
         pool: &PgPool,
         node: &Node,
     ) -> Result<HashMap<String, Metric>, BackendError> {
-        let metrics = Metric::get_all_for_node(pool, node).await?;
+        let metrics = Metric::get_all_for_node(pool, node.node_id).await?;
 
         let mut organized = HashMap::new();
 

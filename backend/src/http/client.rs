@@ -293,28 +293,12 @@ pub async fn metrics_condensed(
     jar: CookieJar,
 ) -> Result<Json<Vec<Metric>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let node_id =
+        authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
 
-    let node_id = id.parse::<Address>().map_err(|_| BackendError::InvalidNodeId)?;
+    let metrics = Metric::get_all_for_node(&state.pool, node_id).await?;
 
-    let account_nodes = node::DbNode::get_all_for_account(&state.pool, &account).await?;
-
-    let node = {
-        let mut ret = None;
-        for node in account_nodes {
-            if node.node_id == node_id {
-                ret = Some(node);
-                break;
-            }
-        }
-        ret
-    };
-    let all_metrics = if let Some(node) = node {
-        Ok(Metric::get_all_for_node(&state.pool, &node).await?)
-    } else {
-        Err(BackendError::InvalidNodeId)
-    }?;
-
-    let filtered_metrics = data::condense_metrics(&all_metrics)?;
+    let filtered_metrics = data::condense_metrics(&metrics)?;
 
     Ok(Json(filtered_metrics))
 }
@@ -335,26 +319,10 @@ pub async fn metrics_all(
     jar: CookieJar,
 ) -> Result<Json<Vec<Metric>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let node_id =
+        authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
 
-    let node_id = id.parse::<Address>().map_err(|_| BackendError::InvalidNodeId)?;
-
-    let account_nodes = node::DbNode::get_all_for_account(&state.pool, &account).await?;
-
-    let node = {
-        let mut ret = None;
-        for node in account_nodes {
-            if node.node_id == node_id {
-                ret = Some(node);
-                break;
-            }
-        }
-        ret
-    };
-    if let Some(node) = node {
-        Ok(Metric::get_all_for_node(&state.pool, &node).await?.into())
-    } else {
-        Err(BackendError::InvalidNodeId)
-    }
+    Ok(Metric::get_all_for_node(&state.pool, node_id).await?.into())
 }
 
 /// Get info on a specific node
