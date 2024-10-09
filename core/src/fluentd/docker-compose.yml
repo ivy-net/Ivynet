@@ -1,8 +1,8 @@
 services:
   fluentd:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    user: root
+    image: fluentd:v1.17-1
+    network_mode: "host"
     container_name: fluentd
     volumes:
       - ${FLUENTD_PATH}/conf:/fluentd/etc

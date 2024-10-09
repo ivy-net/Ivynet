@@ -1,7 +1,8 @@
 use ivynet_core::{
     avs::build_avs_provider,
     config::IvyConfig,
-    docker::dockercmd::{docker_cmd_status, DockerCmd},
+    docker::dockercmd::DockerCmd,
+    fluentd::log_server::serve_log_server,
     grpc::{
         backend::backend_client::BackendClient,
         client::{create_channel, Uri},
@@ -15,7 +16,7 @@ use ivynet_core::{
 };
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use tracing::{error, info, warn};
+use tracing::{error, info};
 
 use crate::{error::Error, rpc::ivynet::IvynetService, telemetry};
 
@@ -52,15 +53,21 @@ pub async fn serve(
         .await?;
         let ivynet_inner = Arc::new(RwLock::new(avs_provider));
 
-        // Logging service
+        ///////////////////
+        // Logging
+        ///////////////////
 
         // Set logging directory
         let fluentd_path = config.get_dir().join("fluentd");
         std::env::set_var("FLUENTD_PATH", fluentd_path.to_str().unwrap());
-        info!("Serving logs at {:?}", fluentd_path);
+        info!("Serving local logs at {:?}", fluentd_path);
         // Start the container
-        let fluentd = DockerCmd::new().args(&["up"]).current_dir(&fluentd_path).spawn()?;
+        DockerCmd::new().args(["up", "--build"]).current_dir(&fluentd_path).spawn()?;
         info!("Fluentd logging container started");
+
+        ///////////////////
+        // GRPC
+        ///////////////////
 
         // NOTE: Due to limitations with Prost / GRPC, we create a new server with a
         // reference-counted handle to the inner type for each server, as opposed to cloning
@@ -73,11 +80,15 @@ pub async fn serve(
 
         let server = Server::new(avs_server, None, None).add_service(operator_server);
         if no_backend {
-            server.serve(sock).await?;
+            tokio::select! {
+                ret = server.serve(sock) => { error!("Local server error {ret:?}") },
+                ret = serve_log_server() => { error!("Log server error {ret:?}") }
+            }
         } else {
             let connection_wallet = config.identity_wallet()?;
             tokio::select! {
                 ret = server.serve(sock) => { error!("Local server error {ret:?}") },
+                ret = serve_log_server() => { error!("Log server error {ret:?}") }
                 ret = telemetry::listen(ivynet_inner, backend_client, connection_wallet) => { error!("Telemetry listener error {ret:?}") }
             }
         }

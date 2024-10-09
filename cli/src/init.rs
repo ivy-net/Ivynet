@@ -3,7 +3,7 @@ use ivynet_core::{
     config::IvyConfig,
     dialog::get_confirm_password,
     error::IvyError,
-    fluentd::{make_fluentd_compose, make_fluentd_conf, make_fluentd_dockerfile},
+    fluentd::{make_fluentd_compose, make_fluentd_conf},
     grpc::{
         backend::backend_client::BackendClient,
         client::{create_channel, Source, Uri},
@@ -85,7 +85,7 @@ pub async fn initialize_ivynet(
     println!("Initializing logging service files...");
 
     make_fluentd_compose(config.get_dir());
-    make_fluentd_dockerfile(config.get_dir());
+    // make_fluentd_dockerfile(config.get_dir());
     make_fluentd_conf(config.get_dir());
     println!("Logging service files created at {}", config.get_dir().display());
 

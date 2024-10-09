@@ -54,6 +54,7 @@ which = "6.0.2"
 eth-keystore = { version = "0.5.0", features = ["geth-compat"] }
 indexmap = "2.6.0"
 docker-compose-types = "0.15.0"
+axum = "0.7.7"
 
 [build-dependencies]
 prost-build = "0.12"

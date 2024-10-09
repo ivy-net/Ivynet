@@ -1,9 +1,6 @@
 use crate::{
     config::IvyConfig,
-    docker::{
-        dockercmd::{docker_cmd, docker_cmd_status, DockerCmd},
-        log::CmdLogSource,
-    },
+    docker::{dockercmd::DockerCmd, log::CmdLogSource},
     eigen::{contracts::delegation_manager::DelegationManager, quorum::QuorumType},
     error::IvyError,
     ivy_yaml::create_ivy_dockercompose,
@@ -23,13 +20,7 @@ use ethers::{
 };
 use lagrange::Lagrange;
 use names::AvsNames;
-use std::{
-    collections::HashMap,
-    fmt::Debug,
-    fs::{self, create_dir},
-    path::PathBuf,
-    sync::Arc,
-};
+use std::{collections::HashMap, fmt::Debug, path::PathBuf, sync::Arc};
 use tokio::process::Child;
 use tracing::{debug, error, info};
 
@@ -179,7 +170,7 @@ impl AvsProvider {
         // TODO: Move quorum logic into AVS-specific implementations.
         // TODO: RIIA path creation? Move to new() func
         let avs_path = self.avs()?.base_path();
-        fs::create_dir_all(avs_path.clone())?;
+        std::fs::create_dir_all(avs_path.clone())?;
 
         // TODO: likely a function call in registry_coordinator
         // let status = DELEGATION_MANAGER.get_operator_status(self.client.address()).await?;
