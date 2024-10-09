@@ -42,7 +42,7 @@ use self::{
     log::{ansi_sanitization_regex, level_regex},
 };
 
-use super::{names::AvsNames, AvsConfig};
+use super::{names::AvsName, AvsConfig};
 
 mod contracts;
 mod log;
@@ -78,7 +78,7 @@ impl EigenDA {
 
     pub fn new_from_chain(chain: Chain) -> Self {
         let base_path = dirs::home_dir().expect("Could not get home directory").join(EIGENDA_PATH);
-        let avs_config = AvsConfig::load(AvsNames::EigenDA.as_str())
+        let avs_config = AvsConfig::load(AvsName::EigenDA.as_str())
             .expect("Could not load AVS config - go through setup");
         Self::new(base_path, chain, avs_config)
     }
@@ -88,7 +88,7 @@ impl Default for EigenDA {
     fn default() -> Self {
         let home_dir = dirs::home_dir().expect("Could not get home directory");
         let base_path = home_dir.join(EIGENDA_PATH);
-        let avs_config = AvsConfig::load(AvsNames::EigenDA.as_str())
+        let avs_config = AvsConfig::load(AvsName::EigenDA.as_str())
             .expect("Could not load AVS config - go through setup");
         Self::new(base_path, Chain::Holesky, avs_config)
     }
@@ -301,7 +301,7 @@ impl AvsVariant for EigenDA {
     }
 
     fn name(&self) -> &'static str {
-        AvsNames::EigenDA.as_str()
+        AvsName::EigenDA.as_str()
     }
 
     fn base_path(&self) -> PathBuf {
@@ -424,12 +424,8 @@ impl EigenDA {
         );
 
         // BLS key
-        let mut bls_json_file_location = dirs::home_dir().expect("Could not get home dir");
-        bls_json_file_location.push(".eigenlayer/operator_keys");
-        let keychain = Keychain::new(bls_json_file_location.clone());
-        let keyname = keychain.select_key(KeyType::Bls, None)?;
-        bls_json_file_location.push(keyname.to_string());
-        bls_json_file_location.set_extension("bls.key.json");
+        let keychain = Keychain::default();
+        let bls_json_file_location = keychain.get_path(keychain.select_key(KeyType::Bls)?);
         debug!("BLS key file location: {:?}", &bls_json_file_location);
 
         // TODO: Remove prompting

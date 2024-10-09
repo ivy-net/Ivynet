@@ -9,6 +9,7 @@ use std::{fmt::Display, fs, path::PathBuf};
 
 use ethers::{types::Address, utils::hex::encode};
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum KeyType {
     Ecdsa,
     Bls,
@@ -20,6 +21,16 @@ pub enum KeyAddress {
     Bls(Box<BlsAddress>),
 }
 
+impl Display for KeyAddress {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            KeyAddress::Ecdsa(a) => f.write_fmt(format_args!("{a:?}")),
+            KeyAddress::Bls(a) => {
+                f.write_fmt(format_args!("{}", encode_address(a).expect("Bad address")))
+            }
+        }
+    }
+}
 #[derive(Debug, Clone, PartialEq)]
 pub enum Key {
     Ecdsa(IvyWallet),
@@ -61,6 +72,13 @@ impl Key {
         match &self {
             Key::Bls(key) => Some(key.address()),
             _ => None,
+        }
+    }
+
+    pub fn is_type(&self, key_type: KeyType) -> bool {
+        match &self {
+            Key::Bls(_) => key_type == KeyType::Bls,
+            Key::Ecdsa(_) => key_type == KeyType::Ecdsa,
         }
     }
 
@@ -144,19 +162,8 @@ impl Keychain {
         }
     }
 
-    pub fn select_key(
-        &self,
-        key_type: KeyType,
-        default_key: Option<String>,
-    ) -> Result<KeyName, IvyError> {
-        let mut keys = self.keynames_for_display(&key_type)?;
-        if let Some(default_key) = default_key {
-            keys.retain(|k| *k != default_key);
-            keys.sort();
-            keys.insert(0, default_key);
-        } else {
-            keys.sort();
-        }
+    pub fn select_key(&self, key_type: KeyType) -> Result<KeyName, IvyError> {
+        let keys = self.keynames_for_display(&key_type)?;
 
         if keys.is_empty() {
             return Err(IvyError::NoKeyFoundError);
@@ -165,12 +172,12 @@ impl Keychain {
 
         if keys.len() == 1 {
             let keyname = &keys[0];
-            println!("Selected {keyname} keyfile");
             return match key_type {
                 KeyType::Ecdsa => Ok(KeyName::Ecdsa(keyname.to_string())),
                 KeyType::Bls => Ok(KeyName::Bls(keyname.to_string())),
             };
         }
+
         let interactive = Select::new()
             .with_prompt("Which Key would you like to use?")
             .items(keys_display)
@@ -184,6 +191,7 @@ impl Keychain {
             KeyType::Bls => Ok(KeyName::Bls(keyname.to_string())),
         }
     }
+
     pub fn generate(&self, key_type: KeyType, name: Option<&str>, password: &str) -> Key {
         match key_type {
             KeyType::Ecdsa => Key::Ecdsa(self.ecdsa_generate(name, password)),
@@ -201,6 +209,41 @@ impl Keychain {
         match key_type {
             KeyType::Ecdsa => Ok(Key::Ecdsa(self.ecdsa_import(name, key, password)?)),
             KeyType::Bls => Ok(Key::Bls(self.bls_import(name, key, password)?)),
+        }
+    }
+
+    pub fn import_from_file(
+        &self,
+        path: PathBuf,
+        key_type: KeyType,
+        password: &str,
+    ) -> Result<(String, Key), IvyError> {
+        let name = if let Some(n) =
+            path.file_name().unwrap().to_str().expect("Unparsable path").split(".").next()
+        {
+            n.to_string()
+        } else {
+            path.file_name().unwrap().to_str().unwrap().to_string()
+        };
+        match key_type {
+            KeyType::Ecdsa => {
+                let key = IvyWallet::from_keystore(path, password)?;
+                _ = key.encrypt_and_store(
+                    &self.path,
+                    format!("{}.ecdsa.json", &name),
+                    password.to_string(),
+                );
+                Ok((name, Key::Ecdsa(key)))
+            }
+            KeyType::Bls => {
+                let key = BlsKey::from_keystore(path, password)?;
+                _ = key.encrypt_and_store(
+                    &self.path,
+                    format!("{}.bls.json", &name),
+                    password.to_string(),
+                );
+                Ok((name, Key::Bls(key)))
+            }
         }
     }
 

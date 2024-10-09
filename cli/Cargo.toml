@@ -1,6 +1,6 @@
 [package]
 name = "cli"
-version = "0.1.5"
+version = "0.1.7"
 edition = "2021"
 authors = ["Noah Foltz <noah@ivynet.dev>"]
 description = "CLI for Ivynet client"
@@ -25,3 +25,4 @@ reqwest = "0.12.5"
 anyhow = "1.0.86"
 linemux = "=0.3.0"
 rustix = { version = "0.38", default-features = false, features = [ "system" ] }
+data-encoding = "2.6.0"

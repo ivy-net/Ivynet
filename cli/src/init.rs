@@ -1,7 +1,6 @@
 use dialoguer::{Input, MultiSelect, Password, Select};
 use ivynet_core::{
     config::IvyConfig,
-    dialog::get_confirm_password,
     error::IvyError,
     fluentd::{make_fluentd_compose, make_fluentd_conf},
     grpc::{
@@ -48,6 +47,11 @@ pub async fn initialize_ivynet(
         }
     }
 
+    config.set_server_url(server_url.to_string());
+    if let Some(ref ca) = server_ca {
+        config.set_server_ca(ca.clone());
+    }
+
     let setup_types = ["Interactive", "Empty"];
     let interactive = Select::new()
         .with_prompt(
@@ -68,7 +72,7 @@ pub async fn initialize_ivynet(
 
         // configure RPC addresses
         config = set_config_rpcs(config)?;
-        config = set_config_keys(config)?;
+        set_config_keys().await?;
         // let config = set_config_metadata(config)?;
         config.store()?;
 
@@ -232,7 +236,7 @@ async fn set_backend_connection(
     Ok(config)
 }
 
-fn set_config_keys(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
+async fn set_config_keys() -> Result<(), IvyError> {
     let key_config_types = ["Import", "Create", "Skip"];
     let interactive = Select::new()
         .with_prompt(
@@ -244,18 +248,7 @@ fn set_config_keys(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
         .unwrap();
     match interactive {
         0 => {
-            let private_key: String =
-                Password::new().with_prompt("Enter your ECDSA private key").interact()?;
-            let keyfile_name: String =
-                Input::new().with_prompt("Enter a name for the keyfile").interact()?;
-            let pw = get_confirm_password();
-            let keychain = Keychain::default();
-            let key = keychain.import(KeyType::Ecdsa, Some(&keyfile_name), &private_key, &pw)?;
-
-            if let Some(wallet) = key.get_wallet_owned() {
-                config.default_ecdsa_keyfile = Some(keyfile_name);
-                config.default_ecdsa_address = wallet.address();
-            }
+            super::key::import_ecdsa().await.map_err(|_| IvyError::KeyfilePasswordError)?;
         }
         1 => {
             let keyfile_name: String =
@@ -278,9 +271,7 @@ fn set_config_keys(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
             let keychain = Keychain::default();
             let key = keychain.generate(KeyType::Ecdsa, Some(&keyfile_name), &pw);
             if let Some(wallet) = key.get_wallet_owned() {
-                config.default_ecdsa_keyfile = Some(keyfile_name);
                 let addr = wallet.address();
-                config.default_ecdsa_address = addr;
                 println!("Public Address: {:?}", addr)
             }
         }
@@ -289,7 +280,7 @@ fn set_config_keys(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
         }
         _ => unreachable!("Unknown key setup option reached"),
     }
-    Ok(config)
+    Ok(())
 }
 
 fn create_config_dir(config_path: PathBuf) -> Result<(), IvyError> {

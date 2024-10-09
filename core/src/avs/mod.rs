@@ -19,7 +19,7 @@ use ethers::{
     types::{Chain, U256},
 };
 use lagrange::Lagrange;
-use names::AvsNames;
+use names::AvsName;
 use std::{collections::HashMap, fmt::Debug, path::PathBuf, sync::Arc};
 use tokio::process::Child;
 use tracing::{debug, error, info};
@@ -166,7 +166,7 @@ impl AvsProvider {
         Ok(())
     }
 
-    pub async fn register(&self, config: &IvyConfig) -> Result<(), IvyError> {
+    pub async fn register(&self, _config: &IvyConfig) -> Result<(), IvyError> {
         // TODO: Move quorum logic into AVS-specific implementations.
         // TODO: RIIA path creation? Move to new() func
         let avs_path = self.avs()?.base_path();
@@ -181,7 +181,7 @@ impl AvsProvider {
         // }
 
         let keychain = Keychain::default();
-        let keyname = keychain.select_key(KeyType::Ecdsa, config.default_ecdsa_keyfile.clone())?;
+        let keyname = keychain.select_key(KeyType::Ecdsa)?;
         let keypath = keychain.get_path(keyname);
 
         if let Some(pw) = &self.keyfile_pw {
@@ -194,11 +194,11 @@ impl AvsProvider {
         Ok(())
     }
 
-    pub async fn unregister(&self, config: &IvyConfig) -> Result<(), IvyError> {
+    pub async fn unregister(&self, _config: &IvyConfig) -> Result<(), IvyError> {
         let avs_path = self.avs()?.base_path();
 
         let keychain = Keychain::default();
-        let keyname = keychain.select_key(KeyType::Ecdsa, config.default_ecdsa_keyfile.clone())?;
+        let keyname = keychain.select_key(KeyType::Ecdsa)?;
         let keypath = keychain.get_path(keyname);
 
         if let Some(pw) = &self.keyfile_pw {
@@ -329,10 +329,10 @@ pub async fn build_avs_provider(
     let chain = try_parse_chain(chain)?;
     let provider = connect_provider(&config.get_rpc_url(chain)?, wallet).await?;
     let avs_instance: Option<Box<dyn AvsVariant>> = if let Some(avs_id) = id {
-        match AvsNames::from(avs_id) {
-            AvsNames::EigenDA => Some(Box::new(EigenDA::new_from_chain(chain))),
-            AvsNames::AltLayer => Some(Box::new(AltLayer::new_from_chain(chain))),
-            AvsNames::LagrangeZK => Some(Box::new(Lagrange::new_from_chain(chain))),
+        match AvsName::from(avs_id) {
+            AvsName::EigenDA => Some(Box::new(EigenDA::new_from_chain(chain))),
+            AvsName::AltLayer => Some(Box::new(AltLayer::new_from_chain(chain))),
+            AvsName::LagrangeZK => Some(Box::new(Lagrange::new_from_chain(chain))),
             _ => return Err(IvyError::InvalidAvsType(avs_id.to_string())),
         }
     } else {
