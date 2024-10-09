@@ -90,6 +90,7 @@ fn create_router() -> Router<HttpState> {
         .route("/client/status", get(client::status))
         .route("/client/idle", get(client::idling))
         .route("/client/unhealthy", get(client::unhealthy))
+        .route("/client/healthy", get(client::healthy))
         .route("/client/:id/metrics", get(client::metrics_condensed))
         .route("/client/:id/metrics/all", get(client::metrics_all))
         .route("/client/:id/info/", get(client::info))
