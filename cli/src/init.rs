@@ -29,6 +29,19 @@ pub async fn initialize_ivynet(
     println!("Performing ivynet intialization...");
 
     let mut config = IvyConfig::new();
+    if !skip_login {
+        println!("Verifying with IvyNet servers...");
+        loop {
+            if let Ok(cfg) =
+                set_backend_connection(config.clone(), server_url.clone(), server_ca.clone()).await
+            {
+                config = cfg;
+                break;
+            } else {
+                println!("Login failed. Try again...");
+            }
+        }
+    }
     if config.get_file().exists() {
         let overwrite = Select::new()
             .with_prompt("An ivynet config file already exists. Would you like to overwrite it, overwrite it and create a backup, or exit?")
@@ -74,11 +87,6 @@ pub async fn initialize_ivynet(
         set_config_keys().await?;
         // let config = set_config_metadata(config)?;
         config.store()?;
-
-        if !skip_login {
-            let config = set_backend_connection(config, server_url, server_ca).await?;
-            config.store()?;
-        }
     }
 
     println!("\n----- IvyNet initialization complete -----");
