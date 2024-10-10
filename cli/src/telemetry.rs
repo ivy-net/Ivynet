@@ -9,7 +9,7 @@ use ivynet_core::{
         messages::{Metrics, MetricsAttribute, SignedMetrics},
         tonic::{transport::Channel, Request},
     },
-    signature::sign,
+    signature::sign_metrics,
     wallet::IvyWallet,
 };
 use tokio::{
@@ -127,7 +127,7 @@ async fn send(
     wallet: &IvyWallet,
     client: &mut BackendClient<Channel>,
 ) -> Result<(), IvyError> {
-    let signature = sign(metrics, wallet).await?;
+    let signature = sign_metrics(metrics, wallet).await?;
 
     client
         .metrics(Request::new(SignedMetrics {

@@ -30,3 +30,4 @@ message SignedLogs {
     bytes signature =  1;
     string logs = 2;
 }
+
