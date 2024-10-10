@@ -22,7 +22,7 @@ const TELEMETRY_INTERVAL_IN_MINUTES: u64 = 1;
 
 pub async fn listen(
     avs_provider: Arc<RwLock<AvsProvider>>,
-    mut client: BackendClient<Channel>,
+    mut backend_client: BackendClient<Channel>,
     identity_wallet: IvyWallet,
 ) -> Result<(), IvyError> {
     loop {
@@ -32,7 +32,7 @@ pub async fn listen(
         };
         if let Ok(metrics) = metrics {
             info!("Sending metrics...");
-            _ = send(&metrics, &identity_wallet, &mut client).await;
+            _ = send_metrics(&metrics, &identity_wallet, &mut backend_client).await;
         }
 
         sleep(Duration::from_secs(TELEMETRY_INTERVAL_IN_MINUTES * 60)).await;
@@ -122,14 +122,14 @@ async fn collect(avs: &Option<Box<dyn AvsVariant>>) -> Result<Vec<Metrics>, IvyE
     Ok(metrics)
 }
 
-async fn send(
+async fn send_metrics(
     metrics: &[Metrics],
     wallet: &IvyWallet,
-    client: &mut BackendClient<Channel>,
+    backend_client: &mut BackendClient<Channel>,
 ) -> Result<(), IvyError> {
     let signature = sign_metrics(metrics, wallet).await?;
 
-    client
+    backend_client
         .metrics(Request::new(SignedMetrics {
             signature: signature.to_vec(),
             metrics: metrics.to_vec(),

@@ -78,15 +78,20 @@ impl DbNodeData {
         Ok(node_data)
     }
 
-    pub async fn create_avs_node_data(
+    pub async fn record_avs_node_data(
         pool: &sqlx::PgPool,
         node_id: &Address,
         avs_name: &AvsName,
         avs_version: &Version,
         active_set: bool,
     ) -> Result<(), BackendError> {
+        // "INSERT INTO avs_data (avs_name, avs_version) VALUES ($1, $2)
+        //     ON CONFLICT (avs_name)
+        //     DO UPDATE SET avs_version = $2",
         query!(
-            "INSERT INTO node_data (node_id, avs_name, avs_version, active_set) values ($1, $2, $3, $4)",
+            "INSERT INTO node_data (node_id, avs_name, avs_version, active_set) values ($1, $2, $3, $4)
+            ON CONFLICT (node_id, avs_name)
+            DO UPDATE SET avs_version = $3, active_set = $4",
             Some(node_id.as_bytes()),
             avs_name.clone().to_string(),
             avs_version.to_string(),

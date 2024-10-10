@@ -1,10 +1,11 @@
 use std::sync::Arc;
 
 use crate::{
-    db::{metric::Metric, node::DbNode, Account},
+    db::{metric::Metric, node::DbNode, node_data::DbNodeData, Account},
     error::BackendError,
 };
 use ivynet_core::{
+    avs::names::AvsName,
     ethers::types::{Address, Signature},
     grpc::{
         self,
@@ -15,6 +16,7 @@ use ivynet_core::{
     },
     signature::{recover_metrics, recover_node_data},
 };
+use semver::Version;
 use sqlx::PgPool;
 use tracing::debug;
 
@@ -81,15 +83,33 @@ impl Backend for BackendService {
 
     async fn node_data(&self, request: Request<SignedNodeData>) -> Result<Response<()>, Status> {
         let req = request.into_inner();
+        if let Some(node_data) = &req.node_data {
+            let node_id = recover_node_data(
+                node_data,
+                &Signature::try_from(req.signature.as_slice())
+                    .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
+            )
+            .await?;
 
-        let node_id = recover_node_data(
-            &req.node_data,
-            &Signature::try_from(req.signature.as_slice())
-                .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
-        )
-        .await?;
+            let _node = DbNode::get(&self.pool, &node_id)
+                .await
+                .map_err(|_| Status::not_found("Node not registered"))?;
 
-        todo!()
+            DbNodeData::record_avs_node_data(
+                &self.pool,
+                &node_id,
+                &AvsName::from(node_data.avs_name.as_str()),
+                &Version::parse(&node_data.avs_version)
+                    .expect("Cannot parse version on NodeData grpc message"),
+                node_data.active_set,
+            )
+            .await
+            .map_err(|e| Status::internal(format!("Failed while saving node_data: {}", e)))?;
+        } else {
+            return Err(Status::invalid_argument("Node data is missing"));
+        }
+
+        Ok(Response::new(()))
     }
 }
 
