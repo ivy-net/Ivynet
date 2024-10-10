@@ -12,7 +12,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::{
-    data,
+    data::{self, NodeStatus},
     db::{
         metric::Metric,
         node,
@@ -23,14 +23,11 @@ use crate::{
 
 use super::{authorize, HttpState};
 
-const EIGEN_PERFORMANCE_METRIC: &str = "eigen_performance_score";
 const CPU_USAGE_METRIC: &str = "cpu_usage";
 const MEMORY_USAGE_METRIC: &str = "ram_usage";
 const DISK_USAGE_METRIC: &str = "disk_usage";
 const UPTIME_METRIC: &str = "uptime";
 const RUNNING_METRIC: &str = "running";
-
-const EIGEN_PERFORMANCE_HEALTHY_THRESHOLD: f64 = 80.0;
 
 #[derive(Deserialize, Debug, Clone, ToSchema)]
 pub struct NameChangeRequest {
@@ -44,7 +41,7 @@ pub enum StatusError {}
 #[derive(Serialize, ToSchema, Clone, Debug, Default)]
 pub struct StatusReport {
     pub total_machines: usize,
-    pub healthy_machines: usize,
+    pub healthy_machines: Vec<String>,
     pub unhealthy_machines: Vec<String>,
     pub idle_machines: Vec<String>,
     pub updateable_machines: Vec<String>,
@@ -57,17 +54,17 @@ pub struct Status {
     pub result: StatusReport,
 }
 
-#[derive(Serialize, ToSchema, Clone, Debug, Default)]
+#[derive(Serialize, ToSchema, Clone, Debug)]
 pub struct Info {
     pub error: Vec<StatusError>,
     pub result: InfoReport,
 }
 
-#[derive(Serialize, ToSchema, Clone, Debug, Default)]
+#[derive(Serialize, ToSchema, Clone, Debug)]
 pub struct InfoReport {
     pub machine_id: String,
     pub name: String,
-    pub status: String,
+    pub status: NodeStatus,
     pub metrics: Metrics,
     pub last_checked: Option<NaiveDateTime>,
 }
@@ -102,51 +99,27 @@ pub async fn status(
 
     let machines = account.nodes(&state.pool).await?;
 
-    let mut metrics = HashMap::new();
+    let mut node_metrics_map = HashMap::new();
 
     for machine in &machines {
-        metrics
+        node_metrics_map
             .insert(machine.node_id, Metric::get_organized_for_node(&state.pool, machine).await?);
     }
+
+    let (running_nodes, idle_nodes) = data::categorize_running_nodes(node_metrics_map.clone());
+    let (healthy_nodes, unhealthy_nodes) =
+        data::categorize_node_health(running_nodes.clone(), node_metrics_map.clone());
+
+    //TODO: Old (ie machines not pushing metrics) machines and updateable machines are not
+    // implemented yet
 
     Ok(Status {
         error: Vec::new(),
         result: StatusReport {
             total_machines: machines.len(),
-            healthy_machines: metrics
-                .iter()
-                .filter_map(|(machine, metrics)| {
-                    if let Some(performace) = metrics.get(EIGEN_PERFORMANCE_METRIC) {
-                        if performace.value >= EIGEN_PERFORMANCE_HEALTHY_THRESHOLD {
-                            return Some(machine);
-                        }
-                    }
-                    None
-                })
-                .collect::<Vec<_>>()
-                .len(),
-            unhealthy_machines: metrics
-                .iter()
-                .filter_map(|(machine, metrics)| {
-                    if let Some(performace) = metrics.get(EIGEN_PERFORMANCE_METRIC) {
-                        if performace.value >= EIGEN_PERFORMANCE_HEALTHY_THRESHOLD {
-                            return None;
-                        }
-                    }
-                    Some(format!("{machine:?}"))
-                })
-                .collect::<Vec<_>>(),
-            idle_machines: metrics
-                .iter()
-                .filter_map(|(machine, metrics)| {
-                    if let Some(performace) = metrics.get(RUNNING_METRIC) {
-                        if performace.value == 1.0 {
-                            return None;
-                        }
-                    }
-                    Some(format!("{machine:?}"))
-                })
-                .collect::<Vec<_>>(),
+            healthy_machines: healthy_nodes.iter().map(|node| format!("{node:?}")).collect(),
+            unhealthy_machines: unhealthy_nodes.iter().map(|node| format!("{node:?}")).collect(),
+            idle_machines: idle_nodes.iter().map(|node| format!("{node:?}")).collect(),
             updateable_machines: Vec::new(), // TODO: How to get these?
             erroring_machines: Vec::new(),   // TODO: When we will solve error issues
         },
@@ -172,25 +145,16 @@ pub async fn idling(
 
     let machines = account.nodes(&state.pool).await?;
 
-    let mut metrics = HashMap::new();
+    let mut node_metrics_map = HashMap::new();
 
     for machine in &machines {
-        metrics
+        node_metrics_map
             .insert(machine.node_id, Metric::get_organized_for_node(&state.pool, machine).await?);
     }
 
-    Ok(metrics
-        .iter()
-        .filter_map(|(machine, metrics)| {
-            if let Some(performace) = metrics.get(RUNNING_METRIC) {
-                if performace.value == 1.0 {
-                    return None;
-                }
-            }
-            Some(format!("{machine:?}"))
-        })
-        .collect::<Vec<_>>()
-        .into())
+    let (_, idle_nodes) = data::categorize_running_nodes(node_metrics_map.clone());
+
+    Ok(Json(idle_nodes.iter().map(|node| format!("{node:?}")).collect()))
 }
 
 /// Get an overview of which nodes are unhealthy
@@ -211,27 +175,50 @@ pub async fn unhealthy(
 
     let machines = account.nodes(&state.pool).await?;
 
-    let mut metrics = HashMap::new();
+    let mut node_metrics_map = HashMap::new();
 
     for machine in &machines {
-        metrics
+        node_metrics_map
             .insert(machine.node_id, Metric::get_organized_for_node(&state.pool, machine).await?);
     }
 
-    Ok(metrics
-        .iter()
-        .filter_map(|(machine, metrics)| {
-            if let (Some(running), Some(performace)) =
-                (metrics.get(EIGEN_PERFORMANCE_METRIC), metrics.get(RUNNING_METRIC))
-            {
-                if running.value < 1.0 || performace.value >= EIGEN_PERFORMANCE_HEALTHY_THRESHOLD {
-                    return None;
-                }
-            }
-            Some(format!("{machine:?}"))
-        })
-        .collect::<Vec<_>>()
-        .into())
+    let (running_nodes, _) = data::categorize_running_nodes(node_metrics_map.clone());
+    let (_, unhealthy_nodes) =
+        data::categorize_node_health(running_nodes.clone(), node_metrics_map.clone());
+
+    Ok(Json(unhealthy_nodes.iter().map(|node| format!("{node:?}")).collect()))
+}
+
+/// Get an overview of which nodes are healthy
+#[utoipa::path(
+    post,
+    path = "/client/healthy",
+    responses(
+        (status = 200, body = Vec<String>),
+        (status = 404)
+    )
+)]
+pub async fn healthy(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+) -> Result<Json<Vec<String>>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+
+    let machines = account.nodes(&state.pool).await?;
+
+    let mut node_metrics_map = HashMap::new();
+
+    for machine in &machines {
+        node_metrics_map
+            .insert(machine.node_id, Metric::get_organized_for_node(&state.pool, machine).await?);
+    }
+
+    let (running_nodes, _) = data::categorize_running_nodes(node_metrics_map.clone());
+    let (healthy_nodes, _) =
+        data::categorize_node_health(running_nodes.clone(), node_metrics_map.clone());
+
+    Ok(Json(healthy_nodes.iter().map(|node| format!("{node:?}")).collect()))
 }
 
 /// Set the name of a node
@@ -306,28 +293,12 @@ pub async fn metrics_condensed(
     jar: CookieJar,
 ) -> Result<Json<Vec<Metric>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let node_id =
+        authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
 
-    let node_id = id.parse::<Address>().map_err(|_| BackendError::InvalidNodeId)?;
+    let metrics = Metric::get_all_for_node(&state.pool, node_id).await?;
 
-    let account_nodes = node::DbNode::get_all_for_account(&state.pool, &account).await?;
-
-    let node = {
-        let mut ret = None;
-        for node in account_nodes {
-            if node.node_id == node_id {
-                ret = Some(node);
-                break;
-            }
-        }
-        ret
-    };
-    let all_metrics = if let Some(node) = node {
-        Ok(Metric::get_all_for_node(&state.pool, &node).await?)
-    } else {
-        Err(BackendError::InvalidNodeId)
-    }?;
-
-    let filtered_metrics = data::filter_metrics(&all_metrics)?;
+    let filtered_metrics = data::condense_metrics(&metrics)?;
 
     Ok(Json(filtered_metrics))
 }
@@ -348,26 +319,10 @@ pub async fn metrics_all(
     jar: CookieJar,
 ) -> Result<Json<Vec<Metric>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let node_id =
+        authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
 
-    let node_id = id.parse::<Address>().map_err(|_| BackendError::InvalidNodeId)?;
-
-    let account_nodes = node::DbNode::get_all_for_account(&state.pool, &account).await?;
-
-    let node = {
-        let mut ret = None;
-        for node in account_nodes {
-            if node.node_id == node_id {
-                ret = Some(node);
-                break;
-            }
-        }
-        ret
-    };
-    if let Some(node) = node {
-        Ok(Metric::get_all_for_node(&state.pool, &node).await?.into())
-    } else {
-        Err(BackendError::InvalidNodeId)
-    }
+    Ok(Metric::get_all_for_node(&state.pool, node_id).await?.into())
 }
 
 /// Get info on a specific node
@@ -413,8 +368,7 @@ pub async fn info(
         result: InfoReport {
             machine_id: id,
             name: machine.name,
-            status: "Healthy".to_owned(), // TODO: This is wrong. We don't know what potential
-            // statuses are
+            status: data::get_node_status(metrics.clone()), //TODO: This could still be improved
             metrics: Metrics {
                 cpu_usage: if let Some(cpu) = metrics.get(CPU_USAGE_METRIC) {
                     cpu.value

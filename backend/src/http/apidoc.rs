@@ -17,6 +17,7 @@ use super::{super::db, authorize, avs, client, organization};
         client::status,
         client::idling,
         client::unhealthy,
+        client::healthy,
         client::info,
         client::metrics_condensed,
         client::metrics_all,
