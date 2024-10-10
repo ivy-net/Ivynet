@@ -5,7 +5,6 @@ pub mod error;
 pub mod init;
 pub mod inspect;
 pub mod key;
-pub mod messenger;
 pub mod operator;
 pub mod rpc;
 pub mod service;

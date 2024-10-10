@@ -7,6 +7,7 @@ use crate::{
     eigen::{contracts::delegation_manager::DelegationManager, quorum::QuorumType},
     error::IvyError,
     keychain::{KeyType, Keychain},
+    messenger::BackendMessenger,
     rpc_management::{connect_provider, IvyProvider},
     utils::try_parse_chain,
     wallet::IvyWallet,
@@ -50,6 +51,7 @@ pub struct AvsProvider {
     // TODO: Deprecate this if possible, requires conversion of underlying AVS scripts
     pub keyfile_pw: Option<String>,
     pub delegation_manager: DelegationManager,
+    pub messenger: Option<BackendMessenger>,
 }
 
 impl AvsProvider {
@@ -57,9 +59,10 @@ impl AvsProvider {
         avs: Option<Box<dyn AvsVariant>>,
         provider: Arc<IvyProvider>,
         keyfile_pw: Option<String>,
+        messenger: Option<BackendMessenger>,
     ) -> Result<Self, IvyError> {
         let delegation_manager = DelegationManager::new(provider.clone())?;
-        Ok(Self { avs, provider, keyfile_pw, delegation_manager })
+        Ok(Self { avs, provider, keyfile_pw, delegation_manager, messenger })
     }
 
     /// Sets new avs with new provider
@@ -142,6 +145,10 @@ impl AvsProvider {
                 Chain::try_from(self.provider.signer().chain_id())?,
             ));
         }
+        //TODO: Fill out these values
+        // if let Some(messenger) = &self.messenger {
+        //     messenger.send_node_data_payload(avs_name, avs_version, active_set);
+        // }
         self.avs_mut()?.start().await
     }
 
@@ -153,12 +160,20 @@ impl AvsProvider {
                 Chain::try_from(self.provider.signer().chain_id())?,
             ));
         }
+        //TODO: Fill out these values
+        // if let Some(messenger) = &self.messenger {
+        //     messenger.send_node_data_payload(avs_name, avs_version, active_set);
+        // }
         self.avs_mut()?.attach().await
     }
 
     /// Stop the loaded AVS instance.
     pub async fn stop(&mut self) -> Result<(), IvyError> {
         self.avs_mut()?.stop().await?;
+        //TODO: Fill out these values with deletion
+        // if let Some(messenger) = &self.messenger {
+        //     messenger.send_node_data_payload(avs_name, avs_version, active_set);
+        // }
         Ok(())
     }
 
@@ -301,6 +316,7 @@ pub async fn build_avs_provider(
     config: &IvyConfig,
     wallet: Option<IvyWallet>,
     keyfile_pw: Option<String>,
+    messenger: Option<BackendMessenger>,
 ) -> Result<AvsProvider, IvyError> {
     let chain = try_parse_chain(chain)?;
     let provider = connect_provider(&config.get_rpc_url(chain)?, wallet).await?;
@@ -314,5 +330,5 @@ pub async fn build_avs_provider(
     } else {
         None
     };
-    AvsProvider::new(avs_instance, Arc::new(provider), keyfile_pw)
+    AvsProvider::new(avs_instance, Arc::new(provider), keyfile_pw, messenger)
 }

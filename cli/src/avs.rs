@@ -26,9 +26,15 @@ pub async fn parse_avs_subcommands(
 
         let key = keychain.load(keyname, &password)?;
         if let Some(wallet) = key.get_wallet_owned() {
-            let mut avs =
-                build_avs_provider(Some(avs), chain, config, Some(wallet), Some(password.clone()))
-                    .await?;
+            let mut avs = build_avs_provider(
+                Some(avs),
+                chain,
+                config,
+                Some(wallet),
+                Some(password.clone()),
+                None,
+            )
+            .await?;
             avs.setup(config, Some(password)).await?;
         };
         return Ok(());
