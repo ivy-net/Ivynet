@@ -23,6 +23,7 @@ use ethers::{
 };
 use lagrange::Lagrange;
 use names::AvsName;
+use semver::Version;
 use std::{collections::HashMap, fmt::Debug, fs, path::PathBuf, sync::Arc};
 use tokio::process::Child;
 use tracing::{debug, error, info};
@@ -138,17 +139,22 @@ impl AvsProvider {
 
     /// Start the loaded AVS instance. Returns an error if no AVS instance is loaded.
     pub async fn start(&mut self) -> Result<(), IvyError> {
-        let avs = self.avs_mut()?;
-        if avs.is_running() {
+        let avs_name = self.avs_mut()?.name();
+        let is_running = self.avs_mut()?.is_running();
+        if is_running {
             return Err(IvyError::AvsRunningError(
-                avs.name().to_string(),
+                avs_name.to_string(),
                 Chain::try_from(self.provider.signer().chain_id())?,
             ));
         }
+
         //TODO: Fill out these values
-        // if let Some(messenger) = &self.messenger {
-        //     messenger.send_node_data_payload(avs_name, avs_version, active_set);
-        // }
+        if let Some(messenger) = &mut self.messenger {
+            messenger.send_node_data_payload(avs_name, Version::new(0, 0, 1), true).await?;
+        } else {
+            println!("No messenger found");
+        }
+
         self.avs_mut()?.start().await
     }
 
@@ -172,7 +178,7 @@ impl AvsProvider {
         self.avs_mut()?.stop().await?;
         //TODO: Fill out these values with deletion
         // if let Some(messenger) = &self.messenger {
-        //     messenger.send_node_data_payload(avs_name, avs_version, active_set);
+        //     messenger.delete_node_data_payload(avs_name);
         // }
         Ok(())
     }
@@ -298,7 +304,7 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
     /// Handle a log line from the AVS instance.
     async fn handle_log(&self, line: &str, src: CmdLogSource) -> Result<(), IvyError>;
     /// Return the name of the AVS instance.
-    fn name(&self) -> &str;
+    fn name(&self) -> AvsName;
     /// Handle to the top-level directory for the AVS instance.
     fn base_path(&self) -> PathBuf;
     /// Return the path to the AVS instance's run directory (usually a docker compose file)

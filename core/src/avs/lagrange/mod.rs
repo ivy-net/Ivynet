@@ -170,8 +170,8 @@ impl AvsVariant for Lagrange {
         Ok(())
     }
 
-    fn name(&self) -> &str {
-        AvsName::LagrangeZK.as_str()
+    fn name(&self) -> AvsName {
+        AvsName::LagrangeZK
     }
 
     fn base_path(&self) -> PathBuf {

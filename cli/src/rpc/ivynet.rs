@@ -52,12 +52,12 @@ impl Avs for IvynetService {
         let avs = &provider.avs;
         let (running, avs_type, chain) = if let Some(avs) = avs {
             let is_running = avs.is_running();
-            let avs_type = avs.name();
+            let avs_type = avs.name().to_string();
             let chain = Chain::try_from(provider.provider.signer().chain_id())
                 .expect("Unexpected chain ID parse failure");
             (is_running, avs_type, chain.to_string())
         } else {
-            let avs_type = "None";
+            let avs_type = "None".to_string();
             let chain = "None";
             (false, avs_type, chain.to_string())
         };

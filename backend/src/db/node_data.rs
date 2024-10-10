@@ -8,7 +8,7 @@ use crate::error::BackendError;
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct NodeData {
-    pub serial_id: i32,
+    pub operator_id: Address,
     pub node_id: Address,
     pub avs_name: AvsName,
     pub avs_version: Version,
@@ -21,7 +21,7 @@ pub struct NodeData {
 /// for the future
 #[derive(Clone, Debug)]
 pub struct DbNodeData {
-    pub id: i32,
+    pub operator_id: Vec<u8>,
     pub node_id: Vec<u8>,
     pub avs_name: String,
     pub avs_version: String,
@@ -31,7 +31,7 @@ pub struct DbNodeData {
 impl From<DbNodeData> for NodeData {
     fn from(db_node_data: DbNodeData) -> Self {
         NodeData {
-            serial_id: db_node_data.id,
+            operator_id: Address::from_slice(&db_node_data.operator_id),
             node_id: Address::from_slice(&db_node_data.node_id),
             avs_name: AvsName::from(db_node_data.avs_name.as_str()),
             avs_version: Version::parse(&db_node_data.avs_version)
@@ -85,9 +85,6 @@ impl DbNodeData {
         avs_version: &Version,
         active_set: bool,
     ) -> Result<(), BackendError> {
-        // "INSERT INTO avs_data (avs_name, avs_version) VALUES ($1, $2)
-        //     ON CONFLICT (avs_name)
-        //     DO UPDATE SET avs_version = $2",
         query!(
             "INSERT INTO node_data (node_id, avs_name, avs_version, active_set) values ($1, $2, $3, $4)
             ON CONFLICT (node_id, avs_name)

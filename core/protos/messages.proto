@@ -41,3 +41,8 @@ message NodeData {
     string avs_version = 3;
     bool active_set = 4;
 }
+
+message SignedDeleteNodeData {
+    bytes signature = 1;
+    string avs_name = 2;
+}

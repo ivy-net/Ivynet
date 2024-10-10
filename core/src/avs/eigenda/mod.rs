@@ -267,7 +267,7 @@ impl AvsVariant for EigenDA {
     async fn handle_log(&self, log: &str, src: CmdLogSource) -> Result<(), IvyError> {
         println!("{}", log);
         let log = ansi_sanitization_regex().replace_all(log, "").to_string();
-        let logfile_dir = AvsConfig::log_path(self.name(), self.chain.as_ref());
+        let logfile_dir = AvsConfig::log_path(self.name().as_str(), self.chain.as_ref());
         match src {
             CmdLogSource::StdOut => {
                 // write to logfile simply capturing all stdout output
@@ -300,8 +300,8 @@ impl AvsVariant for EigenDA {
         }
     }
 
-    fn name(&self) -> &'static str {
-        AvsName::EigenDA.as_str()
+    fn name(&self) -> AvsName {
+        AvsName::EigenDA
     }
 
     fn base_path(&self) -> PathBuf {

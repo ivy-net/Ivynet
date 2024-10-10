@@ -119,8 +119,8 @@ impl AvsVariant for AltLayer {
         todo!()
     }
 
-    fn name(&self) -> &'static str {
-        AvsName::AltLayer.as_str()
+    fn name(&self) -> AvsName {
+        AvsName::AltLayer
     }
 
     fn base_path(&self) -> PathBuf {

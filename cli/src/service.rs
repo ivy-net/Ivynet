@@ -36,10 +36,11 @@ pub async fn serve(
         .interact()?;
     let key = keychain.load(keyname, &keyfile_pw)?;
     if let Some(wallet) = key.get_wallet_owned() {
+        let connection_wallet = config.identity_wallet()?;
         let backend_client = BackendClient::new(
             create_channel(ivynet_core::grpc::client::Source::Uri(server_url), server_ca).await?,
         );
-        let messenger = BackendMessenger::new(backend_client.clone(), wallet.clone());
+        let messenger = BackendMessenger::new(backend_client.clone(), connection_wallet.clone());
 
         // Avs Service
         // TODO: This should default to local instead of holesky?
@@ -65,7 +66,6 @@ pub async fn serve(
         if no_backend {
             server.serve(sock).await?;
         } else {
-            let connection_wallet = config.identity_wallet()?;
             tokio::select! {
                 ret = server.serve(sock) => { error!("Local server error {ret:?}") },
                 ret = telemetry::listen(ivynet_inner, backend_client, connection_wallet) => { error!("Telemetry listener error {ret:?}") }

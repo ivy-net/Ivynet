@@ -11,7 +11,7 @@ use crate::{
 };
 
 // --- General Signing ---
-pub async fn sign_string(string: &str, wallet: &IvyWallet) -> Result<Signature, IvyError> {
+pub fn sign_string(string: &str, wallet: &IvyWallet) -> Result<Signature, IvyError> {
     sign_hash(H256::from(&keccak256(encode(&[Token::String(string.to_string())]))), wallet)
 }
 
@@ -31,18 +31,18 @@ pub fn recover_from_string(string: &str, signature: &Signature) -> Result<Addres
 }
 
 // --- Metrics ---
-pub async fn sign_metrics(metrics: &[Metrics], wallet: &IvyWallet) -> Result<Signature, IvyError> {
-    sign_hash(build_metrics_message(metrics).await?, wallet)
+pub fn sign_metrics(metrics: &[Metrics], wallet: &IvyWallet) -> Result<Signature, IvyError> {
+    sign_hash(build_metrics_message(metrics)?, wallet)
 }
 
 pub async fn recover_metrics(
     metrics: &[Metrics],
     signature: &Signature,
 ) -> Result<Address, IvyError> {
-    recover_from_hash(build_metrics_message(metrics).await?, signature)
+    recover_from_hash(build_metrics_message(metrics)?, signature)
 }
 
-async fn build_metrics_message(metrics: &[Metrics]) -> Result<H256, IvyError> {
+fn build_metrics_message(metrics: &[Metrics]) -> Result<H256, IvyError> {
     let mut tokens = Vec::new();
     let mut metrics_vector = metrics.to_vec();
     metrics_vector.sort_by(|a, b| b.name.cmp(&a.name));
@@ -60,18 +60,16 @@ async fn build_metrics_message(metrics: &[Metrics]) -> Result<H256, IvyError> {
 }
 
 // --- Node Data ---
-pub async fn sign_node_data(data: &NodeData, wallet: &IvyWallet) -> Result<Signature, IvyError> {
-    sign_hash(build_node_data_message(data).await?, wallet)
+pub fn sign_node_data(data: &NodeData, wallet: &IvyWallet) -> Result<Signature, IvyError> {
+    println!("Match with Identity wallet: {:#?}", wallet);
+    sign_hash(build_node_data_message(data)?, wallet)
 }
 
-pub async fn recover_node_data(
-    data: &NodeData,
-    signature: &Signature,
-) -> Result<Address, IvyError> {
-    recover_from_hash(build_node_data_message(data).await?, signature)
+pub fn recover_node_data(data: &NodeData, signature: &Signature) -> Result<Address, IvyError> {
+    recover_from_hash(build_node_data_message(data)?, signature)
 }
 
-async fn build_node_data_message(data: &NodeData) -> Result<H256, IvyError> {
+fn build_node_data_message(data: &NodeData) -> Result<H256, IvyError> {
     let mut tokens: Vec<Token> = Vec::new();
     println!("NODE DATA: {:#?}", data);
 
@@ -82,4 +80,15 @@ async fn build_node_data_message(data: &NodeData) -> Result<H256, IvyError> {
     println!("NODE DATA TOKENS: {:#?}", tokens);
 
     Ok(H256::from(&keccak256(encode(&tokens))))
+}
+
+pub fn sign_delete_node_data(avs_name: String, wallet: &IvyWallet) -> Result<Signature, IvyError> {
+    sign_string(&avs_name, wallet)
+}
+
+pub fn recover_delete_node_data(
+    avs_name: String,
+    signature: &Signature,
+) -> Result<Address, IvyError> {
+    recover_from_string(&avs_name, signature)
 }

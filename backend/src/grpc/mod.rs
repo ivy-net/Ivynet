@@ -3,6 +3,7 @@ use std::sync::Arc;
 use crate::{
     db::{metric::Metric, node::DbNode, node_data::DbNodeData, Account},
     error::BackendError,
+    grpc::grpc::messages::SignedDeleteNodeData,
 };
 use ivynet_core::{
     avs::names::AvsName,
@@ -14,12 +15,11 @@ use ivynet_core::{
         messages::{RegistrationCredentials, SignedLogs, SignedMetrics, SignedNodeData},
         server, Status,
     },
-    signature::{recover_metrics, recover_node_data},
+    signature::{recover_delete_node_data, recover_metrics, recover_node_data},
 };
 use semver::Version;
 use sqlx::PgPool;
 use tracing::debug;
-
 pub struct BackendService {
     pool: Arc<PgPool>,
 }
@@ -88,12 +88,13 @@ impl Backend for BackendService {
                 node_data,
                 &Signature::try_from(req.signature.as_slice())
                     .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
-            )
-            .await?;
+            )?;
 
             let _node = DbNode::get(&self.pool, &node_id)
                 .await
                 .map_err(|_| Status::not_found("Node not registered"))?;
+
+            println!("NODE: {:#?}", _node);
 
             DbNodeData::record_avs_node_data(
                 &self.pool,
@@ -110,6 +111,29 @@ impl Backend for BackendService {
         }
 
         Ok(Response::new(()))
+    }
+
+    async fn delete_node_data(
+        &self,
+        request: Request<SignedDeleteNodeData>,
+    ) -> Result<Response<()>, Status> {
+        let req = request.into_inner();
+
+        let node_id = recover_delete_node_data(
+            req.avs_name.clone(),
+            &Signature::try_from(req.signature.as_slice())
+                .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
+        )?;
+
+        DbNodeData::delete_avs_node_data(
+            &self.pool,
+            &node_id,
+            &AvsName::from(req.avs_name.as_str()),
+        )
+        .await
+        .map_err(|e| Status::internal(format!("Failed while deleting node_data: {}", e)))?;
+
+        todo!()
     }
 }
 

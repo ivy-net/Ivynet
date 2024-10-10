@@ -47,11 +47,11 @@ async fn collect(avs: &Option<Box<dyn AvsVariant>>) -> Result<Vec<Metrics>, IvyE
         Some(avs_type) => {
             match AvsName::from(avs_type.name()) {
                 AvsName::EigenDA => (
-                    Some(AvsName::EigenDA.as_str()),
+                    Some(AvsName::EigenDA.to_string()),
                     Some("http://localhost:9092/metrics"),
                     avs_type.is_running(),
                 ),
-                _ => (Some(avs_type.name()), None, avs_type.is_running()), // * that one */
+                _ => (Some(avs_type.name().to_string()), None, avs_type.is_running()), // * that one */
             }
         }
     };
@@ -127,7 +127,7 @@ async fn send_metrics(
     wallet: &IvyWallet,
     backend_client: &mut BackendClient<Channel>,
 ) -> Result<(), IvyError> {
-    let signature = sign_metrics(metrics, wallet).await?;
+    let signature = sign_metrics(metrics, wallet)?;
 
     backend_client
         .metrics(Request::new(SignedMetrics {
