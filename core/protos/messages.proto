@@ -45,5 +45,6 @@ message NodeData {
 
 message SignedDeleteNodeData {
     bytes signature = 1;
-    string avs_name = 2;
+    bytes operator_id = 2;
+    string avs_name = 3;
 }

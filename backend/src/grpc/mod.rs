@@ -94,8 +94,6 @@ impl Backend for BackendService {
                 .await
                 .map_err(|_| Status::not_found("Node not registered"))?;
 
-            println!("NODE: {:#?}", _node);
-
             DbNodeData::record_avs_node_data(
                 &self.pool,
                 &Address::from_slice(&node_data.operator_id),
@@ -120,21 +118,20 @@ impl Backend for BackendService {
     ) -> Result<Response<()>, Status> {
         let req = request.into_inner();
 
-        let node_id = recover_delete_node_data(
+        let _node_id = recover_delete_node_data(
             req.avs_name.clone(),
             &Signature::try_from(req.signature.as_slice())
                 .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
         )?;
 
-        DbNodeData::delete_avs_node_data(
+        DbNodeData::delete_avs_operator_data(
             &self.pool,
-            &node_id,
+            &Address::from_slice(&req.operator_id),
             &AvsName::from(req.avs_name.as_str()),
         )
         .await
         .map_err(|e| Status::internal(format!("Failed while deleting node_data: {}", e)))?;
-
-        todo!()
+        Ok(Response::new(()))
     }
 }
 

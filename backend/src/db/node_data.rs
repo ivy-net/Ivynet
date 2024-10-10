@@ -103,14 +103,14 @@ impl DbNodeData {
 
     pub async fn set_active_set(
         pool: &sqlx::PgPool,
-        node_id: &Address,
+        operator_id: &Address,
         avs_name: &AvsName,
         active_set: bool,
     ) -> Result<(), BackendError> {
         query!(
-            "UPDATE node_data SET active_set = $1 WHERE node_id = $2 AND avs_name = $3",
+            "UPDATE node_data SET active_set = $1 WHERE operator_id = $2 AND avs_name = $3",
             active_set,
-            node_id.as_bytes(),
+            operator_id.as_bytes(),
             avs_name.clone().to_string()
         )
         .execute(pool)
@@ -120,14 +120,14 @@ impl DbNodeData {
 
     pub async fn set_avs_version(
         pool: &sqlx::PgPool,
-        node_id: &Address,
+        operator_id: &Address,
         avs_name: &AvsName,
         avs_version: &Version,
     ) -> Result<(), BackendError> {
         query!(
-            "UPDATE node_data SET avs_version = $1 WHERE node_id = $2 AND avs_name = $3",
+            "UPDATE node_data SET avs_version = $1 WHERE operator_id = $2 AND avs_name = $3",
             avs_version.to_string(),
-            node_id.as_bytes(),
+            operator_id.as_bytes(),
             avs_name.clone().to_string()
         )
         .execute(pool)
@@ -135,14 +135,14 @@ impl DbNodeData {
         Ok(())
     }
 
-    pub async fn delete_avs_node_data(
+    pub async fn delete_avs_operator_data(
         pool: &sqlx::PgPool,
-        node_id: &Address,
+        operator_id: &Address,
         avs_name: &AvsName,
     ) -> Result<(), BackendError> {
         query!(
-            "DELETE FROM node_data WHERE node_id = $1 AND avs_name = $2",
-            node_id.as_bytes(),
+            "DELETE FROM node_data WHERE operator_id = $1 AND avs_name = $2",
+            operator_id.as_bytes(),
             avs_name.clone().to_string()
         )
         .execute(pool)

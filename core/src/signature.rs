@@ -78,8 +78,14 @@ fn build_node_data_message(data: &NodeData) -> Result<H256, IvyError> {
     Ok(H256::from(&keccak256(encode(&tokens))))
 }
 
-pub fn sign_delete_node_data(avs_name: String, wallet: &IvyWallet) -> Result<Signature, IvyError> {
-    sign_string(&avs_name, wallet)
+pub fn sign_delete_node_data(
+    operator_id: Address,
+    avs_name: String,
+    wallet: &IvyWallet,
+) -> Result<Signature, IvyError> {
+    let tokens = vec![Token::Address(operator_id), Token::String(avs_name)];
+
+    sign_hash(H256::from(&keccak256(encode(&tokens))), wallet)
 }
 
 pub fn recover_delete_node_data(

@@ -149,42 +149,49 @@ impl AvsProvider {
             ));
         }
 
-        println!("{:#?}", self.provider.signer());
-
         //TODO: Fill out these values
         if let Some(messenger) = &mut self.messenger {
             messenger
                 .send_node_data_payload(signer.address(), avs_name, Version::new(0, 0, 1), true)
                 .await?;
         } else {
-            println!("No messenger found");
+            println!("No messenger found - can't update data state");
         }
 
         self.avs_mut()?.start().await
     }
 
     pub async fn attach(&mut self) -> Result<Child, IvyError> {
-        let avs = self.avs_mut()?;
-        if avs.is_running() {
+        let avs_name = self.avs_mut()?.name();
+        let is_running = self.avs_mut()?.is_running();
+        let signer = self.provider.signer().clone();
+        if is_running {
             return Err(IvyError::AvsRunningError(
-                avs.name().to_string(),
-                Chain::try_from(self.provider.signer().chain_id())?,
+                avs_name.to_string(),
+                Chain::try_from(signer.chain_id())?,
             ));
         }
         //TODO: Fill out these values
-        // if let Some(messenger) = &self.messenger {
-        //     messenger.send_node_data_payload(avs_name, avs_version, active_set);
-        // }
+        if let Some(messenger) = &mut self.messenger {
+            messenger
+                .send_node_data_payload(signer.address(), avs_name, Version::new(0, 0, 1), true)
+                .await?;
+        } else {
+            println!("No messenger found - can't update data state");
+        }
         self.avs_mut()?.attach().await
     }
 
     /// Stop the loaded AVS instance.
     pub async fn stop(&mut self) -> Result<(), IvyError> {
+        let avs_name = self.avs_mut()?.name();
+        let signer = self.provider.signer().clone();
+        if let Some(messenger) = &mut self.messenger {
+            messenger.delete_node_data_payload(signer.address(), avs_name).await?;
+        } else {
+            println!("No messenger found - can't update data state");
+        }
         self.avs_mut()?.stop().await?;
-        //TODO: Fill out these values with deletion
-        // if let Some(messenger) = &self.messenger {
-        //     messenger.delete_node_data_payload(avs_name);
-        // }
         Ok(())
     }
 

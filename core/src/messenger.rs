@@ -48,11 +48,19 @@ impl BackendMessenger {
         Ok(())
     }
 
-    pub async fn delete_node_data_payload(&mut self, avs_name: AvsName) -> Result<(), IvyError> {
-        let signature = sign_delete_node_data(avs_name.to_string(), &self.identity_wallet)?;
+    pub async fn delete_node_data_payload(
+        &mut self,
+        operator_id: Address,
+        avs_name: AvsName,
+    ) -> Result<(), IvyError> {
+        let signature =
+            sign_delete_node_data(operator_id, avs_name.to_string(), &self.identity_wallet)?;
 
-        let signed_node_data =
-            SignedDeleteNodeData { signature: signature.to_vec(), avs_name: avs_name.to_string() };
+        let signed_node_data = SignedDeleteNodeData {
+            signature: signature.to_vec(),
+            operator_id: operator_id.as_bytes().to_vec(),
+            avs_name: avs_name.to_string(),
+        };
 
         let request = Request::new(signed_node_data);
         self.backend.delete_node_data(request).await?;
