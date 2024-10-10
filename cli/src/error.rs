@@ -29,7 +29,7 @@ pub enum Error {
 
     #[error(transparent)]
     StdIo(#[from] std::io::Error),
-    
+
     #[error("Invalid selection")]
     InvalidSelection,
 }
