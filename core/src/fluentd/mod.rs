@@ -28,19 +28,6 @@ pub fn make_fluentd_compose(ivynet_home: PathBuf) {
     std::fs::write(fluentd_compose, contents).expect("Unable to write file");
 }
 
-// pub fn make_fluentd_dockerfile(ivynet_home: PathBuf) {
-//     let contents = include_str!("Dockerfile");
-//
-//     let fluentd_path = get_fluentd_path(ivynet_home);
-//     if !&fluentd_path.exists() {
-//         std::fs::create_dir_all(&fluentd_path).expect("Unable to create directory");
-//     }
-//
-//     let fluentd_dockerfile = fluentd_path.join("Dockerfile");
-//     // dump to file
-//     std::fs::write(fluentd_dockerfile, contents).expect("Unable to write file");
-// }
-
 fn get_fluentd_path(ivynet_home: PathBuf) -> PathBuf {
     ivynet_home.join("fluentd")
 }

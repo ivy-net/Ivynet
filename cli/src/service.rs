@@ -82,13 +82,12 @@ pub async fn serve(
         if no_backend {
             tokio::select! {
                 ret = server.serve(sock) => { error!("Local server error {ret:?}") },
-                ret = serve_log_server() => { error!("Log server error {ret:?}") }
             }
         } else {
             let connection_wallet = config.identity_wallet()?;
             tokio::select! {
                 ret = server.serve(sock) => { error!("Local server error {ret:?}") },
-                ret = serve_log_server() => { error!("Log server error {ret:?}") }
+                ret = serve_log_server(backend_client.clone(), connection_wallet.clone()) => { error!("Log server error {ret:?}") }
                 ret = telemetry::listen(ivynet_inner, backend_client, connection_wallet) => { error!("Telemetry listener error {ret:?}") }
             }
         }
