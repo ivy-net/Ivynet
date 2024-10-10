@@ -9,7 +9,7 @@ Full build process from project root:
 cd backend
 docker-compose -f backend-compose.yaml up  -d
 export DATABASE_URL=postgresql://ivy:secret_ivy@localhost:5432/ivynet
-sqlx migrate run 
+sqlx migrate run
 cargo build --release
 cargo run --release
 ```
