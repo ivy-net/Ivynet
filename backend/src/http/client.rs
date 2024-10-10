@@ -450,7 +450,7 @@ pub async fn get_node_data_for_avs(
     let avs_name = AvsName::from(&avs);
 
     // Get all data for the node
-    let nodes_data = DbNodeData::get_node_data(&state.pool, &node_id, &avs_name).await?;
+    let nodes_data = DbNodeData::get_avs_node_data(&state.pool, &node_id, &avs_name).await?;
 
     Ok(Json(nodes_data))
 }
@@ -474,7 +474,7 @@ pub async fn delete_node_data(
     let node_id =
         authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
 
-    DbNodeData::delete_all(&state.pool, &node_id).await?;
+    DbNodeData::delete_all_node_data(&state.pool, &node_id).await?;
 
     Ok(())
 }
@@ -499,7 +499,7 @@ pub async fn delete_avs_node_data(
         authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
     let avs_name = AvsName::from(&avs);
 
-    DbNodeData::delete_avs(&state.pool, &node_id, &avs_name).await?;
+    DbNodeData::delete_avs_node_data(&state.pool, &node_id, &avs_name).await?;
 
     Ok(())
 }

@@ -60,7 +60,7 @@ impl DbNodeData {
 
     // This could still return multiple values if they have multiple operators
     // each running the same avs
-    pub async fn get_node_data(
+    pub async fn get_avs_node_data(
         pool: &sqlx::PgPool,
         node_id: &Address,
         avs_name: &AvsName,
@@ -78,7 +78,7 @@ impl DbNodeData {
         Ok(node_data)
     }
 
-    pub async fn create(
+    pub async fn create_avs_node_data(
         pool: &sqlx::PgPool,
         node_id: &Address,
         avs_name: &AvsName,
@@ -131,7 +131,7 @@ impl DbNodeData {
         Ok(())
     }
 
-    pub async fn delete_avs(
+    pub async fn delete_avs_node_data(
         pool: &sqlx::PgPool,
         node_id: &Address,
         avs_name: &AvsName,
@@ -146,7 +146,10 @@ impl DbNodeData {
         Ok(())
     }
 
-    pub async fn delete_all(pool: &sqlx::PgPool, node_id: &Address) -> Result<(), BackendError> {
+    pub async fn delete_all_node_data(
+        pool: &sqlx::PgPool,
+        node_id: &Address,
+    ) -> Result<(), BackendError> {
         query!("DELETE FROM node_data WHERE node_id = $1", node_id.as_bytes())
             .execute(pool)
             .await?;

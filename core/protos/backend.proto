@@ -9,4 +9,5 @@ service Backend {
     rpc Register(messages.RegistrationCredentials) returns (google.protobuf.Empty);
     rpc Metrics(messages.SignedMetrics) returns (google.protobuf.Empty);
     rpc Logs(messages.SignedLogs) returns (google.protobuf.Empty);
+    rpc NodeData(messages.SignedNodeData) returns (google.protobuf.Empty);
 }

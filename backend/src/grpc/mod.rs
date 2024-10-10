@@ -10,10 +10,10 @@ use ivynet_core::{
         self,
         backend::backend_server::{Backend, BackendServer},
         client::{Request, Response},
-        messages::{RegistrationCredentials, SignedLogs, SignedMetrics},
+        messages::{RegistrationCredentials, SignedLogs, SignedMetrics, SignedNodeData},
         server, Status,
     },
-    signature::recover,
+    signature::{recover_metrics, recover_node_data},
 };
 use sqlx::PgPool;
 use tracing::debug;
@@ -57,7 +57,7 @@ impl Backend for BackendService {
     async fn metrics(&self, request: Request<SignedMetrics>) -> Result<Response<()>, Status> {
         let req = request.into_inner();
 
-        let node_id = recover(
+        let node_id = recover_metrics(
             &req.metrics,
             &Signature::try_from(req.signature.as_slice())
                 .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
@@ -77,6 +77,19 @@ impl Backend for BackendService {
         .map_err(|_| Status::internal("Failed while saving metrics"))?;
 
         Ok(Response::new(()))
+    }
+
+    async fn node_data(&self, request: Request<SignedNodeData>) -> Result<Response<()>, Status> {
+        let req = request.into_inner();
+
+        let node_id = recover_node_data(
+            &req.node_data,
+            &Signature::try_from(req.signature.as_slice())
+                .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
+        )
+        .await?;
+
+        todo!()
     }
 }
 
