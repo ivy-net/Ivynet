@@ -45,7 +45,7 @@ async fn collect(avs: &Option<Box<dyn AvsVariant>>) -> Result<Vec<Metrics>, IvyE
     let (avs, address, running) = match avs {
         None => (None, None, false),
         Some(avs_type) => {
-            match AvsName::from(avs_type.name()) {
+            match avs_type.name() {
                 AvsName::EigenDA => (
                     Some(AvsName::EigenDA.to_string()),
                     Some("http://localhost:9092/metrics"),

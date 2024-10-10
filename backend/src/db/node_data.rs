@@ -48,7 +48,7 @@ impl DbNodeData {
     ) -> Result<Vec<NodeData>, BackendError> {
         let nodes_data: Vec<DbNodeData> = sqlx::query_as!(
             DbNodeData,
-            "SELECT id, node_id, avs_name, avs_version, active_set FROM node_data WHERE node_id = $1",
+            "SELECT operator_id, node_id, avs_name, avs_version, active_set FROM node_data WHERE node_id = $1",
             node_id.as_bytes()
         )
         .fetch_all(pool)
@@ -67,7 +67,7 @@ impl DbNodeData {
     ) -> Result<Vec<NodeData>, BackendError> {
         let nodes_data: Vec<DbNodeData> = sqlx::query_as!(
             DbNodeData,
-            "SELECT id, node_id, avs_name, avs_version, active_set FROM node_data WHERE node_id = $1 AND avs_name = $2",
+            "SELECT operator_id, node_id, avs_name, avs_version, active_set FROM node_data WHERE node_id = $1 AND avs_name = $2",
             node_id.as_bytes(),
             avs_name.clone().to_string()
         )
@@ -80,15 +80,17 @@ impl DbNodeData {
 
     pub async fn record_avs_node_data(
         pool: &sqlx::PgPool,
+        operator_id: &Address,
         node_id: &Address,
         avs_name: &AvsName,
         avs_version: &Version,
         active_set: bool,
     ) -> Result<(), BackendError> {
         query!(
-            "INSERT INTO node_data (node_id, avs_name, avs_version, active_set) values ($1, $2, $3, $4)
-            ON CONFLICT (node_id, avs_name)
-            DO UPDATE SET avs_version = $3, active_set = $4",
+            "INSERT INTO node_data (operator_id, node_id, avs_name, avs_version, active_set) values ($1, $2, $3, $4, $5)
+            ON CONFLICT (operator_id, avs_name)
+            DO UPDATE SET avs_version = $4, active_set = $5",
+            operator_id.as_bytes(),
             Some(node_id.as_bytes()),
             avs_name.clone().to_string(),
             avs_version.to_string(),

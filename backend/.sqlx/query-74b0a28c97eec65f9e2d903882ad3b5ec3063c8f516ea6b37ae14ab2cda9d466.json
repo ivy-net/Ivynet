@@ -1,0 +1,70 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO verification (verification_id, associated_id, verification_type, created_at, updated_at)\n                    VALUES ($1, $2, $3, $4, $5)\n                    RETURNING verification_id, associated_id, verification_type AS \"verification_type: _\", created_at, updated_at",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "verification_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "associated_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "verification_type: _",
+        "type_info": {
+          "Custom": {
+            "name": "verification_kind",
+            "kind": {
+              "Enum": [
+                "organization",
+                "user"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 4,
+        "name": "updated_at",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8",
+        {
+          "Custom": {
+            "name": "verification_kind",
+            "kind": {
+              "Enum": [
+                "organization",
+                "user"
+              ]
+            }
+          }
+        },
+        "Timestamp",
+        "Timestamp"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "74b0a28c97eec65f9e2d903882ad3b5ec3063c8f516ea6b37ae14ab2cda9d466"
+}

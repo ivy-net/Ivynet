@@ -9,6 +9,7 @@ use crate::{
     signature::{sign_delete_node_data, sign_node_data},
     wallet::IvyWallet,
 };
+use ethers::types::Address;
 use semver::Version;
 use tonic::Request;
 
@@ -25,11 +26,13 @@ impl BackendMessenger {
 
     pub async fn send_node_data_payload(
         &mut self,
+        operator_id: Address,
         avs_name: AvsName,
         avs_version: Version,
         active_set: bool,
     ) -> Result<(), IvyError> {
         let data = &NodeData {
+            operator_id: operator_id.as_bytes().to_vec(),
             avs_name: avs_name.to_string(),
             avs_version: avs_version.to_string(),
             active_set,

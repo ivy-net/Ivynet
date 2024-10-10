@@ -61,7 +61,6 @@ fn build_metrics_message(metrics: &[Metrics]) -> Result<H256, IvyError> {
 
 // --- Node Data ---
 pub fn sign_node_data(data: &NodeData, wallet: &IvyWallet) -> Result<Signature, IvyError> {
-    println!("Match with Identity wallet: {:#?}", wallet);
     sign_hash(build_node_data_message(data)?, wallet)
 }
 
@@ -70,15 +69,12 @@ pub fn recover_node_data(data: &NodeData, signature: &Signature) -> Result<Addre
 }
 
 fn build_node_data_message(data: &NodeData) -> Result<H256, IvyError> {
-    let mut tokens: Vec<Token> = Vec::new();
-    println!("NODE DATA: {:#?}", data);
-
-    tokens.push(Token::String(data.avs_name.clone()));
-    tokens.push(Token::String(data.avs_version.clone()));
-    tokens.push(Token::Bool(data.active_set));
-
-    println!("NODE DATA TOKENS: {:#?}", tokens);
-
+    let tokens = vec![
+        Token::Address(Address::from_slice(&data.operator_id)),
+        Token::String(data.avs_name.clone()),
+        Token::String(data.avs_version.clone()),
+        Token::Bool(data.active_set),
+    ];
     Ok(H256::from(&keccak256(encode(&tokens))))
 }
 

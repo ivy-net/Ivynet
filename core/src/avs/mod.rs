@@ -141,16 +141,21 @@ impl AvsProvider {
     pub async fn start(&mut self) -> Result<(), IvyError> {
         let avs_name = self.avs_mut()?.name();
         let is_running = self.avs_mut()?.is_running();
+        let signer = self.provider.signer().clone();
         if is_running {
             return Err(IvyError::AvsRunningError(
                 avs_name.to_string(),
-                Chain::try_from(self.provider.signer().chain_id())?,
+                Chain::try_from(signer.chain_id())?,
             ));
         }
 
+        println!("{:#?}", self.provider.signer());
+
         //TODO: Fill out these values
         if let Some(messenger) = &mut self.messenger {
-            messenger.send_node_data_payload(avs_name, Version::new(0, 0, 1), true).await?;
+            messenger
+                .send_node_data_payload(signer.address(), avs_name, Version::new(0, 0, 1), true)
+                .await?;
         } else {
             println!("No messenger found");
         }

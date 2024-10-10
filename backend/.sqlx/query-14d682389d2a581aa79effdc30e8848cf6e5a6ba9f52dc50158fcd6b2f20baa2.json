@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM organization",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "14d682389d2a581aa79effdc30e8848cf6e5a6ba9f52dc50158fcd6b2f20baa2"
+}

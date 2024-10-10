@@ -1,0 +1,46 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT organization_id, name, verified, created_at, updated_at FROM organization\n                WHERE organization_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "organization_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "verified",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 4,
+        "name": "updated_at",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "6e289aea9863046425a55ea54a7984f2e06be10718877a63a435374d5a99074a"
+}

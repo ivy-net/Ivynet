@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO node_data (operator_id, node_id, avs_name, avs_version, active_set) values ($1, $2, $3, $4, $5)\n            ON CONFLICT (operator_id, avs_name)\n            DO UPDATE SET avs_version = $4, active_set = $5",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bytea",
+        "Bytea",
+        "Varchar",
+        "Varchar",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8e40bdd2d8c4383458d9bdbe0167a9f941f427816cbc13097ac6300d9c34a10d"
+}

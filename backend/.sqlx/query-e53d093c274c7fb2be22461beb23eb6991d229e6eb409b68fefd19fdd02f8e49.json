@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE node_data SET active_set = $1 WHERE node_id = $2 AND avs_name = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bool",
+        "Bytea",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e53d093c274c7fb2be22461beb23eb6991d229e6eb409b68fefd19fdd02f8e49"
+}

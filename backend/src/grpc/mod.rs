@@ -98,6 +98,7 @@ impl Backend for BackendService {
 
             DbNodeData::record_avs_node_data(
                 &self.pool,
+                &Address::from_slice(&node_data.operator_id),
                 &node_id,
                 &AvsName::from(node_data.avs_name.as_str()),
                 &Version::parse(&node_data.avs_version)
