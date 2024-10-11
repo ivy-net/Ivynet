@@ -1,11 +1,9 @@
 use crate::{
     config::IvyConfig,
-    docker::{
-        dockercmd::{docker_cmd, docker_cmd_status},
-        log::CmdLogSource,
-    },
+    docker::{dockercmd::DockerCmd, log::CmdLogSource},
     eigen::{contracts::delegation_manager::DelegationManager, quorum::QuorumType},
     error::IvyError,
+    ivy_yaml::create_ivy_dockercompose,
     keychain::{KeyType, Keychain},
     messenger::BackendMessenger,
     rpc_management::{connect_provider, IvyProvider},
@@ -24,7 +22,7 @@ use ethers::{
 use lagrange::Lagrange;
 use names::AvsName;
 use semver::Version;
-use std::{collections::HashMap, fmt::Debug, fs, path::PathBuf, sync::Arc};
+use std::{collections::HashMap, fmt::Debug, path::PathBuf, sync::Arc};
 use tokio::process::Child;
 use tracing::{debug, error, info};
 
@@ -205,7 +203,7 @@ impl AvsProvider {
         // TODO: Move quorum logic into AVS-specific implementations.
         // TODO: RIIA path creation? Move to new() func
         let avs_path = self.avs()?.base_path();
-        fs::create_dir_all(avs_path.clone())?;
+        std::fs::create_dir_all(avs_path.clone())?;
 
         // TODO: likely a function call in registry_coordinator
         // let status = DELEGATION_MANAGER.get_operator_status(self.client.address()).await?;
@@ -288,8 +286,20 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
         std::env::set_current_dir(self.run_path())?;
         debug!("docker start: {}", self.run_path().display());
 
+        // Inject logging driver
+        // TODO: fluentd address from env
+        // This returns the name, which is just "ivy-docker-compose.yml." This can be stored or
+        // just rely on the name of the string.
+        let _ = create_ivy_dockercompose(
+            self.run_path().join("docker-compose.yml"),
+            "localhost:24224",
+        )?;
+
         // NOTE: See the limitations of the Stdio::piped() method if this experiences a deadlock
-        let cmd = &mut docker_cmd(["up", "--force-recreate"]).await?;
+        // let cmd = &mut docker_cmd(["up", "--force-recreate"]).await?;
+        let cmd = DockerCmd::new()
+            .args(["-f", "ivy-docker-compose.yml", "up", "--force-recreate"])
+            .spawn()?;
         debug!("cmd PID: {:?}", cmd.id());
         self.set_running(true);
         Ok(())
@@ -299,8 +309,18 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
     async fn attach(&mut self) -> Result<Child, IvyError> {
         //TODO: Better Pathing once invdividual configs are usable
         std::env::set_current_dir(self.run_path())?;
+        let _ = create_ivy_dockercompose(
+            self.run_path().join("docker-compose.yml"),
+            "localhost:24224",
+        )?;
+
         debug!("docker ataching: {}", self.run_path().display());
-        let cmd = docker_cmd(["logs", "-f"]).await?;
+        // NOTE: See the limitations of the Stdio::piped() method if this experiences a deadlock
+        // let cmd = docker_cmd(["logs", "-f"]).await?;
+        let cmd = DockerCmd::new()
+            .args(["-f", "ivy-docker-compose.yml", "up", "--force-recreate"])
+            .spawn()?;
+
         debug!("cmd PID: {:?}", cmd.id());
         self.set_running(true);
         Ok(cmd)
@@ -309,7 +329,11 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
     /// Bring the AVS instance down.
     async fn stop(&mut self) -> Result<(), IvyError> {
         std::env::set_current_dir(self.run_path())?;
-        let _ = docker_cmd_status(["down"]).await?;
+        // TODO: Deprecate env changing above
+
+        // NOTE: See the limitations of the Stdio::piped() method if this experiences a deadlock
+        // let _ = docker_cmd_status(["down"], None).await?;
+        let _ = DockerCmd::new().args(["-f", "ivy-docker-compose.yml", "down"]).status().await?;
         self.set_running(false);
         Ok(())
     }
