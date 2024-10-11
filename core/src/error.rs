@@ -174,6 +174,9 @@ pub enum IvyError {
 
     #[error(transparent)]
     BlsError(#[from] crate::bls::BlsKeyError),
+
+    #[error(transparent)]
+    IvyYamlError(#[from] crate::ivy_yaml::IvyYamlError),
 }
 
 #[derive(Debug, Error)]

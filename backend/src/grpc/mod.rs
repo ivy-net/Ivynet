@@ -49,8 +49,10 @@ impl Backend for BackendService {
         Ok(Response::new(()))
     }
 
-    async fn logs(&self, _request: Request<SignedLogs>) -> Result<Response<()>, Status> {
+    async fn logs(&self, request: Request<SignedLogs>) -> Result<Response<()>, Status> {
         // TODO: Implement parsing of the logs
+        let req = request.into_inner();
+        debug!("Received logs: {:?}", req);
         Ok(Response::new(()))
     }
 

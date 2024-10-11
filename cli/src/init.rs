@@ -2,6 +2,7 @@ use dialoguer::{Input, MultiSelect, Password, Select};
 use ivynet_core::{
     config::IvyConfig,
     error::IvyError,
+    fluentd::{make_fluentd_compose, make_fluentd_conf},
     grpc::{
         backend::backend_client::BackendClient,
         client::{create_channel, Source, Uri},
@@ -83,11 +84,22 @@ pub async fn initialize_ivynet(
         config.store()?;
 
         // configure RPC addresses
-        let config = set_config_rpcs(config)?;
+        config = set_config_rpcs(config)?;
         set_config_keys().await?;
         // let config = set_config_metadata(config)?;
         config.store()?;
     }
+
+    ///////////////////////////////
+    //  Setup Container Logging  //
+    ///////////////////////////////
+
+    println!("Initializing logging service files...");
+
+    make_fluentd_compose(config.get_dir());
+    // make_fluentd_dockerfile(config.get_dir());
+    make_fluentd_conf(config.get_dir());
+    println!("Logging service files created at {}", config.get_dir().display());
 
     println!("\n----- IvyNet initialization complete -----");
     println!("You can now run `ivynet serve` to start the IvyNet service.");
