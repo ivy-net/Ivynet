@@ -1,4 +1,6 @@
+use serde::Deserialize;
 use std::{
+    collections::HashMap,
     ffi::OsStr,
     pin::Pin,
     process::ExitStatus,
@@ -9,6 +11,23 @@ use tokio::{
     sync::mpsc,
 };
 use tokio_stream::Stream;
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ImageExposedPort {
+    #[serde(rename = "HostIp")]
+    pub ip: String,
+    #[serde(rename = "HostPort")]
+    pub port: u32,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ImageDetails {
+    #[serde(rename = "NetworkSettings")]
+    pub network_settings: HashMap<String, ImageExposedPort>,
+
+    #[serde(rename = "Image")]
+    pub image: String,
+}
 
 pub async fn docker_cmd<I, S>(args: I) -> Result<Child, std::io::Error>
 where
@@ -46,4 +65,18 @@ impl Stream for DockerStream {
         let inner = self.get_mut();
         inner.0.poll_recv(cx)
     }
+}
+
+pub async fn inspect(image_name: &str) -> Option<ImageDetails> {
+    if let Some(output) = Command::new("docker").arg("inspect").arg(image_name).output().await.ok()
+    {
+        if let Some(command_result) = serde_json::from_str::<Vec<ImageDetails>>(
+            std::str::from_utf8(&output.stdout).expect("Unparsable output string"),
+        )
+        .ok()
+        {
+            return command_result.into_iter().next();
+        }
+    }
+    None
 }
