@@ -9,6 +9,7 @@ use ivynet_core::{
         client::{create_channel, Request, Source, Uri},
         messages::RegistrationCredentials,
     },
+    wallet::IvyWallet,
 };
 use std::str::FromStr as _;
 use tracing_subscriber::FmtSubscriber;
@@ -138,7 +139,9 @@ async fn main() -> Result<(), AnyError> {
             service::serve(avs, chain, &config, server_url, server_ca, args.no_backend).await?
         }
         Commands::Register { email, password } => {
-            let config = IvyConfig::load_from_default_path()?;
+            let mut config = IvyConfig::load_from_default_path()?;
+            let new_key = IvyWallet::new();
+            config.backend_info.identity_key = new_key.to_private_key();
             let public_key = config.identity_wallet()?.address();
             let hostname =
                 { String::from_utf8(rustix::system::uname().nodename().to_bytes().to_vec()) }?;
@@ -153,6 +156,7 @@ async fn main() -> Result<(), AnyError> {
                     public_key: public_key.as_bytes().to_vec(),
                 }))
                 .await?;
+            config.store()?;
             println!("Node registered");
         }
         Commands::Init => unreachable!("Init handled above."),

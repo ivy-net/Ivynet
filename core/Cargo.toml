@@ -51,11 +51,12 @@ tokio-stream = { version = "0.1.15", features = ["net"] }
 tower = "0.4.13"
 hyper-util = { version = "0.1.6", features = ["full", "tokio"] }
 which = "6.0.2"
-eth-keystore = { version = "0.5.0", features = ["geth-compat"] }
 semver = "1.0.23"
 indexmap = "2.6.0"
 docker-compose-types = "0.15.0"
 axum = "0.7.7"
+eth-keystore = { version = "0.5.0" }
+uuid = { version = "1.10.0", features = ["v4", "serde"] }
 
 [build-dependencies]
 prost-build = "0.12"
