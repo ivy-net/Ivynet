@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use ivynet_core::{
-    avs::{names::AvsName, AvsProvider, AvsVariant},
+    avs::{names::AvsName, AvsProvider},
     config::get_detailed_system_information,
     error::IvyError,
     grpc::{
@@ -26,23 +26,18 @@ pub async fn listen(
     identity_wallet: IvyWallet,
 ) -> Result<(), IvyError> {
     loop {
-        let metrics = {
-            let provider = avs_provider.read().await;
-            collect(&provider.avs).await
-        };
-        if let Ok(metrics) = metrics {
-            info!("Sending metrics...");
-            _ = send_metrics(&metrics, &identity_wallet, &mut backend_client).await;
-        }
-
+        let metrics = { collect(&avs_provider).await }?;
+        info!("Sending metrics...");
+        _ = send_metrics(&metrics, &identity_wallet, &mut backend_client).await;
         sleep(Duration::from_secs(TELEMETRY_INTERVAL_IN_MINUTES * 60)).await;
     }
 }
 
-async fn collect(avs: &Option<Box<dyn AvsVariant>>) -> Result<Vec<Metrics>, IvyError> {
-    info!("Checking metrics...");
+async fn collect(avs_provider: &Arc<RwLock<AvsProvider>>) -> Result<Vec<Metrics>, IvyError> {
+    let provider = avs_provider.read().await;
+    let avs = &provider.avs;
     // Depending on currently running avs, we decide how to fetch
-    let (avs, address, running) = match avs {
+    let (avs_name, address, running) = match avs {
         None => (None, None, false),
         Some(avs_type) => {
             match avs_type.name() {
@@ -112,8 +107,38 @@ async fn collect(avs: &Option<Box<dyn AvsVariant>>) -> Result<Vec<Metrics>, IvyE
     metrics.push(Metrics {
         name: "running".to_owned(),
         value: if running { 1.0 } else { 0.0 },
-        attributes: if let Some(avs) = avs {
-            vec![MetricsAttribute { name: "avs".to_owned(), value: avs.to_owned() }]
+        attributes: if let Some(avs_name) = avs_name {
+            vec![
+                MetricsAttribute { name: "avs".to_owned(), value: avs_name.to_owned() },
+                MetricsAttribute {
+                    name: "operator_id".to_owned(),
+                    value: address.unwrap_or("").to_string(),
+                },
+                MetricsAttribute {
+                    name: "active_set".to_owned(),
+                    value: {
+                        if let Some(avs) = avs {
+                            avs.active_set(provider.provider.clone()).await.to_string()
+                        } else {
+                            "false".to_string()
+                        }
+                    },
+                },
+                MetricsAttribute {
+                    name: "version".to_owned(),
+                    value: {
+                        if let Some(avs) = avs {
+                            if let Ok(version) = avs.version() {
+                                version.to_string()
+                            } else {
+                                "0.0.0".to_string()
+                            }
+                        } else {
+                            "0.0.0".to_string()
+                        }
+                    },
+                },
+            ]
         } else {
             Default::default()
         },

@@ -1,12 +1,16 @@
 use async_trait::async_trait;
+use contracts::RegistryCoordinator;
 use core::str;
 use dialoguer::{Input, Password};
 use dirs::home_dir;
+use dotenvy::from_path;
 use ethers::{
     signers::Signer,
     types::{Address, Chain, U256},
 };
+use semver::Version;
 use std::{
+    env,
     fs::{self, File},
     io::{copy, BufReader, Write},
     path::PathBuf,
@@ -318,6 +322,73 @@ impl AvsVariant for EigenDA {
 
     fn set_running(&mut self, running: bool) {
         self.running = running;
+    }
+
+    fn version(&self) -> Result<semver::Version, IvyError> {
+        println!("Getting version...");
+        let yaml_path = self.run_path().join("docker-compose.yml");
+        let env_path = yaml_path.with_file_name(".env");
+
+        from_path(env_path).ok();
+        println!("YAML path: {:#?}", yaml_path);
+        let yaml_str = std::fs::read_to_string(yaml_path)?;
+        println!("YAML string: {:#?}", yaml_str);
+        let yaml_str = env::vars()
+            .fold(yaml_str, |acc, (key, val)| acc.replace(&format!("${{{}}}", key), &val));
+
+        println!("FOLDED YAML string: {:#?}", yaml_str);
+        let data: serde_yaml::Value = serde_yaml::from_str(&yaml_str)?;
+        println!("DATA MAPPED: {:#?}\n\n", data);
+
+        let image_value = &data["services"]["da-node"]["image"];
+        let container_name = &data["services"]["da-node"]["container_name"];
+        println!("{:#?}", image_value);
+        println!("{:#?}", container_name);
+
+        if let Some(image) = image_value.as_str() {
+            println!("Image: {:#?}", image);
+            let parts: Vec<&str> = image.split(':').collect();
+            if parts.len() == 2 {
+                let version = parts[1];
+                println!("Version: {:#?}", version);
+                let version = semver::Version::parse(version)?;
+                return Ok(version);
+            }
+        } else {
+            debug!("Could not parse image version");
+        }
+
+        Ok(Version::new(0, 0, 0))
+    }
+
+    async fn active_set(&self, provider: Arc<IvyProvider>) -> bool {
+        let address = provider.address();
+        let registry_coordinator_contract =
+            RegistryCoordinator::new(contracts::registry_coordinator(self.chain), provider);
+
+        let status = registry_coordinator_contract.get_operator_status(address).await;
+        if let Ok(stat) = status {
+            match stat {
+                0 => {
+                    println!("Operator has never registered");
+                    return false;
+                }
+                1 => {
+                    println!("Operator is in the active set");
+                    return true;
+                }
+                2 => {
+                    println!("Operator is not in the active set - deregistered");
+                    return false;
+                }
+                _ => {
+                    println!("Operator status is unknown");
+                    return false;
+                }
+            }
+        }
+
+        false
     }
 }
 

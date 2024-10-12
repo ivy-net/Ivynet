@@ -27,6 +27,12 @@ pub enum IvyError {
     SerdeJsonError(#[from] serde_json::Error),
 
     #[error(transparent)]
+    SerdeYamlError(#[from] serde_yaml::Error),
+
+    #[error(transparent)]
+    SemverError(#[from] semver::Error),
+
+    #[error(transparent)]
     WalletError(#[from] WalletError),
 
     // TODO: Attempt to deprecate, see private_key_string to bytes methods.

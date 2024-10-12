@@ -139,6 +139,8 @@ impl AvsProvider {
     pub async fn start(&mut self) -> Result<(), IvyError> {
         let avs_name = self.avs_mut()?.name();
         let is_running = self.avs_mut()?.is_running();
+        let version = self.avs()?.version()?;
+        let active_set = self.avs()?.active_set(self.provider.clone()).await;
         let signer = self.provider.signer().clone();
         if is_running {
             return Err(IvyError::AvsRunningError(
@@ -147,10 +149,9 @@ impl AvsProvider {
             ));
         }
 
-        //TODO: Fill out these values
         if let Some(messenger) = &mut self.messenger {
             messenger
-                .send_node_data_payload(signer.address(), avs_name, Version::new(0, 0, 1), true)
+                .send_node_data_payload(signer.address(), avs_name, version, active_set)
                 .await?;
         } else {
             println!("No messenger found - can't update data state");
@@ -162,6 +163,8 @@ impl AvsProvider {
     pub async fn attach(&mut self) -> Result<Child, IvyError> {
         let avs_name = self.avs_mut()?.name();
         let is_running = self.avs_mut()?.is_running();
+        let active_set = self.avs()?.active_set(self.provider.clone()).await;
+        let version = self.avs()?.version()?;
         let signer = self.provider.signer().clone();
         if is_running {
             return Err(IvyError::AvsRunningError(
@@ -169,10 +172,10 @@ impl AvsProvider {
                 Chain::try_from(signer.chain_id())?,
             ));
         }
-        //TODO: Fill out these values
+
         if let Some(messenger) = &mut self.messenger {
             messenger
-                .send_node_data_payload(signer.address(), avs_name, Version::new(0, 0, 1), true)
+                .send_node_data_payload(signer.address(), avs_name, version, active_set)
                 .await?;
         } else {
             println!("No messenger found - can't update data state");
@@ -349,6 +352,10 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
     fn is_running(&self) -> bool;
     /// Set the running state of the AVS
     fn set_running(&mut self, running: bool);
+    /// Get the version of the running avs
+    fn version(&self) -> Result<Version, IvyError>;
+    /// Get active set status of the running avs
+    async fn active_set(&self, provider: Arc<IvyProvider>) -> bool;
 }
 
 // TODO: Builder pattern

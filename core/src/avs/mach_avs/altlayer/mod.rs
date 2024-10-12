@@ -146,6 +146,16 @@ impl AvsVariant for AltLayer {
     fn set_running(&mut self, running: bool) {
         self.running = running;
     }
+
+    fn version(&self) -> Result<semver::Version, IvyError> {
+        //TODO: Implement versioning
+        todo!()
+    }
+
+    async fn active_set(&self, _provider: Arc<IvyProvider>) -> bool {
+        //TODO: Implement active set
+        todo!()
+    }
 }
 
 impl AltLayer {

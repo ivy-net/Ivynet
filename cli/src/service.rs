@@ -70,7 +70,7 @@ pub async fn serve(
         std::env::set_var("FLUENTD_PATH", fluentd_path.to_str().unwrap());
         info!("Serving local logs at {:?}", fluentd_path);
         // Start the container
-        DockerCmd::new().args(["up", "--build"]).current_dir(&fluentd_path).spawn()?;
+        DockerCmd::new().args(["up", "-d", "--build"]).current_dir(&fluentd_path).spawn()?;
         info!("Fluentd logging container started");
 
         ///////////////////

@@ -29,7 +29,7 @@ pub(super) fn stake_registry(chain: Chain) -> Address {
         _ => todo!("Unimplemented"),
     }
 }
-#[allow(dead_code)]
+
 pub(super) fn registry_coordinator(chain: Chain) -> Address {
     match chain {
         Chain::Mainnet => h160!(0x0baac79acd45a023e19345c352d8a7a83c4e5656),
