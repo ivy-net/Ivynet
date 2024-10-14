@@ -28,6 +28,7 @@ const MEMORY_USAGE_METRIC: &str = "ram_usage";
 const DISK_USAGE_METRIC: &str = "disk_usage";
 const UPTIME_METRIC: &str = "uptime";
 const RUNNING_METRIC: &str = "running";
+const EIGEN_PERFORMANCE_METRIC: &str = "eigen_performance_score";
 
 #[derive(Deserialize, Debug, Clone, ToSchema)]
 pub struct NameChangeRequest {
@@ -75,10 +76,39 @@ pub struct Metrics {
     pub memory_usage: f64,
     pub disk_usage: f64,
     pub uptime: u64,
+    pub performance_score: f64,
     pub deployed_avs: Option<String>,
     pub deployed_avs_chain: Option<String>,
     pub operators_pub_key: Option<String>,
     pub error: Vec<String>, // TODO: No idea what to do with it yet
+}
+
+/// Grab information for every node in the organization
+#[utoipa::path(
+    get,
+    path = "/client",
+    responses(
+        (status = 200, body = [Info]),
+        (status = 404)
+    )
+)]
+pub async fn client(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+) -> Result<Json<Vec<Info>>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let machines: Vec<node::Node> = account.nodes(&state.pool).await?;
+
+    let mut infos: Vec<Info> = vec![];
+
+    for machine in machines {
+        let metrics = Metric::get_organized_for_node(&state.pool, &machine).await?;
+        let info = build_node_info(machine, metrics);
+        infos.push(info);
+    }
+
+    Ok(Json(infos))
 }
 
 /// Get an overview of which nodes are healthy, unhealthy, idle, and erroring
@@ -277,6 +307,32 @@ pub async fn delete(
     Ok(())
 }
 
+/// Get info on a specific node
+#[utoipa::path(
+    get,
+    path = "/client/:id",
+    responses(
+        (status = 200, body = Info),
+        (status = 404)
+    )
+)]
+pub async fn info(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Path(id): Path<String>,
+) -> Result<Json<Info>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let address = id.parse::<Address>().map_err(|_| BackendError::BadId)?;
+    let machine = node::DbNode::get(&state.pool, &address).await?;
+    if machine.organization_id != account.organization_id {
+        return Err(BackendError::Unauthorized);
+    }
+
+    let metrics = Metric::get_organized_for_node(&state.pool, &machine).await?;
+    Ok(Json(build_node_info(machine, metrics)))
+}
+
 /// Get condensed metrics for a specific node
 #[utoipa::path(
     get,
@@ -325,90 +381,12 @@ pub async fn metrics_all(
     Ok(Metric::get_all_for_node(&state.pool, node_id).await?.into())
 }
 
-/// Get info on a specific node
-#[utoipa::path(
-    get,
-    path = "/client/:id",
-    responses(
-        (status = 200, body = Info),
-        (status = 404)
-    )
-)]
-pub async fn info(
-    headers: HeaderMap,
-    State(state): State<HttpState>,
-    jar: CookieJar,
-    Path(id): Path<String>,
-) -> Result<Json<Info>, BackendError> {
-    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    let address = id.parse::<Address>().map_err(|_| BackendError::BadId)?;
-    let machine = node::DbNode::get(&state.pool, &address).await?;
-    if machine.organization_id != account.organization_id {
-        return Err(BackendError::Unauthorized);
-    }
-
-    let metrics = Metric::get_organized_for_node(&state.pool, &machine).await?;
-    let (last_checked, deployed_avs, deployed_avs_chain, operators_pub_key) =
-        if let Some(running) = metrics.get(RUNNING_METRIC) {
-            if let Some(attributes) = &running.attributes {
-                (
-                    running.created_at,
-                    attributes.get("avs").cloned(),
-                    attributes.get("chain").cloned(),
-                    attributes.get("operator_id").cloned(),
-                )
-            } else {
-                (running.created_at, None, None, None)
-            }
-        } else {
-            (None, None, None, None)
-        };
-
-    Ok(Info {
-        error: Vec::new(),
-        result: InfoReport {
-            machine_id: id,
-            name: machine.name,
-            status: data::get_node_status(metrics.clone()), //TODO: This could still be improved
-            metrics: Metrics {
-                cpu_usage: if let Some(cpu) = metrics.get(CPU_USAGE_METRIC) {
-                    cpu.value
-                } else {
-                    0.0
-                },
-                memory_usage: if let Some(ram) = metrics.get(MEMORY_USAGE_METRIC) {
-                    ram.value
-                } else {
-                    0.0
-                },
-                disk_usage: if let Some(disk) = metrics.get(DISK_USAGE_METRIC) {
-                    disk.value
-                } else {
-                    0.0
-                },
-                uptime: if let Some(uptime) = metrics.get(UPTIME_METRIC) {
-                    uptime.value as u64
-                } else {
-                    0
-                },
-                deployed_avs,
-                deployed_avs_chain,
-                operators_pub_key,
-                error: Vec::new(),
-            },
-
-            last_checked,
-        },
-    }
-    .into())
-}
-
 /// Get all data on every running avs for a specific node
 #[utoipa::path(
     get,
     path = "/client/:id/data/",
     responses(
-        (status = 200, body = Metric),
+        (status = 200, body = [NodeData]),
         (status = 404)
     )
 )]
@@ -435,7 +413,7 @@ pub async fn get_all_node_data(
     get,
     path = "/client/:id/data/:avs",
     responses(
-        (status = 200, body = Metric),
+        (status = 200, body = [NodeData]),
         (status = 404)
     )
 )]
@@ -505,4 +483,66 @@ pub async fn delete_avs_node_data(
     DbNodeData::delete_avs_operator_data(&state.pool, &op_id, &avs_name).await?;
 
     Ok(())
+}
+
+pub fn build_node_info(node: node::Node, node_metrics: HashMap<String, Metric>) -> Info {
+    let (last_checked, deployed_avs, deployed_avs_chain, operators_pub_key) =
+        if let Some(running) = node_metrics.get(RUNNING_METRIC) {
+            if let Some(attributes) = &running.attributes {
+                (
+                    running.created_at,
+                    attributes.get("avs").cloned(),
+                    attributes.get("chain").cloned(),
+                    attributes.get("operator_id").cloned(),
+                )
+            } else {
+                (running.created_at, None, None, None)
+            }
+        } else {
+            (None, None, None, None)
+        };
+
+    Info {
+        error: Vec::new(),
+        result: InfoReport {
+            machine_id: format!("{:?}", node.node_id),
+            name: node.name,
+            status: data::get_node_status(node_metrics.clone()),
+            metrics: Metrics {
+                cpu_usage: if let Some(cpu) = node_metrics.get(CPU_USAGE_METRIC) {
+                    cpu.value
+                } else {
+                    0.0
+                },
+                memory_usage: if let Some(ram) = node_metrics.get(MEMORY_USAGE_METRIC) {
+                    ram.value
+                } else {
+                    0.0
+                },
+                disk_usage: if let Some(disk) = node_metrics.get(DISK_USAGE_METRIC) {
+                    disk.value
+                } else {
+                    0.0
+                },
+                uptime: if let Some(uptime) = node_metrics.get(UPTIME_METRIC) {
+                    uptime.value as u64
+                } else {
+                    0
+                },
+                performance_score: if let Some(performance) =
+                    node_metrics.get(EIGEN_PERFORMANCE_METRIC)
+                {
+                    performance.value
+                } else {
+                    0.0
+                },
+                deployed_avs,
+                deployed_avs_chain,
+                operators_pub_key,
+                error: Vec::new(),
+            },
+
+            last_checked,
+        },
+    }
 }
