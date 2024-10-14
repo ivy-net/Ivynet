@@ -158,27 +158,11 @@ async fn collect(
                 },
                 MetricsAttribute {
                     name: "active_set".to_owned(),
-                    value: {
-                        if let Some(avs) = avs {
-                            avs.active_set(provider.provider.clone()).await.to_string()
-                        } else {
-                            "false".to_string()
-                        }
-                    },
+                    value: node_data.active_set.to_string(),
                 },
                 MetricsAttribute {
                     name: "version".to_owned(),
-                    value: {
-                        if let Some(avs) = avs {
-                            if let Ok(version) = avs.version() {
-                                version.to_string()
-                            } else {
-                                "0.0.0".to_string()
-                            }
-                        } else {
-                            "0.0.0".to_string()
-                        }
-                    },
+                    value: node_data.avs_version.to_string(),
                 },
             ]
         } else {
