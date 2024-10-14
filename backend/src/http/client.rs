@@ -364,10 +364,6 @@ pub async fn info(
             (None, None, None, None)
         };
 
-    println!("metrics HERE: {:#?}", metrics);
-
-    println!("{:#?} {:#?} {:#?}", deployed_avs, deployed_avs_chain, operators_pub_key);
-
     Ok(Info {
         error: Vec::new(),
         result: InfoReport {

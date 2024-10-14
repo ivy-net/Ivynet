@@ -154,8 +154,6 @@ async fn collect(avs_provider: &Arc<RwLock<AvsProvider>>) -> Result<Vec<Metrics>
         },
     });
 
-    println!("METRICS: {:#?}", metrics);
-
     Ok(metrics)
 }
 

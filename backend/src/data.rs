@@ -121,13 +121,14 @@ pub fn get_node_status(metrics: HashMap<String, Metric>) -> NodeStatus {
     NodeStatus::Error
 }
 
-const CONDENSED_EIGENDA_METRICS_NAMES: [&str; 6] = [
+const CONDENSED_EIGENDA_METRICS_NAMES: [&str; 7] = [
     "eigen_performance_score",
     "node_reachability_status",
     "cpu_usage",
     "disk_usage",
     "uptime",
     "ram_usage",
+    "running",
 ];
 
 #[cfg(test)]
