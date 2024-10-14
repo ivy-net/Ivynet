@@ -182,3 +182,233 @@ impl DbNodeData {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    use sqlx::postgres::PgPoolOptions;
+
+    async fn setup_test_db() -> sqlx::PgPool {
+        let database_url = std::env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+        PgPoolOptions::new()
+            .max_connections(5)
+            .connect(&database_url)
+            .await
+            .expect("Failed to connect to Postgres")
+    }
+
+    #[tokio::test]
+    async fn test_record_and_get_avs_node_data() {
+        let pool = setup_test_db().await;
+        let operator_id = Address::random();
+        let node_id = Address::random();
+        let avs_name = AvsName::from("eigenda");
+        let avs_version = Version::new(1, 0, 0);
+
+        DbNodeData::record_avs_node_data(
+            &pool,
+            &operator_id,
+            &node_id,
+            &avs_name,
+            &avs_version,
+            true,
+        )
+        .await
+        .expect("Failed to record AVS node data");
+
+        let node_data = DbNodeData::get_avs_node_data(&pool, &node_id, &avs_name)
+            .await
+            .expect("Failed to get AVS node data");
+
+        assert_eq!(node_data.len(), 1);
+        assert_eq!(node_data[0].node_id, node_id);
+        assert_eq!(node_data[0].avs_name.to_string(), avs_name.to_string());
+        assert_eq!(node_data[0].avs_version, avs_version);
+        assert!(node_data[0].active_set);
+        assert_eq!(node_data[0].operator_id, Some(operator_id));
+    }
+
+    #[tokio::test]
+    async fn test_set_active_set() {
+        let pool = setup_test_db().await;
+        let operator_id = Address::random();
+        let node_id = Address::random();
+        let avs_name = AvsName::from("eigenda");
+        let avs_version = Version::new(1, 0, 0);
+
+        DbNodeData::record_avs_node_data(
+            &pool,
+            &operator_id,
+            &node_id,
+            &avs_name,
+            &avs_version,
+            true,
+        )
+        .await
+        .expect("Failed to record AVS node data");
+
+        DbNodeData::set_active_set(&pool, &operator_id, &avs_name, false)
+            .await
+            .expect("Failed to set active set");
+
+        let node_data = DbNodeData::get_avs_node_data(&pool, &node_id, &avs_name)
+            .await
+            .expect("Failed to get AVS node data");
+
+        assert!(!node_data[0].active_set);
+    }
+
+    #[tokio::test]
+    async fn test_set_avs_version() {
+        let pool = setup_test_db().await;
+        let operator_id = Address::random();
+        let node_id = Address::random();
+        let avs_name = AvsName::from("eigenda");
+        let avs_version = Version::new(1, 0, 0);
+        let new_version = Version::new(1, 1, 0);
+
+        DbNodeData::record_avs_node_data(
+            &pool,
+            &operator_id,
+            &node_id,
+            &avs_name,
+            &avs_version,
+            true,
+        )
+        .await
+        .expect("Failed to record AVS node data");
+
+        DbNodeData::set_avs_version(&pool, &operator_id, &avs_name, &new_version)
+            .await
+            .expect("Failed to set AVS version");
+
+        let node_data = DbNodeData::get_avs_node_data(&pool, &node_id, &avs_name)
+            .await
+            .expect("Failed to get AVS node data");
+
+        assert_eq!(node_data[0].avs_version, new_version);
+    }
+
+    #[tokio::test]
+    async fn test_delete_avs_operator_data() {
+        let pool = setup_test_db().await;
+        let operator_id = Address::random();
+        let node_id = Address::random();
+        let avs_name = AvsName::from("eigenda");
+        let avs_version = Version::new(1, 0, 0);
+
+        DbNodeData::record_avs_node_data(
+            &pool,
+            &operator_id,
+            &node_id,
+            &avs_name,
+            &avs_version,
+            true,
+        )
+        .await
+        .expect("Failed to record AVS node data");
+
+        DbNodeData::delete_avs_operator_data(&pool, &operator_id, &avs_name)
+            .await
+            .expect("Failed to delete AVS operator data");
+
+        let node_data = DbNodeData::get_avs_node_data(&pool, &node_id, &avs_name)
+            .await
+            .expect("Failed to get AVS node data");
+
+        assert!(node_data.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_delete_all_node_data() {
+        let pool = setup_test_db().await;
+        let operator_id = Address::random();
+        let node_id = Address::random();
+        let avs_name1 = AvsName::from("eigenda");
+        let avs_name2 = AvsName::from("lagrange");
+        let avs_version = Version::new(1, 0, 0);
+
+        DbNodeData::record_avs_node_data(
+            &pool,
+            &operator_id,
+            &node_id,
+            &avs_name1,
+            &avs_version,
+            true,
+        )
+        .await
+        .expect("Failed to record AVS node data");
+        DbNodeData::record_avs_node_data(
+            &pool,
+            &operator_id,
+            &node_id,
+            &avs_name2,
+            &avs_version,
+            true,
+        )
+        .await
+        .expect("Failed to record AVS node data");
+
+        DbNodeData::delete_all_node_data(&pool, &node_id)
+            .await
+            .expect("Failed to delete all node data");
+
+        let node_data = DbNodeData::get_all_node_data(&pool, &node_id)
+            .await
+            .expect("Failed to get all node data");
+
+        assert!(node_data.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_duplicate_avs_operator_id() {
+        let pool = setup_test_db().await;
+
+        let operator_id = Address::random();
+        let avs_name = AvsName::from("eigenda");
+
+        let node_id1 = Address::random();
+        let node_id2 = Address::random();
+
+        let avs_version1 = Version::new(1, 0, 0);
+        let avs_version2 = Version::new(1, 1, 0);
+
+        // Insert first record
+        DbNodeData::record_avs_node_data(
+            &pool,
+            &operator_id,
+            &node_id1,
+            &avs_name,
+            &avs_version1,
+            true,
+        )
+        .await
+        .expect("Failed to record first AVS node data");
+
+        // Attempt to insert second record with same operator_id and avs_name
+        DbNodeData::record_avs_node_data(
+            &pool,
+            &operator_id,
+            &node_id2,
+            &avs_name,
+            &avs_version2,
+            false,
+        )
+        .await
+        .expect("Failed to record second AVS node data");
+
+        // Retrieve data
+        let node_data = DbNodeData::get_operator_node_data(&pool, &operator_id)
+            .await
+            .expect("Failed to get operator node data");
+
+        // Assert that only one record exists and it has been updated
+        assert_eq!(node_data.len(), 1);
+        assert_eq!(node_data[0].node_id, node_id1);
+        assert_eq!(node_data[0].avs_name.to_string(), avs_name.to_string());
+        assert_eq!(node_data[0].avs_version, avs_version2);
+        assert!(!node_data[0].active_set);
+        assert_eq!(node_data[0].operator_id, Some(operator_id));
+    }
+}
