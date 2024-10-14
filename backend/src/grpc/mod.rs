@@ -96,17 +96,19 @@ impl Backend for BackendService {
                 .await
                 .map_err(|_| Status::not_found("Node not registered"))?;
 
-            DbNodeData::record_avs_node_data(
-                &self.pool,
-                &Address::from_slice(&node_data.operator_id),
-                &node_id,
-                &AvsName::from(node_data.avs_name.as_str()),
-                &Version::parse(&node_data.avs_version)
-                    .expect("Cannot parse version on NodeData grpc message"),
-                node_data.active_set,
-            )
-            .await
-            .map_err(|e| Status::internal(format!("Failed while saving node_data: {}", e)))?;
+            if !node_data.avs_name.is_empty() {
+                DbNodeData::record_avs_node_data(
+                    &self.pool,
+                    &Address::from_slice(&node_data.operator_id),
+                    &node_id,
+                    &AvsName::from(node_data.avs_name.as_str()),
+                    &Version::parse(&node_data.avs_version)
+                        .expect("Cannot parse version on NodeData grpc message"),
+                    node_data.active_set,
+                )
+                .await
+                .map_err(|e| Status::internal(format!("Failed while saving node_data: {}", e)))?;
+            }
         } else {
             return Err(Status::invalid_argument("Node data is missing"));
         }
