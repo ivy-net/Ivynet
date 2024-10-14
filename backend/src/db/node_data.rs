@@ -8,11 +8,12 @@ use crate::error::BackendError;
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct NodeData {
-    pub operator_id: Address,
+    pub serial_id: i32,
     pub node_id: Address,
     pub avs_name: AvsName,
     pub avs_version: Version,
     pub active_set: bool,
+    pub operator_id: Option<Address>,
 }
 
 /// Database representation of NodeData
@@ -21,22 +22,26 @@ pub struct NodeData {
 /// for the future
 #[derive(Clone, Debug)]
 pub struct DbNodeData {
-    pub operator_id: Vec<u8>,
+    pub id: i32,
     pub node_id: Vec<u8>,
     pub avs_name: String,
     pub avs_version: String,
     pub active_set: bool,
+    pub operator_id: Option<Vec<u8>>,
 }
 
 impl From<DbNodeData> for NodeData {
     fn from(db_node_data: DbNodeData) -> Self {
         NodeData {
-            operator_id: Address::from_slice(&db_node_data.operator_id),
+            serial_id: db_node_data.id,
             node_id: Address::from_slice(&db_node_data.node_id),
             avs_name: AvsName::from(db_node_data.avs_name.as_str()),
             avs_version: Version::parse(&db_node_data.avs_version)
                 .expect("Cannot parse version on dbNodeData"),
             active_set: db_node_data.active_set,
+            operator_id: {
+                db_node_data.operator_id.map(|operator_id| Address::from_slice(&operator_id))
+            },
         }
     }
 }
@@ -48,7 +53,7 @@ impl DbNodeData {
     ) -> Result<Vec<NodeData>, BackendError> {
         let nodes_data: Vec<DbNodeData> = sqlx::query_as!(
             DbNodeData,
-            "SELECT operator_id, node_id, avs_name, avs_version, active_set FROM node_data WHERE node_id = $1",
+            "SELECT id, node_id, avs_name, avs_version, active_set, operator_id FROM node_data WHERE node_id = $1",
             node_id.as_bytes()
         )
         .fetch_all(pool)
@@ -67,7 +72,7 @@ impl DbNodeData {
     ) -> Result<Vec<NodeData>, BackendError> {
         let nodes_data: Vec<DbNodeData> = sqlx::query_as!(
             DbNodeData,
-            "SELECT operator_id, node_id, avs_name, avs_version, active_set FROM node_data WHERE node_id = $1 AND avs_name = $2",
+            "SELECT id, node_id, avs_name, avs_version, active_set, operator_id FROM node_data WHERE node_id = $1 AND avs_name = $2",
             node_id.as_bytes(),
             avs_name.clone().to_string()
         )
@@ -78,8 +83,25 @@ impl DbNodeData {
         Ok(node_data)
     }
 
+    pub async fn get_operator_node_data(
+        pool: &sqlx::PgPool,
+        operator_id: &Address,
+    ) -> Result<Vec<NodeData>, BackendError> {
+        let nodes_data: Vec<DbNodeData> = sqlx::query_as!(
+            DbNodeData,
+            "SELECT id, node_id, avs_name, avs_version, active_set, operator_id FROM node_data WHERE operator_id = $1",
+            operator_id.as_bytes()
+        )
+        .fetch_all(pool)
+        .await?;
+
+        let node_data: Vec<NodeData> = nodes_data.into_iter().map(NodeData::from).collect();
+        Ok(node_data)
+    }
+
     pub async fn record_avs_node_data(
         pool: &sqlx::PgPool,
+
         operator_id: &Address,
         node_id: &Address,
         avs_name: &AvsName,
@@ -87,14 +109,14 @@ impl DbNodeData {
         active_set: bool,
     ) -> Result<(), BackendError> {
         query!(
-            "INSERT INTO node_data (operator_id, node_id, avs_name, avs_version, active_set) values ($1, $2, $3, $4, $5)
+            "INSERT INTO node_data (node_id, avs_name, avs_version, active_set, operator_id) values ($1, $2, $3, $4, $5)
             ON CONFLICT (operator_id, avs_name)
-            DO UPDATE SET avs_version = $4, active_set = $5",
-            operator_id.as_bytes(),
+            DO UPDATE SET avs_version = $3, active_set = $4",
             Some(node_id.as_bytes()),
             avs_name.clone().to_string(),
             avs_version.to_string(),
-            active_set
+            active_set,
+            operator_id.as_bytes(),
         )
         .execute(pool)
         .await?;
