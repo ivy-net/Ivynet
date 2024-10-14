@@ -3,6 +3,7 @@ use crate::{
     docker::{dockercmd::DockerCmd, log::CmdLogSource},
     eigen::{contracts::delegation_manager::DelegationManager, quorum::QuorumType},
     error::IvyError,
+    grpc::messages::NodeData,
     ivy_yaml::create_ivy_dockercompose,
     keychain::{KeyType, Keychain},
     messenger::BackendMessenger,
@@ -150,9 +151,13 @@ impl AvsProvider {
         }
 
         if let Some(messenger) = &mut self.messenger {
-            messenger
-                .send_node_data_payload(signer.address(), avs_name, version, active_set)
-                .await?;
+            let node_data = NodeData {
+                operator_id: signer.address().as_bytes().to_vec(),
+                avs_name: avs_name.to_string(),
+                avs_version: version.to_string(),
+                active_set,
+            };
+            messenger.send_node_data_payload(&node_data).await?;
         } else {
             println!("No messenger found - can't update data state");
         }
@@ -174,9 +179,13 @@ impl AvsProvider {
         }
 
         if let Some(messenger) = &mut self.messenger {
-            messenger
-                .send_node_data_payload(signer.address(), avs_name, version, active_set)
-                .await?;
+            let node_data = NodeData {
+                operator_id: signer.address().as_bytes().to_vec(),
+                avs_name: avs_name.to_string(),
+                avs_version: version.to_string(),
+                active_set,
+            };
+            messenger.send_node_data_payload(&node_data).await?;
         } else {
             println!("No messenger found - can't update data state");
         }

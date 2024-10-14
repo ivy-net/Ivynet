@@ -10,7 +10,6 @@ use crate::{
     wallet::IvyWallet,
 };
 use ethers::types::Address;
-use semver::Version;
 use tonic::Request;
 
 #[derive(Debug)]
@@ -24,24 +23,11 @@ impl BackendMessenger {
         Self { backend, identity_wallet }
     }
 
-    pub async fn send_node_data_payload(
-        &mut self,
-        operator_id: Address,
-        avs_name: AvsName,
-        avs_version: Version,
-        active_set: bool,
-    ) -> Result<(), IvyError> {
-        let data = &NodeData {
-            operator_id: operator_id.as_bytes().to_vec(),
-            avs_name: avs_name.to_string(),
-            avs_version: avs_version.to_string(),
-            active_set,
-        };
-
-        let signature = sign_node_data(data, &self.identity_wallet)?;
+    pub async fn send_node_data_payload(&mut self, node_data: &NodeData) -> Result<(), IvyError> {
+        let signature = sign_node_data(node_data, &self.identity_wallet)?;
 
         let signed_node_data =
-            SignedNodeData { signature: signature.to_vec(), node_data: Some(data.clone()) };
+            SignedNodeData { signature: signature.to_vec(), node_data: Some(node_data.clone()) };
 
         let request = Request::new(signed_node_data);
         self.backend.node_data(request).await?;
