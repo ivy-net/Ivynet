@@ -325,20 +325,15 @@ impl AvsVariant for EigenDA {
     }
 
     fn version(&self) -> Result<semver::Version, IvyError> {
-        println!("Getting version...");
         let yaml_path = self.run_path().join("docker-compose.yml");
         let env_path = yaml_path.with_file_name(".env");
 
         from_path(env_path).ok();
-        println!("YAML path: {:#?}", yaml_path);
         let yaml_str = std::fs::read_to_string(yaml_path)?;
-        println!("YAML string: {:#?}", yaml_str);
         let yaml_str = env::vars()
             .fold(yaml_str, |acc, (key, val)| acc.replace(&format!("${{{}}}", key), &val));
 
-        println!("FOLDED YAML string: {:#?}", yaml_str);
         let data: serde_yaml::Value = serde_yaml::from_str(&yaml_str)?;
-        println!("DATA MAPPED: {:#?}\n\n", data);
 
         let image_value = &data["services"]["da-node"]["image"];
         let container_name = &data["services"]["da-node"]["container_name"];
@@ -346,16 +341,14 @@ impl AvsVariant for EigenDA {
         println!("{:#?}", container_name);
 
         if let Some(image) = image_value.as_str() {
-            println!("Image: {:#?}", image);
             let parts: Vec<&str> = image.split(':').collect();
             if parts.len() == 2 {
                 let version = parts[1];
-                println!("Version: {:#?}", version);
                 let version = semver::Version::parse(version)?;
                 return Ok(version);
             }
         } else {
-            debug!("Could not parse image version");
+            debug!("Error: Could not parse image version");
         }
 
         Ok(Version::new(0, 0, 0))

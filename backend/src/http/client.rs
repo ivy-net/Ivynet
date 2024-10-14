@@ -355,7 +355,7 @@ pub async fn info(
                     running.created_at,
                     attributes.get("avs").cloned(),
                     attributes.get("chain").cloned(),
-                    attributes.get("operator_key").cloned(),
+                    attributes.get("operator_id").cloned(),
                 )
             } else {
                 (running.created_at, None, None, None)
@@ -363,6 +363,11 @@ pub async fn info(
         } else {
             (None, None, None, None)
         };
+
+    println!("metrics HERE: {:#?}", metrics);
+
+    println!("{:#?} {:#?} {:#?}", deployed_avs, deployed_avs_chain, operators_pub_key);
+
     Ok(Info {
         error: Vec::new(),
         result: InfoReport {

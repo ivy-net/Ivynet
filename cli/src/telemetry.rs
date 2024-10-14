@@ -37,23 +37,24 @@ async fn collect(avs_provider: &Arc<RwLock<AvsProvider>>) -> Result<Vec<Metrics>
     let provider = avs_provider.read().await;
     let avs = &provider.avs;
     // Depending on currently running avs, we decide how to fetch
-    let (avs_name, address, running) = match avs {
-        None => (None, None, false),
+    let (avs_name, metrics_location, address, running) = match avs {
+        None => (None, None, None, false),
         Some(avs_type) => {
             match avs_type.name() {
                 AvsName::EigenDA => (
                     Some(AvsName::EigenDA.to_string()),
                     Some("http://localhost:9092/metrics"),
+                    Some(format!("{:?}", provider.provider.address())),
                     avs_type.is_running(),
                 ),
-                _ => (Some(avs_type.name().to_string()), None, avs_type.is_running()), // * that one */
+                _ => (Some(avs_type.name().to_string()), None, None, avs_type.is_running()), // * that one */
             }
         }
     };
 
     info!("Collecting metrics for {address:?} ({running})...");
-    let mut metrics = if let Some(address) = address {
-        if let Ok(resp) = reqwest::get(address).await {
+    let mut metrics = if let Some(metrics_location) = metrics_location {
+        if let Ok(resp) = reqwest::get(metrics_location).await {
             if let Ok(body) = resp.text().await {
                 let metrics = body
                     .split('\n')
@@ -111,8 +112,17 @@ async fn collect(avs_provider: &Arc<RwLock<AvsProvider>>) -> Result<Vec<Metrics>
             vec![
                 MetricsAttribute { name: "avs".to_owned(), value: avs_name.to_owned() },
                 MetricsAttribute {
+                    name: "chain".to_owned(),
+                    value: {
+                        match provider.chain().await {
+                            Ok(chain) => chain.to_string(),
+                            Err(_) => "unknown".to_string(),
+                        }
+                    },
+                },
+                MetricsAttribute {
                     name: "operator_id".to_owned(),
-                    value: address.unwrap_or("").to_string(),
+                    value: address.unwrap_or("".to_string()).to_string(),
                 },
                 MetricsAttribute {
                     name: "active_set".to_owned(),
@@ -143,6 +153,8 @@ async fn collect(avs_provider: &Arc<RwLock<AvsProvider>>) -> Result<Vec<Metrics>
             Default::default()
         },
     });
+
+    println!("METRICS: {:#?}", metrics);
 
     Ok(metrics)
 }
