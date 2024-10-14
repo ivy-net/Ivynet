@@ -121,7 +121,7 @@ fn parse_config_getter_commands(
         }
         ConfigGetCommands::Metadata {} => {
             let metadata = &config.metadata;
-            println!("{metadata:?}");
+            println!("{metadata:#?}");
         }
         ConfigGetCommands::SysInfo {} => {
             let (cpus, mem_info, disk_info) = config::get_system_information()?;
@@ -137,7 +137,7 @@ fn parse_config_getter_commands(
             println!("{config:#?}");
         }
         ConfigGetCommands::Backend {} => {
-            println!("{:?}", config.backend_info);
+            println!("{:#?}", config.backend_info);
         }
     }
     Ok(())

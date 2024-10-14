@@ -18,7 +18,7 @@ use std::{
 };
 use thiserror::Error as ThisError;
 use tokio::process::{Child, Command};
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 use zip::read::ZipArchive;
 
 use crate::{
@@ -336,9 +336,6 @@ impl AvsVariant for EigenDA {
         let data: serde_yaml::Value = serde_yaml::from_str(&yaml_str)?;
 
         let image_value = &data["services"]["da-node"]["image"];
-        let container_name = &data["services"]["da-node"]["container_name"];
-        println!("{:#?}", image_value);
-        println!("{:#?}", container_name);
 
         if let Some(image) = image_value.as_str() {
             let parts: Vec<&str> = image.split(':').collect();
@@ -363,19 +360,19 @@ impl AvsVariant for EigenDA {
         if let Ok(stat) = status {
             match stat {
                 0 => {
-                    println!("Operator has never registered");
+                    info!("Operator has never registered");
                     return false;
                 }
                 1 => {
-                    println!("Operator is in the active set");
+                    info!("Operator is in the active set");
                     return true;
                 }
                 2 => {
-                    println!("Operator is not in the active set - deregistered");
+                    warn!("Operator is not in the active set - deregistered");
                     return false;
                 }
                 _ => {
-                    println!("Operator status is unknown");
+                    warn!("Operator status is unknown");
                     return false;
                 }
             }

@@ -8,6 +8,7 @@ use crate::{db::metric::Metric, error::BackendError};
 
 const RUNNING_METRIC: &str = "running";
 const EIGEN_PERFORMANCE_METRIC: &str = "eigen_performance_score";
+const IDLE_MINUTES_THRESHOLD: i64 = 15;
 
 const EIGEN_PERFORMANCE_HEALTHY_THRESHOLD: f64 = 80.0;
 
@@ -56,12 +57,21 @@ pub fn categorize_running_nodes(
     let mut idle_nodes: Vec<H160> = Vec::new();
 
     node_metrics_map.iter().for_each(|(node_id, metrics_map)| {
-        if let Some(metric) = metrics_map.get(RUNNING_METRIC) {
-            if metric.value > 0.0 {
-                running_nodes.push(*node_id);
-            } else {
-                idle_nodes.push(*node_id);
-            }
+        let is_running = metrics_map
+            .get(RUNNING_METRIC)
+            .and_then(|metric| {
+                (metric.value > 0.0).then(|| {
+                    metric.created_at.map(|datetime| {
+                        let now = chrono::Utc::now().naive_utc();
+                        now.signed_duration_since(datetime).num_minutes() < IDLE_MINUTES_THRESHOLD
+                    })
+                })
+            })
+            .flatten()
+            .unwrap_or(false);
+
+        if is_running {
+            running_nodes.push(*node_id);
         } else {
             idle_nodes.push(*node_id);
         }
