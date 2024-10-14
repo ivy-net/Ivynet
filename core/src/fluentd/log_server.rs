@@ -58,7 +58,7 @@ async fn send(
     wallet: &IvyWallet,
     client: &mut BackendClient<Channel>,
 ) -> Result<(), IvyError> {
-    let signature = sign_string(logs, wallet).await?;
+    let signature = sign_string(logs, wallet)?;
     client
         .logs(Request::new(SignedLogs { logs: logs.to_string(), signature: signature.to_vec() }))
         .await?;

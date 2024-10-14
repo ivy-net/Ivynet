@@ -13,6 +13,7 @@ use ivynet_core::{
         server::{Endpoint, Server},
     },
     keychain::{KeyType, Keychain},
+    messenger::BackendMessenger,
 };
 use std::sync::Arc;
 use tokio::sync::RwLock;
@@ -39,6 +40,12 @@ pub async fn serve(
 
     // TODO: Shoud this log an error if the wallet is not found instead of just closing?
     if let Some(wallet) = key.get_wallet_owned() {
+        let connection_wallet = config.identity_wallet()?;
+        let backend_client = BackendClient::new(
+            create_channel(ivynet_core::grpc::client::Source::Uri(server_url), server_ca).await?,
+        );
+        let messenger = BackendMessenger::new(backend_client.clone(), connection_wallet.clone());
+
         // Avs Service
 
         // TODO: This should default to local instead of holesky?
@@ -49,6 +56,7 @@ pub async fn serve(
             config,
             Some(wallet.clone()),
             Some(keyfile_pw.to_owned()),
+            Some(messenger),
         )
         .await?;
         let ivynet_inner = Arc::new(RwLock::new(avs_provider));
@@ -62,7 +70,7 @@ pub async fn serve(
         std::env::set_var("FLUENTD_PATH", fluentd_path.to_str().unwrap());
         info!("Serving local logs at {:?}", fluentd_path);
         // Start the container
-        DockerCmd::new().args(["up", "--build"]).current_dir(&fluentd_path).spawn()?;
+        DockerCmd::new().args(["up", "-d", "--build"]).current_dir(&fluentd_path).spawn()?;
         info!("Fluentd logging container started");
 
         ///////////////////
@@ -74,9 +82,6 @@ pub async fn serve(
         // / being able to clone the outer service.
         let avs_server = AvsServer::new(IvynetService::new(ivynet_inner.clone()));
         let operator_server = OperatorServer::new(IvynetService::new(ivynet_inner.clone()));
-        let backend_client = BackendClient::new(
-            create_channel(ivynet_core::grpc::client::Source::Uri(server_url), server_ca).await?,
-        );
 
         let server = Server::new(avs_server, None, None).add_service(operator_server);
         if no_backend {
@@ -84,7 +89,6 @@ pub async fn serve(
                 ret = server.serve(sock) => { error!("Local server error {ret:?}") },
             }
         } else {
-            let connection_wallet = config.identity_wallet()?;
             tokio::select! {
                 ret = server.serve(sock) => { error!("Local server error {ret:?}") },
                 ret = serve_log_server(backend_client.clone(), connection_wallet.clone()) => { error!("Log server error {ret:?}") }

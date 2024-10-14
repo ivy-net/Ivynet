@@ -355,7 +355,7 @@ pub async fn info(
                     running.created_at,
                     attributes.get("avs").cloned(),
                     attributes.get("chain").cloned(),
-                    attributes.get("operator_key").cloned(),
+                    attributes.get("operator_id").cloned(),
                 )
             } else {
                 (running.created_at, None, None, None)
@@ -363,6 +363,7 @@ pub async fn info(
         } else {
             (None, None, None, None)
         };
+
     Ok(Info {
         error: Vec::new(),
         result: InfoReport {
@@ -450,7 +451,7 @@ pub async fn get_node_data_for_avs(
     let avs_name = AvsName::from(&avs);
 
     // Get all data for the node
-    let nodes_data = DbNodeData::get_node_data(&state.pool, &node_id, &avs_name).await?;
+    let nodes_data = DbNodeData::get_avs_node_data(&state.pool, &node_id, &avs_name).await?;
 
     Ok(Json(nodes_data))
 }
@@ -474,7 +475,7 @@ pub async fn delete_node_data(
     let node_id =
         authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
 
-    DbNodeData::delete_all(&state.pool, &node_id).await?;
+    DbNodeData::delete_all_node_data(&state.pool, &node_id).await?;
 
     Ok(())
 }
@@ -482,7 +483,7 @@ pub async fn delete_node_data(
 /// Delete all data for a specific AVS running on a node
 #[utoipa::path(
     delete,
-    path = "/client/:id/data/:avs",
+    path = "/client/:id/data/:avs/:operator_id",
     responses(
         (status = 200),
         (status = 404)
@@ -491,15 +492,17 @@ pub async fn delete_node_data(
 pub async fn delete_avs_node_data(
     headers: HeaderMap,
     State(state): State<HttpState>,
-    Path((id, avs)): Path<(String, String)>,
+    Path((id, avs, operator_id)): Path<(String, String, String)>,
     jar: CookieJar,
 ) -> Result<(), BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    let node_id =
+    let _node_id =
         authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
     let avs_name = AvsName::from(&avs);
 
-    DbNodeData::delete_avs(&state.pool, &node_id, &avs_name).await?;
+    let op_id: Address = operator_id.parse::<Address>().map_err(|_| BackendError::BadId)?;
+
+    DbNodeData::delete_avs_operator_data(&state.pool, &op_id, &avs_name).await?;
 
     Ok(())
 }

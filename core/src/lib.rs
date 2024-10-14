@@ -14,6 +14,7 @@ pub mod io;
 pub mod ivy_yaml;
 pub mod keychain;
 pub mod keys;
+pub mod messenger;
 pub mod metadata;
 pub mod rpc_management;
 pub mod signature;
