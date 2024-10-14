@@ -183,7 +183,6 @@ impl DbNodeData {
     }
 }
 
-
 #[cfg(feature = "db_tests")]
 #[cfg(test)]
 mod tests {
