@@ -158,7 +158,7 @@ mod metrics_filtering_tests {
 
         let filtered_metrics = super::condense_metrics(&metrics)?;
         println!("{:#?}", filtered_metrics);
-        assert!(filtered_metrics.len() == 7);
+        assert!(filtered_metrics.len() == 8);
         Ok(())
     }
 }
