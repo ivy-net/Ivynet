@@ -1,0 +1,85 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT node_id, container_id, container_name, log, log_level AS \"log_level!: LogLevel\", created_at, other_fields as \"other_fields: sqlx::types::Json<HashMap<String,String>>\" FROM log WHERE node_id = $1 AND log_level = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "node_id",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 1,
+        "name": "container_id",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "container_name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "log",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "log_level!: LogLevel",
+        "type_info": {
+          "Custom": {
+            "name": "log_level",
+            "kind": {
+              "Enum": [
+                "debug",
+                "info",
+                "warning",
+                "error",
+                "unknown"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 6,
+        "name": "other_fields: sqlx::types::Json<HashMap<String,String>>",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bytea",
+        {
+          "Custom": {
+            "name": "log_level",
+            "kind": {
+              "Enum": [
+                "debug",
+                "info",
+                "warning",
+                "error",
+                "unknown"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "8087b2828f2a684c7a20c4a78deba1445fae64b63faa569f91b07badb69aa667"
+}

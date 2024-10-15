@@ -201,10 +201,13 @@ where
     Ok(Some(map))
 }
 
+#[cfg(feature = "db_tests")]
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::db::node::DbNode;
+    use chrono::Utc;
+    use ivynet_core::ethers::types::Address;
 
     #[sqlx::test(fixtures(
         "../../../backend/fixtures/organization.sql",
@@ -246,6 +249,152 @@ mod tests {
 
         assert_eq!(logs.len(), 2);
         assert_eq!(logs, vec![log1, log2]);
+
+        Ok(())
+    }
+
+    #[sqlx::test(fixtures(
+        "../../../backend/fixtures/organization.sql",
+        "../../../backend/fixtures/node.sql"
+    ))]
+    async fn test_record_and_get_all_for_node(pool: PgPool) -> sqlx::Result<()> {
+        let node_id = "0x00000000000000000000000000000000deadbeef".parse::<Address>().unwrap();
+        let log = ContainerLog {
+            node_id: Some(node_id),
+            container_id: Some("container1".to_string()),
+            container_name: "test_container".to_string(),
+            log: "Test log".to_string(),
+            log_level: LogLevel::Info,
+            created_at: Some(Utc::now().timestamp()),
+            other_fields: Some(HashMap::new()),
+        };
+
+        ContainerLog::record(&pool, &log).await.unwrap();
+        let logs = ContainerLog::get_all_for_node(&pool, node_id).await.unwrap();
+        assert_eq!(logs.len(), 1);
+        assert_eq!(logs[0], log);
+
+        Ok(())
+    }
+
+    #[sqlx::test(fixtures(
+        "../../../backend/fixtures/organization.sql",
+        "../../../backend/fixtures/node.sql"
+    ))]
+    async fn test_get_all_for_node_between_timestamps(pool: PgPool) -> sqlx::Result<()> {
+        let node_id = "0x00000000000000000000000000000000deadbeef".parse::<Address>().unwrap();
+        let now = Utc::now().timestamp();
+        let log1 = ContainerLog {
+            node_id: Some(node_id),
+            container_id: Some("container1".to_string()),
+            container_name: "test_container1".to_string(),
+            log: "Test log 1".to_string(),
+            log_level: LogLevel::Info,
+            created_at: Some(now),
+            other_fields: Some(HashMap::new()),
+        };
+        let log2 = ContainerLog {
+            node_id: Some(node_id),
+            container_id: Some("container2".to_string()),
+            container_name: "test_container2".to_string(),
+            log: "Test log 2".to_string(),
+            log_level: LogLevel::Error,
+            created_at: Some(now + 100),
+            other_fields: Some(HashMap::new()),
+        };
+
+        ContainerLog::record(&pool, &log1).await.unwrap();
+        ContainerLog::record(&pool, &log2).await.unwrap();
+
+        let logs =
+            ContainerLog::get_all_for_node_between_timestamps(&pool, node_id, now - 50, now + 50)
+                .await
+                .unwrap();
+        assert_eq!(logs.len(), 1);
+        assert_eq!(logs[0], log1);
+
+        Ok(())
+    }
+
+    #[sqlx::test(fixtures(
+        "../../../backend/fixtures/organization.sql",
+        "../../../backend/fixtures/node.sql"
+    ))]
+    async fn test_get_all_for_node_with_log_level(pool: PgPool) -> sqlx::Result<()> {
+        let node_id = "0x00000000000000000000000000000000deadbeef".parse::<Address>().unwrap();
+        let log1 = ContainerLog {
+            node_id: Some(node_id),
+            container_id: Some("container1".to_string()),
+            container_name: "test_container1".to_string(),
+            log: "Test log 1".to_string(),
+            log_level: LogLevel::Info,
+            created_at: Some(Utc::now().timestamp()),
+            other_fields: Some(HashMap::new()),
+        };
+        let log2 = ContainerLog {
+            node_id: Some(node_id),
+            container_id: Some("container2".to_string()),
+            container_name: "test_container2".to_string(),
+            log: "Test log 2".to_string(),
+            log_level: LogLevel::Error,
+            created_at: Some(Utc::now().timestamp()),
+            other_fields: Some(HashMap::new()),
+        };
+
+        ContainerLog::record(&pool, &log1).await.unwrap();
+        ContainerLog::record(&pool, &log2).await.unwrap();
+
+        let logs = ContainerLog::get_all_for_node_with_log_level(&pool, node_id, LogLevel::Info)
+            .await
+            .unwrap();
+        assert_eq!(logs.len(), 1);
+        assert_eq!(logs[0], log1);
+
+        Ok(())
+    }
+
+    #[sqlx::test(fixtures(
+        "../../../backend/fixtures/organization.sql",
+        "../../../backend/fixtures/node.sql"
+    ))]
+    async fn test_get_all_for_node_between_timestamps_with_log_level(
+        pool: PgPool,
+    ) -> sqlx::Result<()> {
+        let node_id = "0x00000000000000000000000000000000deadbeef".parse::<Address>().unwrap();
+        let now = Utc::now().timestamp();
+        let log1 = ContainerLog {
+            node_id: Some(node_id),
+            container_id: Some("container1".to_string()),
+            container_name: "test_container1".to_string(),
+            log: "Test log 1".to_string(),
+            log_level: LogLevel::Info,
+            created_at: Some(now),
+            other_fields: Some(HashMap::new()),
+        };
+        let log2 = ContainerLog {
+            node_id: Some(node_id),
+            container_id: Some("container2".to_string()),
+            container_name: "test_container2".to_string(),
+            log: "Test log 2".to_string(),
+            log_level: LogLevel::Error,
+            created_at: Some(now + 100),
+            other_fields: Some(HashMap::new()),
+        };
+
+        ContainerLog::record(&pool, &log1).await.unwrap();
+        ContainerLog::record(&pool, &log2).await.unwrap();
+
+        let logs = ContainerLog::get_all_for_node_between_timestamps_with_log_level(
+            &pool,
+            node_id,
+            now - 50,
+            now + 150,
+            LogLevel::Error,
+        )
+        .await
+        .unwrap();
+        assert_eq!(logs.len(), 1);
+        assert_eq!(logs[0], log2);
 
         Ok(())
     }

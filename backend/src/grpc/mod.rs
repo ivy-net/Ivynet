@@ -13,7 +13,9 @@ use ivynet_core::{
         messages::{RegistrationCredentials, SignedLogs, SignedMetrics, SignedNodeData},
         server, Status,
     },
-    signature::{recover_delete_node_data, recover_from_string, recover_metrics, recover_node_data},
+    signature::{
+        recover_delete_node_data, recover_from_string, recover_metrics, recover_node_data,
+    },
 };
 use semver::Version;
 use sqlx::PgPool;
