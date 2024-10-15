@@ -69,6 +69,9 @@ async fn send(
 pub enum LogServerError {
     #[error(transparent)]
     IvyError(#[from] crate::error::IvyError),
+
+    #[error("Invalid log JSON")]
+    InvalidJson,
 }
 
 impl IntoResponse for LogServerError {

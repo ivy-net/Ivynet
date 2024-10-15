@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::HeaderMap,
     Json,
 };
@@ -14,6 +14,7 @@ use utoipa::ToSchema;
 use crate::{
     data::{self, NodeStatus},
     db::{
+        log::{ContainerLog, LogLevel},
         metric::Metric,
         node,
         node_data::{DbNodeData, NodeData},
@@ -79,6 +80,11 @@ pub struct Metrics {
     pub deployed_avs_chain: Option<String>,
     pub operators_pub_key: Option<String>,
     pub error: Vec<String>, // TODO: No idea what to do with it yet
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LogFilter {
+    log_level: Option<LogLevel>, // Assuming LogLevel is an enum you use for logging levels
 }
 
 /// Get an overview of which nodes are healthy, unhealthy, idle, and erroring
@@ -323,6 +329,77 @@ pub async fn metrics_all(
         authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
 
     Ok(Metric::get_all_for_node(&state.pool, node_id).await?.into())
+}
+
+#[utoipa::path(
+    post,
+    path = "/client/:id/logs",
+    responses(
+        (status = 200, body = [ContainerLog]),
+        (status = 404)
+    ),
+    params(
+        ("log_level" = Option<LogLevel>, Query, description = "Optional log level filter")
+    )
+)]
+pub async fn logs(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Path(id): Path<String>,
+    Query(log_filter): Query<LogFilter>,
+) -> Result<Json<Vec<ContainerLog>>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let node_id =
+        authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
+
+    // Fetch logs, optionally filtering by log level
+    let logs = if let Some(log_level) = log_filter.log_level {
+        ContainerLog::get_all_for_node_with_log_level(&state.pool, node_id, log_level).await?
+    } else {
+        ContainerLog::get_all_for_node(&state.pool, node_id).await?
+    };
+
+    Ok(logs.into())
+}
+
+#[utoipa::path(
+    post,
+    path = "/client/:id/logs/:from/:to",
+    responses(
+        (status = 200, body = [ContainerLog]),
+        (status = 404)
+    ),
+    params(
+        ("log_level" = Option<LogLevel>, Query, description = "Optional log level filter")
+    )
+)]
+pub async fn logs_between(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Path((id, from, to)): Path<(String, i64, i64)>,
+    Query(log_filter): Query<LogFilter>,
+) -> Result<Json<Vec<ContainerLog>>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let node_id =
+        authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
+
+    // Fetch logs between timestamps, optionally filtering by log level
+    let logs = if let Some(log_level) = log_filter.log_level {
+        ContainerLog::get_all_for_node_between_timestamps_with_log_level(
+            &state.pool,
+            node_id,
+            from,
+            to,
+            log_level,
+        )
+        .await?
+    } else {
+        ContainerLog::get_all_for_node_between_timestamps(&state.pool, node_id, from, to).await?
+    };
+
+    Ok(logs.into())
 }
 
 /// Get info on a specific node

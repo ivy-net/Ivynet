@@ -1,7 +1,5 @@
-use std::sync::Arc;
-
 use crate::{
-    db::{metric::Metric, node::DbNode, Account},
+    db::{log::ContainerLog, metric::Metric, node::DbNode, Account},
     error::BackendError,
 };
 use ivynet_core::{
@@ -13,9 +11,10 @@ use ivynet_core::{
         messages::{RegistrationCredentials, SignedLogs, SignedMetrics},
         server, Status,
     },
-    signature::recover,
+    signature::{recover, recover_from_string},
 };
 use sqlx::PgPool;
+use std::sync::Arc;
 use tracing::debug;
 
 pub struct BackendService {
@@ -50,9 +49,27 @@ impl Backend for BackendService {
     }
 
     async fn logs(&self, request: Request<SignedLogs>) -> Result<Response<()>, Status> {
-        // TODO: Implement parsing of the logs
-        let req = request.into_inner();
-        debug!("Received logs: {:?}", req);
+        let request = request.into_inner();
+        debug!("Received logs: {:?}", request.logs);
+
+        let node_id = recover_from_string(
+            &request.logs,
+            &Signature::try_from(request.signature.as_slice())
+                .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
+        )?;
+
+        let _ = DbNode::get(&self.pool, &node_id)
+            .await
+            .map_err(|_| Status::not_found("Node not registered"))?;
+
+        let parsed_logs = serde_json::from_str::<Vec<ContainerLog>>(&request.logs)
+            .map_err(|_| Status::invalid_argument("Log deserialization error..."))?;
+
+        // TODO: We can also batch insert logs in the future.
+
+        let futures = parsed_logs.iter().map(|log| ContainerLog::record(&self.pool, log));
+
+        let _ = futures::future::join_all(futures).await;
         Ok(Response::new(()))
     }
 
