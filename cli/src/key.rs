@@ -66,7 +66,7 @@ pub enum SetCommands {
     EcdsaSet,
 }
 
-pub async fn parse_key_subcommands(subcmd: KeyCommands) -> Result<(), Error> {
+pub async fn parse_key_subcommands(subcmd: KeyCommands, config: IvyConfig) -> Result<(), Error> {
     match subcmd {
         KeyCommands::Import => {
             import_key().await?;
