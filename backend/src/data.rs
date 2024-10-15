@@ -220,14 +220,10 @@ mod data_filtering_tests {
         let (running_nodes, idle_nodes) = categorize_running_nodes(node_metrics_map);
 
         assert_eq!(running_nodes, vec![H160::from_low_u64_be(1)]);
-        assert_eq!(
-            idle_nodes,
-            vec![
-                H160::from_low_u64_be(2),
-                H160::from_low_u64_be(3),
-                H160::from_low_u64_be(4),
-                H160::from_low_u64_be(5)
-            ]
-        );
+        assert!(idle_nodes.len() == 4);
+        assert!(idle_nodes.contains(&H160::from_low_u64_be(2)));
+        assert!(idle_nodes.contains(&H160::from_low_u64_be(3)));
+        assert!(idle_nodes.contains(&H160::from_low_u64_be(4)));
+        assert!(idle_nodes.contains(&H160::from_low_u64_be(5)));
     }
 }
