@@ -36,11 +36,14 @@ pub async fn listen(
             let provider = avs_provider.read().await;
             let name = avs_name(&provider.avs);
             let running = if let Some(avs) = &provider.avs { avs.is_running() } else { false };
+            println!("Is running {running:?} the ava {name:?}");
+
             if running {
                 match name {
                     Some(ref avs_name) => {
                         if name != current_avs {
                             metrics_url = metrics_endpoint(&avs_name).await;
+                            println!("Metrics url is {metrics_url:?}");
                             current_avs = name;
                         }
                     }
@@ -73,11 +76,15 @@ async fn metrics_endpoint(avs_name: &str) -> Option<String> {
     if AvsName::EigenDA == AvsName::from(avs_name) {
         let info = dockercmd::inspect(EIGENDA_DOCKER_IMAGE_NAME).await;
         if let Some(info) = info {
-            for (_, v) in info.network_settings {
-                if v.port != 32005
-                // TODO: Is this enough to understand what port we are looking for?
-                {
-                    return Some(format!("http://localhost:{}", v.port));
+            for (_, v) in info.network_settings.ports {
+                for ep in v {
+                    if let Ok(port) = ep.port.parse::<u16>() {
+                        if port != 32005
+                        // TODO: Is this enough to understand what port we are looking for?
+                        {
+                            return Some(format!("http://localhost:{}", ep.port));
+                        }
+                    }
                 }
             }
         }

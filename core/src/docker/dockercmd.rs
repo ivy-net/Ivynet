@@ -17,16 +17,22 @@ pub struct ImageExposedPort {
     #[serde(rename = "HostIp")]
     pub ip: String,
     #[serde(rename = "HostPort")]
-    pub port: u32,
+    pub port: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct NetworkSettings {
+    #[serde(rename = "Ports")]
+    pub ports: HashMap<String, Vec<ImageExposedPort>>,
 }
 
 #[derive(Debug, Deserialize)]
 pub struct ImageDetails {
-    #[serde(rename = "NetworkSettings")]
-    pub network_settings: HashMap<String, ImageExposedPort>,
-
     #[serde(rename = "Image")]
     pub image: String,
+
+    #[serde(rename = "NetworkSettings")]
+    pub network_settings: NetworkSettings,
 }
 
 pub async fn docker_cmd<I, S>(args: I) -> Result<Child, std::io::Error>
@@ -68,14 +74,15 @@ impl Stream for DockerStream {
 }
 
 pub async fn inspect(image_name: &str) -> Option<ImageDetails> {
+    println!("Inspecting {image_name}");
     if let Some(output) = Command::new("docker").arg("inspect").arg(image_name).output().await.ok()
     {
-        if let Some(command_result) = serde_json::from_str::<Vec<ImageDetails>>(
+        println!("Got output {output:?}");
+        match serde_json::from_str::<Vec<ImageDetails>>(
             std::str::from_utf8(&output.stdout).expect("Unparsable output string"),
-        )
-        .ok()
-        {
-            return command_result.into_iter().next();
+        ) {
+            Ok(command_result) => return command_result.into_iter().next(),
+            Err(e) => println!("Parse error {e:?}"),
         }
     }
     None
