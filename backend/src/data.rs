@@ -210,19 +210,6 @@ mod data_filtering_tests {
         )
     }
 
-    use chrono::NaiveDateTime;
-    use ivynet_core::ethers::types::Address;
-
-    fn create_metric(value: f64, created_at: Option<NaiveDateTime>) -> Metric {
-        Metric {
-            value,
-            created_at,
-            node_id: Address::random(),
-            name: "JimTheComputer".to_owned(),
-            attributes: None,
-        }
-    }
-
     fn load_metrics_json(file_path: &str) -> Result<Vec<Metric>, Box<dyn std::error::Error>> {
         let file = File::open(file_path)?;
         let reader = BufReader::new(file);

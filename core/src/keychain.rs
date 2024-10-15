@@ -179,7 +179,7 @@ impl Keychain {
         }
 
         let interactive = Select::new()
-            .with_prompt(&format!(
+            .with_prompt(format!(
                 "Which {} key would you like to use?",
                 if key_type == KeyType::Bls { "BLS" } else { "ECDSA" }
             ))

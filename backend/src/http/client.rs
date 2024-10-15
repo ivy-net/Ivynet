@@ -10,6 +10,7 @@ use chrono::NaiveDateTime;
 use ivynet_core::{avs::names::AvsName, ethers::types::Address};
 use semver::Version;
 use serde::{Deserialize, Serialize};
+use tracing::debug;
 use utoipa::ToSchema;
 
 use crate::{
@@ -505,12 +506,15 @@ pub async fn delete_avs_node_data(
     Path((id, avs, operator_id)): Path<(String, String, String)>,
     jar: CookieJar,
 ) -> Result<(), BackendError> {
+    debug!("Deleting AVS data");
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     let _node_id =
         authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
     let avs_name = AvsName::from(&avs);
+    debug!("AVS name: {:?}", avs_name);
 
     let op_id: Address = operator_id.parse::<Address>().map_err(|_| BackendError::BadId)?;
+    debug!("Operator ID: {:?}", op_id);
 
     DbNodeData::delete_avs_operator_data(&state.pool, &op_id, &avs_name).await?;
 

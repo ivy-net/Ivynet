@@ -66,7 +66,7 @@ pub enum SetCommands {
     EcdsaSet,
 }
 
-pub async fn parse_key_subcommands(subcmd: KeyCommands, config: IvyConfig) -> Result<(), Error> {
+pub async fn parse_key_subcommands(subcmd: KeyCommands, _config: IvyConfig) -> Result<(), Error> {
     match subcmd {
         KeyCommands::Import => {
             import_key().await?;
@@ -325,7 +325,7 @@ pub async fn get_key() -> Result<(), Error> {
             .expect("Bad selection");
 
         let key_password = Password::new()
-            .with_prompt(&format!("Provide the password to {}", key_list[key_index]))
+            .with_prompt(format!("Provide the password to {}", key_list[key_index]))
             .interact()
             .expect("Invalid password provided");
 
