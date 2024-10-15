@@ -3,8 +3,10 @@ use crate::{
     docker::{dockercmd::DockerCmd, log::CmdLogSource},
     eigen::{contracts::delegation_manager::DelegationManager, quorum::QuorumType},
     error::IvyError,
+    grpc::messages::NodeData,
     ivy_yaml::create_ivy_dockercompose,
     keychain::{KeyType, Keychain},
+    messenger::BackendMessenger,
     rpc_management::{connect_provider, IvyProvider},
     utils::try_parse_chain,
     wallet::IvyWallet,
@@ -20,6 +22,7 @@ use ethers::{
 };
 use lagrange::Lagrange;
 use names::AvsName;
+use semver::Version;
 use std::{collections::HashMap, fmt::Debug, path::PathBuf, sync::Arc};
 use tokio::process::Child;
 use tracing::{debug, error, info};
@@ -48,6 +51,7 @@ pub struct AvsProvider {
     // TODO: Deprecate this if possible, requires conversion of underlying AVS scripts
     pub keyfile_pw: Option<String>,
     pub delegation_manager: DelegationManager,
+    pub messenger: Option<BackendMessenger>,
 }
 
 impl AvsProvider {
@@ -55,9 +59,10 @@ impl AvsProvider {
         avs: Option<Box<dyn AvsVariant>>,
         provider: Arc<IvyProvider>,
         keyfile_pw: Option<String>,
+        messenger: Option<BackendMessenger>,
     ) -> Result<Self, IvyError> {
         let delegation_manager = DelegationManager::new(provider.clone())?;
-        Ok(Self { avs, provider, keyfile_pw, delegation_manager })
+        Ok(Self { avs, provider, keyfile_pw, delegation_manager, messenger })
     }
 
     /// Sets new avs with new provider
@@ -133,29 +138,69 @@ impl AvsProvider {
 
     /// Start the loaded AVS instance. Returns an error if no AVS instance is loaded.
     pub async fn start(&mut self) -> Result<(), IvyError> {
-        let avs = self.avs_mut()?;
-        if avs.is_running() {
+        let avs_name = self.avs_mut()?.name();
+        let is_running = self.avs_mut()?.is_running();
+        let version = self.avs()?.version()?;
+        let active_set = self.avs()?.active_set(self.provider.clone()).await;
+        let signer = self.provider.signer().clone();
+        if is_running {
             return Err(IvyError::AvsRunningError(
-                avs.name().to_string(),
-                Chain::try_from(self.provider.signer().chain_id())?,
+                avs_name.to_string(),
+                Chain::try_from(signer.chain_id())?,
             ));
         }
+
+        if let Some(messenger) = &mut self.messenger {
+            let node_data = NodeData {
+                operator_id: signer.address().as_bytes().to_vec(),
+                avs_name: avs_name.to_string(),
+                avs_version: version.to_string(),
+                active_set,
+            };
+            messenger.send_node_data_payload(&node_data).await?;
+        } else {
+            println!("No messenger found - can't update data state");
+        }
+
         self.avs_mut()?.start().await
     }
 
     pub async fn attach(&mut self) -> Result<Child, IvyError> {
-        let avs = self.avs_mut()?;
-        if avs.is_running() {
+        let avs_name = self.avs_mut()?.name();
+        let is_running = self.avs_mut()?.is_running();
+        let active_set = self.avs()?.active_set(self.provider.clone()).await;
+        let version = self.avs()?.version()?;
+        let signer = self.provider.signer().clone();
+        if is_running {
             return Err(IvyError::AvsRunningError(
-                avs.name().to_string(),
-                Chain::try_from(self.provider.signer().chain_id())?,
+                avs_name.to_string(),
+                Chain::try_from(signer.chain_id())?,
             ));
+        }
+
+        if let Some(messenger) = &mut self.messenger {
+            let node_data = NodeData {
+                operator_id: signer.address().as_bytes().to_vec(),
+                avs_name: avs_name.to_string(),
+                avs_version: version.to_string(),
+                active_set,
+            };
+            messenger.send_node_data_payload(&node_data).await?;
+        } else {
+            println!("No messenger found - can't update data state");
         }
         self.avs_mut()?.attach().await
     }
 
     /// Stop the loaded AVS instance.
     pub async fn stop(&mut self) -> Result<(), IvyError> {
+        let avs_name = self.avs_mut()?.name();
+        let signer = self.provider.signer().clone();
+        if let Some(messenger) = &mut self.messenger {
+            messenger.delete_node_data_payload(signer.address(), avs_name).await?;
+        } else {
+            println!("No messenger found - can't update data state");
+        }
         self.avs_mut()?.stop().await?;
         Ok(())
     }
@@ -307,7 +352,7 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
     /// Handle a log line from the AVS instance.
     async fn handle_log(&self, line: &str, src: CmdLogSource) -> Result<(), IvyError>;
     /// Return the name of the AVS instance.
-    fn name(&self) -> &str;
+    fn name(&self) -> AvsName;
     /// Handle to the top-level directory for the AVS instance.
     fn base_path(&self) -> PathBuf;
     /// Return the path to the AVS instance's run directory (usually a docker compose file)
@@ -316,6 +361,10 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
     fn is_running(&self) -> bool;
     /// Set the running state of the AVS
     fn set_running(&mut self, running: bool);
+    /// Get the version of the running avs
+    fn version(&self) -> Result<Version, IvyError>;
+    /// Get active set status of the running avs
+    async fn active_set(&self, provider: Arc<IvyProvider>) -> bool;
 }
 
 // TODO: Builder pattern
@@ -325,6 +374,7 @@ pub async fn build_avs_provider(
     config: &IvyConfig,
     wallet: Option<IvyWallet>,
     keyfile_pw: Option<String>,
+    messenger: Option<BackendMessenger>,
 ) -> Result<AvsProvider, IvyError> {
     let chain = try_parse_chain(chain)?;
     let provider = connect_provider(&config.get_rpc_url(chain)?, wallet).await?;
@@ -338,5 +388,5 @@ pub async fn build_avs_provider(
     } else {
         None
     };
-    AvsProvider::new(avs_instance, Arc::new(provider), keyfile_pw)
+    AvsProvider::new(avs_instance, Arc::new(provider), keyfile_pw, messenger)
 }
