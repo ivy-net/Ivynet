@@ -97,24 +97,10 @@ async fn collect(
     let provider = avs_provider.read().await;
     let avs = &provider.avs;
     // Depending on currently running avs, we decide how to fetch
-    let (avs_name, metrics_location, address, running) = match avs {
-        None => (None, None, None, false),
-        Some(avs_type) => {
-            match avs_type.name() {
-                AvsName::EigenDA => (
-                    Some(AvsName::EigenDA.to_string()),
-                    Some("http://localhost:9092/metrics"),
-                    Some(format!("{:?}", provider.provider.address())),
-                    avs_type.is_running(),
-                ),
-                _ => (Some(avs_type.name().to_string()), None, None, avs_type.is_running()), // * that one */
-            }
-        }
-    };
 
     let address = format!("{:?}", provider.provider.address());
     let running = if let Some(avs) = avs { avs.is_running() } else { false };
-    let avs_name: Option<AvsName> = if let Some(avs) = avs { Some(avs.name()) } else { None };
+    let avs_name: Option<AvsName> = avs.as_ref().map(|avs| avs.name());
 
     info!("Collecting metrics for {metrics_url:?}...");
     let mut metrics = if let Some(metrics_url) = metrics_url {
