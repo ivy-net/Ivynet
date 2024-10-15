@@ -41,9 +41,9 @@ struct Args {
     /// Decide the level of verbosity for the logs
     #[arg(long, env = "LOG_LEVEL", default_value_t = Level::INFO)]
     pub log_level: Level,
-    // /// Skip backend connection
-    // #[arg(long, env = "NO_BACKEND", default_value_t = false)]
-    // pub no_backend: bool,
+    /// Skip backend connection
+    #[arg(long, env = "NO_BACKEND", default_value_t = false)]
+    pub no_backend: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -109,7 +109,7 @@ async fn main() -> Result<(), AnyError> {
     // Early return if we're initializing. Init propagates ivyconfig file, and if we attempt to load
     // it before it's been created, this will error.
     if let Commands::Init = args.cmd {
-        initialize_ivynet(args.server_url, args.server_ca, false).await?;
+        initialize_ivynet(args.server_url, args.server_ca, no_backend).await?;
         return Ok(());
     }
 
@@ -135,7 +135,7 @@ async fn main() -> Result<(), AnyError> {
         // Commands::Staker { subcmd } => staker::parse_staker_subcommands(subcmd, &config).await?,
         Commands::Avs { subcmd } => avs::parse_avs_subcommands(subcmd, &config).await?,
         Commands::Serve { avs, chain } => {
-            service::serve(avs, chain, &config, server_url, server_ca, false).await?
+            service::serve(avs, chain, &config, server_url, server_ca, no_backend).await?
         }
         Commands::Register { email, password } => {
             let config = IvyConfig::load_from_default_path()?;
