@@ -11,6 +11,7 @@ use tokio::{
     sync::mpsc,
 };
 use tokio_stream::Stream;
+use tracing::error;
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct ImageExposedPort {
@@ -74,15 +75,13 @@ impl Stream for DockerStream {
 }
 
 pub async fn inspect(image_name: &str) -> Option<ImageDetails> {
-    println!("Inspecting {image_name}");
     if let Some(output) = Command::new("docker").arg("inspect").arg(image_name).output().await.ok()
     {
-        println!("Got output {output:?}");
         match serde_json::from_str::<Vec<ImageDetails>>(
             std::str::from_utf8(&output.stdout).expect("Unparsable output string"),
         ) {
             Ok(command_result) => return command_result.into_iter().next(),
-            Err(e) => println!("Parse error {e:?}"),
+            Err(e) => error!("Parse inspection error {e:?}"),
         }
     }
     None
