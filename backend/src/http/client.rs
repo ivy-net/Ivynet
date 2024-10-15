@@ -85,7 +85,7 @@ pub struct Metrics {
     pub error: Vec<String>, // TODO: No idea what to do with it yet
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, ToSchema, Clone)]
 pub struct LogFilter {
     log_level: Option<LogLevel>,
 }
