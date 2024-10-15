@@ -8,6 +8,7 @@ use crate::{db::metric::Metric, error::BackendError};
 
 const RUNNING_METRIC: &str = "running";
 const EIGEN_PERFORMANCE_METRIC: &str = "eigen_performance_score";
+const IDLE_MINUTES_THRESHOLD: i64 = 15;
 
 const EIGEN_PERFORMANCE_HEALTHY_THRESHOLD: f64 = 80.0;
 
@@ -56,12 +57,21 @@ pub fn categorize_running_nodes(
     let mut idle_nodes: Vec<H160> = Vec::new();
 
     node_metrics_map.iter().for_each(|(node_id, metrics_map)| {
-        if let Some(metric) = metrics_map.get(RUNNING_METRIC) {
-            if metric.value > 0.0 {
-                running_nodes.push(*node_id);
-            } else {
-                idle_nodes.push(*node_id);
-            }
+        let is_running = metrics_map
+            .get(RUNNING_METRIC)
+            .and_then(|metric| {
+                (metric.value > 0.0).then(|| {
+                    metric.created_at.map(|datetime| {
+                        let now = chrono::Utc::now().naive_utc();
+                        now.signed_duration_since(datetime).num_minutes() < IDLE_MINUTES_THRESHOLD
+                    })
+                })
+            })
+            .flatten()
+            .unwrap_or(false);
+
+        if is_running {
+            running_nodes.push(*node_id);
         } else {
             idle_nodes.push(*node_id);
         }
@@ -121,19 +131,33 @@ pub fn get_node_status(metrics: HashMap<String, Metric>) -> NodeStatus {
     NodeStatus::Error
 }
 
-const CONDENSED_EIGENDA_METRICS_NAMES: [&str; 6] = [
+const CONDENSED_EIGENDA_METRICS_NAMES: [&str; 7] = [
     "eigen_performance_score",
     "node_reachability_status",
     "cpu_usage",
     "disk_usage",
     "uptime",
     "ram_usage",
+    "running",
 ];
 
 #[cfg(test)]
-mod metrics_filtering_tests {
+mod data_filtering_tests {
     use super::*;
     use std::{fs::File, io::BufReader};
+
+    use chrono::NaiveDateTime;
+    use ivynet_core::ethers::types::Address;
+
+    fn create_metric(value: f64, created_at: Option<NaiveDateTime>) -> Metric {
+        Metric {
+            value,
+            created_at,
+            node_id: Address::random(),
+            name: "JimTheComputer".to_owned(),
+            attributes: None,
+        }
+    }
 
     fn load_metrics_json(file_path: &str) -> Result<Vec<Metric>, Box<dyn std::error::Error>> {
         let file = File::open(file_path)?;
@@ -157,7 +181,49 @@ mod metrics_filtering_tests {
 
         let filtered_metrics = super::condense_metrics(&metrics)?;
         println!("{:#?}", filtered_metrics);
-        assert!(filtered_metrics.len() == 7);
+        assert!(filtered_metrics.len() == 8);
         Ok(())
+    }
+
+    #[test]
+    fn test_categorize_running_nodes() {
+        let now = chrono::Utc::now().naive_utc();
+        let recent = now - chrono::Duration::minutes(IDLE_MINUTES_THRESHOLD - 1);
+        let old = now - chrono::Duration::minutes(IDLE_MINUTES_THRESHOLD + 1);
+
+        let mut node_metrics_map = HashMap::new();
+
+        // Running node
+        let mut metrics1 = HashMap::new();
+        metrics1.insert(RUNNING_METRIC.to_string(), create_metric(1.0, Some(recent)));
+        node_metrics_map.insert(H160::from_low_u64_be(1), metrics1);
+
+        // Idle node (value = 0)
+        let mut metrics2 = HashMap::new();
+        metrics2.insert(RUNNING_METRIC.to_string(), create_metric(0.0, Some(recent)));
+        node_metrics_map.insert(H160::from_low_u64_be(2), metrics2);
+
+        // Idle node (old timestamp)
+        let mut metrics3 = HashMap::new();
+        metrics3.insert(RUNNING_METRIC.to_string(), create_metric(1.0, Some(old)));
+        node_metrics_map.insert(H160::from_low_u64_be(3), metrics3);
+
+        // Idle node (no timestamp)
+        let mut metrics4 = HashMap::new();
+        metrics4.insert(RUNNING_METRIC.to_string(), create_metric(1.0, None));
+        node_metrics_map.insert(H160::from_low_u64_be(4), metrics4);
+
+        // Node without RUNNING_METRIC
+        let metrics5 = HashMap::new();
+        node_metrics_map.insert(H160::from_low_u64_be(5), metrics5);
+
+        let (running_nodes, idle_nodes) = categorize_running_nodes(node_metrics_map);
+
+        assert_eq!(running_nodes, vec![H160::from_low_u64_be(1)]);
+        assert!(idle_nodes.len() == 4);
+        assert!(idle_nodes.contains(&H160::from_low_u64_be(2)));
+        assert!(idle_nodes.contains(&H160::from_low_u64_be(3)));
+        assert!(idle_nodes.contains(&H160::from_low_u64_be(4)));
+        assert!(idle_nodes.contains(&H160::from_low_u64_be(5)));
     }
 }

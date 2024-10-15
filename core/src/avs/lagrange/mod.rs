@@ -172,8 +172,8 @@ impl AvsVariant for Lagrange {
         Ok(())
     }
 
-    fn name(&self) -> &str {
-        AvsName::LagrangeZK.as_str()
+    fn name(&self) -> AvsName {
+        AvsName::LagrangeZK
     }
 
     fn base_path(&self) -> PathBuf {
@@ -190,6 +190,16 @@ impl AvsVariant for Lagrange {
 
     fn set_running(&mut self, running: bool) {
         self.running = running;
+    }
+
+    fn version(&self) -> Result<semver::Version, IvyError> {
+        //TODO: Implement versioning
+        todo!()
+    }
+
+    async fn active_set(&self, _provider: Arc<IvyProvider>) -> bool {
+        //TODO: Implement active set
+        todo!()
     }
 }
 

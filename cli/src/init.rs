@@ -2,6 +2,7 @@ use dialoguer::{Input, MultiSelect, Password, Select};
 use ivynet_core::{
     config::IvyConfig,
     error::IvyError,
+    fluentd::{make_fluentd_compose, make_fluentd_conf},
     grpc::{
         backend::backend_client::BackendClient,
         client::{create_channel, Source, Uri},
@@ -83,15 +84,27 @@ pub async fn initialize_ivynet(
         config.store()?;
 
         // configure RPC addresses
-        let config = set_config_rpcs(config)?;
+        config = set_config_rpcs(config)?;
         set_config_keys().await?;
         // let config = set_config_metadata(config)?;
         config.store()?;
     }
 
+    ///////////////////////////////
+    //  Setup Container Logging  //
+    ///////////////////////////////
+
+    println!("Initializing logging service files...");
+
+    make_fluentd_compose(config.get_dir());
+    // make_fluentd_dockerfile(config.get_dir());
+    make_fluentd_conf(config.get_dir());
+    println!("Logging service files created at {}", config.get_dir().display());
+
     println!("\n----- IvyNet initialization complete -----");
     println!("You can now run `ivynet serve` to start the IvyNet service.");
     println!("You can also run `ivynet config` to view your configuration, or look in the ~/.ivynet directory.");
+    println!("Finally, run `ivynet help` to see all available commands.");
     println!("------------------------------------------\n");
     Ok(())
 }
@@ -177,7 +190,7 @@ fn set_config_rpcs(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
 async fn set_backend_connection(
     mut config: IvyConfig,
     server_url: Uri,
-    mut server_ca: Option<String>,
+    server_ca: Option<String>,
 ) -> Result<IvyConfig, IvyError> {
     let client_key = match config.identity_wallet() {
         Ok(key) => key.address(),
@@ -198,12 +211,12 @@ async fn set_backend_connection(
     }
 
     if server_ca.is_none() {
-        // Ask for server CA
-        let input_ca: String = Input::new()
-            .with_prompt("Enter the path to the server's CA certificate (leave blank to bypass)")
-            .allow_empty(true)
-            .interact_text()?;
-        server_ca = if input_ca.is_empty() { None } else { Some(input_ca) };
+        // Ask for server CA //Not now
+        // let input_ca: String = Input::new()
+        //     .with_prompt("Enter the path to the server's CA certificate (leave blank to bypass)")
+        //     .allow_empty(true)
+        //     .interact_text()?;
+        // server_ca = if input_ca.is_empty() { None } else { Some(input_ca) };
         config.backend_info.server_ca = server_ca.clone().unwrap_or("".to_string());
     }
 

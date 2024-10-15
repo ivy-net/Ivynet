@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, node_id, avs_name, avs_version, active_set FROM node_data WHERE node_id = $1",
+  "query": "SELECT id, node_id, avs_name, avs_version, active_set, operator_id FROM node_data WHERE node_id = $1",
   "describe": {
     "columns": [
       {
@@ -27,6 +27,11 @@
         "ordinal": 4,
         "name": "active_set",
         "type_info": "Bool"
+      },
+      {
+        "ordinal": 5,
+        "name": "operator_id",
+        "type_info": "Bytea"
       }
     ],
     "parameters": {
@@ -39,8 +44,9 @@
       false,
       false,
       false,
-      false
+      false,
+      true
     ]
   },
-  "hash": "5c11fef91e88bd0f957735c3aa4262934b6c53ad99b33c37f9c4e01efc16c034"
+  "hash": "e827a015fca4d39f98eb37a231d6cc9d6d3bcebf1a1263bcf8ae071ce77df660"
 }

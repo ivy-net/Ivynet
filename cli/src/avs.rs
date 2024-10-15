@@ -36,6 +36,7 @@ pub async fn parse_avs_subcommands(
                 config,
                 Some(wallet),
                 Some(ecdsa_password.clone()),
+                None,
             )
             .await?;
             avs.setup(config, Some(ecdsa_password), &format!("{bls_keyname}"), &bls_password)
@@ -101,7 +102,6 @@ pub async fn parse_avs_subcommands(
             let response = client.avs_mut().attach(avs, chain).await?;
             println!("{:?}", response.into_inner());
         }
-        AvsCommands::CheckStakePercentage { .. } => todo!(),
         _ => unimplemented!("Command not implemented: {:?}", subcmd),
     }
     Ok(())

@@ -5,12 +5,16 @@ use ivynet_core::{
     config::get_detailed_system_information,
     docker::dockercmd,
     error::IvyError,
+    ethers::types::Address,
     grpc::{
         backend::backend_client::BackendClient,
-        messages::{Metrics, MetricsAttribute, SignedMetrics},
+        messages::{
+            Metrics, MetricsAttribute, NodeData, SignedDeleteNodeData, SignedMetrics,
+            SignedNodeData,
+        },
         tonic::{transport::Channel, Request},
     },
-    signature::sign,
+    signature::{sign_delete_node_data, sign_metrics, sign_node_data},
     wallet::IvyWallet,
 };
 use tokio::{
@@ -25,14 +29,14 @@ const TELEMETRY_INTERVAL_IN_MINUTES: u64 = 1;
 
 pub async fn listen(
     avs_provider: Arc<RwLock<AvsProvider>>,
-    mut client: BackendClient<Channel>,
+    mut backend_client: BackendClient<Channel>,
     identity_wallet: IvyWallet,
 ) -> Result<(), IvyError> {
     let mut current_avs = avs_name(&avs_provider.read().await.avs);
     let mut metrics_url = None;
 
     loop {
-        let metrics = {
+        let (metrics, node_data) = {
             let provider = avs_provider.read().await;
             let name = avs_name(&provider.avs);
             let running = if let Some(avs) = &provider.avs { avs.is_running() } else { false };
@@ -54,13 +58,11 @@ pub async fn listen(
             } else {
                 metrics_url = None;
             }
-            collect(&current_avs, &metrics_url).await
+            collect(&avs_provider, &metrics_url).await?
         };
-        if let Ok(metrics) = metrics {
-            info!("Sending metrics...");
-            _ = send(&metrics, &identity_wallet, &mut client).await;
-        }
-
+        info!("Sending metrics...");
+        _ = send_metrics(&metrics, &identity_wallet, &mut backend_client).await;
+        _ = send_node_data_payload(&identity_wallet, &mut backend_client, &node_data).await;
         sleep(Duration::from_secs(TELEMETRY_INTERVAL_IN_MINUTES * 60)).await;
     }
 }
@@ -68,7 +70,7 @@ pub async fn listen(
 fn avs_name(avs: &Option<Box<dyn AvsVariant>>) -> Option<String> {
     match avs {
         None => None,
-        Some(avs_type) => Some(avs_type.name().to_owned()),
+        Some(avs_type) => Some(avs_type.name().to_owned().to_string()),
     }
 }
 
@@ -79,10 +81,9 @@ async fn metrics_endpoint(avs_name: &str) -> Option<String> {
             for (_, v) in info.network_settings.ports {
                 for ep in v {
                     if let Ok(port) = ep.port.parse::<u16>() {
-                        if port != 32005
-                        // TODO: Is this enough to understand what port we are looking for?
-                        {
-                            return Some(format!("http://localhost:{}", ep.port));
+                        let url = format!("http://localhost:{}/metrics", port);
+                        if reqwest::get(&url).await.is_ok() {
+                            return Some(url);
                         }
                     }
                 }
@@ -93,12 +94,34 @@ async fn metrics_endpoint(avs_name: &str) -> Option<String> {
 }
 
 async fn collect(
-    avs: &Option<String>,
+    avs_provider: &Arc<RwLock<AvsProvider>>,
     metrics_url: &Option<String>,
-) -> Result<Vec<Metrics>, IvyError> {
+) -> Result<(Vec<Metrics>, NodeData), IvyError> {
+    let provider = avs_provider.read().await;
+    let avs = &provider.avs;
+    // Depending on currently running avs, we decide how to fetch
+    let (avs_name, metrics_location, address, running) = match avs {
+        None => (None, None, None, false),
+        Some(avs_type) => {
+            match avs_type.name() {
+                AvsName::EigenDA => (
+                    Some(AvsName::EigenDA.to_string()),
+                    Some("http://localhost:9092/metrics"),
+                    Some(format!("{:?}", provider.provider.address())),
+                    avs_type.is_running(),
+                ),
+                _ => (Some(avs_type.name().to_string()), None, None, avs_type.is_running()), // * that one */
+            }
+        }
+    };
+
+    let address = format!("{:?}", provider.provider.address());
+    let running = if let Some(avs) = avs { avs.is_running() } else { false };
+    let avs_name: Option<AvsName> = if let Some(avs) = avs { Some(avs.name()) } else { None };
+
     info!("Collecting metrics for {metrics_url:?}...");
-    let mut metrics = if let Some(address) = metrics_url {
-        if let Ok(resp) = reqwest::get(address).await {
+    let mut metrics = if let Some(metrics_url) = metrics_url {
+        if let Ok(resp) = reqwest::get(metrics_url).await {
             if let Ok(body) = resp.text().await {
                 let metrics = body
                     .split('\n')
@@ -114,6 +137,31 @@ async fn collect(
         }
     } else {
         Vec::new()
+    };
+
+    let node_data = if let Some(avs) = avs {
+        NodeData {
+            operator_id: provider.provider.address().as_bytes().to_vec(),
+            avs_name: match avs_name.clone() {
+                Some(avs_name) => avs_name.to_string(),
+                None => "".to_string(),
+            },
+            avs_version: {
+                if let Ok(version) = avs.version() {
+                    version.to_string()
+                } else {
+                    "0.0.0".to_string()
+                }
+            },
+            active_set: avs.active_set(provider.provider.clone()).await,
+        }
+    } else {
+        NodeData {
+            operator_id: provider.provider.address().as_bytes().to_vec(),
+            avs_name: "".to_string(),
+            avs_version: "0.0.0".to_string(),
+            active_set: false,
+        }
     };
 
     // Now we need to add basic metrics
@@ -151,30 +199,84 @@ async fn collect(
 
     metrics.push(Metrics {
         name: "running".to_owned(),
-        value: if metrics_url.is_some() { 1.0 } else { 0.0 },
-        attributes: if let Some(avs) = avs {
-            vec![MetricsAttribute { name: "avs".to_owned(), value: avs.to_owned() }]
+        value: if running { 1.0 } else { 0.0 },
+        attributes: if let Some(avs_name) = avs_name {
+            vec![
+                MetricsAttribute { name: "avs".to_owned(), value: avs_name.to_owned().to_string() },
+                MetricsAttribute {
+                    name: "chain".to_owned(),
+                    value: {
+                        match provider.chain().await {
+                            Ok(chain) => chain.to_string(),
+                            Err(_) => "unknown".to_string(),
+                        }
+                    },
+                },
+                MetricsAttribute { name: "operator_id".to_owned(), value: address },
+                MetricsAttribute {
+                    name: "active_set".to_owned(),
+                    value: node_data.active_set.to_string(),
+                },
+                MetricsAttribute {
+                    name: "version".to_owned(),
+                    value: node_data.avs_version.to_string(),
+                },
+            ]
         } else {
             Default::default()
         },
     });
 
-    Ok(metrics)
+    Ok((metrics, node_data))
 }
 
-async fn send(
+async fn send_metrics(
     metrics: &[Metrics],
-    wallet: &IvyWallet,
-    client: &mut BackendClient<Channel>,
+    identity_wallet: &IvyWallet,
+    backend_client: &mut BackendClient<Channel>,
 ) -> Result<(), IvyError> {
-    let signature = sign(metrics, wallet).await?;
+    let signature = sign_metrics(metrics, identity_wallet)?;
 
-    client
+    backend_client
         .metrics(Request::new(SignedMetrics {
             signature: signature.to_vec(),
             metrics: metrics.to_vec(),
         }))
         .await?;
+    Ok(())
+}
+
+pub async fn send_node_data_payload(
+    identity_wallet: &IvyWallet,
+    backend_client: &mut BackendClient<Channel>,
+    node_data: &NodeData,
+) -> Result<(), IvyError> {
+    let signature = sign_node_data(node_data, identity_wallet)?;
+
+    let signed_node_data =
+        SignedNodeData { signature: signature.to_vec(), node_data: Some(node_data.clone()) };
+
+    let request = Request::new(signed_node_data);
+    backend_client.node_data(request).await?;
+    Ok(())
+}
+
+pub async fn delete_node_data_payload(
+    identity_wallet: &IvyWallet,
+    backend_client: &mut BackendClient<Channel>,
+    operator_id: Address,
+    avs_name: AvsName,
+) -> Result<(), IvyError> {
+    let signature = sign_delete_node_data(operator_id, avs_name.to_string(), identity_wallet)?;
+
+    let signed_node_data = SignedDeleteNodeData {
+        signature: signature.to_vec(),
+        operator_id: operator_id.as_bytes().to_vec(),
+        avs_name: avs_name.to_string(),
+    };
+
+    let request = Request::new(signed_node_data);
+    backend_client.delete_node_data(request).await?;
     Ok(())
 }
 

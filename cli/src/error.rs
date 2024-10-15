@@ -27,6 +27,9 @@ pub enum Error {
     #[error("Metadata Uri Not Found")]
     MetadataUriNotFoundError,
 
+    #[error(transparent)]
+    StdIo(#[from] std::io::Error),
+
     #[error("Invalid selection")]
     InvalidSelection,
 }
