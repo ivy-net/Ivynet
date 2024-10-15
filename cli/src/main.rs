@@ -1,6 +1,6 @@
 use anyhow::{Context, Error as AnyError, Result};
 use clap::{Parser, Subcommand};
-use cli::{avs, config, error::Error, init::initialize_ivynet, key, operator, service, staker};
+use cli::{avs, config, error::Error, init::initialize_ivynet, key, service};
 use ivynet_core::{
     avs::commands::AvsCommands,
     config::IvyConfig,
@@ -31,7 +31,7 @@ struct Args {
     network: String,
 
     /// IvyNet servers Uri for communication
-    #[arg(long, env = "SERVER_URL", value_parser = Uri::from_str, default_value = "http://localhost:50050")]
+    #[arg(long, env = "SERVER_URL", value_parser = Uri::from_str, default_value = "https://api1.test.ivynet.dev:50050")]
     pub server_url: Uri,
 
     /// IvyNets server certificate
@@ -41,7 +41,6 @@ struct Args {
     /// Decide the level of verbosity for the logs
     #[arg(long, env = "LOG_LEVEL", default_value_t = Level::INFO)]
     pub log_level: Level,
-
     /// Skip backend connection
     #[arg(long, env = "NO_BACKEND", default_value_t = false)]
     pub no_backend: bool,
@@ -66,16 +65,16 @@ enum Commands {
         #[command(subcommand)]
         subcmd: key::KeyCommands,
     },
-    #[command(name = "operator", about = "Request information, register, or manage your operator")]
-    Operator {
-        #[command(subcommand)]
-        subcmd: operator::OperatorCommands,
-    },
-    #[command(name = "staker", about = "Request information about stakers")]
-    Staker {
-        #[command(subcommand)]
-        subcmd: staker::StakerCommands,
-    },
+    // #[command(name = "operator", about = "Request information, register, or manage your
+    // operator")] Operator {
+    //     #[command(subcommand)]
+    //     subcmd: operator::OperatorCommands,
+    // },
+    // #[command(name = "staker", about = "Request information about stakers")]
+    // Staker {
+    //     #[command(subcommand)]
+    //     subcmd: staker::StakerCommands,
+    // },
     #[command(
         name = "serve",
         about = "Start the Ivynet service with a specified AVS on CHAIN selected for startup. --avs <AVS> --chain <CHAIN>"
@@ -130,10 +129,10 @@ async fn main() -> Result<(), AnyError> {
             config::parse_config_subcommands(subcmd, config).await?;
         }
         Commands::Key { subcmd } => key::parse_key_subcommands(subcmd, config).await?,
-        Commands::Operator { subcmd } => {
-            operator::parse_operator_subcommands(subcmd, &config).await?
-        }
-        Commands::Staker { subcmd } => staker::parse_staker_subcommands(subcmd, &config).await?,
+        // Commands::Operator { subcmd } => {
+        //     operator::parse_operator_subcommands(subcmd, &config).await?
+        // }
+        // Commands::Staker { subcmd } => staker::parse_staker_subcommands(subcmd, &config).await?,
         Commands::Avs { subcmd } => avs::parse_avs_subcommands(subcmd, &config).await?,
         Commands::Serve { avs, chain } => {
             service::serve(avs, chain, &config, server_url, server_ca, args.no_backend).await?
