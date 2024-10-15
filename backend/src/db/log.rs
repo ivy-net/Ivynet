@@ -1,4 +1,3 @@
-use super::Node;
 use crate::error::BackendError;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use ivynet_core::ethers::types::Address;
@@ -65,7 +64,7 @@ impl From<&ContainerLog> for ContainerDbLog {
             container_id: value.container_id.clone(),
             container_name: value.container_name.clone(),
             log: value.log.clone(),
-            log_level: value.log_level.clone(),
+            log_level: value.log_level,
             created_at: DateTime::from_timestamp(value.created_at.expect("invalid "), 0)
                 .expect("Invalid naive utc")
                 .naive_utc(),
