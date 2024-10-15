@@ -25,3 +25,26 @@ message MetricsAttribute {
     string name = 1;
     string value = 2;
 }
+
+message SignedLogs {
+    bytes signature =  1;
+    string logs = 2;
+}
+
+message SignedNodeData {
+    bytes signature = 1;
+    NodeData node_data = 2;
+}
+
+message NodeData {
+    bytes operator_id = 1;
+    string avs_name = 2;
+    string avs_version = 3;
+    bool active_set = 4;
+}
+
+message SignedDeleteNodeData {
+    bytes signature = 1;
+    bytes operator_id = 2;
+    string avs_name = 3;
+}

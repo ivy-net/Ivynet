@@ -1,6 +1,6 @@
 use utoipa::OpenApi;
 
-use super::{super::db, authorize, client, organization};
+use super::{super::db, authorize, avs, client, organization};
 
 #[derive(OpenApi)]
 #[openapi(
@@ -17,10 +17,17 @@ use super::{super::db, authorize, client, organization};
         client::status,
         client::idling,
         client::unhealthy,
+        client::healthy,
         client::info,
         client::metrics_condensed,
         client::metrics_all,
-        client::delete
+        client::delete,
+        client::set_name,
+        client::delete_node_data,
+        client::delete_avs_node_data,
+        client::get_all_node_data,
+        client::get_node_data_for_avs,
+        avs::get_node_data_for_avs,
     ),
     components(
         schemas(
@@ -35,11 +42,13 @@ use super::{super::db, authorize, client, organization};
             organization::InvitationRequest,
             db::Node,
             db::Role,
+            db::NodeData,
+            db::AvsData,
             client::Status,
             client::StatusReport,
             client::Info,
             client::InfoReport,
-            client::Metrics
+            client::Metrics,
         ),
     ),
     tags(

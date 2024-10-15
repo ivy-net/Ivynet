@@ -51,7 +51,7 @@ Registration steps:
 
 ## Quickstart
 
-### Setup and Confgiuration:
+### Setup and Configuration:
 
 The following assumes that the ivynet has been installed and is available in the PATH, and that the user's ECDSA account has already registered as an operator on the Eigenlayer network.
 

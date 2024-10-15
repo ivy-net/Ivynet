@@ -1,8 +1,8 @@
 use dialoguer::{Input, MultiSelect, Password, Select};
 use ivynet_core::{
     config::IvyConfig,
-    dialog::get_confirm_password,
     error::IvyError,
+    fluentd::{make_fluentd_compose, make_fluentd_conf},
     grpc::{
         backend::backend_client::BackendClient,
         client::{create_channel, Source, Uri},
@@ -29,7 +29,20 @@ pub async fn initialize_ivynet(
     // Build IvyConfig file
     println!("Performing ivynet intialization...");
 
-    let config = IvyConfig::new();
+    let mut config = IvyConfig::new();
+    if !skip_login {
+        println!("Verifying with IvyNet servers...");
+        loop {
+            if let Ok(cfg) =
+                set_backend_connection(config.clone(), server_url.clone(), server_ca.clone()).await
+            {
+                config = cfg;
+                break;
+            } else {
+                println!("Login failed. Try again...");
+            }
+        }
+    }
     if config.get_file().exists() {
         let overwrite = Select::new()
             .with_prompt("An ivynet config file already exists. Would you like to overwrite it, overwrite it and create a backup, or exit?")
@@ -45,6 +58,11 @@ pub async fn initialize_ivynet(
         } else {
             return Ok(());
         }
+    }
+
+    config.set_server_url(server_url.to_string());
+    if let Some(ref ca) = server_ca {
+        config.set_server_ca(ca.clone());
     }
 
     let setup_types = ["Interactive", "Empty"];
@@ -66,16 +84,22 @@ pub async fn initialize_ivynet(
         config.store()?;
 
         // configure RPC addresses
-        let config = set_config_rpcs(config)?;
-        let config = set_config_keys(config)?;
+        config = set_config_rpcs(config)?;
+        set_config_keys().await?;
         // let config = set_config_metadata(config)?;
         config.store()?;
-
-        if !skip_login {
-            let config = set_backend_connection(config, server_url, server_ca).await?;
-            config.store()?;
-        }
     }
+
+    ///////////////////////////////
+    //  Setup Container Logging  //
+    ///////////////////////////////
+
+    println!("Initializing logging service files...");
+
+    make_fluentd_compose(config.get_dir());
+    // make_fluentd_dockerfile(config.get_dir());
+    make_fluentd_conf(config.get_dir());
+    println!("Logging service files created at {}", config.get_dir().display());
 
     println!("\n----- IvyNet initialization complete -----");
     println!("You can now run `ivynet serve` to start the IvyNet service.");
@@ -220,7 +244,7 @@ async fn set_backend_connection(
     Ok(config)
 }
 
-fn set_config_keys(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
+async fn set_config_keys() -> Result<(), IvyError> {
     let key_config_types = ["Import", "Create", "Skip"];
     let interactive = Select::new()
         .with_prompt(
@@ -232,18 +256,7 @@ fn set_config_keys(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
         .unwrap();
     match interactive {
         0 => {
-            let private_key: String =
-                Password::new().with_prompt("Enter your ECDSA private key").interact()?;
-            let keyfile_name: String =
-                Input::new().with_prompt("Enter a name for the keyfile").interact()?;
-            let pw = get_confirm_password();
-            let keychain = Keychain::default();
-            let key = keychain.import(KeyType::Ecdsa, Some(&keyfile_name), &private_key, &pw)?;
-
-            if let Some(wallet) = key.get_wallet_owned() {
-                config.default_ecdsa_keyfile = Some(keyfile_name);
-                config.default_ecdsa_address = wallet.address();
-            }
+            super::key::import_ecdsa().await.map_err(|_| IvyError::KeyfilePasswordError)?;
         }
         1 => {
             let keyfile_name: String =
@@ -266,9 +279,7 @@ fn set_config_keys(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
             let keychain = Keychain::default();
             let key = keychain.generate(KeyType::Ecdsa, Some(&keyfile_name), &pw);
             if let Some(wallet) = key.get_wallet_owned() {
-                config.default_ecdsa_keyfile = Some(keyfile_name);
                 let addr = wallet.address();
-                config.default_ecdsa_address = addr;
                 println!("Public Address: {:?}", addr)
             }
         }
@@ -277,7 +288,7 @@ fn set_config_keys(mut config: IvyConfig) -> Result<IvyConfig, IvyError> {
         }
         _ => unreachable!("Unknown key setup option reached"),
     }
-    Ok(config)
+    Ok(())
 }
 
 fn create_config_dir(config_path: PathBuf) -> Result<(), IvyError> {

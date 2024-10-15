@@ -1,6 +1,6 @@
 use ivynet_core::{
     avs::{
-        eigenda::EigenDA, lagrange::Lagrange, mach_avs::AltLayer, names::AvsNames, AvsProvider,
+        eigenda::EigenDA, lagrange::Lagrange, mach_avs::AltLayer, names::AvsName, AvsProvider,
         AvsVariant,
     },
     config::IvyConfig,
@@ -52,12 +52,12 @@ impl Avs for IvynetService {
         let avs = &provider.avs;
         let (running, avs_type, chain) = if let Some(avs) = avs {
             let is_running = avs.is_running();
-            let avs_type = avs.name();
+            let avs_type = avs.name().to_string();
             let chain = Chain::try_from(provider.provider.signer().chain_id())
                 .expect("Unexpected chain ID parse failure");
             (is_running, avs_type, chain.to_string())
         } else {
-            let avs_type = "None";
+            let avs_type = "None".to_string();
             let chain = "None";
             (false, avs_type, chain.to_string())
         };
@@ -152,10 +152,10 @@ impl Avs for IvynetService {
             let new_ivy_provider =
                 connect_provider(&config.get_rpc_url(chain)?, Some(signer)).await?;
 
-            let avs_instance: Box<dyn AvsVariant> = match AvsNames::from(avs.as_ref()) {
-                AvsNames::EigenDA => Box::new(EigenDA::new_from_chain(chain)),
-                AvsNames::AltLayer => Box::new(AltLayer::new_from_chain(chain)),
-                AvsNames::LagrangeZK => Box::new(Lagrange::new_from_chain(chain)),
+            let avs_instance: Box<dyn AvsVariant> = match AvsName::from(&avs) {
+                AvsName::EigenDA => Box::new(EigenDA::new_from_chain(chain)),
+                AvsName::AltLayer => Box::new(AltLayer::new_from_chain(chain)),
+                AvsName::LagrangeZK => Box::new(Lagrange::new_from_chain(chain)),
                 _ => return Err(IvyError::InvalidAvsType(avs.to_string()).into()),
             };
             provider.set_avs(avs_instance, new_ivy_provider.into()).await?;
@@ -260,11 +260,6 @@ impl Operator for IvynetService {
         // Update provider
         provider.with_signer(signer)?;
         provider.with_keyfile_pw(Some(pass))?;
-
-        // Update config file
-        let mut config = IvyConfig::load_from_default_path().map_err(IvyError::from)?;
-        config.default_ecdsa_keyfile = path.into();
-        config.store().map_err(IvyError::from)?;
 
         Ok(Response::new(SetEcdsaKeyfilePathResponse {}))
     }

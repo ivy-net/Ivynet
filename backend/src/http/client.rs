@@ -7,26 +7,28 @@ use axum::{
 };
 use axum_extra::extract::CookieJar;
 use chrono::NaiveDateTime;
-use ivynet_core::ethers::types::Address;
+use ivynet_core::{avs::names::AvsName, ethers::types::Address};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::{
-    data,
-    db::{metric, node},
+    data::{self, NodeStatus},
+    db::{
+        metric::Metric,
+        node,
+        node_data::{DbNodeData, NodeData},
+    },
     error::BackendError,
 };
 
 use super::{authorize, HttpState};
 
-const EIGEN_PERFORMANCE_METRIC: &str = "eigen_performance_score";
 const CPU_USAGE_METRIC: &str = "cpu_usage";
 const MEMORY_USAGE_METRIC: &str = "ram_usage";
 const DISK_USAGE_METRIC: &str = "disk_usage";
 const UPTIME_METRIC: &str = "uptime";
 const RUNNING_METRIC: &str = "running";
-
-const EIGEN_PERFORMANCE_HEALTHY_THRESHOLD: f64 = 80.0;
+const EIGEN_PERFORMANCE_METRIC: &str = "eigen_performance_score";
 
 #[derive(Deserialize, Debug, Clone, ToSchema)]
 pub struct NameChangeRequest {
@@ -40,7 +42,7 @@ pub enum StatusError {}
 #[derive(Serialize, ToSchema, Clone, Debug, Default)]
 pub struct StatusReport {
     pub total_machines: usize,
-    pub healthy_machines: usize,
+    pub healthy_machines: Vec<String>,
     pub unhealthy_machines: Vec<String>,
     pub idle_machines: Vec<String>,
     pub updateable_machines: Vec<String>,
@@ -53,17 +55,17 @@ pub struct Status {
     pub result: StatusReport,
 }
 
-#[derive(Serialize, ToSchema, Clone, Debug, Default)]
+#[derive(Serialize, ToSchema, Clone, Debug)]
 pub struct Info {
     pub error: Vec<StatusError>,
     pub result: InfoReport,
 }
 
-#[derive(Serialize, ToSchema, Clone, Debug, Default)]
+#[derive(Serialize, ToSchema, Clone, Debug)]
 pub struct InfoReport {
     pub machine_id: String,
     pub name: String,
-    pub status: String,
+    pub status: NodeStatus,
     pub metrics: Metrics,
     pub last_checked: Option<NaiveDateTime>,
 }
@@ -74,12 +76,42 @@ pub struct Metrics {
     pub memory_usage: f64,
     pub disk_usage: f64,
     pub uptime: u64,
+    pub performance_score: f64,
     pub deployed_avs: Option<String>,
     pub deployed_avs_chain: Option<String>,
     pub operators_pub_key: Option<String>,
     pub error: Vec<String>, // TODO: No idea what to do with it yet
 }
 
+/// Grab information for every node in the organization
+#[utoipa::path(
+    get,
+    path = "/client",
+    responses(
+        (status = 200, body = [Info]),
+        (status = 404)
+    )
+)]
+pub async fn client(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+) -> Result<Json<Vec<Info>>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let machines: Vec<node::Node> = account.nodes(&state.pool).await?;
+
+    let mut infos: Vec<Info> = vec![];
+
+    for machine in machines {
+        let metrics = Metric::get_organized_for_node(&state.pool, &machine).await?;
+        let info = build_node_info(machine, metrics);
+        infos.push(info);
+    }
+
+    Ok(Json(infos))
+}
+
+/// Get an overview of which nodes are healthy, unhealthy, idle, and erroring
 #[utoipa::path(
     get,
     path = "/client/status",
@@ -97,53 +129,27 @@ pub async fn status(
 
     let machines = account.nodes(&state.pool).await?;
 
-    let mut metrics = HashMap::new();
+    let mut node_metrics_map = HashMap::new();
 
     for machine in &machines {
-        metrics.insert(
-            machine.node_id,
-            metric::Metric::get_organized_for_node(&state.pool, machine).await?,
-        );
+        node_metrics_map
+            .insert(machine.node_id, Metric::get_organized_for_node(&state.pool, machine).await?);
     }
+
+    let (running_nodes, idle_nodes) = data::categorize_running_nodes(node_metrics_map.clone());
+    let (healthy_nodes, unhealthy_nodes) =
+        data::categorize_node_health(running_nodes.clone(), node_metrics_map.clone());
+
+    //TODO: Old (ie machines not pushing metrics) machines and updateable machines are not
+    // implemented yet
 
     Ok(Status {
         error: Vec::new(),
         result: StatusReport {
             total_machines: machines.len(),
-            healthy_machines: metrics
-                .iter()
-                .filter_map(|(machine, metrics)| {
-                    if let Some(performace) = metrics.get(EIGEN_PERFORMANCE_METRIC) {
-                        if performace.value >= EIGEN_PERFORMANCE_HEALTHY_THRESHOLD {
-                            return Some(machine);
-                        }
-                    }
-                    None
-                })
-                .collect::<Vec<_>>()
-                .len(),
-            unhealthy_machines: metrics
-                .iter()
-                .filter_map(|(machine, metrics)| {
-                    if let Some(performace) = metrics.get(EIGEN_PERFORMANCE_METRIC) {
-                        if performace.value >= EIGEN_PERFORMANCE_HEALTHY_THRESHOLD {
-                            return None;
-                        }
-                    }
-                    Some(format!("{machine:?}"))
-                })
-                .collect::<Vec<_>>(),
-            idle_machines: metrics
-                .iter()
-                .filter_map(|(machine, metrics)| {
-                    if let Some(performace) = metrics.get(RUNNING_METRIC) {
-                        if performace.value == 1.0 {
-                            return None;
-                        }
-                    }
-                    Some(format!("{machine:?}"))
-                })
-                .collect::<Vec<_>>(),
+            healthy_machines: healthy_nodes.iter().map(|node| format!("{node:?}")).collect(),
+            unhealthy_machines: unhealthy_nodes.iter().map(|node| format!("{node:?}")).collect(),
+            idle_machines: idle_nodes.iter().map(|node| format!("{node:?}")).collect(),
             updateable_machines: Vec::new(), // TODO: How to get these?
             erroring_machines: Vec::new(),   // TODO: When we will solve error issues
         },
@@ -151,6 +157,7 @@ pub async fn status(
     .into())
 }
 
+/// Get an overview of which nodes are idle
 #[utoipa::path(
     get,
     path = "/client/idle",
@@ -168,29 +175,19 @@ pub async fn idling(
 
     let machines = account.nodes(&state.pool).await?;
 
-    let mut metrics = HashMap::new();
+    let mut node_metrics_map = HashMap::new();
 
     for machine in &machines {
-        metrics.insert(
-            machine.node_id,
-            metric::Metric::get_organized_for_node(&state.pool, machine).await?,
-        );
+        node_metrics_map
+            .insert(machine.node_id, Metric::get_organized_for_node(&state.pool, machine).await?);
     }
 
-    Ok(metrics
-        .iter()
-        .filter_map(|(machine, metrics)| {
-            if let Some(performace) = metrics.get(RUNNING_METRIC) {
-                if performace.value == 1.0 {
-                    return None;
-                }
-            }
-            Some(format!("{machine:?}"))
-        })
-        .collect::<Vec<_>>()
-        .into())
+    let (_, idle_nodes) = data::categorize_running_nodes(node_metrics_map.clone());
+
+    Ok(Json(idle_nodes.iter().map(|node| format!("{node:?}")).collect()))
 }
 
+/// Get an overview of which nodes are unhealthy
 #[utoipa::path(
     post,
     path = "/client/unhealthy",
@@ -208,32 +205,56 @@ pub async fn unhealthy(
 
     let machines = account.nodes(&state.pool).await?;
 
-    let mut metrics = HashMap::new();
+    let mut node_metrics_map = HashMap::new();
 
     for machine in &machines {
-        metrics.insert(
-            machine.node_id,
-            metric::Metric::get_organized_for_node(&state.pool, machine).await?,
-        );
+        node_metrics_map
+            .insert(machine.node_id, Metric::get_organized_for_node(&state.pool, machine).await?);
     }
 
-    Ok(metrics
-        .iter()
-        .filter_map(|(machine, metrics)| {
-            if let Some(performace) = metrics.get(EIGEN_PERFORMANCE_METRIC) {
-                if performace.value >= EIGEN_PERFORMANCE_HEALTHY_THRESHOLD {
-                    return None;
-                }
-            }
-            Some(format!("{machine:?}"))
-        })
-        .collect::<Vec<_>>()
-        .into())
+    let (running_nodes, _) = data::categorize_running_nodes(node_metrics_map.clone());
+    let (_, unhealthy_nodes) =
+        data::categorize_node_health(running_nodes.clone(), node_metrics_map.clone());
+
+    Ok(Json(unhealthy_nodes.iter().map(|node| format!("{node:?}")).collect()))
 }
 
+/// Get an overview of which nodes are healthy
 #[utoipa::path(
     post,
-    path = "/client/:id",
+    path = "/client/healthy",
+    responses(
+        (status = 200, body = Vec<String>),
+        (status = 404)
+    )
+)]
+pub async fn healthy(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+) -> Result<Json<Vec<String>>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+
+    let machines = account.nodes(&state.pool).await?;
+
+    let mut node_metrics_map = HashMap::new();
+
+    for machine in &machines {
+        node_metrics_map
+            .insert(machine.node_id, Metric::get_organized_for_node(&state.pool, machine).await?);
+    }
+
+    let (running_nodes, _) = data::categorize_running_nodes(node_metrics_map.clone());
+    let (healthy_nodes, _) =
+        data::categorize_node_health(running_nodes.clone(), node_metrics_map.clone());
+
+    Ok(Json(healthy_nodes.iter().map(|node| format!("{node:?}")).collect()))
+}
+
+/// Set the name of a node
+#[utoipa::path(
+    post,
+    path = "/client/:id/:name",
     responses(
         (status = 200),
         (status = 404)
@@ -258,6 +279,8 @@ pub async fn set_name(
 
     Ok(())
 }
+
+/// Delete a node from the database
 #[utoipa::path(
     delete,
     path = "/client/:id",
@@ -284,84 +307,7 @@ pub async fn delete(
     Ok(())
 }
 
-#[utoipa::path(
-    get,
-    path = "/client/:id/metrics",
-    responses(
-        (status = 200, body = [Metric]),
-        (status = 404)
-    )
-)]
-pub async fn metrics_condensed(
-    headers: HeaderMap,
-    State(state): State<HttpState>,
-    Path(id): Path<String>,
-    jar: CookieJar,
-) -> Result<Json<Vec<metric::Metric>>, BackendError> {
-    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-
-    let node_id = id.parse::<Address>().map_err(|_| BackendError::InvalidNodeId)?;
-
-    let account_nodes = node::DbNode::get_all_for_account(&state.pool, &account).await?;
-
-    let node = {
-        let mut ret = None;
-        for node in account_nodes {
-            if node.node_id == node_id {
-                ret = Some(node);
-                break;
-            }
-        }
-        ret
-    };
-    let all_metrics = if let Some(node) = node {
-        Ok(metric::Metric::get_all_for_node(&state.pool, &node).await?)
-    } else {
-        Err(BackendError::InvalidNodeId)
-    }?;
-
-    let filtered_metrics = data::filter_metrics(&all_metrics)?;
-
-    Ok(Json(filtered_metrics))
-}
-
-#[utoipa::path(
-    get,
-    path = "/client/:id/metrics/all",
-    responses(
-        (status = 200, body = [Metric]),
-        (status = 404)
-    )
-)]
-pub async fn metrics_all(
-    headers: HeaderMap,
-    State(state): State<HttpState>,
-    Path(id): Path<String>,
-    jar: CookieJar,
-) -> Result<Json<Vec<metric::Metric>>, BackendError> {
-    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-
-    let node_id = id.parse::<Address>().map_err(|_| BackendError::InvalidNodeId)?;
-
-    let account_nodes = node::DbNode::get_all_for_account(&state.pool, &account).await?;
-
-    let node = {
-        let mut ret = None;
-        for node in account_nodes {
-            if node.node_id == node_id {
-                ret = Some(node);
-                break;
-            }
-        }
-        ret
-    };
-    if let Some(node) = node {
-        Ok(metric::Metric::get_all_for_node(&state.pool, &node).await?.into())
-    } else {
-        Err(BackendError::InvalidNodeId)
-    }
-}
-
+/// Get info on a specific node
 #[utoipa::path(
     get,
     path = "/client/:id",
@@ -383,15 +329,171 @@ pub async fn info(
         return Err(BackendError::Unauthorized);
     }
 
-    let metrics = metric::Metric::get_organized_for_node(&state.pool, &machine).await?;
+    let metrics = Metric::get_organized_for_node(&state.pool, &machine).await?;
+    Ok(Json(build_node_info(machine, metrics)))
+}
+
+/// Get condensed metrics for a specific node
+#[utoipa::path(
+    get,
+    path = "/client/:id/metrics",
+    responses(
+        (status = 200, body = [Metric]),
+        (status = 404)
+    )
+)]
+pub async fn metrics_condensed(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    Path(id): Path<String>,
+    jar: CookieJar,
+) -> Result<Json<Vec<Metric>>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let node_id =
+        authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
+
+    let metrics = Metric::get_all_for_node(&state.pool, node_id).await?;
+
+    let filtered_metrics = data::condense_metrics(&metrics)?;
+
+    Ok(Json(filtered_metrics))
+}
+
+/// Get all metrics for a specific node
+#[utoipa::path(
+    get,
+    path = "/client/:id/metrics/all",
+    responses(
+        (status = 200, body = [Metric]),
+        (status = 404)
+    )
+)]
+pub async fn metrics_all(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    Path(id): Path<String>,
+    jar: CookieJar,
+) -> Result<Json<Vec<Metric>>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let node_id =
+        authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
+
+    Ok(Metric::get_all_for_node(&state.pool, node_id).await?.into())
+}
+
+/// Get all data on every running avs for a specific node
+#[utoipa::path(
+    get,
+    path = "/client/:id/data/",
+    responses(
+        (status = 200, body = [NodeData]),
+        (status = 404)
+    )
+)]
+pub async fn get_all_node_data(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    Path(id): Path<String>,
+    jar: CookieJar,
+) -> Result<Json<Vec<NodeData>>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let node_id =
+        authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
+
+    // Get all data for the node
+    let nodes_data = DbNodeData::get_all_node_data(&state.pool, &node_id).await?;
+
+    Ok(Json(nodes_data))
+}
+
+/// Get all data on a specific AVS running on a node
+/// Keep in mind, a node could run the same avs multiple times
+/// assuming they are using different operator keys
+#[utoipa::path(
+    get,
+    path = "/client/:id/data/:avs",
+    responses(
+        (status = 200, body = [NodeData]),
+        (status = 404)
+    )
+)]
+pub async fn get_node_data_for_avs(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    Path((id, avs)): Path<(String, String)>,
+    jar: CookieJar,
+) -> Result<Json<Vec<NodeData>>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let node_id =
+        authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
+    let avs_name = AvsName::from(&avs);
+
+    // Get all data for the node
+    let nodes_data = DbNodeData::get_avs_node_data(&state.pool, &node_id, &avs_name).await?;
+
+    Ok(Json(nodes_data))
+}
+
+/// Delete all data for a specific node
+#[utoipa::path(
+    delete,
+    path = "/client/:id/data",
+    responses(
+        (status = 200),
+        (status = 404)
+    )
+)]
+pub async fn delete_node_data(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Path(id): Path<String>,
+) -> Result<(), BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let node_id =
+        authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
+
+    DbNodeData::delete_all_node_data(&state.pool, &node_id).await?;
+
+    Ok(())
+}
+
+/// Delete all data for a specific AVS running on a node
+#[utoipa::path(
+    delete,
+    path = "/client/:id/data/:avs/:operator_id",
+    responses(
+        (status = 200),
+        (status = 404)
+    )
+)]
+pub async fn delete_avs_node_data(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    Path((id, avs, operator_id)): Path<(String, String, String)>,
+    jar: CookieJar,
+) -> Result<(), BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let _node_id =
+        authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
+    let avs_name = AvsName::from(&avs);
+
+    let op_id: Address = operator_id.parse::<Address>().map_err(|_| BackendError::BadId)?;
+
+    DbNodeData::delete_avs_operator_data(&state.pool, &op_id, &avs_name).await?;
+
+    Ok(())
+}
+
+pub fn build_node_info(node: node::Node, node_metrics: HashMap<String, Metric>) -> Info {
     let (last_checked, deployed_avs, deployed_avs_chain, operators_pub_key) =
-        if let Some(running) = metrics.get(RUNNING_METRIC) {
+        if let Some(running) = node_metrics.get(RUNNING_METRIC) {
             if let Some(attributes) = &running.attributes {
                 (
                     running.created_at,
                     attributes.get("avs").cloned(),
                     attributes.get("chain").cloned(),
-                    attributes.get("operator_key").cloned(),
+                    attributes.get("operator_id").cloned(),
                 )
             } else {
                 (running.created_at, None, None, None)
@@ -399,33 +501,40 @@ pub async fn info(
         } else {
             (None, None, None, None)
         };
-    Ok(Info {
+
+    Info {
         error: Vec::new(),
         result: InfoReport {
-            machine_id: id,
-            name: machine.name,
-            status: "Healthy".to_owned(), // TODO: This is wrong. We don't know what potential
-            // statuses are
+            machine_id: format!("{:?}", node.node_id),
+            name: node.name,
+            status: data::get_node_status(node_metrics.clone()),
             metrics: Metrics {
-                cpu_usage: if let Some(cpu) = metrics.get(CPU_USAGE_METRIC) {
+                cpu_usage: if let Some(cpu) = node_metrics.get(CPU_USAGE_METRIC) {
                     cpu.value
                 } else {
                     0.0
                 },
-                memory_usage: if let Some(ram) = metrics.get(MEMORY_USAGE_METRIC) {
+                memory_usage: if let Some(ram) = node_metrics.get(MEMORY_USAGE_METRIC) {
                     ram.value
                 } else {
                     0.0
                 },
-                disk_usage: if let Some(disk) = metrics.get(DISK_USAGE_METRIC) {
+                disk_usage: if let Some(disk) = node_metrics.get(DISK_USAGE_METRIC) {
                     disk.value
                 } else {
                     0.0
                 },
-                uptime: if let Some(uptime) = metrics.get(UPTIME_METRIC) {
+                uptime: if let Some(uptime) = node_metrics.get(UPTIME_METRIC) {
                     uptime.value as u64
                 } else {
                     0
+                },
+                performance_score: if let Some(performance) =
+                    node_metrics.get(EIGEN_PERFORMANCE_METRIC)
+                {
+                    performance.value
+                } else {
+                    0.0
                 },
                 deployed_avs,
                 deployed_avs_chain,
@@ -436,5 +545,4 @@ pub async fn info(
             last_checked,
         },
     }
-    .into())
 }

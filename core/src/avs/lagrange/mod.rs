@@ -31,7 +31,7 @@ use crate::{
     rpc_management::IvyProvider,
 };
 
-use super::{config::AvsConfig, names::AvsNames};
+use super::{config::AvsConfig, names::AvsName};
 
 mod config;
 
@@ -74,7 +74,7 @@ impl Lagrange {
 
     pub fn new_from_chain(chain: Chain) -> Self {
         let base_path = dirs::home_dir().expect("Could not get home directory").join(LAGRANGE_PATH);
-        let avs_config = AvsConfig::load(AvsNames::LagrangeZK.as_str())
+        let avs_config = AvsConfig::load(AvsName::LagrangeZK.as_str())
             .expect("Could not load AVS config - go through setup");
         Self::new(base_path, chain, avs_config)
     }
@@ -82,7 +82,7 @@ impl Lagrange {
 
 impl Default for Lagrange {
     fn default() -> Self {
-        let avs_config = AvsConfig::load(AvsNames::LagrangeZK.as_str())
+        let avs_config = AvsConfig::load(AvsName::LagrangeZK.as_str())
             .expect("Could not load AVS config - go through setup");
         Self::new(avs_config.get_path(Chain::Holesky), Chain::Holesky, avs_config)
     }
@@ -107,7 +107,7 @@ impl AvsVariant for Lagrange {
 
         // copy ecdsa keyfile to lagrange-worker path
         let keychain = Keychain::default();
-        let keyname = keychain.select_key(KeyType::Ecdsa, config.default_ecdsa_keyfile.clone())?;
+        let keyname = keychain.select_key(KeyType::Ecdsa)?;
         let keyfile = keychain.get_path(keyname);
         let dest_file = self.run_path().join("config/priv_key.json");
         fs::copy(keyfile, dest_file)?;
@@ -170,8 +170,8 @@ impl AvsVariant for Lagrange {
         Ok(())
     }
 
-    fn name(&self) -> &str {
-        AvsNames::LagrangeZK.as_str()
+    fn name(&self) -> AvsName {
+        AvsName::LagrangeZK
     }
 
     fn base_path(&self) -> PathBuf {
@@ -188,6 +188,16 @@ impl AvsVariant for Lagrange {
 
     fn set_running(&mut self, running: bool) {
         self.running = running;
+    }
+
+    fn version(&self) -> Result<semver::Version, IvyError> {
+        //TODO: Implement versioning
+        todo!()
+    }
+
+    async fn active_set(&self, _provider: Arc<IvyProvider>) -> bool {
+        //TODO: Implement active set
+        todo!()
     }
 }
 

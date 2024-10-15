@@ -65,4 +65,7 @@ pub struct Config {
 
     #[arg(long)]
     pub add_organization: Option<String>,
+
+    #[arg(long)]
+    pub set_version: Option<String>,
 }

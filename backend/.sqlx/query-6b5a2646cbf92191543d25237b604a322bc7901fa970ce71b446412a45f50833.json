@@ -1,0 +1,53 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, node_id, avs_name, avs_version, active_set, operator_id FROM node_data WHERE node_id = $1 AND avs_name = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "node_id",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 2,
+        "name": "avs_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "avs_version",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "active_set",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 5,
+        "name": "operator_id",
+        "type_info": "Bytea"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bytea",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "6b5a2646cbf92191543d25237b604a322bc7901fa970ce71b446412a45f50833"
+}

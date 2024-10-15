@@ -16,7 +16,7 @@ use tracing::{debug, error, info};
 use zip::ZipArchive;
 
 use crate::{
-    avs::{names::AvsNames, AvsVariant},
+    avs::{names::AvsName, AvsVariant},
     config::{self, IvyConfig},
     constants::IVY_METADATA,
     docker::log::CmdLogSource,
@@ -119,8 +119,8 @@ impl AvsVariant for AltLayer {
         todo!()
     }
 
-    fn name(&self) -> &'static str {
-        AvsNames::AltLayer.as_str()
+    fn name(&self) -> AvsName {
+        AvsName::AltLayer
     }
 
     fn base_path(&self) -> PathBuf {
@@ -145,6 +145,16 @@ impl AvsVariant for AltLayer {
 
     fn set_running(&mut self, running: bool) {
         self.running = running;
+    }
+
+    fn version(&self) -> Result<semver::Version, IvyError> {
+        //TODO: Implement versioning
+        todo!()
+    }
+
+    async fn active_set(&self, _provider: Arc<IvyProvider>) -> bool {
+        //TODO: Implement active set
+        todo!()
     }
 }
 
@@ -215,7 +225,7 @@ impl AltLayer {
         let home_str = home_dir.to_str().expect("Could not get home directory");
 
         let keychain = Keychain::default();
-        let keyname = keychain.select_key(KeyType::Bls, config.default_bls_keyfile.clone())?;
+        let keyname = keychain.select_key(KeyType::Bls)?;
 
         let mut bls_json_file_location = dirs::home_dir().expect("Could not get home directory");
         bls_json_file_location.push(".eigenlayer/operator_keys");
@@ -264,7 +274,7 @@ impl AltLayer {
             bls_json_file_location.to_str().expect("Could not get BLS key file location"),
         );
         let keychain = Keychain::default();
-        let keyname = keychain.select_key(KeyType::Ecdsa, config.default_ecdsa_keyfile.clone())?;
+        let keyname = keychain.select_key(KeyType::Ecdsa)?;
         let legacy_keyfile_path = keychain.get_path(keyname);
         env_lines.set(
             "NODE_ECDSA_KEY_FILE_HOST",

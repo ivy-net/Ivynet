@@ -31,7 +31,7 @@ struct Args {
     network: String,
 
     /// IvyNet servers Uri for communication
-    #[arg(long, env = "SERVER_URL", value_parser = Uri::from_str, default_value = "https://api1.test.ivynet.dev:50050")]
+    #[arg(long, env = "SERVER_URL", value_parser = Uri::from_str, default_value = "http://localhost:50050")]
     pub server_url: Uri,
 
     /// IvyNets server certificate
@@ -116,6 +116,15 @@ async fn main() -> Result<(), AnyError> {
 
     let config = IvyConfig::load_from_default_path().context("Failed to load ivyconfig. Please ensure `~/.ivynet/ivyconfig.toml` exists and is not malformed. If this is your first time running Ivynet, please run `ivynet init` to perform first-time intialization.")?;
 
+    let (server_url, server_ca) = {
+        match (config.get_server_url(), config.get_server_ca()) {
+            (Ok(uri), ca) => (
+                if !uri.to_string().is_empty() { uri } else { args.server_url },
+                if !ca.is_empty() { Some(ca) } else { args.server_ca },
+            ),
+            (Err(_), _) => (args.server_url, args.server_ca),
+        }
+    };
     match args.cmd {
         Commands::Config { subcmd } => {
             config::parse_config_subcommands(subcmd, config).await?;
@@ -127,17 +136,16 @@ async fn main() -> Result<(), AnyError> {
         Commands::Staker { subcmd } => staker::parse_staker_subcommands(subcmd, &config).await?,
         Commands::Avs { subcmd } => avs::parse_avs_subcommands(subcmd, &config).await?,
         Commands::Serve { avs, chain } => {
-            service::serve(avs, chain, &config, args.server_url, args.server_ca, args.no_backend)
-                .await?
+            service::serve(avs, chain, &config, server_url, server_ca, args.no_backend).await?
         }
         Commands::Register { email, password } => {
             let config = IvyConfig::load_from_default_path()?;
             let public_key = config.identity_wallet()?.address();
             let hostname =
                 { String::from_utf8(rustix::system::uname().nodename().to_bytes().to_vec()) }?;
-            let (url, ca) = get_server_details(args.server_url, args.server_ca, &config);
 
-            let mut backend = BackendClient::new(create_channel(Source::Uri(url), ca).await?);
+            let mut backend =
+                BackendClient::new(create_channel(Source::Uri(server_url), server_ca).await?);
             backend
                 .register(Request::new(RegistrationCredentials {
                     email,
@@ -158,20 +166,4 @@ pub fn start_tracing(level: Level) -> Result<(), Error> {
     let subscriber = FmtSubscriber::builder().with_max_level(level).finish();
     tracing::subscriber::set_global_default(subscriber)?;
     Ok(())
-}
-
-fn get_server_details(url: Uri, ca: Option<String>, config: &IvyConfig) -> (Uri, Option<String>) {
-    let server_url = if url.to_string().is_empty() { config.get_server_url() } else { Ok(url) }
-        .expect("Server URL not set or incompatible");
-
-    let server_ca = ca.or_else(|| {
-        let config_ca = config.get_server_ca();
-        if config_ca.is_empty() {
-            None
-        } else {
-            Some(config_ca)
-        }
-    });
-
-    (server_url, server_ca)
 }

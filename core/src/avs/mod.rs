@@ -1,12 +1,12 @@
 use crate::{
     config::IvyConfig,
-    docker::{
-        dockercmd::{docker_cmd, docker_cmd_status},
-        log::CmdLogSource,
-    },
+    docker::{dockercmd::DockerCmd, log::CmdLogSource},
     eigen::{contracts::delegation_manager::DelegationManager, quorum::QuorumType},
     error::IvyError,
+    grpc::messages::NodeData,
+    ivy_yaml::create_ivy_dockercompose,
     keychain::{KeyType, Keychain},
+    messenger::BackendMessenger,
     rpc_management::{connect_provider, IvyProvider},
     utils::try_parse_chain,
     wallet::IvyWallet,
@@ -21,8 +21,9 @@ use ethers::{
     types::{Chain, U256},
 };
 use lagrange::Lagrange;
-use names::AvsNames;
-use std::{collections::HashMap, fmt::Debug, fs, path::PathBuf, sync::Arc};
+use names::AvsName;
+use semver::Version;
+use std::{collections::HashMap, fmt::Debug, path::PathBuf, sync::Arc};
 use tokio::process::Child;
 use tracing::{debug, error, info};
 
@@ -50,6 +51,7 @@ pub struct AvsProvider {
     // TODO: Deprecate this if possible, requires conversion of underlying AVS scripts
     pub keyfile_pw: Option<String>,
     pub delegation_manager: DelegationManager,
+    pub messenger: Option<BackendMessenger>,
 }
 
 impl AvsProvider {
@@ -57,9 +59,10 @@ impl AvsProvider {
         avs: Option<Box<dyn AvsVariant>>,
         provider: Arc<IvyProvider>,
         keyfile_pw: Option<String>,
+        messenger: Option<BackendMessenger>,
     ) -> Result<Self, IvyError> {
         let delegation_manager = DelegationManager::new(provider.clone())?;
-        Ok(Self { avs, provider, keyfile_pw, delegation_manager })
+        Ok(Self { avs, provider, keyfile_pw, delegation_manager, messenger })
     }
 
     /// Sets new avs with new provider
@@ -135,29 +138,69 @@ impl AvsProvider {
 
     /// Start the loaded AVS instance. Returns an error if no AVS instance is loaded.
     pub async fn start(&mut self) -> Result<(), IvyError> {
-        let avs = self.avs_mut()?;
-        if avs.is_running() {
+        let avs_name = self.avs_mut()?.name();
+        let is_running = self.avs_mut()?.is_running();
+        let version = self.avs()?.version()?;
+        let active_set = self.avs()?.active_set(self.provider.clone()).await;
+        let signer = self.provider.signer().clone();
+        if is_running {
             return Err(IvyError::AvsRunningError(
-                avs.name().to_string(),
-                Chain::try_from(self.provider.signer().chain_id())?,
+                avs_name.to_string(),
+                Chain::try_from(signer.chain_id())?,
             ));
         }
+
+        if let Some(messenger) = &mut self.messenger {
+            let node_data = NodeData {
+                operator_id: signer.address().as_bytes().to_vec(),
+                avs_name: avs_name.to_string(),
+                avs_version: version.to_string(),
+                active_set,
+            };
+            messenger.send_node_data_payload(&node_data).await?;
+        } else {
+            println!("No messenger found - can't update data state");
+        }
+
         self.avs_mut()?.start().await
     }
 
     pub async fn attach(&mut self) -> Result<Child, IvyError> {
-        let avs = self.avs_mut()?;
-        if avs.is_running() {
+        let avs_name = self.avs_mut()?.name();
+        let is_running = self.avs_mut()?.is_running();
+        let active_set = self.avs()?.active_set(self.provider.clone()).await;
+        let version = self.avs()?.version()?;
+        let signer = self.provider.signer().clone();
+        if is_running {
             return Err(IvyError::AvsRunningError(
-                avs.name().to_string(),
-                Chain::try_from(self.provider.signer().chain_id())?,
+                avs_name.to_string(),
+                Chain::try_from(signer.chain_id())?,
             ));
+        }
+
+        if let Some(messenger) = &mut self.messenger {
+            let node_data = NodeData {
+                operator_id: signer.address().as_bytes().to_vec(),
+                avs_name: avs_name.to_string(),
+                avs_version: version.to_string(),
+                active_set,
+            };
+            messenger.send_node_data_payload(&node_data).await?;
+        } else {
+            println!("No messenger found - can't update data state");
         }
         self.avs_mut()?.attach().await
     }
 
     /// Stop the loaded AVS instance.
     pub async fn stop(&mut self) -> Result<(), IvyError> {
+        let avs_name = self.avs_mut()?.name();
+        let signer = self.provider.signer().clone();
+        if let Some(messenger) = &mut self.messenger {
+            messenger.delete_node_data_payload(signer.address(), avs_name).await?;
+        } else {
+            println!("No messenger found - can't update data state");
+        }
         self.avs_mut()?.stop().await?;
         Ok(())
     }
@@ -168,11 +211,11 @@ impl AvsProvider {
         Ok(())
     }
 
-    pub async fn register(&self, config: &IvyConfig) -> Result<(), IvyError> {
+    pub async fn register(&self, _config: &IvyConfig) -> Result<(), IvyError> {
         // TODO: Move quorum logic into AVS-specific implementations.
         // TODO: RIIA path creation? Move to new() func
         let avs_path = self.avs()?.base_path();
-        fs::create_dir_all(avs_path.clone())?;
+        std::fs::create_dir_all(avs_path.clone())?;
 
         // TODO: likely a function call in registry_coordinator
         // let status = DELEGATION_MANAGER.get_operator_status(self.client.address()).await?;
@@ -183,7 +226,7 @@ impl AvsProvider {
         // }
 
         let keychain = Keychain::default();
-        let keyname = keychain.select_key(KeyType::Ecdsa, config.default_ecdsa_keyfile.clone())?;
+        let keyname = keychain.select_key(KeyType::Ecdsa)?;
         let keypath = keychain.get_path(keyname);
 
         if let Some(pw) = &self.keyfile_pw {
@@ -196,11 +239,11 @@ impl AvsProvider {
         Ok(())
     }
 
-    pub async fn unregister(&self, config: &IvyConfig) -> Result<(), IvyError> {
+    pub async fn unregister(&self, _config: &IvyConfig) -> Result<(), IvyError> {
         let avs_path = self.avs()?.base_path();
 
         let keychain = Keychain::default();
-        let keyname = keychain.select_key(KeyType::Ecdsa, config.default_ecdsa_keyfile.clone())?;
+        let keyname = keychain.select_key(KeyType::Ecdsa)?;
         let keypath = keychain.get_path(keyname);
 
         if let Some(pw) = &self.keyfile_pw {
@@ -255,8 +298,20 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
         std::env::set_current_dir(self.run_path())?;
         debug!("docker start: {}", self.run_path().display());
 
+        // Inject logging driver
+        // TODO: fluentd address from env
+        // This returns the name, which is just "ivy-docker-compose.yml." This can be stored or
+        // just rely on the name of the string.
+        let _ = create_ivy_dockercompose(
+            self.run_path().join("docker-compose.yml"),
+            "localhost:24224",
+        )?;
+
         // NOTE: See the limitations of the Stdio::piped() method if this experiences a deadlock
-        let cmd = &mut docker_cmd(["up", "--force-recreate"]).await?;
+        // let cmd = &mut docker_cmd(["up", "--force-recreate"]).await?;
+        let cmd = DockerCmd::new()
+            .args(["-f", "ivy-docker-compose.yml", "up", "--force-recreate"])
+            .spawn()?;
         debug!("cmd PID: {:?}", cmd.id());
         self.set_running(true);
         Ok(())
@@ -266,8 +321,18 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
     async fn attach(&mut self) -> Result<Child, IvyError> {
         //TODO: Better Pathing once invdividual configs are usable
         std::env::set_current_dir(self.run_path())?;
+        let _ = create_ivy_dockercompose(
+            self.run_path().join("docker-compose.yml"),
+            "localhost:24224",
+        )?;
+
         debug!("docker ataching: {}", self.run_path().display());
-        let cmd = docker_cmd(["logs", "-f"]).await?;
+        // NOTE: See the limitations of the Stdio::piped() method if this experiences a deadlock
+        // let cmd = docker_cmd(["logs", "-f"]).await?;
+        let cmd = DockerCmd::new()
+            .args(["-f", "ivy-docker-compose.yml", "up", "--force-recreate"])
+            .spawn()?;
+
         debug!("cmd PID: {:?}", cmd.id());
         self.set_running(true);
         Ok(cmd)
@@ -276,14 +341,18 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
     /// Bring the AVS instance down.
     async fn stop(&mut self) -> Result<(), IvyError> {
         std::env::set_current_dir(self.run_path())?;
-        let _ = docker_cmd_status(["down"]).await?;
+        // TODO: Deprecate env changing above
+
+        // NOTE: See the limitations of the Stdio::piped() method if this experiences a deadlock
+        // let _ = docker_cmd_status(["down"], None).await?;
+        let _ = DockerCmd::new().args(["-f", "ivy-docker-compose.yml", "down"]).status().await?;
         self.set_running(false);
         Ok(())
     }
     /// Handle a log line from the AVS instance.
     async fn handle_log(&self, line: &str, src: CmdLogSource) -> Result<(), IvyError>;
     /// Return the name of the AVS instance.
-    fn name(&self) -> &str;
+    fn name(&self) -> AvsName;
     /// Handle to the top-level directory for the AVS instance.
     fn base_path(&self) -> PathBuf;
     /// Return the path to the AVS instance's run directory (usually a docker compose file)
@@ -292,6 +361,10 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
     fn is_running(&self) -> bool;
     /// Set the running state of the AVS
     fn set_running(&mut self, running: bool);
+    /// Get the version of the running avs
+    fn version(&self) -> Result<Version, IvyError>;
+    /// Get active set status of the running avs
+    async fn active_set(&self, provider: Arc<IvyProvider>) -> bool;
 }
 
 // TODO: Builder pattern
@@ -301,18 +374,19 @@ pub async fn build_avs_provider(
     config: &IvyConfig,
     wallet: Option<IvyWallet>,
     keyfile_pw: Option<String>,
+    messenger: Option<BackendMessenger>,
 ) -> Result<AvsProvider, IvyError> {
     let chain = try_parse_chain(chain)?;
     let provider = connect_provider(&config.get_rpc_url(chain)?, wallet).await?;
     let avs_instance: Option<Box<dyn AvsVariant>> = if let Some(avs_id) = id {
-        match AvsNames::from(avs_id) {
-            AvsNames::EigenDA => Some(Box::new(EigenDA::new_from_chain(chain))),
-            AvsNames::AltLayer => Some(Box::new(AltLayer::new_from_chain(chain))),
-            AvsNames::LagrangeZK => Some(Box::new(Lagrange::new_from_chain(chain))),
+        match AvsName::from(avs_id) {
+            AvsName::EigenDA => Some(Box::new(EigenDA::new_from_chain(chain))),
+            AvsName::AltLayer => Some(Box::new(AltLayer::new_from_chain(chain))),
+            AvsName::LagrangeZK => Some(Box::new(Lagrange::new_from_chain(chain))),
             _ => return Err(IvyError::InvalidAvsType(avs_id.to_string())),
         }
     } else {
         None
     };
-    AvsProvider::new(avs_instance, Arc::new(provider), keyfile_pw)
+    AvsProvider::new(avs_instance, Arc::new(provider), keyfile_pw, messenger)
 }

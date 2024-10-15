@@ -1,5 +1,6 @@
 mod apidoc;
 mod authorize;
+mod avs;
 mod client;
 mod organization;
 
@@ -89,12 +90,19 @@ fn create_router() -> Router<HttpState> {
         .route("/client/status", get(client::status))
         .route("/client/idle", get(client::idling))
         .route("/client/unhealthy", get(client::unhealthy))
+        .route("/client/healthy", get(client::healthy))
         .route("/client/:id/metrics", get(client::metrics_condensed))
         .route("/client/:id/metrics/all", get(client::metrics_all))
         .route("/client/:id/info/", get(client::info))
+        .route("/client/:id/data", get(client::get_all_node_data))
+        .route("/client/:id/data/:avs", get(client::get_node_data_for_avs))
+        .route("/client/:id/data", delete(client::delete_node_data))
+        .route("/client/:id/data/:avs", delete(client::delete_avs_node_data))
         .route("/client/:id", get(client::info))
         .route("/client/:id", post(client::set_name))
         .route("/client/:id", delete(client::delete))
+        .route("/client", get(client::client))
+        .route("/avs/:avs/version", get(avs::get_node_data_for_avs))
         .merge(
             SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", apidoc::ApiDoc::openapi()),
         )
