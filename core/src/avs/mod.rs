@@ -115,6 +115,8 @@ impl AvsProvider {
         &mut self,
         config: &IvyConfig,
         operator_password: Option<String>,
+        bls_key_name: &str,
+        bls_key_password: &str,
     ) -> Result<(), IvyError> {
         let provider = self.provider.clone();
 
@@ -128,7 +130,9 @@ impl AvsProvider {
 
         let is_custom = setup_type == 1;
 
-        self.avs_mut()?.setup(provider, config, operator_password, is_custom).await?;
+        self.avs_mut()?
+            .setup(provider, config, operator_password, bls_key_name, bls_key_password, is_custom)
+            .await?;
         info!("Setup complete: run 'ivynet avs help' for next steps!");
         Ok(())
     }
@@ -228,6 +232,8 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
         operator_password: Option<String>,
+        bls_key_name: &str,
+        bls_key_password: &str,
         is_custom: bool,
     ) -> Result<(), IvyError>;
 

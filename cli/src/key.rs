@@ -272,7 +272,7 @@ pub async fn get_key() -> Result<(), Error> {
                     .iter()
                     .map(|key| match key {
                         KeyName::Ecdsa(n) => format!("[ECDSA]: {n}"),
-                        KeyName::Bls(n) => format!("[BLS]: {n}"),
+                        KeyName::Bls(n) => format!("  [BLS]: {n}"),
                     })
                     .collect::<Vec<_>>(),
             )

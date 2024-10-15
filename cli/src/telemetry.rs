@@ -3,6 +3,7 @@ use std::sync::Arc;
 use ivynet_core::{
     avs::{names::AvsName, AvsProvider, AvsVariant},
     config::get_detailed_system_information,
+    docker::dockercmd,
     error::IvyError,
     grpc::{
         backend::backend_client::BackendClient,
@@ -18,6 +19,8 @@ use tokio::{
 };
 use tracing::info;
 
+const EIGENDA_DOCKER_IMAGE_NAME: &str = "eigenda-native-node";
+
 const TELEMETRY_INTERVAL_IN_MINUTES: u64 = 1;
 
 pub async fn listen(
@@ -25,10 +28,30 @@ pub async fn listen(
     mut client: BackendClient<Channel>,
     identity_wallet: IvyWallet,
 ) -> Result<(), IvyError> {
+    let mut current_avs = avs_name(&avs_provider.read().await.avs);
+    let mut metrics_url = None;
+
     loop {
         let metrics = {
             let provider = avs_provider.read().await;
-            collect(&provider.avs).await
+            let name = avs_name(&provider.avs);
+            let running = if let Some(avs) = &provider.avs { avs.is_running() } else { false };
+            if running {
+                match name {
+                    Some(ref avs_name) => {
+                        if name != current_avs {
+                            metrics_url = metrics_endpoint(&avs_name).await;
+                            current_avs = name;
+                        }
+                    }
+                    None => {
+                        metrics_url = None;
+                    }
+                }
+            } else {
+                metrics_url = None;
+            }
+            collect(&current_avs, &metrics_url).await
         };
         if let Ok(metrics) = metrics {
             info!("Sending metrics...");
@@ -39,25 +62,35 @@ pub async fn listen(
     }
 }
 
-async fn collect(avs: &Option<Box<dyn AvsVariant>>) -> Result<Vec<Metrics>, IvyError> {
-    info!("Checking metrics...");
-    // Depending on currently running avs, we decide how to fetch
-    let (avs, address, running) = match avs {
-        None => (None, None, false),
-        Some(avs_type) => {
-            match AvsName::from(avs_type.name()) {
-                AvsName::EigenDA => (
-                    Some(AvsName::EigenDA.as_str()),
-                    Some("http://localhost:9092/metrics"),
-                    avs_type.is_running(),
-                ),
-                _ => (Some(avs_type.name()), None, avs_type.is_running()), // * that one */
+fn avs_name(avs: &Option<Box<dyn AvsVariant>>) -> Option<String> {
+    match avs {
+        None => None,
+        Some(avs_type) => Some(avs_type.name().to_owned()),
+    }
+}
+
+async fn metrics_endpoint(avs_name: &str) -> Option<String> {
+    if AvsName::EigenDA == AvsName::from(avs_name) {
+        let info = dockercmd::inspect(EIGENDA_DOCKER_IMAGE_NAME).await;
+        if let Some(info) = info {
+            for (_, v) in info.network_settings {
+                if v.port != 32005
+                // TODO: Is this enough to understand what port we are looking for?
+                {
+                    return Some(format!("http://localhost:{}", v.port));
+                }
             }
         }
-    };
+    }
+    None
+}
 
-    info!("Collecting metrics for {address:?} ({running})...");
-    let mut metrics = if let Some(address) = address {
+async fn collect(
+    avs: &Option<String>,
+    metrics_url: &Option<String>,
+) -> Result<Vec<Metrics>, IvyError> {
+    info!("Collecting metrics for {metrics_url:?}...");
+    let mut metrics = if let Some(address) = metrics_url {
         if let Ok(resp) = reqwest::get(address).await {
             if let Ok(body) = resp.text().await {
                 let metrics = body
@@ -111,7 +144,7 @@ async fn collect(avs: &Option<Box<dyn AvsVariant>>) -> Result<Vec<Metrics>, IvyE
 
     metrics.push(Metrics {
         name: "running".to_owned(),
-        value: if running { 1.0 } else { 0.0 },
+        value: if metrics_url.is_some() { 1.0 } else { 0.0 },
         attributes: if let Some(avs) = avs {
             vec![MetricsAttribute { name: "avs".to_owned(), value: avs.to_owned() }]
         } else {

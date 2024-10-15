@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use core::str;
-use dialoguer::{Input, Password};
+use dialoguer::Input;
 use dirs::home_dir;
 use ethers::{
     signers::Signer,
@@ -32,7 +32,7 @@ use crate::{
     },
     env_parser::EnvLines,
     error::{IvyError, SetupError},
-    keychain::{KeyType, Keychain},
+    keychain::Keychain,
     rpc_management::IvyProvider,
     utils::gb_to_bytes,
 };
@@ -102,13 +102,15 @@ impl AvsVariant for EigenDA {
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
         _pw: Option<String>,
+        bls_key_name: &str,
+        bls_key_password: &str,
         is_custom: bool,
     ) -> Result<(), IvyError> {
         self.build_pathing(is_custom)?;
         if !is_custom {
             download_operator_setup(self.base_path.clone()).await?;
             download_g1_g2(self.base_path.clone()).await?;
-            self.build_env(provider, config).await?;
+            self.build_env(provider, config, bls_key_name, bls_key_password).await?;
         }
 
         Ok(())
@@ -376,6 +378,8 @@ impl EigenDA {
         &mut self,
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
+        bls_key_name: &str,
+        bls_key_password: &str,
     ) -> Result<(), IvyError> {
         let chain = Chain::try_from(provider.signer().chain_id())?;
         let rpc_url = config.get_rpc_url(chain)?;
@@ -425,18 +429,15 @@ impl EigenDA {
 
         // BLS key
         let keychain = Keychain::default();
-        let bls_json_file_location = keychain.get_path(keychain.select_key(KeyType::Bls)?);
+        let bls_json_file_location =
+            keychain.get_path(crate::keychain::KeyName::Bls(bls_key_name.to_owned()));
         debug!("BLS key file location: {:?}", &bls_json_file_location);
-
-        // TODO: Remove prompting
-        let bls_password: String =
-            Password::new().with_prompt("Input the password for your BLS key file").interact()?;
 
         env_lines.set(
             "NODE_BLS_KEY_FILE_HOST",
             bls_json_file_location.to_str().expect("Could not get BLS key file location"),
         );
-        env_lines.set("NODE_BLS_KEY_PASSWORD", &format!("'{}'", bls_password));
+        env_lines.set("NODE_BLS_KEY_PASSWORD", &format!("'{}'", bls_key_password));
         env_lines.save(&env_path)?;
         info!(".env file saved to {}", env_path.display());
 
