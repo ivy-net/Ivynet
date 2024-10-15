@@ -70,11 +70,7 @@ pub async fn serve(
         std::env::set_var("FLUENTD_PATH", fluentd_path.to_str().unwrap());
         info!("Serving local logs at {:?}", fluentd_path);
         // Start the container
-<<<<<<< HEAD
-        DockerCmd::new().args(["up", "--build"]).current_dir(&fluentd_path).spawn()?;
-=======
         DockerCmd::new().args(["up", "-d", "--build"]).current_dir(&fluentd_path).spawn()?;
->>>>>>> dev
         info!("Fluentd logging container started");
 
         ///////////////////
@@ -89,22 +85,12 @@ pub async fn serve(
 
         let server = Server::new(avs_server, None, None).add_service(operator_server);
         if no_backend {
-<<<<<<< HEAD
-            tokio::select! {
-                ret = server.serve(sock) => { error!("Local server error {ret:?}") },
-            }
-        } else {
-            let connection_wallet = config.identity_wallet()?;
-            tokio::select! {
-                ret = server.serve(sock) => { error!("Local server error {ret:?}") },
-=======
             tokio::select! {
                 ret = server.serve(sock) => { error!("Local server error {ret:?}") },
             }
         } else {
             tokio::select! {
                 ret = server.serve(sock) => { error!("Local server error {ret:?}") },
->>>>>>> dev
                 ret = serve_log_server(backend_client.clone(), connection_wallet.clone()) => { error!("Log server error {ret:?}") }
                 ret = telemetry::listen(ivynet_inner, backend_client, connection_wallet) => { error!("Telemetry listener error {ret:?}") }
             }
