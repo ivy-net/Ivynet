@@ -94,7 +94,6 @@ pub async fn parse_avs_subcommands(
             let response = client.avs_mut().attach(avs, chain).await?;
             println!("{:?}", response.into_inner());
         }
-        AvsCommands::CheckStakePercentage { .. } => todo!(),
         _ => unimplemented!("Command not implemented: {:?}", subcmd),
     }
     Ok(())

@@ -34,14 +34,14 @@ pub enum KeyCommands {
 pub enum CreateCommands {
     #[command(name = "ecdsa", about = "Create an ECDSA key")]
     EcdsaCreate {
-        #[arg(long)]
+        #[arg(long, default_value_t = true)]
         store: bool,
         keyname: Option<String>,
         password: Option<String>,
     },
     #[command(name = "bls", about = "Create a BLS key")]
     BlsCreate {
-        #[arg(long)]
+        #[arg(long, default_value_t = true)]
         store: bool,
         keyname: Option<String>,
         password: Option<String>,
@@ -50,16 +50,19 @@ pub enum CreateCommands {
 
 #[derive(Parser, Debug, Clone)]
 pub enum GetCommands {
-    #[command(name = "ecdsa-private", about = "Get the default ECDSA key and its address")]
+    #[command(name = "ecdsa-private", about = "Get the public and private key of an ECDSA key")]
     EcdsaPrivate,
     #[command(
         name = "ecdsa-public",
-        about = "Get a specified ECDSA key's public address <KEYNAME>"
+        about = "Get only the public key of a specified ECDSA key - no password required"
     )]
     EcdsaPublicKey,
-    #[command(name = "bls-private", about = "Get the default BLS key and its address")]
+    #[command(name = "bls-private", about = "Get the public and private keys of a BLS key")]
     BlsPrivate,
-    #[command(name = "bls-public", about = "Get a specified BLS key's public address <KEYNAME>")]
+    #[command(
+        name = "bls-public",
+        about = "Get only the public key of a specified BLS key - no password required"
+    )]
     BlsPublicKey,
 }
 
