@@ -1,6 +1,6 @@
 use crate::error::BackendError;
 use chrono::{DateTime, NaiveDateTime, Utc};
-use ivynet_core::ethers::types::Address;
+use ivynet_core::ethers::types::{Address, H160};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{json, Value};
 use sqlx::{query, query_as, PgPool};
@@ -101,7 +101,7 @@ impl ContainerLog {
 
     pub async fn get_all_for_node(
         pool: &PgPool,
-        node_id: Address,
+        node_id: H160,
     ) -> Result<Vec<ContainerLog>, BackendError> {
         let db_logs: Vec<ContainerDbLog> = query_as!(
             ContainerDbLog,
@@ -137,7 +137,7 @@ impl ContainerLog {
 
     pub async fn get_all_for_node_with_log_level(
         pool: &PgPool,
-        node_id: Address,
+        node_id: H160,
         log_level: LogLevel,
     ) -> Result<Vec<ContainerLog>, BackendError> {
         let db_logs: Vec<ContainerDbLog> = query_as!(
@@ -155,7 +155,7 @@ impl ContainerLog {
 
     pub async fn get_all_for_node_between_timestamps_with_log_level(
         pool: &PgPool,
-        node_id: Address,
+        node_id: H160,
         from: i64,
         to: i64,
         log_level: LogLevel,

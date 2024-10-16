@@ -49,6 +49,8 @@ use crate::data;
             db::NodeData,
             db::AvsData,
             db::metric::Metric,
+            db::log::ContainerLog,
+            db::log::LogLevel,
             data::NodeStatus,
             client::Status,
             client::StatusReport,
@@ -61,7 +63,6 @@ use crate::data;
             client::HardwareInfoStatus,
             client::AvsInfo,
             client::LogFilter,
-            db::log::ContainerLog,
         ),
     ),
     tags(
