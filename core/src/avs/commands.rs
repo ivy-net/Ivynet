@@ -21,7 +21,10 @@ pub enum RegisterCommands {
 pub enum AvsCommands {
     #[command(name = "info", about = "Get information about the currently running AVS")]
     Info {},
-    #[command(name = "setup", about = "Opt in to valid quorums with the given AVS")]
+    #[command(
+        name = "setup",
+        about = "Setup a new AVS instance or enter path information to attach to an existing AVS."
+    )]
     Setup { avs: String, chain: String },
     #[command(
         name = "register",
