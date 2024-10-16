@@ -14,7 +14,7 @@ ivynet_backend_logs_lowlevel: ""
 
 # Path where to install binaries and other files
 #
-ivynet_backend_path_install: /opt/ivynet
+ivynet_backend_path_install: "/opt/ivynet"
 
 # Path to directory with SQL migration
 ivynet_backend_path_resources: "{{ ivynet_backend_path_install }}/resources"
@@ -26,7 +26,7 @@ ivynet_backend_path_secrets: "{{ ivynet_backend_path_install }}/secrets"
 ivynet_backend_postgres_db: "ivynet"
 
 # DB host
-ivynet_backend_postgres_host: localhost
+ivynet_backend_postgres_host: "localhost"
 
 # Password for the postgresql user (only for Cloud SQL; should be a secret)
 ivynet_backend_postgres_pass: ""
