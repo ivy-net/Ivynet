@@ -225,7 +225,7 @@ async fn collect(
                 },
                 MetricsAttribute {
                     name: "operator_id".to_owned(),
-                    value: Address::from_slice(&node_data.operator_id).to_string(),
+                    value: format!("{:?}", Address::from_slice(&node_data.operator_id)),
                 },
                 MetricsAttribute {
                     name: "active_set".to_owned(),
