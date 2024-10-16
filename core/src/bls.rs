@@ -140,11 +140,10 @@ impl BlsKey {
         let path = path.join(name);
         let pub_key = encode_address(&self.address())?;
 
-        let Keyfile { address, crypto, id, version } = read_json(&path)?;
-        let keyfile = KeyfileEnriched { pub_key, address, crypto, id, version };
+        let Keyfile { crypto, id, version } = read_json(&path)?;
+        let keyfile = KeyfileEnriched { pub_key, crypto, id, version };
 
         write_json(&path, &keyfile)?;
-
         Ok(path)
     }
 }
@@ -187,7 +186,6 @@ pub mod test {
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Keyfile {
-    address: String,
     crypto: Value,
     id: String,
     version: u32,
@@ -209,7 +207,6 @@ struct KeyfileBare {
 struct KeyfileEnriched {
     #[serde(rename = "pubKey")]
     pub_key: String,
-    address: String,
     crypto: Value,
     id: String,
     version: u32,
