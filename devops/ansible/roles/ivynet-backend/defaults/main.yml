@@ -28,11 +28,14 @@ ivynet_backend_postgres_db: "ivynet"
 # DB host
 ivynet_backend_postgres_host: localhost
 
-# Password for postgres user (should be a secret)
-ivynet_backend_postgres_pass: "1vyGrowes_nWinter"
+# Password for the postgresql user (only for Cloud SQL; should be a secret)
+ivynet_backend_postgres_pass: ""
 
 # Postgresql user for Backend
 ivynet_backend_postgres_user: "ivy"
+
+# Password for a postgres user (should be a secret)
+ivynet_backend_postgres_user_pass: "1vyGrowes_nWinter"
 
 # Backend release
 ivynet_backend_release: "0.1.16"

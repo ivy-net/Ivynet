@@ -46,6 +46,8 @@
 
 - name: Configure postgres DB for ivynet
   community.postgresql.postgresql_db:
+    login_host: "{{ ivynet_backend_postgres_host }}"
+    login_password: "{{ ivynet_backend_postgres_pass }}"
     name: ivynet
   become: true
   become_user: postgres
@@ -56,8 +58,10 @@
 
 - name: Add postgres ivy user
   community.postgresql.postgresql_user:
+    login_host: "{{ ivynet_backend_postgres_host }}"
+    login_password: "{{ ivynet_backend_postgres_pass }}"
     name: "{{ ivynet_backend_postgres_user }}"
-    password: "{{ ivynet_backend_postgres_pass }}"
+    password: "{{ ivynet_backend_postgres_user_pass }}"
   become: true
   become_user: postgres
   tags:
@@ -68,10 +72,12 @@
 - name: Add privilges to the user
   community.postgresql.postgresql_privs:
     database: "{{ ivynet_backend_postgres_db }}"
-    privs: ALL
-    type: schema
+    login_host: "{{ ivynet_backend_postgres_host }}"
+    login_password: "{{ ivynet_backend_postgres_pass }}"
     objs: public
+    privs: ALL
     role: "{{ ivynet_backend_postgres_user }}"
+    type: schema
   become: true
   become_user: postgres
   tags:
@@ -86,7 +92,7 @@
       migrate
       run
       --database-url
-      postgresql://{{ ivynet_backend_postgres_user }}:{{ ivynet_backend_postgres_pass }}@localhost:5432/{{ ivynet_backend_postgres_db }}
+      postgresql://{{ ivynet_backend_postgres_user }}:{{ ivynet_backend_postgres_user_pass }}@{{ ivynet_backend_postgres_host }}:5432/{{ ivynet_backend_postgres_db }}
     chdir: "{{ ivynet_backend_path_resources }}"
   register: migration_out
   changed_when: migration_out.stdout != ""
