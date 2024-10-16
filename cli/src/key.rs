@@ -22,50 +22,6 @@ pub enum KeyCommands {
     Get,
 }
 
-#[derive(Parser, Debug, Clone)]
-pub enum CreateCommands {
-    #[command(name = "ecdsa", about = "Create an ECDSA key")]
-    EcdsaCreate {
-        #[arg(long, default_value_t = true)]
-        store: bool,
-        keyname: Option<String>,
-        password: Option<String>,
-    },
-    #[command(name = "bls", about = "Create a BLS key")]
-    BlsCreate {
-        #[arg(long, default_value_t = true)]
-        store: bool,
-        keyname: Option<String>,
-        password: Option<String>,
-    },
-}
-
-#[derive(Parser, Debug, Clone)]
-pub enum GetCommands {
-    #[command(name = "ecdsa-private", about = "Get the public and private key of an ECDSA key")]
-    EcdsaPrivate,
-    #[command(
-        name = "ecdsa-public",
-        about = "Get only the public key of a specified ECDSA key - no password required"
-    )]
-    EcdsaPublicKey,
-    #[command(name = "bls-private", about = "Get the public and private keys of a BLS key")]
-    BlsPrivate,
-    #[command(
-        name = "bls-public",
-        about = "Get only the public key of a specified BLS key - no password required"
-    )]
-    BlsPublicKey,
-}
-
-#[derive(Parser, Debug, Clone)]
-pub enum SetCommands {
-    #[command(name = "bls", about = "Set the default BLS key <KEYNAME>")]
-    BlsSet,
-    #[command(name = "ecdsa", about = "Set the default ECDSA key <KEYNAME>")]
-    EcdsaSet,
-}
-
 pub async fn parse_key_subcommands(subcmd: KeyCommands, _config: IvyConfig) -> Result<(), Error> {
     match subcmd {
         KeyCommands::Import => {
@@ -227,18 +183,21 @@ fn import_from(key_type: KeyType, path: &str) -> Result<(), Error> {
         .with_prompt("Provide the password to the key")
         .interact()
         .expect("Invalid password provided");
-    if let Ok((_, key)) = keychain.import_from_file(path.into(), key_type, &key_password) {
-        if key.is_type(key_type) {
-            println!("Key with an address {} has been added", key.address());
-        } else {
-            println!(
-                "You have imported a key with address {} however it's of a different type",
-                key.address()
-            );
+    match keychain.import_from_file(path.into(), key_type, &key_password) {
+        Ok((_, key)) => {
+            if key.is_type(key_type) {
+                println!("Key with an address {} has been added", key.address());
+            } else {
+                println!(
+                    "You have imported a key with address {} however it's of a different type",
+                    key.address()
+                );
+            }
         }
-    } else {
-        println!("Failed to load the key");
-        return Err(Error::InvalidSelection);
+        Err(e) => {
+            println!("Failed to load the key {e:?}");
+            return Err(Error::InvalidSelection);
+        }
     }
     Ok(())
 }
