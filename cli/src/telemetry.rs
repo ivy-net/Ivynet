@@ -46,7 +46,7 @@ pub async fn listen(
                 match name {
                     Some(ref avs_name) => {
                         if name != current_avs {
-                            metrics_url = metrics_endpoint(&avs_name).await;
+                            metrics_url = metrics_endpoint(avs_name).await;
                             current_avs = name;
                         }
                     }
@@ -91,10 +91,7 @@ pub async fn delete_node_data_payload(
     Ok(())
 }
 fn avs_name(avs: &Option<Box<dyn AvsVariant>>) -> Option<String> {
-    match avs {
-        None => None,
-        Some(avs_type) => Some(avs_type.name().to_string()),
-    }
+    avs.as_ref().map(|avs_type| avs_type.name().to_string())
 }
 
 async fn metrics_endpoint(avs_name: &str) -> Option<String> {
