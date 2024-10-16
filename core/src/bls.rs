@@ -5,6 +5,7 @@ use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
+use uuid::Uuid;
 
 use crate::io::{read_json, write_json};
 
@@ -98,8 +99,26 @@ impl BlsKey {
     }
 
     pub fn from_keystore(path: PathBuf, password: &str) -> Result<Self, BlsKeyError> {
-        let secret_bytes =
-            decrypt_key(path, password)?.try_into().map_err(|_| BlsKeyError::PrivateKeyInvalid)?;
+        // There is a chance that json is not valid for our eth_keystore (missing id and version
+        // fields)
+        // In order to fix this, we're making this hack
+        let valid_json = read_json::<KeyfileSimplified>(&path);
+        let secret_bytes = {
+            if valid_json.is_ok() {
+                decrypt_key(path, password)?
+                    .try_into()
+                    .map_err(|_| BlsKeyError::PrivateKeyInvalid)?
+            } else {
+                let filename = path.file_name().ok_or(BlsKeyError::KeyNotFound)?;
+                let KeyfileBare { crypto } = read_json(&path)?;
+                let keyfile = KeyfileSimplified { crypto, id: Uuid::new_v4().into(), version: 3 };
+                let tmp_path = std::env::temp_dir().join(filename);
+                write_json(&tmp_path, &keyfile)?;
+                decrypt_key(tmp_path, password)?
+                    .try_into()
+                    .map_err(|_| BlsKeyError::PrivateKeyInvalid)?
+            }
+        };
 
         Self::from_bytes(&secret_bytes)
     }
@@ -121,11 +140,10 @@ impl BlsKey {
         let path = path.join(name);
         let pub_key = encode_address(&self.address())?;
 
-        let Keyfile { address, crypto, id, version } = read_json(&path)?;
-        let keyfile = KeyfileEnriched { pub_key, address, crypto, id, version };
+        let Keyfile { crypto, id, version } = read_json(&path)?;
+        let keyfile = KeyfileEnriched { pub_key, crypto, id, version };
 
         write_json(&path, &keyfile)?;
-
         Ok(path)
     }
 }
@@ -168,16 +186,27 @@ pub mod test {
 
 #[derive(Debug, Serialize, Deserialize)]
 struct Keyfile {
-    address: String,
     crypto: Value,
     id: String,
     version: u32,
 }
+
+#[derive(Debug, Serialize, Deserialize)]
+struct KeyfileSimplified {
+    crypto: Value,
+    id: String,
+    version: u32,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+struct KeyfileBare {
+    crypto: Value,
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 struct KeyfileEnriched {
     #[serde(rename = "pubKey")]
     pub_key: String,
-    address: String,
     crypto: Value,
     id: String,
     version: u32,
