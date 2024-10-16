@@ -1,5 +1,5 @@
 ---
-- hosts: gcp_area_backend
+- hosts: gcp_area_backend:&gcp_env_gha
   become: true
   roles:
     - ivynet-backend
