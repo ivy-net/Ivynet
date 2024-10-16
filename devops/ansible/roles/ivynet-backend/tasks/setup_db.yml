@@ -46,7 +46,8 @@
 
 - name: Configure postgres DB for ivynet
   community.postgresql.postgresql_db:
-    login_host: "{{ '' if ivynet_backend_postgres_host == 'localhost' }}"
+# yamllint disable-line rule:line-length
+    login_host: "{{ '' if ivynet_backend_postgres_host == 'localhost' else ivynet_backend_postgres_host }}"
     login_password: "{{ ivynet_backend_postgres_pass }}"
     name: ivynet
   become: true
@@ -58,7 +59,8 @@
 
 - name: Add postgres ivy user
   community.postgresql.postgresql_user:
-    login_host: "{{ '' if ivynet_backend_postgres_host == 'localhost' }}"
+# yamllint disable-line rule:line-length
+    login_host: "{{ '' if ivynet_backend_postgres_host == 'localhost' else ivynet_backend_postgres_host }}"
     login_password: "{{ ivynet_backend_postgres_pass }}"
     name: "{{ ivynet_backend_postgres_user }}"
     password: "{{ ivynet_backend_postgres_user_pass }}"
@@ -72,7 +74,8 @@
 - name: Add privilges to the user
   community.postgresql.postgresql_privs:
     database: "{{ ivynet_backend_postgres_db }}"
-    login_host: "{{ '' if ivynet_backend_postgres_host == 'localhost' }}"
+# yamllint disable-line rule:line-length
+    login_host: "{{ '' if ivynet_backend_postgres_host == 'localhost' else ivynet_backend_postgres_host }}"
     login_password: "{{ ivynet_backend_postgres_pass }}"
     objs: public
     privs: ALL
