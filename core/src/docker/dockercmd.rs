@@ -121,8 +121,7 @@ impl Default for DockerCmd {
 }
 
 pub async fn inspect(image_name: &str) -> Option<ImageDetails> {
-    if let Ok(output) = Command::new("docker").arg("inspect").arg(image_name).output().await
-    {
+    if let Ok(output) = Command::new("docker").arg("inspect").arg(image_name).output().await {
         match serde_json::from_str::<Vec<ImageDetails>>(
             std::str::from_utf8(&output.stdout).expect("Unparsable output string"),
         ) {
