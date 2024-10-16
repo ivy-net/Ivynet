@@ -170,7 +170,7 @@ async fn collect(
     };
 
     // Now we need to add basic metrics
-    let (cpu_usage, ram_usage, free_ram, disk_usage, free_space, uptime) =
+    let (cpu_usage, ram_usage, free_ram, disk_usage, free_disk, uptime) =
         get_detailed_system_information()?;
 
     metrics.push(Metrics {
@@ -197,8 +197,8 @@ async fn collect(
     });
 
     metrics.push(Metrics {
-        name: "free_space".to_owned(),
-        value: free_space as f64,
+        name: "free_disk".to_owned(),
+        value: free_disk as f64,
         attributes: Default::default(),
     });
 
