@@ -20,7 +20,7 @@ use ivynet_core::{
 use semver::Version;
 use sqlx::PgPool;
 use std::sync::Arc;
-use tracing::debug;
+use tracing::{debug, error};
 pub struct BackendService {
     pool: Arc<PgPool>,
 }
@@ -66,14 +66,28 @@ impl Backend for BackendService {
             .await
             .map_err(|_| Status::not_found("Node not registered"))?;
 
-        let parsed_logs = serde_json::from_str::<Vec<ContainerLog>>(&request.logs)
-            .map_err(|_| Status::invalid_argument("Log deserialization error..."))?;
+        let mut parsed_logs =
+            serde_json::from_str::<Vec<ContainerLog>>(&request.logs).map_err(|e| {
+                error!("{:?} || Logs: {:?}", request.logs, e);
+                Status::invalid_argument(format!("Log deserialization error: {:?}", e))
+            })?;
 
         // TODO: We can also batch insert logs in the future.
 
-        let futures = parsed_logs.iter().map(|log| ContainerLog::record(&self.pool, log));
+        let futures = parsed_logs.iter_mut().map(|log| {
+            log.node_id = Some(node_id);
+            ContainerLog::record(&self.pool, log)
+        });
 
-        let _ = futures::future::join_all(futures).await;
+        let results = futures::future::join_all(futures).await;
+
+        for result in results {
+            if let Err(e) = result {
+                error!("Failed to save log: {:?}", e);
+                return Err(Status::internal("Failed to save log"));
+            }
+        }
+
         Ok(Response::new(()))
     }
 
