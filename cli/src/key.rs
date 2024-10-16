@@ -284,7 +284,7 @@ pub async fn get_key() -> Result<(), Error> {
             .expect("Bad selection");
 
         let key_password = Password::new()
-            .with_prompt(&format!("Provide the password to {}", key_list[key_index]))
+            .with_prompt(format!("Provide the password to {}", key_list[key_index]))
             .interact()
             .expect("Invalid password provided");
 
