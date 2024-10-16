@@ -4,7 +4,7 @@ use ivynet_core::ethers::types::{Address, H160};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{json, Value};
 use sqlx::{query, query_as, PgPool};
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr};
 use utoipa::ToSchema;
 
 #[derive(
@@ -18,6 +18,19 @@ pub enum LogLevel {
     Warning,
     Error,
     Unknown,
+}
+
+impl FromStr for LogLevel {
+    type Err = String;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "debug" => Ok(LogLevel::Debug),
+            "info" => Ok(LogLevel::Info),
+            "warning" => Ok(LogLevel::Warning),
+            "error" => Ok(LogLevel::Error),
+            _ => Err(format!("Invalid log level: {}", s)),
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, sqlx::FromRow, PartialEq)]

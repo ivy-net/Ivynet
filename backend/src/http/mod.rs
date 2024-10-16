@@ -94,7 +94,6 @@ fn create_router() -> Router<HttpState> {
         .route("/client/:id/metrics", get(client::metrics_condensed))
         .route("/client/:id/metrics/all", get(client::metrics_all))
         .route("/client/:id/logs", get(client::logs))
-        .route("/cleint/:id/logs/:from/:to", get(client::logs_between))
         .route("/client/:id/info/", get(client::info))
         .route("/client/:id/data", get(client::get_all_node_data))
         .route("/client/:id/data/:avs", get(client::get_node_data_for_avs))

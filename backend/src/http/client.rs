@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr};
 
 use axum::{
     extract::{Path, Query, State},
@@ -422,7 +422,9 @@ pub async fn metrics_all(
         (status = 404)
     ),
     params(
-        ("log_level" = string, description = "Optional log level filter. Valid values: debug, info, warn, error")
+        ("log_level" = String, Query, description = "Optional log level filter. Valid values: debug, info, warning, error"),
+        ("from" = String, Query, description = "Optional start timestamp"),
+        ("to" = String, Query, description = "Optional end timestamp")
     )
 )]
 pub async fn logs(
@@ -430,56 +432,55 @@ pub async fn logs(
     State(state): State<HttpState>,
     jar: CookieJar,
     Path(id): Path<String>,
-    Query(log_filter): Query<Option<LogLevel>>,
+    Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<Vec<ContainerLog>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     let node_id =
         authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
 
-    // Fetch logs, optionally filtering by log level
-    let logs = if let Some(log_level) = log_filter {
-        ContainerLog::get_all_for_node_with_log_level(&state.pool, node_id, log_level).await?
-    } else {
-        ContainerLog::get_all_for_node(&state.pool, node_id).await?
-    };
+    let log_level = params
+        .get("log_level")
+        .map(|level| {
+            LogLevel::from_str(level).map_err(|_| {
+                BackendError::MalformedParameter("log_level".to_string(), level.clone())
+            })
+        })
+        .transpose()?;
 
-    Ok(logs.into())
-}
+    let from = params.get("from").map(|s| s.parse::<i64>()).transpose().map_err(|_| {
+        BackendError::MalformedParameter("from".to_string(), "Invalid timestamp".to_string())
+    })?;
+    let to = params.get("to").map(|s| s.parse::<i64>()).transpose().map_err(|_| {
+        BackendError::MalformedParameter("to".to_string(), "Invalid timestamp".to_string())
+    })?;
 
-#[utoipa::path(
-    post,
-    path = "/client/:id/logs/:from/:to",
-    responses(
-        (status = 200, body = [ContainerLog]),
-        (status = 404)
-    ),
-    params(
-        ("log_level" = string, description = "Optional log level filter. Valid values: debug, info, warn, error")
-    )
-)]
-pub async fn logs_between(
-    headers: HeaderMap,
-    State(state): State<HttpState>,
-    jar: CookieJar,
-    Path((id, from, to)): Path<(String, i64, i64)>,
-    Query(log_filter): Query<Option<LogLevel>>,
-) -> Result<Json<Vec<ContainerLog>>, BackendError> {
-    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    let node_id =
-        authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
+    if from.is_some() != to.is_some() {
+        return Err(BackendError::MalformedParameter(
+            "from/to".to_string(),
+            "Both parameters must be present when querying by timestamp".to_string(),
+        ));
+    }
 
-    // Fetch logs between timestamps, optionally filtering by log level
-    let logs = if let Some(log_level) = log_filter {
-        ContainerLog::get_all_for_node_between_timestamps_with_log_level(
-            &state.pool,
-            node_id,
-            from,
-            to,
-            log_level,
-        )
-        .await?
-    } else {
-        ContainerLog::get_all_for_node_between_timestamps(&state.pool, node_id, from, to).await?
+    let logs = match (from, to, log_level) {
+        (Some(from), Some(to), Some(level)) => {
+            ContainerLog::get_all_for_node_between_timestamps_with_log_level(
+                &state.pool,
+                node_id,
+                from,
+                to,
+                level,
+            )
+            .await?
+        }
+        (Some(from), Some(to), None) => {
+            ContainerLog::get_all_for_node_between_timestamps(&state.pool, node_id, from, to)
+                .await?
+        }
+        (None, None, Some(level)) => {
+            ContainerLog::get_all_for_node_with_log_level(&state.pool, node_id, level).await?
+        }
+        (None, None, None) => ContainerLog::get_all_for_node(&state.pool, node_id).await?,
+        _ => unreachable!(), // Prevented by earlier check
     };
 
     Ok(logs.into())
