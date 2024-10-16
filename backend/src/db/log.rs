@@ -216,7 +216,7 @@ where
 }
 
 #[cfg(test)]
-mod tests {
+mod logs_backend_tests {
     use crate::db::log::ContainerLog;
 
     #[test]
@@ -226,7 +226,7 @@ mod tests {
         assert!(container_logs.is_ok());
 
         let log_str = "[{\"container_id\":\"99b899e97e76cb3978f5b14627e0448515b33c4b17864348cbfa0f124ab35249\",\"container_name\":\"/eigenda-native-node\",\"created_at\":1729047253,\"log\":\"\\u001b[2mOct 16 02:54:13.038\\u001b[0m DBG \\u001b[2mnode/node.go:684\\u001b[0m Calling reachability check \\u001b[2mcomponent=\\u001b[0mNode \\u001b[2murl=\\u001b[0m\\\"https://dataapi-holesky.eigenda.xyz/api/v1/operators-info/port-check?operator_id=b8803017a8a79caf923721c33653df7a2153f127af95ecd72cc9fc064ff6afa0\\\"\",\"log_level\":\"DEBUG\",\"source\":\"stdout\"},{\"container_id\":\"99b899e97e76cb3978f5b14627e0448515b33c4b17864348cbfa0f124ab35249\",\"container_name\":\"/eigenda-native-node\",\"created_at\":1729047253,\"log\":\"\\u001b[2mOct 16 02:54:13.438\\u001b[0m \\u001b[93mWRN\\u001b[0m \\u001b[2mnode/node.go:695\\u001b[0m Reachability check operator id not found \\u001b[2mcomponent=\\u001b[0mNode \\u001b[2mstatus=\\u001b[0m404 \\u001b[2moperator_id=\\u001b[0mb8803017a8a79caf923721c33653df7a2153f127af95ecd72cc9fc064ff6afa0\",\"log_level\":\"WARNING\",\"source\":\"stdout\"}]";
-        let container_logs = serde_json::from_str::<Vec<ContainerLog>>(log_str);
+        let _container_logs = serde_json::from_str::<Vec<ContainerLog>>(log_str);
         let value = serde_json::from_str::<Vec<ContainerLog>>(log_str);
         println!("{:#?}", value);
         //         assert!(container_logs.is_ok());
@@ -235,7 +235,7 @@ mod tests {
 
 #[cfg(feature = "db_tests")]
 #[cfg(test)]
-mod tests {
+mod logs_db_tests {
     use super::*;
     use crate::db::node::DbNode;
     use chrono::Utc;
