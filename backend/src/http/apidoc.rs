@@ -17,7 +17,6 @@ use crate::data;
         organization::confirm,
         client::client,
         client::logs,
-        client::logs_between,
         client::status,
         client::idling,
         client::unhealthy,
