@@ -98,6 +98,8 @@ impl AvsVariant for Lagrange {
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
         _keyfile_pw: Option<String>,
+        _bls_key_name: &str,
+        _bls_key_password: &str,
         is_custom: bool,
     ) -> Result<(), IvyError> {
         self.build_pathing(is_custom)?;
