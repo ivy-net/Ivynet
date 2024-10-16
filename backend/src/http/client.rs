@@ -85,11 +85,6 @@ pub struct Metrics {
     pub error: Vec<String>, // TODO: No idea what to do with it yet
 }
 
-#[derive(Debug, Deserialize, ToSchema, Clone)]
-pub struct LogFilter {
-    log_level: Option<LogLevel>,
-}
-
 #[derive(Serialize, ToSchema, Clone, Debug)]
 pub struct HardwareUsageInfo {
     pub usage: f64,
@@ -427,7 +422,7 @@ pub async fn metrics_all(
         (status = 404)
     ),
     params(
-        ("log_level" = Option<LogLevel>, Query, description = "Optional log level filter")
+        ("log_level" = string, description = "Optional log level filter. Valid values: debug, info, warn, error")
     )
 )]
 pub async fn logs(
@@ -435,14 +430,14 @@ pub async fn logs(
     State(state): State<HttpState>,
     jar: CookieJar,
     Path(id): Path<String>,
-    Query(log_filter): Query<LogFilter>,
+    Query(log_filter): Query<Option<LogLevel>>,
 ) -> Result<Json<Vec<ContainerLog>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     let node_id =
         authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
 
     // Fetch logs, optionally filtering by log level
-    let logs = if let Some(log_level) = log_filter.log_level {
+    let logs = if let Some(log_level) = log_filter {
         ContainerLog::get_all_for_node_with_log_level(&state.pool, node_id, log_level).await?
     } else {
         ContainerLog::get_all_for_node(&state.pool, node_id).await?
@@ -459,7 +454,7 @@ pub async fn logs(
         (status = 404)
     ),
     params(
-        ("log_level" = Option<LogLevel>, Query, description = "Optional log level filter")
+        ("log_level" = string, description = "Optional log level filter. Valid values: debug, info, warn, error")
     )
 )]
 pub async fn logs_between(
@@ -467,14 +462,14 @@ pub async fn logs_between(
     State(state): State<HttpState>,
     jar: CookieJar,
     Path((id, from, to)): Path<(String, i64, i64)>,
-    Query(log_filter): Query<LogFilter>,
+    Query(log_filter): Query<Option<LogLevel>>,
 ) -> Result<Json<Vec<ContainerLog>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     let node_id =
         authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
 
     // Fetch logs between timestamps, optionally filtering by log level
-    let logs = if let Some(log_level) = log_filter.log_level {
+    let logs = if let Some(log_level) = log_filter {
         ContainerLog::get_all_for_node_between_timestamps_with_log_level(
             &state.pool,
             node_id,

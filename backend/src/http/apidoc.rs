@@ -62,7 +62,6 @@ use crate::data;
             client::HardwareUsageInfo,
             client::HardwareInfoStatus,
             client::AvsInfo,
-            client::LogFilter,
         ),
     ),
     tags(
