@@ -18,25 +18,32 @@ pub async fn parse_avs_subcommands(
     // Setup runs local, otherwise construct a client and continue.
     if let AvsCommands::Setup { ref avs, ref chain } = subcmd {
         let keychain = Keychain::default();
-        let keyname = keychain.select_key(KeyType::Ecdsa)?;
-        println!("{}", keyname);
-        let password: String = Password::new()
+        let ecdsa_keyname = keychain.select_key(KeyType::Ecdsa)?;
+        let ecdsa_password: String = Password::new()
             .with_prompt("Input the password for your stored operator ECDSA keyfile")
             .interact()?;
 
-        let key = keychain.load(keyname, &password)?;
-        if let Some(wallet) = key.get_wallet_owned() {
+        let ecdsa = keychain.load(ecdsa_keyname, &ecdsa_password)?;
+        let bls_keyname = keychain.select_key(KeyType::Bls)?;
+        let bls_password: String = Password::new()
+            .with_prompt("Input the password for your stored operator Bls keyfile")
+            .interact()?;
+
+        if let Some(wallet) = ecdsa.get_wallet_owned() {
             let mut avs = build_avs_provider(
                 Some(avs),
                 chain,
                 config,
                 Some(wallet),
-                Some(password.clone()),
+                Some(ecdsa_password.clone()),
                 None,
             )
             .await?;
-            avs.setup(config, Some(password)).await?;
-        };
+            avs.setup(config, Some(ecdsa_password), &format!("{bls_keyname}"), &bls_password)
+                .await?;
+        } else {
+            println!("Error loading keys");
+        }
         return Ok(());
     }
 
@@ -62,6 +69,7 @@ pub async fn parse_avs_subcommands(
 
         return Ok(());
     }
+
     let channel = create_channel(sock, None).await.context("Failed to connect to the ivynet daemon. Please ensure the daemon is running and is connected to ~/.ivynet/ivynet.ipc")?;
     let mut client = IvynetClient::from_channel(channel);
     match subcmd {
@@ -94,7 +102,6 @@ pub async fn parse_avs_subcommands(
             let response = client.avs_mut().attach(avs, chain).await?;
             println!("{:?}", response.into_inner());
         }
-        AvsCommands::CheckStakePercentage { .. } => todo!(),
         _ => unimplemented!("Command not implemented: {:?}", subcmd),
     }
     Ok(())

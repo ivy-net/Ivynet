@@ -51,7 +51,7 @@ impl Default for IvyConfig {
             local_rpc_url: "http://localhost:8545".to_string(),
             metadata: Metadata::default(),
             backend_info: BackendInfo {
-                server_url: "".into(),
+                server_url: "https://api1.test.ivynet.dev".into(),
                 server_ca: "".into(),
                 identity_key: "".into(),
             },
@@ -165,14 +165,13 @@ pub fn get_system_information() -> Result<(u64, u64, u64), IvyError> {
     Ok((cpu_cores, total_memory, free_disk))
 }
 
-pub fn get_detailed_system_information() -> Result<(f64, u64, u64, u64, u64), IvyError> {
+pub fn get_detailed_system_information() -> Result<(f64, u64, u64, u64, u64, u64), IvyError> {
     let mut sys = System::new();
     sys.refresh_all();
 
-    let mut memory_usage = 0u64;
-    for process in sys.processes().values() {
-        memory_usage += process.memory();
-    }
+    let memory_usage = sys.used_memory();
+    let memory_free = sys.free_memory();
+
     let mut cpu_usage = 0.0;
     for cpu in sys.cpus() {
         cpu_usage += cpu.cpu_usage() as f64;
@@ -184,7 +183,7 @@ pub fn get_detailed_system_information() -> Result<(f64, u64, u64, u64, u64), Iv
         free_disk += disk.available_space();
     }
     let uptime = System::uptime();
-    Ok((cpu_usage, memory_usage, disk_usage, free_disk, uptime))
+    Ok((cpu_usage, memory_usage, memory_free, disk_usage, free_disk, uptime))
 }
 
 #[derive(ThisError, Debug)]

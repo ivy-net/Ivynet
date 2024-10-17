@@ -1,4 +1,6 @@
+use serde::Deserialize;
 use std::{
+    collections::HashMap,
     ffi::OsStr,
     ops::{Deref, DerefMut},
     path::PathBuf,
@@ -11,6 +13,30 @@ use tokio::{
     sync::mpsc,
 };
 use tokio_stream::Stream;
+use tracing::error;
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ImageExposedPort {
+    #[serde(rename = "HostIp")]
+    pub ip: String,
+    #[serde(rename = "HostPort")]
+    pub port: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct NetworkSettings {
+    #[serde(rename = "Ports")]
+    pub ports: HashMap<String, Vec<ImageExposedPort>>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ImageDetails {
+    #[serde(rename = "Image")]
+    pub image: String,
+
+    #[serde(rename = "NetworkSettings")]
+    pub network_settings: NetworkSettings,
+}
 
 pub async fn docker_cmd<I, S>(args: I) -> Result<Child, std::io::Error>
 where
@@ -92,4 +118,16 @@ impl Default for DockerCmd {
     fn default() -> Self {
         Self::new()
     }
+}
+
+pub async fn inspect(image_name: &str) -> Option<ImageDetails> {
+    if let Ok(output) = Command::new("docker").arg("inspect").arg(image_name).output().await {
+        match serde_json::from_str::<Vec<ImageDetails>>(
+            std::str::from_utf8(&output.stdout).expect("Unparsable output string"),
+        ) {
+            Ok(command_result) => return command_result.into_iter().next(),
+            Err(e) => error!("Parse inspection error {e:?}"),
+        }
+    }
+    None
 }

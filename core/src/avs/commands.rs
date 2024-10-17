@@ -5,15 +5,15 @@ use std::fmt::Display;
 pub enum RegisterCommands {
     #[command(
         name = "optin",
-        about = "opt in to valid quorums with the given AVS. Valid for: EigenDA, AltLayer"
+        about = "Opt in to valid quorums with the given AVS. Valid for: EigenDA, AltLayer"
     )]
     Optin {},
     #[command(
         name = "optout",
-        about = "opt out of valid quorums with the given AVS. Valid for: EigenDA, AltLayer"
+        about = "Opt out of valid quorums with the given AVS. Valid for: EigenDA, AltLayer"
     )]
     Optout {},
-    #[command(name = "register", about = "register an operator. Valid for: Lagrange")]
+    #[command(name = "register", about = "Register an operator. Valid for: Lagrange")]
     Register {},
 }
 
@@ -21,7 +21,10 @@ pub enum RegisterCommands {
 pub enum AvsCommands {
     #[command(name = "info", about = "Get information about the currently running AVS")]
     Info {},
-    #[command(name = "setup", about = "opt in to valid quorums with the given AVS")]
+    #[command(
+        name = "setup",
+        about = "Setup a new AVS instance or enter path information to attach to an existing AVS."
+    )]
     Setup { avs: String, chain: String },
     #[command(
         name = "register",
@@ -33,21 +36,21 @@ pub enum AvsCommands {
         about = "Unregister an operator for the loaded AVS. Not valid for all AVS types. See AVS specific dcoumentation for details."
     )]
     Unregister {},
-    #[command(name = "start", about = "Start running an AVS node in a docker container")]
+    #[command(name = "start", about = "Start running an AVS node in a docker container.")]
     Start {
         #[clap(required(false), long, requires("chain"))]
         avs: Option<String>,
         #[clap(required(false), long, requires("avs"))]
         chain: Option<String>,
     },
-    #[command(name = "stop", about = "stop running the active AVS docker container")]
+    #[command(name = "stop", about = "Stop running the active AVS docker container.")]
     Stop {},
     #[command(
         name = "select",
-        about = "unload the current AVS instance and load in a new instance."
+        about = "Unload the current AVS instance and load in a new instance."
     )]
     Select { avs: String, chain: String },
-    #[command(name = "attach", about = "attach a running AVS node to a docker container")]
+    #[command(name = "attach", about = "Attach a running AVS node to a docker container.")]
     Attach {
         #[clap(required(false), long, requires("chain"))]
         avs: Option<String>,
@@ -55,13 +58,8 @@ pub enum AvsCommands {
         chain: Option<String>,
     },
     #[command(
-        name = "check-stake-percentage",
-        about = "Determine what percentage of the total stake an address would have"
-    )]
-    CheckStakePercentage { avs: String, address: String, network: String },
-    #[command(
         name = "inspect",
-        about = "inspect logs from a given AVS. Defaults to currently selected AVS and chain if not provided"
+        about = "Inspect logs from a given AVS. Defaults to currently selected AVS and chain if not provided."
     )]
     Inspect {
         #[clap(required(false), long, requires("chain"))]
@@ -84,10 +82,6 @@ impl Display for AvsCommands {
             AvsCommands::Stop {} => write!(f, "stop"),
             AvsCommands::Attach { .. } => {
                 write!(f, "Attaching to active AVS")
-            }
-            AvsCommands::CheckStakePercentage { avs, address, network } => {
-                write!(f, "check stake percentage for {} on {} network", address, network)?;
-                todo!("Use {}", avs)
             }
             AvsCommands::Select { avs, chain } => {
                 write!(f, "set AVS to {} on chain {}", avs, chain)

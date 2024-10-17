@@ -4,12 +4,9 @@ use crate::error::Error;
 use clap::Parser;
 use dialoguer::{Input, MultiSelect, Password, Select};
 use ivynet_core::{
-    bls::BlsKey,
     config::IvyConfig,
-    error::IvyError,
     ethers::signers::{coins_bip39::English, MnemonicBuilder},
-    keychain::{Key, KeyAddress, KeyType, Keychain},
-    wallet::IvyWallet,
+    keychain::{Key, KeyName, KeyType, Keychain},
 };
 use rustix::path::Arg;
 
@@ -19,68 +16,22 @@ pub enum KeyCommands {
     Import,
 
     #[command(name = "create", about = "Create a ECDSA/BLS private key")]
-    Create {
-        #[command(subcommand)]
-        command: CreateCommands,
-    },
+    Create,
+
     #[command(name = "get", about = "Get ECDSA/BLS key information")]
-    Get {
-        #[command(subcommand)]
-        command: GetCommands,
-    },
+    Get,
 }
 
-#[derive(Parser, Debug, Clone)]
-pub enum CreateCommands {
-    #[command(name = "ecdsa", about = "Create an ECDSA key")]
-    EcdsaCreate {
-        #[arg(long)]
-        store: bool,
-        keyname: Option<String>,
-        password: Option<String>,
-    },
-    #[command(name = "bls", about = "Create a BLS key")]
-    BlsCreate {
-        #[arg(long)]
-        store: bool,
-        keyname: Option<String>,
-        password: Option<String>,
-    },
-}
-
-#[derive(Parser, Debug, Clone)]
-pub enum GetCommands {
-    #[command(name = "ecdsa-private", about = "Get the default ECDSA key and its address")]
-    EcdsaPrivate,
-    #[command(
-        name = "ecdsa-public",
-        about = "Get a specified ECDSA key's public address <KEYNAME>"
-    )]
-    EcdsaPublicKey,
-    #[command(name = "bls-private", about = "Get the default BLS key and its address")]
-    BlsPrivate,
-    #[command(name = "bls-public", about = "Get a specified BLS key's public address <KEYNAME>")]
-    BlsPublicKey,
-}
-
-#[derive(Parser, Debug, Clone)]
-pub enum SetCommands {
-    #[command(name = "bls", about = "Set the default BLS key <KEYNAME>")]
-    BlsSet,
-    #[command(name = "ecdsa", about = "Set the default ECDSA key <KEYNAME>")]
-    EcdsaSet,
-}
-
-pub async fn parse_key_subcommands(subcmd: KeyCommands, config: IvyConfig) -> Result<(), Error> {
+pub async fn parse_key_subcommands(subcmd: KeyCommands, _config: IvyConfig) -> Result<(), Error> {
     match subcmd {
         KeyCommands::Import => {
             import_key().await?;
         }
-        KeyCommands::Create { command } => {
-            parse_key_create_subcommands(command, config).await?;
+        KeyCommands::Create => {
+            create_key().await?;
         }
-        KeyCommands::Get { command } => {
-            parse_key_get_subcommands(command, config).await?;
+        KeyCommands::Get => {
+            get_key().await?;
         }
     }
     Ok(())
@@ -232,18 +183,21 @@ fn import_from(key_type: KeyType, path: &str) -> Result<(), Error> {
         .with_prompt("Provide the password to the key")
         .interact()
         .expect("Invalid password provided");
-    if let Ok((_, key)) = keychain.import_from_file(path.into(), key_type, &key_password) {
-        if key.is_type(key_type) {
-            println!("Key with an address {} has been added", key.address());
-        } else {
-            println!(
-                "You have imported a key with address {} however it's of a different type",
-                key.address()
-            );
+    match keychain.import_from_file(path.into(), key_type, &key_password) {
+        Ok((_, key)) => {
+            if key.is_type(key_type) {
+                println!("Key with an address {} has been added", key.address());
+            } else {
+                println!(
+                    "You have imported a key with address {} however it's of a different type",
+                    key.address()
+                );
+            }
         }
-    } else {
-        println!("Failed to load the key");
-        return Err(Error::InvalidSelection);
+        Err(e) => {
+            println!("Failed to load the key {e:?}");
+            return Err(Error::InvalidSelection);
+        }
     }
     Ok(())
 }
@@ -276,141 +230,71 @@ fn import_from_key(key_type: KeyType) -> Result<(), Error> {
     Ok(())
 }
 
-pub async fn parse_key_create_subcommands(
-    subcmd: CreateCommands,
-    mut _config: IvyConfig,
-) -> Result<(), Error> {
-    match subcmd {
-        CreateCommands::BlsCreate { store, keyname, password } => {
-            let keychain = Keychain::default();
-            if store {
-                let (keyname, pass) = get_credentials(keyname, password);
-                let key = keychain.generate(KeyType::Bls, Some(&keyname), &pass);
-
-                let addr = match key.address() {
-                    KeyAddress::Bls(address) => Ok(address),
-                    _ => Err(IvyError::IncorrectAddressError),
-                }?;
-
-                println!("Public key: {:?}", addr);
-                println!("Private key: {:?}", key.private_key_string());
-            } else {
-                let key = BlsKey::new();
-                let addr = key.address();
-                println!("Public key: {:?}", addr);
-                println!("Private key: {:?}", key.secret());
-            }
-        }
-        CreateCommands::EcdsaCreate { store, keyname, password } => {
-            if store {
-                let keychain = Keychain::default();
-                let (keyname, pass) = get_credentials(keyname, password);
-
-                let key = keychain.generate(KeyType::Ecdsa, Some(&keyname), &pass);
-
-                let addr = match key.address() {
-                    KeyAddress::Ecdsa(address) => Ok(address),
-                    _ => Err(IvyError::IncorrectAddressError),
-                }?;
-
-                println!("Public key: {:?}", addr);
-                println!("Private key: 0x{}", key.private_key_string());
-            } else {
-                let key = IvyWallet::new();
-                let addr = key.address();
-                println!("Public key: {:?}", addr);
-                println!("Private key: 0x{}", key.to_private_key());
-            }
-        }
-    }
+pub async fn create_key() -> Result<(), Error> {
+    let key_type = match Select::new()
+        .with_prompt("Choose what type of key you would like to create")
+        .items(&["BLS", "ECDSA"])
+        .default(0)
+        .interact()
+        .expect("No key type has been chosen") {
+            0 /* BLS */ => Ok(KeyType::Bls),
+            1 /* ECDSA */ => Ok(KeyType::Ecdsa),
+            _ => Err(Error::InvalidSelection)
+        }?;
+    let key = create_key_of_type(key_type).await?;
+    println!("Public key: {}", key.address());
+    println!("Private key: {}", key.private_key_string());
     Ok(())
 }
 
-pub async fn parse_key_get_subcommands(
-    subcmd: GetCommands,
-    _config: IvyConfig,
-) -> Result<(), Error> {
-    match subcmd {
-        GetCommands::BlsPrivate {} => {
-            let keychain = Keychain::default();
-            let keyname = keychain.select_key(KeyType::Bls)?;
-
-            let password = Password::new()
-                .with_prompt("Enter a password to the private key")
-                .interact()
-                .expect("No password provided");
-
-            if let Key::Bls(key) = keychain.load(keyname, &password)? {
-                println!("Private key: {:?}", key.secret());
-                println!("Public Key: {:?}", key.address());
-            } else {
-                return Err(Error::IvyError(IvyError::IncorrectKeyTypeError));
-            }
-            Ok(())
-        }
-
-        GetCommands::BlsPublicKey {} => {
-            let keychain = Keychain::default();
-            let keyname = keychain.select_key(KeyType::Bls)?;
-            let addr = keychain.public_address(keyname)?;
-            println!("Public address: {}", addr);
-            Ok(())
-        }
-
-        GetCommands::EcdsaPrivate {} => {
-            let keychain = Keychain::default();
-            let keyname = keychain.select_key(KeyType::Ecdsa)?;
-
-            let password = Password::new()
-                .with_prompt("Enter a password to the private key")
-                .interact()
-                .expect("No password provided");
-
-            if let Key::Ecdsa(key) = keychain.load(keyname, &password)? {
-                println!("Private key: {:?}", key.to_private_key());
-                println!("Public Key: {:?}", key.address());
-            } else {
-                return Err(Error::IvyError(IvyError::IncorrectKeyTypeError));
-            }
-            Ok(())
-        }
-
-        GetCommands::EcdsaPublicKey {} => {
-            let keychain = Keychain::default();
-            let keyname = keychain.select_key(KeyType::Ecdsa)?;
-            let addr = keychain.public_address(keyname)?;
-            println!("Public address: {}", addr);
-            Ok(())
-        }
-    }
+pub async fn create_key_of_type(key_type: KeyType) -> Result<Key, Error> {
+    let keychain = Keychain::default();
+    let key_name: String = Input::new()
+        .with_prompt("Provide name for a key")
+        .interact_text()
+        .expect("Invalid key provided");
+    let key_password = Password::new()
+        .with_prompt("Provide the password to the key")
+        .interact()
+        .expect("Invalid password provided");
+    Ok(keychain.generate(key_type, Some(&key_name), &key_password))
 }
 
-fn get_credentials(keyname: Option<String>, password: Option<String>) -> (String, String) {
-    match (keyname, password) {
-        (None, None) => (
-            Input::new()
-                .with_prompt("Enter a name for the key")
-                .interact_text()
-                .expect("No keyname provided"),
-            Password::new()
-                .with_prompt("Enter a password to the private key")
-                .interact()
-                .expect("No password provided"),
-        ),
-        (None, Some(pass)) => (
-            Input::new()
-                .with_prompt("Enter a name for the key")
-                .interact_text()
-                .expect("No keyname provided"),
-            pass,
-        ),
-        (Some(keyname), None) => (
-            keyname,
-            Password::new()
-                .with_prompt("Enter a password to the private key")
-                .interact()
-                .expect("No password provided"),
-        ),
-        (Some(keyname), Some(pass)) => (keyname, pass),
+pub async fn get_key() -> Result<(), Error> {
+    let keychain = Keychain::default();
+
+    let key_list = keychain.list()?;
+
+    if key_list.is_empty() {
+        println!("You have no keys to inspect");
+    } else {
+        let key_index = Select::new()
+            .with_prompt("Select key you want details of")
+            .items(
+                &key_list
+                    .iter()
+                    .map(|key| match key {
+                        KeyName::Ecdsa(n) => format!("[ECDSA]: {n}"),
+                        KeyName::Bls(n) => format!("  [BLS]: {n}"),
+                    })
+                    .collect::<Vec<_>>(),
+            )
+            .default(0)
+            .interact()
+            .expect("Bad selection");
+
+        let key_password = Password::new()
+            .with_prompt(format!("Provide the password to {}", key_list[key_index]))
+            .interact()
+            .expect("Invalid password provided");
+
+        let key_name = key_list[key_index].clone();
+        let key = keychain.load(key_name.clone(), &key_password)?;
+
+        println!("Key name: {}", &key_name);
+        println!("Path to key: {}", keychain.get_path(key_name.clone()).to_str().unwrap());
+        println!("Public address: {:?}", key.address());
+        println!("Private key: {}", key.private_key_string());
     }
+    Ok(())
 }

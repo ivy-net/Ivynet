@@ -1,19 +1,22 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, str::FromStr};
 
 use axum::{
-    extract::{Path, State},
+    extract::{Path, Query, State},
     http::HeaderMap,
     Json,
 };
 use axum_extra::extract::CookieJar;
 use chrono::NaiveDateTime;
 use ivynet_core::{avs::names::AvsName, ethers::types::Address};
+use semver::Version;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::{
     data::{self, NodeStatus},
     db::{
+        avs_data::DbAvsData,
+        log::{ContainerLog, LogLevel},
         metric::Metric,
         node,
         node_data::{DbNodeData, NodeData},
@@ -25,7 +28,9 @@ use super::{authorize, HttpState};
 
 const CPU_USAGE_METRIC: &str = "cpu_usage";
 const MEMORY_USAGE_METRIC: &str = "ram_usage";
+const MEMORY_FREE_METRIC: &str = "free_ram";
 const DISK_USAGE_METRIC: &str = "disk_usage";
+const DISK_FREE_METRIC: &str = "free_disk";
 const UPTIME_METRIC: &str = "uptime";
 const RUNNING_METRIC: &str = "running";
 const EIGEN_PERFORMANCE_METRIC: &str = "eigen_performance_score";
@@ -70,17 +75,38 @@ pub struct InfoReport {
     pub last_checked: Option<NaiveDateTime>,
 }
 
-#[derive(Serialize, ToSchema, Clone, Debug, Default)]
+#[derive(Serialize, ToSchema, Clone, Debug)]
 pub struct Metrics {
     pub cpu_usage: f64,
-    pub memory_usage: f64,
-    pub disk_usage: f64,
+    pub memory_info: HardwareUsageInfo,
+    pub disk_info: HardwareUsageInfo,
     pub uptime: u64,
-    pub performance_score: f64,
-    pub deployed_avs: Option<String>,
-    pub deployed_avs_chain: Option<String>,
-    pub operators_pub_key: Option<String>,
+    pub deployed_avs: AvsInfo,
     pub error: Vec<String>, // TODO: No idea what to do with it yet
+}
+
+#[derive(Serialize, ToSchema, Clone, Debug)]
+pub struct HardwareUsageInfo {
+    pub usage: f64,
+    pub free: f64,
+    pub status: HardwareInfoStatus,
+}
+
+#[derive(Serialize, ToSchema, Clone, Debug)]
+pub enum HardwareInfoStatus {
+    Healthy,
+    Warning,
+    Critical,
+}
+
+#[derive(Serialize, ToSchema, Clone, Debug)]
+pub struct AvsInfo {
+    pub name: Option<String>,
+    pub chain: Option<String>,
+    pub version: Option<String>,
+    pub active_set: Option<String>,
+    pub operator_id: Option<String>,
+    pub performance_score: f64,
 }
 
 /// Grab information for every node in the organization
@@ -140,8 +166,15 @@ pub async fn status(
     let (healthy_nodes, unhealthy_nodes) =
         data::categorize_node_health(running_nodes.clone(), node_metrics_map.clone());
 
-    //TODO: Old (ie machines not pushing metrics) machines and updateable machines are not
-    // implemented yet
+    let avs_versions = DbAvsData::get_all_avs_data(&state.pool).await?;
+    let avs_version_map: HashMap<AvsName, Version> =
+        avs_versions.iter().map(|avs| (avs.avs_name.clone(), avs.avs_version.clone())).collect();
+
+    let updateable_nodes = data::catgegorize_updateable_nodes(
+        running_nodes.clone(),
+        node_metrics_map,
+        avs_version_map,
+    );
 
     Ok(Status {
         error: Vec::new(),
@@ -150,8 +183,8 @@ pub async fn status(
             healthy_machines: healthy_nodes.iter().map(|node| format!("{node:?}")).collect(),
             unhealthy_machines: unhealthy_nodes.iter().map(|node| format!("{node:?}")).collect(),
             idle_machines: idle_nodes.iter().map(|node| format!("{node:?}")).collect(),
-            updateable_machines: Vec::new(), // TODO: How to get these?
-            erroring_machines: Vec::new(),   // TODO: When we will solve error issues
+            updateable_machines: updateable_nodes.iter().map(|node| format!("{node:?}")).collect(),
+            erroring_machines: Vec::new(), // TODO: When we will solve error issues
         },
     }
     .into())
@@ -381,6 +414,78 @@ pub async fn metrics_all(
     Ok(Metric::get_all_for_node(&state.pool, node_id).await?.into())
 }
 
+#[utoipa::path(
+    post,
+    path = "/client/:id/logs",
+    responses(
+        (status = 200, body = [ContainerLog]),
+        (status = 404)
+    ),
+    params(
+        ("log_level" = String, Query, description = "Optional log level filter. Valid values: debug, info, warning, error"),
+        ("from" = String, Query, description = "Optional start timestamp"),
+        ("to" = String, Query, description = "Optional end timestamp")
+    )
+)]
+pub async fn logs(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Path(id): Path<String>,
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<Json<Vec<ContainerLog>>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let node_id =
+        authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
+
+    let log_level = params
+        .get("log_level")
+        .map(|level| {
+            LogLevel::from_str(level).map_err(|_| {
+                BackendError::MalformedParameter("log_level".to_string(), level.clone())
+            })
+        })
+        .transpose()?;
+
+    let from = params.get("from").map(|s| s.parse::<i64>()).transpose().map_err(|_| {
+        BackendError::MalformedParameter("from".to_string(), "Invalid timestamp".to_string())
+    })?;
+    let to = params.get("to").map(|s| s.parse::<i64>()).transpose().map_err(|_| {
+        BackendError::MalformedParameter("to".to_string(), "Invalid timestamp".to_string())
+    })?;
+
+    if from.is_some() != to.is_some() {
+        return Err(BackendError::MalformedParameter(
+            "from/to".to_string(),
+            "Both parameters must be present when querying by timestamp".to_string(),
+        ));
+    }
+
+    let logs = match (from, to, log_level) {
+        (Some(from), Some(to), Some(level)) => {
+            ContainerLog::get_all_for_node_between_timestamps_with_log_level(
+                &state.pool,
+                node_id,
+                from,
+                to,
+                level,
+            )
+            .await?
+        }
+        (Some(from), Some(to), None) => {
+            ContainerLog::get_all_for_node_between_timestamps(&state.pool, node_id, from, to)
+                .await?
+        }
+        (None, None, Some(level)) => {
+            ContainerLog::get_all_for_node_with_log_level(&state.pool, node_id, level).await?
+        }
+        (None, None, None) => ContainerLog::get_all_for_node(&state.pool, node_id).await?,
+        _ => unreachable!(), // Prevented by earlier check
+    };
+
+    Ok(logs.into())
+}
+
 /// Get all data on every running avs for a specific node
 #[utoipa::path(
     get,
@@ -486,21 +591,26 @@ pub async fn delete_avs_node_data(
 }
 
 pub fn build_node_info(node: node::Node, node_metrics: HashMap<String, Metric>) -> Info {
-    let (last_checked, deployed_avs, deployed_avs_chain, operators_pub_key) =
-        if let Some(running) = node_metrics.get(RUNNING_METRIC) {
-            if let Some(attributes) = &running.attributes {
-                (
-                    running.created_at,
-                    attributes.get("avs").cloned(),
-                    attributes.get("chain").cloned(),
-                    attributes.get("operator_id").cloned(),
-                )
-            } else {
-                (running.created_at, None, None, None)
-            }
-        } else {
-            (None, None, None, None)
-        };
+    let last_checked = if let Some(running) = node_metrics.get(RUNNING_METRIC) {
+        running.created_at
+    } else {
+        None
+    };
+
+    let avs_info = build_avs_info(
+        node_metrics.get(RUNNING_METRIC).cloned(),
+        node_metrics.get(EIGEN_PERFORMANCE_METRIC).cloned(),
+    );
+
+    let memory_info = build_hardware_info(
+        node_metrics.get(MEMORY_USAGE_METRIC).cloned(),
+        node_metrics.get(MEMORY_FREE_METRIC).cloned(),
+    );
+
+    let disk_info = build_hardware_info(
+        node_metrics.get(DISK_USAGE_METRIC).cloned(),
+        node_metrics.get(DISK_FREE_METRIC).cloned(),
+    );
 
     Info {
         error: Vec::new(),
@@ -514,35 +624,71 @@ pub fn build_node_info(node: node::Node, node_metrics: HashMap<String, Metric>) 
                 } else {
                     0.0
                 },
-                memory_usage: if let Some(ram) = node_metrics.get(MEMORY_USAGE_METRIC) {
-                    ram.value
-                } else {
-                    0.0
-                },
-                disk_usage: if let Some(disk) = node_metrics.get(DISK_USAGE_METRIC) {
-                    disk.value
-                } else {
-                    0.0
-                },
+                memory_info,
+                disk_info,
                 uptime: if let Some(uptime) = node_metrics.get(UPTIME_METRIC) {
                     uptime.value as u64
                 } else {
                     0
                 },
-                performance_score: if let Some(performance) =
-                    node_metrics.get(EIGEN_PERFORMANCE_METRIC)
-                {
-                    performance.value
-                } else {
-                    0.0
-                },
-                deployed_avs,
-                deployed_avs_chain,
-                operators_pub_key,
+                deployed_avs: avs_info,
                 error: Vec::new(),
             },
 
             last_checked,
+        },
+    }
+}
+
+pub fn build_hardware_info(
+    usage_metric: Option<Metric>,
+    free_metric: Option<Metric>,
+) -> HardwareUsageInfo {
+    let usage = if let Some(usage) = usage_metric { usage.value } else { 0.0 };
+    let free = if let Some(free) = free_metric { free.value } else { 0.0 };
+    HardwareUsageInfo {
+        usage,
+        free,
+        status: if usage > ((usage + free) * 0.95) {
+            HardwareInfoStatus::Critical
+        } else if usage > ((usage + free) * 0.9) {
+            HardwareInfoStatus::Warning
+        } else {
+            HardwareInfoStatus::Healthy
+        },
+    }
+}
+
+pub fn build_avs_info(
+    running_metric: Option<Metric>,
+    performance_metric: Option<Metric>,
+) -> AvsInfo {
+    let mut name = None;
+    let mut version = None;
+    let mut active_set = None;
+    let mut operator_id = None;
+    let mut chain = None;
+
+    if let Some(running) = running_metric {
+        if let Some(attributes) = &running.attributes {
+            name = attributes.get("avs").cloned();
+            version = attributes.get("version").cloned();
+            chain = attributes.get("chain").cloned();
+            operator_id = attributes.get("operator_id").cloned();
+            active_set = attributes.get("active_set").cloned();
+        }
+    }
+
+    AvsInfo {
+        name,
+        version,
+        active_set,
+        operator_id,
+        chain,
+        performance_score: if let Some(performance) = performance_metric {
+            performance.value
+        } else {
+            0.0
         },
     }
 }
