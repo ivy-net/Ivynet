@@ -11,9 +11,9 @@ repos:
         exclude: specification/
       - id: end-of-file-fixer
         exclude: |
-          ^(
-           backend/migration|
-           avss/.+\.json
+          (?x)^(
+          backend/migrations|
+          avss/.+\.json
           )
       - id: mixed-line-ending
         args: ['--fix=lf']
