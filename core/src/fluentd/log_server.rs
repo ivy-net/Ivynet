@@ -46,6 +46,7 @@ pub async fn post_log(
     State(state): State<AppState>,
     Json(log): Json<serde_json::Value>,
 ) -> Result<Json<bool>, LogServerError> {
+    debug!("LOG | {:?}", log);
     let connection_wallet = state.read().await.connection_wallet.clone();
     let backend_client = &mut state.write().await.backend_client;
     send(&log.to_string(), &connection_wallet, backend_client).await?;
@@ -58,7 +59,6 @@ async fn send(
     client: &mut BackendClient<Channel>,
 ) -> Result<(), IvyError> {
     let signature = sign_string(logs, wallet)?;
-    debug!("Log send | Signature: {:?} Logs: {:?}", signature, logs);
     client
         .logs(Request::new(SignedLogs { logs: logs.to_string(), signature: signature.to_vec() }))
         .await?;
@@ -69,9 +69,6 @@ async fn send(
 pub enum LogServerError {
     #[error(transparent)]
     IvyError(#[from] crate::error::IvyError),
-
-    #[error("Invalid log JSON")]
-    InvalidJson,
 }
 
 impl IntoResponse for LogServerError {

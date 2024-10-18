@@ -60,12 +60,6 @@ pub enum BackendError {
 
     #[error("Unauthorized")]
     Unauthorized,
-
-    #[error("Malformed paramater: {0}: {1}")]
-    MalformedParameter(String, String),
-
-    #[error("Missing parameter: {0}")]
-    MissingParameter(String),
 }
 
 impl IntoResponse for BackendError {

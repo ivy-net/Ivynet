@@ -1,7 +1,6 @@
 use utoipa::OpenApi;
 
 use super::{super::db, authorize, avs, client, organization};
-use crate::data;
 
 #[derive(OpenApi)]
 #[openapi(
@@ -15,8 +14,6 @@ use crate::data;
         organization::invite,
         organization::nodes,
         organization::confirm,
-        client::client,
-        client::logs,
         client::status,
         client::idling,
         client::unhealthy,
@@ -47,20 +44,11 @@ use crate::data;
             db::Role,
             db::NodeData,
             db::AvsData,
-            db::metric::Metric,
-            db::log::ContainerLog,
-            db::log::LogLevel,
-            data::NodeStatus,
             client::Status,
             client::StatusReport,
             client::Info,
             client::InfoReport,
             client::Metrics,
-            client::NameChangeRequest,
-            client::InfoReport,
-            client::HardwareUsageInfo,
-            client::HardwareInfoStatus,
-            client::AvsInfo,
         ),
     ),
     tags(

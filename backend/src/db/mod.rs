@@ -3,7 +3,6 @@ use sqlx::{pool::PoolOptions, PgPool};
 
 pub mod account;
 pub mod avs_data;
-pub mod log;
 pub mod metric;
 pub mod node;
 pub mod node_data;
