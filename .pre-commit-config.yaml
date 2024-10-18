@@ -10,7 +10,11 @@ repos:
       - id: trailing-whitespace
         exclude: specification/
       - id: end-of-file-fixer
-        exclude: ^avss/.+\.json
+        exclude: |
+          ^(
+           backend/migration|
+           avss/.+\.json
+          )
       - id: mixed-line-ending
         args: ['--fix=lf']
       - id: check-yaml
