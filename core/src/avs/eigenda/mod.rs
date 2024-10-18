@@ -25,7 +25,7 @@ use crate::{
     avs::AvsVariant,
     config::{self, IvyConfig},
     docker::{
-        dockercmd::docker_cmd,
+        dockercmd::DockerCmd,
         log::{open_logfile, CmdLogSource},
     },
     download::dl_progress_bar,
@@ -166,7 +166,7 @@ impl AvsVariant for EigenDA {
         info!("Path: {:?}", &setup_path);
         std::env::set_current_dir(&setup_path)?;
 
-        let cmd = docker_cmd(["logs", "-f"]).await?;
+        let cmd = DockerCmd::new().args(["logs", "-f"]).current_dir(&setup_path).spawn()?;
 
         self.running = true;
         Ok(cmd)
