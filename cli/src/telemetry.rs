@@ -33,8 +33,8 @@ pub async fn listen(
     mut backend_client: BackendClient<Channel>,
     identity_wallet: IvyWallet,
 ) -> Result<(), IvyError> {
-    let mut current_avs = avs_name(&avs_provider.read().await.avs);
-    let mut metrics_url = None;
+    let current_avs = avs_name(&avs_provider.read().await.avs);
+    let mut metrics_url;
 
     loop {
         let (metrics, node_data) = {
@@ -45,10 +45,11 @@ pub async fn listen(
             if running {
                 match name {
                     Some(ref avs_name) => {
-                        if name != current_avs {
-                            metrics_url = metrics_endpoint(avs_name).await;
-                            current_avs = name;
-                        }
+                        //TODO: Forcing update of metrics_url every time
+                        // because caching it makes the endpoint stay as "None"
+                        // even after the endpoint has been built
+                        // More elegant solution needed in the future
+                        metrics_url = metrics_endpoint(avs_name).await;
                     }
                     None => {
                         metrics_url = None;
