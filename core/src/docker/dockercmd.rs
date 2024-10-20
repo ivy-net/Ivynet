@@ -11,6 +11,8 @@ use tokio::{process::Command, sync::mpsc};
 use tokio_stream::Stream;
 use tracing::{error, info};
 
+use super::compose_images::{parse_docker_compose_images, ComposeImage};
+
 /// Module for interacting with Docker and Docker Compose.
 /// This module provides a wrapper around the `docker-compose` and `docker compose` commands,
 /// allowing for easy interaction depending on which is available on the target system.
@@ -60,6 +62,7 @@ pub struct DockerChild {
     pub run_path: PathBuf,
     pub filename: String,
     pub handle: tokio::process::Child,
+    down_on_drop: bool,
 }
 
 impl Deref for DockerCmd {
@@ -105,7 +108,7 @@ impl DockerCmd {
             self.current_dir.clone().unwrap_or_else(|| std::env::current_dir().unwrap_or_default());
         let filename = self.extract_args_filename();
         let handle = self.spawn()?;
-        Ok(DockerChild { run_path, filename, handle })
+        Ok(DockerChild::new(run_path, filename, handle))
     }
 
     fn extract_args_filename(&self) -> String {
@@ -129,32 +132,49 @@ impl Default for DockerCmd {
 
 impl Drop for DockerChild {
     fn drop(&mut self) {
+        if self.down_on_drop {
+            self.down();
+        }
+    }
+}
+
+impl DockerChild {
+    pub fn new(run_path: PathBuf, filename: String, handle: tokio::process::Child) -> Self {
+        Self { run_path, filename, handle, down_on_drop: true }
+    }
+
+    /// Get the images of the running docker-compose service.
+    pub async fn images(&self) -> Result<Vec<ComposeImage>, std::io::Error> {
+        let mut images = Vec::new();
+        let output = DockerCmd::new()
+            .current_dir(&self.run_path)
+            .args(["-f", &self.filename, "images"])
+            .output()
+            .await?;
+        let output = parse_docker_compose_images(&output.stdout);
+        Ok(images)
+    }
+
+    /// Bring down the docker-compose service.
+    pub fn down(&self) {
         let mut cmd = which_dockercmd_blocking();
-        println!("{:?}", self.filename);
-        println!("{:?}", self.run_path);
         let status =
             cmd.args(["-f", &self.filename]).current_dir(&self.run_path).arg("down").output();
         match status {
             Ok(output) => {
-                info!("Docker down status: {:?}", output.stderr);
+                // stderr to string
+                let msg = std::str::from_utf8(&output.stderr).unwrap();
+                info!("Docker down status: {:?}", msg);
             }
             Err(e) => {
                 error!("Docker down error: {:?}", e);
             }
         }
     }
-}
 
-impl DockerChild {
-    pub async fn images(&self) -> Result<String, std::io::Error> {
-        let mut images = String::new();
-        let output = DockerCmd::new()
-            .current_dir(&self.run_path)
-            .args(["-f", &self.filename, "images"])
-            .output()
-            .await?;
-        images.push_str(std::str::from_utf8(&output.stdout).unwrap());
-        Ok(images)
+    /// Set whether the container should be brought down when the struct is dropped.
+    pub fn down_on_drop(&mut self, down_on_drop: bool) {
+        self.down_on_drop = down_on_drop;
     }
 }
 

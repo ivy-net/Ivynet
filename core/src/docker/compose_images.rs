@@ -8,8 +8,7 @@ pub struct ComposeImage {
     pub size: String,
 }
 
-#[allow(dead_code)]
-fn parse_docker_compose_images(output: &str) -> Vec<ComposeImage> {
+pub fn parse_docker_compose_images(output: &str) -> Vec<ComposeImage> {
     let mut lines = output.lines();
 
     // Parse header to get column positions
