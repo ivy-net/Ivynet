@@ -1,3 +1,4 @@
+use super::compose_images::ComposeImages;
 use serde::Deserialize;
 use std::{
     collections::HashMap,
@@ -10,8 +11,6 @@ use std::{
 use tokio::{process::Command, sync::mpsc};
 use tokio_stream::Stream;
 use tracing::{error, info};
-
-use super::compose_images::{parse_docker_compose_images, ComposeImage};
 
 /// Module for interacting with Docker and Docker Compose.
 /// This module provides a wrapper around the `docker-compose` and `docker compose` commands,
@@ -144,15 +143,14 @@ impl DockerChild {
     }
 
     /// Get the images of the running docker-compose service.
-    pub async fn images(&self) -> Result<Vec<ComposeImage>, std::io::Error> {
-        let mut images = Vec::new();
+    pub async fn images(&self) -> Result<ComposeImages, DockerChildError> {
         let output = DockerCmd::new()
             .current_dir(&self.run_path)
             .args(["-f", &self.filename, "images"])
             .output()
             .await?;
-        let output = parse_docker_compose_images(&output.stdout);
-        Ok(images)
+        let output_str = std::str::from_utf8(&output.stdout)?;
+        output_str.parse().map_err(DockerChildError::from)
     }
 
     /// Bring down the docker-compose service.
@@ -223,6 +221,16 @@ fn which_dockercmd_blocking() -> BlockingCommand {
         cmd.arg("compose");
         cmd
     }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum DockerChildError {
+    #[error("IO error: {0}")]
+    IoError(#[from] std::io::Error),
+    #[error("UTF-8 error: {0}")]
+    Utf8Error(#[from] std::str::Utf8Error),
+    #[error("Serde error: {0}")]
+    SerdeError(#[from] serde_json::Error),
 }
 
 #[cfg(test)]
