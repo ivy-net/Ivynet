@@ -47,7 +47,7 @@ pub async fn serve(
     port: u16,
 ) -> Result<(), BackendError> {
     info!("Starting HTTP server on port {port}");
-    let sender = sendgrid_api_key.map(Sender::new);
+    let sender = sendgrid_api_key.map(|key| Sender::new(key, None));
 
     let state = HttpState {
         pool,
