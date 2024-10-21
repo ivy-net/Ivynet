@@ -11,6 +11,11 @@ pub enum AvsName {
     OpenLayer,
 }
 
+#[derive(Debug)]
+pub enum AvsParseError {
+    NotFound,
+}
+
 impl AvsName {
     pub fn as_str(&self) -> &str {
         match self {
@@ -29,21 +34,17 @@ impl fmt::Display for AvsName {
     }
 }
 
-impl From<&str> for AvsName {
-    fn from(s: &str) -> Self {
-        match s {
-            "eigenda" => AvsName::EigenDA,
-            "altlayer" => AvsName::AltLayer,
-            "lagrange" => AvsName::LagrangeZK,
-            "witnesschain" => AvsName::WitnessChain,
-            "openlayer" => AvsName::OpenLayer,
-            _ => panic!("Invalid string for AvsName"),
-        }
-    }
-}
+impl TryFrom<&str> for AvsName {
+    type Error = AvsParseError;
 
-impl From<&String> for AvsName {
-    fn from(s: &String) -> Self {
-        Self::from(s.as_str())
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        match s {
+            "eigenda" => Ok(AvsName::EigenDA),
+            "altlayer" => Ok(AvsName::AltLayer),
+            "lagrange" => Ok(AvsName::LagrangeZK),
+            "witnesschain" => Ok(AvsName::WitnessChain),
+            "openlayer" => Ok(AvsName::OpenLayer),
+            _ => Err(AvsParseError::NotFound),
+        }
     }
 }

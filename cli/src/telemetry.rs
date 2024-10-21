@@ -92,7 +92,7 @@ fn avs_name(avs: &Option<Box<dyn AvsVariant>>) -> Option<String> {
 }
 
 async fn metrics_endpoint(avs_name: &str) -> Option<String> {
-    if AvsName::EigenDA == AvsName::from(avs_name) {
+    if let Ok(AvsName::EigenDA) = AvsName::try_from(avs_name) {
         let info = dockercmd::inspect(EIGENDA_DOCKER_IMAGE_NAME).await;
         if let Some(info) = info {
             for (_, v) in info.network_settings.ports {

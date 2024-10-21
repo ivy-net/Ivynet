@@ -1,4 +1,7 @@
-use ivynet_core::{avs::names::AvsName, ethers::types::Address};
+use ivynet_core::{
+    avs::names::{AvsName, AvsParseError},
+    ethers::types::Address,
+};
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use sqlx::query;
@@ -30,19 +33,20 @@ pub struct DbNodeData {
     pub operator_id: Option<Vec<u8>>,
 }
 
-impl From<DbNodeData> for NodeData {
-    fn from(db_node_data: DbNodeData) -> Self {
-        NodeData {
+impl TryFrom<DbNodeData> for NodeData {
+    type Error = AvsParseError;
+    fn try_from(db_node_data: DbNodeData) -> Result<Self, Self::Error> {
+        Ok(NodeData {
             serial_id: db_node_data.id,
             node_id: Address::from_slice(&db_node_data.node_id),
-            avs_name: AvsName::from(db_node_data.avs_name.as_str()),
+            avs_name: AvsName::try_from(db_node_data.avs_name.as_str())?,
             avs_version: Version::parse(&db_node_data.avs_version)
                 .expect("Cannot parse version on dbNodeData"),
             active_set: db_node_data.active_set,
             operator_id: {
                 db_node_data.operator_id.map(|operator_id| Address::from_slice(&operator_id))
             },
-        }
+        })
     }
 }
 
@@ -59,7 +63,8 @@ impl DbNodeData {
         .fetch_all(pool)
         .await?;
 
-        let node_data: Vec<NodeData> = nodes_data.into_iter().map(NodeData::from).collect();
+        let node_data: Vec<NodeData> =
+            nodes_data.into_iter().filter_map(|e| NodeData::try_from(e).ok()).collect();
         Ok(node_data)
     }
 
@@ -79,7 +84,8 @@ impl DbNodeData {
         .fetch_all(pool)
         .await?;
 
-        let node_data: Vec<NodeData> = nodes_data.into_iter().map(NodeData::from).collect();
+        let node_data: Vec<NodeData> =
+            nodes_data.into_iter().filter_map(|e| NodeData::try_from(e).ok()).collect();
         Ok(node_data)
     }
 
@@ -95,7 +101,8 @@ impl DbNodeData {
         .fetch_all(pool)
         .await?;
 
-        let node_data: Vec<NodeData> = nodes_data.into_iter().map(NodeData::from).collect();
+        let node_data: Vec<NodeData> =
+            nodes_data.into_iter().filter_map(|e| NodeData::try_from(e).ok()).collect();
         Ok(node_data)
     }
 
@@ -204,7 +211,7 @@ mod tests {
         let pool = setup_test_db().await;
         let operator_id = Address::random();
         let node_id = Address::random();
-        let avs_name = AvsName::from("eigenda");
+        let avs_name = AvsName::try_from("eigenda").unwrap();
         let avs_version = Version::new(1, 0, 0);
 
         DbNodeData::record_avs_node_data(
@@ -235,7 +242,7 @@ mod tests {
         let pool = setup_test_db().await;
         let operator_id = Address::random();
         let node_id = Address::random();
-        let avs_name = AvsName::from("eigenda");
+        let avs_name = AvsName::try_from("eigenda").unwrap();
         let avs_version = Version::new(1, 0, 0);
 
         DbNodeData::record_avs_node_data(
@@ -265,7 +272,7 @@ mod tests {
         let pool = setup_test_db().await;
         let operator_id = Address::random();
         let node_id = Address::random();
-        let avs_name = AvsName::from("eigenda");
+        let avs_name = AvsName::try_from("eigenda").unwrap();
         let avs_version = Version::new(1, 0, 0);
         let new_version = Version::new(1, 1, 0);
 
@@ -296,7 +303,7 @@ mod tests {
         let pool = setup_test_db().await;
         let operator_id = Address::random();
         let node_id = Address::random();
-        let avs_name = AvsName::from("eigenda");
+        let avs_name = AvsName::try_from("eigenda").unwrap();
         let avs_version = Version::new(1, 0, 0);
 
         DbNodeData::record_avs_node_data(
@@ -326,8 +333,8 @@ mod tests {
         let pool = setup_test_db().await;
         let operator_id = Address::random();
         let node_id = Address::random();
-        let avs_name1 = AvsName::from("eigenda");
-        let avs_name2 = AvsName::from("lagrange");
+        let avs_name1 = AvsName::try_from("eigenda").unwrap();
+        let avs_name2 = AvsName::try_from("lagrange").unwrap();
         let avs_version = Version::new(1, 0, 0);
 
         DbNodeData::record_avs_node_data(
@@ -367,7 +374,7 @@ mod tests {
         let pool = setup_test_db().await;
 
         let operator_id = Address::random();
-        let avs_name = AvsName::from("eigenda");
+        let avs_name = AvsName::try_yrom("eigenda").unwrap();
 
         let node_id1 = Address::random();
         let node_id2 = Address::random();

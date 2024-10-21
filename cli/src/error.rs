@@ -32,4 +32,10 @@ pub enum Error {
 
     #[error("Invalid selection")]
     InvalidSelection,
+
+    #[error("No ECDSA key found in your keychain")]
+    NoECDSAKey,
+
+    #[error("No BLS key found in your keychain")]
+    NoBLSKey,
 }

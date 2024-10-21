@@ -1,4 +1,4 @@
-use ivynet_core::avs::names::AvsName;
+use ivynet_core::avs::names::{AvsName, AvsParseError};
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use sqlx::query;
@@ -18,13 +18,14 @@ pub struct DbAvsData {
     pub avs_version: String,
 }
 
-impl From<DbAvsData> for AvsData {
-    fn from(db_avs_data: DbAvsData) -> Self {
-        AvsData {
-            avs_name: AvsName::from(db_avs_data.avs_name.as_str()),
+impl TryFrom<DbAvsData> for AvsData {
+    type Error = AvsParseError;
+    fn try_from(db_avs_data: DbAvsData) -> Result<Self, Self::Error> {
+        Ok(AvsData {
+            avs_name: AvsName::try_from(db_avs_data.avs_name.as_str())?,
             avs_version: Version::parse(&db_avs_data.avs_version)
                 .expect("Cannot parse version on dbAvsData"),
-        }
+        })
     }
 }
 
@@ -35,7 +36,8 @@ impl DbAvsData {
                 .fetch_all(pool)
                 .await?;
 
-        let avs_data: Vec<AvsData> = avs_data.into_iter().map(AvsData::from).collect();
+        let avs_data: Vec<AvsData> =
+            avs_data.into_iter().filter_map(|e| AvsData::try_from(e).ok()).collect();
         Ok(avs_data)
     }
 
@@ -52,7 +54,7 @@ impl DbAvsData {
         .await?;
 
         match avs_data {
-            Some(avs_data) => Ok(Some(AvsData::from(avs_data))),
+            Some(avs_data) => Ok(AvsData::try_from(avs_data).ok()),
             None => Ok(None),
         }
     }
