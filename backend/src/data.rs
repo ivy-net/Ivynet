@@ -144,27 +144,28 @@ pub fn get_node_status_from_id(
     node_metrics_map: &HashMap<H160, HashMap<String, Metric>>,
 ) -> NodeStatus {
     if let Some(metrics_map) = node_metrics_map.get(&node_id) {
-        return get_node_status(metrics_map.clone())
+        return get_node_status(metrics_map.clone());
     }
 
     NodeStatus::Error
 }
 
 pub fn get_node_status(metrics: HashMap<String, Metric>) -> NodeStatus {
-    if let Some(running_metric) = metrics.get(RUNNING_METRIC) {
-        if running_metric.value > 0.0 {
-            if let Some(performance_metric) = metrics.get(EIGEN_PERFORMANCE_METRIC) {
-                if performance_metric.value >= EIGEN_PERFORMANCE_HEALTHY_THRESHOLD {
-                    return NodeStatus::Healthy;
-                } else {
-                    return NodeStatus::Unhealthy;
-                }
+    match (
+        metrics.get(RUNNING_METRIC).as_ref().map(|s| s.value > 0.0),
+        metrics.get(EIGEN_PERFORMANCE_METRIC),
+    ) {
+        (Some(true), Some(performance)) => {
+            if performance.value > EIGEN_PERFORMANCE_HEALTHY_THRESHOLD {
+                NodeStatus::Healthy
+            } else {
+                NodeStatus::Unhealthy
             }
-        } else {
-            return NodeStatus::Idle;
         }
+        (Some(true), None) => NodeStatus::Unhealthy,
+        (Some(false), _) => NodeStatus::Idle,
+        _ => NodeStatus::Error,
     }
-    NodeStatus::Error
 }
 
 const CONDENSED_EIGENDA_METRICS_NAMES: [&str; 7] = [
