@@ -2,7 +2,6 @@ services:
   fluentd:
     user: root
     image: fluentd:v1.17-1
-    network_mode: "host"
     container_name: fluentd
     volumes:
       - ${FLUENTD_PATH}/conf:/fluentd/etc
@@ -10,3 +9,8 @@ services:
     ports:
       - "24224:24224"
       - "24224:24224/udp"
+    networks:
+      - ivynet
+
+networks:
+  ivynet:
