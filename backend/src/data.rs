@@ -122,16 +122,19 @@ pub fn catgegorize_updateable_nodes(
                 })
         })
         .filter_map(|(node, avs, version)| {
-            let avs_name = AvsName::from(avs);
-            avs_version_map.get(&avs_name).and_then(|latest_version| {
-                Version::parse(version).ok().and_then(|current_version| {
-                    if current_version < *latest_version {
-                        Some(*node)
-                    } else {
-                        None
-                    }
+            if let Ok(avs_name) = AvsName::try_from(&avs[..]) {
+                avs_version_map.get(&avs_name).and_then(|latest_version| {
+                    Version::parse(version).ok().and_then(|current_version| {
+                        if current_version < *latest_version {
+                            Some(*node)
+                        } else {
+                            None
+                        }
+                    })
                 })
-            })
+            } else {
+                None
+            }
         })
         .collect();
 
@@ -311,8 +314,8 @@ mod data_filtering_tests {
         );
 
         let avs_version_map = HashMap::from([
-            (AvsName::from("eigenda"), Version::new(1, 5, 0)),
-            (AvsName::from("lagrange"), Version::new(2, 1, 0)),
+            (AvsName::try_from("eigenda").unwrap(), Version::new(1, 5, 0)),
+            (AvsName::try_from("lagrange").unwrap(), Version::new(2, 1, 0)),
         ]);
 
         let updateable_nodes =
@@ -339,7 +342,8 @@ mod data_filtering_tests {
             )]),
         );
 
-        let avs_version_map = HashMap::from([(AvsName::from("eigenda"), Version::new(2, 0, 0))]);
+        let avs_version_map =
+            HashMap::from([(AvsName::try_from("eigenda").unwrap(), Version::new(2, 0, 0))]);
 
         let updateable_nodes =
             catgegorize_updateable_nodes(running_nodes, node_metrics_map, avs_version_map);
@@ -370,7 +374,8 @@ mod data_filtering_tests {
             )]),
         );
 
-        let avs_version_map = HashMap::from([(AvsName::from("eigenda"), Version::new(2, 0, 0))]);
+        let avs_version_map =
+            HashMap::from([(AvsName::try_from("eigenda").unwrap(), Version::new(2, 0, 0))]);
 
         let updateable_nodes =
             catgegorize_updateable_nodes(running_nodes, node_metrics_map, avs_version_map);
@@ -394,7 +399,8 @@ mod data_filtering_tests {
             )]),
         );
 
-        let avs_version_map = HashMap::from([(AvsName::from("eigenda"), Version::new(2, 0, 0))]);
+        let avs_version_map =
+            HashMap::from([(AvsName::try_from("eigenda").unwrap(), Version::new(2, 0, 0))]);
 
         let updateable_nodes =
             catgegorize_updateable_nodes(running_nodes, node_metrics_map, avs_version_map);

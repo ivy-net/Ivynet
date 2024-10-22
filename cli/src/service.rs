@@ -2,6 +2,7 @@ use ivynet_core::{
     avs::build_avs_provider,
     config::IvyConfig,
     docker::dockercmd::DockerCmd,
+    error::IvyError,
     fluentd::log_server::serve_log_server,
     grpc::{
         backend::backend_client::BackendClient,
@@ -32,7 +33,10 @@ pub async fn serve(
     let sock = Endpoint::Path(config.uds_dir());
 
     let keychain = Keychain::default();
-    let keyname = keychain.select_key(KeyType::Ecdsa)?;
+    let keyname = keychain.select_key(KeyType::Ecdsa).map_err(|e| match e {
+        IvyError::NoKeyFoundError => Error::NoECDSAKey,
+        e => e.into(),
+    })?;
     let keyfile_pw = dialoguer::Password::new()
         .with_prompt("Input the password for your stored Operator ECDSA keyfile")
         .interact()?;

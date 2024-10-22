@@ -27,7 +27,7 @@ pub async fn get_node_data_for_avs(
     jar: CookieJar,
 ) -> Result<Json<Version>, BackendError> {
     let _account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    let avs_name = AvsName::from(&avs);
+    let avs_name = AvsName::try_from(&avs[..]).map_err(|_| BackendError::InvalidAvs)?;
 
     // Get all data for the node
     let avs_data = DbAvsData::get_avs_data(&state.pool, &avs_name).await?;

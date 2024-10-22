@@ -65,7 +65,7 @@ async fn add_account(pool: &PgPool, org: &str) -> Result<(), BackendError> {
 
 async fn set_avs_version(pool: &sqlx::PgPool, avs_data: &str) -> Result<(), BackendError> {
     let avs_data = avs_data.split(':').collect::<Vec<_>>();
-    let name = AvsName::from(avs_data[0]);
+    let name = AvsName::try_from(avs_data[0]).map_err(|_| BackendError::InvalidAvs)?;
     let version = Version::parse(avs_data[1]).expect("Cannot parse version");
     DbAvsData::set_avs_version(pool, &name, &version).await?;
     Ok(())

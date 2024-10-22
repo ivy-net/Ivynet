@@ -58,6 +58,9 @@ pub enum BackendError {
     #[error("Invalid node id")]
     InvalidNodeId,
 
+    #[error("Invalid AVS name")]
+    InvalidAvs,
+
     #[error("Unauthorized")]
     Unauthorized,
 

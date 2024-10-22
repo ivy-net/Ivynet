@@ -114,7 +114,7 @@ impl AvsVariant for EigenDA {
         if !is_custom {
             download_operator_setup(self.base_path.clone()).await?;
             download_g1_g2(self.base_path.clone()).await?;
-            self.build_env(provider, config, bls_key_name, bls_key_password).await?;
+            self.build_env(provider, config, bls_key_name, bls_key_password).await?
         }
 
         Ok(())

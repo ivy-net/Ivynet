@@ -385,10 +385,10 @@ pub async fn build_avs_provider(
     let chain = try_parse_chain(chain)?;
     let provider = connect_provider(&config.get_rpc_url(chain)?, wallet).await?;
     let avs_instance: Option<Box<dyn AvsVariant>> = if let Some(avs_id) = id {
-        match AvsName::from(avs_id) {
-            AvsName::EigenDA => Some(Box::new(EigenDA::new_from_chain(chain))),
-            AvsName::AltLayer => Some(Box::new(AltLayer::new_from_chain(chain))),
-            AvsName::LagrangeZK => Some(Box::new(Lagrange::new_from_chain(chain))),
+        match AvsName::try_from(avs_id) {
+            Ok(AvsName::EigenDA) => Some(Box::new(EigenDA::new_from_chain(chain))),
+            Ok(AvsName::AltLayer) => Some(Box::new(AltLayer::new_from_chain(chain))),
+            Ok(AvsName::LagrangeZK) => Some(Box::new(Lagrange::new_from_chain(chain))),
             _ => return Err(IvyError::InvalidAvsType(avs_id.to_string())),
         }
     } else {

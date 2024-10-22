@@ -249,7 +249,7 @@ async fn set_config_keys() -> Result<(), IvyError> {
     let key_config_types = ["Import", "Create", "Skip"];
     let interactive = Select::new()
         .with_prompt(
-            "Would you like to import a private key, create a new private key, or skip this step?",
+            "OPERATOR_KEY (ECDSA): Would you like to import a private key, create a new private key, or skip this step?",
         )
         .items(&key_config_types)
         .default(0)
