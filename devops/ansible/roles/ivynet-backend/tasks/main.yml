@@ -54,6 +54,7 @@
     - Reload daemon
     - Restart service
   tags:
+    - ivynet_backend
     - general
     - ivynet
     - systemd
@@ -70,6 +71,7 @@
   when:
     - "'ivynet-backend.service' not in services"
   tags:
+    - ivynet_backend
     - general
     - ivynet
     - systemd

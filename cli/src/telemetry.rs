@@ -33,7 +33,6 @@ pub async fn listen(
     mut backend_client: BackendClient<Channel>,
     identity_wallet: IvyWallet,
 ) -> Result<(), IvyError> {
-    let current_avs = avs_name(&avs_provider.read().await.avs);
     let mut metrics_url;
 
     loop {
@@ -58,11 +57,8 @@ pub async fn listen(
             } else {
                 metrics_url = None;
             }
-            let node_data = node_data(&provider.avs, &current_avs, &provider.provider).await?;
-            (
-                collect(&current_avs, &metrics_url, &node_data, provider.chain().await.ok()).await,
-                node_data,
-            )
+            let node_data = node_data(&provider.avs, &name, &provider.provider).await?;
+            (collect(&name, &metrics_url, &node_data, provider.chain().await.ok()).await, node_data)
         };
         if let Ok(metrics) = metrics {
             info!("Sending metrics...");
@@ -96,7 +92,7 @@ fn avs_name(avs: &Option<Box<dyn AvsVariant>>) -> Option<String> {
 }
 
 async fn metrics_endpoint(avs_name: &str) -> Option<String> {
-    if AvsName::EigenDA == AvsName::from(avs_name) {
+    if let Ok(AvsName::EigenDA) = AvsName::try_from(avs_name) {
         let info = dockercmd::inspect(EIGENDA_DOCKER_IMAGE_NAME).await;
         if let Some(info) = info {
             for (_, v) in info.network_settings.ports {

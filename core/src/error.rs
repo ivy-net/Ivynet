@@ -164,6 +164,9 @@ pub enum IvyError {
     #[error("Unknown network")]
     UnknownNetwork,
 
+    #[error("Unknown AVS")]
+    UnknownAVS,
+
     #[error("Unimplemented")]
     Unimplemented,
 

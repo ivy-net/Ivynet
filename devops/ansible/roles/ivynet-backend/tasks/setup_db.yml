@@ -7,6 +7,7 @@
   vars:
     json_output_query: "json.assets[?name=='migrations.tar.gz'].id"
   tags:
+    - ivynet_backend
     - ivynet
     - github
     - db-config
@@ -53,6 +54,7 @@
   become: true
   become_user: postgres
   tags:
+    - ivynet_backend
     - ivynet
     - postgres
     - db-config
@@ -67,6 +69,7 @@
   become: true
   become_user: postgres
   tags:
+    - ivynet_backend
     - ivynet
     - postgres
     - db-config
@@ -84,6 +87,7 @@
   become: true
   become_user: postgres
   tags:
+    - ivynet_backend
     - ivynet
     - postgres
     - db-config
@@ -100,6 +104,7 @@
   register: migration_out
   changed_when: migration_out.stdout != ""
   tags:
+    - ivynet_backend
     - ivynet
     - db-config
     - sqlx
