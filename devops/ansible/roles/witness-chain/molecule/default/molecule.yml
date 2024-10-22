@@ -1,0 +1,22 @@
+---
+driver:
+  name: docker
+lint: |
+  set -e
+  yamllint .
+  ansible-lint
+  flake8
+platforms:
+  - name: ubuntu24.04
+    image: ubuntu:noble
+provisioner:
+  name: ansible
+  playbooks:
+    converge: converge.yml
+  config_options:
+    defaults:
+      fact_caching: jsonfile
+      fact_caching_connection: /tmp/ansible_fact_cache
+      fact_caching_timeout: 86400
+verifier:
+  name: ansible

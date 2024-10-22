@@ -7,6 +7,7 @@
     action: latest_release
   register: ivynet_client_release
   tags:
+    - ivynet_client
     - ivynet
     - github
 
@@ -14,6 +15,7 @@
   ansible.builtin.debug:
     msg: "{{ ivynet_client_release.tag }} is the tag"
   tags:
+    - ivynet_client
     - ivynet
     - github
 
@@ -27,6 +29,7 @@
     follow_redirects: all
   register: ivynet_client_assets_output
   tags:
+    - ivynet_client
     - ivynet
     - github
 
@@ -38,6 +41,7 @@
   vars:
     json_output_query: "json.assets[?name=='ivynet'].id"
   tags:
+    - ivynet_client
     - ivynet
     - github
 
@@ -56,6 +60,7 @@
     group: root
     mode: "0755"
   tags:
+    - ivynet_client
     - ivynet
     - github
 
@@ -68,5 +73,6 @@
     group: root
     mode: "0444"
   tags:
+    - ivynet_client
     - ivynet
     - github
