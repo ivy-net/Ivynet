@@ -157,9 +157,9 @@ pub fn get_node_status(metrics: HashMap<String, Metric>) -> NodeStatus {
     ) {
         (Some(true), Some(performance)) => {
             if performance.value > EIGEN_PERFORMANCE_HEALTHY_THRESHOLD {
-                return NodeStatus::Healthy;
+                NodeStatus::Healthy
             } else {
-                return NodeStatus::Unhealthy;
+                NodeStatus::Unhealthy
             }
         }
         (Some(true), None) => NodeStatus::Unhealthy,
