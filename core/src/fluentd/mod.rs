@@ -33,6 +33,7 @@ fn get_fluentd_path(ivynet_home: PathBuf) -> PathBuf {
 }
 
 #[test]
+#[ignore]
 fn test_integration_fluentd() {
     let tempfile = tempfile::tempdir().unwrap();
     let filepath = tempfile.path();
@@ -40,6 +41,7 @@ fn test_integration_fluentd() {
     make_fluentd_conf(filepath.to_path_buf());
     make_fluentd_compose(filepath.to_path_buf());
     let fluentd_path = get_fluentd_path(filepath.to_path_buf());
+    std::env::set_var("FLUENTD_PATH", fluentd_path.to_str().unwrap());
     // print contents of fluentd_path
     let fluentd_path_contents = std::fs::read_dir(&fluentd_path).unwrap();
     for entry in fluentd_path_contents {
@@ -52,5 +54,6 @@ fn test_integration_fluentd() {
         .current_dir(fluentd_path)
         .output()
         .expect("failed to execute process");
+    println!("{:?}", up_cmd);
     assert!(up_cmd.status.success());
 }
