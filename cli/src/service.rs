@@ -19,7 +19,6 @@ use ivynet_core::{
 use std::sync::Arc;
 use tokio::{signal::ctrl_c, sync::RwLock};
 use tracing::{error, info};
-
 use crate::{error::Error, rpc::ivynet::IvynetService, telemetry};
 
 pub async fn serve(

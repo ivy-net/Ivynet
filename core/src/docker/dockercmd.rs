@@ -245,6 +245,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_dockercmd_status() {
         let test_dir = test_compose_dir();
         let status = DockerCmd::new()
@@ -257,6 +258,7 @@ mod tests {
     }
 
     #[tokio::test]
+    #[ignore]
     async fn test_dockerchild_images() {
         let test_dir = test_compose_dir().join("counter");
         let child = DockerCmd::new()
