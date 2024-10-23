@@ -26,3 +26,9 @@ anyhow = "1.0.86"
 linemux = "=0.3.0"
 rustix = { version = "0.38", default-features = false, features = ["system"] }
 data-encoding = "2.6.0"
+
+[features]
+docker_tests = []
+
+[dev-dependencies]
+serial_test = "3.1.1"

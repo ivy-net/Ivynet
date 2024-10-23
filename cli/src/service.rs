@@ -1,3 +1,4 @@
+use crate::{error::Error, rpc::ivynet::IvynetService, telemetry};
 use ivynet_core::{
     avs::build_avs_provider,
     config::IvyConfig,
@@ -17,10 +18,8 @@ use ivynet_core::{
     messenger::BackendMessenger,
 };
 use std::sync::Arc;
-use tokio::sync::RwLock;
+use tokio::{signal::ctrl_c, sync::RwLock};
 use tracing::{error, info};
-
-use crate::{error::Error, rpc::ivynet::IvynetService, telemetry};
 
 pub async fn serve(
     avs: Option<String>,
@@ -74,7 +73,11 @@ pub async fn serve(
         std::env::set_var("FLUENTD_PATH", fluentd_path.to_str().unwrap());
         info!("Serving local logs at {:?}", fluentd_path);
         // Start the container
-        DockerCmd::new().args(["up", "-d", "--build"]).current_dir(&fluentd_path).spawn()?;
+        let _fluentd = DockerCmd::new()
+            .args(["up", "-d", "--build"])
+            .current_dir(&fluentd_path)
+            .spawn_dockerchild()
+            .await?;
         info!("Fluentd logging container started");
 
         ///////////////////
@@ -91,12 +94,18 @@ pub async fn serve(
         if no_backend {
             tokio::select! {
                 ret = server.serve(sock) => { error!("Local server error {ret:?}") },
+                _= ctrl_c() => {
+                    info!("Shutting down")
+                }
             }
         } else {
             tokio::select! {
                 ret = server.serve(sock) => { error!("Local server error {ret:?}") },
                 ret = serve_log_server(backend_client.clone(), connection_wallet.clone()) => { error!("Log server error {ret:?}") }
                 ret = telemetry::listen(ivynet_inner, backend_client, connection_wallet) => { error!("Telemetry listener error {ret:?}") }
+                _ = ctrl_c() => {
+                    info!("Shutting down");
+                }
             }
         }
     }
