@@ -234,8 +234,10 @@ pub enum DockerChildError {
 }
 
 #[cfg(test)]
+#[cfg(feature = "docker_tests")]
 mod tests {
     use super::*;
+    use serial_test::serial;
     use std::{thread::sleep, time::Duration};
 
     fn test_compose_dir() -> PathBuf {
@@ -245,12 +247,12 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
+    #[serial]
     async fn test_dockercmd_status() {
-        let test_dir = test_compose_dir();
+        let test_dir = test_compose_dir().join("counter");
         let status = DockerCmd::new()
             .current_dir(&test_dir)
-            .args(["-f", "counter-test-compose.yml", "up"])
+            .args(["-f", "counter-test-compose.yml", "up", "-d"])
             .status()
             .await
             .unwrap();
@@ -258,7 +260,7 @@ mod tests {
     }
 
     #[tokio::test]
-    #[ignore]
+    #[serial]
     async fn test_dockerchild_images() {
         let test_dir = test_compose_dir().join("counter");
         let child = DockerCmd::new()
@@ -271,7 +273,7 @@ mod tests {
         // wait for container startup
         sleep(Duration::from_secs(5));
 
-        let images = child.images().await.unwrap();
-        println!("Images: {:?}", images);
+        let images = child.images().await;
+        assert!(images.is_ok());
     }
 }
