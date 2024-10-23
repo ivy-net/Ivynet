@@ -1,0 +1,58 @@
+---
+- name: Check that Node is build
+  ansible.builtin.stat:
+    # yamllint disable-line rule:line-length
+    path: "{{ witness_chain_path_ivynet }}/bin/op-node-{{ witness_chain_version_optimism }}"
+  register: opnode_file
+  tags:
+    - witness_chain
+    - make
+
+# Alternative is to build ones and downlod binariesa
+- name: Build op-node
+  when:
+    - not opnode_file.stat.exists
+  block:
+    - name: Get OP Node Code
+      ansible.builtin.git:
+        repo: https://github.com/ethereum-optimism/optimism.git
+        dest: "{{ witness_chain_path_op }}/optimism"
+        clone: true
+        update: true
+        version: "{{ witness_chain_git_tag_optimism }}"
+      tags:
+        - witness_chain
+        - github
+
+    - name: Make op-node
+      community.general.make:
+        chdir: "{{ witness_chain_path_op }}/optimism"
+        target: op-node
+      tags:
+        - witness_chain
+        - make
+
+    - name: Copy binaries
+      ansible.builtin.copy:
+        src: "{{ witness_chain_path_op }}/optimism/op-node/bin/op-node"
+        # yamllint disable-line rule:line-length
+        dest: "{{ witness_chain_path_ivynet }}/bin/op-node-{{ witness_chain_version_optimism }}"
+        remote_src: true
+        owner: root
+        group: root
+        mode: "0755"
+      tags:
+        - witness_chain
+        - make
+
+    - name: Create symlink
+      ansible.builtin.file:
+        # yamllint disable-line rule:line-length
+        src: "{{ witness_chain_path_ivynet }}/bin/op-node-{{ witness_chain_version_optimism }}"
+        dest: "{{ witness_chain_path_ivynet }}/bin/op-node"
+        owner: root
+        group: root
+        state: link
+      tags:
+        - witness_chain
+        - make

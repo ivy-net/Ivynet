@@ -122,16 +122,19 @@ pub fn catgegorize_updateable_nodes(
                 })
         })
         .filter_map(|(node, avs, version)| {
-            let avs_name = AvsName::from(avs);
-            avs_version_map.get(&avs_name).and_then(|latest_version| {
-                Version::parse(version).ok().and_then(|current_version| {
-                    if current_version < *latest_version {
-                        Some(*node)
-                    } else {
-                        None
-                    }
+            if let Ok(avs_name) = AvsName::try_from(&avs[..]) {
+                avs_version_map.get(&avs_name).and_then(|latest_version| {
+                    Version::parse(version).ok().and_then(|current_version| {
+                        if current_version < *latest_version {
+                            Some(*node)
+                        } else {
+                            None
+                        }
+                    })
                 })
-            })
+            } else {
+                None
+            }
         })
         .collect();
 
@@ -144,27 +147,28 @@ pub fn get_node_status_from_id(
     node_metrics_map: &HashMap<H160, HashMap<String, Metric>>,
 ) -> NodeStatus {
     if let Some(metrics_map) = node_metrics_map.get(&node_id) {
-        return get_node_status(metrics_map.clone())
+        return get_node_status(metrics_map.clone());
     }
 
     NodeStatus::Error
 }
 
 pub fn get_node_status(metrics: HashMap<String, Metric>) -> NodeStatus {
-    if let Some(running_metric) = metrics.get(RUNNING_METRIC) {
-        if running_metric.value > 0.0 {
-            if let Some(performance_metric) = metrics.get(EIGEN_PERFORMANCE_METRIC) {
-                if performance_metric.value >= EIGEN_PERFORMANCE_HEALTHY_THRESHOLD {
-                    return NodeStatus::Healthy;
-                } else {
-                    return NodeStatus::Unhealthy;
-                }
+    match (
+        metrics.get(RUNNING_METRIC).as_ref().map(|s| s.value > 0.0),
+        metrics.get(EIGEN_PERFORMANCE_METRIC),
+    ) {
+        (Some(true), Some(performance)) => {
+            if performance.value > EIGEN_PERFORMANCE_HEALTHY_THRESHOLD {
+                NodeStatus::Healthy
+            } else {
+                NodeStatus::Unhealthy
             }
-        } else {
-            return NodeStatus::Idle;
         }
+        (Some(true), None) => NodeStatus::Unhealthy,
+        (Some(false), _) => NodeStatus::Idle,
+        _ => NodeStatus::Error,
     }
-    NodeStatus::Error
 }
 
 const CONDENSED_EIGENDA_METRICS_NAMES: [&str; 7] = [
@@ -310,8 +314,8 @@ mod data_filtering_tests {
         );
 
         let avs_version_map = HashMap::from([
-            (AvsName::from("eigenda"), Version::new(1, 5, 0)),
-            (AvsName::from("lagrange"), Version::new(2, 1, 0)),
+            (AvsName::try_from("eigenda").unwrap(), Version::new(1, 5, 0)),
+            (AvsName::try_from("lagrange").unwrap(), Version::new(2, 1, 0)),
         ]);
 
         let updateable_nodes =
@@ -338,7 +342,8 @@ mod data_filtering_tests {
             )]),
         );
 
-        let avs_version_map = HashMap::from([(AvsName::from("eigenda"), Version::new(2, 0, 0))]);
+        let avs_version_map =
+            HashMap::from([(AvsName::try_from("eigenda").unwrap(), Version::new(2, 0, 0))]);
 
         let updateable_nodes =
             catgegorize_updateable_nodes(running_nodes, node_metrics_map, avs_version_map);
@@ -369,7 +374,8 @@ mod data_filtering_tests {
             )]),
         );
 
-        let avs_version_map = HashMap::from([(AvsName::from("eigenda"), Version::new(2, 0, 0))]);
+        let avs_version_map =
+            HashMap::from([(AvsName::try_from("eigenda").unwrap(), Version::new(2, 0, 0))]);
 
         let updateable_nodes =
             catgegorize_updateable_nodes(running_nodes, node_metrics_map, avs_version_map);
@@ -393,7 +399,8 @@ mod data_filtering_tests {
             )]),
         );
 
-        let avs_version_map = HashMap::from([(AvsName::from("eigenda"), Version::new(2, 0, 0))]);
+        let avs_version_map =
+            HashMap::from([(AvsName::try_from("eigenda").unwrap(), Version::new(2, 0, 0))]);
 
         let updateable_nodes =
             catgegorize_updateable_nodes(running_nodes, node_metrics_map, avs_version_map);

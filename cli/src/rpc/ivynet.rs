@@ -152,10 +152,10 @@ impl Avs for IvynetService {
             let new_ivy_provider =
                 connect_provider(&config.get_rpc_url(chain)?, Some(signer)).await?;
 
-            let avs_instance: Box<dyn AvsVariant> = match AvsName::from(&avs) {
-                AvsName::EigenDA => Box::new(EigenDA::new_from_chain(chain)),
-                AvsName::AltLayer => Box::new(AltLayer::new_from_chain(chain)),
-                AvsName::LagrangeZK => Box::new(Lagrange::new_from_chain(chain)),
+            let avs_instance: Box<dyn AvsVariant> = match AvsName::try_from(avs.as_str()) {
+                Ok(AvsName::EigenDA) => Box::new(EigenDA::new_from_chain(chain)),
+                Ok(AvsName::AltLayer) => Box::new(AltLayer::new_from_chain(chain)),
+                Ok(AvsName::LagrangeZK) => Box::new(Lagrange::new_from_chain(chain)),
                 _ => return Err(IvyError::InvalidAvsType(avs.to_string()).into()),
             };
             provider.set_avs(avs_instance, new_ivy_provider.into()).await?;

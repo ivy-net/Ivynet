@@ -134,7 +134,8 @@ impl Backend for BackendService {
                     &self.pool,
                     &Address::from_slice(&node_data.operator_id),
                     &node_id,
-                    &AvsName::from(node_data.avs_name.as_str()),
+                    &AvsName::try_from(node_data.avs_name.as_str())
+                        .map_err(|_| Status::invalid_argument("Bad AVS name provided"))?,
                     &Version::parse(&node_data.avs_version)
                         .expect("Cannot parse version on NodeData grpc message"),
                     node_data.active_set,
@@ -164,7 +165,8 @@ impl Backend for BackendService {
         DbNodeData::delete_avs_operator_data(
             &self.pool,
             &Address::from_slice(&req.operator_id),
-            &AvsName::from(req.avs_name.as_str()),
+            &AvsName::try_from(req.avs_name.as_str())
+                .map_err(|_| Status::invalid_argument("Bad AVS name provided"))?,
         )
         .await
         .map_err(|e| Status::internal(format!("Failed while deleting node_data: {}", e)))?;

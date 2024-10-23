@@ -531,7 +531,7 @@ pub async fn get_node_data_for_avs(
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     let node_id =
         authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
-    let avs_name = AvsName::from(&avs);
+    let avs_name = AvsName::try_from(&avs[..]).map_err(|_| BackendError::InvalidAvs)?;
 
     // Get all data for the node
     let nodes_data = DbNodeData::get_avs_node_data(&state.pool, &node_id, &avs_name).await?;
@@ -581,7 +581,7 @@ pub async fn delete_avs_node_data(
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     let _node_id =
         authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
-    let avs_name = AvsName::from(&avs);
+    let avs_name = AvsName::try_from(&avs[..]).map_err(|_| BackendError::InvalidAvs)?;
 
     let op_id: Address = operator_id.parse::<Address>().map_err(|_| BackendError::BadId)?;
 

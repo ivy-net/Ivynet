@@ -11,6 +11,7 @@
     - bin
     - resources
   tags:
+    - ivynet_client
     - general
 
 - name: Download third party tools (rust, docker)
@@ -33,6 +34,7 @@
     group: root
     mode: "0644"
   tags:
+    - ivynet_client
     - general
 
 - name: Add ivynet bin dir to system-wide $PATH.
@@ -43,4 +45,5 @@
     group: root
     mode: "0644"
   tags:
+    - ivynet_client
     - ivynet

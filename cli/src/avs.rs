@@ -3,6 +3,7 @@ use dialoguer::Password;
 use ivynet_core::{
     avs::{build_avs_provider, commands::AvsCommands, config::AvsConfig},
     config::IvyConfig,
+    error::IvyError,
     grpc::client::{create_channel, Source},
     keychain::{KeyType, Keychain},
 };
@@ -18,13 +19,21 @@ pub async fn parse_avs_subcommands(
     // Setup runs local, otherwise construct a client and continue.
     if let AvsCommands::Setup { ref avs, ref chain } = subcmd {
         let keychain = Keychain::default();
-        let ecdsa_keyname = keychain.select_key(KeyType::Ecdsa)?;
+        let ecdsa_keyname = keychain.select_key(KeyType::Ecdsa).map_err(|e| match e {
+            IvyError::NoKeyFoundError => Error::NoECDSAKey,
+            e => e.into(),
+        })?;
+
         let ecdsa_password: String = Password::new()
             .with_prompt("Input the password for your stored operator ECDSA keyfile")
             .interact()?;
 
         let ecdsa = keychain.load(ecdsa_keyname, &ecdsa_password)?;
-        let bls_keyname = keychain.select_key(KeyType::Bls)?;
+        let bls_keyname = keychain.select_key(KeyType::Bls).map_err(|e| match e {
+            IvyError::NoKeyFoundError => Error::NoBLSKey,
+            e => e.into(),
+        })?;
+
         let bls_password: String = Password::new()
             .with_prompt("Input the password for your stored operator Bls keyfile")
             .interact()?;
@@ -40,7 +49,11 @@ pub async fn parse_avs_subcommands(
             )
             .await?;
             avs.setup(config, Some(ecdsa_password), &format!("{bls_keyname}"), &bls_password)
-                .await?;
+                .await
+                .map_err(|e| match e {
+                    IvyError::NoKeyFoundError => Error::NoBLSKey,
+                    e => e.into(),
+                })?;
         } else {
             println!("Error loading keys");
         }

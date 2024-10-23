@@ -1,0 +1,46 @@
+---
+- name: Prepare directory
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ witness_chain_path_ivynet }}"
+    - "{{ witness_chain_path_ivynet }}/bin"
+    - "{{ witness_chain_path_op }}"
+    - "{{ witness_chain_path_op }}/data"
+  tags:
+    - witness_chain
+    - general
+
+- name: Download third party tools (docker, go)
+  ansible.builtin.import_tasks:
+    file: third_party.yml
+
+- name: Download Archive
+  ansible.builtin.import_tasks:
+    file: get_archive.yml
+
+- name: Install Optimism node
+  ansible.builtin.import_tasks:
+    file: make_op_node.yml
+
+- name: Install Optimism node
+  ansible.builtin.import_tasks:
+    file: make_op_geth.yml
+
+- name: Create JWT file
+  ansible.builtin.copy:
+# yamllint disable-line rule:line-length
+    content: "0{{ query('ansible.builtin.password', chars=hex_chars, length=32, seed=inventory_hostname) }}"
+    dest: "{{ witness_chain_path_op }}/jwt.txt"
+    owner: root
+    group: root
+    mode: "0644"
+  vars:
+    hex_chars: '0123456789ABCDEF'
+  tags:
+    - witness_chain
+    - general

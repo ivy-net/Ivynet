@@ -6,6 +6,7 @@
     action: latest_release
   register: eigenlayer_cli_release
   tags:
+    - ivynet_client
     - eigen
     - github
 
@@ -13,6 +14,7 @@
   ansible.builtin.debug:
     msg: "{{ eigenlayer_cli_release.tag }} is the tag"
   tags:
+    - ivynet_client
     - eigen
     - github
 
@@ -23,6 +25,7 @@
     dest: /tmp
     remote_src: true
   tags:
+    - ivynet_client
     - eigen
     - github
 
@@ -35,6 +38,7 @@
     mode: "0755"
     remote_src: true
   tags:
+    - ivynet_client
     - eigen
     - github
 
@@ -45,6 +49,7 @@
     clone: true
     update: true
   tags:
+    - ivynet_client
     - eigen
     - github
 
@@ -57,6 +62,7 @@
     - g1.point
     - g2.point.powerOf2
   tags:
+    - ivynet_client
     - eigen
     - download
     - gcp
