@@ -23,6 +23,8 @@ Currently, this repo contains the backend, core, and cli modules of the Ivy plat
 
 - Rust
 - protobuf-compiler (apt install protobuf-compiler)
+- Docker (^27.3.1)
+- Docker compose (^2.29.7)
 
 ## Use
 
