@@ -233,6 +233,8 @@ pub enum DockerChildError {
     SerdeError(#[from] serde_json::Error),
 }
 
+/// Docker tests must be run serially as async testing will erroneously attempt to run multiple
+/// tests via the same contianers.
 #[cfg(test)]
 #[cfg(feature = "docker_tests")]
 mod tests {
