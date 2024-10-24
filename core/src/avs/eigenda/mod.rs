@@ -6,7 +6,7 @@ use dirs::home_dir;
 use dotenvy::from_path;
 use ethers::{
     signers::Signer,
-    types::{Address, Chain, U256},
+    types::{Address, Chain, H160, U256},
 };
 use semver::Version;
 use std::{
@@ -105,16 +105,14 @@ impl AvsVariant for EigenDA {
         &mut self,
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
-        _pw: Option<String>,
-        bls_key_name: &str,
-        bls_key_password: &str,
-        is_custom: bool,
+        operator_address: H160,
+        bls_key: Option<(String, String)>,
     ) -> Result<(), IvyError> {
-        self.build_pathing(is_custom)?;
-        if !is_custom {
+        self.build_pathing(operator_address, bls_key.is_none())?;
+        if let Some((bls_key_name, bls_key_password)) = bls_key {
             download_operator_setup(self.base_path.clone()).await?;
             download_g1_g2(self.base_path.clone()).await?;
-            self.build_env(provider, config, bls_key_name, bls_key_password).await?
+            self.build_env(provider, config, &bls_key_name, &bls_key_password).await?
         }
 
         Ok(())
@@ -179,7 +177,7 @@ impl AvsVariant for EigenDA {
         private_keypath: PathBuf,
         keyfile_password: &str,
     ) -> Result<(), IvyError> {
-        println!("Resgistering the EigenDA operator");
+        println!("Registering the EigenDA operator");
         let quorums = self.get_bootable_quorums(provider.clone()).await?;
         if quorums.is_empty() {
             return Err(EigenDAError::NoBootableQuorumsError.into());
@@ -354,7 +352,7 @@ impl AvsVariant for EigenDA {
     }
 
     async fn active_set(&self, provider: Arc<IvyProvider>) -> bool {
-        let address = provider.address();
+        let address = self.avs_config.operator_address(self.chain);
         let registry_coordinator_contract =
             RegistryCoordinator::new(contracts::registry_coordinator(self.chain), provider);
 
@@ -436,7 +434,7 @@ impl EigenDA {
     }
 
     async fn build_env(
-        &mut self,
+        &self,
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
         bls_key_name: &str,
@@ -445,15 +443,7 @@ impl EigenDA {
         let chain = Chain::try_from(provider.signer().chain_id())?;
         let rpc_url = config.get_rpc_url(chain)?;
 
-        let avs_run_path = self.base_path.join("eigenda-operator-setup");
-        let avs_run_path = match chain {
-            Chain::Mainnet => avs_run_path.join("mainnet"),
-            Chain::Holesky => avs_run_path.join("holesky"),
-            _ => todo!("Unimplemented"),
-        };
-
-        self.avs_config.set_path(chain, avs_run_path.clone(), false);
-        self.avs_config.store();
+        let avs_run_path = self.avs_config.get_path(chain);
 
         let env_example_path = avs_run_path.join(".env.example");
         let env_path = avs_run_path.join(".env");
@@ -532,7 +522,7 @@ impl EigenDA {
         }
     }
 
-    fn build_pathing(&mut self, is_custom: bool) -> Result<(), IvyError> {
+    fn build_pathing(&mut self, operator_address: H160, is_custom: bool) -> Result<(), IvyError> {
         let path = if !is_custom {
             let setup = self.base_path.join("eigenda-operator-setup");
             match self.chain {
@@ -544,7 +534,7 @@ impl EigenDA {
             AvsConfig::ask_for_path()
         };
 
-        self.avs_config.set_path(self.chain, path, is_custom);
+        self.avs_config.init(self.chain, path, operator_address, is_custom);
         self.avs_config.store();
 
         Ok(())

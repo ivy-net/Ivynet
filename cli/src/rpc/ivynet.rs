@@ -3,7 +3,7 @@ use ivynet_core::{
         eigenda::EigenDA, lagrange::Lagrange, mach_avs::AltLayer, names::AvsName, AvsProvider,
         AvsVariant,
     },
-    config::IvyConfig,
+    config::{IvyConfig, Service, StartMode},
     eigen::contracts::delegation_manager::OperatorDetails,
     error::IvyError,
     ethers::{signers::Signer, types::Chain},
@@ -23,21 +23,23 @@ use ivynet_core::{
         },
         tonic::{self, Request, Response, Status},
     },
+    keychain::{KeyName, Keychain},
     rpc_management::connect_provider,
     utils::try_parse_chain,
     wallet::IvyWallet,
 };
 use std::{iter::zip, sync::Arc};
-use tokio::sync::RwLock;
+use tokio::sync::{Mutex, RwLock};
 
 #[derive(Debug, Clone)]
 pub struct IvynetService {
     avs_provider: Arc<RwLock<AvsProvider>>,
+    config: Arc<Mutex<IvyConfig>>,
 }
 
 impl IvynetService {
-    pub fn new(avs_provider: Arc<RwLock<AvsProvider>>) -> Self {
-        Self { avs_provider }
+    pub fn new(avs_provider: Arc<RwLock<AvsProvider>>, config: &IvyConfig) -> Self {
+        Self { avs_provider, config: Arc::new(Mutex::new(config.clone())) }
     }
 }
 
@@ -79,6 +81,11 @@ impl Avs for IvynetService {
         let mut provider = self.avs_provider.write().await;
         provider.start().await?;
 
+        let mut c = self.config.lock().await;
+        if let Some(ref mut s) = &mut c.configured_service {
+            s.autostart = StartMode::Yes;
+            _ = c.store();
+        }
         // TODO: Start Flow + not setup fallback
         let response = RpcResponse { response_type: 0, msg: "Avs started.".to_string() };
         Ok(Response::new(response))
@@ -91,6 +98,11 @@ impl Avs for IvynetService {
         let mut provider = self.avs_provider.write().await;
         provider.attach().await?;
 
+        let mut c = self.config.lock().await;
+        if let Some(ref mut s) = &mut c.configured_service {
+            s.autostart = StartMode::Attach;
+            _ = c.store();
+        }
         let response =
             RpcResponse { response_type: 0, msg: "AVS attached successfully.".to_string() };
         Ok(Response::new(response))
@@ -100,19 +112,23 @@ impl Avs for IvynetService {
         let mut provider = self.avs_provider.write().await;
         provider.stop().await?;
 
-        // TODO: Stop flow
+        let mut c = self.config.lock().await;
+        if let Some(ref mut s) = &mut c.configured_service {
+            s.autostart = StartMode::No;
+            _ = c.store();
+        }
         let response = RpcResponse { response_type: 0, msg: "Avs stopped.".to_string() };
         Ok(Response::new(response))
     }
 
     async fn register(
         &self,
-        _request: Request<RegisterRequest>,
+        request: Request<RegisterRequest>,
     ) -> Result<Response<RpcResponse>, Status> {
         let provider = self.avs_provider.read().await;
-        // TODO: ask about storing 'config' in the provider
-        let config = IvyConfig::load_from_default_path().map_err(IvyError::from)?;
-        provider.register(&config).await?;
+        let req = request.into_inner();
+        let operator_key_path = Keychain::default().get_path(KeyName::Ecdsa(req.operator_key_name));
+        provider.register(operator_key_path, &req.operator_key_pass).await?;
 
         // TODO: Opt-in flow
         let response = RpcResponse { response_type: 0, msg: "Register success.".to_string() };
@@ -152,13 +168,23 @@ impl Avs for IvynetService {
             let new_ivy_provider =
                 connect_provider(&config.get_rpc_url(chain)?, Some(signer)).await?;
 
-            let avs_instance: Box<dyn AvsVariant> = match AvsName::try_from(avs.as_str()) {
+            let avs_name = AvsName::try_from(avs.as_str());
+            let avs_instance: Box<dyn AvsVariant> = match avs_name {
                 Ok(AvsName::EigenDA) => Box::new(EigenDA::new_from_chain(chain)),
                 Ok(AvsName::AltLayer) => Box::new(AltLayer::new_from_chain(chain)),
                 Ok(AvsName::LagrangeZK) => Box::new(Lagrange::new_from_chain(chain)),
                 _ => return Err(IvyError::InvalidAvsType(avs.to_string()).into()),
             };
             provider.set_avs(avs_instance, new_ivy_provider.into()).await?;
+
+            let mut c = self.config.lock().await;
+            c.configured_service =
+                Some(Service { service: avs_name.unwrap(), chain, autostart: StartMode::No });
+            _ = c.store();
+            if let Some(ref mut s) = &mut c.configured_service {
+                s.autostart = StartMode::No;
+                _ = c.store();
+            }
         }
 
         let response =

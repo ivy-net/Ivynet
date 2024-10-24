@@ -49,6 +49,8 @@ message StopRequest {
 
 // Register an operator for an AVS. Flow is AVS-dependent, see AVS-specific documentation for details.
 message RegisterRequest {
+    string operator_key_name = 1;
+    string operator_key_pass = 2;
 }
 
 // Unregister an operator for an AVS. Flow is AVS-dependent, see AVS-specific documentation for details.

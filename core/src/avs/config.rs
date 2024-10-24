@@ -1,6 +1,6 @@
 use std::{collections::HashMap, fs::create_dir_all, path::PathBuf};
 
-use ethers::types::Chain;
+use ethers::types::{Chain, H160};
 use serde::{Deserialize, Serialize};
 use thiserror::Error as ThisError;
 use tracing::info;
@@ -20,6 +20,7 @@ pub struct AvsConfig {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Setup {
     pub path: PathBuf,
+    pub operator_address: H160,
     pub is_custom: bool,
 }
 
@@ -105,8 +106,8 @@ impl AvsConfig {
             .clone()
     }
 
-    pub fn set_path(&mut self, chain: Chain, path: PathBuf, is_custom: bool) {
-        self.setup_map.insert(chain, Setup::new(path, is_custom));
+    pub fn init(&mut self, chain: Chain, path: PathBuf, operator_address: H160, is_custom: bool) {
+        self.setup_map.insert(chain, Setup::new(path, operator_address, is_custom));
     }
 
     pub fn get_settings(&self, chain: Chain) -> toml::Value {
@@ -119,11 +120,18 @@ impl AvsConfig {
     pub fn set_settings(&mut self, chain: Chain, settings: toml::Value) {
         self.avs_settings.insert(chain, settings);
     }
+
+    pub fn operator_address(&self, chain: Chain) -> H160 {
+        self.setup_map
+            .get(&chain)
+            .expect("No path found - please run the setup command")
+            .operator_address
+    }
 }
 
 impl Setup {
-    pub fn new(path: PathBuf, is_custom: bool) -> Self {
-        Self { path, is_custom }
+    pub fn new(path: PathBuf, operator_address: H160, is_custom: bool) -> Self {
+        Self { path, operator_address, is_custom }
     }
 }
 

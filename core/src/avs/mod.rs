@@ -13,12 +13,11 @@ use crate::{
 };
 use async_trait::async_trait;
 use config::AvsConfig;
-use dialoguer::Select;
 use ethers::{
     middleware::SignerMiddleware,
     providers::Middleware,
     signers::Signer,
-    types::{Chain, U256},
+    types::{Chain, H160, U256},
 };
 use lagrange::Lagrange;
 use names::AvsName;
@@ -117,25 +116,12 @@ impl AvsProvider {
     pub async fn setup(
         &mut self,
         config: &IvyConfig,
-        operator_password: Option<String>,
-        bls_key_name: &str,
-        bls_key_password: &str,
+        operator_address: H160,
+        bls_key: Option<(String, String)>,
     ) -> Result<(), IvyError> {
         let provider = self.provider.clone();
 
-        let setup_options = ["New Deployment", "Custom Attachment"];
-        let setup_type = Select::new()
-            .with_prompt(format!("Do you have an existing deployment of {}?", self.avs()?.name()))
-            .items(&setup_options)
-            .default(0)
-            .interact()
-            .unwrap();
-
-        let is_custom = setup_type == 1;
-
-        self.avs_mut()?
-            .setup(provider, config, operator_password, bls_key_name, bls_key_password, is_custom)
-            .await?;
+        self.avs_mut()?.setup(provider, config, operator_address, bls_key).await?;
         info!("Setup complete: run 'ivynet avs help' for next steps!");
         Ok(())
     }
@@ -215,7 +201,11 @@ impl AvsProvider {
         Ok(())
     }
 
-    pub async fn register(&self, _config: &IvyConfig) -> Result<(), IvyError> {
+    pub async fn register(
+        &self,
+        operator_key_path: PathBuf,
+        operator_key_pass: &str,
+    ) -> Result<(), IvyError> {
         // TODO: Move quorum logic into AVS-specific implementations.
         // TODO: RIIA path creation? Move to new() func
         let avs_path = self.avs()?.base_path();
@@ -229,16 +219,9 @@ impl AvsProvider {
         //     //Register operator for all quorums they're eligible for
         // }
 
-        let keychain = Keychain::default();
-        let keyname = keychain.select_key(KeyType::Ecdsa)?;
-        let keypath = keychain.get_path(keyname);
-
-        if let Some(pw) = &self.keyfile_pw {
-            self.avs()?.register(self.provider.clone(), avs_path.clone(), keypath, pw).await?;
-        } else {
-            error!("No keyfile password provided. Exiting...");
-            return Err(IvyError::KeyfilePasswordError);
-        }
+        self.avs()?
+            .register(self.provider.clone(), avs_path.clone(), operator_key_path, operator_key_pass)
+            .await?;
 
         Ok(())
     }
@@ -274,10 +257,8 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
         &mut self,
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
-        operator_password: Option<String>,
-        bls_key_name: &str,
-        bls_key_password: &str,
-        is_custom: bool,
+        operator_address: H160,
+        bls_key: Option<(String, String)>,
     ) -> Result<(), IvyError>;
 
     //fn validate_install();
