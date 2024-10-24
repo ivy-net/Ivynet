@@ -2,7 +2,6 @@ use async_trait::async_trait;
 use contracts::RegistryCoordinator;
 use core::str;
 use dialoguer::Input;
-use dirs::home_dir;
 use dotenvy::from_path;
 use ethers::{
     signers::Signer,
@@ -17,17 +16,14 @@ use std::{
     sync::Arc,
 };
 use thiserror::Error as ThisError;
-use tokio::process::{Child, Command};
+use tokio::process::Command;
 use tracing::{debug, error, info, warn};
 use zip::read::ZipArchive;
 
 use crate::{
     avs::AvsVariant,
     config::{self, IvyConfig},
-    docker::{
-        dockercmd::DockerCmd,
-        log::{open_logfile, CmdLogSource},
-    },
+    docker::log::{open_logfile, CmdLogSource},
     download::dl_progress_bar,
     eigen::{
         contracts::delegation_manager::DelegationManagerAbi,
@@ -155,19 +151,6 @@ impl AvsVariant for EigenDA {
             _ => {}
         }
         Ok(acceptable)
-    }
-
-    async fn attach(&mut self) -> Result<Child, IvyError> {
-        //TODO: Make more robust once path from avs config file is integrated
-        let setup_path =
-            home_dir().unwrap().join(EIGENDA_PATH).join("eigenda-operator-setup/holesky");
-        info!("Path: {:?}", &setup_path);
-        std::env::set_current_dir(&setup_path)?;
-
-        let cmd = DockerCmd::new().args(["logs", "-f"]).current_dir(&setup_path).spawn()?;
-
-        self.running = true;
-        Ok(cmd)
     }
 
     async fn register(
