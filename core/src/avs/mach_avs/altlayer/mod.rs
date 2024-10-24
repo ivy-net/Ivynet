@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use dialoguer::{Input, Password};
 use ethers::{
     signers::Signer,
-    types::{Chain, U256},
+    types::{Chain, H160, U256},
 };
 use std::{
     env,
@@ -68,10 +68,8 @@ impl AvsVariant for AltLayer {
         &mut self,
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
-        _pw: Option<String>,
-        _bls_key_name: &str,
-        _bls_key_password: &str,
-        _is_custom: bool,
+        _operator_address: H160,
+        _bls_key: Option<(String, String)>,
     ) -> Result<(), IvyError> {
         download_operator_setup(self.base_path.clone()).await?;
         self.build_env(provider, config).await?;

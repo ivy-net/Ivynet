@@ -7,7 +7,7 @@
 /// lagrange-worker`.
 use async_trait::async_trait;
 use dialoguer::Input;
-use ethers::types::{Chain, U256};
+use ethers::types::{Chain, H160, U256};
 use std::{
     fs::{self, File},
     io::{copy, BufReader},
@@ -97,12 +97,10 @@ impl AvsVariant for Lagrange {
         &mut self,
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
-        _keyfile_pw: Option<String>,
-        _bls_key_name: &str,
-        _bls_key_password: &str,
-        is_custom: bool,
+        operator_address: H160,
+        bls_key: Option<(String, String)>,
     ) -> Result<(), IvyError> {
-        self.build_pathing(is_custom)?;
+        self.build_pathing(operator_address, bls_key.is_none())?;
         download_operator_setup(self.base_path.clone()).await?;
         self.build_env(provider, config)?;
         generate_lagrange_key(self.run_path()).await?;
@@ -238,14 +236,14 @@ impl Lagrange {
         }
     }
 
-    fn build_pathing(&mut self, is_custom: bool) -> Result<(), IvyError> {
+    fn build_pathing(&mut self, operator_address: H160, is_custom: bool) -> Result<(), IvyError> {
         let path = if !is_custom {
             self.base_path.join("lagrange-worker").join(self.chain.as_ref())
         } else {
             AvsConfig::ask_for_path()
         };
 
-        self.avs_config.set_path(self.chain, path, is_custom);
+        self.avs_config.init(self.chain, path, operator_address, is_custom);
         self.avs_config.store();
 
         Ok(())

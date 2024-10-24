@@ -129,6 +129,7 @@ async fn main() -> Result<(), AnyError> {
             (Err(_), _) => (args.server_url, args.server_ca),
         }
     };
+
     match args.cmd {
         Commands::Config { subcmd } => {
             config::parse_config_subcommands(subcmd, config).await?;
