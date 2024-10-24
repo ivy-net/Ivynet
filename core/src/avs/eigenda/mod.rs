@@ -436,7 +436,7 @@ impl EigenDA {
     }
 
     async fn build_env(
-        &mut self,
+        &self,
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
         bls_key_name: &str,
