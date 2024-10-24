@@ -114,8 +114,7 @@ impl AvsVariant for EigenDA {
         if !is_custom {
             download_operator_setup(self.base_path.clone()).await?;
             download_g1_g2(self.base_path.clone()).await?;
-            self.build_env(provider, config, operator_address, bls_key_name, bls_key_password)
-                .await?
+            self.build_env(provider, config, bls_key_name, bls_key_password).await?
         }
 
         Ok(())
@@ -440,22 +439,13 @@ impl EigenDA {
         &mut self,
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
-        operator_address: H160,
         bls_key_name: &str,
         bls_key_password: &str,
     ) -> Result<(), IvyError> {
         let chain = Chain::try_from(provider.signer().chain_id())?;
         let rpc_url = config.get_rpc_url(chain)?;
 
-        let avs_run_path = self.base_path.join("eigenda-operator-setup");
-        let avs_run_path = match chain {
-            Chain::Mainnet => avs_run_path.join("mainnet"),
-            Chain::Holesky => avs_run_path.join("holesky"),
-            _ => todo!("Unimplemented"),
-        };
-
-        self.avs_config.set_path(chain, avs_run_path.clone(), operator_address, false);
-        self.avs_config.store();
+        let avs_run_path = self.avs_config.get_path(chain);
 
         let env_example_path = avs_run_path.join(".env.example");
         let env_path = avs_run_path.join(".env");
