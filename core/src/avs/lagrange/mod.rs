@@ -98,11 +98,9 @@ impl AvsVariant for Lagrange {
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
         operator_address: H160,
-        _bls_key_name: &str,
-        _bls_key_password: &str,
-        is_custom: bool,
+        bls_key: Option<(String, String)>,
     ) -> Result<(), IvyError> {
-        self.build_pathing(operator_address, is_custom)?;
+        self.build_pathing(operator_address, bls_key.is_none())?;
         download_operator_setup(self.base_path.clone()).await?;
         self.build_env(provider, config)?;
         generate_lagrange_key(self.run_path()).await?;

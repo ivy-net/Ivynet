@@ -106,15 +106,13 @@ impl AvsVariant for EigenDA {
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
         operator_address: H160,
-        bls_key_name: &str,
-        bls_key_password: &str,
-        is_custom: bool,
+        bls_key: Option<(String, String)>,
     ) -> Result<(), IvyError> {
-        self.build_pathing(operator_address, is_custom)?;
-        if !is_custom {
+        self.build_pathing(operator_address, bls_key.is_none())?;
+        if let Some((bls_key_name, bls_key_password)) = bls_key {
             download_operator_setup(self.base_path.clone()).await?;
             download_g1_g2(self.base_path.clone()).await?;
-            self.build_env(provider, config, bls_key_name, bls_key_password).await?
+            self.build_env(provider, config, &bls_key_name, &bls_key_password).await?
         }
 
         Ok(())

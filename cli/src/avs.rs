@@ -1,5 +1,5 @@
 use anyhow::{Context, Error as AnyError, Result};
-use dialoguer::Password;
+use dialoguer::{Password, Select};
 use ivynet_core::{
     avs::{build_avs_provider, commands::AvsCommands, config::AvsConfig},
     config::IvyConfig,
@@ -27,22 +27,35 @@ pub async fn parse_avs_subcommands(
 
         let wallet_address = keychain.public_address(ecdsa_keyname.clone())?.parse::<H160>()?;
 
-        let bls_keyname = keychain.select_key(KeyType::Bls).map_err(|e| match e {
+        let setup_options = ["New Deployment", "Custom Attachment"];
+        let setup_type = Select::new()
+            .with_prompt(format!("Do you have an existing deployment of {}?", avs))
+            .items(&setup_options)
+            .default(0)
+            .interact()
+            .unwrap();
+
+        let bls_data = match setup_type {
+            0 => {
+                let bls_keyname = keychain.select_key(KeyType::Bls).map_err(|e| match e {
+                    IvyError::NoKeyFoundError => Error::NoBLSKey,
+                    e => e.into(),
+                })?;
+
+                let bls_password: String = Password::new()
+                    .with_prompt("Input the password for your stored operator Bls keyfile")
+                    .interact()?;
+
+                Some((format!("{bls_keyname}"), bls_password))
+            }
+            _ => None,
+        };
+
+        let mut avs = build_avs_provider(Some(avs), chain, config, None, None, None).await?;
+        avs.setup(config, wallet_address, bls_data).await.map_err(|e| match e {
             IvyError::NoKeyFoundError => Error::NoBLSKey,
             e => e.into(),
         })?;
-
-        let bls_password: String = Password::new()
-            .with_prompt("Input the password for your stored operator Bls keyfile")
-            .interact()?;
-
-        let mut avs = build_avs_provider(Some(avs), chain, config, None, None, None).await?;
-        avs.setup(config, wallet_address, &format!("{bls_keyname}"), &bls_password).await.map_err(
-            |e| match e {
-                IvyError::NoKeyFoundError => Error::NoBLSKey,
-                e => e.into(),
-            },
-        )?;
 
         return Ok(());
     }

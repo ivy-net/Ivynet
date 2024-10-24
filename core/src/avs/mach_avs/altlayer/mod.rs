@@ -69,9 +69,7 @@ impl AvsVariant for AltLayer {
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
         _operator_address: H160,
-        _bls_key_name: &str,
-        _bls_key_password: &str,
-        _is_custom: bool,
+        _bls_key: Option<(String, String)>,
     ) -> Result<(), IvyError> {
         download_operator_setup(self.base_path.clone()).await?;
         self.build_env(provider, config).await?;

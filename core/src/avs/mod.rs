@@ -13,7 +13,6 @@ use crate::{
 };
 use async_trait::async_trait;
 use config::AvsConfig;
-use dialoguer::Select;
 use ethers::{
     middleware::SignerMiddleware,
     providers::Middleware,
@@ -118,24 +117,11 @@ impl AvsProvider {
         &mut self,
         config: &IvyConfig,
         operator_address: H160,
-        bls_key_name: &str,
-        bls_key_password: &str,
+        bls_key: Option<(String, String)>,
     ) -> Result<(), IvyError> {
         let provider = self.provider.clone();
 
-        let setup_options = ["New Deployment", "Custom Attachment"];
-        let setup_type = Select::new()
-            .with_prompt(format!("Do you have an existing deployment of {}?", self.avs()?.name()))
-            .items(&setup_options)
-            .default(0)
-            .interact()
-            .unwrap();
-
-        let is_custom = setup_type == 1;
-
-        self.avs_mut()?
-            .setup(provider, config, operator_address, bls_key_name, bls_key_password, is_custom)
-            .await?;
+        self.avs_mut()?.setup(provider, config, operator_address, bls_key).await?;
         info!("Setup complete: run 'ivynet avs help' for next steps!");
         Ok(())
     }
@@ -272,9 +258,7 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
         operator_address: H160,
-        bls_key_name: &str,
-        bls_key_password: &str,
-        is_custom: bool,
+        bls_key: Option<(String, String)>,
     ) -> Result<(), IvyError>;
 
     //fn validate_install();
