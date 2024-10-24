@@ -126,6 +126,14 @@ impl AvsConfig {
     pub fn set_settings(&mut self, chain: Chain, settings: toml::Value) {
         self.avs_settings.insert(chain, settings);
     }
+
+    pub fn operator_address(&self, chain: Chain) -> H160 {
+        self.setup_map
+            .get(&chain)
+            .expect("No path found - please run the setup command")
+            .operator_address
+            .clone()
+    }
 }
 
 impl Setup {

@@ -355,7 +355,7 @@ impl AvsVariant for EigenDA {
     }
 
     async fn active_set(&self, provider: Arc<IvyProvider>) -> bool {
-        let address = provider.address();
+        let address = self.avs_config.operator_address(self.chain);
         let registry_coordinator_contract =
             RegistryCoordinator::new(contracts::registry_coordinator(self.chain), provider);
 
