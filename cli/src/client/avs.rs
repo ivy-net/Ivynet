@@ -26,8 +26,12 @@ impl AvsClient {
         Ok(response)
     }
 
-    pub async fn register(&mut self) -> Result<Response<RpcResponse>, IvyError> {
-        let request = Request::new(RegisterRequest {});
+    pub async fn register(
+        &mut self,
+        operator_key_name: String,
+        operator_key_pass: String,
+    ) -> Result<Response<RpcResponse>, IvyError> {
+        let request = Request::new(RegisterRequest { operator_key_name, operator_key_pass });
         let response = self.0.register(request).await?;
         Ok(response)
     }

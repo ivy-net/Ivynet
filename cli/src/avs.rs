@@ -92,8 +92,24 @@ pub async fn parse_avs_subcommands(
         }
         // TODO: Fix timeout issue
         AvsCommands::Register {} => {
-            let response = client.avs_mut().register().await?;
-            println!("{:?}", response.into_inner());
+            let keychain = Keychain::default();
+            let ecdsa_keyname = keychain.select_key(KeyType::Ecdsa).map_err(|e| match e {
+                IvyError::NoKeyFoundError => Error::NoECDSAKey,
+                e => e.into(),
+            })?;
+
+            let ecdsa_password: String = Password::new()
+                .with_prompt("Input the password for your stored operator ECDSA keyfile")
+                .interact()?;
+            // We need to check if we can load the key with this password
+            if keychain.load(ecdsa_keyname.clone(), &ecdsa_password).is_ok() {
+                let response =
+                    client.avs_mut().register(format!("{ecdsa_keyname:?}"), ecdsa_password).await?;
+
+                println!("{:?}", response.into_inner());
+            } else {
+                println!("ERROR: Bad password to selected key");
+            }
         }
         AvsCommands::Unregister {} => {
             let response = client.avs_mut().unregister().await?;

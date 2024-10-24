@@ -23,6 +23,7 @@ use ivynet_core::{
         },
         tonic::{self, Request, Response, Status},
     },
+    keychain::{KeyName, Keychain},
     rpc_management::connect_provider,
     utils::try_parse_chain,
     wallet::IvyWallet,
@@ -122,12 +123,12 @@ impl Avs for IvynetService {
 
     async fn register(
         &self,
-        _request: Request<RegisterRequest>,
+        request: Request<RegisterRequest>,
     ) -> Result<Response<RpcResponse>, Status> {
         let provider = self.avs_provider.read().await;
-        // TODO: ask about storing 'config' in the provider
-        let config = IvyConfig::load_from_default_path().map_err(IvyError::from)?;
-        provider.register(&config).await?;
+        let req = request.into_inner();
+        let operator_key_path = Keychain::default().get_path(KeyName::Ecdsa(req.operator_key_name));
+        provider.register(operator_key_path, &req.operator_key_pass).await?;
 
         // TODO: Opt-in flow
         let response = RpcResponse { response_type: 0, msg: "Register success.".to_string() };

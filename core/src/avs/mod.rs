@@ -215,7 +215,11 @@ impl AvsProvider {
         Ok(())
     }
 
-    pub async fn register(&self, _config: &IvyConfig) -> Result<(), IvyError> {
+    pub async fn register(
+        &self,
+        operator_key_path: PathBuf,
+        operator_key_pass: &str,
+    ) -> Result<(), IvyError> {
         // TODO: Move quorum logic into AVS-specific implementations.
         // TODO: RIIA path creation? Move to new() func
         let avs_path = self.avs()?.base_path();
@@ -229,16 +233,9 @@ impl AvsProvider {
         //     //Register operator for all quorums they're eligible for
         // }
 
-        let keychain = Keychain::default();
-        let keyname = keychain.select_key(KeyType::Ecdsa)?;
-        let keypath = keychain.get_path(keyname);
-
-        if let Some(pw) = &self.keyfile_pw {
-            self.avs()?.register(self.provider.clone(), avs_path.clone(), keypath, pw).await?;
-        } else {
-            error!("No keyfile password provided. Exiting...");
-            return Err(IvyError::KeyfilePasswordError);
-        }
+        self.avs()?
+            .register(self.provider.clone(), avs_path.clone(), operator_key_path, operator_key_pass)
+            .await?;
 
         Ok(())
     }
