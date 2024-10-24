@@ -28,7 +28,7 @@ pub async fn parse_avs_subcommands(
             .with_prompt("Input the password for your stored operator ECDSA keyfile")
             .interact()?;
 
-        let ecdsa = keychain.load(ecdsa_keyname, &ecdsa_password)?;
+        let ecdsa = keychain.load(ecdsa_keyname.clone(), &ecdsa_password)?;
         let bls_keyname = keychain.select_key(KeyType::Bls).map_err(|e| match e {
             IvyError::NoKeyFoundError => Error::NoBLSKey,
             e => e.into(),
@@ -39,6 +39,7 @@ pub async fn parse_avs_subcommands(
             .interact()?;
 
         if let Some(wallet) = ecdsa.get_wallet_owned() {
+            let address = wallet.address();
             let mut avs = build_avs_provider(
                 Some(avs),
                 chain,
@@ -48,12 +49,12 @@ pub async fn parse_avs_subcommands(
                 None,
             )
             .await?;
-            avs.setup(config, Some(ecdsa_password), &format!("{bls_keyname}"), &bls_password)
-                .await
-                .map_err(|e| match e {
+            avs.setup(config, address, &format!("{bls_keyname}"), &bls_password).await.map_err(
+                |e| match e {
                     IvyError::NoKeyFoundError => Error::NoBLSKey,
                     e => e.into(),
-                })?;
+                },
+            )?;
         } else {
             println!("Error loading keys");
         }

@@ -18,7 +18,7 @@ use ethers::{
     middleware::SignerMiddleware,
     providers::Middleware,
     signers::Signer,
-    types::{Chain, U256},
+    types::{Chain, H160, U256},
 };
 use lagrange::Lagrange;
 use names::AvsName;
@@ -117,7 +117,7 @@ impl AvsProvider {
     pub async fn setup(
         &mut self,
         config: &IvyConfig,
-        operator_password: Option<String>,
+        operator_address: H160,
         bls_key_name: &str,
         bls_key_password: &str,
     ) -> Result<(), IvyError> {
@@ -134,7 +134,7 @@ impl AvsProvider {
         let is_custom = setup_type == 1;
 
         self.avs_mut()?
-            .setup(provider, config, operator_password, bls_key_name, bls_key_password, is_custom)
+            .setup(provider, config, operator_address, bls_key_name, bls_key_password, is_custom)
             .await?;
         info!("Setup complete: run 'ivynet avs help' for next steps!");
         Ok(())
@@ -271,7 +271,7 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
         &mut self,
         provider: Arc<IvyProvider>,
         config: &IvyConfig,
-        operator_password: Option<String>,
+        operator_address: H160,
         bls_key_name: &str,
         bls_key_password: &str,
         is_custom: bool,
