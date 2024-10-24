@@ -536,7 +536,7 @@ impl EigenDA {
             AvsConfig::ask_for_path()
         };
 
-        self.avs_config.set_path(self.chain, path, operator_address, is_custom);
+        self.avs_config.init(self.chain, path, operator_address, is_custom);
         self.avs_config.store();
 
         Ok(())

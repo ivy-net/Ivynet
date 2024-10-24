@@ -106,13 +106,7 @@ impl AvsConfig {
             .clone()
     }
 
-    pub fn set_path(
-        &mut self,
-        chain: Chain,
-        path: PathBuf,
-        operator_address: H160,
-        is_custom: bool,
-    ) {
+    pub fn init(&mut self, chain: Chain, path: PathBuf, operator_address: H160, is_custom: bool) {
         self.setup_map.insert(chain, Setup::new(path, operator_address, is_custom));
     }
 
