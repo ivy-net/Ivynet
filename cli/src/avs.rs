@@ -4,6 +4,7 @@ use ivynet_core::{
     avs::{build_avs_provider, commands::AvsCommands, config::AvsConfig},
     config::IvyConfig,
     error::IvyError,
+    ethers::types::H160,
     grpc::client::{create_channel, Source},
     keychain::{KeyType, Keychain},
 };
@@ -24,11 +25,8 @@ pub async fn parse_avs_subcommands(
             e => e.into(),
         })?;
 
-        let ecdsa_password: String = Password::new()
-            .with_prompt("Input the password for your stored operator ECDSA keyfile")
-            .interact()?;
+        let wallet_address = keychain.public_address(ecdsa_keyname.clone())?.parse::<H160>()?;
 
-        let ecdsa = keychain.load(ecdsa_keyname.clone(), &ecdsa_password)?;
         let bls_keyname = keychain.select_key(KeyType::Bls).map_err(|e| match e {
             IvyError::NoKeyFoundError => Error::NoBLSKey,
             e => e.into(),
@@ -38,26 +36,14 @@ pub async fn parse_avs_subcommands(
             .with_prompt("Input the password for your stored operator Bls keyfile")
             .interact()?;
 
-        if let Some(wallet) = ecdsa.get_wallet_owned() {
-            let address = wallet.address();
-            let mut avs = build_avs_provider(
-                Some(avs),
-                chain,
-                config,
-                Some(wallet),
-                Some(ecdsa_password.clone()),
-                None,
-            )
-            .await?;
-            avs.setup(config, address, &format!("{bls_keyname}"), &bls_password).await.map_err(
-                |e| match e {
-                    IvyError::NoKeyFoundError => Error::NoBLSKey,
-                    e => e.into(),
-                },
-            )?;
-        } else {
-            println!("Error loading keys");
-        }
+        let mut avs = build_avs_provider(Some(avs), chain, config, None, None, None).await?;
+        avs.setup(config, wallet_address, &format!("{bls_keyname}"), &bls_password).await.map_err(
+            |e| match e {
+                IvyError::NoKeyFoundError => Error::NoBLSKey,
+                e => e.into(),
+            },
+        )?;
+
         return Ok(());
     }
 
