@@ -710,7 +710,7 @@ checksum = "1462739cb27611015575c0c11df5df7601141071f07518d56fcc1be504cbec97"
 
 [[package]]
 name = "cli"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "anyhow",
  "clap",
@@ -2535,7 +2535,7 @@ dependencies = [
 
 [[package]]
 name = "ivynet-core"
-version = "0.2.0"
+version = "0.2.1"
 dependencies = [
  "async-trait",
  "axum 0.7.7",
