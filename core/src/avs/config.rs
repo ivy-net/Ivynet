@@ -132,7 +132,6 @@ impl AvsConfig {
             .get(&chain)
             .expect("No path found - please run the setup command")
             .operator_address
-            .clone()
     }
 }
 
