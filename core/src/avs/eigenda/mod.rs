@@ -177,7 +177,7 @@ impl AvsVariant for EigenDA {
         private_keypath: PathBuf,
         keyfile_password: &str,
     ) -> Result<(), IvyError> {
-        println!("Resgistering the EigenDA operator");
+        println!("Registering the EigenDA operator");
         let quorums = self.get_bootable_quorums(provider.clone()).await?;
         if quorums.is_empty() {
             return Err(EigenDAError::NoBootableQuorumsError.into());

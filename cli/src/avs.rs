@@ -104,7 +104,7 @@ pub async fn parse_avs_subcommands(
             // We need to check if we can load the key with this password
             if keychain.load(ecdsa_keyname.clone(), &ecdsa_password).is_ok() {
                 let response =
-                    client.avs_mut().register(format!("{ecdsa_keyname:?}"), ecdsa_password).await?;
+                    client.avs_mut().register(ecdsa_keyname.to_string(), ecdsa_password).await?;
 
                 println!("{:?}", response.into_inner());
             } else {
