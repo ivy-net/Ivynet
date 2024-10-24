@@ -107,6 +107,7 @@ pub struct AvsInfo {
     pub active_set: Option<String>,
     pub operator_id: Option<String>,
     pub performance_score: f64,
+    pub updateable: Option<bool>,
 }
 
 /// Grab information for every node in the organization
@@ -130,7 +131,7 @@ pub async fn client(
 
     for machine in machines {
         let metrics = Metric::get_organized_for_node(&state.pool, &machine).await?;
-        let info = build_node_info(machine, metrics);
+        let info = build_node_info(&state.pool, machine, metrics).await;
         infos.push(info);
     }
 
@@ -363,7 +364,7 @@ pub async fn info(
     }
 
     let metrics = Metric::get_organized_for_node(&state.pool, &machine).await?;
-    Ok(Json(build_node_info(machine, metrics)))
+    Ok(Json(build_node_info(&state.pool, machine, metrics).await))
 }
 
 /// Get condensed metrics for a specific node
@@ -590,7 +591,11 @@ pub async fn delete_avs_node_data(
     Ok(())
 }
 
-pub fn build_node_info(node: node::Node, node_metrics: HashMap<String, Metric>) -> Info {
+pub async fn build_node_info(
+    pool: &sqlx::PgPool,
+    node: node::Node,
+    node_metrics: HashMap<String, Metric>,
+) -> Info {
     let last_checked = if let Some(running) = node_metrics.get(RUNNING_METRIC) {
         running.created_at
     } else {
@@ -598,6 +603,7 @@ pub fn build_node_info(node: node::Node, node_metrics: HashMap<String, Metric>) 
     };
 
     let avs_info = build_avs_info(
+        pool,
         node_metrics.get(RUNNING_METRIC).cloned(),
         node_metrics.get(EIGEN_PERFORMANCE_METRIC).cloned(),
     );
@@ -631,7 +637,7 @@ pub fn build_node_info(node: node::Node, node_metrics: HashMap<String, Metric>) 
                 } else {
                     0
                 },
-                deployed_avs: avs_info,
+                deployed_avs: avs_info.await,
                 error: Vec::new(),
             },
 
@@ -659,7 +665,8 @@ pub fn build_hardware_info(
     }
 }
 
-pub fn build_avs_info(
+pub async fn build_avs_info(
+    pool: &sqlx::PgPool,
     running_metric: Option<Metric>,
     performance_metric: Option<Metric>,
 ) -> AvsInfo {
@@ -668,6 +675,7 @@ pub fn build_avs_info(
     let mut active_set = None;
     let mut operator_id = None;
     let mut chain = None;
+    let mut updateable = None;
 
     if let Some(running) = running_metric {
         if let Some(attributes) = &running.attributes {
@@ -676,6 +684,16 @@ pub fn build_avs_info(
             chain = attributes.get("chain").cloned();
             operator_id = attributes.get("operator_id").cloned();
             active_set = attributes.get("active_set").cloned();
+
+            let avs_name_str = name.clone().unwrap_or("jim".to_string());
+            let avs_version_str = version.clone().unwrap_or("0.0.0".to_string());
+            if let (Ok(avs_name), Ok(version)) =
+                (AvsName::try_from(avs_name_str.as_str()), Version::parse(&avs_version_str))
+            {
+                if let Ok(Some(avs_data)) = DbAvsData::get_avs_data(pool, &avs_name).await {
+                    updateable = Some(avs_data.avs_version < version);
+                }
+            }
         }
     }
 
@@ -690,5 +708,6 @@ pub fn build_avs_info(
         } else {
             0.0
         },
+        updateable,
     }
 }
