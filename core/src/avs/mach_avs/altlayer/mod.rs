@@ -19,7 +19,6 @@ use crate::{
     avs::{names::AvsName, AvsVariant},
     config::{self, IvyConfig},
     constants::IVY_METADATA,
-    docker::log::CmdLogSource,
     eigen::{
         node_classes::{self, NodeClass},
         quorum::QuorumType,

@@ -23,7 +23,6 @@ use crate::{
     avs::AvsVariant,
     config::IvyConfig,
     dialog::get_confirm_password,
-    docker::log::CmdLogSource,
     eigen::quorum::QuorumType,
     env_parser::EnvLines,
     error::{IvyError, SetupError},

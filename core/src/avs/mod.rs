@@ -1,6 +1,6 @@
 use crate::{
     config::IvyConfig,
-    docker::{dockercmd::DockerCmd, log::CmdLogSource},
+    docker::dockercmd::DockerCmd,
     eigen::{contracts::delegation_manager::DelegationManager, quorum::QuorumType},
     error::IvyError,
     grpc::messages::NodeData,

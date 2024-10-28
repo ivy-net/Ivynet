@@ -12,7 +12,7 @@ use ivynet_core::{
 use crate::{
     client::IvynetClient,
     error::Error,
-    inspect::{most_recent_logfile, select_logfile, tail_logs},
+    inspect::{select_logfile, tail_logs},
 };
 
 pub async fn parse_avs_subcommands(

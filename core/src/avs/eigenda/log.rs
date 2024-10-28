@@ -10,10 +10,12 @@ pub fn datetime_regex() -> Regex {
     Regex::new(r"\s(\w{4} \d{2} \d{2}:\d{2}:\d{2}\.\d{3})\s").unwrap()
 }
 
+#[allow(dead_code)]
 pub fn level_regex() -> Regex {
     Regex::new(r"\s(DBG|INF|WRN|ERR)\s").unwrap()
 }
 
+#[allow(dead_code)]
 pub fn ansi_sanitization_regex() -> Regex {
     Regex::new(r"\x1B\[([0-9]{1,2}(;[0-9]{1,2})*)?[m]").unwrap()
 }

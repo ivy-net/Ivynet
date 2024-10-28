@@ -1,3 +1,20 @@
+use self::contracts::StakeRegistryAbi;
+use super::{names::AvsName, AvsConfig};
+use crate::{
+    avs::AvsVariant,
+    config::{self, IvyConfig},
+    download::dl_progress_bar,
+    eigen::{
+        contracts::delegation_manager::DelegationManagerAbi,
+        node_classes::{self, NodeClass},
+        quorum::{Quorum, QuorumType},
+    },
+    env_parser::EnvLines,
+    error::{IvyError, SetupError},
+    keychain::Keychain,
+    rpc_management::IvyProvider,
+    utils::gb_to_bytes,
+};
 use async_trait::async_trait;
 use contracts::RegistryCoordinator;
 use core::str;
@@ -11,7 +28,7 @@ use semver::Version;
 use std::{
     env,
     fs::{self, File},
-    io::{copy, BufReader, Write},
+    io::{copy, BufReader},
     path::PathBuf,
     sync::Arc,
 };
@@ -19,30 +36,6 @@ use thiserror::Error as ThisError;
 use tokio::process::Command;
 use tracing::{debug, error, info, warn};
 use zip::read::ZipArchive;
-
-use crate::{
-    avs::AvsVariant,
-    config::{self, IvyConfig},
-    docker::log::{open_logfile, CmdLogSource},
-    download::dl_progress_bar,
-    eigen::{
-        contracts::delegation_manager::DelegationManagerAbi,
-        node_classes::{self, NodeClass},
-        quorum::{Quorum, QuorumType},
-    },
-    env_parser::EnvLines,
-    error::{IvyError, SetupError},
-    keychain::Keychain,
-    rpc_management::IvyProvider,
-    utils::gb_to_bytes,
-};
-
-use self::{
-    contracts::StakeRegistryAbi,
-    log::{ansi_sanitization_regex, level_regex},
-};
-
-use super::{names::AvsName, AvsConfig};
 
 mod contracts;
 mod log;
