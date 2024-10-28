@@ -19,7 +19,6 @@ use crate::{
     avs::{names::AvsName, AvsVariant},
     config::{self, IvyConfig},
     constants::IVY_METADATA,
-    docker::log::CmdLogSource,
     eigen::{
         node_classes::{self, NodeClass},
         quorum::QuorumType,
@@ -123,13 +122,12 @@ impl AvsVariant for AltLayer {
         AvsName::AltLayer
     }
 
-    fn base_path(&self) -> PathBuf {
-        self.base_path.clone()
+    fn chain(&self) -> Chain {
+        self.chain
     }
 
-    async fn handle_log(&self, _line: &str, _src: CmdLogSource) -> Result<(), IvyError> {
-        // TODO: Implement log handling
-        Ok(())
+    fn base_path(&self) -> PathBuf {
+        self.base_path.clone()
     }
 
     fn run_path(&self) -> PathBuf {

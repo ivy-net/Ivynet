@@ -186,6 +186,9 @@ pub enum IvyError {
 
     #[error(transparent)]
     IvyYamlError(#[from] crate::ivy_yaml::IvyYamlError),
+
+    #[error("No logfiles found for {0}")]
+    NoLogFiles(String),
 }
 
 #[derive(Debug, Error)]

@@ -37,7 +37,7 @@ pub async fn serve_log_server(
         .route("/health", get(|| async { "Alive" }))
         .route("/post_log", post(post_log))
         .with_state(state);
-    let listener = tokio::net::TcpListener::bind("localhost:50051").await?;
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:50051").await?;
     axum::serve(listener, app).await?;
     Ok(())
 }

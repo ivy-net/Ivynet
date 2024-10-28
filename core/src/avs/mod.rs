@@ -1,6 +1,6 @@
 use crate::{
     config::IvyConfig,
-    docker::{dockercmd::DockerCmd, log::CmdLogSource},
+    docker::dockercmd::DockerCmd,
     eigen::{contracts::delegation_manager::DelegationManager, quorum::QuorumType},
     error::IvyError,
     grpc::messages::NodeData,
@@ -292,6 +292,7 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
         let _ = create_ivy_dockercompose(
             self.run_path().join("docker-compose.yml"),
             "localhost:24224",
+            self.chain(),
         )?;
 
         // NOTE: See the limitations of the Stdio::piped() method if this experiences a deadlock
@@ -310,6 +311,7 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
         let _ = create_ivy_dockercompose(
             self.run_path().join("docker-compose.yml"),
             "localhost:24224",
+            self.chain(),
         )?;
 
         debug!("docker ataching: {}", self.run_path().display());
@@ -333,10 +335,10 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
         self.set_running(false);
         Ok(())
     }
-    /// Handle a log line from the AVS instance.
-    async fn handle_log(&self, line: &str, src: CmdLogSource) -> Result<(), IvyError>;
     /// Return the name of the AVS instance.
     fn name(&self) -> AvsName;
+    /// Return the connected chain of the AVS instance.
+    fn chain(&self) -> Chain;
     /// Handle to the top-level directory for the AVS instance.
     fn base_path(&self) -> PathBuf;
     /// Return the path to the AVS instance's run directory (usually a docker compose file)

@@ -1,3 +1,20 @@
+use self::contracts::StakeRegistryAbi;
+use super::{names::AvsName, AvsConfig};
+use crate::{
+    avs::AvsVariant,
+    config::{self, IvyConfig},
+    download::dl_progress_bar,
+    eigen::{
+        contracts::delegation_manager::DelegationManagerAbi,
+        node_classes::{self, NodeClass},
+        quorum::{Quorum, QuorumType},
+    },
+    env_parser::EnvLines,
+    error::{IvyError, SetupError},
+    keychain::Keychain,
+    rpc_management::IvyProvider,
+    utils::gb_to_bytes,
+};
 use async_trait::async_trait;
 use contracts::RegistryCoordinator;
 use core::str;
@@ -11,7 +28,7 @@ use semver::Version;
 use std::{
     env,
     fs::{self, File},
-    io::{copy, BufReader, Write},
+    io::{copy, BufReader},
     path::PathBuf,
     sync::Arc,
 };
@@ -19,30 +36,6 @@ use thiserror::Error as ThisError;
 use tokio::process::Command;
 use tracing::{debug, error, info, warn};
 use zip::read::ZipArchive;
-
-use crate::{
-    avs::AvsVariant,
-    config::{self, IvyConfig},
-    docker::log::{open_logfile, CmdLogSource},
-    download::dl_progress_bar,
-    eigen::{
-        contracts::delegation_manager::DelegationManagerAbi,
-        node_classes::{self, NodeClass},
-        quorum::{Quorum, QuorumType},
-    },
-    env_parser::EnvLines,
-    error::{IvyError, SetupError},
-    keychain::Keychain,
-    rpc_management::IvyProvider,
-    utils::gb_to_bytes,
-};
-
-use self::{
-    contracts::StakeRegistryAbi,
-    log::{ansi_sanitization_regex, level_regex},
-};
-
-use super::{names::AvsName, AvsConfig};
 
 mod contracts;
 mod log;
@@ -251,44 +244,12 @@ impl AvsVariant for EigenDA {
         }
     }
 
-    async fn handle_log(&self, log: &str, src: CmdLogSource) -> Result<(), IvyError> {
-        println!("{}", log);
-        let log = ansi_sanitization_regex().replace_all(log, "").to_string();
-        let logfile_dir = AvsConfig::log_path(self.name().as_str(), self.chain.as_ref());
-        match src {
-            CmdLogSource::StdOut => {
-                // write to logfile simply capturing all stdout output
-                let all_logfile = logfile_dir.join("stdout.log");
-                let mut file = open_logfile(&all_logfile)?;
-                writeln!(file, "{}", log)?;
-                let level = match level_regex().captures(&log) {
-                    Some(caps) => caps.get(1).unwrap().as_str(),
-                    None => "unknown-level",
-                };
-                let logfile_name = match level.to_lowercase().as_str() {
-                    "err" => "error",
-                    "wrn" => "warn",
-                    "inf" => "info",
-                    "dbg" => "debug",
-                    _ => "unknown-level",
-                };
-                let logfile = logfile_dir.join(format!("{}.log", logfile_name));
-                let mut file = open_logfile(&logfile)?;
-                writeln!(file, "{}", log)?;
-                Ok(())
-            }
-            CmdLogSource::StdErr => {
-                // Write to logfile simply capturing all stderr output
-                let all_logfile = logfile_dir.join("stderr.log");
-                let mut file = open_logfile(&all_logfile)?;
-                writeln!(file, "{}", log)?;
-                Ok(())
-            }
-        }
-    }
-
     fn name(&self) -> AvsName {
         AvsName::EigenDA
+    }
+
+    fn chain(&self) -> Chain {
+        self.chain
     }
 
     fn base_path(&self) -> PathBuf {

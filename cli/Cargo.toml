@@ -1,6 +1,6 @@
 [package]
 name = "cli"
-version = "0.2.4"
+version = "0.2.5"
 edition = "2021"
 authors = ["Noah Foltz <noah@ivynet.dev>"]
 description = "CLI for Ivynet client"
@@ -26,6 +26,7 @@ anyhow = "1.0.86"
 linemux = "=0.3.0"
 rustix = { version = "0.38", default-features = false, features = ["system"] }
 data-encoding = "2.6.0"
+futures = "0.3.31"
 
 [features]
 docker_tests = []
