@@ -198,10 +198,6 @@ impl AvsVariant for Lagrange {
         //TODO: Implement active set
         todo!()
     }
-
-    fn container_name(&self) -> &'static str {
-        todo!()
-    }
 }
 
 impl Lagrange {

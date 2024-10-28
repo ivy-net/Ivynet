@@ -155,10 +155,6 @@ impl AvsVariant for AltLayer {
         //TODO: Implement active set
         todo!()
     }
-
-    fn container_name(&self) -> &'static str {
-        todo!()
-    }
 }
 
 impl AltLayer {

@@ -12,7 +12,7 @@ use ivynet_core::{
 use crate::{
     client::IvynetClient,
     error::Error,
-    inspect::{most_recent_logfile, tail_logs},
+    inspect::{most_recent_logfile, select_logfile, tail_logs},
 };
 
 pub async fn parse_avs_subcommands(
@@ -64,26 +64,10 @@ pub async fn parse_avs_subcommands(
         return Ok(());
     }
 
-    if let AvsCommands::Inspect { avs, chain, log } = subcmd {
-        let (avs, chain) = if let (Some(avs), Some(chain)) = (avs, chain) {
-            (avs, chain)
-        } else {
-            let mut client = IvynetClient::from_channel(create_channel(sock, None).await?);
-            let info = client.avs_mut().avs_info().await?.into_inner();
-            let avs = info.avs_type;
-            let chain = info.chain;
-            if avs == "None" || chain == "None" {
-                return Err(Error::NoAvsSelectedLogError.into());
-            }
-            (avs.to_owned(), chain.to_owned())
-        };
-
-        let log_dir = AvsConfig::log_path(&avs, &chain);
-        println!("log dir: {:?}", log_dir);
-        let log_file = most_recent_logfile(log_dir).await?;
-        println!("log file: {:?}", log_file);
-        tail_logs(log_file, 100).await?;
-
+    if let AvsCommands::Inspect { .. } = subcmd {
+        let dir = AvsConfig::log_path();
+        let file = select_logfile(dir, 0).await?;
+        tail_logs(file, 100).await?;
         return Ok(());
     }
 

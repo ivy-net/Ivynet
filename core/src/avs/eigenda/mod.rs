@@ -275,10 +275,6 @@ impl AvsVariant for EigenDA {
         self.running = running;
     }
 
-    fn container_name(&self) -> &'static str {
-        "eigenda-native-node"
-    }
-
     fn version(&self) -> Result<semver::Version, IvyError> {
         let yaml_path = self.run_path().join("docker-compose.yml");
         let env_path = yaml_path.with_file_name(".env");

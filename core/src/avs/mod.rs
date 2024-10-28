@@ -351,8 +351,6 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
     fn version(&self) -> Result<Version, IvyError>;
     /// Get active set status of the running avs
     async fn active_set(&self, provider: Arc<IvyProvider>) -> bool;
-    /// Name of the container running the AVS. Only used for logs.
-    fn container_name(&self) -> &'static str;
 }
 
 // TODO: Builder pattern

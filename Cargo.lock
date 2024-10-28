@@ -716,6 +716,7 @@ dependencies = [
  "clap",
  "data-encoding",
  "dialoguer",
+ "futures",
  "ivynet-core",
  "linemux",
  "reqwest 0.12.8",

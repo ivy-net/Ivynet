@@ -66,8 +66,6 @@ pub enum AvsCommands {
         avs: Option<String>,
         #[clap(required(false), long, requires("avs"))]
         chain: Option<String>,
-        #[command(subcommand)]
-        log: LogCommands,
     },
 }
 
@@ -86,8 +84,8 @@ impl Display for AvsCommands {
             AvsCommands::Select { avs, chain } => {
                 write!(f, "set AVS to {} on chain {}", avs, chain)
             }
-            AvsCommands::Inspect { avs: _, chain: _, log } => {
-                write!(f, "inspect logs, with log type: {:?}", log)
+            AvsCommands::Inspect { avs: _, chain: _ } => {
+                write!(f, "inspect logs")
             }
         }
     }
