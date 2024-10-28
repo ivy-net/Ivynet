@@ -251,44 +251,12 @@ impl AvsVariant for EigenDA {
         }
     }
 
-    async fn handle_log(&self, log: &str, src: CmdLogSource) -> Result<(), IvyError> {
-        println!("{}", log);
-        let log = ansi_sanitization_regex().replace_all(log, "").to_string();
-        let logfile_dir = AvsConfig::log_path(self.name().as_str(), self.chain.as_ref());
-        match src {
-            CmdLogSource::StdOut => {
-                // write to logfile simply capturing all stdout output
-                let all_logfile = logfile_dir.join("stdout.log");
-                let mut file = open_logfile(&all_logfile)?;
-                writeln!(file, "{}", log)?;
-                let level = match level_regex().captures(&log) {
-                    Some(caps) => caps.get(1).unwrap().as_str(),
-                    None => "unknown-level",
-                };
-                let logfile_name = match level.to_lowercase().as_str() {
-                    "err" => "error",
-                    "wrn" => "warn",
-                    "inf" => "info",
-                    "dbg" => "debug",
-                    _ => "unknown-level",
-                };
-                let logfile = logfile_dir.join(format!("{}.log", logfile_name));
-                let mut file = open_logfile(&logfile)?;
-                writeln!(file, "{}", log)?;
-                Ok(())
-            }
-            CmdLogSource::StdErr => {
-                // Write to logfile simply capturing all stderr output
-                let all_logfile = logfile_dir.join("stderr.log");
-                let mut file = open_logfile(&all_logfile)?;
-                writeln!(file, "{}", log)?;
-                Ok(())
-            }
-        }
-    }
-
     fn name(&self) -> AvsName {
         AvsName::EigenDA
+    }
+
+    fn chain(&self) -> Chain {
+        self.chain
     }
 
     fn base_path(&self) -> PathBuf {
@@ -305,6 +273,10 @@ impl AvsVariant for EigenDA {
 
     fn set_running(&mut self, running: bool) {
         self.running = running;
+    }
+
+    fn container_name(&self) -> &'static str {
+        "eigenda-native-node"
     }
 
     fn version(&self) -> Result<semver::Version, IvyError> {

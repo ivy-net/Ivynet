@@ -9,8 +9,5 @@ services:
     ports:
       - "24224:24224"
       - "24224:24224/udp"
-    networks:
-      - ivynet
-
-networks:
-  ivynet:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

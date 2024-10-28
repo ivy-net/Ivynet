@@ -9,7 +9,11 @@ use ivynet_core::{
     keychain::{KeyType, Keychain},
 };
 
-use crate::{client::IvynetClient, error::Error, inspect::tail_logs};
+use crate::{
+    client::IvynetClient,
+    error::Error,
+    inspect::{most_recent_logfile, tail_logs},
+};
 
 pub async fn parse_avs_subcommands(
     subcmd: AvsCommands,
@@ -74,10 +78,10 @@ pub async fn parse_avs_subcommands(
             (avs.to_owned(), chain.to_owned())
         };
 
-        // let mut avs = build_avs_provider(Some(&avs), &chain, config, None, None).await?;
         let log_dir = AvsConfig::log_path(&avs, &chain);
-        let log_filename = format!("{}.log", log);
-        let log_file = log_dir.join(log_filename);
+        println!("log dir: {:?}", log_dir);
+        let log_file = most_recent_logfile(log_dir).await?;
+        println!("log file: {:?}", log_file);
         tail_logs(log_file, 100).await?;
 
         return Ok(());

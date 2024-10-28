@@ -165,13 +165,12 @@ impl AvsVariant for Lagrange {
         todo!("Lagrange hasn't implemented this yet")
     }
 
-    async fn handle_log(&self, _line: &str, _src: CmdLogSource) -> Result<(), IvyError> {
-        // TODO: Implement log handling
-        Ok(())
-    }
-
     fn name(&self) -> AvsName {
         AvsName::LagrangeZK
+    }
+
+    fn chain(&self) -> Chain {
+        self.chain
     }
 
     fn base_path(&self) -> PathBuf {
@@ -197,6 +196,10 @@ impl AvsVariant for Lagrange {
 
     async fn active_set(&self, _provider: Arc<IvyProvider>) -> bool {
         //TODO: Implement active set
+        todo!()
+    }
+
+    fn container_name(&self) -> &'static str {
         todo!()
     }
 }

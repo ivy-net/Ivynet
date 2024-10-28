@@ -96,6 +96,9 @@ Please refer to the CLI documentation [here](./cli/README.md)
 
 ## Fluentd Logging
 
-Ivynet uses fluentd for docker container logging. When starting an AVS, Ivynet will make a copy of the docker-compose.yml file and enable the fluentd logger for that service (Your original docker-compose file will not be altered.) Fluentd accepts logging connections over port 24224, and will log to the ~/.ivynet/fluentd/log directory. Additionally, logs will be relayed to the Ivynet daemon over HTTP port 50051, and then from daemon to backend via GRPC 50050.
+
+Ivynet uses fluentd for docker container logging. When starting an AVS, Ivynet will make a copy of the docker-compose.yml file and enable the fluentd logger for that service (Your original docker-compose file will not be altered.) Fluentd accepts logging connections over port 24224, and will log to the ~/.ivynet/fluentd/log directory. Additionally, logs will be relayed to the Ivynet daemon over HTTP port 50051, and then from daemon to backend via GRPC 50050. 
+
+Ensure port 50051 is open on your firewall.
 
 Fluentd containers and configs are built during the `init` phase via `ivynet init`.

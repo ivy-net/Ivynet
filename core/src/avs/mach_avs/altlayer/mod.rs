@@ -123,13 +123,12 @@ impl AvsVariant for AltLayer {
         AvsName::AltLayer
     }
 
-    fn base_path(&self) -> PathBuf {
-        self.base_path.clone()
+    fn chain(&self) -> Chain {
+        self.chain
     }
 
-    async fn handle_log(&self, _line: &str, _src: CmdLogSource) -> Result<(), IvyError> {
-        // TODO: Implement log handling
-        Ok(())
+    fn base_path(&self) -> PathBuf {
+        self.base_path.clone()
     }
 
     fn run_path(&self) -> PathBuf {
@@ -154,6 +153,10 @@ impl AvsVariant for AltLayer {
 
     async fn active_set(&self, _provider: Arc<IvyProvider>) -> bool {
         //TODO: Implement active set
+        todo!()
+    }
+
+    fn container_name(&self) -> &'static str {
         todo!()
     }
 }
