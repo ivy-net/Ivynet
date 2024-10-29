@@ -1,4 +1,4 @@
-use crate::{error::Error, rpc::ivynet::IvynetService, telemetry};
+use crate::{error::Error, init::set_backend_connection, rpc::ivynet::IvynetService, telemetry};
 use ivynet_core::{
     avs::{
         build_avs_provider, eigenda::EigenDA, lagrange::Lagrange, mach_avs::AltLayer,
@@ -9,7 +9,7 @@ use ivynet_core::{
     fluentd::log_server::serve_log_server,
     grpc::{
         backend::backend_client::BackendClient,
-        client::{create_channel, Uri},
+        client::create_channel,
         ivynet_api::{
             ivy_daemon_avs::avs_server::AvsServer,
             ivy_daemon_operator::operator_server::OperatorServer,
@@ -26,15 +26,26 @@ use tracing::{error, info};
 pub async fn serve(
     avs: Option<String>,
     chain: Option<String>,
-    config: &IvyConfig,
-    server_url: Uri,
-    server_ca: Option<String>,
+    config: &mut IvyConfig,
     no_backend: bool,
 ) -> Result<(), Error> {
     let sock = Endpoint::Path(config.uds_dir());
 
+    // Check registration before serving
+    if config.identity_wallet().is_err() {
+        set_backend_connection(config).await?;
+    }
+
     let backend_client = BackendClient::new(
-        create_channel(ivynet_core::grpc::client::Source::Uri(server_url), server_ca).await?,
+        create_channel(ivynet_core::grpc::client::Source::Uri(config.get_server_url()?), {
+            let ca = config.get_server_ca();
+            if ca.is_empty() {
+                None
+            } else {
+                Some(ca)
+            }
+        })
+        .await?,
     );
     let messenger = if no_backend {
         None
