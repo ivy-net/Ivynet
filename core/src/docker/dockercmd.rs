@@ -140,7 +140,7 @@ impl DockerCmd {
     }
 
     async fn is_daemon_running() -> bool {
-        if let Ok(output) = Command::new("docker").args(&["info", "-f", "json"]).output().await {
+        if let Ok(output) = Command::new("docker").args(["info", "-f", "json"]).output().await {
             if serde_json::from_str::<DockerInfo>(
                 std::str::from_utf8(&output.stdout).expect("Unparsable output string"),
             )
