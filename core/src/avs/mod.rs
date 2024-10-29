@@ -297,6 +297,7 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
 
         // NOTE: See the limitations of the Stdio::piped() method if this experiences a deadlock
         let cmd = DockerCmd::new()
+            .await?
             .args(["-f", "ivy-docker-compose.yml", "up", "--force-recreate"])
             .spawn()?;
         debug!("cmd PID: {:?}", cmd.id());
@@ -317,6 +318,7 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
         debug!("docker ataching: {}", self.run_path().display());
         // NOTE: See the limitations of the Stdio::piped() method if this experiences a deadlock
         let cmd = DockerCmd::new()
+            .await?
             .args(["-f", "ivy-docker-compose.yml", "up", "--force-recreate"])
             .spawn()?;
 
@@ -331,7 +333,8 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
         // TODO: Deprecate env changing above
 
         // NOTE: See the limitations of the Stdio::piped() method if this experiences a deadlock
-        let _ = DockerCmd::new().args(["-f", "ivy-docker-compose.yml", "down"]).status().await?;
+        let _ =
+            DockerCmd::new().await?.args(["-f", "ivy-docker-compose.yml", "down"]).status().await?;
         self.set_running(false);
         Ok(())
     }

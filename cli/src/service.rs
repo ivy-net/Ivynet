@@ -116,6 +116,7 @@ pub async fn serve(
     info!("Serving local logs at {:?}", fluentd_path);
     // Start the container
     let _fluentd = DockerCmd::new()
+        .await?
         .args(["up", "-d", "--build", "--force-recreate"])
         .current_dir(&fluentd_path)
         .spawn_dockerchild()
