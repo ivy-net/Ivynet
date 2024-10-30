@@ -4,6 +4,7 @@ use ethers::types::{Chain, H160};
 use serde::{Deserialize, Serialize};
 use thiserror::Error as ThisError;
 use tracing::info;
+use url::Url;
 
 use crate::io::{read_toml, write_toml, IoError};
 
@@ -20,6 +21,7 @@ pub struct AvsConfig {
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Setup {
     pub path: PathBuf,
+    pub rpc_url: Url,
     pub operator_address: H160,
     pub is_custom: bool,
 }
@@ -102,8 +104,23 @@ impl AvsConfig {
             .clone()
     }
 
-    pub fn init(&mut self, chain: Chain, path: PathBuf, operator_address: H160, is_custom: bool) {
-        self.setup_map.insert(chain, Setup::new(path, operator_address, is_custom));
+    pub fn get_rpc_url(&self, chain: Chain) -> Url {
+        self.setup_map
+            .get(&chain)
+            .expect("No path found - please run the setup command")
+            .rpc_url
+            .clone()
+    }
+
+    pub fn init(
+        &mut self,
+        chain: Chain,
+        rpc_url: Url,
+        path: PathBuf,
+        operator_address: H160,
+        is_custom: bool,
+    ) {
+        self.setup_map.insert(chain, Setup::new(path, rpc_url, operator_address, is_custom));
     }
 
     pub fn get_settings(&self, chain: Chain) -> toml::Value {
@@ -126,8 +143,8 @@ impl AvsConfig {
 }
 
 impl Setup {
-    pub fn new(path: PathBuf, operator_address: H160, is_custom: bool) -> Self {
-        Self { path, operator_address, is_custom }
+    pub fn new(path: PathBuf, rpc_url: Url, operator_address: H160, is_custom: bool) -> Self {
+        Self { path, rpc_url, operator_address, is_custom }
     }
 }
 

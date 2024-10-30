@@ -2,7 +2,10 @@ use anyhow::{Error as AnyError, Result};
 use clap::{Parser, Subcommand};
 use cli::{avs, config, error::Error, key, service};
 use ivynet_core::{
-    avs::commands::AvsCommands, config::IvyConfig, fluentd::make_fluentd_conf, grpc::client::Uri,
+    avs::commands::AvsCommands,
+    config::IvyConfig,
+    fluentd::{make_fluentd_compose, make_fluentd_conf},
+    grpc::client::Uri,
 };
 use std::{fs, path::PathBuf, str::FromStr as _};
 use tracing_subscriber::FmtSubscriber;
@@ -99,6 +102,7 @@ async fn main() -> Result<(), AnyError> {
                     config.set_server_ca(ca.clone());
                 }
 
+                make_fluentd_compose(config.get_dir());
                 make_fluentd_conf(config.get_dir());
                 create_config_dir(config.get_path())?;
                 config.store()?;

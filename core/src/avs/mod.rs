@@ -13,6 +13,7 @@ use crate::{
 };
 use async_trait::async_trait;
 use config::AvsConfig;
+use dialoguer::Input;
 use ethers::{
     middleware::SignerMiddleware,
     providers::Middleware,
@@ -25,6 +26,7 @@ use semver::Version;
 use std::{collections::HashMap, fmt::Debug, path::PathBuf, sync::Arc};
 use tokio::process::Child;
 use tracing::{debug, error, info};
+use url::Url;
 
 pub mod commands;
 pub mod config;
@@ -344,6 +346,8 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
     fn chain(&self) -> Chain;
     /// Handle to the top-level directory for the AVS instance.
     fn base_path(&self) -> PathBuf;
+    /// Return configured RPC url
+    fn rpc_url(&self) -> Option<Url>;
     /// Return the path to the AVS instance's run directory (usually a docker compose file)
     fn run_path(&self) -> PathBuf;
     /// Return wether or not the AVS is running
@@ -356,17 +360,24 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
     async fn active_set(&self, provider: Arc<IvyProvider>) -> bool;
 }
 
+pub async fn fetch_rpc_url(chain: Chain, config: &IvyConfig) -> Result<Url, IvyError> {
+    Ok(Input::<Url>::new()
+        .with_prompt(format!("Enter your RPC URL for {chain:?}"))
+        .default(config.get_default_rpc_url(chain)?.parse::<Url>()?)
+        .interact_text()?)
+}
+
 // TODO: Builder pattern
 pub async fn build_avs_provider(
     id: Option<&str>,
     chain: &str,
     config: &IvyConfig,
+    rpc_url: Option<Url>,
     wallet: Option<IvyWallet>,
     keyfile_pw: Option<String>,
     messenger: Option<BackendMessenger>,
 ) -> Result<AvsProvider, IvyError> {
     let chain = try_parse_chain(chain)?;
-    let provider = connect_provider(&config.get_rpc_url(chain)?, wallet).await?;
     let avs_instance: Option<Box<dyn AvsVariant>> = if let Some(avs_id) = id {
         match AvsName::try_from(avs_id) {
             Ok(AvsName::EigenDA) => Some(Box::new(EigenDA::new_from_chain(chain))),
@@ -377,5 +388,16 @@ pub async fn build_avs_provider(
     } else {
         None
     };
+    let provider = connect_provider(
+        match (&avs_instance, rpc_url) {
+            (_, Some(ref url)) => url.clone(),
+            (Some(ref avs), None) => avs.rpc_url().unwrap(),
+            _ => config.get_default_rpc_url(chain).unwrap().parse::<Url>()?,
+        }
+        .to_string()
+        .as_str(),
+        wallet,
+    )
+    .await?;
     AvsProvider::new(avs_instance, Arc::new(provider), keyfile_pw, messenger)
 }

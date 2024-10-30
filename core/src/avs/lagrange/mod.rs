@@ -7,7 +7,10 @@
 /// lagrange-worker`.
 use async_trait::async_trait;
 use dialoguer::Input;
-use ethers::types::{Chain, H160, U256};
+use ethers::{
+    middleware::Middleware,
+    types::{Chain, H160, U256},
+};
 use std::{
     fs::{self, File},
     io::{copy, BufReader},
@@ -17,6 +20,7 @@ use std::{
 };
 use thiserror::Error as ThisError;
 use tracing::{debug, error, info};
+use url::Url;
 use zip::read::ZipArchive;
 
 use crate::{
@@ -95,13 +99,13 @@ impl AvsVariant for Lagrange {
     async fn setup(
         &mut self,
         provider: Arc<IvyProvider>,
-        config: &IvyConfig,
+        _config: &IvyConfig,
         operator_address: H160,
         bls_key: Option<(String, String)>,
     ) -> Result<(), IvyError> {
-        self.build_pathing(operator_address, bls_key.is_none())?;
+        self.build_pathing(provider.provider().url().clone(), operator_address, bls_key.is_none())?;
         download_operator_setup(self.base_path.clone()).await?;
-        self.build_env(provider, config)?;
+        self.build_env(provider)?;
         generate_lagrange_key(self.run_path()).await?;
 
         // copy ecdsa keyfile to lagrange-worker path
@@ -176,6 +180,10 @@ impl AvsVariant for Lagrange {
         self.base_path.clone()
     }
 
+    fn rpc_url(&self) -> Option<Url> {
+        Some(self.avs_config.get_rpc_url(self.chain))
+    }
+
     fn run_path(&self) -> PathBuf {
         self.avs_config.get_path(self.chain)
     }
@@ -201,7 +209,7 @@ impl AvsVariant for Lagrange {
 
 impl Lagrange {
     /// Builds the .env file for the Lagrange worker
-    fn build_env(&self, _provider: Arc<IvyProvider>, config: &IvyConfig) -> Result<(), IvyError> {
+    fn build_env(&self, _provider: Arc<IvyProvider>) -> Result<(), IvyError> {
         let env_example_path = self.run_path().join(".env.example");
         let env_path = self.run_path().join(".env");
 
@@ -218,7 +226,7 @@ impl Lagrange {
         debug!("{}", env_path.display());
         let mut env_lines = EnvLines::load(&env_path)?;
         env_lines.set("AVS__LAGR_PWD", &lagrange_keyfile_pw);
-        env_lines.set("LAGRANGE_RPC_URL", &config.get_rpc_url(self.chain)?);
+        env_lines.set("LAGRANGE_RPC_URL", self.rpc_url().unwrap().as_ref());
         env_lines.set("NETWORK", self.chain.as_ref());
         env_lines.save(&env_path)
     }
@@ -234,14 +242,19 @@ impl Lagrange {
         }
     }
 
-    fn build_pathing(&mut self, operator_address: H160, is_custom: bool) -> Result<(), IvyError> {
+    fn build_pathing(
+        &mut self,
+        rpc_url: Url,
+        operator_address: H160,
+        is_custom: bool,
+    ) -> Result<(), IvyError> {
         let path = if !is_custom {
             self.base_path.join("lagrange-worker").join(self.chain.as_ref())
         } else {
             AvsConfig::ask_for_path()
         };
 
-        self.avs_config.init(self.chain, path, operator_address, is_custom);
+        self.avs_config.init(self.chain, rpc_url, path, operator_address, is_custom);
         self.avs_config.store();
 
         Ok(())
