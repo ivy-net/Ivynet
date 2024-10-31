@@ -1,12 +1,13 @@
 use anyhow::{Context, Error as AnyError, Result};
 use dialoguer::{Password, Select};
 use ivynet_core::{
-    avs::{build_avs_provider, commands::AvsCommands, config::AvsConfig},
+    avs::{build_avs_provider, commands::AvsCommands, config::AvsConfig, fetch_rpc_url},
     config::IvyConfig,
     error::IvyError,
     ethers::types::H160,
     grpc::client::{create_channel, Source},
     keychain::{KeyType, Keychain},
+    utils::try_parse_chain,
 };
 
 use crate::{
@@ -55,7 +56,16 @@ pub async fn parse_avs_subcommands(
             _ => None,
         };
 
-        let mut avs = build_avs_provider(Some(avs), chain, config, None, None, None).await?;
+        let mut avs = build_avs_provider(
+            Some(avs),
+            chain,
+            config,
+            Some(fetch_rpc_url(try_parse_chain(chain)?, config).await?),
+            None,
+            None,
+            None,
+        )
+        .await?;
         avs.setup(config, wallet_address, bls_data).await.map_err(|e| match e {
             IvyError::NoKeyFoundError => Error::NoBLSKey,
             e => e.into(),

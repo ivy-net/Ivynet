@@ -13,6 +13,7 @@ use std::{
     sync::Arc,
 };
 use tracing::{debug, error, info};
+use url::Url;
 use zip::ZipArchive;
 
 use crate::{
@@ -66,12 +67,12 @@ impl AvsVariant for AltLayer {
     async fn setup(
         &mut self,
         provider: Arc<IvyProvider>,
-        config: &IvyConfig,
+        _config: &IvyConfig,
         _operator_address: H160,
         _bls_key: Option<(String, String)>,
     ) -> Result<(), IvyError> {
         download_operator_setup(self.base_path.clone()).await?;
-        self.build_env(provider, config).await?;
+        self.build_env(provider).await?;
         Ok(())
     }
 
@@ -124,6 +125,10 @@ impl AvsVariant for AltLayer {
 
     fn chain(&self) -> Chain {
         self.chain
+    }
+
+    fn rpc_url(&self) -> Option<Url> {
+        None
     }
 
     fn base_path(&self) -> PathBuf {
@@ -183,13 +188,8 @@ impl AltLayer {
         }
     }
 
-    async fn build_env(
-        &self,
-        provider: Arc<IvyProvider>,
-        config: &IvyConfig,
-    ) -> Result<(), IvyError> {
+    async fn build_env(&self, provider: Arc<IvyProvider>) -> Result<(), IvyError> {
         let chain = Chain::try_from(provider.signer().chain_id())?;
-        let rpc_url = config.get_rpc_url(chain)?;
 
         let mach_avs_path = self.base_path.join("mach-avs-operator-setup");
         let avs_run_path = match chain {
@@ -239,7 +239,7 @@ impl AltLayer {
         let node_cache_path = mach_avs_path.join("resources/cache");
 
         env_lines.set("USER_HOME", home_str);
-        env_lines.set("ETH_RPC_URL", &rpc_url);
+        env_lines.set("ETH_RPC_URL", self.rpc_url().unwrap().as_ref());
         env_lines.set("OPERATOR_ECDSA_ADDRESS", &format!("{:?}", ecdsa_address));
         env_lines.set(
             "NODE_BLS_KEY_FILE_HOST",

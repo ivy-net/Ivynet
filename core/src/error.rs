@@ -12,6 +12,7 @@ use zip::result::ZipError;
 
 use crate::{
     avs::{eigenda::EigenDAError, lagrange::LagrangeError},
+    docker::dockercmd::DockerError,
     eigen::quorum::QuorumError,
     grpc::client::ClientError,
     rpc_management::IvyProvider,
@@ -189,6 +190,9 @@ pub enum IvyError {
 
     #[error("No logfiles found for {0}")]
     NoLogFiles(String),
+
+    #[error(transparent)]
+    DockerError(#[from] DockerError),
 }
 
 #[derive(Debug, Error)]

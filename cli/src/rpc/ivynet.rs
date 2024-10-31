@@ -163,10 +163,6 @@ impl Avs for IvynetService {
         {
             let mut provider = self.avs_provider.write().await;
             let signer = provider.provider.signer().clone();
-            let config = IvyConfig::load_from_default_path().map_err(IvyError::from)?; // TODO: store config with provider
-
-            let new_ivy_provider =
-                connect_provider(&config.get_rpc_url(chain)?, Some(signer)).await?;
 
             let avs_name = AvsName::try_from(avs.as_str());
             let avs_instance: Box<dyn AvsVariant> = match avs_name {
@@ -175,6 +171,12 @@ impl Avs for IvynetService {
                 Ok(AvsName::LagrangeZK) => Box::new(Lagrange::new_from_chain(chain)),
                 _ => return Err(IvyError::InvalidAvsType(avs.to_string()).into()),
             };
+            let new_ivy_provider = connect_provider(
+                avs_instance.rpc_url().expect("Provider without RPC").as_ref(),
+                Some(signer),
+            )
+            .await?;
+
             provider.set_avs(avs_instance, new_ivy_provider.into()).await?;
 
             let mut c = self.config.lock().await;

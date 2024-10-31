@@ -22,7 +22,7 @@ use tokio::{
     sync::RwLock,
     time::{sleep, Duration},
 };
-use tracing::info;
+use tracing::{error, info};
 
 const EIGENDA_DOCKER_IMAGE_NAME: &str = "eigenda-native-node";
 
@@ -62,7 +62,10 @@ pub async fn listen(
         };
         if let Ok(metrics) = metrics {
             info!("Sending metrics...");
-            _ = send(&metrics, &node_data, &identity_wallet, &mut backend_client).await;
+            match send(&metrics, &node_data, &identity_wallet, &mut backend_client).await {
+                Ok(_) => {}
+                Err(err) => error!("Cannot send metrics to backend ({err:?})"),
+            }
         }
 
         sleep(Duration::from_secs(TELEMETRY_INTERVAL_IN_MINUTES * 60)).await;
