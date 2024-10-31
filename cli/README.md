@@ -231,6 +231,18 @@ GRPCurl:
 
 ```grpcurl -unix -plaintext -authority "localhost" ~/.ivynet/ivynet.ipc avs.Avs/Unregister```
 
+#### Inspect
+
+Inspect the logs of the AVS instance on the local filesystem. This command will prompt the user to traverse the local file tree to locate the desired logfile. Local logs are stored in the `./ivynet/logs` directory according to the container name they are associated with and stored as a file with a `YYYY-MM-DD.log` naming convention.
+
+After selecting a valid logfile, this command will tail the last 100 lines of the log.
+
+This is a cli-only operation and is not currently accessible via GRPC.
+
+CLI:
+
+`ivynet avs inspect`
+
 
 ### The Operator Namespace
 
