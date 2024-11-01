@@ -43,7 +43,7 @@ build {
     playbook_file = "../ansible/backend-packer.yml"
     extra_arguments = [
       "--extra-vars",
-      "{'ivynet_backend': 'backend-${var.version}'}"
+      "{'ivynet_backend_release': '${var.version}'}"
     ]
     ansible_env_vars = [
       "ANSIBLE_PIPELINING=true",

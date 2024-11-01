@@ -41,9 +41,9 @@ build {
 
   provisioner "ansible" {
     playbook_file = "../ansible/cloudstation-packer.yml"
-    extra_arguments = [
-      "--vault-password-file",
-      "~/.vault.txt",
+    ansible_env_vars = [
+      "ANSIBLE_PIPELINING=true",
+      "ANSIBLE_VAULT_PASSWORD_FILE=~/.vault.txt"
     ]
   }
 }
