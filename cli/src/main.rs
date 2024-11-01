@@ -31,7 +31,7 @@ struct Args {
     #[arg(long, env = "SERVER_URL", value_parser = Uri::from_str, default_value = if cfg!(debug_assertions) {
         "http://localhost:50050"
     } else {
-        "https://api1.test.ivynet.dev:50050"
+        "https://api2.test.ivynet.dev:50050"
     })]
     pub server_url: Uri,
 

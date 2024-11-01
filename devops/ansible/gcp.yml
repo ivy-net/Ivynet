@@ -1,9 +1,5 @@
 ---
 plugin: google.cloud.gcp_compute
-zones:
-  - us-central1-a
-  - us-central1-b
-  - us-central1-c
 projects:
   - ivynet-tests
 filters:
