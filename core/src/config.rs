@@ -68,7 +68,7 @@ impl Default for IvyConfig {
             local_rpc_url: "http://localhost:8545".to_string(),
             metadata: Metadata::default(),
             backend_info: BackendInfo {
-                server_url: "https://api1.test.ivynet.dev".into(),
+                server_url: "https://api2.test.ivynet.dev".into(),
                 server_ca: "".into(),
                 identity_key: "".into(),
             },
