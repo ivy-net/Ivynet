@@ -66,6 +66,7 @@
     login_password: "{{ ivynet_backend_postgres_pass }}"
     name: "{{ ivynet_backend_postgres_user }}"
     password: "{{ ivynet_backend_postgres_user_pass }}"
+    no_password_changes: "{{ ivynet_backend_postgres_no_password_changes }}"
   become: true
   become_user: postgres
   tags:
