@@ -14,8 +14,13 @@ packer {
 variable "version" {
   type        = string
   default     = "dev"
-  description = "Image version"
+  description = "Image version (cannot include '.')"
 }
+
+variable "release" {
+  type = string
+  default = "0.3.0"
+  description = "Backend version for Ansible (with '.')"
 
 source "googlecompute" "ivynet-backend" {
   source_image_family = "ubuntu-2404-lts-amd64"
@@ -43,7 +48,7 @@ build {
     playbook_file = "../ansible/backend-packer.yml"
     extra_arguments = [
       "--extra-vars",
-      "{'ivynet_backend_release': '${var.version}'}"
+      "{'ivynet_backend_release': '${var.release}'}"
     ]
     ansible_env_vars = [
       "ANSIBLE_PIPELINING=true",
