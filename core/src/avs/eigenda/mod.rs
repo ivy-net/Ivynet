@@ -21,6 +21,7 @@ use core::str;
 use dialoguer::Input;
 use dotenvy::from_path;
 use ethers::{
+    middleware::Middleware,
     signers::Signer,
     types::{Address, Chain, H160, U256},
 };
@@ -35,6 +36,7 @@ use std::{
 use thiserror::Error as ThisError;
 use tokio::process::Command;
 use tracing::{debug, error, info, warn};
+use url::Url;
 use zip::read::ZipArchive;
 
 mod contracts;
@@ -93,15 +95,15 @@ impl AvsVariant for EigenDA {
     async fn setup(
         &mut self,
         provider: Arc<IvyProvider>,
-        config: &IvyConfig,
+        _config: &IvyConfig,
         operator_address: H160,
         bls_key: Option<(String, String)>,
     ) -> Result<(), IvyError> {
-        self.build_pathing(operator_address, bls_key.is_none())?;
+        self.build_pathing(provider.provider().url().clone(), operator_address, bls_key.is_none())?;
         if let Some((bls_key_name, bls_key_password)) = bls_key {
             download_operator_setup(self.base_path.clone()).await?;
             download_g1_g2(self.base_path.clone()).await?;
-            self.build_env(provider, config, &bls_key_name, &bls_key_password).await?
+            self.build_env(provider, &bls_key_name, &bls_key_password).await?
         }
 
         Ok(())
@@ -252,6 +254,10 @@ impl AvsVariant for EigenDA {
         self.chain
     }
 
+    fn rpc_url(&self) -> Option<Url> {
+        Some(self.avs_config.get_rpc_url(self.chain))
+    }
+
     fn base_path(&self) -> PathBuf {
         self.base_path.clone()
     }
@@ -380,14 +386,13 @@ impl EigenDA {
     async fn build_env(
         &self,
         provider: Arc<IvyProvider>,
-        config: &IvyConfig,
         bls_key_name: &str,
         bls_key_password: &str,
     ) -> Result<(), IvyError> {
         let chain = Chain::try_from(provider.signer().chain_id())?;
-        let rpc_url = config.get_rpc_url(chain)?;
 
         let avs_run_path = self.avs_config.get_path(chain);
+        let rpc_url = self.avs_config.get_rpc_url(chain);
 
         let env_example_path = avs_run_path.join(".env.example");
         let env_path = avs_run_path.join(".env");
@@ -407,7 +412,7 @@ impl EigenDA {
         // env_lines.set("NODE_HOSTNAME", &node_hostname);
 
         // Node chain RPC
-        env_lines.set("NODE_CHAIN_RPC", &rpc_url);
+        env_lines.set("NODE_CHAIN_RPC", rpc_url.as_ref());
 
         // User home directory
         let home_dir = dirs::home_dir().expect("Could not get home directory");
@@ -466,7 +471,12 @@ impl EigenDA {
         }
     }
 
-    fn build_pathing(&mut self, operator_address: H160, is_custom: bool) -> Result<(), IvyError> {
+    fn build_pathing(
+        &mut self,
+        rpc_url: Url,
+        operator_address: H160,
+        is_custom: bool,
+    ) -> Result<(), IvyError> {
         let path = if !is_custom {
             let setup = self.base_path.join("eigenda-operator-setup");
             match self.chain {
@@ -478,7 +488,7 @@ impl EigenDA {
             AvsConfig::ask_for_path()
         };
 
-        self.avs_config.init(self.chain, path, operator_address, is_custom);
+        self.avs_config.init(self.chain, rpc_url, path, operator_address, is_custom);
         self.avs_config.store();
 
         Ok(())

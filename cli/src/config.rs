@@ -82,7 +82,7 @@ fn parse_config_setter_commands(
     match subsetter {
         ConfigSetCommands::Rpc { chain, rpc_url } => {
             let chain = try_parse_chain(&chain)?;
-            config.set_rpc_url(chain, &rpc_url)?;
+            config.set_default_rpc_url(chain, &rpc_url)?;
             config.store()?;
         }
         ConfigSetCommands::Metadata { metadata_uri, logo_uri, favicon_uri } => {
@@ -116,7 +116,9 @@ fn parse_config_getter_commands(
         ConfigGetCommands::Rpc { chain } => {
             println!(
                 "Url for {chain} is {}",
-                config.get_rpc_url(chain.parse::<Chain>().expect("Wrong network name provided"))?
+                config.get_default_rpc_url(
+                    chain.parse::<Chain>().expect("Wrong network name provided")
+                )?
             );
         }
         ConfigGetCommands::Metadata {} => {

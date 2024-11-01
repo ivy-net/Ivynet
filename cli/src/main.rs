@@ -1,17 +1,13 @@
-use anyhow::{Context, Error as AnyError, Result};
+use anyhow::{Error as AnyError, Result};
 use clap::{Parser, Subcommand};
-use cli::{avs, config, error::Error, init::initialize_ivynet, key, service};
+use cli::{avs, config, error::Error, key, service};
 use ivynet_core::{
     avs::commands::AvsCommands,
     config::IvyConfig,
-    grpc::{
-        backend::backend_client::BackendClient,
-        client::{create_channel, Request, Source, Uri},
-        messages::RegistrationCredentials,
-    },
-    wallet::IvyWallet,
+    fluentd::{make_fluentd_compose, make_fluentd_conf},
+    grpc::client::Uri,
 };
-use std::str::FromStr as _;
+use std::{fs, path::PathBuf, str::FromStr as _};
 use tracing_subscriber::FmtSubscriber;
 
 #[allow(unused_imports)]
@@ -53,8 +49,6 @@ struct Args {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    #[command(name = "init", about = "Ivynet config intiliazation")]
-    Init,
     #[command(name = "avs", about = "Request information about an AVS or boot up a node")]
     Avs {
         #[command(subcommand)]
@@ -90,19 +84,6 @@ enum Commands {
         #[clap(required(false), long, requires("avs"))]
         chain: Option<String>,
     },
-    #[command(
-        name = "register",
-        about = "Register this node on IvyNet server using IvyNet details"
-    )]
-    Register {
-        /// Email address registered at IvyNet portal
-        #[arg(long, env = "IVYNET_EMAIL")]
-        email: String,
-
-        /// Password to IvyNet account
-        #[arg(long, env = "IVYNET_PASSWORD")]
-        password: String,
-    },
 }
 
 #[tokio::main]
@@ -111,22 +92,23 @@ async fn main() -> Result<(), AnyError> {
 
     start_tracing(args.log_level)?;
 
-    // Early return if we're initializing. Init propagates ivyconfig file, and if we attempt to load
-    // it before it's been created, this will error.
-    if let Commands::Init = args.cmd {
-        initialize_ivynet(args.server_url, args.server_ca, args.no_backend).await?;
-        return Ok(());
-    }
+    let mut config = {
+        match IvyConfig::load_from_default_path() {
+            Ok(c) => c,
+            Err(_) => {
+                let mut config = IvyConfig::new();
+                config.set_server_url(args.server_url.to_string());
+                if let Some(ref ca) = args.server_ca {
+                    config.set_server_ca(ca.clone());
+                }
 
-    let config = IvyConfig::load_from_default_path().context("Failed to load ivyconfig. Please ensure `~/.ivynet/ivyconfig.toml` exists and is not malformed. If this is your first time running Ivynet, please run `ivynet init` to perform first-time intialization.")?;
+                make_fluentd_compose(config.get_dir());
+                make_fluentd_conf(config.get_dir());
+                create_config_dir(config.get_path())?;
+                config.store()?;
 
-    let (server_url, server_ca) = {
-        match (config.get_server_url(), config.get_server_ca()) {
-            (Ok(uri), ca) => (
-                if !uri.to_string().is_empty() { uri } else { args.server_url },
-                if !ca.is_empty() { Some(ca) } else { args.server_ca },
-            ),
-            (Err(_), _) => (args.server_url, args.server_ca),
+                config
+            }
         }
     };
 
@@ -141,37 +123,22 @@ async fn main() -> Result<(), AnyError> {
         // Commands::Staker { subcmd } => staker::parse_staker_subcommands(subcmd, &config).await?,
         Commands::Avs { subcmd } => avs::parse_avs_subcommands(subcmd, &config).await?,
         Commands::Serve { avs, chain } => {
-            service::serve(avs, chain, &config, server_url, server_ca, args.no_backend).await?
+            service::serve(avs, chain, &mut config, args.no_backend).await?
         }
-        Commands::Register { email, password } => {
-            let mut config = IvyConfig::load_from_default_path()?;
-            let new_key = IvyWallet::new();
-            config.backend_info.identity_key = new_key.to_private_key();
-            let public_key = config.identity_wallet()?.address();
-            let hostname =
-                { String::from_utf8(rustix::system::uname().nodename().to_bytes().to_vec()) }?;
-
-            let mut backend =
-                BackendClient::new(create_channel(Source::Uri(server_url), server_ca).await?);
-            backend
-                .register(Request::new(RegistrationCredentials {
-                    email,
-                    password,
-                    hostname,
-                    public_key: public_key.as_bytes().to_vec(),
-                }))
-                .await?;
-            config.store()?;
-            println!("Node registered");
-        }
-        Commands::Init => unreachable!("Init handled above."),
     }
 
     Ok(())
 }
 
-pub fn start_tracing(level: Level) -> Result<(), Error> {
+fn start_tracing(level: Level) -> Result<(), Error> {
     let subscriber = FmtSubscriber::builder().with_max_level(level).finish();
     tracing::subscriber::set_global_default(subscriber)?;
+    Ok(())
+}
+
+fn create_config_dir(config_path: PathBuf) -> Result<(), AnyError> {
+    if !config_path.exists() {
+        fs::create_dir_all(&config_path)?;
+    }
     Ok(())
 }

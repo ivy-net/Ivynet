@@ -104,7 +104,7 @@ impl IvyConfig {
         Ok(())
     }
 
-    pub fn set_rpc_url(&mut self, chain: Chain, rpc: &str) -> Result<(), IvyError> {
+    pub fn set_default_rpc_url(&mut self, chain: Chain, rpc: &str) -> Result<(), IvyError> {
         match chain {
             Chain::Mainnet => {
                 println!("Setting mainnet rpc url to: {}", rpc);
@@ -123,7 +123,7 @@ impl IvyConfig {
         Ok(())
     }
 
-    pub fn get_rpc_url(&self, chain: Chain) -> Result<String, IvyError> {
+    pub fn get_default_rpc_url(&self, chain: Chain) -> Result<String, IvyError> {
         match chain {
             Chain::Mainnet => Ok(self.mainnet_rpc_url.clone()),
             Chain::Holesky => Ok(self.holesky_rpc_url.clone()),

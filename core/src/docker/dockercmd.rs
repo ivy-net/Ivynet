@@ -20,6 +20,12 @@ use tracing::{error, info};
 // pipe management and must be tested with respect to docker's logging behavior.
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct DockerInfo {
+    #[serde(rename = "ID")]
+    pub docker_id: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct ImageExposedPort {
     #[serde(rename = "HostIp")]
     pub ip: String,
@@ -40,6 +46,12 @@ pub struct ImageDetails {
 
     #[serde(rename = "NetworkSettings")]
     pub network_settings: NetworkSettings,
+}
+
+#[derive(Clone, Debug, thiserror::Error)]
+pub enum DockerError {
+    #[error("Docker daemon not running")]
+    DockerNotRunning,
 }
 
 /// Wrapper struct for commands targeting docker-compose files. Initialization targets etiher
@@ -79,9 +91,14 @@ impl DerefMut for DockerCmd {
 }
 
 impl DockerCmd {
-    pub fn new() -> Self {
-        let cmd = which_dockercmd();
-        Self { cmd, args: Vec::new(), current_dir: None }
+    pub async fn new() -> Result<Self, DockerError> {
+        if Self::is_daemon_running().await {
+            let cmd = which_dockercmd();
+
+            Ok(Self { cmd, args: Vec::new(), current_dir: None })
+        } else {
+            Err(DockerError::DockerNotRunning)
+        }
     }
 
     pub fn args<I, S>(mut self, args: I) -> Self
@@ -121,11 +138,18 @@ impl DockerCmd {
         }
         filename.unwrap_or_else(|| "docker-compose.yml".to_string())
     }
-}
 
-impl Default for DockerCmd {
-    fn default() -> Self {
-        Self::new()
+    async fn is_daemon_running() -> bool {
+        if let Ok(output) = Command::new("docker").args(["info", "-f", "json"]).output().await {
+            if serde_json::from_str::<DockerInfo>(
+                std::str::from_utf8(&output.stdout).expect("Unparsable output string"),
+            )
+            .is_ok()
+            {
+                return true;
+            }
+        }
+        false
     }
 }
 
@@ -145,6 +169,7 @@ impl DockerChild {
     /// Get the images of the running docker-compose service.
     pub async fn images(&self) -> Result<ComposeImages, DockerChildError> {
         let output = DockerCmd::new()
+            .await?
             .current_dir(&self.run_path)
             .args(["-f", &self.filename, "images"])
             .output()
@@ -231,6 +256,8 @@ pub enum DockerChildError {
     Utf8Error(#[from] std::str::Utf8Error),
     #[error("Serde error: {0}")]
     SerdeError(#[from] serde_json::Error),
+    #[error(transparent)]
+    DaemonNotRunning(#[from] DockerError),
 }
 
 /// Docker tests must be run serially as async testing will erroneously attempt to run multiple
@@ -253,6 +280,7 @@ mod tests {
     async fn test_dockercmd_status() {
         let test_dir = test_compose_dir().join("counter");
         let status = DockerCmd::new()
+            .unwrap()
             .current_dir(&test_dir)
             .args(["-f", "counter-test-compose.yml", "up", "-d"])
             .status()
@@ -266,6 +294,7 @@ mod tests {
     async fn test_dockerchild_images() {
         let test_dir = test_compose_dir().join("counter");
         let child = DockerCmd::new()
+            .unwrap()
             .current_dir(&test_dir)
             .args(["-f", "counter-test-compose.yml", "up", "-d"])
             .spawn_dockerchild()
