@@ -12,8 +12,8 @@ ivynet_backend_github_token: !vault |
 # Logs level for IvyNet internals
 ivynet_backend_logs_lowlevel: ""
 
+
 # Path where to install binaries and other files
-#
 ivynet_backend_path_install: "/opt/ivynet"
 
 # Path to directory with SQL migration
@@ -28,14 +28,29 @@ ivynet_backend_postgres_db: "ivynet"
 # DB host
 ivynet_backend_postgres_host: "localhost"
 
+# Swith to change the password
+ivynet_backend_postgres_no_password_changes: true
+
 # Password for the postgresql user (only for Cloud SQL; should be a secret)
-ivynet_backend_postgres_pass: ""
+ivynet_backend_postgres_pass: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          66396130343737313730356331643265303965633066633466653561366534626162376565643936
+          6635646562646334303461383764306231346231333561640a343564336361633231653565623936
+          61613265333263636430313863376431363937346133363963383363636161626163383264663632
+          3532383339313162310a363435643265626664353364653661383339616263396236333562316439
+          6331
 
 # Postgresql user for Backend
 ivynet_backend_postgres_user: "ivy"
 
-# Password for a postgres user (should be a secret)
-ivynet_backend_postgres_user_pass: "1vyGrowes_nWinter"
+# Password for a postgres user
+ivynet_backend_postgres_user_pass: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          63666132666433393466653862316162663436643238633966666236616136613139353532323230
+          3735356638373733313830383139363133656232316535660a646439366631376662316233346163
+          31303562643438326465386237613538313561656637376630326261386566313763383337353939
+          3932303566663531350a663163303137313237306462363262313633653530323034643636323431
+          39383261303437376234343536313563306236626565316463386533396236353737
 
 # Backend release
 ivynet_backend_release: "0.1.16"
