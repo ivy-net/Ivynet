@@ -25,7 +25,7 @@ use names::AvsName;
 use semver::Version;
 use std::{collections::HashMap, fmt::Debug, path::PathBuf, sync::Arc};
 use tokio::process::Child;
-use tracing::{debug, error, info};
+use tracing::{debug, info};
 use url::Url;
 
 pub mod commands;
@@ -41,29 +41,30 @@ pub type QuorumMinMap = HashMap<Chain, HashMap<QuorumType, U256>>;
 
 use self::{eigenda::EigenDA, mach_avs::AltLayer};
 
-// TODO: Convenience functions on AVS type for display purposes, such as name()
-// This could also implement Middleware.
-#[allow(dead_code)] // TODO: use or remove registry coordinator
+pub struct IvyNode {
+    pub provider: Arc<IvyProvider>,
+    pub node: Option<Box<dyn AvsVariant>>,
+    pub messenger: Option<BackendMessenger>,
+}
+
 #[derive(Debug)]
 pub struct AvsProvider {
     /// Signer and RPC provider
     pub provider: Arc<IvyProvider>,
     pub avs: Option<Box<dyn AvsVariant>>,
     // TODO: Deprecate this if possible, requires conversion of underlying AVS scripts
-    pub keyfile_pw: Option<String>,
     pub delegation_manager: DelegationManager,
-    pub messenger: Option<BackendMessenger>,
+    pub backend_messenger: Option<BackendMessenger>,
 }
 
 impl AvsProvider {
     pub fn new(
         avs: Option<Box<dyn AvsVariant>>,
         provider: Arc<IvyProvider>,
-        keyfile_pw: Option<String>,
-        messenger: Option<BackendMessenger>,
+        backend_messenger: Option<BackendMessenger>,
     ) -> Result<Self, IvyError> {
         let delegation_manager = DelegationManager::new(provider.clone())?;
-        Ok(Self { avs, provider, keyfile_pw, delegation_manager, messenger })
+        Ok(Self { avs, provider, delegation_manager, backend_messenger })
     }
 
     /// Sets new avs with new provider
@@ -88,11 +89,6 @@ impl AvsProvider {
         let provider = self.provider.provider().clone();
         let ivy_provider = SignerMiddleware::new(provider, wallet);
         self.provider = Arc::new(ivy_provider);
-        Ok(())
-    }
-
-    pub fn with_keyfile_pw(&mut self, keyfile_pw: Option<String>) -> Result<(), IvyError> {
-        self.keyfile_pw = keyfile_pw;
         Ok(())
     }
 
@@ -142,7 +138,7 @@ impl AvsProvider {
             ));
         }
 
-        if let Some(messenger) = &mut self.messenger {
+        if let Some(messenger) = &mut self.backend_messenger {
             let node_data = NodeData {
                 operator_id: signer.address().as_bytes().to_vec(),
                 avs_name: avs_name.to_string(),
@@ -170,7 +166,7 @@ impl AvsProvider {
             ));
         }
 
-        if let Some(messenger) = &mut self.messenger {
+        if let Some(messenger) = &mut self.backend_messenger {
             let node_data = NodeData {
                 operator_id: signer.address().as_bytes().to_vec(),
                 avs_name: avs_name.to_string(),
@@ -188,7 +184,7 @@ impl AvsProvider {
     pub async fn stop(&mut self) -> Result<(), IvyError> {
         let avs_name = self.avs_mut()?.name();
         let signer = self.provider.signer().clone();
-        if let Some(messenger) = &mut self.messenger {
+        if let Some(messenger) = &mut self.backend_messenger {
             messenger.delete_node_data_payload(signer.address(), avs_name).await?;
         } else {
             println!("No messenger found - can't update data state");
@@ -235,12 +231,13 @@ impl AvsProvider {
         let keyname = keychain.select_key(KeyType::Ecdsa)?;
         let keypath = keychain.get_path(keyname);
 
-        if let Some(pw) = &self.keyfile_pw {
-            self.avs()?.unregister(self.provider.clone(), avs_path.clone(), keypath, pw).await?;
-        } else {
-            error!("No keyfile password provided. Exiting...");
-            return Err(IvyError::KeyfilePasswordError);
-        }
+        todo!("Impl w/o keyfile_pw struct member");
+        // if let Some(pw) = &self.keyfile_pw {
+        //     self.avs()?.unregister(self.provider.clone(), avs_path.clone(), keypath, pw).await?;
+        // } else {
+        //     error!("No keyfile password provided. Exiting...");
+        //     return Err(IvyError::KeyfilePasswordError);
+        // }
 
         Ok(())
     }
@@ -374,7 +371,6 @@ pub async fn build_avs_provider(
     config: &IvyConfig,
     rpc_url: Option<Url>,
     wallet: Option<IvyWallet>,
-    keyfile_pw: Option<String>,
     messenger: Option<BackendMessenger>,
 ) -> Result<AvsProvider, IvyError> {
     let chain = try_parse_chain(chain)?;
@@ -399,5 +395,5 @@ pub async fn build_avs_provider(
         wallet,
     )
     .await?;
-    AvsProvider::new(avs_instance, Arc::new(provider), keyfile_pw, messenger)
+    AvsProvider::new(avs_instance, Arc::new(provider), messenger)
 }
