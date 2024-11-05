@@ -30,6 +30,7 @@ use std::{
     env,
     fs::{self, File},
     io::{copy, BufReader},
+    ops::{Deref, DerefMut},
     path::PathBuf,
     sync::Arc,
 };
@@ -255,7 +256,7 @@ impl AvsVariant for EigenDA {
     }
 
     fn rpc_url(&self) -> Option<Url> {
-        Some(self.avs_config.get_rpc_url(self.chain))
+        Some(self.avs_config.get_data_value("rpc_url"))
     }
 
     fn base_path(&self) -> PathBuf {
@@ -583,4 +584,16 @@ pub async fn download_operator_setup(eigen_path: PathBuf) -> Result<(), IvyError
     }
 
     Ok(())
+}
+
+pub struct EigenDAConfig {
+    path: PathBuf,
+    node_name: String,
+    compose_file: PathBuf,
+    data: EigenDAData,
+};
+
+pub struct EigenDAData {
+    rpc: Url,
+    operator: Address
 }

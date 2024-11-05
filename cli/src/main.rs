@@ -64,16 +64,6 @@ enum Commands {
         #[command(subcommand)]
         subcmd: key::KeyCommands,
     },
-    // #[command(name = "operator", about = "Request information, register, or manage your
-    // operator")] Operator {
-    //     #[command(subcommand)]
-    //     subcmd: operator::OperatorCommands,
-    // },
-    // #[command(name = "staker", about = "Request information about stakers")]
-    // Staker {
-    //     #[command(subcommand)]
-    //     subcmd: staker::StakerCommands,
-    // },
     #[command(
         name = "serve",
         about = "Start the Ivynet service with a specified AVS on CHAIN selected for startup. --avs <AVS> --chain <CHAIN>"
@@ -117,10 +107,6 @@ async fn main() -> Result<(), AnyError> {
             config::parse_config_subcommands(subcmd, config).await?;
         }
         Commands::Key { subcmd } => key::parse_key_subcommands(subcmd, config).await?,
-        // Commands::Operator { subcmd } => {
-        //     operator::parse_operator_subcommands(subcmd, &config).await?
-        // }
-        // Commands::Staker { subcmd } => staker::parse_staker_subcommands(subcmd, &config).await?,
         Commands::Avs { subcmd } => avs::parse_avs_subcommands(subcmd, &config).await?,
         Commands::Serve { avs, chain } => {
             service::serve(avs, chain, &mut config, args.no_backend).await?

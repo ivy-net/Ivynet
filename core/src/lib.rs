@@ -16,6 +16,7 @@ pub mod keychain;
 pub mod keys;
 pub mod messenger;
 pub mod metadata;
+pub mod node_manager;
 pub mod rpc_management;
 pub mod signature;
 pub mod utils;
