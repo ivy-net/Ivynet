@@ -46,7 +46,7 @@ use crate::data;
             db::Node,
             db::Role,
             db::NodeData,
-            db::AvsData,
+            db::AvsVersionData,
             db::metric::Metric,
             db::log::ContainerLog,
             db::log::LogLevel,

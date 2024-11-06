@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO avs_version_data (avs_name, latest_version, chain)\n            VALUES ($1, $2, $3)\n            ON CONFLICT (avs_name, chain) DO UPDATE SET latest_version = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "19b4a06cbfb1f2b406816078d902168b796e2a1deb2252dac6abaceb15f7ed7a"
+}

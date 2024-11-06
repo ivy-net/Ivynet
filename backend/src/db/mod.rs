@@ -2,7 +2,7 @@ use crate::error::BackendError;
 use sqlx::{pool::PoolOptions, PgPool};
 
 pub mod account;
-pub mod avs_data;
+pub mod avs_version;
 pub mod log;
 pub mod metric;
 pub mod node;
@@ -11,7 +11,7 @@ pub mod organization;
 pub mod verification;
 
 pub use account::{Account, Role};
-pub use avs_data::AvsData;
+pub use avs_version::AvsVersionData;
 pub use node::Node;
 pub use node_data::NodeData;
 pub use organization::Organization;

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "DELETE FROM avs_data WHERE avs_name = $1",
+  "query": "DELETE FROM avs_version_data WHERE avs_name = $1",
   "describe": {
     "columns": [],
     "parameters": {
@@ -10,5 +10,5 @@
     },
     "nullable": []
   },
-  "hash": "88bb59ce970d05fbdef7f48dbcb1a42ca299c94a04cd155061fd0d6376c9fa0c"
+  "hash": "8f4ec6cdad5575dd411fb2ff775551363e25d0b780816842b93a1eabe4d00a69"
 }

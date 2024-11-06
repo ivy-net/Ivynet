@@ -7,7 +7,7 @@ use axum_extra::extract::CookieJar;
 use ivynet_core::avs::names::AvsName;
 use semver::Version;
 
-use crate::{db::avs_data::DbAvsData, error::BackendError};
+use crate::{db::avs_version::DbAvsVersionData, error::BackendError};
 
 use super::{authorize, HttpState};
 
@@ -30,10 +30,10 @@ pub async fn get_node_data_for_avs(
     let avs_name = AvsName::try_from(&avs[..]).map_err(|_| BackendError::InvalidAvs)?;
 
     // Get all data for the node
-    let avs_data = DbAvsData::get_avs_data(&state.pool, &avs_name).await?;
+    let avs_data = DbAvsVersionData::get_avs_data(&state.pool, &avs_name).await?;
 
     if let Some(data) = avs_data {
-        Ok(Json(data.avs_version))
+        Ok(Json(data.latest_version))
     } else {
         Err(BackendError::NoRunningAvsFound("AVS is not tracked yet".to_owned()))
     }

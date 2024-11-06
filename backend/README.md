@@ -96,3 +96,10 @@ export DATABASE_URL=postgresql://ivy:secret_ivy@localhost:5432/ivynet
 ```sh
 sqlx migrate prepare
 ```
+
+
+### Set version for AVS
+
+```sh
+cargo run -- --set-avs-version eigenda:holesky:0.8.4
+```

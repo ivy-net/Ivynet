@@ -3,12 +3,12 @@ use std::sync::Arc;
 use clap::Parser as _;
 use ivynet_backend::{
     config::Config,
-    db::{self, avs_data::DbAvsData, configure},
+    db::{self, avs_version::DbAvsVersionData, configure},
     error::BackendError,
     grpc, http,
     telemetry::start_tracing,
 };
-use ivynet_core::avs::names::AvsName;
+use ivynet_core::{avs::names::AvsName, utils::try_parse_chain};
 use semver::Version;
 use sqlx::PgPool;
 use tracing::error;
@@ -23,7 +23,7 @@ async fn main() -> Result<(), BackendError> {
 
     if let Some(organization) = config.add_organization {
         Ok(add_account(&pool, &organization).await?)
-    } else if let Some(avs_data) = config.set_version {
+    } else if let Some(avs_data) = config.set_avs_version {
         Ok(set_avs_version(&pool, &avs_data).await?)
     } else {
         let cache = memcache::connect(config.cache_url.to_string())?;
@@ -66,7 +66,9 @@ async fn add_account(pool: &PgPool, org: &str) -> Result<(), BackendError> {
 async fn set_avs_version(pool: &sqlx::PgPool, avs_data: &str) -> Result<(), BackendError> {
     let avs_data = avs_data.split(':').collect::<Vec<_>>();
     let name = AvsName::try_from(avs_data[0]).map_err(|_| BackendError::InvalidAvs)?;
-    let version = Version::parse(avs_data[1]).expect("Cannot parse version");
-    DbAvsData::set_avs_version(pool, &name, &version).await?;
+    let chain = try_parse_chain(avs_data[1]).expect("Cannot parse chain");
+    let version = Version::parse(avs_data[2]).expect("Cannot parse version");
+    println!("Setting version {:?} for avs {:?} on {:?}", version, name, chain);
+    DbAvsVersionData::set_avs_version(pool, &name, &chain, &version).await?;
     Ok(())
 }

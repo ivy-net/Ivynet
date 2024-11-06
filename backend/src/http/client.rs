@@ -15,7 +15,7 @@ use utoipa::ToSchema;
 use crate::{
     data::{self, NodeStatus},
     db::{
-        avs_data::DbAvsData,
+        avs_version::DbAvsVersionData,
         log::{ContainerLog, LogLevel},
         metric::Metric,
         node,
@@ -167,9 +167,9 @@ pub async fn status(
     let (healthy_nodes, unhealthy_nodes) =
         data::categorize_node_health(running_nodes.clone(), node_metrics_map.clone());
 
-    let avs_versions = DbAvsData::get_all_avs_data(&state.pool).await?;
+    let avs_versions = DbAvsVersionData::get_all_avs_data(&state.pool).await?;
     let avs_version_map: HashMap<AvsName, Version> =
-        avs_versions.iter().map(|avs| (avs.avs_name.clone(), avs.avs_version.clone())).collect();
+        avs_versions.iter().map(|avs| (avs.avs_name.clone(), avs.latest_version.clone())).collect();
 
     let updateable_nodes = data::catgegorize_updateable_nodes(
         running_nodes.clone(),
@@ -690,8 +690,8 @@ pub async fn build_avs_info(
             if let (Ok(avs_name), Ok(version)) =
                 (AvsName::try_from(avs_name_str.as_str()), Version::parse(&avs_version_str))
             {
-                if let Ok(Some(avs_data)) = DbAvsData::get_avs_data(pool, &avs_name).await {
-                    updateable = Some(avs_data.avs_version < version);
+                if let Ok(Some(avs_data)) = DbAvsVersionData::get_avs_data(pool, &avs_name).await {
+                    updateable = Some(avs_data.latest_version < version);
                 }
             }
         }

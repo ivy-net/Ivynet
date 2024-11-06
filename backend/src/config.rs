@@ -67,5 +67,5 @@ pub struct Config {
     pub add_organization: Option<String>,
 
     #[arg(long)]
-    pub set_version: Option<String>,
+    pub set_avs_version: Option<String>,
 }
