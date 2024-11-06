@@ -22,7 +22,7 @@ use tokio::{
     sync::RwLock,
     time::{sleep, Duration},
 };
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 const EIGENDA_DOCKER_IMAGE_NAME: &str = "ghcr.io/layr-labs/eigenda/opr-node";
 
@@ -40,8 +40,6 @@ pub async fn listen(
             let provider = avs_provider.read().await;
             let name = avs_name(&provider.avs);
             let running = if let Some(avs) = &provider.avs { avs.is_running() } else { false };
-
-            // dockercmd::inspect(EIGENDA_DOCKER_IMAGE_NAME).await;
 
             if running {
                 match name {
@@ -70,7 +68,7 @@ pub async fn listen(
             }
         }
 
-        sleep(Duration::from_secs(TELEMETRY_INTERVAL_IN_MINUTES * 5)).await;
+        sleep(Duration::from_secs(TELEMETRY_INTERVAL_IN_MINUTES * 60)).await;
     }
 }
 
@@ -101,7 +99,7 @@ async fn metrics_endpoint(avs_name: &str) -> Option<String> {
         let info = dockerapi::inspect(EIGENDA_DOCKER_IMAGE_NAME).await;
         if let Some(info) = info {
             let ports = dockerapi::get_active_ports(&info);
-            println!("Ports: {:?}", ports);
+            debug!("Ports: {:?}", ports);
             for port in ports {
                 let url = format!("http://localhost:{}/metrics", port);
                 if reqwest::get(&url).await.is_ok() {
