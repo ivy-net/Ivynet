@@ -59,7 +59,7 @@ pub struct IvyConfig {
     /// Web server information
     pub backend_info: BackendInfo,
     /// Service configuration
-    pub configured_service: Option<Service>,
+    pub configured_service: Option<Vec<Service>>,
 }
 
 impl Default for IvyConfig {

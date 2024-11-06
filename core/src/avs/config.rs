@@ -8,10 +8,13 @@ use url::Url;
 
 use crate::io::{read_toml, write_toml, IoError};
 
+use super::eigenda::{EigenDAConfig, EigenDANodeData};
+
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum NodeType {
     EigenDA,
     Lagrange,
+    Unknown,
 }
 
 impl From<&str> for NodeType {
@@ -29,51 +32,89 @@ impl std::fmt::Display for NodeType {
         match self {
             NodeType::EigenDA => write!(f, "EigenDA"),
             NodeType::Lagrange => write!(f, "Lagrange"),
+            NodeType::Unknown => write!(f, "Unknown"),
         }
     }
 }
 
-pub struct NodeConfigBuilder {
-    pub path: Option<PathBuf>,
-    pub node_name: Option<String>,
-    pub node_type: Option<NodeType>,
-    pub compose_file: Option<PathBuf>,
-    pub node_data: HashMap<String, toml::Value>,
+// pub struct NodeConfigBuilder {
+//     pub path: Option<PathBuf>,
+//     pub node_name: Option<String>,
+//     pub node_type: Option<NodeType>,
+//     pub compose_file: Option<PathBuf>,
+//     pub node_data: HashMap<String, toml::Value>,
+// }
+//
+// impl NodeConfigBuilder {
+//     pub fn new() -> Self {
+//         Self {
+//             path: None,
+//             node_name: None,
+//             node_type: None,
+//             compose_file: None,
+//             node_data: HashMap::new(),
+//         }
+//     }
+//     pub fn path(mut self, path: PathBuf) -> Self {
+//         self.path = Some(path);
+//         self
+//     }
+//     pub fn node_name(mut self, node_name: String) -> Self {
+//         self.node_name = Some(node_name);
+//         self
+//     }
+//     pub fn node_type(mut self, node_type: NodeType) -> Self {
+//         self.node_type = Some(node_type);
+//         self
+//     }
+//     pub fn with_data(mut self, key: String, value: impl Into<toml::Value>) -> Self {
+//         self.node_data.insert(key, value.into());
+//         self
+//     }
+//     pub fn build(self) -> AvsConfig {
+//         AvsConfig {
+//             path: self.path.expect("Path is required"),
+//             node_name: self.node_name.expect("Node name is required"),
+//             node_type: self.node_type.expect("Node type is required"),
+//             compose_file: self.compose_file.expect("Compose file is required"),
+//             node_data: self.node_data,
+//         }
+//     }
+// }
+
+/// Enum representing the different types of node configuration data that can be stored.
+pub enum NodeConfigData {
+    EigenDA(EigenDANodeData),
+    Other(HashMap<String, toml::Value>),
 }
 
-impl NodeConfigBuilder {
-    pub fn new() -> Self {
-        Self {
-            path: None,
-            node_name: None,
-            node_type: None,
-            compose_file: None,
-            node_data: HashMap::new(),
+impl NodeConfigData {
+    pub fn node_type(&self) -> NodeType {
+        match self {
+            NodeConfigData::EigenDA(_) => NodeType::EigenDA,
+            NodeConfigData::Other(_) => NodeType::Unknown,
         }
     }
-    pub fn path(mut self, path: PathBuf) -> Self {
-        self.path = Some(path);
-        self
-    }
-    pub fn node_name(mut self, node_name: String) -> Self {
-        self.node_name = Some(node_name);
-        self
-    }
-    pub fn node_type(mut self, node_type: NodeType) -> Self {
-        self.node_type = Some(node_type);
-        self
-    }
-    pub fn with_data(mut self, key: String, value: impl Into<toml::Value>) -> Self {
-        self.node_data.insert(key, value.into());
-        self
-    }
-    pub fn build(self) -> AvsConfig {
-        AvsConfig {
-            path: self.path.expect("Path is required"),
-            node_name: self.node_name.expect("Node name is required"),
-            node_type: self.node_type.expect("Node type is required"),
-            compose_file: self.compose_file.expect("Compose file is required"),
-            node_data: self.node_data,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum NodeConfig {
+    EigenDA(EigenDAConfig),
+    Other(HashMap<String, toml::Value>),
+}
+
+/// TODO: Result for Other type
+impl NodeConfig {
+    pub fn path(&self) -> PathBuf {
+        match self {
+            NodeConfig::EigenDA(config) => config.path.clone(),
+            NodeConfig::Other(config) => {
+                if let Some(path) = config.get("path") {
+                    path
+                } else {
+                    panic!("No path found in node config")
+                }
+            }
         }
     }
 }
@@ -86,32 +127,21 @@ pub struct AvsConfig {
     pub path: PathBuf,
     /// User-defined name for node identification
     pub node_name: String,
-    /// Node type (EigenDA, Lagrange, etc.)
-    pub node_type: NodeType,
-    /// Full path to the docker-compose file for this config. In the event we decide to support
     /// startup methods other than docker-compose, this may be deprecated or moved to node_data.
     pub compose_file: PathBuf,
     /// Node data struct. This is a hashmap to allow for arbitrary data storage, as the node
     /// data structure can vary wildly between node types. This is done in lieu of strong
     /// types, which can be implemented later if necessary.
-    pub node_data: HashMap<String, toml::Value>,
+    pub node_data: NodeConfigData,
 }
 
-impl AvsConfig {
+impl NodeConfig {
     pub fn load(path: PathBuf) -> Result<Self, IoError> {
         read_toml(&path)
     }
 
     pub fn store(&self) {
         write_toml(&self.path, self).expect("Could not write AVS config");
-    }
-
-    pub fn set_data_value(&mut self, key: String, value: impl Into<toml::Value>) {
-        self.node_data.insert(key, value.into());
-    }
-
-    pub fn get_data_value(&self, key: &str) -> Option<&toml::Value> {
-        self.node_data.get(key)
     }
 }
 
@@ -203,7 +233,7 @@ impl AvsConfig {
 }
 
 #[derive(ThisError, Debug)]
-pub enum AvsConfigError {
+pub enum NodeConfigError {
     #[error(transparent)]
     ConfigIo(#[from] IoError),
 }

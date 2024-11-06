@@ -1,38 +1,24 @@
 use self::contracts::StakeRegistryAbi;
-use super::{names::AvsName, AvsConfig};
+use super::{config::{NodeConfigData, NodeType}, names::AvsName, AvsConfig};
 use crate::{
-    avs::AvsVariant,
-    config::{self, IvyConfig},
-    download::dl_progress_bar,
-    eigen::{
+    avs::AvsVariant, config::{self, IvyConfig}, docker::compose_images, download::dl_progress_bar, eigen::{
         contracts::delegation_manager::DelegationManagerAbi,
         node_classes::{self, NodeClass},
         quorum::{Quorum, QuorumType},
-    },
-    env_parser::EnvLines,
-    error::{IvyError, SetupError},
-    keychain::Keychain,
-    rpc_management::IvyProvider,
-    utils::gb_to_bytes,
+    }, env_parser::EnvLines, error::{IvyError, SetupError}, keychain::Keychain, rpc_management::{connect_provider, IvyProvider}, utils::gb_to_bytes, wallet::IvyWallet
 };
 use async_trait::async_trait;
 use contracts::RegistryCoordinator;
+use serde::{Deserialize, Serialize};
 use core::str;
 use dialoguer::Input;
 use dotenvy::from_path;
 use ethers::{
-    middleware::Middleware,
-    signers::Signer,
-    types::{Address, Chain, H160, U256},
+    middleware::{Middleware, SignerMiddleware}, providers::{Http, Provider}, signers::Signer, types::{Address, Chain, H160, U256}
 };
 use semver::Version;
 use std::{
-    env,
-    fs::{self, File},
-    io::{copy, BufReader},
-    ops::{Deref, DerefMut},
-    path::PathBuf,
-    sync::Arc,
+    env, fs::{self, File}, io::{copy, BufReader}, ops::{Deref, DerefMut}, path::PathBuf, str::FromStr, sync::Arc
 };
 use thiserror::Error as ThisError;
 use tokio::process::Command;
@@ -42,6 +28,9 @@ use zip::read::ZipArchive;
 
 mod contracts;
 mod log;
+mod config;
+
+pub use config::*;
 
 pub const EIGENDA_PATH: &str = ".eigenlayer/eigenda";
 pub const EIGENDA_SETUP_REPO: &str =
@@ -60,39 +49,34 @@ pub enum EigenDAError {
 }
 
 #[derive(Debug, Clone)]
-pub struct EigenDA {
-    base_path: PathBuf,
-    chain: Chain,
+pub struct EigenDANode {
+    // TODO: Deprecate, assume if object exists, is running
     running: bool,
-    avs_config: AvsConfig,
+    provider: IvyProvider,
+    config: EigenDAConfig,
 }
 
-impl EigenDA {
-    pub fn new(base_path: PathBuf, chain: Chain, avs_config: AvsConfig) -> Self {
-        Self { base_path, chain, running: false, avs_config }
+impl EigenDANode {
+    pub fn new(provider: IvyProvider, config: EigenDAConfig) -> Self {
+        Self { running: false, provider, config }
     }
 
-    pub fn new_from_chain(chain: Chain) -> Self {
-        let base_path = dirs::home_dir().expect("Could not get home directory").join(EIGENDA_PATH);
-        let avs_config = AvsConfig::load(AvsName::EigenDA.as_str())
-            .expect("Could not load AVS config - go through setup");
-        Self::new(base_path, chain, avs_config)
-    }
-}
+    pub async fn from_node_config(config: AvsConfig, wallet_pw: String) -> Result<Self, IvyError> {
+        let config = EigenDAConfig::try_from(config)?;
 
-impl Default for EigenDA {
-    fn default() -> Self {
-        let home_dir = dirs::home_dir().expect("Could not get home directory");
-        let base_path = home_dir.join(EIGENDA_PATH);
-        let avs_config = AvsConfig::load(AvsName::EigenDA.as_str())
-            .expect("Could not load AVS config - go through setup");
-        Self::new(base_path, Chain::Holesky, avs_config)
+        let operator = IvyWallet::from_keystore(config.node_data.keyfile.clone(), &wallet_pw)?;
+        let provider = Provider::new(Http::from_str(&config.node_data.rpc_url.to_string())?);
+        let chain = provider.get_chainid().await?;
+
+        let signer = SignerMiddleware::new(provider, operator.with_chain_id(chain.low_u64()));
+
+        Ok(Self::new(signer, config))
     }
 }
 
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-impl AvsVariant for EigenDA {
+impl AvsVariant for EigenDANode {
     async fn setup(
         &mut self,
         provider: Arc<IvyProvider>,
@@ -256,7 +240,7 @@ impl AvsVariant for EigenDA {
     }
 
     fn rpc_url(&self) -> Option<Url> {
-        Some(self.avs_config.get_data_value("rpc_url"))
+        todo!()
     }
 
     fn base_path(&self) -> PathBuf {
@@ -264,7 +248,7 @@ impl AvsVariant for EigenDA {
     }
 
     fn run_path(&self) -> PathBuf {
-        self.avs_config.get_path(self.chain)
+        todo!()
     }
 
     fn is_running(&self) -> bool {
@@ -333,7 +317,7 @@ impl AvsVariant for EigenDA {
     }
 }
 
-impl EigenDA {
+impl EigenDANode {
     pub async fn get_current_total_stake(
         &self,
         provider: Arc<IvyProvider>,
@@ -478,8 +462,11 @@ impl EigenDA {
         operator_address: H160,
         is_custom: bool,
     ) -> Result<(), IvyError> {
+
+        let path = self.
+
         let path = if !is_custom {
-            let setup = self.base_path.join("eigenda-operator-setup");
+            let setup = self.eigenda-operator-setup");
             match self.chain {
                 Chain::Mainnet => setup.join("mainnet"),
                 Chain::Holesky => setup.join("holesky"),
@@ -586,14 +573,3 @@ pub async fn download_operator_setup(eigen_path: PathBuf) -> Result<(), IvyError
     Ok(())
 }
 
-pub struct EigenDAConfig {
-    path: PathBuf,
-    node_name: String,
-    compose_file: PathBuf,
-    data: EigenDAData,
-};
-
-pub struct EigenDAData {
-    rpc: Url,
-    operator: Address
-}
