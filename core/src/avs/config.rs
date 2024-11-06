@@ -8,7 +8,7 @@ use url::Url;
 
 use crate::io::{read_toml, write_toml, IoError};
 
-use super::eigenda::{EigenDAConfig, EigenDANodeData};
+use super::eigenda::EigenDAConfig;
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum NodeType {
@@ -82,21 +82,6 @@ impl std::fmt::Display for NodeType {
 //     }
 // }
 
-/// Enum representing the different types of node configuration data that can be stored.
-pub enum NodeConfigData {
-    EigenDA(EigenDANodeData),
-    Other(HashMap<String, toml::Value>),
-}
-
-impl NodeConfigData {
-    pub fn node_type(&self) -> NodeType {
-        match self {
-            NodeConfigData::EigenDA(_) => NodeType::EigenDA,
-            NodeConfigData::Other(_) => NodeType::Unknown,
-        }
-    }
-}
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum NodeConfig {
     EigenDA(EigenDAConfig),
@@ -115,6 +100,13 @@ impl NodeConfig {
                     panic!("No path found in node config")
                 }
             }
+        }
+    }
+
+    pub fn node_type(&self) -> NodeType {
+        match self {
+            NodeConfig::EigenDA(_) => NodeType::EigenDA,
+            NodeConfig::Other(_) => NodeType::Unknown,
         }
     }
 }

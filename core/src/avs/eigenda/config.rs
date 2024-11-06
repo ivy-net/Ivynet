@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use url::Url;
 
 use crate::{
-    avs::config::{AvsConfig, NodeConfigData},
+    avs::config::{AvsConfig, NodeConfig},
     bls::Address,
     error::IvyError,
 };
@@ -25,15 +25,13 @@ pub struct EigenDAConfig {
     pub rpc_url: Url,
 }
 
-impl TryFrom<AvsConfig> for EigenDAConfig {
+impl TryFrom<NodeConfig> for EigenDAConfig {
     type Error = IvyError;
 
-    fn try_from(config: AvsConfig) -> Result<Self, Self::Error> {
-        Ok(Self {
-            path: config.path,
-            node_name: config.node_name,
-            compose_file: config.compose_file,
-            node_data: EigenDANodeData::try_from(config.node_data)?,
-        })
+    fn try_from(node_config: NodeConfig) -> Result<Self, Self::Error> {
+        match node_config {
+            NodeConfig::EigenDA(eigenda_config) => Ok(eigenda_config),
+            _ => Err(IvyError::ConfigError("NodeConfig is not EigenDA".to_string())),
+        }
     }
 }
