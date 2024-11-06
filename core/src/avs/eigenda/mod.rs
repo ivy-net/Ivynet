@@ -1,5 +1,5 @@
 use self::contracts::StakeRegistryAbi;
-use super::{config::{NodeConfigData, NodeType}, names::AvsName, AvsConfig};
+use super::{config::{NodeConfig, NodeConfigData, NodeType}, names::AvsName, AvsConfig};
 use crate::{
     avs::AvsVariant, config::{self, IvyConfig}, docker::compose_images, download::dl_progress_bar, eigen::{
         contracts::delegation_manager::DelegationManagerAbi,
@@ -61,7 +61,7 @@ impl EigenDANode {
         Self { running: false, provider, config }
     }
 
-    pub async fn from_node_config(config: AvsConfig, wallet_pw: String) -> Result<Self, IvyError> {
+    pub async fn from_node_config(config: NodeConfig, wallet_pw: String) -> Result<Self, IvyError> {
         let config = EigenDAConfig::try_from(config)?;
 
         let operator = IvyWallet::from_keystore(config.node_data.keyfile.clone(), &wallet_pw)?;
