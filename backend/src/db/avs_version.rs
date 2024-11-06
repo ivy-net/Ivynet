@@ -1,9 +1,5 @@
 use chrono::NaiveDateTime;
-use ivynet_core::{
-    avs::names::{AvsName, AvsParseError},
-    ethers::types::Chain,
-    utils::try_parse_chain,
-};
+use ivynet_core::{avs::names::AvsName, ethers::types::Chain, utils::try_parse_chain};
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use sqlx::query;
@@ -32,11 +28,12 @@ pub struct DbAvsVersionData {
 }
 
 impl TryFrom<DbAvsVersionData> for AvsVersionData {
-    type Error = AvsParseError;
-    fn try_from(db_avs_data: DbAvsVersionData) -> Result<Self, Self::Error> {
+    type Error = BackendError;
+    fn try_from(db_avs_data: DbAvsVersionData) -> Result<Self, BackendError> {
         Ok(AvsVersionData {
             id: db_avs_data.id,
-            avs_name: AvsName::try_from(db_avs_data.avs_name.as_str())?,
+            avs_name: AvsName::try_from(db_avs_data.avs_name.as_str())
+                .expect("Could not parse AvsName"),
             latest_version: Version::parse(&db_avs_data.latest_version)
                 .expect("Cannot parse version on dbAvsVersionData"),
             chain: try_parse_chain(&db_avs_data.chain).expect("Cannot parse chain"),
@@ -57,16 +54,17 @@ impl DbAvsVersionData {
                 .fetch_all(pool)
                 .await?;
 
-        let avs_data: Vec<AvsVersionData> =
-            avs_data.into_iter().filter_map(|e| AvsVersionData::try_from(e).ok()).collect();
-        Ok(avs_data)
+        Ok(avs_data
+            .into_iter()
+            .filter_map(|db_version_data| AvsVersionData::try_from(db_version_data).ok())
+            .collect())
     }
 
     pub async fn get_avs_data(
         pool: &sqlx::PgPool,
         avs_name: &AvsName,
     ) -> Result<Option<AvsVersionData>, BackendError> {
-        let avs_data: Option<DbAvsVersionData> = sqlx::query_as!(
+        let db_avs_data: Option<DbAvsVersionData> = sqlx::query_as!(
             DbAvsVersionData,
             "SELECT * FROM avs_version_data WHERE avs_name = $1",
             avs_name.as_str()
@@ -74,10 +72,7 @@ impl DbAvsVersionData {
         .fetch_optional(pool)
         .await?;
 
-        match avs_data {
-            Some(avs_data) => Ok(AvsVersionData::try_from(avs_data).ok()),
-            None => Ok(None),
-        }
+        Ok(db_avs_data.and_then(|data| AvsVersionData::try_from(data).ok()))
     }
 
     pub async fn insert_avs_data(
