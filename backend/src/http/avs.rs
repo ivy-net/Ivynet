@@ -5,9 +5,11 @@ use axum::{
 };
 use axum_extra::extract::CookieJar;
 use ivynet_core::avs::names::AvsName;
-use semver::Version;
 
-use crate::{db::avs_version::DbAvsVersionData, error::BackendError};
+use crate::{
+    db::{avs_version::DbAvsVersionData, AvsVersionData},
+    error::BackendError,
+};
 
 use super::{authorize, HttpState};
 
@@ -20,21 +22,43 @@ use super::{authorize, HttpState};
         (status = 404)
     )
 )]
-pub async fn get_node_data_for_avs(
+pub async fn get_version_info(
     headers: HeaderMap,
     State(state): State<HttpState>,
     Path(avs): Path<String>,
     jar: CookieJar,
-) -> Result<Json<Version>, BackendError> {
+) -> Result<Json<AvsVersionData>, BackendError> {
     let _account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     let avs_name = AvsName::try_from(&avs[..]).map_err(|_| BackendError::InvalidAvs)?;
 
     // Get all data for the node
-    let avs_data = DbAvsVersionData::get_avs_data(&state.pool, &avs_name).await?;
+    let avs_data = DbAvsVersionData::get_avs_version(&state.pool, &avs_name).await?;
 
     if let Some(data) = avs_data {
-        Ok(Json(data.latest_version))
+        Ok(Json(data))
     } else {
-        Err(BackendError::NoRunningAvsFound("AVS is not tracked yet".to_owned()))
+        Err(BackendError::NoVersionInfoFound(avs_name.to_string()))
     }
+}
+
+/// Get the latest version for every AVS we support
+#[utoipa::path(
+    get,
+    path = "/avs/version",
+    responses(
+        (status = 200, body = Metric),
+        (status = 404)
+    )
+)]
+pub async fn get_all_version_info(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+) -> Result<Json<Vec<AvsVersionData>>, BackendError> {
+    let _account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+
+    // Get all data for the node
+    let avs_data = DbAvsVersionData::get_all_avs_version(&state.pool).await?;
+
+    Ok(Json(avs_data))
 }

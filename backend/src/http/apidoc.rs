@@ -30,7 +30,8 @@ use crate::data;
         client::delete_avs_node_data,
         client::get_all_node_data,
         client::get_node_data_for_avs,
-        avs::get_node_data_for_avs,
+        avs::get_version_info,
+        avs::get_all_version_info
     ),
     components(
         schemas(
