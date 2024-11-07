@@ -19,6 +19,7 @@ pub mod metadata;
 pub mod node_manager;
 pub mod rpc_management;
 pub mod signature;
+pub mod system;
 pub mod utils;
 pub mod wallet;
 

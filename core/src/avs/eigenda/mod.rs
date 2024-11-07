@@ -1,24 +1,41 @@
 use self::contracts::StakeRegistryAbi;
-use super::{config::{NodeConfig, NodeConfigData, NodeType}, names::AvsName, AvsConfig};
+use super::{config::NodeConfig, names::AvsName};
 use crate::{
-    avs::AvsVariant, config::{self, IvyConfig}, docker::compose_images, download::dl_progress_bar, eigen::{
+    avs::AvsVariant,
+    config::IvyConfig,
+    download::dl_progress_bar,
+    eigen::{
         contracts::delegation_manager::DelegationManagerAbi,
         node_classes::{self, NodeClass},
         quorum::{Quorum, QuorumType},
-    }, env_parser::EnvLines, error::{IvyError, SetupError}, keychain::Keychain, rpc_management::{connect_provider, IvyProvider}, utils::gb_to_bytes, wallet::IvyWallet
+    },
+    env_parser::EnvLines,
+    error::{IvyError, SetupError},
+    keychain::Keychain,
+    rpc_management::{connect_provider, IvyProvider},
+    system,
+    utils::gb_to_bytes,
+    wallet::IvyWallet,
 };
 use async_trait::async_trait;
 use contracts::RegistryCoordinator;
-use serde::{Deserialize, Serialize};
 use core::str;
 use dialoguer::Input;
 use dotenvy::from_path;
 use ethers::{
-    middleware::{Middleware, SignerMiddleware}, providers::{Http, Provider}, signers::Signer, types::{Address, Chain, H160, U256}
+    middleware::{Middleware, SignerMiddleware},
+    providers::{Http, Provider},
+    signers::Signer,
+    types::{Address, Chain, H160, U256},
 };
 use semver::Version;
 use std::{
-    env, fs::{self, File}, io::{copy, BufReader}, ops::{Deref, DerefMut}, path::PathBuf, str::FromStr, sync::Arc
+    env,
+    fs::{self, File},
+    io::{copy, BufReader},
+    path::PathBuf,
+    str::FromStr,
+    sync::Arc,
 };
 use thiserror::Error as ThisError;
 use tokio::process::Command;
@@ -26,9 +43,9 @@ use tracing::{debug, error, info, warn};
 use url::Url;
 use zip::read::ZipArchive;
 
+mod config;
 mod contracts;
 mod log;
-mod config;
 
 pub use config::*;
 
@@ -64,8 +81,8 @@ impl EigenDANode {
     pub async fn from_node_config(config: NodeConfig, wallet_pw: String) -> Result<Self, IvyError> {
         let config = EigenDAConfig::try_from(config)?;
 
-        let operator = IvyWallet::from_keystore(config.node_data.keyfile.clone(), &wallet_pw)?;
-        let provider = Provider::new(Http::from_str(&config.node_data.rpc_url.to_string())?);
+        let operator = IvyWallet::from_keystore(config.keyfile.clone(), &wallet_pw)?;
+        let provider = Provider::new(Http::from_str(&config.rpc_url.to_string())?);
         let chain = provider.get_chainid().await?;
 
         let signer = SignerMiddleware::new(provider, operator.with_chain_id(chain.low_u64()));
@@ -84,20 +101,19 @@ impl AvsVariant for EigenDANode {
         operator_address: H160,
         bls_key: Option<(String, String)>,
     ) -> Result<(), IvyError> {
-        self.build_pathing(provider.provider().url().clone(), operator_address, bls_key.is_none())?;
-        if let Some((bls_key_name, bls_key_password)) = bls_key {
-            download_operator_setup(self.base_path.clone()).await?;
-            download_g1_g2(self.base_path.clone()).await?;
-            self.build_env(provider, &bls_key_name, &bls_key_password).await?
-        }
-
-        Ok(())
+        todo!()
+        // self.build_pathing(provider.provider().url().clone(), operator_address, bls_key.is_none())?;
+        // if let Some((bls_key_name, bls_key_password)) = bls_key {
+        //     download_operator_setup(self.base_path.clone()).await?;
+        //     download_g1_g2(self.base_path.clone()).await?;
+        //     self.build_env(provider, &bls_key_name, &bls_key_password).await?
+        // }
     }
 
     // TODO: This method may need to be abstracted in some way, as not all AVS types encforce
     // quorum_pericentage.
     fn validate_node_size(&self, quorum_percentage: U256) -> Result<bool, IvyError> {
-        let (_, _, disk_info) = config::get_system_information()?;
+        let (_, _, disk_info) = system::get_system_information()?;
         let class = node_classes::get_node_class()?;
 
         let mut acceptable: bool = false;
@@ -150,7 +166,7 @@ impl AvsVariant for EigenDANode {
         let quorum_str = quorum_str.join(",");
         println!("Fetched quorums...");
         let run_script_dir = eigen_path.join("eigenda-operator-setup");
-        let run_script_dir = match self.chain {
+        let run_script_dir = match self.chain() {
             Chain::Mainnet => run_script_dir.join("mainnet"),
             Chain::Holesky => run_script_dir.join("holesky"),
             _ => todo!("Unimplemented"),
@@ -197,7 +213,7 @@ impl AvsVariant for EigenDANode {
         let quorum_str = quorum_str.join(",");
 
         let run_script_dir = eigen_path.join("eigenda-operator-setup");
-        let run_script_dir = match self.chain {
+        let run_script_dir = match self.chain() {
             Chain::Mainnet => run_script_dir.join("mainnet"),
             Chain::Holesky => run_script_dir.join("holesky"),
             _ => todo!("Unimplemented"),
@@ -236,15 +252,13 @@ impl AvsVariant for EigenDANode {
     }
 
     fn chain(&self) -> Chain {
-        self.chain
+        // TODO: Change trait signature to handle this as a result
+        self.provider.signer().chain_id().try_into().expect("Failed to convert chain ID")
     }
 
     fn rpc_url(&self) -> Option<Url> {
-        todo!()
-    }
-
-    fn base_path(&self) -> PathBuf {
-        self.base_path.clone()
+        // TODO: remove option
+        Some(self.config.rpc_url.clone())
     }
 
     fn run_path(&self) -> PathBuf {
@@ -287,9 +301,9 @@ impl AvsVariant for EigenDANode {
     }
 
     async fn active_set(&self, provider: Arc<IvyProvider>) -> bool {
-        let address = self.avs_config.operator_address(self.chain);
+        let address = self.config.operator_address;
         let registry_coordinator_contract =
-            RegistryCoordinator::new(contracts::registry_coordinator(self.chain), provider);
+            RegistryCoordinator::new(contracts::registry_coordinator(self.chain()), provider);
 
         let status = registry_coordinator_contract.get_operator_status(address).await;
         if let Ok(stat) = status {
@@ -324,7 +338,7 @@ impl EigenDANode {
         quorum_type: u8,
     ) -> Result<u128, IvyError> {
         let stake_registry_contract =
-            StakeRegistryAbi::new(contracts::stake_registry(self.chain), provider.clone());
+            StakeRegistryAbi::new(contracts::stake_registry(self.chain()), provider.clone());
         let total_stake = stake_registry_contract.get_current_total_stake(quorum_type).await?;
         Ok(total_stake)
     }
@@ -337,8 +351,10 @@ impl EigenDANode {
         provider: Arc<IvyProvider>,
         strategies: Vec<Address>,
     ) -> Result<Vec<U256>, IvyError> {
-        let delegation_manager =
-            DelegationManagerAbi::new(contracts::delegation_manager(self.chain), provider.clone());
+        let delegation_manager = DelegationManagerAbi::new(
+            contracts::delegation_manager(self.chain()),
+            provider.clone(),
+        );
         let shares = delegation_manager.get_operator_shares(provider.address(), strategies).await?;
         Ok(shares)
     }
@@ -370,14 +386,12 @@ impl EigenDANode {
 
     async fn build_env(
         &self,
-        provider: Arc<IvyProvider>,
+        _provider: Arc<IvyProvider>,
         bls_key_name: &str,
         bls_key_password: &str,
     ) -> Result<(), IvyError> {
-        let chain = Chain::try_from(provider.signer().chain_id())?;
-
-        let avs_run_path = self.avs_config.get_path(chain);
-        let rpc_url = self.avs_config.get_rpc_url(chain);
+        let avs_run_path = self.config.compose_file.clone();
+        let rpc_url = &self.config.rpc_url;
 
         let env_example_path = avs_run_path.join(".env.example");
         let env_path = avs_run_path.join(".env");
@@ -462,22 +476,22 @@ impl EigenDANode {
         operator_address: H160,
         is_custom: bool,
     ) -> Result<(), IvyError> {
+        // Stores config as part of setup. Probably deprecatable.
 
-        let path = self.
+        todo!();
 
-        let path = if !is_custom {
-            let setup = self.eigenda-operator-setup");
-            match self.chain {
-                Chain::Mainnet => setup.join("mainnet"),
-                Chain::Holesky => setup.join("holesky"),
-                _ => todo!("Unimplemented"),
-            }
-        } else {
-            AvsConfig::ask_for_path()
-        };
+        // let path = if !is_custom {
+        //     match self.chain {
+        //         Chain::Mainnet => setup.join("mainnet"),
+        //         Chain::Holesky => setup.join("holesky"),
+        //         _ => todo!("Unimplemented"),
+        //     }
+        // } else {
+        //     AvsConfig::ask_for_path()
+        // };
 
-        self.avs_config.init(self.chain, rpc_url, path, operator_address, is_custom);
-        self.avs_config.store();
+        // self.avs_config.init(self.chain, rpc_url, path, operator_address, is_custom);
+        // self.avs_config.store();
 
         Ok(())
     }
@@ -572,4 +586,3 @@ pub async fn download_operator_setup(eigen_path: PathBuf) -> Result<(), IvyError
 
     Ok(())
 }
-

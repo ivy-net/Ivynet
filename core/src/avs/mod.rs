@@ -38,7 +38,7 @@ pub mod names;
 
 pub type QuorumMinMap = HashMap<Chain, HashMap<QuorumType, U256>>;
 
-use self::{eigenda::EigenDA, mach_avs::AltLayer};
+use self::{eigenda::EigenDANode, mach_avs::AltLayer};
 
 pub struct IvyNode {
     pub provider: Arc<IvyProvider>,
@@ -344,8 +344,6 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
     fn name(&self) -> AvsName;
     /// Return the connected chain of the AVS instance.
     fn chain(&self) -> Chain;
-    /// Handle to the top-level directory for the AVS instance.
-    fn base_path(&self) -> PathBuf;
     /// Return configured RPC url
     fn rpc_url(&self) -> Option<Url>;
     /// Return the path to the AVS instance's run directory (usually a docker compose file)
