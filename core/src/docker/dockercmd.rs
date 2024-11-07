@@ -52,6 +52,8 @@ pub struct ImageDetails {
 pub enum DockerError {
     #[error("Docker daemon not running")]
     DockerNotRunning,
+    #[error("Bollard error: {0}")]
+    BollardError(String),
 }
 
 /// Wrapper struct for commands targeting docker-compose files. Initialization targets etiher
@@ -199,18 +201,6 @@ impl DockerChild {
     pub fn down_on_drop(&mut self, down_on_drop: bool) {
         self.down_on_drop = down_on_drop;
     }
-}
-
-pub async fn inspect(image_name: &str) -> Option<ImageDetails> {
-    if let Ok(output) = Command::new("docker").arg("inspect").arg(image_name).output().await {
-        match serde_json::from_str::<Vec<ImageDetails>>(
-            std::str::from_utf8(&output.stdout).expect("Unparsable output string"),
-        ) {
-            Ok(command_result) => return command_result.into_iter().next(),
-            Err(e) => error!("Parse inspection error {e:?}"),
-        }
-    }
-    None
 }
 
 pub struct DockerStream(mpsc::UnboundedReceiver<(String, bool)>);
