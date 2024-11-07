@@ -19,7 +19,7 @@ sqlx = { version = "0.8", features = [
 	"tls-rustls",
 	"uuid",
 ] }
-thiserror = "1.0"
+thiserror = "2.0"
 tokio = { version = "1.38", features = [
 	"full",
 	"sync",
