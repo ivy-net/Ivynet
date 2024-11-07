@@ -34,7 +34,10 @@ use crate::{
     rpc_management::IvyProvider,
 };
 
-use super::{config::AvsConfig, names::AvsName};
+use super::{
+    config::{AvsConfig, NodeConfig},
+    names::AvsName,
+};
 
 mod config;
 
@@ -67,27 +70,29 @@ pub struct Lagrange {
     #[allow(dead_code)]
     chain: Chain,
     running: bool,
-    avs_config: AvsConfig,
+    avs_config: NodeConfig,
 }
 
 impl Lagrange {
-    pub fn new(base_path: PathBuf, chain: Chain, avs_config: AvsConfig) -> Self {
+    pub fn new(base_path: PathBuf, chain: Chain, avs_config: NodeConfig) -> Self {
         Self { base_path, chain, running: false, avs_config }
     }
 
     pub fn new_from_chain(chain: Chain) -> Self {
-        let base_path = dirs::home_dir().expect("Could not get home directory").join(LAGRANGE_PATH);
-        let avs_config = AvsConfig::load(AvsName::LagrangeZK.as_str())
-            .expect("Could not load AVS config - go through setup");
-        Self::new(base_path, chain, avs_config)
+        todo!()
+        // let base_path = dirs::home_dir().expect("Could not get home directory").join(LAGRANGE_PATH);
+        // let avs_config = AvsConfig::load(AvsName::LagrangeZK.as_str())
+        //     .expect("Could not load AVS config - go through setup");
+        // Self::new(base_path, chain, avs_config)
     }
 }
 
 impl Default for Lagrange {
     fn default() -> Self {
-        let avs_config = AvsConfig::load(AvsName::LagrangeZK.as_str())
-            .expect("Could not load AVS config - go through setup");
-        Self::new(avs_config.get_path(Chain::Holesky), Chain::Holesky, avs_config)
+        todo!()
+        // let avs_config = AvsConfig::load(AvsName::LagrangeZK.as_str())
+        //     .expect("Could not load AVS config - go through setup");
+        // Self::new(avs_config.get_path(Chain::Holesky), Chain::Holesky, avs_config)
     }
 }
 
@@ -176,16 +181,14 @@ impl AvsVariant for Lagrange {
         self.chain
     }
 
-    fn base_path(&self) -> PathBuf {
-        self.base_path.clone()
-    }
-
     fn rpc_url(&self) -> Option<Url> {
-        Some(self.avs_config.get_rpc_url(self.chain))
+        //Some(self.avs_config.get_rpc_url(self.chain))
+        todo!()
     }
 
     fn run_path(&self) -> PathBuf {
-        self.avs_config.get_path(self.chain)
+        todo!()
+        // self.avs_config.get_path(self.chain)
     }
 
     fn is_running(&self) -> bool {
@@ -248,16 +251,17 @@ impl Lagrange {
         operator_address: H160,
         is_custom: bool,
     ) -> Result<(), IvyError> {
-        let path = if !is_custom {
-            self.base_path.join("lagrange-worker").join(self.chain.as_ref())
-        } else {
-            AvsConfig::ask_for_path()
-        };
+        todo!()
+        // let path = if !is_custom {
+        //     self.base_path.join("lagrange-worker").join(self.chain.as_ref())
+        // } else {
+        //     AvsConfig::ask_for_path()
+        // };
 
-        self.avs_config.init(self.chain, rpc_url, path, operator_address, is_custom);
-        self.avs_config.store();
+        // self.avs_config.init(self.chain, rpc_url, path, operator_address, is_custom);
+        // self.avs_config.store();
 
-        Ok(())
+        // Ok(())
     }
 }
 

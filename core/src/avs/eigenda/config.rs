@@ -1,12 +1,10 @@
 use std::path::PathBuf;
 
+use ethers::types::Address;
+use serde::{Deserialize, Serialize};
 use url::Url;
 
-use crate::{
-    avs::config::{AvsConfig, NodeConfig},
-    bls::Address,
-    error::IvyError,
-};
+use crate::{avs::config::NodeConfig, error::IvyError};
 
 /// EigenDA node configuration. Mostly a reflection of the AvsConfig struct, with the node_data
 /// field pulled out of the NodeConfigData enum for easier access.
@@ -31,7 +29,10 @@ impl TryFrom<NodeConfig> for EigenDAConfig {
     fn try_from(node_config: NodeConfig) -> Result<Self, Self::Error> {
         match node_config {
             NodeConfig::EigenDA(eigenda_config) => Ok(eigenda_config),
-            _ => Err(IvyError::ConfigError("NodeConfig is not EigenDA".to_string())),
+            _ => Err(IvyError::ConfigMatchError(
+                "EigenDA".to_string(),
+                node_config.node_type().to_string(),
+            )),
         }
     }
 }

@@ -131,10 +131,6 @@ impl AvsVariant for AltLayer {
         None
     }
 
-    fn base_path(&self) -> PathBuf {
-        self.base_path.clone()
-    }
-
     fn run_path(&self) -> PathBuf {
         self.base_path
             .join("mach-avs-operator-setup")

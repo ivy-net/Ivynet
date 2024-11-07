@@ -82,6 +82,9 @@ pub enum IvyError {
     #[error(transparent)]
     ConfigError(#[from] crate::config::ConfigError),
 
+    #[error("Config type mismatch: expected {0}, found {1}")]
+    ConfigMatchError(String, String),
+
     #[error(transparent)]
     ProviderError(#[from] ProviderError),
 
