@@ -79,15 +79,32 @@ impl DbAvsVersionData {
         pool: &sqlx::PgPool,
         avs_data: &AvsVersionData,
     ) -> Result<(), BackendError> {
-        query!(
-            "INSERT INTO avs_version_data (avs_name, latest_version, chain)
-            VALUES ($1, $2, $3)",
-            avs_data.avs_name.as_str(),
-            avs_data.latest_version.to_string(),
-            avs_data.chain.to_string(),
-        )
-        .execute(pool)
-        .await?;
+        match (&avs_data.breaking_change_version, &avs_data.breaking_change_datetime) {
+            (Some(breaking_change_version), Some(breaking_change_datetime)) => {
+                query!(
+                    "INSERT INTO avs_version_data (avs_name, latest_version, chain, breaking_change_version, breaking_change_datetime)
+                    VALUES ($1, $2, $3, $4, $5)",
+                    avs_data.avs_name.as_str(),
+                    avs_data.latest_version.to_string(),
+                    avs_data.chain.to_string(),
+                    breaking_change_version.to_string(),
+                    breaking_change_datetime,
+                )
+                .execute(pool)
+                .await?;
+            }
+            _ => {
+                query!(
+                    "INSERT INTO avs_version_data (avs_name, latest_version, chain)
+                    VALUES ($1, $2, $3)",
+                    avs_data.avs_name.as_str(),
+                    avs_data.latest_version.to_string(),
+                    avs_data.chain.to_string(),
+                )
+                .execute(pool)
+                .await?;
+            }
+        }
 
         Ok(())
     }
@@ -95,10 +112,15 @@ impl DbAvsVersionData {
     pub async fn delete_avs_data(
         pool: &sqlx::PgPool,
         avs_name: &AvsName,
+        chain: &Chain,
     ) -> Result<(), BackendError> {
-        query!("DELETE FROM avs_version_data WHERE avs_name = $1", avs_name.as_str())
-            .execute(pool)
-            .await?;
+        query!(
+            "DELETE FROM avs_version_data WHERE avs_name = $1 AND chain = $2",
+            avs_name.as_str(),
+            chain.to_string(),
+        )
+        .execute(pool)
+        .await?;
 
         Ok(())
     }

@@ -68,6 +68,7 @@ async fn set_avs_version(pool: &sqlx::PgPool, avs_data: &str) -> Result<(), Back
     let name = AvsName::try_from(avs_data[0]).map_err(|_| BackendError::InvalidAvs)?;
     let chain = try_parse_chain(avs_data[1]).expect("Cannot parse chain");
     let version = Version::parse(avs_data[2]).expect("Cannot parse version");
+
     println!("Setting version {:?} for avs {:?} on {:?}", version, name, chain);
     DbAvsVersionData::set_avs_version(pool, &name, &chain, &version).await?;
     Ok(())
