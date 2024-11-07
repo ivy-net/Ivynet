@@ -103,3 +103,9 @@ sqlx migrate prepare
 ```sh
 cargo run -- --set-avs-version eigenda:holesky:0.8.4
 ```
+
+### Set breaking change version for AVS
+
+```sh
+cargo run -- --set-breaking-change-version eigenda:holesky:0.8.0:1728622800000
+```

@@ -144,4 +144,26 @@ impl DbAvsVersionData {
 
         Ok(())
     }
+
+    pub async fn set_breaking_change_version(
+        pool: &sqlx::PgPool,
+        avs_name: &AvsName,
+        chain: &Chain,
+        breaking_change_version: &Version,
+        breaking_change_datetime: &NaiveDateTime,
+    ) -> Result<(), BackendError> {
+        query!(
+            "UPDATE avs_version_data
+            SET breaking_change_version = $3, breaking_change_datetime = $4
+            WHERE avs_name = $1 AND chain = $2",
+            avs_name.as_str(),
+            chain.to_string(),
+            Some(breaking_change_version.to_string()),
+            Some(breaking_change_datetime)
+        )
+        .execute(pool)
+        .await?;
+
+        Ok(())
+    }
 }

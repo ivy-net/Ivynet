@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use chrono::DateTime;
 use clap::Parser as _;
 use ivynet_backend::{
     config::Config,
@@ -25,6 +26,8 @@ async fn main() -> Result<(), BackendError> {
         Ok(add_account(&pool, &organization).await?)
     } else if let Some(avs_data) = config.set_avs_version {
         Ok(set_avs_version(&pool, &avs_data).await?)
+    } else if let Some(avs_data) = config.set_breaking_change_version {
+        Ok(set_breaking_change_version(&pool, &avs_data).await?)
     } else {
         let cache = memcache::connect(config.cache_url.to_string())?;
         let http_service = http::serve(
@@ -71,5 +74,24 @@ async fn set_avs_version(pool: &sqlx::PgPool, avs_data: &str) -> Result<(), Back
 
     println!("Setting version {:?} for avs {:?} on {:?}", version, name, chain);
     DbAvsVersionData::set_avs_version(pool, &name, &chain, &version).await?;
+    Ok(())
+}
+
+async fn set_breaking_change_version(
+    pool: &sqlx::PgPool,
+    avs_data: &str,
+) -> Result<(), BackendError> {
+    let avs_data = avs_data.split(':').collect::<Vec<_>>();
+    let name = AvsName::try_from(avs_data[0]).map_err(|_| BackendError::InvalidAvs)?;
+    let chain = try_parse_chain(avs_data[1]).expect("Cannot parse chain");
+    let version = Version::parse(avs_data[2]).expect("Cannot parse breaking change version");
+    let timestamp = avs_data[3].parse::<i64>().expect("Cannot parse datetime") / 1000;
+    let datetime = DateTime::from_timestamp(timestamp, 0).expect("Invalid timestamp").naive_utc();
+
+    println!(
+        "Setting breaking change version {:?} at {:?} for avs {:?} on {:?}",
+        version, datetime, name, chain
+    );
+    DbAvsVersionData::set_breaking_change_version(pool, &name, &chain, &version, &datetime).await?;
     Ok(())
 }
