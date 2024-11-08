@@ -2,12 +2,7 @@ use std::sync::Arc;
 
 use crate::{
     error::IvyError,
-    grpc::{
-        backend::backend_client::BackendClient,
-        messages::SignedLogs,
-        tonic::{transport::Channel, Request},
-    },
-    signature::sign_string,
+    grpc::{backend::backend_client::BackendClient, tonic::transport::Channel},
     wallet::IvyWallet,
 };
 use axum::{
@@ -18,10 +13,10 @@ use axum::{
     Json, Router,
 };
 use tokio::sync::RwLock;
-use tracing::debug;
 
 pub type AppState = Arc<RwLock<LogServerState>>;
 
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 pub struct LogServerState {
     backend_client: BackendClient<Channel>,
@@ -43,25 +38,28 @@ pub async fn serve_log_server(
 }
 
 pub async fn post_log(
-    State(state): State<AppState>,
-    Json(log): Json<serde_json::Value>,
+    State(_state): State<AppState>,
+    Json(_log): Json<serde_json::Value>,
 ) -> Result<Json<bool>, LogServerError> {
-    let connection_wallet = state.read().await.connection_wallet.clone();
-    let backend_client = &mut state.write().await.backend_client;
-    send(&log.to_string(), &connection_wallet, backend_client).await?;
+    // TODO: This server is not valid anymore, right?
+    // let connection_wallet = state.read().await.connection_wallet.clone();
+    // let backend_client = &mut state.write().await.backend_client;
+    // send(&log.to_string(), &connection_wallet, backend_client).await?;
     Ok(true.into())
 }
 
+#[allow(dead_code)]
 async fn send(
-    logs: &str,
-    wallet: &IvyWallet,
-    client: &mut BackendClient<Channel>,
+    _logs: &str,
+    _wallet: &IvyWallet,
+    _client: &mut BackendClient<Channel>,
 ) -> Result<(), IvyError> {
-    let signature = sign_string(logs, wallet)?;
-    debug!("Log send | Signature: {:?} Logs: {:?}", signature, logs);
-    client
-        .logs(Request::new(SignedLogs { logs: logs.to_string(), signature: signature.to_vec() }))
-        .await?;
+    // TODO: This is not gonna be here either, right?
+    // let signature = sign_string(logs, wallet)?;
+    // debug!("Log send | Signature: {:?} Logs: {:?}", signature, logs);
+    // client
+    //     .logs(Request::new(SignedLogs { logs: logs.to_string(), signature: signature.to_vec() }))
+    //     .await?;
     Ok(())
 }
 

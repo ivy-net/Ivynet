@@ -48,6 +48,7 @@ pub async fn set_backend_connection(config: &mut IvyConfig) -> Result<(), IvyErr
                 .expect("Cannot fetch hostname from the node");
         if backend
             .register(Request::new(RegistrationCredentials {
+                machine_id: config.machine_id.into(),
                 email,
                 password,
                 hostname,

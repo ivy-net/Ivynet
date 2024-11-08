@@ -1,7 +1,6 @@
 use crate::{
-    db::{log::ContainerLog, metric::Metric, node::DbNode, node_data::DbNodeData, Account},
+    db::{avs::Avs, log::ContainerLog, machine::Machine, metric::Metric, Account},
     error::BackendError,
-    grpc::grpc::messages::SignedDeleteNodeData,
 };
 use ivynet_core::{
     avs::names::AvsName,
@@ -13,14 +12,13 @@ use ivynet_core::{
         messages::{RegistrationCredentials, SignedLogs, SignedMetrics, SignedNodeData},
         server, Status,
     },
-    signature::{
-        recover_delete_node_data, recover_from_string, recover_metrics, recover_node_data,
-    },
+    signature::{recover_from_string, recover_metrics, recover_node_data},
 };
 use semver::Version;
 use sqlx::PgPool;
 use std::sync::Arc;
 use tracing::{debug, error};
+use uuid::Uuid;
 pub struct BackendService {
     pool: Arc<PgPool>,
 }
@@ -42,12 +40,21 @@ impl Backend for BackendService {
             Account::verify(&self.pool, &req.email, &req.password).await.map_err(|_| {
                 Status::not_found(format!("User {} not found or password is incorrect", req.email))
             })?;
-        let node_id = Address::from_slice(&req.public_key);
+        let client_id = Address::from_slice(&req.public_key);
         account
-            .attach_node(&self.pool, &node_id, &req.hostname)
+            .attach_client(
+                &self.pool,
+                &client_id,
+                Uuid::from_slice(&req.machine_id)
+                    .map_err(|_| Status::invalid_argument("Wrong machine_id size".to_string()))?,
+                &req.hostname,
+            )
             .await
             .map_err(|_| Status::not_found(format!("Cannot register new node for {account:?}",)))?;
-        debug!("User {} has registered new node with address {:?}", &req.email, node_id);
+        debug!(
+            "User {} has registered new client with address {:?} and machine id {:?}",
+            &req.email, client_id, req.machine_id
+        );
 
         Ok(Response::new(()))
     }
@@ -56,15 +63,23 @@ impl Backend for BackendService {
         let request = request.into_inner();
         debug!("Received logs: {:?}", request.logs);
 
-        let node_id = recover_from_string(
+        let client_id = recover_from_string(
             &request.logs,
             &Signature::try_from(request.signature.as_slice())
                 .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
         )?;
 
-        let _ = DbNode::get(&self.pool, &node_id)
-            .await
-            .map_err(|_| Status::not_found("Node not registered"))?;
+        if !Machine::is_owned_by(
+            &self.pool,
+            &client_id,
+            Uuid::from_slice(&request.machine_id)
+                .map_err(|_| Status::invalid_argument("Machine id has wrong length".to_string()))?,
+        )
+        .await
+        .unwrap_or(false)
+        {
+            return Err(Status::not_found("Machine not registered for given client".to_string()));
+        }
 
         let mut parsed_logs =
             serde_json::from_str::<Vec<ContainerLog>>(&request.logs).map_err(|e| {
@@ -74,10 +89,7 @@ impl Backend for BackendService {
 
         // TODO: We can also batch insert logs in the future.
 
-        let futures = parsed_logs.iter_mut().map(|log| {
-            log.node_id = Some(node_id);
-            ContainerLog::record(&self.pool, log)
-        });
+        let futures = parsed_logs.iter_mut().map(|log| ContainerLog::record(&self.pool, log));
 
         let results = futures::future::join_all(futures).await;
 
@@ -94,83 +106,109 @@ impl Backend for BackendService {
     async fn metrics(&self, request: Request<SignedMetrics>) -> Result<Response<()>, Status> {
         let req = request.into_inner();
 
-        let node_id = recover_metrics(
+        let client_id = recover_metrics(
             &req.metrics,
             &Signature::try_from(req.signature.as_slice())
                 .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
         )
         .await?;
+        let machine_id = Uuid::from_slice(&req.machine_id)
+            .map_err(|_| Status::invalid_argument("Machine id has wrong length".to_string()))?;
 
-        let node = DbNode::get(&self.pool, &node_id)
-            .await
-            .map_err(|_| Status::not_found("Node not registered"))?;
+        if !Machine::is_owned_by(&self.pool, &client_id, machine_id).await.unwrap_or(false) {
+            return Err(Status::not_found("Machine not registered for given client".to_string()));
+        }
 
         _ = Metric::record(
             &self.pool,
-            &node,
+            machine_id,
+            &req.avs_name,
             &req.metrics.iter().map(|v| v.into()).collect::<Vec<_>>(),
         )
         .await
-        .map_err(|_| Status::internal("Failed while saving metrics"))?;
+        .map_err(|e| Status::internal(&format!("Failed while saving metrics: {e:?}")))?;
 
         Ok(Response::new(()))
     }
 
-    async fn node_data(&self, request: Request<SignedNodeData>) -> Result<Response<()>, Status> {
+    async fn update_node_data(
+        &self,
+        request: Request<SignedNodeData>,
+    ) -> Result<Response<()>, Status> {
         let req = request.into_inner();
         if let Some(node_data) = &req.node_data {
-            let node_id = recover_node_data(
+            let client_id = recover_node_data(
                 node_data,
                 &Signature::try_from(req.signature.as_slice())
                     .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
             )?;
 
-            let _node = DbNode::get(&self.pool, &node_id)
-                .await
-                .map_err(|_| Status::not_found("Node not registered"))?;
+            let machine_id = Uuid::from_slice(&node_data.machine_id)
+                .map_err(|_| Status::invalid_argument("Machine id has wrong length".to_string()))?;
+
+            if !Machine::is_owned_by(&self.pool, &client_id, machine_id).await.unwrap_or(false) {
+                return Err(Status::not_found(
+                    "Machine not registered for given client".to_string(),
+                ));
+            }
 
             if !node_data.avs_name.is_empty() {
-                DbNodeData::record_avs_node_data(
+                Avs::record_avs_data(
                     &self.pool,
                     &Address::from_slice(&node_data.operator_id),
-                    &node_id,
+                    machine_id,
                     &AvsName::try_from(node_data.avs_name.as_str())
                         .map_err(|_| Status::invalid_argument("Bad AVS name provided"))?,
-                    &Version::parse(&node_data.avs_version)
-                        .expect("Cannot parse version on NodeData grpc message"),
-                    node_data.active_set,
+                    &node_data
+                        .avs_version
+                        .as_ref()
+                        .map(|v| Version::parse(v).unwrap_or(Version::new(0, 0, 0)))
+                        .unwrap_or(Version::new(0, 0, 0)),
+                    node_data.active_set.unwrap_or(false),
                 )
                 .await
                 .map_err(|e| Status::internal(format!("Failed while saving node_data: {}", e)))?;
             }
+            Ok(Response::new(()))
         } else {
-            return Err(Status::invalid_argument("Node data is missing"));
+            Err(Status::invalid_argument("Node data is missing"))
         }
-
-        Ok(Response::new(()))
     }
 
     async fn delete_node_data(
         &self,
-        request: Request<SignedDeleteNodeData>,
+        request: Request<SignedNodeData>,
     ) -> Result<Response<()>, Status> {
         let req = request.into_inner();
 
-        let _node_id = recover_delete_node_data(
-            req.avs_name.clone(),
-            &Signature::try_from(req.signature.as_slice())
-                .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
-        )?;
+        if let Some(node_data) = &req.node_data {
+            let client_id = recover_node_data(
+                node_data,
+                &Signature::try_from(req.signature.as_slice())
+                    .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
+            )?;
 
-        DbNodeData::delete_avs_operator_data(
-            &self.pool,
-            &Address::from_slice(&req.operator_id),
-            &AvsName::try_from(req.avs_name.as_str())
-                .map_err(|_| Status::invalid_argument("Bad AVS name provided"))?,
-        )
-        .await
-        .map_err(|e| Status::internal(format!("Failed while deleting node_data: {}", e)))?;
-        Ok(Response::new(()))
+            let machine_id = Uuid::from_slice(&node_data.machine_id)
+                .map_err(|_| Status::invalid_argument("Machine id has wrong length".to_string()))?;
+
+            if !Machine::is_owned_by(&self.pool, &client_id, machine_id).await.unwrap_or(false) {
+                return Err(Status::not_found(
+                    "Machine not registered for given client".to_string(),
+                ));
+            }
+            Avs::delete_avs_data(
+                &self.pool,
+                machine_id,
+                &Address::from_slice(&node_data.operator_id),
+                &AvsName::try_from(node_data.avs_name.as_str())
+                    .map_err(|_| Status::invalid_argument("Bad AVS name provided"))?,
+            )
+            .await
+            .map_err(|e| Status::internal(format!("Failed while deleting node_data: {}", e)))?;
+            Ok(Response::new(()))
+        } else {
+            Err(Status::invalid_argument("Node data is missing"))
+        }
     }
 }
 

@@ -11,8 +11,9 @@ pub enum AvsName {
     OpenLayer,
 }
 
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum AvsParseError {
+    #[error("Avs type not found")]
     NotFound,
 }
 

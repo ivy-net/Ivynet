@@ -13,9 +13,10 @@ use uuid::Uuid;
 
 use crate::{
     db::{
-        node::DbNode,
+        avs::Avs,
+        machine::Machine,
         verification::{Verification, VerificationType},
-        Account, Node, Organization, Role,
+        Account, Organization, Role,
     },
     error::BackendError,
 };
@@ -118,20 +119,38 @@ pub async fn get(
 
 #[utoipa::path(
     get,
-    path = "/organization/nodes",
+    path = "/organization/machines",
     responses(
-        (status = 200, body = [Node]),
+        (status = 200, body = [Machine]),
         (status = 404)
     )
 )]
-pub async fn nodes(
+pub async fn machines(
     headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
-) -> Result<Json<Vec<Node>>, BackendError> {
+) -> Result<Json<Vec<Machine>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
 
-    Ok(DbNode::get_all_for_account(&state.pool, &account).await?.into())
+    Ok(account.machines(&state.pool).await?.into())
+}
+
+#[utoipa::path(
+    get,
+    path = "/organization/avses",
+    responses(
+        (status = 200, body = [Avs]),
+        (status = 404)
+    )
+)]
+pub async fn avses(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+) -> Result<Json<Vec<Avs>>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+
+    Ok(account.avses(&state.pool).await?.into())
 }
 
 #[utoipa::path(

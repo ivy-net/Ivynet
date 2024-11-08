@@ -5,12 +5,9 @@ use ivynet_core::ethers::types::Address;
 use serde::{Deserialize, Serialize};
 use sqlx::{query, PgPool};
 use utoipa::ToSchema;
+use uuid::Uuid;
 
-use super::{
-    node::{DbNode, Node},
-    verification::Verification,
-    Organization,
-};
+use super::{avs::Avs, client::Client, machine::Machine, verification::Verification, Organization};
 
 #[derive(Clone, Debug, PartialEq, PartialOrd, sqlx::Type, Deserialize, Serialize, ToSchema)]
 #[sqlx(type_name = "user_role", rename_all = "lowercase")]
@@ -139,17 +136,52 @@ impl Account {
             .await?)
     }
 
-    pub async fn nodes(&self, pool: &PgPool) -> Result<Vec<Node>, BackendError> {
-        DbNode::get_all_for_account(pool, self).await
+    pub async fn clients(&self, pool: &PgPool) -> Result<Vec<Client>, BackendError> {
+        Client::get_all_for_account(pool, self).await
     }
 
-    pub async fn attach_node(
+    pub async fn machines(&self, pool: &PgPool) -> Result<Vec<Machine>, BackendError> {
+        let mut machines = Vec::new();
+        for client in self.clients(pool).await? {
+            let mut m = Machine::get_all_for_client_id(pool, &client.client_id).await?;
+            machines.append(&mut m);
+        }
+        Ok(machines)
+    }
+
+    pub async fn avses(&self, pool: &PgPool) -> Result<Vec<Avs>, BackendError> {
+        let mut avses = Vec::new();
+        for machine in self.machines(pool).await? {
+            let mut a = Avs::get_machines_avs_list(pool, machine.machine_id).await?;
+            avses.append(&mut a);
+        }
+        Ok(avses)
+    }
+
+    pub async fn machines_and_avses(
         &self,
         pool: &PgPool,
-        node_id: &Address,
+    ) -> Result<Vec<(Machine, Vec<Avs>)>, BackendError> {
+        let mut machines = Vec::new();
+        for machine in self.machines(pool).await? {
+            machines.push((
+                machine.clone(),
+                Avs::get_machines_avs_list(pool, machine.machine_id).await?,
+            ));
+        }
+        Ok(machines)
+    }
+
+    pub async fn attach_client(
+        &self,
+        pool: &PgPool,
+        client_id: &Address,
+        machine_id: Uuid,
         name: &str,
     ) -> Result<(), BackendError> {
-        DbNode::create(pool, self, node_id, name).await
+        Client::create(pool, self, client_id).await?;
+        Machine::create(pool, client_id, name, machine_id).await?;
+        Ok(())
     }
 
     pub async fn new(

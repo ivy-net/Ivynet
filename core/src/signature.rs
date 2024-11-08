@@ -72,25 +72,8 @@ fn build_node_data_message(data: &NodeData) -> Result<H256, IvyError> {
     let tokens = vec![
         Token::Address(Address::from_slice(&data.operator_id)),
         Token::String(data.avs_name.clone()),
-        Token::String(data.avs_version.clone()),
-        Token::Bool(data.active_set),
+        Token::String(data.avs_version.clone().unwrap_or("".to_string())),
+        Token::Bool(data.active_set.unwrap_or(false)),
     ];
     Ok(H256::from(&keccak256(encode(&tokens))))
-}
-
-pub fn sign_delete_node_data(
-    operator_id: Address,
-    avs_name: String,
-    wallet: &IvyWallet,
-) -> Result<Signature, IvyError> {
-    let tokens = vec![Token::Address(operator_id), Token::String(avs_name)];
-
-    sign_hash(H256::from(&keccak256(encode(&tokens))), wallet)
-}
-
-pub fn recover_delete_node_data(
-    avs_name: String,
-    signature: &Signature,
-) -> Result<Address, IvyError> {
-    recover_from_string(&avs_name, signature)
 }

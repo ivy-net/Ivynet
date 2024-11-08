@@ -3,7 +3,6 @@ use crate::{
     docker::dockercmd::DockerCmd,
     eigen::{contracts::delegation_manager::DelegationManager, quorum::QuorumType},
     error::IvyError,
-    grpc::messages::NodeData,
     ivy_yaml::create_ivy_dockercompose,
     keychain::{KeyType, Keychain},
     messenger::BackendMessenger,
@@ -130,57 +129,61 @@ impl AvsProvider {
 
     /// Start the loaded AVS instance. Returns an error if no AVS instance is loaded.
     pub async fn start(&mut self) -> Result<(), IvyError> {
-        let avs_name = self.avs_mut()?.name();
-        let is_running = self.avs_mut()?.is_running();
-        let version = self.avs()?.version()?;
-        let active_set = self.avs()?.active_set(self.provider.clone()).await;
-        let signer = self.provider.signer().clone();
-        if is_running {
-            return Err(IvyError::AvsRunningError(
-                avs_name.to_string(),
-                Chain::try_from(signer.chain_id())?,
-            ));
-        }
-
-        if let Some(messenger) = &mut self.messenger {
-            let node_data = NodeData {
-                operator_id: signer.address().as_bytes().to_vec(),
-                avs_name: avs_name.to_string(),
-                avs_version: version.to_string(),
-                active_set,
-            };
-            messenger.send_node_data_payload(&node_data).await?;
-        } else {
-            println!("No messenger found - can't update data state");
-        }
-
+        // TODO: How does it look with new setup?
+        // let avs_name = self.avs_mut()?.name();
+        // let is_running = self.avs_mut()?.is_running();
+        // let version = self.avs()?.version()?;
+        // let active_set = self.avs()?.active_set(self.provider.clone()).await;
+        // let signer = self.provider.signer().clone();
+        // if is_running {
+        //     return Err(IvyError::AvsRunningError(
+        //         avs_name.to_string(),
+        //         Chain::try_from(signer.chain_id())?,
+        //     ));
+        // }
+        //
+        // if let Some(messenger) = &mut self.messenger {
+        //     let node_data = NodeData {
+        //         machine_id: todo!(),
+        //         operator_id: signer.address().as_bytes().to_vec(),
+        //         avs_type: todo!(),
+        //         avs_name: avs_name.to_string(),
+        //         avs_version: Some(version.to_string()),
+        //         active_set: Some(active_set),
+        //     };
+        //     messenger.send_node_data_payload(&node_data).await?;
+        // } else {
+        //     println!("No messenger found - can't update data state");
+        // }
+        //
         self.avs_mut()?.start().await
     }
 
     pub async fn attach(&mut self) -> Result<Child, IvyError> {
-        let avs_name = self.avs_mut()?.name();
-        let is_running = self.avs_mut()?.is_running();
-        let active_set = self.avs()?.active_set(self.provider.clone()).await;
-        let version = self.avs()?.version()?;
-        let signer = self.provider.signer().clone();
-        if is_running {
-            return Err(IvyError::AvsRunningError(
-                avs_name.to_string(),
-                Chain::try_from(signer.chain_id())?,
-            ));
-        }
-
-        if let Some(messenger) = &mut self.messenger {
-            let node_data = NodeData {
-                operator_id: signer.address().as_bytes().to_vec(),
-                avs_name: avs_name.to_string(),
-                avs_version: version.to_string(),
-                active_set,
-            };
-            messenger.send_node_data_payload(&node_data).await?;
-        } else {
-            println!("No messenger found - can't update data state");
-        }
+        // TODO: This is not too valid either, right?
+        // let avs_name = self.avs_mut()?.name();
+        // let is_running = self.avs_mut()?.is_running();
+        // let active_set = self.avs()?.active_set(self.provider.clone()).await;
+        // let version = self.avs()?.version()?;
+        // let signer = self.provider.signer().clone();
+        // if is_running {
+        //     return Err(IvyError::AvsRunningError(
+        //         avs_name.to_string(),
+        //         Chain::try_from(signer.chain_id())?,
+        //     ));
+        // }
+        //
+        // if let Some(messenger) = &mut self.messenger {
+        //     let node_data = NodeData {
+        //         operator_id: signer.address().as_bytes().to_vec(),
+        //         avs_name: avs_name.to_string(),
+        //         avs_version: version.to_string(),
+        //         active_set,
+        //     };
+        //     messenger.send_node_data_payload(&node_data).await?;
+        // } else {
+        //     println!("No messenger found - can't update data state");
+        // }
         self.avs_mut()?.attach().await
     }
 

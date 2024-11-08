@@ -10,7 +10,6 @@ use axum_extra::extract::{
     CookieJar,
 };
 use base64::Engine as _;
-use ivynet_core::ethers::types::Address;
 use sendgrid::v3::{Email, Message, Personalization};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
@@ -19,7 +18,7 @@ use uuid::Uuid;
 
 use crate::{
     db::{
-        node::DbNode,
+        machine::Machine,
         verification::{Verification, VerificationType},
         Account,
     },
@@ -216,14 +215,21 @@ fn decode(input: &str) -> Result<(String, Option<String>), BackendError> {
 pub async fn verify_node_ownership(
     account: &Account,
     State(state): State<HttpState>,
-    Path(id): Path<String>,
-) -> Result<Address, BackendError> {
-    // Get identity of the node
-    let node_id = id.parse::<Address>().map_err(|_| BackendError::BadId)?;
-    // Check legitimacy request for specific node
-    let node = DbNode::get(&state.pool, &node_id).await?;
-    if node.organization_id == account.organization_id {
-        return Ok(node_id);
+    machine_id: String,
+) -> Result<Machine, BackendError> {
+    let machine_id = machine_id.parse::<Uuid>().map_err(|_| BackendError::BadId)?;
+    let machine = Machine::get(&state.pool, machine_id).await?;
+    if !account
+        .machines(&state.pool)
+        .await?
+        .into_iter()
+        .filter_map(|m| if m.machine_id == machine.machine_id { Some(m) } else { None })
+        .collect::<Vec<_>>()
+        .is_empty() ||
+        !account.role.can_write()
+    {
+        Err(BackendError::Unauthorized)
+    } else {
+        Ok(machine)
     }
-    Err(BackendError::Unauthorized)
 }
