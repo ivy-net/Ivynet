@@ -1,13 +1,15 @@
 use anyhow::{Context, Error as AnyError, Result};
 use dialoguer::{Password, Select};
 use ivynet_core::{
-    avs::{build_avs_provider, commands::AvsCommands, config::AvsConfig, fetch_rpc_url},
+    avs::{
+        commands::AvsCommands,
+        config::{NodeConfig, NodeType},
+        eigenda::EigenDAConfig,
+    },
     config::IvyConfig,
-    error::IvyError,
     ethers::types::H160,
     grpc::client::{create_channel, Source},
     keychain::{KeyType, Keychain},
-    utils::try_parse_chain,
 };
 
 use crate::{
@@ -21,16 +23,22 @@ pub async fn parse_avs_subcommands(
     config: &IvyConfig,
 ) -> Result<(), AnyError> {
     let sock = Source::Path(config.uds_dir());
+    if let AvsCommands::Configure { node_type } = subcmd {
+        match node_type {
+            NodeType::EigenDA => {
+                let config = EigenDAConfig::new_from_prompt().await?;
+                NodeConfig::EigenDA(config).store();
+            }
+            _ => unimplemented!("Node type not implemented: {:?}", node_type),
+        }
+        return Ok(());
+    }
 
     // Setup runs local, otherwise construct a client and continue.
     if let AvsCommands::Setup { ref avs, ref chain } = subcmd {
         let keychain = Keychain::default();
-        let ecdsa_keyname = keychain.select_key(KeyType::Ecdsa).map_err(|e| match e {
-            IvyError::NoKeyFoundError => Error::NoECDSAKey,
-            e => e.into(),
-        })?;
-
-        let wallet_address = keychain.public_address(ecdsa_keyname.clone())?.parse::<H160>()?;
+        let ecdsa_keyname = keychain.select_key(KeyType::Ecdsa)?;
+        let wallet_address = keychain.public_address(&ecdsa_keyname)?.parse::<H160>()?;
 
         let setup_options = ["New Deployment", "Custom Attachment"];
         let setup_type = Select::new()
@@ -42,11 +50,7 @@ pub async fn parse_avs_subcommands(
 
         let bls_data = match setup_type {
             0 => {
-                let bls_keyname = keychain.select_key(KeyType::Bls).map_err(|e| match e {
-                    IvyError::NoKeyFoundError => Error::NoBLSKey,
-                    e => e.into(),
-                })?;
-
+                let bls_keyname = keychain.select_key(KeyType::Bls)?;
                 let bls_password: String = Password::new()
                     .with_prompt("Input the password for your stored operator Bls keyfile")
                     .interact()?;
@@ -55,30 +59,32 @@ pub async fn parse_avs_subcommands(
             }
             _ => None,
         };
+        todo!("Finish implementing setup flow");
 
-        let mut avs = build_avs_provider(
-            Some(avs),
-            chain,
-            config,
-            Some(fetch_rpc_url(try_parse_chain(chain)?, config).await?),
-            None,
-            None,
-            None,
-        )
-        .await?;
-        avs.setup(config, wallet_address, bls_data).await.map_err(|e| match e {
-            IvyError::NoKeyFoundError => Error::NoBLSKey,
-            e => e.into(),
-        })?;
+        // let mut avs = build_avs_provider(
+        //     Some(avs),
+        //     chain,
+        //     config,
+        //     Some(fetch_rpc_url(try_parse_chain(chain)?, config).await?),
+        //     None,
+        //     None,
+        //     None,
+        // )
+        // .await?;
+        // avs.setup(config, wallet_address, bls_data).await.map_err(|e| match e {
+        //     IvyError::NoKeyFoundError => Error::NoBLSKey,
+        //     e => e.into(),
+        // })?;
 
         return Ok(());
     }
 
     if let AvsCommands::Inspect { .. } = subcmd {
-        let dir = AvsConfig::log_path();
-        let file = select_logfile(dir, 0).await?;
-        tail_logs(file, 100).await?;
-        return Ok(());
+        todo!("Finish implementing inspect flow")
+        // let dir = AvsConfig::log_path();
+        // let file = select_logfile(dir, 0).await?;
+        // tail_logs(file, 100).await?;
+        // return Ok(());
     }
 
     let channel = create_channel(sock, None).await.context("Failed to connect to the ivynet daemon. Please ensure the daemon is running and is connected to ~/.ivynet/ivynet.ipc")?;
@@ -91,11 +97,7 @@ pub async fn parse_avs_subcommands(
         // TODO: Fix timeout issue
         AvsCommands::Register {} => {
             let keychain = Keychain::default();
-            let ecdsa_keyname = keychain.select_key(KeyType::Ecdsa).map_err(|e| match e {
-                IvyError::NoKeyFoundError => Error::NoECDSAKey,
-                e => e.into(),
-            })?;
-
+            let ecdsa_keyname = keychain.select_key(KeyType::Ecdsa)?;
             let ecdsa_password: String = Password::new()
                 .with_prompt("Input the password for your stored operator ECDSA keyfile")
                 .interact()?;

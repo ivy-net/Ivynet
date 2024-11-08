@@ -1,8 +1,12 @@
 use self::contracts::StakeRegistryAbi;
-use super::{config::NodeConfig, names::AvsName};
+use super::{
+    config::{NodeConfig, NodeType},
+    names::AvsName,
+};
 use crate::{
     avs::AvsVariant,
     config::IvyConfig,
+    docker::{compose_images, dockercmd::DockerCmd},
     download::dl_progress_bar,
     eigen::{
         contracts::delegation_manager::DelegationManagerAbi,
@@ -11,7 +15,7 @@ use crate::{
     },
     env_parser::EnvLines,
     error::{IvyError, SetupError},
-    keychain::Keychain,
+    keychain::{KeyName, Keychain},
     rpc_management::{connect_provider, IvyProvider},
     system,
     utils::gb_to_bytes,
@@ -69,23 +73,22 @@ pub enum EigenDAError {
 pub struct EigenDANode {
     // TODO: Deprecate, assume if object exists, is running
     running: bool,
-    provider: IvyProvider,
+    provider: Arc<IvyProvider>,
     config: EigenDAConfig,
 }
 
 impl EigenDANode {
-    pub fn new(provider: IvyProvider, config: EigenDAConfig) -> Self {
+    pub fn new(provider: Arc<IvyProvider>, config: EigenDAConfig) -> Self {
         Self { running: false, provider, config }
     }
 
-    pub async fn from_node_config(config: NodeConfig, wallet_pw: String) -> Result<Self, IvyError> {
-        let config = EigenDAConfig::try_from(config)?;
-
-        let operator = IvyWallet::from_keystore(config.keyfile.clone(), &wallet_pw)?;
-        let provider = Provider::new(Http::from_str(&config.rpc_url.to_string())?);
+    pub async fn from_config(config: EigenDAConfig, wallet_pw: &str) -> Result<Self, IvyError> {
+        let operator = IvyWallet::from_keystore(config.ecdsa_keyfile.clone(), wallet_pw)?;
+        let provider = Provider::new(Http::from_str(config.rpc_url.as_ref())?);
         let chain = provider.get_chainid().await?;
 
-        let signer = SignerMiddleware::new(provider, operator.with_chain_id(chain.low_u64()));
+        let signer =
+            Arc::new(SignerMiddleware::new(provider, operator.with_chain_id(chain.low_u64())));
 
         Ok(Self::new(signer, config))
     }
@@ -94,20 +97,40 @@ impl EigenDANode {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl AvsVariant for EigenDANode {
-    async fn setup(
-        &mut self,
-        provider: Arc<IvyProvider>,
-        _config: &IvyConfig,
-        operator_address: H160,
-        bls_key: Option<(String, String)>,
-    ) -> Result<(), IvyError> {
+    async fn start(&mut self) -> Result<(), IvyError> {
+        let compose_file = self.config.compose_file.clone();
+
+        let compose_filename = compose_file
+            .file_name()
+            .ok_or_else(|| {
+                IvyError::InvalidDockerCompose("Compose file path is invalid".to_string())
+            })?
+            .to_str()
+            .ok_or_else(|| {
+                IvyError::InvalidDockerCompose("Compose file path is invalid".to_string())
+            })?;
+
+        let parent_dir = self.config.compose_file.parent().ok_or_else(|| {
+            IvyError::InvalidDockerCompose("Compose file path is invalid".to_string())
+        })?;
+        let _ = DockerCmd::new()
+            .await?
+            .current_dir(parent_dir)
+            .args(["-f", compose_filename, "up", "--force-recreate"])
+            .spawn()?;
+        Ok(())
+    }
+
+    async fn setup(&mut self) -> Result<(), IvyError> {
         todo!()
-        // self.build_pathing(provider.provider().url().clone(), operator_address, bls_key.is_none())?;
-        // if let Some((bls_key_name, bls_key_password)) = bls_key {
-        //     download_operator_setup(self.base_path.clone()).await?;
-        //     download_g1_g2(self.base_path.clone()).await?;
-        //     self.build_env(provider, &bls_key_name, &bls_key_password).await?
-        // }
+    }
+
+    fn node_type(&self) -> NodeType {
+        NodeType::EigenDA
+    }
+
+    fn provider(&self) -> Arc<IvyProvider> {
+        self.provider.clone()
     }
 
     // TODO: This method may need to be abstracted in some way, as not all AVS types encforce
@@ -428,8 +451,7 @@ impl EigenDANode {
 
         // BLS key
         let keychain = Keychain::default();
-        let bls_json_file_location =
-            keychain.get_path(crate::keychain::KeyName::Bls(bls_key_name.to_owned()));
+        let bls_json_file_location = keychain.get_path(&KeyName::Bls(bls_key_name.to_owned()));
         debug!("BLS key file location: {:?}", &bls_json_file_location);
 
         env_lines.set(
@@ -519,7 +541,7 @@ pub async fn download_g1_g2(eigen_path: PathBuf) -> Result<(), IvyError> {
     Ok(())
 }
 
-pub async fn download_operator_setup(eigen_path: PathBuf) -> Result<(), IvyError> {
+pub async fn download_operator_setup(eigen_path: &PathBuf) -> Result<(), IvyError> {
     let mut setup = false;
     let repo_url =
         "https://github.com/ivy-net/eigenda-operator-setup/archive/refs/heads/master.zip";

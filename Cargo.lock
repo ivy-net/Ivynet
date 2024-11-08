@@ -2578,6 +2578,7 @@ dependencies = [
  "rand",
  "regex",
  "reqwest 0.12.9",
+ "rustc-hex",
  "semver",
  "serde",
  "serde_json",

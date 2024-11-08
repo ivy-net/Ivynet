@@ -3,12 +3,13 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-use crate::avs::AvsProvider;
+use crate::avs::IvyNode;
 
-pub struct NodeManager(HashMap<String, AvsProvider>);
+#[derive(Debug)]
+pub struct NodeManager(HashMap<String, IvyNode>);
 
 impl Deref for NodeManager {
-    type Target = HashMap<String, AvsProvider>;
+    type Target = HashMap<String, IvyNode>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -22,10 +23,16 @@ impl DerefMut for NodeManager {
 }
 
 impl NodeManager {
-    fn new() -> Self {
+    pub fn new() -> Self {
         Self(HashMap::new())
     }
-    fn list_nodes(&self) -> Vec<String> {
+    pub fn list_nodes(&self) -> Vec<String> {
         self.keys().cloned().collect()
+    }
+}
+
+impl Default for NodeManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
