@@ -5,6 +5,7 @@ use clap::Parser;
 use dialoguer::{Input, MultiSelect, Password, Select};
 use ivynet_core::{
     config::IvyConfig,
+    error::IvyError,
     ethers::signers::{coins_bip39::English, MnemonicBuilder},
     keychain::{Key, KeyName, KeyType, Keychain},
 };
@@ -263,7 +264,7 @@ pub async fn create_key_of_type(key_type: KeyType) -> Result<Key, Error> {
 pub async fn get_key() -> Result<(), Error> {
     let keychain = Keychain::default();
 
-    let key_list = keychain.list()?;
+    let key_list = keychain.list().map_err(IvyError::from)?;
 
     if key_list.is_empty() {
         println!("You have no keys to inspect");
@@ -289,10 +290,10 @@ pub async fn get_key() -> Result<(), Error> {
             .expect("Invalid password provided");
 
         let key_name = key_list[key_index].clone();
-        let key = keychain.load(key_name.clone(), &key_password)?;
+        let key = keychain.load(key_name.clone(), &key_password).map_err(IvyError::from)?;
 
         println!("Key name: {}", &key_name);
-        println!("Path to key: {}", keychain.get_path(key_name.clone()).to_str().unwrap());
+        println!("Path to key: {}", keychain.get_path(&key_name).to_str().unwrap());
         println!("Public address: {:?}", key.address());
         println!("Private key: {}", key.private_key_string());
     }

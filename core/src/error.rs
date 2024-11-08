@@ -1,3 +1,5 @@
+use core::error;
+
 use ethers::{
     contract::ContractError,
     providers::{JsonRpcError, MiddlewareError as _, ProviderError},
@@ -96,9 +98,6 @@ pub enum IvyError {
     )]
     AvsRunningError(String, Chain),
 
-    #[error("No valid key was found. Please create a key before trying again.")]
-    NoKeyFoundError,
-
     #[error("AVS already started")]
     AvsNotLoadedError,
 
@@ -196,6 +195,21 @@ pub enum IvyError {
 
     #[error(transparent)]
     DockerError(#[from] DockerError),
+
+    #[error(transparent)]
+    IvyWalletError(#[from] crate::wallet::IvyWalletError),
+
+    #[error(transparent)]
+    NodeConfigError(#[from] crate::avs::config::NodeConfigError),
+
+    #[error(transparent)]
+    KeychainError(#[from] crate::keychain::KeychainError),
+
+    #[error(transparent)]
+    EnvLineError(#[from] crate::env_parser::EnvLineError),
+
+    #[error("Invalid docker-compose file: {0}")]
+    InvalidDockerCompose(String),
 }
 
 #[derive(Debug, Error)]

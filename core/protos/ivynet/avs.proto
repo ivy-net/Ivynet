@@ -11,9 +11,13 @@ import "ivynet/types.proto";
 message AvsInfoRequest{
 }
 
-
-// Response type for AvsInfoRequest. Returns information about the loaded AVS.
+// Response to AvsInfoRequest, returns information about currently running AVSes.
 message AvsInfoResponse {
+    repeated AvsInfo avs_info = 1;
+}
+
+// Information about a single AVS instance.
+message AvsInfo {
     // Returns whether or not the AVS service is currently running. Also returns false if the AVS is not loaded.
     bool running = 1;
     // The type of the loaded AVS. Returns "None" if no AVS is loaded.
@@ -28,12 +32,12 @@ message SetupRequest {
     string chain = 2;
 }
 
-// Start the currently loaded AVS instance. If arguments are passed, this will also set the AVS to the target type and chain in the process.
+// Start a node instance based on the passed configuration file.
 message StartRequest {
-    // Name of the AVS type to start.
-    optional string avs = 1;
-    // Chain on which to start the above AVS.
-    optional string chain = 2;
+    // Name of the node config to start.
+    string config = 1;
+    // Extra data to pass to the node.
+    map<string, string> extra_data = 2;
 }
 
 message AttachRequest {

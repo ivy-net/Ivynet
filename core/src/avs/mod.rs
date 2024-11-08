@@ -4,27 +4,25 @@ use crate::{
     eigen::{contracts::delegation_manager::DelegationManager, quorum::QuorumType},
     error::IvyError,
     ivy_yaml::create_ivy_dockercompose,
-    keychain::{KeyType, Keychain},
     messenger::BackendMessenger,
-    rpc_management::{connect_provider, IvyProvider},
-    utils::try_parse_chain,
+    rpc_management::IvyProvider,
     wallet::IvyWallet,
 };
 use async_trait::async_trait;
-use config::AvsConfig;
+use config::NodeType;
 use dialoguer::Input;
 use ethers::{
     middleware::SignerMiddleware,
     providers::Middleware,
     signers::Signer,
-    types::{Chain, H160, U256},
+    types::{Chain, U256},
 };
 use lagrange::Lagrange;
 use names::AvsName;
 use semver::Version;
 use std::{collections::HashMap, fmt::Debug, path::PathBuf, sync::Arc};
 use tokio::process::Child;
-use tracing::{debug, info};
+use tracing::debug;
 use url::Url;
 
 pub mod commands;
@@ -38,12 +36,45 @@ pub mod names;
 
 pub type QuorumMinMap = HashMap<Chain, HashMap<QuorumType, U256>>;
 
-use self::{eigenda::EigenDANode, mach_avs::AltLayer};
-
+#[derive(Debug)]
 pub struct IvyNode {
-    pub provider: Arc<IvyProvider>,
-    pub node: Option<Box<dyn AvsVariant>>,
+    pub node: Box<dyn AvsVariant>,
     pub messenger: Option<BackendMessenger>,
+}
+
+impl IvyNode {
+    pub fn is_running(&self) -> bool {
+        self.node.is_running()
+    }
+    pub fn name(&self) -> AvsName {
+        self.node.name()
+    }
+    pub fn chain(&self) -> Chain {
+        self.node.chain()
+    }
+    pub fn node_type(&self) -> NodeType {
+        self.node.node_type()
+    }
+    pub async fn start(&mut self) -> Result<(), IvyError> {
+        let avs_name = self.name();
+        let version = self.node.version()?;
+        let active_set = self.node.active_set(self.node.provider()).await;
+        let signer = self.node.provider().signer().clone();
+
+        if let Some(messenger) = &mut self.messenger {
+            let node_data = NodeData {
+                operator_id: signer.address().as_bytes().to_vec(),
+                avs_name: avs_name.to_string(),
+                avs_version: version.to_string(),
+                active_set,
+            };
+            messenger.send_node_data_payload(&node_data).await?;
+        } else {
+            println!("No messenger found - can't update data state");
+        }
+        println!("Starting node...");
+        self.node.start().await
+    }
 }
 
 #[derive(Debug)]
@@ -110,16 +141,11 @@ impl AvsProvider {
     }
 
     /// Setup the loaded AVS instance. This includes both download and configuration steps.
-    pub async fn setup(
-        &mut self,
-        config: &IvyConfig,
-        operator_address: H160,
-        bls_key: Option<(String, String)>,
-    ) -> Result<(), IvyError> {
+    pub async fn setup(&mut self) -> Result<(), IvyError> {
         let provider = self.provider.clone();
-
-        self.avs_mut()?.setup(provider, config, operator_address, bls_key).await?;
-        info!("Setup complete: run 'ivynet avs help' for next steps!");
+        todo!();
+        // self.avs_mut()?.setup(provider, config, operator_address, bls_key).await?;
+        // info!("Setup complete: run 'ivynet avs help' for next steps!");
         Ok(())
     }
 
@@ -209,30 +235,30 @@ impl AvsProvider {
     ) -> Result<(), IvyError> {
         // TODO: Move quorum logic into AVS-specific implementations.
         // TODO: RIIA path creation? Move to new() func
-        let avs_path = self.avs()?.base_path();
-        std::fs::create_dir_all(avs_path.clone())?;
+        // let avs_path = self.avs()?.base_path();
+        // std::fs::create_dir_all(avs_path.clone())?;
 
-        // TODO: likely a function call in registry_coordinator
-        // let status = DELEGATION_MANAGER.get_operator_status(self.client.address()).await?;
-        // if status == 1 {
-        //     //Check which quorums they're already in and register for the others they're eligible
-        // for } else {
-        //     //Register operator for all quorums they're eligible for
-        // }
+        // // TODO: likely a function call in registry_coordinator
+        // // let status = DELEGATION_MANAGER.get_operator_status(self.client.address()).await?;
+        // // if status == 1 {
+        // //     //Check which quorums they're already in and register for the others they're eligible
+        // // for } else {
+        // //     //Register operator for all quorums they're eligible for
+        // // }
 
-        self.avs()?
-            .register(self.provider.clone(), avs_path.clone(), operator_key_path, operator_key_pass)
-            .await?;
-
+        // self.avs()?
+        //     .register(self.provider.clone(), avs_path.clone(), operator_key_path, operator_key_pass)
+        //     .await?;
+        todo!();
         Ok(())
     }
 
     pub async fn unregister(&self, _config: &IvyConfig) -> Result<(), IvyError> {
-        let avs_path = self.avs()?.base_path();
+        // let avs_path = self.avs()?.base_path();
 
-        let keychain = Keychain::default();
-        let keyname = keychain.select_key(KeyType::Ecdsa)?;
-        let keypath = keychain.get_path(keyname);
+        // let keychain = Keychain::default();
+        // let keyname = keychain.select_key(KeyType::Ecdsa)?;
+        // let keypath = keychain.get_path(keyname)
 
         todo!("Impl w/o keyfile_pw struct member");
         // if let Some(pw) = &self.keyfile_pw {
@@ -253,15 +279,9 @@ impl AvsProvider {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 pub trait AvsVariant: Debug + Send + Sync + 'static {
-    /// Perform all first-time setup steps for a given AVS instance. Includes an internal call to
-    /// build_env
-    async fn setup(
-        &mut self,
-        provider: Arc<IvyProvider>,
-        config: &IvyConfig,
-        operator_address: H160,
-        bls_key: Option<(String, String)>,
-    ) -> Result<(), IvyError>;
+    async fn setup(&mut self) -> Result<(), IvyError>;
+
+    fn provider(&self) -> Arc<IvyProvider>;
 
     //fn validate_install();
     fn validate_node_size(&self, quorum_percentage: U256) -> Result<bool, IvyError>;
@@ -356,6 +376,8 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
     fn version(&self) -> Result<Version, IvyError>;
     /// Get active set status of the running avs
     async fn active_set(&self, provider: Arc<IvyProvider>) -> bool;
+    /// Node type
+    fn node_type(&self) -> NodeType;
 }
 
 pub async fn fetch_rpc_url(chain: Chain, config: &IvyConfig) -> Result<Url, IvyError> {
@@ -363,38 +385,4 @@ pub async fn fetch_rpc_url(chain: Chain, config: &IvyConfig) -> Result<Url, IvyE
         .with_prompt(format!("Enter your RPC URL for {chain:?}"))
         .default(config.get_default_rpc_url(chain)?.parse::<Url>()?)
         .interact_text()?)
-}
-
-// TODO: Builder pattern
-pub async fn build_avs_provider(
-    id: Option<&str>,
-    chain: &str,
-    config: &IvyConfig,
-    rpc_url: Option<Url>,
-    wallet: Option<IvyWallet>,
-    messenger: Option<BackendMessenger>,
-) -> Result<AvsProvider, IvyError> {
-    let chain = try_parse_chain(chain)?;
-    let avs_instance: Option<Box<dyn AvsVariant>> = if let Some(avs_id) = id {
-        match AvsName::try_from(avs_id) {
-            Ok(AvsName::EigenDA) => Some(Box::new(EigenDA::new_from_chain(chain))),
-            Ok(AvsName::AltLayer) => Some(Box::new(AltLayer::new_from_chain(chain))),
-            Ok(AvsName::LagrangeZK) => Some(Box::new(Lagrange::new_from_chain(chain))),
-            _ => return Err(IvyError::InvalidAvsType(avs_id.to_string())),
-        }
-    } else {
-        None
-    };
-    let provider = connect_provider(
-        match (&avs_instance, rpc_url) {
-            (_, Some(ref url)) => url.clone(),
-            (Some(ref avs), None) => avs.rpc_url().unwrap(),
-            _ => config.get_default_rpc_url(chain).unwrap().parse::<Url>()?,
-        }
-        .to_string()
-        .as_str(),
-        wallet,
-    )
-    .await?;
-    AvsProvider::new(avs_instance, Arc::new(provider), messenger)
 }

@@ -1,6 +1,5 @@
 use crate::{
     bls::{encode_address, Address as BlsAddress, BlsKey},
-    error::IvyError,
     wallet::IvyWallet,
 };
 use dialoguer::Select;
@@ -120,7 +119,7 @@ impl Keychain {
         Self { path }
     }
 
-    pub fn list(&self) -> Result<Vec<KeyName>, IvyError> {
+    pub fn list(&self) -> Result<Vec<KeyName>, KeychainError> {
         let paths = fs::read_dir(&self.path)?;
 
         let mut list = Vec::new();
@@ -138,7 +137,7 @@ impl Keychain {
         Ok(list)
     }
 
-    pub fn keynames_for_display(&self, key_type: &KeyType) -> Result<Vec<String>, IvyError> {
+    pub fn keynames_for_display(&self, key_type: &KeyType) -> Result<Vec<String>, KeychainError> {
         let mut key_strings = Vec::new();
         match self.list() {
             Ok(keys) => {
@@ -162,11 +161,11 @@ impl Keychain {
         }
     }
 
-    pub fn select_key(&self, key_type: KeyType) -> Result<KeyName, IvyError> {
+    pub fn select_key(&self, key_type: KeyType) -> Result<KeyName, KeychainError> {
         let keys = self.keynames_for_display(&key_type)?;
 
         if keys.is_empty() {
-            return Err(IvyError::NoKeyFoundError);
+            return Err(KeychainError::NoKeyFoundError);
         }
         let keys_display: &[String] = &keys;
 
@@ -208,7 +207,7 @@ impl Keychain {
         name: Option<&str>,
         key: &str,
         password: &str,
-    ) -> Result<Key, IvyError> {
+    ) -> Result<Key, KeychainError> {
         match key_type {
             KeyType::Ecdsa => Ok(Key::Ecdsa(self.ecdsa_import(name, key, password)?)),
             KeyType::Bls => Ok(Key::Bls(self.bls_import(name, key, password)?)),
@@ -220,7 +219,7 @@ impl Keychain {
         path: PathBuf,
         key_type: KeyType,
         password: &str,
-    ) -> Result<(String, Key), IvyError> {
+    ) -> Result<(String, Key), KeychainError> {
         let name = if let Some(n) =
             path.file_name().unwrap().to_str().expect("Unparsable path").split(".").next()
         {
@@ -250,21 +249,21 @@ impl Keychain {
         }
     }
 
-    pub fn load(&self, address: KeyName, password: &str) -> Result<Key, IvyError> {
+    pub fn load(&self, address: KeyName, password: &str) -> Result<Key, KeychainError> {
         match address {
             KeyName::Ecdsa(name) => Ok(Key::Ecdsa(self.ecdsa_load(&name, password)?)),
             KeyName::Bls(name) => Ok(Key::Bls(self.bls_load(&name, password)?)),
         }
     }
 
-    pub fn get_path(&self, name: KeyName) -> PathBuf {
+    pub fn get_path(&self, name: &KeyName) -> PathBuf {
         match name {
             KeyName::Ecdsa(name) => self.path.join(format!("{name}.ecdsa.json")),
             KeyName::Bls(name) => self.path.join(format!("{name}.bls.json")),
         }
     }
 
-    pub fn public_address(&self, name: KeyName) -> Result<String, IvyError> {
+    pub fn public_address(&self, name: &KeyName) -> Result<String, KeychainError> {
         let path = self.path.join(match &name {
             KeyName::Ecdsa(name) => format!("{name}.ecdsa.json"),
             KeyName::Bls(name) => format!("{name}.bls.json"),
@@ -276,7 +275,7 @@ impl Keychain {
             KeyName::Bls(_) => "pubKey",
         }) {
             Some(value) => value,
-            None => return Err(IvyError::AddressFieldError),
+            None => return Err(KeychainError::AddressFieldError),
         };
         Ok(address.to_string().trim_matches('"').to_string())
     }
@@ -296,7 +295,7 @@ impl Keychain {
         name: Option<&str>,
         key: &str,
         password: &str,
-    ) -> Result<BlsKey, IvyError> {
+    ) -> Result<BlsKey, KeychainError> {
         let bls = BlsKey::from_private_key(key.to_string())?;
         _ = bls.encrypt_and_store(
             &self.path,
@@ -306,7 +305,7 @@ impl Keychain {
         Ok(bls)
     }
 
-    fn bls_load(&self, name: &str, password: &str) -> Result<BlsKey, IvyError> {
+    fn bls_load(&self, name: &str, password: &str) -> Result<BlsKey, KeychainError> {
         Ok(BlsKey::from_keystore(self.path.join(format!("{name}.bls.json")), password)?)
     }
 
@@ -325,7 +324,7 @@ impl Keychain {
         name: Option<&str>,
         key: &str,
         password: &str,
-    ) -> Result<IvyWallet, IvyError> {
+    ) -> Result<IvyWallet, KeychainError> {
         let wallet = IvyWallet::from_private_key(key.to_string())?;
         _ = wallet.encrypt_and_store(
             &self.path,
@@ -335,8 +334,8 @@ impl Keychain {
         Ok(wallet)
     }
 
-    fn ecdsa_load(&self, name: &str, password: &str) -> Result<IvyWallet, IvyError> {
-        IvyWallet::from_keystore(self.path.join(format!("{name}.ecdsa.json")), password)
+    fn ecdsa_load(&self, name: &str, password: &str) -> Result<IvyWallet, KeychainError> {
+        Ok(IvyWallet::from_keystore(self.path.join(format!("{name}.ecdsa.json")), password)?)
     }
 
     fn gen_keyname(name: Option<&str>, key_type: &str, address_string: Option<String>) -> String {
@@ -349,11 +348,28 @@ impl Keychain {
         }
     }
 
-    fn read_json_file(&self, path: &PathBuf) -> Result<Value, IvyError> {
+    fn read_json_file(&self, path: &PathBuf) -> Result<Value, KeychainError> {
         let data = fs::read_to_string(path).expect("No data in json");
         let json: Value = serde_json::from_str(&data).expect("Could not parse through json");
         Ok(json)
     }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum KeychainError {
+    #[error(transparent)]
+    IoError(#[from] std::io::Error),
+    #[error(transparent)]
+    IvyWalletError(#[from] crate::wallet::IvyWalletError),
+    #[error(transparent)]
+    BlsKeyError(#[from] crate::bls::BlsKeyError),
+    #[error(transparent)]
+    DialoguerError(#[from] dialoguer::Error),
+    #[error("No address field found in keyfile")]
+    AddressFieldError,
+    // TODO: Test this message
+    #[error("No valid key was found. Please create a key with `ivynet key` before trying again.")]
+    NoKeyFoundError,
 }
 
 #[cfg(test)]
@@ -447,11 +463,11 @@ pub mod test {
                 match key.address() {
                     KeyAddress::Ecdsa(addr) => assert_eq!(
                         format!("0x{}", encode(addr.as_bytes())),
-                        keychain.public_address(KeyName::Ecdsa("myecdsa".to_string())).unwrap()
+                        keychain.public_address(&KeyName::Ecdsa("myecdsa".to_string())).unwrap()
                     ),
                     KeyAddress::Bls(addr) => assert_eq!(
                         serde_json::to_string(&addr).unwrap().trim_matches('"'),
-                        keychain.public_address(KeyName::Bls("mybls".to_string())).unwrap()
+                        keychain.public_address(&KeyName::Bls("mybls".to_string())).unwrap()
                     ),
                 }
             }

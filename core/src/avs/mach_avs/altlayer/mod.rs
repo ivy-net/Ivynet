@@ -17,7 +17,7 @@ use url::Url;
 use zip::ZipArchive;
 
 use crate::{
-    avs::{names::AvsName, AvsVariant},
+    avs::{config::NodeType, names::AvsName, AvsVariant},
     config::{self, IvyConfig},
     constants::IVY_METADATA,
     eigen::{
@@ -64,16 +64,16 @@ impl Default for AltLayer {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl AvsVariant for AltLayer {
-    async fn setup(
-        &mut self,
-        provider: Arc<IvyProvider>,
-        _config: &IvyConfig,
-        _operator_address: H160,
-        _bls_key: Option<(String, String)>,
-    ) -> Result<(), IvyError> {
-        download_operator_setup(self.base_path.clone()).await?;
-        self.build_env(provider).await?;
-        Ok(())
+    fn node_type(&self) -> NodeType {
+        todo!()
+    }
+
+    fn provider(&self) -> Arc<IvyProvider> {
+        todo!()
+    }
+
+    async fn setup(&mut self) -> Result<(), IvyError> {
+        todo!()
     }
 
     fn validate_node_size(&self, _: U256) -> Result<bool, IvyError> {
@@ -230,7 +230,7 @@ impl AltLayer {
         let bls_password: String =
             Password::new().with_prompt("Input the password for your BLS key file").interact()?;
 
-        let p = keychain.get_path(keyname);
+        let p = keychain.get_path(&keyname);
         let _ = fs::copy(p, &bls_json_file_location);
         let node_cache_path = mach_avs_path.join("resources/cache");
 
@@ -269,7 +269,7 @@ impl AltLayer {
         );
         let keychain = Keychain::default();
         let keyname = keychain.select_key(KeyType::Ecdsa)?;
-        let legacy_keyfile_path = keychain.get_path(keyname);
+        let legacy_keyfile_path = keychain.get_path(&keyname);
         env_lines.set(
             "NODE_ECDSA_KEY_FILE_HOST",
             legacy_keyfile_path.to_str().expect("Bad private key path"),

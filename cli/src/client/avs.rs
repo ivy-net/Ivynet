@@ -1,4 +1,10 @@
+use std::collections::HashMap;
+
 use ivynet_core::{
+    avs::{
+        config::{NodeConfig, NodeType},
+        eigenda::EigenDAConfig,
+    },
     error::IvyError,
     grpc::{
         ivynet_api::{
@@ -52,7 +58,49 @@ impl AvsClient {
             let _ = self.0.select_avs(request).await?;
         }
 
-        let request = Request::new(StartRequest { avs, chain });
+        let config_files = NodeConfig::all().map_err(IvyError::from)?;
+
+        let config_names: Vec<String> = config_files.iter().map(|c| c.name()).collect();
+
+        let selected = dialoguer::Select::new()
+            .with_prompt("Select a node configuration")
+            .items(&config_names)
+            .default(0)
+            .interact()
+            .map_err(IvyError::from)?;
+
+        // This can probably be made more efficient, we load the config here once for some
+        // logic handling and then re-load it on the daemon side. Consider passing the whole
+        // config.
+
+        let selected_config_path = config_files[selected].path();
+
+        let config = NodeConfig::load(selected_config_path.clone()).map_err(IvyError::from)?;
+
+        let extra_data: HashMap<String, String> = match config.node_type() {
+            NodeType::EigenDA => {
+                let config = EigenDAConfig::try_from(config).map_err(IvyError::from)?;
+                let mut extra_data = HashMap::new();
+                let ecdsa_keyfile_pw = dialoguer::Password::new()
+                    .with_prompt(format!(
+                        "Enter the password for keyfile {:?}",
+                        config
+                            .ecdsa_keyfile
+                            .file_stem()
+                            .expect("Could not extract filename from path.")
+                    ))
+                    .interact()
+                    .map_err(IvyError::from)?;
+                extra_data.insert("ecdsa_keyfile_pw".to_string(), ecdsa_keyfile_pw);
+                extra_data
+            }
+            _ => HashMap::new(),
+        };
+
+        let request = Request::new(StartRequest {
+            config: selected_config_path.display().to_string(),
+            extra_data,
+        });
         let response = self.0.start(request).await?;
         Ok(response)
     }

@@ -1,6 +1,8 @@
 use clap::Subcommand;
 use std::fmt::Display;
 
+use super::config::NodeType;
+
 #[derive(Subcommand, Debug)]
 pub enum RegisterCommands {
     #[command(
@@ -21,6 +23,8 @@ pub enum RegisterCommands {
 pub enum AvsCommands {
     #[command(name = "info", about = "Get information about the currently running AVS")]
     Info {},
+    #[command(name = "configure", about = "Configure a new node instance.")]
+    Configure { node_type: NodeType },
     #[command(
         name = "setup",
         about = "Setup a new AVS instance or enter path information to attach to an existing AVS."
@@ -74,6 +78,7 @@ impl Display for AvsCommands {
         match self {
             AvsCommands::Info {} => write!(f, "get information about the currently running AVS"),
             AvsCommands::Setup { avs, chain } => write!(f, "setup {} on chain {}", avs, chain),
+            AvsCommands::Configure { node_type } => write!(f, "Configure a new node instance"),
             AvsCommands::Register {} => write!(f, "register"),
             AvsCommands::Unregister {} => write!(f, "unregister"),
             AvsCommands::Start { .. } => write!(f, "start"),

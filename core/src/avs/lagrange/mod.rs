@@ -35,7 +35,7 @@ use crate::{
 };
 
 use super::{
-    config::{AvsConfig, NodeConfig},
+    config::{NodeConfig, NodeType},
     names::AvsName,
 };
 
@@ -99,34 +99,36 @@ impl Default for Lagrange {
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl AvsVariant for Lagrange {
+    fn provider(&self) -> Arc<IvyProvider> {
+        todo!()
+    }
+
+    fn node_type(&self) -> NodeType {
+        NodeType::Lagrange
+    }
     // TODO: This currently creates a new Lagrange key every time it is run; this may be
     // undesirable. Figure out if this behavior needs to be stabilized.
-    async fn setup(
-        &mut self,
-        provider: Arc<IvyProvider>,
-        _config: &IvyConfig,
-        operator_address: H160,
-        bls_key: Option<(String, String)>,
-    ) -> Result<(), IvyError> {
-        self.build_pathing(provider.provider().url().clone(), operator_address, bls_key.is_none())?;
-        download_operator_setup(self.base_path.clone()).await?;
-        self.build_env(provider)?;
-        generate_lagrange_key(self.run_path()).await?;
+    async fn setup(&mut self) -> Result<(), IvyError> {
+        todo!()
+        // self.build_pathing(provider.provider().url().clone(), operator_address, bls_key.is_none())?;
+        // download_operator_setup(self.base_path.clone()).await?;
+        // self.build_env(provider)?;
+        // generate_lagrange_key(self.run_path()).await?;
 
-        // copy ecdsa keyfile to lagrange-worker path
-        let keychain = Keychain::default();
-        let keyname = keychain.select_key(KeyType::Ecdsa)?;
-        let keyfile = keychain.get_path(keyname);
-        let dest_file = self.run_path().join("config/priv_key.json");
-        fs::copy(keyfile, dest_file)?;
+        // // copy ecdsa keyfile to lagrange-worker path
+        // let keychain = Keychain::default();
+        // let keyname = keychain.select_key(KeyType::Ecdsa)?;
+        // let keyfile = keychain.get_path(keyname);
+        // let dest_file = self.run_path().join("config/priv_key.json");
+        // fs::copy(keyfile, dest_file)?;
 
-        // Change worker ID
-        let worker_id: String =
-            Input::new().with_prompt("Please enter a worker ID").interact_text()?;
+        // // Change worker ID
+        // let worker_id: String =
+        //     Input::new().with_prompt("Please enter a worker ID").interact_text()?;
 
-        change_worker_id(self.run_path(), worker_id)?;
+        // change_worker_id(self.run_path(), worker_id)?;
 
-        Ok(())
+        // Ok(())
     }
 
     fn validate_node_size(&self, _quorum_percentage: U256) -> Result<bool, IvyError> {
@@ -231,7 +233,8 @@ impl Lagrange {
         env_lines.set("AVS__LAGR_PWD", &lagrange_keyfile_pw);
         env_lines.set("LAGRANGE_RPC_URL", self.rpc_url().unwrap().as_ref());
         env_lines.set("NETWORK", self.chain.as_ref());
-        env_lines.save(&env_path)
+        env_lines.save(&env_path)?;
+        Ok(())
     }
 
     // TODO: Consider loading these from a TOML config file or somesuch

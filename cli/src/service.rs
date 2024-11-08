@@ -1,8 +1,8 @@
 use crate::{error::Error, init::set_backend_connection, rpc::ivynet::IvynetService, telemetry};
 use ivynet_core::{
     avs::{
-        build_avs_provider, eigenda::EigenDA, lagrange::Lagrange, mach_avs::AltLayer,
-        names::AvsName, AvsProvider, AvsVariant,
+        eigenda::EigenDANode, lagrange::Lagrange, mach_avs::AltLayer, names::AvsName, AvsProvider,
+        AvsVariant,
     },
     config::IvyConfig,
     docker::dockercmd::DockerCmd,
@@ -17,6 +17,7 @@ use ivynet_core::{
         server::{Endpoint, Server},
     },
     messenger::BackendMessenger,
+    node_manager::NodeManager,
     rpc_management::connect_provider,
 };
 use std::sync::Arc;
@@ -36,8 +37,12 @@ pub async fn serve(
         set_backend_connection(config).await?;
     }
 
+<<<<<<< HEAD
     let machine_id = config.machine_id;
 
+=======
+    // Set up backend client messenger
+>>>>>>> 12aa429 (multi-avs imple)
     let backend_client = BackendClient::new(
         create_channel(ivynet_core::grpc::client::Source::Uri(config.get_server_url()?), {
             let ca = config.get_server_ca();
@@ -55,58 +60,53 @@ pub async fn serve(
         Some(BackendMessenger::new(backend_client.clone(), config.identity_wallet()?))
     };
 
-    // Avs Service
+    // let avs_provider = if let Some(configured_service) = &config.configured_service {
+    //     let avs_instance: Box<dyn AvsVariant> = match configured_service.service {
+    //         AvsName::EigenDA => Box::new(EigenDANode::new_from_chain(configured_service.chain)),
+    //         _ => panic!("Unsupported AVS configured"),
+    //     };
 
-    // TODO: This should default to local instead of holesky?
-    let chain = chain.unwrap_or_else(|| "holesky".to_string());
-    let avs_provider = if let Some(configured_service) = &config.configured_service {
-        let avs_instance: Box<dyn AvsVariant> = match configured_service.service {
-            AvsName::EigenDA => Box::new(EigenDA::new_from_chain(configured_service.chain)),
-            AvsName::AltLayer => Box::new(AltLayer::new_from_chain(configured_service.chain)),
-            AvsName::LagrangeZK => Box::new(Lagrange::new_from_chain(configured_service.chain)),
-            _ => panic!("Unsupported AVS configured"),
-        };
+    //     let provider = connect_provider(
+    //         avs_instance
+    //             .rpc_url()
+    //             .expect("AVS instance not providing RPC URL")
+    //             .to_string()
+    //             .as_str(),
+    //         None,
+    //     )
+    //     .await?;
+    //     let mut avs_provider =
+    //         AvsProvider::new(Some(avs_instance), Arc::new(provider), None, messenger)?;
 
-        let provider = connect_provider(
-            avs_instance
-                .rpc_url()
-                .expect("AVS instance not providing RPC URL")
-                .to_string()
-                .as_str(),
-            None,
-        )
-        .await?;
-        let mut avs_provider =
-            AvsProvider::new(Some(avs_instance), Arc::new(provider), None, messenger)?;
+    //     info!(
+    //         "Configured network {:?} with AVS {:?}",
+    //         configured_service.chain, configured_service.service
+    //     );
 
-        info!(
-            "Configured network {:?} with AVS {:?}",
-            configured_service.chain, configured_service.service
-        );
+    //     match configured_service.autostart {
+    //         ivynet_core::config::StartMode::No => {}
+    //         ivynet_core::config::StartMode::Yes => {
+    //             if avs_provider.start().await.is_ok() {
+    //                 info!("Configured AVS started!");
+    //             } else {
+    //                 error!("Unable to start the AVS");
+    //             }
+    //         }
+    //         ivynet_core::config::StartMode::Attach => {
+    //             if avs_provider.attach().await.is_ok() {
+    //                 info!("Configured AVS attached!");
+    //             } else {
+    //                 error!("Unable to attach configured AVS");
+    //             }
+    //         }
+    //     }
+    //     avs_provider
+    // } else {
+    //     build_avs_provider(avs.as_deref(), &chain, config, None, None, None, messenger).await?
+    // };
 
-        match configured_service.autostart {
-            ivynet_core::config::StartMode::No => {}
-            ivynet_core::config::StartMode::Yes => {
-                if avs_provider.start().await.is_ok() {
-                    info!("Configured AVS started!");
-                } else {
-                    error!("Unable to start the AVS");
-                }
-            }
-            ivynet_core::config::StartMode::Attach => {
-                if avs_provider.attach().await.is_ok() {
-                    info!("Configured AVS attached!");
-                } else {
-                    error!("Unable to attach configured AVS");
-                }
-            }
-        }
-        avs_provider
-    } else {
-        build_avs_provider(avs.as_deref(), &chain, config, None, None, None, messenger).await?
-    };
-
-    let ivynet_inner = Arc::new(RwLock::new(avs_provider));
+    // let ivynet_inner = Arc::new(RwLock::new(avs_provider));
+    let nodes = Arc::new(RwLock::new(NodeManager::new()));
 
     ///////////////////
     // Logging
@@ -117,13 +117,13 @@ pub async fn serve(
     std::env::set_var("FLUENTD_PATH", fluentd_path.to_str().unwrap());
     info!("Serving local logs at {:?}", fluentd_path);
     // Start the container
-    let _fluentd = DockerCmd::new()
-        .await?
-        .args(["up", "-d", "--build", "--force-recreate"])
-        .current_dir(&fluentd_path)
-        .spawn_dockerchild()
-        .await?;
-    info!("Fluentd logging container started");
+    // let _fluentd = DockerCmd::new()
+    //     .await?
+    //     .args(["up", "-d", "--build", "--force-recreate"])
+    //     .current_dir(&fluentd_path)
+    //     .spawn_dockerchild()
+    //     .await?;
+    // info!("Fluentd logging container started");
 
     ///////////////////
     // GRPC
@@ -132,8 +132,8 @@ pub async fn serve(
     // NOTE: Due to limitations with Prost / GRPC, we create a new server with a
     // reference-counted handle to the inner type for each server, as opposed to cloning
     // / being able to clone the outer service.
-    let avs_server = AvsServer::new(IvynetService::new(ivynet_inner.clone(), config));
-    let operator_server = OperatorServer::new(IvynetService::new(ivynet_inner.clone(), config));
+    let avs_server = AvsServer::new(IvynetService::new(nodes.clone(), config));
+    let operator_server = OperatorServer::new(IvynetService::new(nodes.clone(), config));
 
     let server = Server::new(avs_server, None, None).add_service(operator_server);
     info!("Starting server...");
@@ -150,10 +150,17 @@ pub async fn serve(
         tokio::select! {
             ret = server.serve(sock) => { error!("Local server error {ret:?}") },
             ret = serve_log_server(backend_client.clone(), connection_wallet.clone()) => { error!("Log server error {ret:?}") }
+<<<<<<< HEAD
             ret = telemetry::listen(ivynet_inner, backend_client, machine_id, connection_wallet) => { error!("Telemetry listener error {ret:?}") }
             _= ctrl_c() => {
                 info!("Shutting down")
             }
+=======
+            // ret = telemetry::listen(ivynet_inner, backend_client, connection_wallet) => { error!("Telemetry listener error {ret:?}") }
+            // _= ctrl_c() => {
+            //     info!("Shutting down")
+            // }
+>>>>>>> 12aa429 (multi-avs imple)
         }
     }
     Ok(())

@@ -151,7 +151,7 @@ impl IvyConfig {
     }
 
     pub fn identity_wallet(&self) -> Result<IvyWallet, IvyError> {
-        IvyWallet::from_private_key(self.backend_info.identity_key.clone())
+        Ok(IvyWallet::from_private_key(self.backend_info.identity_key.clone())?)
     }
 
     pub fn set_server_url(&mut self, url: String) {
