@@ -5,7 +5,7 @@ use ivynet_core::{
     grpc::client::{create_channel, Source},
 };
 
-use crate::{client::IvynetClient, error::Error};
+use crate::error::Error;
 
 #[derive(Parser, Debug, Clone)]
 pub enum OperatorCommands {
@@ -45,21 +45,22 @@ pub async fn parse_operator_getter_subcommands(
     subgetter: OperatorGetterCommands,
     config: &IvyConfig,
 ) -> Result<(), Error> {
-    let sock = Source::Path(config.uds_dir());
-    let mut client = IvynetClient::from_channel(create_channel(sock, None).await?);
-    match subgetter {
-        OperatorGetterCommands::Details { .. } => {
-            let response = client.operator_mut().get_operator_details().await?;
-            println!("{:?}", response.into_inner());
-        }
-        OperatorGetterCommands::Shares { .. } => {
-            let response = client.operator_mut().get_operator_shares().await?;
-            println!("{:?}", response.into_inner());
-        }
-        OperatorGetterCommands::DelegatableShares { .. } => {
-            let response = client.operator_mut().get_delegatable_shares(None).await?;
-            println!("{:?}", response.into_inner());
-        }
-    }
-    Ok(())
+    // let sock = Source::Path(config.uds_dir());
+    // let mut client = IvynetClient::from_channel(create_channel(sock, None).await?);
+    // match subgetter {
+    //     OperatorGetterCommands::Details { .. } => {
+    //         let response = client.operator_mut().get_operator_details().await?;
+    //         println!("{:?}", response.into_inner());
+    //     }
+    //     OperatorGetterCommands::Shares { .. } => {
+    //         let response = client.operator_mut().get_operator_shares().await?;
+    //         println!("{:?}", response.into_inner());
+    //     }
+    //     OperatorGetterCommands::DelegatableShares { .. } => {
+    //         let response = client.operator_mut().get_delegatable_shares(None).await?;
+    //         println!("{:?}", response.into_inner());
+    //     }
+    // }
+    // Ok(())
+    todo!()
 }

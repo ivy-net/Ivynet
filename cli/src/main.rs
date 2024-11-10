@@ -1,6 +1,6 @@
 use anyhow::{Error as AnyError, Result};
 use clap::{Parser, Subcommand};
-use cli::{avs, config, error::Error, key, service};
+use cli::{avs, config, error::Error, key};
 use ivynet_core::{
     avs::commands::AvsCommands,
     config::IvyConfig,
@@ -64,16 +64,6 @@ enum Commands {
         #[command(subcommand)]
         subcmd: key::KeyCommands,
     },
-    #[command(
-        name = "serve",
-        about = "Start the Ivynet service with a specified AVS on CHAIN selected for startup. --avs <AVS> --chain <CHAIN>"
-    )]
-    Serve {
-        #[clap(required(false), long, requires("chain"))]
-        avs: Option<String>,
-        #[clap(required(false), long, requires("avs"))]
-        chain: Option<String>,
-    },
 }
 
 #[tokio::main]
@@ -106,11 +96,8 @@ async fn main() -> Result<(), AnyError> {
         Commands::Config { subcmd } => {
             config::parse_config_subcommands(subcmd, config).await?;
         }
-        Commands::Key { subcmd } => key::parse_key_subcommands(subcmd, config).await?,
-        Commands::Avs { subcmd } => avs::parse_avs_subcommands(subcmd, &config).await?,
-        Commands::Serve { avs, chain } => {
-            service::serve(avs, chain, &mut config, args.no_backend).await?
-        }
+        Commands::Key { subcmd } => key::parse_key_subcommands(subcmd).await?,
+        Commands::Avs { subcmd } => avs::parse_avs_subcommands(subcmd).await?,
     }
 
     Ok(())

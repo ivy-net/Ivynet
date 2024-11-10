@@ -7,16 +7,22 @@ use std::{
 use dialoguer::Input;
 use ethers::types::Address;
 use serde::{Deserialize, Serialize};
+use tokio::process::Child;
 use tracing::{debug, error, info};
 use url::Url;
 use zip::ZipArchive;
 
 use crate::{
     avs::config::{default_config_dir, NodeConfig, NodeConfigError},
+    docker::dockercmd::DockerCmd,
     env_parser::EnvLines,
-    error::{IvyError, SetupError},
+    error::IvyError,
     keychain::{KeyType, Keychain},
+    rpc_management::IvyProvider,
 };
+
+pub const EIGENDA_SETUP_REPO: &str =
+    "https://github.com/ivy-net/eigenda-operator-setup/archive/refs/heads/master.zip";
 
 /// EigenDA node configuration. Mostly a reflection of the AvsConfig struct, with the node_data
 /// field pulled out of the NodeConfigData enum for easier access.
@@ -51,6 +57,29 @@ impl TryFrom<NodeConfig> for EigenDAConfig {
 }
 
 impl EigenDAConfig {
+    pub async fn start(&self) -> Result<Child, IvyError> {
+        let compose_filename = self
+            .compose_file
+            .file_name()
+            .ok_or_else(|| {
+                IvyError::InvalidDockerCompose("Compose file path is invalid".to_string())
+            })?
+            .to_str()
+            .ok_or_else(|| {
+                IvyError::InvalidDockerCompose("Compose file path is invalid".to_string())
+            })?;
+
+        let parent_dir = self.compose_file.parent().ok_or_else(|| {
+            IvyError::InvalidDockerCompose("Compose file path is invalid".to_string())
+        })?;
+
+        Ok(DockerCmd::new()
+            .await?
+            .current_dir(parent_dir)
+            .args(["-f", compose_filename, "up", "--force-recreate"])
+            .spawn()?)
+    }
+
     pub fn name(&self) -> String {
         let name = self
             .path
@@ -173,8 +202,6 @@ pub fn default_eigenda_resources_dir() -> PathBuf {
 
 pub async fn download_operator_setup(eigen_path: &PathBuf) -> Result<(), NodeConfigError> {
     let mut setup = false;
-    let repo_url =
-        "https://github.com/ivy-net/eigenda-operator-setup/archive/refs/heads/master.zip";
     let temp_path = eigen_path.join("temp");
     let destination_path = eigen_path.join("eigenda-operator-setup");
     if destination_path.exists() {
@@ -195,7 +222,7 @@ pub async fn download_operator_setup(eigen_path: &PathBuf) -> Result<(), NodeCon
 
     if setup {
         info!("Downloading setup files to {}", temp_path.display());
-        let response = reqwest::get(repo_url).await?;
+        let response = reqwest::get(EIGENDA_SETUP_REPO).await?;
 
         let fname = temp_path.join("source.zip");
         let mut dest = File::create(&fname)?;

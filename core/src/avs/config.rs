@@ -45,6 +45,18 @@ pub enum NodeConfig {
 
 /// TODO: Result for Other type
 impl NodeConfig {
+    pub fn load(path: &PathBuf) -> Result<Self, IoError> {
+        read_toml(path)
+    }
+
+    pub fn store(&self) {
+        if !&self.path().exists() {
+            std::fs::create_dir_all(self.path().parent().expect("Could not get parent directory"))
+                .expect("Could not create config directory");
+        }
+        write_toml(&self.path(), self).expect("Could not write AVS config");
+    }
+
     pub fn path(&self) -> PathBuf {
         match self {
             NodeConfig::EigenDA(config) => config.path.clone(),
@@ -71,27 +83,6 @@ impl NodeConfig {
         }
     }
 
-    pub fn node_type(&self) -> NodeType {
-        match self {
-            NodeConfig::EigenDA(_) => NodeType::EigenDA,
-            NodeConfig::Other(_) => NodeType::Unknown,
-        }
-    }
-}
-
-impl NodeConfig {
-    pub fn load(path: PathBuf) -> Result<Self, IoError> {
-        read_toml(&path)
-    }
-
-    pub fn store(&self) {
-        if !&self.path().exists() {
-            std::fs::create_dir_all(self.path().parent().expect("Could not get parent directory"))
-                .expect("Could not create config directory");
-        }
-        write_toml(&self.path(), self).expect("Could not write AVS config");
-    }
-
     pub fn all() -> Result<Vec<Self>, NodeConfigError> {
         let config_dir = default_config_dir();
         let mut configs = vec![];
@@ -99,11 +90,18 @@ impl NodeConfig {
             let entry = entry?;
             let path = entry.path();
             if path.is_file() && path.extension().unwrap_or_default() == "toml" {
-                let config = NodeConfig::load(path)?;
+                let config = NodeConfig::load(&path)?;
                 configs.push(config);
             }
         }
         Ok(configs)
+    }
+
+    pub fn node_type(&self) -> NodeType {
+        match self {
+            NodeConfig::EigenDA(_) => NodeType::EigenDA,
+            NodeConfig::Other(_) => NodeType::Unknown,
+        }
     }
 }
 

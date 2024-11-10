@@ -23,7 +23,7 @@ pub enum KeyCommands {
     Get,
 }
 
-pub async fn parse_key_subcommands(subcmd: KeyCommands, _config: IvyConfig) -> Result<(), Error> {
+pub async fn parse_key_subcommands(subcmd: KeyCommands) -> Result<(), Error> {
     match subcmd {
         KeyCommands::Import => {
             import_key().await?;
