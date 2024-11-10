@@ -40,13 +40,11 @@ pub enum AvsCommands {
         about = "Unregister an operator for the loaded AVS. Not valid for all AVS types. See AVS specific dcoumentation for details."
     )]
     Unregister {},
-    #[command(name = "start", about = "Start running an AVS node in a docker container.")]
-    Start {
-        #[clap(required(false), long, requires("chain"))]
-        avs: Option<String>,
-        #[clap(required(false), long, requires("avs"))]
-        chain: Option<String>,
-    },
+    #[command(
+        name = "start",
+        about = "Start running an AVS node in a docker container based on a configuration file."
+    )]
+    Start {},
     #[command(name = "stop", about = "Stop running the active AVS docker container.")]
     Stop {},
     #[command(

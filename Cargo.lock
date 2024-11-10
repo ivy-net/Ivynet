@@ -538,9 +538,15 @@ dependencies = [
 
 [[package]]
 name = "bollard"
+<<<<<<< HEAD
 version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a2b63bbe2a4db01f82f388bee3b1bed3ea9c4cc5f1f4f1fa7a4a171f1ddb2cf1"
+=======
+version = "0.17.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d41711ad46fda47cd701f6908e59d1bd6b9a2b7464c0d0aeab95c6d37096ff8a"
+>>>>>>> 8d66544 (mostly working)
 dependencies = [
  "base64 0.22.1",
  "bollard-stubs",
@@ -561,7 +567,11 @@ dependencies = [
  "serde_json",
  "serde_repr",
  "serde_urlencoded",
+<<<<<<< HEAD
  "thiserror 2.0.3",
+=======
+ "thiserror",
+>>>>>>> 8d66544 (mostly working)
  "tokio",
  "tokio-util",
  "tower-service",
@@ -571,9 +581,15 @@ dependencies = [
 
 [[package]]
 name = "bollard-stubs"
+<<<<<<< HEAD
 version = "1.46.0-rc.27.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3a79775fcd9a02681f9508cd6e44f2164db81c29506063b5904757dd82879d96"
+=======
+version = "1.45.0-rc.26.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6d7c5415e3a6bc6d3e99eff6268e488fd4ee25e7b28c10f08fa6760bd9de16e4"
+>>>>>>> 8d66544 (mostly working)
 dependencies = [
  "serde",
  "serde_repr",
@@ -4554,7 +4570,11 @@ checksum = "6c64451ba24fc7a6a2d60fc75dd9c83c90903b19028d4eff35e88fc1e86564e9"
 dependencies = [
  "proc-macro2",
  "quote",
+<<<<<<< HEAD
  "syn 2.0.87",
+=======
+ "syn 2.0.85",
+>>>>>>> 8d66544 (mostly working)
 ]
 
 [[package]]

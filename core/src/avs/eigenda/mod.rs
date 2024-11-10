@@ -69,454 +69,351 @@ pub enum EigenDAError {
     NoBootableQuorumsError,
 }
 
+/// Type representing functions data associated with the EigenDA node built from config.
 #[derive(Debug, Clone)]
-pub struct EigenDANode {
-    // TODO: Deprecate, assume if object exists, is running
-    running: bool,
-    provider: Arc<IvyProvider>,
-    config: EigenDAConfig,
-}
+pub struct EigenDANode(EigenDAConfig);
 
 impl EigenDANode {
-    pub fn new(provider: Arc<IvyProvider>, config: EigenDAConfig) -> Self {
-        Self { running: false, provider, config }
-    }
-
-    pub async fn from_config(config: EigenDAConfig, wallet_pw: &str) -> Result<Self, IvyError> {
-        let operator = IvyWallet::from_keystore(config.ecdsa_keyfile.clone(), wallet_pw)?;
-        let provider = Provider::new(Http::from_str(config.rpc_url.as_ref())?);
-        let chain = provider.get_chainid().await?;
-
-        let signer =
-            Arc::new(SignerMiddleware::new(provider, operator.with_chain_id(chain.low_u64())));
-
-        Ok(Self::new(signer, config))
-    }
-}
-
-#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
-#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
-impl AvsVariant for EigenDANode {
-    async fn start(&mut self) -> Result<(), IvyError> {
-        let compose_file = self.config.compose_file.clone();
-
-        let compose_filename = compose_file
-            .file_name()
-            .ok_or_else(|| {
-                IvyError::InvalidDockerCompose("Compose file path is invalid".to_string())
-            })?
-            .to_str()
-            .ok_or_else(|| {
-                IvyError::InvalidDockerCompose("Compose file path is invalid".to_string())
-            })?;
-
-        let parent_dir = self.config.compose_file.parent().ok_or_else(|| {
-            IvyError::InvalidDockerCompose("Compose file path is invalid".to_string())
-        })?;
-        let _ = DockerCmd::new()
-            .await?
-            .current_dir(parent_dir)
-            .args(["-f", compose_filename, "up", "--force-recreate"])
-            .spawn()?;
-        Ok(())
-    }
-
-    async fn setup(&mut self) -> Result<(), IvyError> {
-        todo!()
-    }
-
-    fn node_type(&self) -> NodeType {
-        NodeType::EigenDA
-    }
-
-    fn provider(&self) -> Arc<IvyProvider> {
-        self.provider.clone()
-    }
-
-    // TODO: This method may need to be abstracted in some way, as not all AVS types encforce
-    // quorum_pericentage.
-    fn validate_node_size(&self, quorum_percentage: U256) -> Result<bool, IvyError> {
-        let (_, _, disk_info) = system::get_system_information()?;
-        let class = node_classes::get_node_class()?;
-
-        let mut acceptable: bool = false;
-        match quorum_percentage {
-            x if x < U256::from(3) => {
-                // NOTE: Should these be || operators?
-                if class >= NodeClass::LRG || disk_info >= gb_to_bytes(20) {
-                    acceptable = true;
-                }
-            }
-            x if x < U256::from(20) => {
-                if class >= NodeClass::XL || disk_info >= gb_to_bytes(150) {
-                    acceptable = true;
-                }
-            }
-            x if x < U256::from(100) => {
-                if class >= NodeClass::FOURXL || disk_info >= gb_to_bytes(750) {
-                    acceptable = true;
-                }
-            }
-            x if x < U256::from(1000) => {
-                if class >= NodeClass::FOURXL || disk_info >= gb_to_bytes(4000) {
-                    acceptable = true;
-                }
-            }
-            x if x > U256::from(2000) => {
-                if class >= NodeClass::FOURXL || disk_info >= gb_to_bytes(8000) {
-                    acceptable = true;
-                }
-            }
-            _ => {}
-        }
-        Ok(acceptable)
-    }
-
-    async fn register(
-        &self,
-        provider: Arc<IvyProvider>,
-        eigen_path: PathBuf,
-        private_keypath: PathBuf,
-        keyfile_password: &str,
-    ) -> Result<(), IvyError> {
-        println!("Registering the EigenDA operator");
-        let quorums = self.get_bootable_quorums(provider.clone()).await?;
-        if quorums.is_empty() {
-            return Err(EigenDAError::NoBootableQuorumsError.into());
-        }
-        let quorum_str: Vec<String> =
-            quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
-        let quorum_str = quorum_str.join(",");
-        println!("Fetched quorums...");
-        let run_script_dir = eigen_path.join("eigenda-operator-setup");
-        let run_script_dir = match self.chain() {
-            Chain::Mainnet => run_script_dir.join("mainnet"),
-            Chain::Holesky => run_script_dir.join("holesky"),
-            _ => todo!("Unimplemented"),
-        };
-
-        // Child shell scripts may not run correctly if the current directory is not set to their
-        // own path.
-        std::env::set_current_dir(run_script_dir.clone())?;
-        let run_script_path = run_script_dir.join("run.sh");
-
-        info!("Booting quorums: {:#?}", quorums);
-        debug!("{} |  {}", run_script_path.display(), quorum_str);
-
-        let optin = Command::new("sh")
-            .arg(run_script_path)
-            .arg("--operation-type")
-            .arg("opt-in")
-            .arg("--node-ecdsa-key-file-host")
-            .arg(private_keypath)
-            .arg("--node-ecdsa-key-password")
-            .arg(keyfile_password)
-            .arg("--quorums")
-            .arg(quorum_str)
-            .status()
-            .await?;
-
-        if optin.success() {
-            Ok(())
-        } else {
-            Err(EigenDAError::ScriptError(optin.to_string()).into())
-        }
-    }
-
-    async fn unregister(
-        &self,
-        provider: Arc<IvyProvider>,
-        eigen_path: PathBuf,
-        private_keypath: PathBuf,
-        keyfile_password: &str,
-    ) -> Result<(), IvyError> {
-        let quorums = self.get_bootable_quorums(provider.clone()).await?;
-        let quorum_str: Vec<String> =
-            quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
-        let quorum_str = quorum_str.join(",");
-
-        let run_script_dir = eigen_path.join("eigenda-operator-setup");
-        let run_script_dir = match self.chain() {
-            Chain::Mainnet => run_script_dir.join("mainnet"),
-            Chain::Holesky => run_script_dir.join("holesky"),
-            _ => todo!("Unimplemented"),
-        };
-
-        // Child shell scripts may not run correctly if the current directory is not set to their
-        // own path.
-        std::env::set_current_dir(run_script_dir.clone())?;
-        let run_script_path = run_script_dir.join("run.sh");
-
-        info!("Booting quorums: {:#?}", quorums);
-        debug!("{} |  {}", run_script_path.display(), quorum_str);
-
-        let optin = Command::new("sh")
-            .arg(run_script_path)
-            .arg("--operation-type")
-            .arg("opt-out")
-            .arg("--node-ecdsa-key-file-host")
-            .arg(private_keypath)
-            .arg("--node-ecdsa-key-password")
-            .arg(keyfile_password)
-            .arg("--quorums")
-            .arg(quorum_str)
-            .status()
-            .await?;
-
-        if optin.success() {
-            Ok(())
-        } else {
-            Err(EigenDAError::ScriptError(optin.to_string()).into())
-        }
-    }
-
-    fn name(&self) -> AvsName {
-        AvsName::EigenDA
-    }
-
-    fn chain(&self) -> Chain {
-        // TODO: Change trait signature to handle this as a result
-        self.provider.signer().chain_id().try_into().expect("Failed to convert chain ID")
-    }
-
-    fn rpc_url(&self) -> Option<Url> {
-        // TODO: remove option
-        Some(self.config.rpc_url.clone())
-    }
-
-    fn run_path(&self) -> PathBuf {
-        todo!()
-    }
-
-    fn is_running(&self) -> bool {
-        self.running
-    }
-
-    fn set_running(&mut self, running: bool) {
-        self.running = running;
-    }
-
-    fn version(&self) -> Result<semver::Version, IvyError> {
-        let yaml_path = self.run_path().join("docker-compose.yml");
-        let env_path = yaml_path.with_file_name(".env");
-
-        from_path(env_path).ok();
-        let yaml_str = std::fs::read_to_string(yaml_path)?;
-        let yaml_str = env::vars()
-            .fold(yaml_str, |acc, (key, val)| acc.replace(&format!("${{{}}}", key), &val));
-
-        let data: serde_yaml::Value = serde_yaml::from_str(&yaml_str)?;
-
-        let image_value = &data["services"]["da-node"]["image"];
-
-        if let Some(image) = image_value.as_str() {
-            let parts: Vec<&str> = image.split(':').collect();
-            if parts.len() == 2 {
-                let version = parts[1];
-                let version = semver::Version::parse(version)?;
-                return Ok(version);
-            }
-        } else {
-            debug!("Error: Could not parse image version");
-        }
-
-        Ok(Version::new(0, 0, 0))
-    }
-
-    async fn active_set(&self, provider: Arc<IvyProvider>) -> bool {
-        let address = self.config.operator_address;
-        let registry_coordinator_contract =
-            RegistryCoordinator::new(contracts::registry_coordinator(self.chain()), provider);
-
-        let status = registry_coordinator_contract.get_operator_status(address).await;
-        if let Ok(stat) = status {
-            match stat {
-                0 => {
-                    info!("Operator has never registered");
-                    return false;
-                }
-                1 => {
-                    info!("Operator is in the active set");
-                    return true;
-                }
-                2 => {
-                    warn!("Operator is not in the active set - deregistered");
-                    return false;
-                }
-                _ => {
-                    warn!("Operator status is unknown");
-                    return false;
-                }
-            }
-        }
-
-        false
+    pub fn new(config: EigenDAConfig) -> Self {
+        Self(config)
     }
 }
 
 impl EigenDANode {
-    pub async fn get_current_total_stake(
-        &self,
-        provider: Arc<IvyProvider>,
-        quorum_type: u8,
-    ) -> Result<u128, IvyError> {
-        let stake_registry_contract =
-            StakeRegistryAbi::new(contracts::stake_registry(self.chain()), provider.clone());
-        let total_stake = stake_registry_contract.get_current_total_stake(quorum_type).await?;
-        Ok(total_stake)
-    }
+    // fn node_type(&self) -> NodeType {
+    //     NodeType::EigenDA
+    // }
 
-    // TODO: Check to see if the delegation manager is querying strategies or quorums, also see if
-    // there's a more compact method for this (EG query all strategies at once, or a selected
-    // quorum
-    pub async fn get_operator_shares_for_strategies(
-        &self,
-        provider: Arc<IvyProvider>,
-        strategies: Vec<Address>,
-    ) -> Result<Vec<U256>, IvyError> {
-        let delegation_manager = DelegationManagerAbi::new(
-            contracts::delegation_manager(self.chain()),
-            provider.clone(),
-        );
-        let shares = delegation_manager.get_operator_shares(provider.address(), strategies).await?;
-        Ok(shares)
-    }
+    // // TODO: This method may need to be abstracted in some way, as not all AVS types encforce
+    // // quorum_pericentage.
+    // fn validate_node_size(&self, quorum_percentage: U256) -> Result<bool, IvyError> {
+    //     let (_, _, disk_info) = system::get_system_information()?;
+    //     let class = node_classes::get_node_class()?;
 
-    async fn get_bootable_quorums(
-        &self,
-        provider: Arc<IvyProvider>,
-    ) -> Result<Vec<QuorumType>, IvyError> {
-        let mut quorums_to_boot: Vec<QuorumType> = Vec::new();
-        let chain = Chain::try_from(provider.signer().chain_id()).unwrap_or_default();
-        for quorum_type in self.quorum_candidates(chain).iter() {
-            let quorum = Quorum::try_from_type_and_network(*quorum_type, chain)?;
-            let strategies = quorum.to_addresses();
-            let shares =
-                self.get_operator_shares_for_strategies(provider.clone(), strategies).await?;
-            let total_shares = shares.iter().fold(U256::from(0), |acc, x| acc + x); // This may be
-            info!("Operator shares for quorum {}: {}", quorum_type, total_shares);
-            // let quorum_total =
-            //     self.get_current_total_stake(provider.clone(), *quorum_type as u8).await?;
-            quorums_to_boot.push(*quorum_type);
-            // TODO: Reintroduce this check somewhere
-            // let quorum_percentage = total_shares * 10000 / (total_shares + quorum_total);
-            // if self.avs()?.validate_node_size(quorum_percentage)? {
-            //     quorums_to_boot.push(*quorum_type);
-            // };
-        }
-        Ok(quorums_to_boot)
-    }
+    //     let mut acceptable: bool = false;
+    //     match quorum_percentage {
+    //         x if x < U256::from(3) => {
+    //             // NOTE: Should these be || operators?
+    //             if class >= NodeClass::LRG || disk_info >= gb_to_bytes(20) {
+    //                 acceptable = true;
+    //             }
+    //         }
+    //         x if x < U256::from(20) => {
+    //             if class >= NodeClass::XL || disk_info >= gb_to_bytes(150) {
+    //                 acceptable = true;
+    //             }
+    //         }
+    //         x if x < U256::from(100) => {
+    //             if class >= NodeClass::FOURXL || disk_info >= gb_to_bytes(750) {
+    //                 acceptable = true;
+    //             }
+    //         }
+    //         x if x < U256::from(1000) => {
+    //             if class >= NodeClass::FOURXL || disk_info >= gb_to_bytes(4000) {
+    //                 acceptable = true;
+    //             }
+    //         }
+    //         x if x > U256::from(2000) => {
+    //             if class >= NodeClass::FOURXL || disk_info >= gb_to_bytes(8000) {
+    //                 acceptable = true;
+    //             }
+    //         }
+    //         _ => {}
+    //     }
+    //     Ok(acceptable)
+    // }
 
-    async fn build_env(
-        &self,
-        _provider: Arc<IvyProvider>,
-        bls_key_name: &str,
-        bls_key_password: &str,
-    ) -> Result<(), IvyError> {
-        let avs_run_path = self.config.compose_file.clone();
-        let rpc_url = &self.config.rpc_url;
+    // async fn register(&self, keyfile_password: &str) -> Result<(), IvyError> {
+    //     println!("Registering the EigenDA operator");
+    //     let quorums = self.get_bootable_quorums(provider.clone()).await?;
+    //     if quorums.is_empty() {
+    //         return Err(EigenDAError::NoBootableQuorumsError.into());
+    //     }
+    //     let quorum_str: Vec<String> =
+    //         quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
+    //     let quorum_str = quorum_str.join(",");
+    //     println!("Fetched quorums...");
+    //     let run_script_dir = eigen_path.join("eigenda-operator-setup");
+    //     let run_script_dir = match self.chain() {
+    //         Chain::Mainnet => run_script_dir.join("mainnet"),
+    //         Chain::Holesky => run_script_dir.join("holesky"),
+    //         _ => todo!("Unimplemented"),
+    //     };
 
-        let env_example_path = avs_run_path.join(".env.example");
-        let env_path = avs_run_path.join(".env");
+    //     // Child shell scripts may not run correctly if the current directory is not set to their
+    //     // own path.
+    //     std::env::set_current_dir(run_script_dir.clone())?;
+    //     let run_script_path = run_script_dir.join("run.sh");
 
-        if !env_example_path.exists() {
-            error!("The '.env.example' file does not exist at {}. '.env.example' is used for .env templating, please ensure the operator-setup was downloaded to the correct location.", env_example_path.display());
-            return Err(SetupError::NoEnvExample.into());
-        }
-        std::fs::copy(env_example_path, env_path.clone())?;
+    //     info!("Booting quorums: {:#?}", quorums);
+    //     debug!("{} |  {}", run_script_path.display(), quorum_str);
 
-        debug!("configuring env...");
-        let mut env_lines = EnvLines::load(&env_path)?;
+    //     let optin = Command::new("sh")
+    //         .arg(run_script_path)
+    //         .arg("--operation-type")
+    //         .arg("opt-in")
+    //         .arg("--node-ecdsa-key-file-host")
+    //         .arg(private_keypath)
+    //         .arg("--node-ecdsa-key-password")
+    //         .arg(keyfile_password)
+    //         .arg("--quorums")
+    //         .arg(quorum_str)
+    //         .status()
+    //         .await?;
 
-        // Node hostname
-        let node_hostname = reqwest::get("https://api.ipify.org").await?.text().await?;
-        info!("Using node hostname: {node_hostname}");
-        // env_lines.set("NODE_HOSTNAME", &node_hostname);
+    //     if optin.success() {
+    //         Ok(())
+    //     } else {
+    //         Err(EigenDAError::ScriptError(optin.to_string()).into())
+    //     }
+    // }
 
-        // Node chain RPC
-        env_lines.set("NODE_CHAIN_RPC", rpc_url.as_ref());
+    // async fn unregister(
+    //     &self,
+    //     provider: Arc<IvyProvider>,
+    //     eigen_path: PathBuf,
+    //     private_keypath: PathBuf,
+    //     keyfile_password: &str,
+    // ) -> Result<(), IvyError> {
+    //     let quorums = self.get_bootable_quorums(provider.clone()).await?;
+    //     let quorum_str: Vec<String> =
+    //         quorums.iter().map(|quorum| (*quorum as u8).to_string()).collect();
+    //     let quorum_str = quorum_str.join(",");
 
-        // User home directory
-        let home_dir = dirs::home_dir().expect("Could not get home directory");
-        let home_str = home_dir.to_str().expect("Could not get home directory");
-        env_lines.set("USER_HOME", home_str);
-        // Node resource paths
-        env_lines.set("NODE_G1_PATH_HOST", r#"${EIGENLAYER_HOME}/eigenda/resources/g1.point"#);
-        env_lines
-            .set("NODE_G2_PATH_HOST", r#"${EIGENLAYER_HOME}/eigenda/resources/g2.point.powerOf2"#);
-        env_lines.set(
-            "NODE_CACHE_PATH_HOST",
-            r#"${EIGENLAYER_HOME}/eigenda/eigenda-operator-setup/resources/cache"#,
-        );
+    //     let run_script_dir = eigen_path.join("eigenda-operator-setup");
+    //     let run_script_dir = match self.chain() {
+    //         Chain::Mainnet => run_script_dir.join("mainnet"),
+    //         Chain::Holesky => run_script_dir.join("holesky"),
+    //         _ => todo!("Unimplemented"),
+    //     };
 
-        // BLS key
-        let keychain = Keychain::default();
-        let bls_json_file_location = keychain.get_path(&KeyName::Bls(bls_key_name.to_owned()));
-        debug!("BLS key file location: {:?}", &bls_json_file_location);
+    //     // Child shell scripts may not run correctly if the current directory is not set to their
+    //     // own path.
+    //     std::env::set_current_dir(run_script_dir.clone())?;
+    //     let run_script_path = run_script_dir.join("run.sh");
 
-        env_lines.set(
-            "NODE_BLS_KEY_FILE_HOST",
-            bls_json_file_location.to_str().expect("Could not get BLS key file location"),
-        );
-        env_lines.set("NODE_BLS_KEY_PASSWORD", &format!("'{}'", bls_key_password));
-        env_lines.save(&env_path)?;
-        info!(".env file saved to {}", env_path.display());
+    //     info!("Booting quorums: {:#?}", quorums);
+    //     debug!("{} |  {}", run_script_path.display(), quorum_str);
 
-        Ok(())
-    }
+    //     let optin = Command::new("sh")
+    //         .arg(run_script_path)
+    //         .arg("--operation-type")
+    //         .arg("opt-out")
+    //         .arg("--node-ecdsa-key-file-host")
+    //         .arg(private_keypath)
+    //         .arg("--node-ecdsa-key-password")
+    //         .arg(keyfile_password)
+    //         .arg("--quorums")
+    //         .arg(quorum_str)
+    //         .status()
+    //         .await?;
 
-    // TODO: Should probably be a hashmap
-    #[allow(dead_code)]
-    fn quorum_min(&self, chain: Chain, quorum_type: QuorumType) -> U256 {
-        match chain {
-            Chain::Mainnet => match quorum_type {
-                QuorumType::LST => U256::from(96 * (10 ^ 18)),
-                QuorumType::EIGEN => todo!("Unimplemented"),
-            },
-            Chain::Holesky => match quorum_type {
-                QuorumType::LST => U256::from(96 * (10 ^ 18)),
-                QuorumType::EIGEN => todo!("Unimplemented"),
-            },
-            _ => todo!("Unimplemented"),
-        }
-    }
+    //     if optin.success() {
+    //         Ok(())
+    //     } else {
+    //         Err(EigenDAError::ScriptError(optin.to_string()).into())
+    //     }
+    // }
 
-    // TODO: Consider loading these from a TOML config file or somesuch
-    // TODO: Add Eigen quorum
-    #[allow(dead_code)]
-    fn quorum_candidates(&self, chain: Chain) -> Vec<QuorumType> {
-        match chain {
-            Chain::Mainnet => vec![QuorumType::LST],
-            Chain::Holesky => vec![QuorumType::LST],
-            _ => todo!("Unimplemented"),
-        }
-    }
+    // fn name(&self) -> AvsName {
+    //     AvsName::EigenDA
+    // }
 
-    fn build_pathing(
-        &mut self,
-        rpc_url: Url,
-        operator_address: H160,
-        is_custom: bool,
-    ) -> Result<(), IvyError> {
-        // Stores config as part of setup. Probably deprecatable.
+    // fn version(&self) -> Result<semver::Version, IvyError> {
+    //     let yaml_path = self.run_path().join("docker-compose.yml");
+    //     let env_path = yaml_path.with_file_name(".env");
 
-        todo!();
+    //     from_path(env_path).ok();
+    //     let yaml_str = std::fs::read_to_string(yaml_path)?;
+    //     let yaml_str = env::vars()
+    //         .fold(yaml_str, |acc, (key, val)| acc.replace(&format!("${{{}}}", key), &val));
 
-        // let path = if !is_custom {
-        //     match self.chain {
-        //         Chain::Mainnet => setup.join("mainnet"),
-        //         Chain::Holesky => setup.join("holesky"),
-        //         _ => todo!("Unimplemented"),
-        //     }
-        // } else {
-        //     AvsConfig::ask_for_path()
-        // };
+    //     let data: serde_yaml::Value = serde_yaml::from_str(&yaml_str)?;
 
-        // self.avs_config.init(self.chain, rpc_url, path, operator_address, is_custom);
-        // self.avs_config.store();
+    //     let image_value = &data["services"]["da-node"]["image"];
 
-        Ok(())
-    }
+    //     if let Some(image) = image_value.as_str() {
+    //         let parts: Vec<&str> = image.split(':').collect();
+    //         if parts.len() == 2 {
+    //             let version = parts[1];
+    //             let version = semver::Version::parse(version)?;
+    //             return Ok(version);
+    //         }
+    //     } else {
+    //         debug!("Error: Could not parse image version");
+    //     }
+
+    //     Ok(Version::new(0, 0, 0))
+    // }
+
+    // async fn active_set(&self, provider: Arc<IvyProvider>) -> bool {
+    //     let address = self.config.operator_address;
+    //     let registry_coordinator_contract =
+    //         RegistryCoordinator::new(contracts::registry_coordinator(self.chain()), provider);
+
+    //     let status = registry_coordinator_contract.get_operator_status(address).await;
+    //     if let Ok(stat) = status {
+    //         match stat {
+    //             0 => {
+    //                 info!("Operator has never registered");
+    //                 return false;
+    //             }
+    //             1 => {
+    //                 info!("Operator is in the active set");
+    //                 return true;
+    //             }
+    //             2 => {
+    //                 warn!("Operator is not in the active set - deregistered");
+    //                 return false;
+    //             }
+    //             _ => {
+    //                 warn!("Operator status is unknown");
+    //                 return false;
+    //             }
+    //         }
+    //     }
+
+    //     false
+    // }
+}
+
+impl EigenDANode {
+    // pub async fn get_current_total_stake(
+    //     &self,
+    //     provider: Arc<IvyProvider>,
+    //     quorum_type: u8,
+    // ) -> Result<u128, IvyError> {
+    //     let stake_registry_contract =
+    //         StakeRegistryAbi::new(contracts::stake_registry(self.chain()), provider.clone());
+    //     let total_stake = stake_registry_contract.get_current_total_stake(quorum_type).await?;
+    //     Ok(total_stake)
+    // }
+
+    // // TODO: Check to see if the delegation manager is querying strategies or quorums, also see if
+    // // there's a more compact method for this (EG query all strategies at once, or a selected
+    // // quorum
+    // pub async fn get_operator_shares_for_strategies(
+    //     &self,
+    //     provider: Arc<IvyProvider>,
+    //     strategies: Vec<Address>,
+    // ) -> Result<Vec<U256>, IvyError> {
+    //     let delegation_manager = DelegationManagerAbi::new(
+    //         contracts::delegation_manager(self.chain()),
+    //         provider.clone(),
+    //     );
+    //     let shares = delegation_manager.get_operator_shares(provider.address(), strategies).await?;
+    //     Ok(shares)
+    // }
+
+    // async fn get_bootable_quorums(
+    //     &self,
+    //     provider: Arc<IvyProvider>,
+    // ) -> Result<Vec<QuorumType>, IvyError> {
+    //     let mut quorums_to_boot: Vec<QuorumType> = Vec::new();
+    //     let chain = Chain::try_from(provider.signer().chain_id()).unwrap_or_default();
+    //     for quorum_type in self.quorum_candidates(chain).iter() {
+    //         let quorum = Quorum::try_from_type_and_network(*quorum_type, chain)?;
+    //         let strategies = quorum.to_addresses();
+    //         let shares =
+    //             self.get_operator_shares_for_strategies(provider.clone(), strategies).await?;
+    //         let total_shares = shares.iter().fold(U256::from(0), |acc, x| acc + x); // This may be
+    //         info!("Operator shares for quorum {}: {}", quorum_type, total_shares);
+    //         // let quorum_total =
+    //         //     self.get_current_total_stake(provider.clone(), *quorum_type as u8).await?;
+    //         quorums_to_boot.push(*quorum_type);
+    //         // TODO: Reintroduce this check somewhere
+    //         // let quorum_percentage = total_shares * 10000 / (total_shares + quorum_total);
+    //         // if self.avs()?.validate_node_size(quorum_percentage)? {
+    //         //     quorums_to_boot.push(*quorum_type);
+    //         // };
+    //     }
+    //     Ok(quorums_to_boot)
+    // }
+
+    // async fn build_env(
+    //     &self,
+    //     _provider: Arc<IvyProvider>,
+    //     bls_key_name: &str,
+    //     bls_key_password: &str,
+    // ) -> Result<(), IvyError> {
+    //     let avs_run_path = self.config.compose_file.clone();
+    //     let rpc_url = &self.config.rpc_url;
+
+    //     let env_example_path = avs_run_path.join(".env.example");
+    //     let env_path = avs_run_path.join(".env");
+
+    //     if !env_example_path.exists() {
+    //         error!("The '.env.example' file does not exist at {}. '.env.example' is used for .env templating, please ensure the operator-setup was downloaded to the correct location.", env_example_path.display());
+    //         return Err(SetupError::NoEnvExample.into());
+    //     }
+    //     std::fs::copy(env_example_path, env_path.clone())?;
+
+    //     debug!("configuring env...");
+    //     let mut env_lines = EnvLines::load(&env_path)?;
+
+    //     // Node hostname
+    //     let node_hostname = reqwest::get("https://api.ipify.org").await?.text().await?;
+    //     info!("Using node hostname: {node_hostname}");
+    //     // env_lines.set("NODE_HOSTNAME", &node_hostname);
+
+    //     // Node chain RPC
+    //     env_lines.set("NODE_CHAIN_RPC", rpc_url.as_ref());
+
+    //     // User home directory
+    //     let home_dir = dirs::home_dir().expect("Could not get home directory");
+    //     let home_str = home_dir.to_str().expect("Could not get home directory");
+    //     env_lines.set("USER_HOME", home_str);
+    //     // Node resource paths
+    //     env_lines.set("NODE_G1_PATH_HOST", r#"${EIGENLAYER_HOME}/eigenda/resources/g1.point"#);
+    //     env_lines
+    //         .set("NODE_G2_PATH_HOST", r#"${EIGENLAYER_HOME}/eigenda/resources/g2.point.powerOf2"#);
+    //     env_lines.set(
+    //         "NODE_CACHE_PATH_HOST",
+    //         r#"${EIGENLAYER_HOME}/eigenda/eigenda-operator-setup/resources/cache"#,
+    //     );
+
+    //     // BLS key
+    //     let keychain = Keychain::default();
+    //     let bls_json_file_location = keychain.get_path(&KeyName::Bls(bls_key_name.to_owned()));
+    //     debug!("BLS key file location: {:?}", &bls_json_file_location);
+
+    //     env_lines.set(
+    //         "NODE_BLS_KEY_FILE_HOST",
+    //         bls_json_file_location.to_str().expect("Could not get BLS key file location"),
+    //     );
+    //     env_lines.set("NODE_BLS_KEY_PASSWORD", &format!("'{}'", bls_key_password));
+    //     env_lines.save(&env_path)?;
+    //     info!(".env file saved to {}", env_path.display());
+
+    //     Ok(())
+    // }
+
+    // // TODO: Should probably be a hashmap
+    // #[allow(dead_code)]
+    // fn quorum_min(&self, chain: Chain, quorum_type: QuorumType) -> U256 {
+    //     match chain {
+    //         Chain::Mainnet => match quorum_type {
+    //             QuorumType::LST => U256::from(96 * (10 ^ 18)),
+    //             QuorumType::EIGEN => todo!("Unimplemented"),
+    //         },
+    //         Chain::Holesky => match quorum_type {
+    //             QuorumType::LST => U256::from(96 * (10 ^ 18)),
+    //             QuorumType::EIGEN => todo!("Unimplemented"),
+    //         },
+    //         _ => todo!("Unimplemented"),
+    //     }
+    // }
+
+    // // TODO: Consider loading these from a TOML config file or somesuch
+    // // TODO: Add Eigen quorum
+    // #[allow(dead_code)]
+    // fn quorum_candidates(&self, chain: Chain) -> Vec<QuorumType> {
+    //     match chain {
+    //         Chain::Mainnet => vec![QuorumType::LST],
+    //         Chain::Holesky => vec![QuorumType::LST],
+    //         _ => todo!("Unimplemented"),
+    //     }
+    // }
 }
 
 /// Downloads eigenDA node resources
