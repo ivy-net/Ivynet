@@ -121,26 +121,16 @@ pub fn catgegorize_updateable_nodes(
     let mut updateable = Vec::new();
     let mut outdated = Vec::new();
 
-    println!("Running nodes: {:#?}\n", running_nodes);
-    println!("Metrics map: {:#?}\n", node_metrics_map);
-    println!("AVS version map: {:#?}\n", avs_version_map);
-
     running_nodes
         .iter()
         .filter_map(|&node| {
-            println!("Checking node: {:?}", node);
             let metrics = node_metrics_map.get(&node)?;
-            println!("Metrics: {:#?}", metrics);
             let running_metric = metrics.get(RUNNING_METRIC)?;
-            println!("Running metric: {:#?}", running_metric);
             let metric_attributes = running_metric.attributes.as_ref()?;
-            println!("Attributes: {:#?}", metric_attributes);
 
             let avs = metric_attributes.get("avs")?;
             let chain = metric_attributes.get("chain")?;
             let version = metric_attributes.get("version")?;
-
-            println!("AVS: {}, Chain: {}, Version: {}", avs, chain, version);
 
             let avs_id = AvsID {
                 avs_name: AvsName::try_from(avs.as_str()).ok()?,
