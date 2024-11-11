@@ -76,7 +76,7 @@ impl EigenDAConfig {
         Ok(DockerCmd::new()
             .await?
             .current_dir(parent_dir)
-            .args(["-f", compose_filename, "up", "--force-recreate"])
+            .args(["-f", compose_filename, "up", "--force-recreate", "-d"])
             .spawn()?)
     }
 
