@@ -37,6 +37,9 @@ pub enum BackendError {
     #[error("No running AVS found: {0}")]
     NoRunningAvsFound(String),
 
+    #[error("No version information found: {0}")]
+    NoVersionInfoFound(String),
+
     #[error("No internal ID attached to GRPC message")]
     NoInternalId,
 

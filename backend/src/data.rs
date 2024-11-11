@@ -1,11 +1,20 @@
 use std::collections::HashMap;
 
-use ivynet_core::{avs::names::AvsName, ethers::types::H160};
+use ivynet_core::{
+    avs::names::AvsName,
+    ethers::types::{Chain, H160},
+};
 use semver::Version;
 use serde::Serialize;
 use utoipa::ToSchema;
 
-use crate::{db::metric::Metric, error::BackendError};
+use crate::{
+    db::{
+        avs_version::{AvsID, VersionData},
+        metric::Metric,
+    },
+    error::BackendError,
+};
 
 const RUNNING_METRIC: &str = "running";
 const EIGEN_PERFORMANCE_METRIC: &str = "eigen_performance_score";
@@ -107,38 +116,46 @@ pub fn categorize_node_health(
 pub fn catgegorize_updateable_nodes(
     running_nodes: Vec<H160>,
     node_metrics_map: HashMap<H160, HashMap<String, Metric>>,
-    avs_version_map: HashMap<AvsName, Version>,
-) -> Vec<H160> {
-    let avs_updateable: Vec<_> = running_nodes
-        .iter()
-        .filter_map(|node| {
-            node_metrics_map
-                .get(node)
-                .and_then(|metrics_map| metrics_map.get(RUNNING_METRIC))
-                .and_then(|running_metric| running_metric.attributes.as_ref())
-                .and_then(|attributes| match (attributes.get("avs"), attributes.get("version")) {
-                    (Some(avs), Some(version)) => Some((node, avs, version)),
-                    _ => None,
-                })
-        })
-        .filter_map(|(node, avs, version)| {
-            if let Ok(avs_name) = AvsName::try_from(&avs[..]) {
-                avs_version_map.get(&avs_name).and_then(|latest_version| {
-                    Version::parse(version).ok().and_then(|current_version| {
-                        if current_version < *latest_version {
-                            Some(*node)
-                        } else {
-                            None
-                        }
-                    })
-                })
-            } else {
-                None
-            }
-        })
-        .collect();
+    avs_version_map: HashMap<AvsID, VersionData>,
+) -> (Vec<H160>, Vec<H160>) {
+    let mut updateable = Vec::new();
+    let mut outdated = Vec::new();
 
-    avs_updateable
+    running_nodes
+        .iter()
+        .filter_map(|&node| {
+            let metrics = node_metrics_map.get(&node)?;
+            let running_metric = metrics.get(RUNNING_METRIC)?;
+            let metric_attributes = running_metric.attributes.as_ref()?;
+
+            let avs = metric_attributes.get("avs")?;
+            let chain = metric_attributes.get("chain")?;
+            let version = metric_attributes.get("version")?;
+
+            let avs_id = AvsID {
+                avs_name: AvsName::try_from(avs.as_str()).ok()?,
+                chain: chain.parse::<Chain>().ok()?,
+            };
+            let current_version = Version::parse(version).ok()?;
+
+            let version_data = avs_version_map.get(&avs_id)?.clone();
+            if version_data.latest_version <= current_version {
+                return None;
+            }
+
+            updateable.push(node);
+
+            if let Some(breaking) = version_data.breaking_change_version {
+                if current_version < breaking {
+                    outdated.push(node);
+                }
+            }
+
+            Some(())
+        })
+        .count(); // consume iterator
+
+    (updateable, outdated)
 }
 
 /// Look up NodeStatus of a specific node
@@ -183,11 +200,13 @@ const CONDENSED_EIGENDA_METRICS_NAMES: [&str; 7] = [
 
 #[cfg(test)]
 mod data_filtering_tests {
+    use crate::db::avs_version::VersionData;
+
     use super::*;
     use std::{fs::File, io::BufReader, str::FromStr};
 
     use chrono::NaiveDateTime;
-    use ivynet_core::ethers::types::Address;
+    use ivynet_core::ethers::types::{Address, Chain};
 
     fn create_metric(
         value: f64,
@@ -209,9 +228,22 @@ mod data_filtering_tests {
             None,
             Some(HashMap::from([
                 ("avs".to_string(), avs.to_string()),
+                ("chain".to_string(), Chain::Holesky.to_string()),
                 ("version".to_string(), version.to_string()),
             ])),
         )
+    }
+
+    fn create_version_data(version: &str, breaking_version: Option<&str>) -> VersionData {
+        VersionData {
+            latest_version: Version::parse(version).unwrap(),
+            breaking_change_version: breaking_version.map(|v| Version::parse(v).unwrap()),
+            breaking_change_datetime: breaking_version.map(|_| chrono::Utc::now().naive_utc()),
+        }
+    }
+
+    fn create_id(avs_name: &str) -> AvsID {
+        AvsID { avs_name: AvsName::try_from(avs_name).unwrap(), chain: Chain::Holesky }
     }
 
     fn load_metrics_json(file_path: &str) -> Result<Vec<Metric>, Box<dyn std::error::Error>> {
@@ -295,7 +327,7 @@ mod data_filtering_tests {
             node1,
             HashMap::from([(
                 RUNNING_METRIC.to_string(),
-                create_metric_with_version_attributes("eigenda", "1.0.0"),
+                create_metric_with_version_attributes("eigenda", "2.0.0"),
             )]),
         );
         node_metrics_map.insert(
@@ -314,17 +346,20 @@ mod data_filtering_tests {
         );
 
         let avs_version_map = HashMap::from([
-            (AvsName::try_from("eigenda").unwrap(), Version::new(1, 5, 0)),
-            (AvsName::try_from("lagrange").unwrap(), Version::new(2, 1, 0)),
+            (create_id("eigenda"), create_version_data("2.0.0", Some("1.8.0"))),
+            (create_id("lagrange"), create_version_data("2.1.0", None)),
         ]);
 
-        let updateable_nodes =
+        let (updateable_nodes, outdated_nodes) =
             catgegorize_updateable_nodes(running_nodes, node_metrics_map, avs_version_map);
 
         assert_eq!(updateable_nodes.len(), 2);
-        assert!(updateable_nodes.contains(&node1));
         assert!(updateable_nodes.contains(&node2));
-        assert!(!updateable_nodes.contains(&node3));
+        assert!(updateable_nodes.contains(&node3));
+        assert!(!updateable_nodes.contains(&node1));
+
+        assert_eq!(outdated_nodes.len(), 1);
+        assert!(outdated_nodes.contains(&node3));
     }
 
     #[test]
@@ -343,12 +378,13 @@ mod data_filtering_tests {
         );
 
         let avs_version_map =
-            HashMap::from([(AvsName::try_from("eigenda").unwrap(), Version::new(2, 0, 0))]);
+            HashMap::from([(create_id("eigenda"), create_version_data("2.0.0", None))]);
 
-        let updateable_nodes =
+        let (updateable_nodes, outdated_nodes) =
             catgegorize_updateable_nodes(running_nodes, node_metrics_map, avs_version_map);
 
         assert_eq!(updateable_nodes.len(), 0);
+        assert_eq!(outdated_nodes.len(), 0);
     }
 
     #[test]
@@ -375,13 +411,16 @@ mod data_filtering_tests {
         );
 
         let avs_version_map =
-            HashMap::from([(AvsName::try_from("eigenda").unwrap(), Version::new(2, 0, 0))]);
+            HashMap::from([(create_id("eigenda"), create_version_data("2.0.0", None))]);
 
-        let updateable_nodes =
+        let (updateable_nodes, outdated_nodes) =
             catgegorize_updateable_nodes(running_nodes, node_metrics_map, avs_version_map);
+
+        println!("{:?}", updateable_nodes);
 
         assert_eq!(updateable_nodes.len(), 1);
         assert!(updateable_nodes.contains(&node1));
+        assert_eq!(outdated_nodes.len(), 0);
     }
 
     #[test]
@@ -400,11 +439,12 @@ mod data_filtering_tests {
         );
 
         let avs_version_map =
-            HashMap::from([(AvsName::try_from("eigenda").unwrap(), Version::new(2, 0, 0))]);
+            HashMap::from([(create_id("eigenda"), create_version_data("2.0.0", None))]);
 
-        let updateable_nodes =
+        let (updateable_nodes, outdated_nodes) =
             catgegorize_updateable_nodes(running_nodes, node_metrics_map, avs_version_map);
 
         assert_eq!(updateable_nodes.len(), 0);
+        assert_eq!(outdated_nodes.len(), 0);
     }
 }

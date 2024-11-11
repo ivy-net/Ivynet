@@ -103,7 +103,8 @@ fn create_router() -> Router<HttpState> {
         .route("/client/:id", post(client::set_name))
         .route("/client/:id", delete(client::delete))
         .route("/client", get(client::client))
-        .route("/avs/:avs/version", get(avs::get_node_data_for_avs))
+        .route("/avs/:avs/version", get(avs::get_version_info))
+        .route("/avs/version", get(avs::get_all_version_info))
         .merge(
             SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", apidoc::ApiDoc::openapi()),
         )

@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO avs_version_data (avs_name, latest_version, chain)\n                    VALUES ($1, $2, $3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "46036c48f52651fc59c16e8a3978225585e28ce57f91c131bb51ebf5bbdfdec5"
+}
