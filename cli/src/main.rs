@@ -23,10 +23,6 @@ struct Args {
     #[command(subcommand)]
     cmd: Commands,
 
-    /// The network to connect to: mainnet, holesky, local
-    #[arg(long, short, default_value = "holesky")]
-    network: String,
-
     /// IvyNet servers Uri for communication
     #[arg(long, env = "SERVER_URL", value_parser = Uri::from_str, default_value = if cfg!(debug_assertions) {
         "http://localhost:50050"
@@ -42,6 +38,7 @@ struct Args {
     /// Decide the level of verbosity for the logs
     #[arg(long, env = "LOG_LEVEL", default_value_t = Level::INFO)]
     pub log_level: Level,
+
     /// Skip backend connection
     #[arg(long, env = "NO_BACKEND", default_value_t = false)]
     pub no_backend: bool,
