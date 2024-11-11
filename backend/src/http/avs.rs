@@ -5,6 +5,7 @@ use axum::{
 };
 use axum_extra::extract::CookieJar;
 use ivynet_core::avs::names::AvsName;
+use tracing::debug;
 
 use crate::{
     db::{avs_version::DbAvsVersionData, AvsVersionData},
@@ -27,18 +28,14 @@ pub async fn get_version_info(
     State(state): State<HttpState>,
     Path(avs): Path<String>,
     jar: CookieJar,
-) -> Result<Json<AvsVersionData>, BackendError> {
+) -> Result<Json<Vec<AvsVersionData>>, BackendError> {
     let _account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     let avs_name = AvsName::try_from(&avs[..]).map_err(|_| BackendError::InvalidAvs)?;
 
     // Get all data for the node
     let avs_data = DbAvsVersionData::get_avs_version(&state.pool, &avs_name).await?;
 
-    if let Some(data) = avs_data {
-        Ok(Json(data))
-    } else {
-        Err(BackendError::NoVersionInfoFound(avs_name.to_string()))
-    }
+    Ok(Json(avs_data))
 }
 
 /// Get the latest version for every AVS we support
@@ -60,5 +57,10 @@ pub async fn get_all_version_info(
     // Get all data for the node
     let avs_data = DbAvsVersionData::get_all_avs_version(&state.pool).await?;
 
-    Ok(Json(avs_data))
+    let vec_data: Vec<AvsVersionData> =
+        avs_data.into_iter().map(|(id, vd)| AvsVersionData { id, vd }).collect();
+
+    debug!("/avs/version result: {:#?}", vec_data);
+
+    Ok(Json(vec_data))
 }

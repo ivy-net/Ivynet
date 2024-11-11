@@ -7,7 +7,10 @@ use axum::{
 };
 use axum_extra::extract::CookieJar;
 use chrono::NaiveDateTime;
-use ivynet_core::{avs::names::AvsName, ethers::types::Address};
+use ivynet_core::{
+    avs::names::AvsName,
+    ethers::types::{Address, Chain},
+};
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -167,11 +170,9 @@ pub async fn status(
     let (healthy_nodes, unhealthy_nodes) =
         data::categorize_node_health(running_nodes.clone(), node_metrics_map.clone());
 
-    let avs_versions = DbAvsVersionData::get_all_avs_version(&state.pool).await?;
-    let avs_version_map: HashMap<AvsName, Version> =
-        avs_versions.iter().map(|avs| (avs.avs_name.clone(), avs.latest_version.clone())).collect();
+    let avs_version_map = DbAvsVersionData::get_all_avs_version(&state.pool).await?;
 
-    let updateable_nodes = data::catgegorize_updateable_nodes(
+    let (updateable_nodes, outdated_nodes) = data::catgegorize_updateable_nodes(
         running_nodes.clone(),
         node_metrics_map,
         avs_version_map,
@@ -185,7 +186,7 @@ pub async fn status(
             unhealthy_machines: unhealthy_nodes.iter().map(|node| format!("{node:?}")).collect(),
             idle_machines: idle_nodes.iter().map(|node| format!("{node:?}")).collect(),
             updateable_machines: updateable_nodes.iter().map(|node| format!("{node:?}")).collect(),
-            erroring_machines: Vec::new(), // TODO: When we will solve error issues
+            erroring_machines: outdated_nodes.iter().map(|node| format!("{node:?}")).collect(),
         },
     }
     .into())
@@ -670,45 +671,43 @@ pub async fn build_avs_info(
     running_metric: Option<Metric>,
     performance_metric: Option<Metric>,
 ) -> AvsInfo {
-    let mut name = None;
-    let mut version = None;
-    let mut active_set = None;
-    let mut operator_id = None;
-    let mut chain = None;
-    let mut updateable = None;
+    let attrs = running_metric.and_then(|m| m.attributes);
+    let get_attr = |key| attrs.as_ref().and_then(|a| a.get(key).cloned());
 
-    if let Some(running) = running_metric {
-        if let Some(attributes) = &running.attributes {
-            name = attributes.get("avs").cloned();
-            version = attributes.get("version").cloned();
-            chain = attributes.get("chain").cloned();
-            operator_id = attributes.get("operator_id").cloned();
-            active_set = attributes.get("active_set").cloned();
+    let name = get_attr("avs");
+    let version = get_attr("version");
+    let chain = get_attr("chain");
 
-            let avs_name_str = name.clone().unwrap_or("jim".to_string());
-            let avs_version_str = version.clone().unwrap_or("0.0.0".to_string());
-            if let (Ok(avs_name), Ok(version)) =
-                (AvsName::try_from(avs_name_str.as_str()), Version::parse(&avs_version_str))
-            {
-                if let Ok(Some(avs_data)) = DbAvsVersionData::get_avs_version(pool, &avs_name).await
-                {
-                    updateable = Some(avs_data.latest_version < version);
+    //Like an onion
+    let updateable = match (name.clone(), version.clone(), chain.clone()) {
+        (Some(n), Some(v), Some(c)) => {
+            let avs_name = AvsName::try_from(n.as_str()).ok();
+            let avs_version = Version::parse(&v).ok();
+            let avs_chain = c.parse::<Chain>().ok();
+
+            match (avs_name, avs_version, avs_chain) {
+                (Some(an), Some(av), Some(ac)) => {
+                    let data = DbAvsVersionData::get_avs_version_with_chain(pool, &an, &ac)
+                        .await
+                        .unwrap_or(None);
+                    match data {
+                        Some(d) => Some(d.vd.latest_version > av),
+                        None => None,
+                    }
                 }
+                _ => None,
             }
         }
-    }
+        _ => None,
+    };
 
     AvsInfo {
         name,
         version,
-        active_set,
-        operator_id,
+        active_set: get_attr("active_set"),
+        operator_id: get_attr("operator_id"),
         chain,
-        performance_score: if let Some(performance) = performance_metric {
-            performance.value
-        } else {
-            0.0
-        },
+        performance_score: performance_metric.map_or(0.0, |m| m.value),
         updateable,
     }
 }
