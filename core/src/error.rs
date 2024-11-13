@@ -1,5 +1,3 @@
-use core::error;
-
 use ethers::{
     contract::ContractError,
     providers::{JsonRpcError, MiddlewareError as _, ProviderError},
@@ -146,12 +144,6 @@ pub enum IvyError {
     #[error("JSON RPC Error {0}")]
     JsonRrcError(JsonRpcError),
 
-    #[error("Download error")]
-    DownloadError,
-
-    #[error("Download interupted")]
-    DownloadInt,
-
     #[error("No quorums to boot")]
     NoQuorums,
 
@@ -190,9 +182,6 @@ pub enum IvyError {
     #[error(transparent)]
     IvyYamlError(#[from] crate::ivy_yaml::IvyYamlError),
 
-    #[error("No logfiles found for {0}")]
-    NoLogFiles(String),
-
     #[error(transparent)]
     DockerError(#[from] DockerError),
 
@@ -210,6 +199,9 @@ pub enum IvyError {
 
     #[error("Invalid docker-compose file: {0}")]
     InvalidDockerCompose(String),
+
+    #[error(transparent)]
+    DownloadError(#[from] crate::download::DownloadError),
 }
 
 #[derive(Debug, Error)]

@@ -1,7 +1,7 @@
 use std::{
     fs::{self, File},
     io::{copy, BufReader},
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 use dialoguer::Input;
@@ -15,10 +15,10 @@ use zip::ZipArchive;
 use crate::{
     avs::config::{default_config_dir, NodeConfig, NodeConfigError},
     docker::dockercmd::DockerCmd,
+    download::dl_progress_bar,
     env_parser::EnvLines,
     error::IvyError,
     keychain::{KeyType, Keychain},
-    rpc_management::IvyProvider,
 };
 
 pub const EIGENDA_SETUP_REPO: &str =
@@ -57,6 +57,7 @@ impl TryFrom<NodeConfig> for EigenDAConfig {
 }
 
 impl EigenDAConfig {
+    /// Start the EigenDA node
     pub async fn start(&self) -> Result<Child, IvyError> {
         let compose_filename = self
             .compose_file
@@ -80,6 +81,7 @@ impl EigenDAConfig {
             .spawn()?)
     }
 
+    /// Filename of the config file
     pub fn name(&self) -> String {
         let name = self
             .path
@@ -91,6 +93,7 @@ impl EigenDAConfig {
         name
     }
 
+    /// Prompt the user for configuration details and create a new EigenDAConfig
     pub async fn new_from_prompt() -> Result<Self, NodeConfigError> {
         // Resource directory setup
         let node_name =
@@ -100,6 +103,7 @@ impl EigenDAConfig {
 
         let node_directory = prompt_eigenda_directory()?;
         download_operator_setup(&node_directory).await?;
+        download_g1_g2(&node_directory).await?;
 
         let sample_holesky_compose =
             node_directory.clone().join("eigenda-operator-setup/holesky/docker-compose.yml");
@@ -109,7 +113,7 @@ impl EigenDAConfig {
         // TODO: This is a bit verbose. Consider including an example config file in
         // deployments instead.
         let compose_file: PathBuf = dialoguer::Input::<String>::new()
-            .with_prompt(format!("Enter the path to the docker-compose file. For EigenDA nodes, this will be usually be located at {:?} for standard Holesky deployments or {:?} for standard Mainnet deployments.", sample_holesky_compose, sample_mainnet_compose))
+            .with_prompt(format!("Enter the path to the docker-compose file. For EigenDA nodes, this will be usually be located at \n{:?} \nfor standard Holesky deployments or \n{:?} \nfor standard Mainnet deployments.", sample_holesky_compose, sample_mainnet_compose))
             .interact()?
             .into();
 
@@ -130,7 +134,7 @@ impl EigenDAConfig {
 
         let rpc_url = dialoguer::Input::<String>::new()
             .with_prompt("Enter the RPC URL")
-            .interact()?
+            .interact_text()?
             .parse::<Url>()?;
 
         let config = Self {
@@ -200,13 +204,13 @@ pub fn default_eigenda_resources_dir() -> PathBuf {
     dirs::home_dir().unwrap().join(".eigenlayer/eigenda")
 }
 
-pub async fn download_operator_setup(eigen_path: &PathBuf) -> Result<(), NodeConfigError> {
+pub async fn download_operator_setup(eigen_path: &Path) -> Result<(), NodeConfigError> {
     let mut setup = false;
     let temp_path = eigen_path.join("temp");
     let destination_path = eigen_path.join("eigenda-operator-setup");
     if destination_path.exists() {
         let reset_string: String = Input::new()
-            .with_prompt("The operator setup directory already exists. Redownload? (y/n)")
+            .with_prompt("The operator setup directory already exists. Clear directory and redownload? (y/n)")
             .interact_text()?;
 
         if reset_string == "y" {
@@ -287,30 +291,25 @@ async fn build_env(config: &EigenDAConfig, bls_key_password: &str) -> Result<(),
     debug!("configuring env...");
     let mut env_lines = EnvLines::load(&env_path)?;
 
-    // Node hostname
     let node_hostname = reqwest::get("https://api.ipify.org").await?.text().await?;
     info!("Using node hostname: {node_hostname}");
-    env_lines.set("NODE_HOSTNAME", &node_hostname);
 
-    // Node chain RPC
+    env_lines.set("NODE_HOSTNAME", &node_hostname);
     env_lines.set("NODE_CHAIN_RPC", rpc_url.as_ref());
 
     // User home directory
     let home_dir = dirs::home_dir().expect("Could not get home directory");
     let home_str = home_dir.to_str().expect("Could not get home directory");
-
     env_lines.set("USER_HOME", home_str);
 
     // Node resource paths
     env_lines.set("NODE_G1_PATH_HOST", r#"${EIGENLAYER_HOME}/eigenda/resources/g1.point"#);
-
     env_lines.set("NODE_G2_PATH_HOST", r#"${EIGENLAYER_HOME}/eigenda/resources/g2.point.powerOf2"#);
 
     env_lines.set(
         "NODE_CACHE_PATH_HOST",
         r#"${EIGENLAYER_HOME}/eigenda/eigenda-operator-setup/resources/cache"#,
     );
-
     env_lines.set(
         "NODE_BLS_KEY_FILE_HOST",
         config.bls_keyfile.to_str().expect("Could not get BLS key file location"),
@@ -321,6 +320,27 @@ async fn build_env(config: &EigenDAConfig, bls_key_password: &str) -> Result<(),
 
     info!(".env file saved to {}", env_path.display());
 
+    Ok(())
+}
+
+pub async fn download_g1_g2(eigen_path: &Path) -> Result<(), NodeConfigError> {
+    let resources_dir = eigen_path.join("resources");
+    fs::create_dir_all(resources_dir.clone())?;
+    let g1_file_path = resources_dir.join("g1.point");
+    let g2_file_path = resources_dir.join("g2.point.powerOf2");
+    if g1_file_path.exists() {
+        info!("The 'g1.point' file already exists.");
+    } else {
+        info!("Downloading 'g1.point'  to {}", g1_file_path.display());
+        dl_progress_bar("https://srs-mainnet.s3.amazonaws.com/kzg/g1.point", g1_file_path).await?;
+    }
+    if g2_file_path.exists() {
+        info!("The 'g2.point.powerOf2' file already exists.");
+    } else {
+        info!("Downloading 'g2.point.powerOf2' ...");
+        dl_progress_bar("https://srs-mainnet.s3.amazonaws.com/kzg/g2.point.powerOf2", g2_file_path)
+            .await?
+    }
     Ok(())
 }
 

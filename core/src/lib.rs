@@ -8,7 +8,6 @@ pub mod download;
 pub mod eigen;
 pub mod env_parser;
 pub mod error;
-pub mod fluentd;
 pub mod grpc;
 pub mod io;
 pub mod ivy_yaml;

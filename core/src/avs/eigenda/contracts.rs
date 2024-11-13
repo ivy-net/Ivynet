@@ -22,6 +22,7 @@ abigen!(
     event_derives(serde::Deserialize, serde::Serialize)
 );
 
+#[allow(dead_code)]
 pub(super) fn stake_registry(chain: Chain) -> Address {
     match chain {
         Chain::Mainnet => h160!(0x006124ae7976137266feebfb3f4d2be4c073139d),
@@ -30,6 +31,7 @@ pub(super) fn stake_registry(chain: Chain) -> Address {
     }
 }
 
+#[allow(dead_code)]
 pub(super) fn registry_coordinator(chain: Chain) -> Address {
     match chain {
         Chain::Mainnet => h160!(0x0baac79acd45a023e19345c352d8a7a83c4e5656),
@@ -38,6 +40,7 @@ pub(super) fn registry_coordinator(chain: Chain) -> Address {
     }
 }
 
+#[allow(dead_code)]
 pub(super) fn delegation_manager(chain: Chain) -> Address {
     match chain {
         Chain::Mainnet => h160!(0x39053D51B77DC0d36036Fc1fCc8Cb819df8Ef37A),

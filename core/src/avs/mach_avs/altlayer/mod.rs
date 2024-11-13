@@ -2,7 +2,7 @@ use async_trait::async_trait;
 use dialoguer::{Input, Password};
 use ethers::{
     signers::Signer,
-    types::{Chain, H160, U256},
+    types::{Chain, U256},
 };
 use std::{
     env,
@@ -18,7 +18,7 @@ use zip::ZipArchive;
 
 use crate::{
     avs::{config::NodeType, names::AvsName, AvsVariant},
-    config::{self, IvyConfig},
+    config::{self},
     constants::IVY_METADATA,
     eigen::{
         node_classes::{self, NodeClass},
@@ -184,6 +184,8 @@ impl AltLayer {
         }
     }
 
+    // TODO: Reimplement this.
+    #[allow(dead_code)]
     async fn build_env(&self, provider: Arc<IvyProvider>) -> Result<(), IvyError> {
         let chain = Chain::try_from(provider.signer().chain_id())?;
 
