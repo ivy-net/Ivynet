@@ -5,4 +5,4 @@ pub mod init;
 pub mod inspect;
 pub mod key;
 pub mod operator;
-pub mod telemetry;
+// pub mod telemetry;

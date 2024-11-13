@@ -11,8 +11,8 @@ use tonic::Status;
 use zip::result::ZipError;
 
 use crate::{
-    avs::eigenda::EigenDAError, docker::dockercmd::DockerError, eigen::quorum::QuorumError,
-    grpc::client::ClientError, rpc_management::IvyProvider,
+    docker::dockercmd::DockerError, eigen::quorum::QuorumError, grpc::client::ClientError,
+    IvyProvider, IvyProviderError,
 };
 
 #[derive(Debug, Error)]
@@ -193,6 +193,9 @@ pub enum IvyError {
 
     #[error(transparent)]
     DownloadError(#[from] crate::download::DownloadError),
+
+    #[error(transparent)]
+    SignerMiddlewareError(#[from] IvyProviderError),
 }
 
 #[derive(Debug, Error)]

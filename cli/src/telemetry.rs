@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use ivynet_core::{
-    avs::{names::AvsName, AvsProvider, AvsVariant},
+    avs::names::AvsName,
     config::get_detailed_system_information,
     docker::dockercmd,
     error::IvyError,
@@ -14,9 +14,9 @@ use ivynet_core::{
         },
         tonic::{transport::Channel, Request},
     },
-    rpc_management::IvyProvider,
     signature::{sign_delete_node_data, sign_metrics, sign_node_data},
     wallet::IvyWallet,
+    IvyProvider,
 };
 use tokio::{
     sync::RwLock,
