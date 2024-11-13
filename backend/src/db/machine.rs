@@ -37,16 +37,16 @@ impl From<DbMachine> for Machine {
     }
 }
 impl Machine {
-    pub async fn get(pool: &PgPool, machine_id: Uuid) -> Result<Machine, BackendError> {
+    pub async fn get(pool: &PgPool, machine_id: Uuid) -> Result<Option<Machine>, BackendError> {
         let machines = sqlx::query_as!(
             DbMachine,
             "SELECT machine_id, name, client_id, created_at, updated_at FROM machine WHERE machine_id = $1",
             machine_id
         )
-        .fetch_one(pool)
+        .fetch_optional(pool)
         .await?;
 
-        Ok(machines.into())
+        Ok(machines.map(|m| m.into()))
     }
 
     pub async fn get_all_for_client_id(

@@ -371,7 +371,9 @@ pub async fn info(
         authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
 
     let metrics = Metric::get_organized_for_avs(&state.pool, machine.machine_id, &avs_name).await?;
-    let avs = Avs::get_machines_avs(&state.pool, machine.machine_id, &avs_name).await?;
+    let avs = Avs::get_machines_avs(&state.pool, machine.machine_id, &avs_name)
+        .await?
+        .ok_or(BackendError::InvalidAvs)?;
     Ok(Json(build_node_info(&state.pool, &machine, &avs, metrics).await))
 }
 
@@ -510,35 +512,6 @@ pub async fn get_all_node_data(
     Ok(Json(nodes_data))
 }
 
-// TODO: This seems to obsolete now
-/// Get all data on a specific AVS running on a node
-/// Keep in mind, a node could run the same avs multiple times
-/// assuming they are using different operator keys
-// #[utoipa::path(
-//     get,
-//     path = "/client/:id/data/:avs",
-//     responses(
-//         (status = 200, body = [NodeData]),
-//         (status = 404)
-//     )
-// )]
-// pub async fn get_node_data_for_avs(
-//     headers: HeaderMap,
-//     State(state): State<HttpState>,
-//     Path((id, avs)): Path<(String, String)>,
-//     jar: CookieJar,
-// ) -> Result<Json<Vec<Avs>>, BackendError> {
-//     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-//     let node_id =
-//         authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
-//     let avs_name = AvsName::try_from(&avs[..]).map_err(|_| BackendError::InvalidAvs)?;
-//
-//     // Get all data for the node
-//     let nodes_data = DbNodeData::get_avs_node_data(&state.pool, &node_id, &avs_name).await?;
-//
-//     Ok(Json(nodes_data))
-// }
-
 /// Delete all data for a specific node
 #[utoipa::path(
     delete,
@@ -564,7 +537,7 @@ pub async fn delete_machine_data(
     Ok(())
 }
 
-// TODO: Not sure about that one either
+// TODO: To be updated
 /// Delete all data for a specific AVS running on a node
 // #[utoipa::path(
 //     delete,

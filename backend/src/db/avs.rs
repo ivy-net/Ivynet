@@ -79,17 +79,17 @@ impl Avs {
         pool: &sqlx::PgPool,
         machine_id: Uuid,
         avs_name: &str,
-    ) -> Result<Avs, BackendError> {
-        let avs: DbAvs = sqlx::query_as!(
+    ) -> Result<Option<Avs>, BackendError> {
+        let avs: Option<DbAvs> = sqlx::query_as!(
             DbAvs,
             "SELECT machine_id, avs_name, avs_version, operator_address, active_set, created_at, updated_at FROM avs WHERE machine_id = $1 AND avs_name = $2",
             Some(machine_id),
             avs_name
         )
-        .fetch_one(pool)
+        .fetch_optional(pool)
         .await?;
 
-        Avs::try_from(avs).map_err(|_| BackendError::BadId)
+        avs.map(|avs| Avs::try_from(avs).map_err(|_| BackendError::BadId)).transpose()
     }
 
     pub async fn get_operator_avs_list(
