@@ -126,7 +126,7 @@ impl Backend for BackendService {
             &req.metrics.iter().map(|v| v.into()).collect::<Vec<_>>(),
         )
         .await
-        .map_err(|e| Status::internal(&format!("Failed while saving metrics: {e:?}")))?;
+        .map_err(|e| Status::internal(format!("Failed while saving metrics: {e:?}")))?;
 
         Ok(Response::new(()))
     }

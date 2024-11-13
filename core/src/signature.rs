@@ -72,7 +72,7 @@ fn build_node_data_message(data: &NodeData) -> Result<H256, IvyError> {
     let tokens = vec![
         Token::Address(Address::from_slice(&data.operator_id)),
         Token::String(data.avs_name.clone()),
-        Token::String(data.avs_version.clone().unwrap_or("".to_string())),
+        Token::String(data.avs_version.clone().unwrap_or_default()),
         Token::Bool(data.active_set.unwrap_or(false)),
     ];
     Ok(H256::from(&keccak256(encode(&tokens))))
