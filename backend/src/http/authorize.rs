@@ -225,8 +225,8 @@ pub async fn verify_node_ownership(
         .into_iter()
         .filter_map(|m| if m.machine_id == machine.machine_id { Some(m) } else { None })
         .collect::<Vec<_>>()
-        .is_empty()
-        || !account.role.can_write()
+        .is_empty() ||
+        !account.role.can_write()
     {
         Err(BackendError::Unauthorized)
     } else {
