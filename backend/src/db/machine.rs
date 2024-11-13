@@ -43,7 +43,7 @@ impl Machine {
             "SELECT machine_id, name, client_id, created_at, updated_at FROM machine WHERE machine_id = $1",
             machine_id
         )
-        .fetch_one(pool) // -> Vec<Country>
+        .fetch_one(pool)
         .await?;
 
         Ok(machines.into())
@@ -58,7 +58,7 @@ impl Machine {
             "SELECT machine_id, name, client_id, created_at, updated_at FROM machine WHERE client_id = $1",
             Some(client_id.as_bytes())
         )
-        .fetch_all(pool) // -> Vec<Country>
+        .fetch_all(pool)
         .await?;
 
         Ok(machines.into_iter().map(|n| n.into()).collect())
@@ -75,7 +75,7 @@ impl Machine {
             Some(client_id.as_bytes()),
             Some(machine_id)
         )
-        .fetch_all(pool) // -> Vec<Country>
+        .fetch_all(pool)
         .await?;
         Ok(!machines.is_empty())
     }

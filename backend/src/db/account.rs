@@ -48,7 +48,7 @@ impl Account {
             Account,
             r#"SELECT user_id, organization_id, email, password, role AS "role!: Role", created_at, updated_at FROM account"#
         )
-            .fetch_all(pool) // -> Vec<Country>
+            .fetch_all(pool)
             .await?;
 
         Ok(accounts)

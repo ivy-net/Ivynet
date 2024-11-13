@@ -27,7 +27,7 @@ impl Verification {
             Verification,
             r#"SELECT verification_id, associated_id, verification_type AS "verification_type!: VerificationType", created_at, updated_at FROM verification"#
         )
-            .fetch_all(pool) // -> Vec<Country>
+            .fetch_all(pool)
             .await?;
 
         Ok(verifications)

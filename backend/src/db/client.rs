@@ -45,7 +45,7 @@ impl Client {
             "SELECT client_id, organization_id, created_at, updated_at FROM client WHERE organization_id = $1",
             account.organization_id
         )
-        .fetch_all(pool) // -> Vec<Country>
+        .fetch_all(pool)
         .await?;
 
         Ok(clients.into_iter().map(|n| n.into()).collect())

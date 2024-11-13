@@ -81,7 +81,7 @@ impl Metric {
             machine_id,
             avs_name
         )
-        .fetch_all(pool) // -> Vec<Country>
+        .fetch_all(pool)
         .await?;
 
         Ok(metrics.into_iter().map(|n| n.into()).collect())
