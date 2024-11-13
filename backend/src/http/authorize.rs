@@ -219,17 +219,17 @@ pub async fn verify_node_ownership(
 ) -> Result<Machine, BackendError> {
     let machine_id = machine_id.parse::<Uuid>().map_err(|_| BackendError::BadId)?;
     let machine = Machine::get(&state.pool, machine_id).await?.ok_or(BackendError::BadId)?;
-    if !account
-        .machines(&state.pool)
-        .await?
-        .into_iter()
-        .filter_map(|m| if m.machine_id == machine.machine_id { Some(m) } else { None })
-        .collect::<Vec<_>>()
-        .is_empty() ||
-        !account.role.can_write()
+    if account.role.can_write()
+        && !account
+            .machines(&state.pool)
+            .await?
+            .into_iter()
+            .filter_map(|m| if m.machine_id == machine.machine_id { Some(m) } else { None })
+            .collect::<Vec<_>>()
+            .is_empty()
     {
-        Err(BackendError::Unauthorized)
-    } else {
         Ok(machine)
+    } else {
+        Err(BackendError::Unauthorized)
     }
 }
