@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use sysinfo::{Disks, System};
 use thiserror::Error as ThisError;
 use tonic::transport::Uri;
+use uuid::Uuid;
 
 pub static DEFAULT_CONFIG_PATH: Lazy<PathBuf> = Lazy::new(|| {
     let path = dirs::home_dir().expect("Could not get a home directory");
@@ -45,6 +46,8 @@ pub struct Service {
 pub struct IvyConfig {
     /// Storage path for serialized config file
     path: PathBuf,
+    /// Machines Id
+    pub machine_id: Uuid,
     /// RPC URL for mainnet
     pub mainnet_rpc_url: String,
     /// RPC URL for holesky
@@ -63,6 +66,7 @@ impl Default for IvyConfig {
     fn default() -> Self {
         Self {
             path: DEFAULT_CONFIG_PATH.to_owned(),
+            machine_id: Uuid::new_v4(),
             mainnet_rpc_url: "https://rpc.flashbots.net/fast".to_string(),
             holesky_rpc_url: "https://eth-holesky.public.blastapi.io".to_string(),
             local_rpc_url: "http://localhost:8545".to_string(),

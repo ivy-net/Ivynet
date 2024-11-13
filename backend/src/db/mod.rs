@@ -2,18 +2,20 @@ use crate::error::BackendError;
 use sqlx::{pool::PoolOptions, PgPool};
 
 pub mod account;
+pub mod avs;
 pub mod avs_version;
+pub mod client;
 pub mod log;
+pub mod machine;
 pub mod metric;
-pub mod node;
-pub mod node_data;
 pub mod organization;
 pub mod verification;
 
 pub use account::{Account, Role};
+pub use avs::Avs;
 pub use avs_version::AvsVersionData;
-pub use node::Node;
-pub use node_data::NodeData;
+pub use client::Client;
+pub use machine::Machine;
 pub use organization::Organization;
 
 pub async fn configure(uri: &str, migrate: bool) -> Result<PgPool, BackendError> {

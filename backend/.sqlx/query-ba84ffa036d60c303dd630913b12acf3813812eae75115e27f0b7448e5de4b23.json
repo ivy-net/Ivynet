@@ -1,30 +1,25 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT node_id, container_id, container_name, log, log_level AS \"log_level!: LogLevel\", created_at, other_fields as \"other_fields: sqlx::types::Json<HashMap<String,String>>\" FROM log WHERE node_id = $1",
+  "query": "SELECT machine_id, avs_name, log,\n                             log_level AS \"log_level!: LogLevel\", created_at,\n                             other_fields as \"other_fields: sqlx::types::Json<HashMap<String,String>>\"\n                           FROM\n                             log\n                           WHERE\n                             machine_id = $1\n                             AND avs_name = $2\n                             AND created_at <= $3",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "node_id",
-        "type_info": "Bytea"
+        "name": "machine_id",
+        "type_info": "Uuid"
       },
       {
         "ordinal": 1,
-        "name": "container_id",
-        "type_info": "Text"
+        "name": "avs_name",
+        "type_info": "Varchar"
       },
       {
         "ordinal": 2,
-        "name": "container_name",
-        "type_info": "Text"
-      },
-      {
-        "ordinal": 3,
         "name": "log",
         "type_info": "Text"
       },
       {
-        "ordinal": 4,
+        "ordinal": 3,
         "name": "log_level!: LogLevel",
         "type_info": {
           "Custom": {
@@ -42,24 +37,25 @@
         }
       },
       {
-        "ordinal": 5,
+        "ordinal": 4,
         "name": "created_at",
         "type_info": "Timestamp"
       },
       {
-        "ordinal": 6,
+        "ordinal": 5,
         "name": "other_fields: sqlx::types::Json<HashMap<String,String>>",
         "type_info": "Jsonb"
       }
     ],
     "parameters": {
       "Left": [
-        "Bytea"
+        "Uuid",
+        "Text",
+        "Timestamp"
       ]
     },
     "nullable": [
       false,
-      true,
       false,
       false,
       false,
@@ -67,5 +63,5 @@
       true
     ]
   },
-  "hash": "f15bff2617e543893bedd33d19fa4773eeaf36c77776f53d18cc6d302dbee9c9"
+  "hash": "ba84ffa036d60c303dd630913b12acf3813812eae75115e27f0b7448e5de4b23"
 }

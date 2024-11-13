@@ -7,10 +7,7 @@ use axum::{
 };
 use axum_extra::extract::CookieJar;
 use chrono::NaiveDateTime;
-use ivynet_core::{
-    avs::names::AvsName,
-    ethers::types::{Address, Chain},
-};
+use ivynet_core::{avs::names::AvsName, ethers::types::Chain};
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -18,11 +15,11 @@ use utoipa::ToSchema;
 use crate::{
     data::{self, NodeStatus},
     db::{
+        avs::Avs,
         avs_version::DbAvsVersionData,
         log::{ContainerLog, LogLevel},
+        machine::Machine,
         metric::Metric,
-        node,
-        node_data::{DbNodeData, NodeData},
     },
     error::BackendError,
 };
@@ -73,6 +70,7 @@ pub struct Info {
 pub struct InfoReport {
     pub machine_id: String,
     pub name: String,
+    pub avs_name: AvsName,
     pub status: NodeStatus,
     pub metrics: Metrics,
     pub last_checked: Option<NaiveDateTime>,
@@ -128,14 +126,21 @@ pub async fn client(
     jar: CookieJar,
 ) -> Result<Json<Vec<Info>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    let machines: Vec<node::Node> = account.nodes(&state.pool).await?;
+    let machines = account.machines_and_avses(&state.pool).await?;
 
     let mut infos: Vec<Info> = vec![];
 
-    for machine in machines {
-        let metrics = Metric::get_organized_for_node(&state.pool, &machine).await?;
-        let info = build_node_info(&state.pool, machine, metrics).await;
-        infos.push(info);
+    for (machine, avses) in machines {
+        for avs in avses {
+            let metrics = Metric::get_organized_for_avs(
+                &state.pool,
+                avs.machine_id,
+                &avs.avs_name.to_string(),
+            )
+            .await?;
+            let info = build_node_info(&state.pool, &machine, &avs, metrics).await;
+            infos.push(info);
+        }
     }
 
     Ok(Json(infos))
@@ -157,13 +162,16 @@ pub async fn status(
 ) -> Result<Json<Status>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
 
-    let machines = account.nodes(&state.pool).await?;
+    let avses = account.avses(&state.pool).await?;
 
     let mut node_metrics_map = HashMap::new();
 
-    for machine in &machines {
-        node_metrics_map
-            .insert(machine.node_id, Metric::get_organized_for_node(&state.pool, machine).await?);
+    for avs in &avses {
+        node_metrics_map.insert(
+            avs.machine_id,
+            Metric::get_organized_for_avs(&state.pool, avs.machine_id, &avs.avs_name.to_string())
+                .await?,
+        );
     }
 
     let (running_nodes, idle_nodes) = data::categorize_running_nodes(node_metrics_map.clone());
@@ -172,16 +180,13 @@ pub async fn status(
 
     let avs_version_map = DbAvsVersionData::get_all_avs_version(&state.pool).await?;
 
-    let (updateable_nodes, outdated_nodes) = data::catgegorize_updateable_nodes(
-        running_nodes.clone(),
-        node_metrics_map,
-        avs_version_map,
-    );
+    let (updateable_nodes, outdated_nodes) =
+        data::categorize_updateable_nodes(running_nodes.clone(), node_metrics_map, avs_version_map);
 
     Ok(Status {
         error: Vec::new(),
         result: StatusReport {
-            total_machines: machines.len(),
+            total_machines: avses.len(),
             healthy_machines: healthy_nodes.iter().map(|node| format!("{node:?}")).collect(),
             unhealthy_machines: unhealthy_nodes.iter().map(|node| format!("{node:?}")).collect(),
             idle_machines: idle_nodes.iter().map(|node| format!("{node:?}")).collect(),
@@ -208,13 +213,16 @@ pub async fn idling(
 ) -> Result<Json<Vec<String>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
 
-    let machines = account.nodes(&state.pool).await?;
+    let avses = account.avses(&state.pool).await?;
 
     let mut node_metrics_map = HashMap::new();
 
-    for machine in &machines {
-        node_metrics_map
-            .insert(machine.node_id, Metric::get_organized_for_node(&state.pool, machine).await?);
+    for avs in &avses {
+        node_metrics_map.insert(
+            avs.machine_id,
+            Metric::get_organized_for_avs(&state.pool, avs.machine_id, &avs.avs_name.to_string())
+                .await?,
+        );
     }
 
     let (_, idle_nodes) = data::categorize_running_nodes(node_metrics_map.clone());
@@ -238,13 +246,16 @@ pub async fn unhealthy(
 ) -> Result<Json<Vec<String>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
 
-    let machines = account.nodes(&state.pool).await?;
+    let avses = account.avses(&state.pool).await?;
 
     let mut node_metrics_map = HashMap::new();
 
-    for machine in &machines {
-        node_metrics_map
-            .insert(machine.node_id, Metric::get_organized_for_node(&state.pool, machine).await?);
+    for avs in &avses {
+        node_metrics_map.insert(
+            avs.machine_id,
+            Metric::get_organized_for_avs(&state.pool, avs.machine_id, &avs.avs_name.to_string())
+                .await?,
+        );
     }
 
     let (running_nodes, _) = data::categorize_running_nodes(node_metrics_map.clone());
@@ -270,13 +281,16 @@ pub async fn healthy(
 ) -> Result<Json<Vec<String>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
 
-    let machines = account.nodes(&state.pool).await?;
+    let avses = account.avses(&state.pool).await?;
 
     let mut node_metrics_map = HashMap::new();
 
-    for machine in &machines {
-        node_metrics_map
-            .insert(machine.node_id, Metric::get_organized_for_node(&state.pool, machine).await?);
+    for avs in &avses {
+        node_metrics_map.insert(
+            avs.machine_id,
+            Metric::get_organized_for_avs(&state.pool, avs.machine_id, &avs.avs_name.to_string())
+                .await?,
+        );
     }
 
     let (running_nodes, _) = data::categorize_running_nodes(node_metrics_map.clone());
@@ -303,19 +317,16 @@ pub async fn set_name(
     Json(request): Json<NameChangeRequest>,
 ) -> Result<(), BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    let address = id.parse::<Address>().map_err(|_| BackendError::BadId)?;
-    let machine = node::DbNode::get(&state.pool, &address).await?;
-    if machine.organization_id != account.organization_id || !account.role.can_write() {
-        return Err(BackendError::Unauthorized);
-    }
-
-    node::DbNode::set_name(&state.pool, &address, &request.name).await?;
-    node::DbNode::delete(&state.pool, &address).await?;
+    authorize::verify_node_ownership(&account, State(state.clone()), id)
+        .await?
+        .set_name(&state.pool, &request.name)
+        .await?;
 
     Ok(())
 }
 
-/// Delete a node from the database
+/// Delete a machine from the database
+// TODO: We are already doing that. But there is too many things doing similar stuff
 #[utoipa::path(
     delete,
     path = "/client/:id",
@@ -331,13 +342,10 @@ pub async fn delete(
     Path(id): Path<String>,
 ) -> Result<(), BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    let address = id.parse::<Address>().map_err(|_| BackendError::BadId)?;
-    let machine = node::DbNode::get(&state.pool, &address).await?;
-    if machine.organization_id != account.organization_id || !account.role.can_write() {
-        return Err(BackendError::Unauthorized);
-    }
-
-    node::DbNode::delete(&state.pool, &address).await?;
+    authorize::verify_node_ownership(&account, State(state.clone()), id)
+        .await?
+        .delete(&state.pool)
+        .await?;
 
     Ok(())
 }
@@ -345,7 +353,7 @@ pub async fn delete(
 /// Get info on a specific node
 #[utoipa::path(
     get,
-    path = "/client/:id",
+    path = "/client/:machine_id/:avs_name",
     responses(
         (status = 200, body = Info),
         (status = 404)
@@ -355,23 +363,24 @@ pub async fn info(
     headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
-    Path(id): Path<String>,
+    Path((machine_id, avs_name)): Path<(String, String)>,
 ) -> Result<Json<Info>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    let address = id.parse::<Address>().map_err(|_| BackendError::BadId)?;
-    let machine = node::DbNode::get(&state.pool, &address).await?;
-    if machine.organization_id != account.organization_id {
-        return Err(BackendError::Unauthorized);
-    }
 
-    let metrics = Metric::get_organized_for_node(&state.pool, &machine).await?;
-    Ok(Json(build_node_info(&state.pool, machine, metrics).await))
+    let machine =
+        authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
+
+    let metrics = Metric::get_organized_for_avs(&state.pool, machine.machine_id, &avs_name).await?;
+    let avs = Avs::get_machines_avs(&state.pool, machine.machine_id, &avs_name)
+        .await?
+        .ok_or(BackendError::InvalidAvs)?;
+    Ok(Json(build_node_info(&state.pool, &machine, &avs, metrics).await))
 }
 
 /// Get condensed metrics for a specific node
 #[utoipa::path(
     get,
-    path = "/client/:id/metrics",
+    path = "/client/:machine_id/:avs_name/metrics",
     responses(
         (status = 200, body = [Metric]),
         (status = 404)
@@ -380,14 +389,14 @@ pub async fn info(
 pub async fn metrics_condensed(
     headers: HeaderMap,
     State(state): State<HttpState>,
-    Path(id): Path<String>,
+    Path((machine_id, avs_name)): Path<(String, String)>,
     jar: CookieJar,
 ) -> Result<Json<Vec<Metric>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    let node_id =
-        authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
+    let machine =
+        authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
 
-    let metrics = Metric::get_all_for_node(&state.pool, node_id).await?;
+    let metrics = Metric::get_all_for_avs(&state.pool, machine.machine_id, &avs_name).await?;
 
     let filtered_metrics = data::condense_metrics(&metrics)?;
 
@@ -397,7 +406,7 @@ pub async fn metrics_condensed(
 /// Get all metrics for a specific node
 #[utoipa::path(
     get,
-    path = "/client/:id/metrics/all",
+    path = "/client/:machine_id/:avs_name/metrics/all",
     responses(
         (status = 200, body = [Metric]),
         (status = 404)
@@ -406,19 +415,20 @@ pub async fn metrics_condensed(
 pub async fn metrics_all(
     headers: HeaderMap,
     State(state): State<HttpState>,
-    Path(id): Path<String>,
+    Path((machine_id, avs_name)): Path<(String, String)>,
     jar: CookieJar,
 ) -> Result<Json<Vec<Metric>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    let node_id =
-        authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
 
-    Ok(Metric::get_all_for_node(&state.pool, node_id).await?.into())
+    let machine =
+        authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
+
+    Ok(Metric::get_all_for_avs(&state.pool, machine.machine_id, &avs_name).await?.into())
 }
 
 #[utoipa::path(
     post,
-    path = "/client/:id/logs",
+    path = "/client/:machine_id/:avs_name/logs",
     responses(
         (status = 200, body = [ContainerLog]),
         (status = 404)
@@ -433,12 +443,13 @@ pub async fn logs(
     headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
-    Path(id): Path<String>,
+    Path((machine_id, avs_name)): Path<(String, String)>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<Vec<ContainerLog>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    let node_id =
-        authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
+
+    let machine =
+        authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
 
     let log_level = params
         .get("log_level")
@@ -463,27 +474,15 @@ pub async fn logs(
         ));
     }
 
-    let logs = match (from, to, log_level) {
-        (Some(from), Some(to), Some(level)) => {
-            ContainerLog::get_all_for_node_between_timestamps_with_log_level(
-                &state.pool,
-                node_id,
-                from,
-                to,
-                level,
-            )
-            .await?
-        }
-        (Some(from), Some(to), None) => {
-            ContainerLog::get_all_for_node_between_timestamps(&state.pool, node_id, from, to)
-                .await?
-        }
-        (None, None, Some(level)) => {
-            ContainerLog::get_all_for_node_with_log_level(&state.pool, node_id, level).await?
-        }
-        (None, None, None) => ContainerLog::get_all_for_node(&state.pool, node_id).await?,
-        _ => unreachable!(), // Prevented by earlier check
-    };
+    let logs = ContainerLog::get_all_for_avs(
+        &state.pool,
+        machine.machine_id,
+        &avs_name,
+        from,
+        to,
+        log_level,
+    )
+    .await?;
 
     Ok(logs.into())
 }
@@ -491,52 +490,24 @@ pub async fn logs(
 /// Get all data on every running avs for a specific node
 #[utoipa::path(
     get,
-    path = "/client/:id/data/",
+    path = "/client/:machine_id/data/",
     responses(
-        (status = 200, body = [NodeData]),
+        (status = 200, body = [Avs]),
         (status = 404)
     )
 )]
 pub async fn get_all_node_data(
     headers: HeaderMap,
     State(state): State<HttpState>,
-    Path(id): Path<String>,
+    Path(machine_id): Path<String>,
     jar: CookieJar,
-) -> Result<Json<Vec<NodeData>>, BackendError> {
+) -> Result<Json<Vec<Avs>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    let node_id =
-        authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
+    let machine =
+        authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
 
     // Get all data for the node
-    let nodes_data = DbNodeData::get_all_node_data(&state.pool, &node_id).await?;
-
-    Ok(Json(nodes_data))
-}
-
-/// Get all data on a specific AVS running on a node
-/// Keep in mind, a node could run the same avs multiple times
-/// assuming they are using different operator keys
-#[utoipa::path(
-    get,
-    path = "/client/:id/data/:avs",
-    responses(
-        (status = 200, body = [NodeData]),
-        (status = 404)
-    )
-)]
-pub async fn get_node_data_for_avs(
-    headers: HeaderMap,
-    State(state): State<HttpState>,
-    Path((id, avs)): Path<(String, String)>,
-    jar: CookieJar,
-) -> Result<Json<Vec<NodeData>>, BackendError> {
-    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    let node_id =
-        authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
-    let avs_name = AvsName::try_from(&avs[..]).map_err(|_| BackendError::InvalidAvs)?;
-
-    // Get all data for the node
-    let nodes_data = DbNodeData::get_avs_node_data(&state.pool, &node_id, &avs_name).await?;
+    let nodes_data = Avs::get_machines_avs_list(&state.pool, machine.machine_id).await?;
 
     Ok(Json(nodes_data))
 }
@@ -550,51 +521,53 @@ pub async fn get_node_data_for_avs(
         (status = 404)
     )
 )]
-pub async fn delete_node_data(
+pub async fn delete_machine_data(
     headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
     Path(id): Path<String>,
 ) -> Result<(), BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    let node_id =
-        authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
 
-    DbNodeData::delete_all_node_data(&state.pool, &node_id).await?;
+    authorize::verify_node_ownership(&account, State(state.clone()), id)
+        .await?
+        .delete(&state.pool)
+        .await?;
 
     Ok(())
 }
 
+// TODO: To be updated
 /// Delete all data for a specific AVS running on a node
-#[utoipa::path(
-    delete,
-    path = "/client/:id/data/:avs/:operator_id",
-    responses(
-        (status = 200),
-        (status = 404)
-    )
-)]
-pub async fn delete_avs_node_data(
-    headers: HeaderMap,
-    State(state): State<HttpState>,
-    Path((id, avs, operator_id)): Path<(String, String, String)>,
-    jar: CookieJar,
-) -> Result<(), BackendError> {
-    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    let _node_id =
-        authorize::verify_node_ownership(&account, State(state.clone()), Path(id)).await?;
-    let avs_name = AvsName::try_from(&avs[..]).map_err(|_| BackendError::InvalidAvs)?;
-
-    let op_id: Address = operator_id.parse::<Address>().map_err(|_| BackendError::BadId)?;
-
-    DbNodeData::delete_avs_operator_data(&state.pool, &op_id, &avs_name).await?;
-
-    Ok(())
-}
+// #[utoipa::path(
+//     delete,
+//     path = "/client/:id/data/:avs/operator_id",
+//     responses(
+//         (status = 200),
+//         (status = 404)
+//     )
+// )]
+// pub async fn delete_avs_node_data(
+//     headers: HeaderMap,
+//     State(state): State<HttpState>,
+//     Path((id, avs, operator_id)): Path<(String, String, String)>,
+//     jar: CookieJar,
+// ) -> Result<(), BackendError> {
+//     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+//     let machine = authorize::verify_node_ownership(&account, State(state.clone()), id).await?;
+//     let avs_name = AvsName::try_from(&avs[..]).map_err(|_| BackendError::InvalidAvs)?;
+//
+//     let op_id: Address = operator_id.parse::<Address>().map_err(|_| BackendError::BadId)?;
+//
+//     avs.delete(&state.pool).await?;
+//
+//     Ok(())
+// }
 
 pub async fn build_node_info(
     pool: &sqlx::PgPool,
-    node: node::Node,
+    machine: &Machine,
+    avs: &Avs,
     node_metrics: HashMap<String, Metric>,
 ) -> Info {
     let last_checked = if let Some(running) = node_metrics.get(RUNNING_METRIC) {
@@ -622,8 +595,9 @@ pub async fn build_node_info(
     Info {
         error: Vec::new(),
         result: InfoReport {
-            machine_id: format!("{:?}", node.node_id),
-            name: node.name,
+            machine_id: format!("{:?}", machine.machine_id),
+            name: machine.name.clone(),
+            avs_name: avs.avs_name.clone(),
             status: data::get_node_status(node_metrics.clone()),
             metrics: Metrics {
                 cpu_usage: if let Some(cpu) = node_metrics.get(CPU_USAGE_METRIC) {

@@ -8,14 +8,11 @@ use ivynet_core::{
     ethers::types::{Address, Chain},
     grpc::{
         backend::backend_client::BackendClient,
-        messages::{
-            Metrics, MetricsAttribute, NodeData, SignedDeleteNodeData, SignedMetrics,
-            SignedNodeData,
-        },
+        messages::{Metrics, MetricsAttribute, NodeData, SignedMetrics, SignedNodeData},
         tonic::{transport::Channel, Request},
     },
     rpc_management::IvyProvider,
-    signature::{sign_delete_node_data, sign_metrics, sign_node_data},
+    signature::{sign_metrics, sign_node_data},
     wallet::IvyWallet,
 };
 use tokio::{
@@ -23,6 +20,7 @@ use tokio::{
     time::{sleep, Duration},
 };
 use tracing::{debug, error, info};
+use uuid::Uuid;
 
 const EIGENDA_DOCKER_IMAGE_NAME: &str = "ghcr.io/layr-labs/eigenda/opr-node";
 
@@ -31,6 +29,7 @@ const TELEMETRY_INTERVAL_IN_MINUTES: u64 = 1;
 pub async fn listen(
     avs_provider: Arc<RwLock<AvsProvider>>,
     mut backend_client: BackendClient<Channel>,
+    machine_id: Uuid,
     identity_wallet: IvyWallet,
 ) -> Result<(), IvyError> {
     let mut metrics_url;
@@ -57,12 +56,16 @@ pub async fn listen(
             } else {
                 metrics_url = None;
             }
-            let node_data = node_data(&provider.avs, &name, &provider.provider).await?;
+            let node_data = node_data(&provider.avs, &name, machine_id, &provider.provider).await?;
             (collect(&name, &metrics_url, &node_data, provider.chain().await.ok()).await, node_data)
         };
         if let Ok(metrics) = metrics {
             info!("Sending metrics...");
-            match send(&metrics, &node_data, &identity_wallet, &mut backend_client).await {
+            // TODO: This avs_name has to be the name of the container. But the observability is
+            // not ready for it just yet
+            match send(&metrics, &node_data, machine_id, "", &identity_wallet, &mut backend_client)
+                .await
+            {
                 Ok(_) => {}
                 Err(err) => error!("Cannot send metrics to backend ({err:?})"),
             }
@@ -74,20 +77,28 @@ pub async fn listen(
 
 pub async fn delete_node_data_payload(
     identity_wallet: &IvyWallet,
+    machine_id: Uuid,
     backend_client: &mut BackendClient<Channel>,
     operator_id: Address,
-    avs_name: AvsName,
+    avs_type: AvsName,
+    avs_name: &str,
 ) -> Result<(), IvyError> {
-    let signature = sign_delete_node_data(operator_id, avs_name.to_string(), identity_wallet)?;
-
-    let signed_node_data = SignedDeleteNodeData {
-        signature: signature.to_vec(),
-        operator_id: operator_id.as_bytes().to_vec(),
+    let data = NodeData {
         avs_name: avs_name.to_string(),
+        avs_type: avs_type.to_string(),
+        machine_id: machine_id.into(),
+        operator_id: operator_id.as_bytes().to_vec(),
+        active_set: None,
+        avs_version: None,
     };
+    let signature = sign_node_data(&data, identity_wallet)?;
 
-    let request = Request::new(signed_node_data);
-    backend_client.delete_node_data(request).await?;
+    backend_client
+        .delete_node_data(Request::new(SignedNodeData {
+            signature: signature.to_vec(),
+            node_data: Some(data),
+        }))
+        .await?;
     Ok(())
 }
 fn avs_name(avs: &Option<Box<dyn AvsVariant>>) -> Option<String> {
@@ -114,30 +125,26 @@ async fn metrics_endpoint(avs_name: &str) -> Option<String> {
 async fn node_data(
     avs: &Option<Box<dyn AvsVariant>>,
     avs_name: &Option<String>,
+    machine_id: Uuid,
     provider: &Arc<IvyProvider>,
 ) -> Result<NodeData, IvyError> {
     Ok(if let Some(avs) = avs {
         NodeData {
+            avs_type: avs.name().to_string(),
+            machine_id: machine_id.into(),
             operator_id: provider.address().as_bytes().to_vec(),
-            avs_name: match avs_name.clone() {
-                Some(avs_name) => avs_name,
-                None => "".to_string(),
-            },
-            avs_version: {
-                if let Ok(version) = avs.version() {
-                    version.to_string()
-                } else {
-                    "0.0.0".to_string()
-                }
-            },
-            active_set: avs.active_set(provider.clone()).await,
+            avs_name: avs_name.clone().unwrap_or("".to_string()),
+            avs_version: avs.version().ok().map(|v| v.to_string()),
+            active_set: Some(avs.active_set(provider.clone()).await),
         }
     } else {
         NodeData {
+            avs_type: "".to_string(),
+            machine_id: machine_id.into(),
             operator_id: provider.address().as_bytes().to_vec(),
             avs_name: "".to_string(),
-            avs_version: "0.0.0".to_string(),
-            active_set: false,
+            avs_version: Some("0.0.0".to_string()),
+            active_set: Some(false),
         }
     })
 }
@@ -227,11 +234,15 @@ async fn collect(
                 },
                 MetricsAttribute {
                     name: "active_set".to_owned(),
-                    value: node_data.active_set.to_string(),
+                    value: node_data.active_set.unwrap_or(false).to_string(),
                 },
                 MetricsAttribute {
                     name: "version".to_owned(),
-                    value: node_data.avs_version.to_string(),
+                    value: node_data
+                        .avs_version
+                        .as_ref()
+                        .map(|v| v.to_string())
+                        .unwrap_or("0.0.0".to_string()),
                 },
             ]
         } else {
@@ -245,6 +256,8 @@ async fn collect(
 async fn send(
     metrics: &[Metrics],
     node_data: &NodeData,
+    machine_id: Uuid,
+    avs_name: &str,
     identity_wallet: &IvyWallet,
     backend_client: &mut BackendClient<Channel>,
 ) -> Result<(), IvyError> {
@@ -253,12 +266,14 @@ async fn send(
     let node_data_signature = sign_node_data(node_data, identity_wallet)?;
     backend_client
         .metrics(Request::new(SignedMetrics {
+            machine_id: machine_id.into(),
+            avs_name: avs_name.to_string(),
             signature: metrics_signature.to_vec(),
             metrics: metrics.to_vec(),
         }))
         .await?;
     backend_client
-        .node_data(Request::new(SignedNodeData {
+        .update_node_data(Request::new(SignedNodeData {
             signature: node_data_signature.to_vec(),
             node_data: Some(node_data.clone()),
         }))

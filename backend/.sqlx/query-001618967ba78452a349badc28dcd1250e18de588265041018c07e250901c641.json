@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "DELETE FROM node",
+  "query": "DELETE FROM client",
   "describe": {
     "columns": [],
     "parameters": {
@@ -8,5 +8,5 @@
     },
     "nullable": []
   },
-  "hash": "1678062a81a3c3da7ec347b346147f121f45943f8145fa631f60ec2864ca8b28"
+  "hash": "001618967ba78452a349badc28dcd1250e18de588265041018c07e250901c641"
 }

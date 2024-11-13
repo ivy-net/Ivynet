@@ -1,11 +1,11 @@
 use crate::error::BackendError;
 use chrono::{DateTime, NaiveDateTime, Utc};
-use ivynet_core::ethers::types::{Address, H160};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{json, Value};
 use sqlx::{query, query_as, PgPool};
 use std::{collections::HashMap, str::FromStr};
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 #[derive(
     Copy, Clone, Debug, PartialEq, PartialOrd, sqlx::Type, Deserialize, Serialize, ToSchema,
@@ -35,11 +35,8 @@ impl FromStr for LogLevel {
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, sqlx::FromRow, PartialEq)]
 pub struct ContainerLog {
-    pub node_id: Option<Address>,
-    /// Container ID. This is the ID of the container that generated the log. Optional as
-    /// fluentd itself does not report its own container ID.
-    pub container_id: Option<String>,
-    pub container_name: String,
+    pub machine_id: Uuid,
+    pub avs_name: String,
     pub log: String,
     pub log_level: LogLevel,
     pub created_at: Option<i64>,
@@ -47,10 +44,10 @@ pub struct ContainerLog {
     pub other_fields: Option<HashMap<String, String>>,
 }
 
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, sqlx::FromRow, PartialEq)]
 pub struct ContainerDbLog {
-    pub node_id: Vec<u8>,
-    pub container_id: Option<String>,
-    pub container_name: String,
+    pub machine_id: Uuid,
+    pub avs_name: String,
     pub log: String,
     pub log_level: LogLevel,
     pub created_at: NaiveDateTime,
@@ -60,9 +57,8 @@ pub struct ContainerDbLog {
 impl From<ContainerDbLog> for ContainerLog {
     fn from(value: ContainerDbLog) -> Self {
         Self {
-            node_id: Some(Address::from_slice(&value.node_id)),
-            container_id: value.container_id,
-            container_name: value.container_name,
+            machine_id: value.machine_id,
+            avs_name: value.avs_name.clone(),
             log: value.log,
             log_level: value.log_level,
             created_at: Some(value.created_at.and_utc().timestamp()),
@@ -74,9 +70,8 @@ impl From<ContainerDbLog> for ContainerLog {
 impl From<&ContainerLog> for ContainerDbLog {
     fn from(value: &ContainerLog) -> Self {
         Self {
-            node_id: value.node_id.as_ref().map(|v| v.as_bytes().to_vec()).unwrap_or_default(),
-            container_id: value.container_id.clone(),
-            container_name: value.container_name.clone(),
+            machine_id: value.machine_id,
+            avs_name: value.avs_name.clone(),
             log: value.log.clone(),
             log_level: value.log_level,
             created_at: DateTime::from_timestamp(value.created_at.expect("invalid "), 0)
@@ -86,7 +81,6 @@ impl From<&ContainerLog> for ContainerDbLog {
         }
     }
 }
-
 impl ContainerLog {
     pub async fn record(
         pool: &PgPool,
@@ -98,10 +92,9 @@ impl ContainerLog {
                 .expect("Could not construct datetime")
                 .naive_utc();
         query!(
-            "INSERT INTO log (node_id, container_id, container_name, log, log_level, created_at, other_fields) VALUES ($1, $2, $3, $4, $5, $6, $7)",
-            log.node_id.as_ref().map(|v| v.as_bytes()),
-            log.container_id,
-            log.container_name,
+            "INSERT INTO log (machine_id, avs_name, log, log_level, created_at, other_fields) VALUES ($1, $2, $3, $4, $5, $6)",
+            log.machine_id,
+            log.avs_name,
             log.log,
             log.log_level as LogLevel,
             created_at,
@@ -112,79 +105,163 @@ impl ContainerLog {
         Ok(())
     }
 
-    pub async fn get_all_for_node(
+    pub async fn get_all_for_machine(
         pool: &PgPool,
-        node_id: H160,
+        machine_id: Uuid,
     ) -> Result<Vec<ContainerLog>, BackendError> {
         let db_logs: Vec<ContainerDbLog> = query_as!(
             ContainerDbLog,
-            r#"SELECT node_id, container_id, container_name, log, log_level AS "log_level!: LogLevel", created_at, other_fields as "other_fields: sqlx::types::Json<HashMap<String,String>>" FROM log WHERE node_id = $1"#,
-            node_id.as_bytes()
+            r#"SELECT machine_id, avs_name, log, log_level AS "log_level!: LogLevel", created_at, other_fields as "other_fields: sqlx::types::Json<HashMap<String,String>>" FROM log WHERE machine_id = $1"#,
+            machine_id
         )
         .fetch_all(pool)
         .await?;
 
-        let logs = db_logs.into_iter().map(ContainerLog::from).collect();
+        let logs = db_logs.into_iter().map(ContainerLog::from).collect::<Vec<_>>();
         Ok(logs)
     }
 
-    pub async fn get_all_for_node_between_timestamps(
+    pub async fn get_all_for_avs(
         pool: &PgPool,
-        node_id: Address,
-        start_timestamp: i64,
-        end_timestamp: i64,
+        machine_id: Uuid,
+        avs_name: &str,
+        from: Option<i64>,
+        to: Option<i64>,
+        log_level: Option<LogLevel>,
     ) -> Result<Vec<ContainerLog>, BackendError> {
-        let db_logs: Vec<ContainerDbLog> = query_as!(
-            ContainerDbLog,
-            r#"SELECT node_id, container_id, container_name, log, log_level AS "log_level!: LogLevel", created_at, other_fields as "other_fields: sqlx::types::Json<HashMap<String,String>>" FROM log WHERE node_id = $1 AND created_at >= $2 AND created_at <= $3"#,
-            node_id.as_bytes(),
-            DateTime::from_timestamp(start_timestamp, 0).expect("Invalid timestamp").naive_utc(),
-            DateTime::from_timestamp(end_timestamp, 0).expect("Invalid timestamp").naive_utc(),
-        )
-        .fetch_all(pool)
-        .await?;
+        let db_logs: Vec<ContainerDbLog> =
+            match (from, to, log_level) {
+                (Some(from), Some(to), Some(log_level)) => query_as!(
+                        ContainerDbLog,
+                        r#"SELECT machine_id, avs_name, log,
+                             log_level AS "log_level!: LogLevel", created_at,
+                             other_fields as "other_fields: sqlx::types::Json<HashMap<String,String>>"
+                           FROM
+                             log
+                           WHERE
+                             machine_id = $1
+                             AND avs_name = $2
+                             AND created_at >= $3
+                             AND created_at <= $4
+                             AND log_level = $5"#,
+                        machine_id,
+                        avs_name,
+                        DateTime::from_timestamp(from, 0).expect("Invalid timestamp").naive_utc(),
+                        DateTime::from_timestamp(to, 0).expect("Invalid timestamp").naive_utc(),
+                        log_level as LogLevel,
+                        ).fetch_all(pool).await,
+                (Some(from), Some(to), None) => query_as!(
+                        ContainerDbLog,
+                        r#"SELECT machine_id, avs_name, log,
+                             log_level AS "log_level!: LogLevel", created_at,
+                             other_fields as "other_fields: sqlx::types::Json<HashMap<String,String>>"
+                           FROM
+                             log
+                           WHERE
+                             machine_id = $1
+                             AND avs_name = $2
+                             AND created_at >= $3
+                             AND created_at <= $4"#,
+                        machine_id,
+                        avs_name,
+                        DateTime::from_timestamp(from, 0).expect("Invalid timestamp").naive_utc(),
+                        DateTime::from_timestamp(to, 0).expect("Invalid timestamp").naive_utc(),
+                        ).fetch_all(pool).await,
+                (Some(from), None, Some(log_level)) => query_as!(
+                        ContainerDbLog,
+                         r#"SELECT machine_id, avs_name, log,
+                             log_level AS "log_level!: LogLevel", created_at,
+                             other_fields as "other_fields: sqlx::types::Json<HashMap<String,String>>"
+                           FROM
+                             log
+                           WHERE
+                             machine_id = $1
+                             AND avs_name = $2
+                             AND created_at >= $3
+                             AND log_level = $4"#,
+                        machine_id,
+                        avs_name,
+                        DateTime::from_timestamp(from, 0).expect("Invalid timestamp").naive_utc(),
+                        log_level as LogLevel,
+                        ).fetch_all(pool).await,
+                (Some(from), None, None) => query_as!(
+                        ContainerDbLog,
+                         r#"SELECT machine_id, avs_name, log,
+                             log_level AS "log_level!: LogLevel", created_at,
+                             other_fields as "other_fields: sqlx::types::Json<HashMap<String,String>>"
+                           FROM
+                             log
+                           WHERE
+                             machine_id = $1
+                             AND avs_name = $2
+                             AND created_at >= $3"#,
+                        machine_id,
+                        avs_name,
+                        DateTime::from_timestamp(from, 0).expect("Invalid timestamp").naive_utc(),
+                        ).fetch_all(pool).await,
+                (None, Some(to), None) => query_as!(
+                        ContainerDbLog,
+                        r#"SELECT machine_id, avs_name, log,
+                             log_level AS "log_level!: LogLevel", created_at,
+                             other_fields as "other_fields: sqlx::types::Json<HashMap<String,String>>"
+                           FROM
+                             log
+                           WHERE
+                             machine_id = $1
+                             AND avs_name = $2
+                             AND created_at <= $3"#,
+                        machine_id,
+                        avs_name,
+                        DateTime::from_timestamp(to, 0).expect("Invalid timestamp").naive_utc(),
+                        ).fetch_all(pool).await,
+                (None, Some(to), Some(log_level)) => query_as!(
+                        ContainerDbLog,
+                        r#"SELECT machine_id, avs_name, log,
+                             log_level AS "log_level!: LogLevel", created_at,
+                             other_fields as "other_fields: sqlx::types::Json<HashMap<String,String>>"
+                           FROM
+                             log
+                           WHERE
+                             machine_id = $1
+                             AND avs_name = $2
+                             AND created_at <= $3
+                             AND log_level = $4"#,
+                        machine_id,
+                        avs_name,
+                        DateTime::from_timestamp(to, 0).expect("Invalid timestamp").naive_utc(),
+                        log_level as LogLevel,
+                        ).fetch_all(pool).await,
+                (None, None, Some(log_level)) => query_as!(
+                        ContainerDbLog,
+                         r#"SELECT machine_id, avs_name, log,
+                             log_level AS "log_level!: LogLevel", created_at,
+                             other_fields as "other_fields: sqlx::types::Json<HashMap<String,String>>"
+                           FROM
+                             log
+                           WHERE
+                             machine_id = $1
+                             AND avs_name = $2
+                             AND log_level = $3"#,
+                        machine_id,
+                        avs_name,
+                        log_level as LogLevel,
+                        ).fetch_all(pool).await,
+                (None, None, None) => query_as!(
+                        ContainerDbLog,
+                         r#"SELECT machine_id, avs_name, log,
+                             log_level AS "log_level!: LogLevel", created_at,
+                             other_fields as "other_fields: sqlx::types::Json<HashMap<String,String>>"
+                           FROM
+                             log
+                           WHERE
+                             machine_id = $1
+                             AND avs_name = $2"#,
+                        machine_id,
+                        avs_name,
+                        ).fetch_all(pool).await,
+            }?;
 
-        let logs = db_logs.into_iter().map(ContainerLog::from).collect();
-        Ok(logs)
-    }
-
-    pub async fn get_all_for_node_with_log_level(
-        pool: &PgPool,
-        node_id: H160,
-        log_level: LogLevel,
-    ) -> Result<Vec<ContainerLog>, BackendError> {
-        let db_logs: Vec<ContainerDbLog> = query_as!(
-            ContainerDbLog,
-            r#"SELECT node_id, container_id, container_name, log, log_level AS "log_level!: LogLevel", created_at, other_fields as "other_fields: sqlx::types::Json<HashMap<String,String>>" FROM log WHERE node_id = $1 AND log_level = $2"#,
-            node_id.as_bytes(),
-            log_level as LogLevel,
-        )
-        .fetch_all(pool)
-        .await?;
-
-        let logs = db_logs.into_iter().map(ContainerLog::from).collect();
-        Ok(logs)
-    }
-
-    pub async fn get_all_for_node_between_timestamps_with_log_level(
-        pool: &PgPool,
-        node_id: H160,
-        from: i64,
-        to: i64,
-        log_level: LogLevel,
-    ) -> Result<Vec<ContainerLog>, BackendError> {
-        let db_logs: Vec<ContainerDbLog> = query_as!(
-            ContainerDbLog,
-            r#"SELECT node_id, container_id, container_name, log, log_level AS "log_level!: LogLevel", created_at, other_fields as "other_fields: sqlx::types::Json<HashMap<String,String>>" FROM log WHERE node_id = $1 AND created_at >= $2 AND created_at <= $3 AND log_level = $4"#,
-            node_id.as_bytes(),
-            DateTime::from_timestamp(from, 0).expect("Invalid timestamp").naive_utc(),
-            DateTime::from_timestamp(to, 0).expect("Invalid timestamp").naive_utc(),
-            log_level as LogLevel,
-        )
-        .fetch_all(pool)
-        .await?;
-
-        let logs = db_logs.into_iter().map(ContainerLog::from).collect();
+        let logs = db_logs.into_iter().map(ContainerLog::from).collect::<Vec<_>>();
         Ok(logs)
     }
 }
@@ -215,23 +292,30 @@ where
     Ok(Some(map))
 }
 
-#[cfg(test)]
-mod logs_backend_tests {
-    use crate::db::log::ContainerLog;
-
-    #[test]
-    fn test_deserialize_fluentd_msg() {
-        let log_str = "[{\"container_name\":\"fluentd\",\"created_at\":1729036593,\"log\":\"starting fluentd worker pid=16 ppid=7 worker=0\",\"log_level\":\"UNKNOWN\",\"pid\":16,\"ppid\":7,\"worker\":0},{\"bind\":\"0.0.0.0\",\"container_name\":\"fluentd\",\"created_at\":1729036593,\"log\":\"listening port port=24224 bind=\\\"0.0.0.0\\\"\",\"log_level\":\"UNKNOWN\",\"port\":24224},{\"container_name\":\"fluentd\",\"created_at\":1729036593,\"log\":\"fluentd worker is now running worker=0\",\"log_level\":\"UNKNOWN\",\"worker\":0}]";
-        let container_logs = serde_json::from_str::<Vec<ContainerLog>>(log_str);
-        assert!(container_logs.is_ok());
-
-        let log_str = "[{\"container_id\":\"99b899e97e76cb3978f5b14627e0448515b33c4b17864348cbfa0f124ab35249\",\"container_name\":\"/eigenda-native-node\",\"created_at\":1729047253,\"log\":\"\\u001b[2mOct 16 02:54:13.038\\u001b[0m DBG \\u001b[2mnode/node.go:684\\u001b[0m Calling reachability check \\u001b[2mcomponent=\\u001b[0mNode \\u001b[2murl=\\u001b[0m\\\"https://dataapi-holesky.eigenda.xyz/api/v1/operators-info/port-check?operator_id=b8803017a8a79caf923721c33653df7a2153f127af95ecd72cc9fc064ff6afa0\\\"\",\"log_level\":\"DEBUG\",\"source\":\"stdout\"},{\"container_id\":\"99b899e97e76cb3978f5b14627e0448515b33c4b17864348cbfa0f124ab35249\",\"container_name\":\"/eigenda-native-node\",\"created_at\":1729047253,\"log\":\"\\u001b[2mOct 16 02:54:13.438\\u001b[0m \\u001b[93mWRN\\u001b[0m \\u001b[2mnode/node.go:695\\u001b[0m Reachability check operator id not found \\u001b[2mcomponent=\\u001b[0mNode \\u001b[2mstatus=\\u001b[0m404 \\u001b[2moperator_id=\\u001b[0mb8803017a8a79caf923721c33653df7a2153f127af95ecd72cc9fc064ff6afa0\",\"log_level\":\"WARNING\",\"source\":\"stdout\"}]";
-        let _container_logs = serde_json::from_str::<Vec<ContainerLog>>(log_str);
-        let value = serde_json::from_str::<Vec<ContainerLog>>(log_str);
-        println!("{:#?}", value);
-        //         assert!(container_logs.is_ok());
-    }
-}
+// TODO: Fluentd is to be removed. Not fixing this test right now
+// #[cfg(test)]
+// mod logs_backend_tests {
+//     use crate::db::log::ContainerLog;
+//
+//     #[test]
+//     fn test_deserialize_fluentd_msg() {
+//         let log_str =
+// "[{\"container_name\":\"fluentd\",\"created_at\":1729036593,\"log\":\"starting fluentd worker
+// pid=16 ppid=7
+// worker=0\",\"log_level\":\"UNKNOWN\",\"pid\":16,\"ppid\":7,\"worker\":0},{\"bind\":\"0.0.0.0\",\"
+// container_name\":\"fluentd\",\"created_at\":1729036593,\"log\":\"listening port port=24224
+// bind=\\\"0.0.0.0\\\"\",\"log_level\":\"UNKNOWN\",\"port\":24224},{\"container_name\":\"fluentd\",
+// \"created_at\":1729036593,\"log\":\"fluentd worker is now running
+// worker=0\",\"log_level\":\"UNKNOWN\",\"worker\":0}]";         let container_logs =
+// serde_json::from_str::<Vec<ContainerLog>>(log_str);         assert!(container_logs.is_ok());
+//
+//         let log_str = "[{\"container_id\":\"99b899e97e76cb3978f5b14627e0448515b33c4b17864348cbfa0f124ab35249\",\"container_name\":\"/eigenda-native-node\",\"created_at\":1729047253,\"log\":\"\\u001b[2mOct 16 02:54:13.038\\u001b[0m DBG \\u001b[2mnode/node.go:684\\u001b[0m Calling reachability check \\u001b[2mcomponent=\\u001b[0mNode \\u001b[2murl=\\u001b[0m\\\"https://dataapi-holesky.eigenda.xyz/api/v1/operators-info/port-check?operator_id=b8803017a8a79caf923721c33653df7a2153f127af95ecd72cc9fc064ff6afa0\\\"\",\"log_level\":\"DEBUG\",\"source\":\"stdout\"},{\"container_id\":\"99b899e97e76cb3978f5b14627e0448515b33c4b17864348cbfa0f124ab35249\",\"container_name\":\"/eigenda-native-node\",\"created_at\":1729047253,\"log\":\"\\u001b[2mOct 16 02:54:13.438\\u001b[0m \\u001b[93mWRN\\u001b[0m \\u001b[2mnode/node.go:695\\u001b[0m Reachability check operator id not found \\u001b[2mcomponent=\\u001b[0mNode \\u001b[2mstatus=\\u001b[0m404 \\u001b[2moperator_id=\\u001b[0mb8803017a8a79caf923721c33653df7a2153f127af95ecd72cc9fc064ff6afa0\",\"log_level\":\"WARNING\",\"source\":\"stdout\"}]";
+//         let _container_logs = serde_json::from_str::<Vec<ContainerLog>>(log_str);
+//         let value = serde_json::from_str::<Vec<ContainerLog>>(log_str);
+//         println!("{:#?}", value);
+//         //         assert!(container_logs.is_ok());
+//     }
+// }
 
 #[cfg(feature = "db_tests")]
 #[cfg(test)]

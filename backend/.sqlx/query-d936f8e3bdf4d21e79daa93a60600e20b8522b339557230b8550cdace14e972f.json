@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO avs (avs_name, machine_id, avs_version, active_set, operator_address) values ($1, $2, $3, $4, $5)\n            ON CONFLICT (operator_address, avs_name)\n            DO UPDATE SET avs_version = $3, active_set = $4",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Uuid",
+        "Varchar",
+        "Bool",
+        "Bytea"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d936f8e3bdf4d21e79daa93a60600e20b8522b339557230b8550cdace14e972f"
+}

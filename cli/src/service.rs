@@ -36,6 +36,8 @@ pub async fn serve(
         set_backend_connection(config).await?;
     }
 
+    let machine_id = config.machine_id;
+
     let backend_client = BackendClient::new(
         create_channel(ivynet_core::grpc::client::Source::Uri(config.get_server_url()?), {
             let ca = config.get_server_ca();
@@ -148,7 +150,7 @@ pub async fn serve(
         tokio::select! {
             ret = server.serve(sock) => { error!("Local server error {ret:?}") },
             ret = serve_log_server(backend_client.clone(), connection_wallet.clone()) => { error!("Log server error {ret:?}") }
-            ret = telemetry::listen(ivynet_inner, backend_client, connection_wallet) => { error!("Telemetry listener error {ret:?}") }
+            ret = telemetry::listen(ivynet_inner, backend_client, machine_id, connection_wallet) => { error!("Telemetry listener error {ret:?}") }
             _= ctrl_c() => {
                 info!("Shutting down")
             }

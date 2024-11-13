@@ -1,12 +1,11 @@
 use std::collections::HashMap;
 
-use ivynet_core::{
-    avs::names::AvsName,
-    ethers::types::{Chain, H160},
-};
+use ivynet_core::{avs::names::AvsName, ethers::types::Chain};
+
 use semver::Version;
 use serde::Serialize;
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 use crate::{
     db::{
@@ -61,10 +60,10 @@ fn find_running_avs(metrics: &[Metric]) -> Option<String> {
 
 /// Categorize the running nodes into two groups: avs running and idle.
 pub fn categorize_running_nodes(
-    node_metrics_map: HashMap<H160, HashMap<String, Metric>>,
-) -> (Vec<H160>, Vec<H160>) {
-    let mut running_nodes: Vec<H160> = Vec::new();
-    let mut idle_nodes: Vec<H160> = Vec::new();
+    node_metrics_map: HashMap<Uuid, HashMap<String, Metric>>,
+) -> (Vec<Uuid>, Vec<Uuid>) {
+    let mut running_nodes = Vec::new();
+    let mut idle_nodes = Vec::new();
 
     node_metrics_map.iter().for_each(|(node_id, metrics_map)| {
         let is_running = metrics_map
@@ -92,9 +91,9 @@ pub fn categorize_running_nodes(
 
 /// Categorize the running nodes into two groups: healthy and unhealthy.
 pub fn categorize_node_health(
-    running_nodes: Vec<H160>,
-    node_metrics_map: HashMap<H160, HashMap<String, Metric>>,
-) -> (Vec<H160>, Vec<H160>) {
+    running_nodes: Vec<Uuid>,
+    node_metrics_map: HashMap<Uuid, HashMap<String, Metric>>,
+) -> (Vec<Uuid>, Vec<Uuid>) {
     let mut healthy_machines = Vec::new();
     let mut unhealthy_machines = Vec::new();
     for node in running_nodes {
@@ -113,14 +112,13 @@ pub fn categorize_node_health(
 }
 
 /// Get nodes that need to be updated.
-pub fn catgegorize_updateable_nodes(
-    running_nodes: Vec<H160>,
-    node_metrics_map: HashMap<H160, HashMap<String, Metric>>,
+pub fn categorize_updateable_nodes(
+    running_nodes: Vec<Uuid>,
+    node_metrics_map: HashMap<Uuid, HashMap<String, Metric>>,
     avs_version_map: HashMap<AvsID, VersionData>,
-) -> (Vec<H160>, Vec<H160>) {
+) -> (Vec<Uuid>, Vec<Uuid>) {
     let mut updateable = Vec::new();
     let mut outdated = Vec::new();
-
     running_nodes
         .iter()
         .filter_map(|&node| {
@@ -160,8 +158,8 @@ pub fn catgegorize_updateable_nodes(
 
 /// Look up NodeStatus of a specific node
 pub fn get_node_status_from_id(
-    node_id: H160,
-    node_metrics_map: &HashMap<H160, HashMap<String, Metric>>,
+    node_id: Uuid,
+    node_metrics_map: &HashMap<Uuid, HashMap<String, Metric>>,
 ) -> NodeStatus {
     if let Some(metrics_map) = node_metrics_map.get(&node_id) {
         return get_node_status(metrics_map.clone());
@@ -203,10 +201,10 @@ mod data_filtering_tests {
     use crate::db::avs_version::VersionData;
 
     use super::*;
-    use std::{fs::File, io::BufReader, str::FromStr};
+    use std::{fs::File, io::BufReader};
 
     use chrono::NaiveDateTime;
-    use ivynet_core::ethers::types::{Address, Chain};
+    use ivynet_core::ethers::types::Chain;
 
     fn create_metric(
         value: f64,
@@ -216,7 +214,8 @@ mod data_filtering_tests {
         Metric {
             value,
             created_at,
-            node_id: Address::random(),
+            machine_id: Uuid::new_v4(),
+            avs_name: Some(AvsName::EigenDA.to_string()),
             name: "JimTheComputer".to_owned(),
             attributes,
         }
@@ -283,42 +282,42 @@ mod data_filtering_tests {
         // Running node
         let mut metrics1 = HashMap::new();
         metrics1.insert(RUNNING_METRIC.to_string(), create_metric(1.0, Some(recent), None));
-        node_metrics_map.insert(H160::from_low_u64_be(1), metrics1);
+        node_metrics_map.insert(Uuid::from_u128(1), metrics1);
 
         // Idle node (value = 0)
         let mut metrics2 = HashMap::new();
         metrics2.insert(RUNNING_METRIC.to_string(), create_metric(0.0, Some(recent), None));
-        node_metrics_map.insert(H160::from_low_u64_be(2), metrics2);
+        node_metrics_map.insert(Uuid::from_u128(2), metrics2);
 
         // Idle node (old timestamp)
         let mut metrics3 = HashMap::new();
         metrics3.insert(RUNNING_METRIC.to_string(), create_metric(1.0, Some(old), None));
-        node_metrics_map.insert(H160::from_low_u64_be(3), metrics3);
+        node_metrics_map.insert(Uuid::from_u128(3), metrics3);
 
         // Idle node (no timestamp)
         let mut metrics4 = HashMap::new();
         metrics4.insert(RUNNING_METRIC.to_string(), create_metric(1.0, None, None));
-        node_metrics_map.insert(H160::from_low_u64_be(4), metrics4);
+        node_metrics_map.insert(Uuid::from_u128(4), metrics4);
 
         // Node without RUNNING_METRIC
         let metrics5 = HashMap::new();
-        node_metrics_map.insert(H160::from_low_u64_be(5), metrics5);
+        node_metrics_map.insert(Uuid::from_u128(5), metrics5);
 
         let (running_nodes, idle_nodes) = categorize_running_nodes(node_metrics_map);
 
-        assert_eq!(running_nodes, vec![H160::from_low_u64_be(1)]);
+        assert_eq!(running_nodes, vec![Uuid::from_u128(1)]);
         assert!(idle_nodes.len() == 4);
-        assert!(idle_nodes.contains(&H160::from_low_u64_be(2)));
-        assert!(idle_nodes.contains(&H160::from_low_u64_be(3)));
-        assert!(idle_nodes.contains(&H160::from_low_u64_be(4)));
-        assert!(idle_nodes.contains(&H160::from_low_u64_be(5)));
+        assert!(idle_nodes.contains(&Uuid::from_u128(2)));
+        assert!(idle_nodes.contains(&Uuid::from_u128(3)));
+        assert!(idle_nodes.contains(&Uuid::from_u128(4)));
+        assert!(idle_nodes.contains(&Uuid::from_u128(5)));
     }
 
     #[test]
     fn test_categorize_updateable_nodes() {
-        let node1 = H160::from_str("0x1000000000000000000000000000000000000000").unwrap();
-        let node2 = H160::from_str("0x2000000000000000000000000000000000000000").unwrap();
-        let node3 = H160::from_str("0x3000000000000000000000000000000000000000").unwrap();
+        let node1 = Uuid::from_u128(1);
+        let node2 = Uuid::from_u128(2);
+        let node3 = Uuid::from_u128(3);
 
         let running_nodes = vec![node1, node2, node3];
 
@@ -351,7 +350,7 @@ mod data_filtering_tests {
         ]);
 
         let (updateable_nodes, outdated_nodes) =
-            catgegorize_updateable_nodes(running_nodes, node_metrics_map, avs_version_map);
+            categorize_updateable_nodes(running_nodes, node_metrics_map, avs_version_map);
 
         assert_eq!(updateable_nodes.len(), 2);
         assert!(updateable_nodes.contains(&node2));
@@ -364,7 +363,7 @@ mod data_filtering_tests {
 
     #[test]
     fn test_no_updateable_nodes() {
-        let node1 = H160::from_str("0x1000000000000000000000000000000000000000").unwrap();
+        let node1 = Uuid::from_u128(1);
 
         let running_nodes = vec![node1];
 
@@ -381,7 +380,7 @@ mod data_filtering_tests {
             HashMap::from([(create_id("eigenda"), create_version_data("2.0.0", None))]);
 
         let (updateable_nodes, outdated_nodes) =
-            catgegorize_updateable_nodes(running_nodes, node_metrics_map, avs_version_map);
+            categorize_updateable_nodes(running_nodes, node_metrics_map, avs_version_map);
 
         assert_eq!(updateable_nodes.len(), 0);
         assert_eq!(outdated_nodes.len(), 0);
@@ -389,8 +388,8 @@ mod data_filtering_tests {
 
     #[test]
     fn test_missing_avs_or_version() {
-        let node1 = H160::from_str("0x1000000000000000000000000000000000000000").unwrap();
-        let node2 = H160::from_str("0x2000000000000000000000000000000000000000").unwrap();
+        let node1 = Uuid::from_u128(1);
+        let node2 = Uuid::from_u128(2);
 
         let running_nodes = vec![node1, node2];
 
@@ -414,7 +413,7 @@ mod data_filtering_tests {
             HashMap::from([(create_id("eigenda"), create_version_data("2.0.0", None))]);
 
         let (updateable_nodes, outdated_nodes) =
-            catgegorize_updateable_nodes(running_nodes, node_metrics_map, avs_version_map);
+            categorize_updateable_nodes(running_nodes, node_metrics_map, avs_version_map);
 
         println!("{:?}", updateable_nodes);
 
@@ -425,7 +424,7 @@ mod data_filtering_tests {
 
     #[test]
     fn test_invalid_version_string() {
-        let node1 = H160::from_str("0x1000000000000000000000000000000000000000").unwrap();
+        let node1 = Uuid::from_u128(1);
 
         let running_nodes = vec![node1];
 
@@ -442,7 +441,7 @@ mod data_filtering_tests {
             HashMap::from([(create_id("eigenda"), create_version_data("2.0.0", None))]);
 
         let (updateable_nodes, outdated_nodes) =
-            catgegorize_updateable_nodes(running_nodes, node_metrics_map, avs_version_map);
+            categorize_updateable_nodes(running_nodes, node_metrics_map, avs_version_map);
 
         assert_eq!(updateable_nodes.len(), 0);
         assert_eq!(outdated_nodes.len(), 0);
