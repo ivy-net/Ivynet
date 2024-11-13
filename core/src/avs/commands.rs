@@ -29,11 +29,6 @@ pub enum AvsCommands {
         name = "setup",
         about = "Setup a new AVS instance or enter path information to attach to an existing AVS."
     )]
-    Setup { avs: String, chain: String },
-    #[command(
-        name = "register",
-        about = "Register an operator for the loaded AVS. Not valid for all AVS types. See AVS specific dcoumentation for details."
-    )]
     Register {},
     #[command(
         name = "unregister",
@@ -47,11 +42,6 @@ pub enum AvsCommands {
     Start {},
     #[command(name = "stop", about = "Stop running the active AVS docker container.")]
     Stop {},
-    #[command(
-        name = "select",
-        about = "Unload the current AVS instance and load in a new instance."
-    )]
-    Select { avs: String, chain: String },
     #[command(name = "attach", about = "Attach a running AVS node to a docker container.")]
     Attach {
         #[clap(required(false), long, requires("chain"))]
@@ -75,17 +65,15 @@ impl Display for AvsCommands {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             AvsCommands::Info {} => write!(f, "get information about the currently running AVS"),
-            AvsCommands::Setup { avs, chain } => write!(f, "setup {} on chain {}", avs, chain),
-            AvsCommands::Configure { node_type } => write!(f, "Configure a new node instance"),
+            AvsCommands::Configure { node_type } => {
+                write!(f, "Configure a new {node_type} node instance")
+            }
             AvsCommands::Register {} => write!(f, "register"),
             AvsCommands::Unregister {} => write!(f, "unregister"),
             AvsCommands::Start { .. } => write!(f, "start"),
             AvsCommands::Stop {} => write!(f, "stop"),
             AvsCommands::Attach { .. } => {
                 write!(f, "Attaching to active AVS")
-            }
-            AvsCommands::Select { avs, chain } => {
-                write!(f, "set AVS to {} on chain {}", avs, chain)
             }
             AvsCommands::Inspect { avs: _, chain: _ } => {
                 write!(f, "inspect logs")
