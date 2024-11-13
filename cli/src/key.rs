@@ -4,7 +4,6 @@ use crate::error::Error;
 use clap::Parser;
 use dialoguer::{Input, MultiSelect, Password, Select};
 use ivynet_core::{
-    config::IvyConfig,
     error::IvyError,
     ethers::signers::{coins_bip39::English, MnemonicBuilder},
     keychain::{Key, KeyName, KeyType, Keychain},

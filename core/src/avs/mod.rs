@@ -18,7 +18,6 @@ use ethers::{
     signers::Signer,
     types::{Chain, U256},
 };
-use lagrange::Lagrange;
 use names::AvsName;
 use semver::Version;
 use std::{collections::HashMap, fmt::Debug, path::PathBuf, sync::Arc};
@@ -144,10 +143,9 @@ impl AvsProvider {
     /// Setup the loaded AVS instance. This includes both download and configuration steps.
     pub async fn setup(&mut self) -> Result<(), IvyError> {
         let provider = self.provider.clone();
-        todo!();
+        todo!()
         // self.avs_mut()?.setup(provider, config, operator_address, bls_key).await?;
         // info!("Setup complete: run 'ivynet avs help' for next steps!");
-        Ok(())
     }
 
     /// Start the loaded AVS instance. Returns an error if no AVS instance is loaded.

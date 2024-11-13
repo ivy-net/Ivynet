@@ -4,6 +4,7 @@ use ivynet_core::{
         commands::AvsCommands,
         config::{NodeConfig, NodeType},
         eigenda::EigenDAConfig,
+        lagrange::config::LagrangeConfig,
     },
     error::IvyError,
 };
@@ -14,6 +15,10 @@ pub async fn parse_avs_subcommands(subcmd: AvsCommands) -> Result<(), AnyError> 
             NodeType::EigenDA => {
                 let config = EigenDAConfig::new_from_prompt().await?;
                 NodeConfig::EigenDA(config).store();
+            }
+            NodeType::Lagrange => {
+                let config = LagrangeConfig::new_from_prompt().await?;
+                NodeConfig::Lagrange(config).store();
             }
             _ => unimplemented!("Node type not implemented: {:?}", node_type),
         }

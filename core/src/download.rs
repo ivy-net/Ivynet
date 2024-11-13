@@ -9,14 +9,12 @@ use tokio::{
 };
 use tracing::info;
 
-use crate::error::IvyError;
-
 // TODO: Move downloading flow and utils to cli?
 // TODO: As this uses a stream, ctrl+c prematurely will lead to a bad file hash. Handle SIGTERM
 // correctly.
-pub async fn dl_progress_bar(url: &str, file_path: PathBuf) -> Result<(), IvyError> {
+pub async fn dl_progress_bar(url: &str, file_path: PathBuf) -> Result<(), DownloadError> {
     let res = reqwest::Client::new().get(url).send().await?;
-    let size = res.content_length().ok_or(IvyError::DownloadError)?;
+    let size = res.content_length().ok_or(DownloadError::EmptyContent)?;
     let mut file = tokio::fs::File::create(&file_path).await?;
 
     let pb = ProgressBar::new(size);
@@ -49,10 +47,24 @@ pub async fn dl_progress_bar(url: &str, file_path: PathBuf) -> Result<(), IvyErr
         if *rx.borrow() {
             remove_file(file_path).await?;
             info!("sigterm recieved, download canceled");
-            return Err(IvyError::DownloadInt);
+            return Err(DownloadError::DownloadInt);
         };
     }
 
     pb.finish_with_message(format!("Downloaded {} to {}", url, file_path.display()));
     Ok(())
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum DownloadError {
+    #[error("Download interrupted")]
+    DownloadInt,
+    #[error("Content empty")]
+    EmptyContent,
+    #[error(transparent)]
+    ReqwestError(#[from] reqwest::Error),
+    #[error(transparent)]
+    IoError(#[from] std::io::Error),
+    #[error(transparent)]
+    IndicatifError(#[from] indicatif::style::TemplateError),
 }
