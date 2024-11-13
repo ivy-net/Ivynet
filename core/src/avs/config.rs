@@ -169,16 +169,6 @@ impl NodeConfigBuilder {
             NodeType::Unknown => panic!("Unknown node type"),
         }
     }
-    // fn prompt_custom_resources_dir(&self) -> Result<PathBuf, NodeConfigError> {
-    //     let prompt = format!("Would you like to use the default resources directory or enter a custom path for an already existing directory? If no {} resource directory exists at the chosen path, the resource package will be downloaded to that location.", self.node_type.to_string());
-    //     let opts = ["Use default", "Enter custom path"];
-    //     let selection = dialoguer::Select::new()
-    //         .items(&opts)
-    //         .default(0)
-    //         .with_prompt(prompt)
-    //         .interact()
-    //         .expect("Could not get user selection");
-    // }
 }
 
 #[derive(Eq, PartialEq, Debug, Clone)]

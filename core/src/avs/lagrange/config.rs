@@ -48,24 +48,6 @@ impl LagrangeConfig {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Worker {
-    data_dir: String,
-    instance_type: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Avs {
-    gateway_url: String,
-    issuer: String,
-    pub worker_id: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Prometheus {
-    port: u16,
-}
-
 impl LagrangeConfig {
     pub fn name(&self) -> String {
         self.path
@@ -128,14 +110,14 @@ impl LagrangeConfig {
             worker_id,
         };
 
-        let lagr_keyfile_pw = dialoguer::Password::new()
-            .with_prompt("Enter the password for the Lagrange keyfile. This is required by the lagrange node, and is stored in plaintext in the lagrange .env file per their specs.").with_confirmation("Confirm password", "Passwords do not match")
-            .interact()?;
-
         let gen_lagr_key = dialoguer::Confirm::new()
             .with_prompt(
                 "Would you like to generate a new Lagrange key? This will overwrite your old key, ensure that you have backed up old keys for recovery.",
             )
+            .interact()?;
+
+        let lagr_keyfile_pw = dialoguer::Password::new()
+            .with_prompt("Enter the password for the Lagrange keyfile. This is required by the lagrange node, and is stored in plaintext in the lagrange .env file per their specs.").with_confirmation("Confirm password", "Passwords do not match")
             .interact()?;
 
         if gen_lagr_key {
@@ -253,7 +235,7 @@ async fn build_env(config: &LagrangeConfig, lagr_keyfile_pw: &str) -> Result<(),
     debug!("configuring env...");
     debug!("{}", env_path.display());
     let mut env_lines = EnvLines::load(&env_path)?;
-    env_lines.set("AVS__LAGR_PWD", &lagr_keyfile_pw);
+    env_lines.set("AVS__LAGR_PWD", lagr_keyfile_pw);
     env_lines.set("LAGRANGE_RPC_URL", config.rpc_url.as_ref());
 
     // Setting the "NETWORK" field is preserved here, as the default Lagrange setup requires

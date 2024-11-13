@@ -11,11 +11,8 @@ use tonic::Status;
 use zip::result::ZipError;
 
 use crate::{
-    avs::{eigenda::EigenDAError, lagrange::LagrangeError},
-    docker::dockercmd::DockerError,
-    eigen::quorum::QuorumError,
-    grpc::client::ClientError,
-    rpc_management::IvyProvider,
+    avs::eigenda::EigenDAError, docker::dockercmd::DockerError, eigen::quorum::QuorumError,
+    grpc::client::ClientError, rpc_management::IvyProvider,
 };
 
 #[derive(Debug, Error)]
@@ -54,12 +51,6 @@ pub enum IvyError {
 
     #[error(transparent)]
     QuorumError(#[from] QuorumError),
-
-    #[error(transparent)]
-    EigenDAError(#[from] EigenDAError),
-
-    #[error(transparent)]
-    LagrangeError(#[from] LagrangeError),
 
     #[error(transparent)]
     ZipError(#[from] ZipError),
