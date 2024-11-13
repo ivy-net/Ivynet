@@ -18,9 +18,10 @@ variable "version" {
 }
 
 variable "release" {
-  type = string
-  default = "0.3.0"
+  type        = string
+  default     = "0.3.0"
   description = "Backend version for Ansible (with '.')"
+}
 
 source "googlecompute" "ivynet-backend" {
   source_image_family = "ubuntu-2404-lts-amd64"
