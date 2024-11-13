@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 use crate::{
     config::IvyConfig,
     docker::dockercmd::DockerCmd,
@@ -10,31 +11,27 @@ use crate::{
 };
 use async_trait::async_trait;
 use config::NodeType;
+=======
+use std::collections::HashMap;
+
+use crate::{config::IvyConfig, eigen::quorum::QuorumType, error::IvyError};
+
+>>>>>>> ee0b02d (cleanup pass)
 use dialoguer::Input;
-use ethers::{
-    middleware::SignerMiddleware,
-    providers::Middleware,
-    signers::Signer,
-    types::{Chain, U256},
-};
-use names::AvsName;
-use semver::Version;
-use std::{collections::HashMap, fmt::Debug, path::PathBuf, sync::Arc};
-use tokio::process::Child;
-use tracing::debug;
+use ethers::types::{Chain, U256};
 use url::Url;
 
 pub mod commands;
 pub mod config;
 pub mod contracts;
 pub mod eigenda;
-pub mod error;
 pub mod lagrange;
 pub mod mach_avs;
 pub mod names;
 
 pub type QuorumMinMap = HashMap<Chain, HashMap<QuorumType, U256>>;
 
+<<<<<<< HEAD
 #[derive(Debug)]
 pub struct IvyNode {
     pub node: Box<dyn AvsVariant>,
@@ -378,6 +375,8 @@ pub trait AvsVariant: Debug + Send + Sync + 'static {
     fn node_type(&self) -> NodeType;
 }
 
+=======
+>>>>>>> ee0b02d (cleanup pass)
 pub async fn fetch_rpc_url(chain: Chain, config: &IvyConfig) -> Result<Url, IvyError> {
     Ok(Input::<Url>::new()
         .with_prompt(format!("Enter your RPC URL for {chain:?}"))

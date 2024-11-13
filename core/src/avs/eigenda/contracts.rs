@@ -1,4 +1,4 @@
-use crate::rpc_management::IvyProvider;
+use crate::IvyProvider;
 use ethers::{
     contract::abigen,
     types::{Address, Chain, H160},

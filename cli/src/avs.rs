@@ -10,8 +10,8 @@ use ivynet_core::{
 };
 
 pub async fn parse_avs_subcommands(subcmd: AvsCommands) -> Result<(), AnyError> {
-    if let AvsCommands::Configure { node_type } = subcmd {
-        match node_type {
+    match subcmd {
+        AvsCommands::Configure { node_type } => match node_type {
             NodeType::EigenDA => {
                 let config = EigenDAConfig::new_from_prompt().await?;
                 NodeConfig::EigenDA(config).store();
@@ -21,15 +21,11 @@ pub async fn parse_avs_subcommands(subcmd: AvsCommands) -> Result<(), AnyError> 
                 NodeConfig::Lagrange(config).store();
             }
             _ => unimplemented!("Node type not implemented: {:?}", node_type),
-        }
-        return Ok(());
-    }
+        },
 
-    match subcmd {
         AvsCommands::Info {} => {
             todo!()
         }
-        // TODO: Fix timeout issue
         AvsCommands::Register {} => {
             todo!()
         }
