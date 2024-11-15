@@ -41,22 +41,21 @@ pub async fn parse_operator_getter_subcommands(
     _subgetter: OperatorGetterCommands,
     _config: &IvyConfig,
 ) -> Result<(), Error> {
-    // let sock = Source::Path(config.uds_dir());
-    // let mut client = IvynetClient::from_channel(create_channel(sock, None).await?);
-    // match subgetter {
-    //     OperatorGetterCommands::Details { .. } => {
-    //         let response = client.operator_mut().get_operator_details().await?;
-    //         println!("{:?}", response.into_inner());
-    //     }
-    //     OperatorGetterCommands::Shares { .. } => {
-    //         let response = client.operator_mut().get_operator_shares().await?;
-    //         println!("{:?}", response.into_inner());
-    //     }
-    //     OperatorGetterCommands::DelegatableShares { .. } => {
-    //         let response = client.operator_mut().get_delegatable_shares(None).await?;
-    //         println!("{:?}", response.into_inner());
-    //     }
-    // }
-    // Ok(())
+    let sock = Source::Path(config.uds_dir());
+    let mut client = IvynetClient::from_channel(create_channel(sock, None).await?);
+    match subgetter {
+        OperatorGetterCommands::Details { .. } => {
+            let response = client.operator_mut().get_operator_details().await?;
+            println!("{:?}", response.into_inner());
+        }
+        OperatorGetterCommands::Shares { .. } => {
+            let response = client.operator_mut().get_operator_shares().await?;
+            println!("{:?}", response.into_inner());
+        }
+        OperatorGetterCommands::DelegatableShares { .. } => {
+            let response = client.operator_mut().get_delegatable_shares(None).await?;
+            println!("{:?}", response.into_inner());
+        }
+    }
     todo!()
 }

@@ -11,12 +11,8 @@ use ivynet_core::{
         messages::{Metrics, MetricsAttribute, NodeData, SignedMetrics, SignedNodeData},
         tonic::{transport::Channel, Request},
     },
-<<<<<<< HEAD
     rpc_management::IvyProvider,
-    signature::{sign_metrics, sign_node_data},
-=======
     signature::{sign_delete_node_data, sign_metrics, sign_node_data},
->>>>>>> ee0b02d (cleanup pass)
     wallet::IvyWallet,
     IvyProvider,
 };
@@ -32,7 +28,6 @@ const EIGENDA_DOCKER_IMAGE_NAME: &str = "ghcr.io/layr-labs/eigenda/opr-node";
 const TELEMETRY_INTERVAL_IN_MINUTES: u64 = 1;
 
 pub async fn listen(
-    avs_provider: Arc<RwLock<AvsProvider>>,
     mut backend_client: BackendClient<Channel>,
     machine_id: Uuid,
     identity_wallet: IvyWallet,
@@ -128,7 +123,6 @@ async fn metrics_endpoint(avs_name: &str) -> Option<String> {
 }
 
 async fn node_data(
-    avs: &Option<Box<dyn AvsVariant>>,
     avs_name: &Option<String>,
     machine_id: Uuid,
     provider: &Arc<IvyProvider>,
