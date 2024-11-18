@@ -2,8 +2,12 @@
 /// frequent path manipulations and file I/O, and the standard error messages are often not
 /// descriptive enough.
 use serde::{Deserialize, Serialize};
-use std::{fs, path::PathBuf};
+use std::{
+    fs,
+    path::{Path, PathBuf},
+};
 use thiserror::Error as ThisError;
+use zip::read::ZipFile;
 
 #[derive(ThisError, Debug)]
 pub enum IoError {
@@ -62,6 +66,8 @@ pub enum IoError {
         source: std::io::Error,
         path: String,
     },
+    #[error(transparent)]
+    ZipFileError(#[from] zip::result::ZipError),
 }
 
 pub fn read_json<T: for<'a> Deserialize<'a>>(path: &PathBuf) -> Result<T, IoError> {
@@ -115,6 +121,68 @@ pub fn write_yaml<T: Serialize>(path: &PathBuf, data: &T) -> Result<(), IoError>
 pub fn create_dir_all(path: &PathBuf) -> Result<(), IoError> {
     fs::create_dir_all(path)
         .map_err(|e| IoError::DirCreationError { source: e, path: path.display().to_string() })?;
+    Ok(())
+}
+
+/// Unzips `zipfile` to `to` directory, depositing contents of `zipfile` directly to `to`.
+pub fn unzip_to(zip_file: &PathBuf, to: &Path) -> Result<(), IoError> {
+    if zip_file.extension().unwrap() != "zip" {
+        return Err(IoError::FileReadError {
+            source: std::io::Error::new(std::io::ErrorKind::InvalidInput, "Not a zip file"),
+            path: zip_file.display().to_string(),
+        });
+    }
+    let zip_file = fs::File::open(zip_file)
+        .map_err(|e| IoError::FileReadError { source: e, path: zip_file.display().to_string() })?;
+    let mut archive = zip::ZipArchive::new(zip_file)?;
+    for i in 0..archive.len() {
+        let mut file = archive.by_index(i)?;
+        let outpath = match file.enclosed_name() {
+            Some(path) => to.join(path),
+            None => continue,
+        };
+
+        {
+            let comment = file.comment();
+            if !comment.is_empty() {
+                println!("File {i} comment: {comment}");
+            }
+        }
+
+        if file.is_dir() {
+            fs::create_dir_all(&outpath).map_err(|e| IoError::DirCreationError {
+                source: e,
+                path: outpath.display().to_string(),
+            })?;
+        } else {
+            if let Some(p) = outpath.parent() {
+                if !p.exists() {
+                    fs::create_dir_all(p).map_err(|e| IoError::DirCreationError {
+                        source: e,
+                        path: p.display().to_string(),
+                    })?;
+                }
+            }
+            let mut outfile = fs::File::create(&outpath).map_err(|e| IoError::FileWriteError {
+                source: e,
+                path: outpath.display().to_string(),
+            })?;
+            std::io::copy(&mut file, &mut outfile).map_err(|e| IoError::FileWriteError {
+                source: e,
+                path: outpath.display().to_string(),
+            })?;
+        }
+
+        // Get and Set permissions
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+
+            if let Some(mode) = file.unix_mode() {
+                fs::set_permissions(&outpath, fs::Permissions::from_mode(mode)).unwrap();
+            }
+        }
+    }
     Ok(())
 }
 

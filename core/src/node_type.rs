@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 const EIGENDA_DOCKER_IMAGE_NAME: &str = "ghcr.io/layr-labs/eigenda/opr-node";
+const LAGRANGE_WORKER_DOCKER_IMAGE_NAME: &str = "ghcr.io/layr-labs/lagrange/worker";
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum NodeType {
@@ -29,7 +30,7 @@ impl std::fmt::Display for NodeType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             NodeType::EigenDA => write!(f, "EigenDA"),
-            NodeType::LagrangeWorker => write!(f, "Lagrange"),
+            NodeType::LagrangeWorker => write!(f, "Lagrange Worker"),
             NodeType::Unknown => write!(f, "Unknown"),
         }
     }

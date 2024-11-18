@@ -6,36 +6,10 @@ use thiserror::Error as ThisError;
 use crate::{
     env_parser::EnvLineError,
     io::{read_toml, write_toml, IoError},
+    node_type::NodeType,
 };
 
 use super::{eigenda::EigenDAConfig, lagrange::config::LagrangeConfig};
-
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
-pub enum NodeType {
-    EigenDA,
-    Lagrange,
-    Unknown,
-}
-
-impl From<&str> for NodeType {
-    fn from(s: &str) -> Self {
-        match s.to_lowercase().as_str() {
-            "eigenda" => NodeType::EigenDA,
-            "lagrange" => NodeType::Lagrange,
-            _ => panic!("Invalid node type"),
-        }
-    }
-}
-
-impl std::fmt::Display for NodeType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            NodeType::EigenDA => write!(f, "EigenDA"),
-            NodeType::Lagrange => write!(f, "Lagrange"),
-            NodeType::Unknown => write!(f, "Unknown"),
-        }
-    }
-}
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum NodeConfig {
@@ -103,7 +77,7 @@ impl NodeConfig {
     pub fn node_type(&self) -> NodeType {
         match self {
             NodeConfig::EigenDA(_) => NodeType::EigenDA,
-            NodeConfig::Lagrange(_) => NodeType::Lagrange,
+            NodeConfig::Lagrange(_) => NodeType::LagrangeWorker,
             NodeConfig::Other(_) => NodeType::Unknown,
         }
     }
@@ -165,7 +139,7 @@ impl NodeConfigBuilder {
             NodeType::EigenDA => dirs::home_dir()
                 .expect("Could not get a home directory")
                 .join(".eigenlayer/eigenda"),
-            NodeType::Lagrange => dirs::home_dir()
+            NodeType::LagrangeWorker => dirs::home_dir()
                 .expect("Could not get a home directory")
                 .join(".eigenlayer/lagrange"),
             NodeType::Unknown => panic!("Unknown node type"),

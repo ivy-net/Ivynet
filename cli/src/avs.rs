@@ -1,12 +1,11 @@
 use anyhow::{Error as AnyError, Result};
 use ivynet_core::{
     avs::{
-        commands::NodeCommands,
-        config::{NodeConfig, NodeType},
-        eigenda::EigenDAConfig,
+        commands::NodeCommands, config::NodeConfig, eigenda::EigenDAConfig,
         lagrange::config::LagrangeConfig,
     },
     error::IvyError,
+    node_type::NodeType,
 };
 
 pub async fn parse_avs_subcommands(subcmd: NodeCommands) -> Result<(), AnyError> {
@@ -14,10 +13,12 @@ pub async fn parse_avs_subcommands(subcmd: NodeCommands) -> Result<(), AnyError>
         NodeCommands::Configure { node_type } => match node_type {
             NodeType::EigenDA => {
                 let config = EigenDAConfig::new_from_prompt().await?;
+                println!("Setup complete, EigenDA config saved to {}", config.path.display());
                 NodeConfig::EigenDA(config).store();
             }
-            NodeType::Lagrange => {
+            NodeType::LagrangeWorker => {
                 let config = LagrangeConfig::new_from_prompt().await?;
+                println!("Setup complete, Lagrange config saved to {}", config.path.display());
                 NodeConfig::Lagrange(config).store();
             }
             _ => unimplemented!("Node type not implemented: {:?}", node_type),

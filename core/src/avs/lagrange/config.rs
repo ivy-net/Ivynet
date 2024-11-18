@@ -3,19 +3,17 @@ use ethers::types::Address;
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{self, File},
-    io::BufReader,
     path::{Path, PathBuf},
 };
 use url::Url;
 
 use tracing::{debug, error, info};
-use zip::ZipArchive;
 
 use crate::{
     avs::config::{default_config_dir, NodeConfigError},
     docker::dockercmd::DockerCmd,
     env_parser::EnvLines,
-    io::{read_toml, IoError},
+    io::{read_toml, unzip_to, IoError},
     keychain::{KeyType, Keychain},
 };
 
@@ -69,8 +67,10 @@ impl LagrangeConfig {
         let node_directory = prompt_lagrange_directory()?;
         download_operator_setup(&node_directory).await?;
 
-        let sample_holesky_compose = node_directory.clone().join("holesky/docker-compose.yml");
-        let sample_mainnet_compose = node_directory.clone().join("mainnet/docker-compose.yml");
+        let sample_holesky_compose =
+            node_directory.clone().join("lagrange-worker-main/holesky/docker-compose.yaml");
+        let sample_mainnet_compose =
+            node_directory.clone().join("lagrange-worker-main/mainnet/docker-compose.yaml");
 
         // TODO: This is a bit verbose. Consider including an example config file in
         // deployments instead.
@@ -132,7 +132,6 @@ impl LagrangeConfig {
 pub async fn download_operator_setup(dest_dir: &Path) -> Result<(), NodeConfigError> {
     // Resource directory setup
     let mut setup = false;
-    let temp_path = dest_dir.join("temp");
     if dest_dir.exists() {
         let reset_string: String = Input::new()
             .with_prompt(
@@ -143,55 +142,60 @@ pub async fn download_operator_setup(dest_dir: &Path) -> Result<(), NodeConfigEr
         if reset_string == "y" {
             setup = true;
             fs::remove_dir_all(dest_dir)?;
-            fs::create_dir_all(temp_path.clone())?;
         }
     } else {
-        info!("The setup directory does not exist, downloading to {}", temp_path.display());
-        fs::create_dir_all(temp_path.clone())?;
         setup = true;
     }
 
     if setup {
-        info!("Downloading setup files to {}", temp_path.display());
+        info!("Downloading setup files to {}", dest_dir.display());
+        fs::create_dir_all(dest_dir)?;
         let response = reqwest::get(LAGRANGE_WORKER_SETUP_REPO).await?;
-
-        let fname = temp_path.join("source.zip");
-        let mut dest = File::create(&fname)?;
+        let zip_fname = dest_dir.join("source.zip");
+        let mut zip_dest = File::create(&zip_fname)?;
         let bytes = response.bytes().await?;
-        std::io::copy(&mut bytes.as_ref(), &mut dest)?;
-        let reader = BufReader::new(File::open(fname)?);
-        let mut archive = ZipArchive::new(reader)?;
+        std::io::copy(&mut bytes.as_ref(), &mut zip_dest)?;
 
-        for i in 0..archive.len() {
-            let mut file = archive.by_index(i)?;
-            let outpath = temp_path.join(file.name());
-            debug!("Extracting to {}", outpath.display());
+        unzip_to(&zip_fname, dest_dir)?;
+        std::fs::remove_file(zip_fname)?;
 
-            if (file.name()).ends_with('/') {
-                std::fs::create_dir_all(&outpath)?;
-            } else {
-                if let Some(p) = outpath.parent() {
-                    if !p.exists() {
-                        std::fs::create_dir_all(p)?;
-                    }
-                }
-                let mut outfile = File::create(&outpath)?;
-                std::io::copy(&mut file, &mut outfile)?;
-            }
-        }
-        let first_dir = std::fs::read_dir(&temp_path)?
-            .filter_map(Result::ok)
-            .find(|entry| entry.file_type().unwrap().is_dir());
-        if let Some(first_dir) = first_dir {
-            let old_folder_path = first_dir.path();
-            debug!("{}", old_folder_path.display());
-            std::fs::rename(old_folder_path, dest_dir)?;
-        }
-        // Delete the setup directory
-        if temp_path.exists() {
-            info!("Cleaning up setup directory...");
-            std::fs::remove_dir_all(temp_path)?;
-        }
+        // let reader = BufReader::new(File::open(fname)?);
+        // let mut archive = ZipArchive::new(reader)?;
+
+        // for i in 0..archive.len() {
+        //     let mut file = archive.by_index(i)?;
+        //     let outpath = temp_path.join(file.name());
+        //     debug!("Extracting to {}", outpath.display());
+
+        //     if (file.name()).ends_with('/') {
+        //         std::fs::create_dir_all(&outpath)?;
+        //     } else {
+        //         if let Some(p) = outpath.parent() {
+        //             if !p.exists() {
+        //                 std::fs::create_dir_all(p)?;
+        //             }
+        //         }
+        //         let mut outfile = File::create(&outpath)?;
+        //         std::io::copy(&mut file, &mut outfile)?;
+        //     }
+        // }
+        // let first_dir = std::fs::read_dir(&temp_path)?
+        //     .filter_map(Result::ok)
+        //     .find(|entry| entry.file_type().unwrap().is_dir());
+        // println!("first dir: {:?}", first_dir);
+        // println!("dest dir: {:?}", dest_dir);
+        // if let Some(first_dir) = first_dir {
+        //     let old_folder_path = first_dir.path();
+        //     debug!("{}", old_folder_path.display());
+        //     std::fs::rename(old_folder_path, dest_dir)?;
+        // }
+        // println!("rename complete");
+        // // Delete the setup directory
+        // if temp_path.exists() {
+        //     info!("Cleaning up setup directory...");
+        //     std::fs::remove_dir_all(temp_path)?;
+        // }
+        // println!("cleanup complete");
     }
 
     Ok(())

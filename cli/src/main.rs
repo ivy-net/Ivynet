@@ -3,6 +3,7 @@ use clap::{Parser, Subcommand};
 use cli::{avs, config, error::Error, key, monitor};
 use ivynet_core::{avs::commands::NodeCommands, config::IvyConfig, grpc::client::Uri};
 use std::{fs, path::PathBuf, str::FromStr as _};
+use tracing::info;
 use tracing_subscriber::FmtSubscriber;
 
 #[allow(unused_imports)]
@@ -41,7 +42,7 @@ struct Args {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    #[command(name = "avs", about = "Request information about or boot a node")]
+    #[command(name = "node", about = "Request information about or boot a node")]
     Node {
         #[command(subcommand)]
         subcmd: NodeCommands,
@@ -83,6 +84,8 @@ async fn main() -> Result<(), AnyError> {
             }
         }
     };
+
+    info!("Parsing commands...");
 
     match args.cmd {
         Commands::Config { subcmd } => {

@@ -83,7 +83,6 @@ pub async fn listen_metrics(
     machine_id: &str,
     identity_wallet: &IvyWallet,
     dispatch: &TelemetryDispatchHandle,
-    client: &mut BackendClient<Channel>,
 ) -> Result<(), IvyError> {
     loop {
         let node_containers = docker.find_all_node_containers().await;
