@@ -14,6 +14,7 @@ pub fn connect_docker() -> Docker {
 }
 
 impl DockerClient {
+    #[allow(dead_code)]
     fn new(docker: Docker) -> Self {
         Self(docker)
     }
@@ -90,17 +91,17 @@ impl Container {
 
     /// Container ID
     pub fn id(&self) -> Option<&str> {
-        self.0.id.as_ref().map(|s| s.as_str())
+        self.0.id.as_deref()
     }
 
     /// Image ID for the associated container
     pub fn image_id(&self) -> Option<&str> {
-        self.0.image_id.as_ref().map(|s| s.as_str())
+        self.0.image_id.as_deref()
     }
 
     /// Image name for the associated container
     pub fn image(&self) -> Option<&str> {
-        self.0.image.as_ref().map(|s| s.as_str())
+        self.0.image.as_deref()
     }
 
     pub fn ports(&self) -> Option<&Vec<bollard::models::Port>> {

@@ -5,7 +5,6 @@ use ethers::{
     types::{Bytes, Chain, SignatureError, TryFromPrimitiveError},
     utils::hex::FromHexError,
 };
-use indicatif::style::TemplateError;
 use thiserror::Error;
 use tonic::Status;
 use zip::result::ZipError;
@@ -56,12 +55,6 @@ pub enum IvyError {
     ZipError(#[from] ZipError),
 
     #[error(transparent)]
-    TemplateError(#[from] TemplateError),
-
-    #[error(transparent)]
-    TryFromChainError(#[from] TryFromPrimitiveError<Chain>),
-
-    #[error(transparent)]
     GRPCError(#[from] Status),
 
     #[error(transparent)]
@@ -82,14 +75,6 @@ pub enum IvyError {
     #[error(transparent)]
     ClientError(#[from] ClientError),
 
-    #[error(
-        "AVS {0} on chain {1} is currently running. Stop the AVS before using this operation."
-    )]
-    AvsRunningError(String, Chain),
-
-    #[error("AVS already started")]
-    AvsNotLoadedError,
-
     #[error("Chain not supported {0}")]
     ChainNotSupportedError(Chain),
 
@@ -108,23 +93,17 @@ pub enum IvyError {
     #[error("No address field")]
     AddressFieldError,
 
-    #[error("Folder inaccesible")]
-    DirInaccessible,
-
     #[error("Unknown contract error")]
     UnknownContractError,
-
-    #[error("Avs parse error: ensure the name of the requested AVS is valid")]
-    InvalidAvsType(String),
-
-    #[error("No AVS is initialized")]
-    AvsNotInitializedError,
 
     #[error("Incorrect key type")]
     IncorrectKeyTypeError,
 
     #[error("Incorrect address format")]
     IncorrectAddressError,
+
+    #[error(transparent)]
+    TryFromPrimitiveError(#[from] TryFromPrimitiveError<Chain>),
 
     #[error("Can't parse to h160")]
     H160Error,
@@ -135,23 +114,8 @@ pub enum IvyError {
     #[error("JSON RPC Error {0}")]
     JsonRrcError(JsonRpcError),
 
-    #[error("No quorums to boot")]
-    NoQuorums,
-
-    #[error("Malformed config found, ensure ivynet setup was run correctly")]
-    MalformedConfigError,
-
-    #[error("IvyWallet identity key not found")]
-    IdentityKeyError,
-
-    #[error("No keyfile password found")]
-    KeyfilePasswordError,
-
     #[error("Unknown network")]
     UnknownNetwork,
-
-    #[error("Unknown AVS")]
-    UnknownAVS,
 
     #[error("Unimplemented")]
     Unimplemented,
@@ -198,7 +162,7 @@ pub enum IvyError {
     SignerMiddlewareError(#[from] IvyProviderError),
 
     #[error(transparent)]
-    TelemetrySendError(#[from] tokio::sync::mpsc::error::SendError<TelemetryMsg>),
+    TelemetrySendError(#[from] Box<tokio::sync::mpsc::error::SendError<TelemetryMsg>>),
 
     #[error(transparent)]
     NodeTypeError(#[from] crate::node_type::NodeTypeError),

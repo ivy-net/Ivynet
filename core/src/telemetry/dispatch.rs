@@ -53,7 +53,7 @@ pub struct TelemetryDispatchHandle {
 
 impl TelemetryDispatchHandle {
     pub async fn send(&self, msg: TelemetryMsg) -> Result<(), IvyError> {
-        self.tx.send(msg).await.map_err(IvyError::from)
+        self.tx.send(msg).await.map_err(|e| IvyError::from(Box::new(e)))
     }
     pub async fn from_client(client: BackendClient<Channel>) -> Self {
         let (tx, rx) = tokio::sync::mpsc::channel(256);

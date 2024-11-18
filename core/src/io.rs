@@ -7,7 +7,6 @@ use std::{
     path::{Path, PathBuf},
 };
 use thiserror::Error as ThisError;
-use zip::read::ZipFile;
 
 #[derive(ThisError, Debug)]
 pub enum IoError {

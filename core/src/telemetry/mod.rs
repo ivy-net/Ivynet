@@ -38,7 +38,7 @@ pub async fn listen(
                 Ok(_) => unreachable!("Metrics listener should never return Ok"),
                 Err(err) => {
                     error!("Cannot listen for metrics ({err:?})");
-                    return Err(err)
+                    Err(err)
                 },
             }
         }
@@ -59,15 +59,15 @@ pub async fn listen(
     //                     metrics_url = metrics_endpoint(avs_name).await;
     //                 }
     //             }
-    //             let node_data = node_data(&provider.avs, &name, machine_id, &provider.provider).await?;
-    //             (collect(&name, &metrics_url, &node_data, provider.chain().await.ok()).await, node_data)
-    //         };
+    //             let node_data = node_data(&provider.avs, &name, machine_id,
+    // &provider.provider).await?;             (collect(&name, &metrics_url, &node_data,
+    // provider.chain().await.ok()).await, node_data)         };
     //         if let Ok(metrics) = metrics {
     //             info!("Sending metrics...");
-    //             // TODO: This avs_name has to be the name of the container. But the observability is
-    //             // not ready for it just yet
-    //             match send(&metrics, &node_data, machine_id, "", &identity_wallet, &mut backend_client)
-    //                 .await
+    //             // TODO: This avs_name has to be the name of the container. But the observability
+    // is             // not ready for it just yet
+    //             match send(&metrics, &node_data, machine_id, "", &identity_wallet, &mut
+    // backend_client)                 .await
     //             {
     //                 Ok(_) => {}
     //                 Err(err) => error!("Cannot send metrics to backend ({err:?})"),
@@ -316,7 +316,7 @@ async fn collect(
                         .avs_version
                         .as_ref()
                         .map(|v| v.to_string())
-                        .unwrap_or("0.0.0".to_string()),
+                        .unwrap_or_else(|| "0.0.0".to_string()),
                 },
             ]
         } else {
@@ -327,33 +327,33 @@ async fn collect(
     Ok(metrics)
 }
 
-async fn send(
-    metrics: &[Metrics],
-    node_data: &NodeData,
-    machine_id: Uuid,
-    avs_name: &str,
-    identity_wallet: &IvyWallet,
-    backend_client: &mut BackendClient<Channel>,
-) -> Result<(), IvyError> {
-    let metrics_signature = sign_metrics(metrics, identity_wallet)?;
-
-    let node_data_signature = sign_node_data(node_data, identity_wallet)?;
-    backend_client
-        .metrics(Request::new(SignedMetrics {
-            machine_id: machine_id.into(),
-            avs_name: avs_name.to_string(),
-            signature: metrics_signature.to_vec(),
-            metrics: metrics.to_vec(),
-        }))
-        .await?;
-    backend_client
-        .update_node_data(Request::new(SignedNodeData {
-            signature: node_data_signature.to_vec(),
-            node_data: Some(node_data.clone()),
-        }))
-        .await?;
-    Ok(())
-}
+// async fn send(
+//     metrics: &[Metrics],
+//     node_data: &NodeData,
+//     machine_id: Uuid,
+//     avs_name: &str,
+//     identity_wallet: &IvyWallet,
+//     backend_client: &mut BackendClient<Channel>,
+// ) -> Result<(), IvyError> {
+//     let metrics_signature = sign_metrics(metrics, identity_wallet)?;
+//
+//     let node_data_signature = sign_node_data(node_data, identity_wallet)?;
+//     backend_client
+//         .metrics(Request::new(SignedMetrics {
+//             machine_id: machine_id.into(),
+//             avs_name: avs_name.to_string(),
+//             signature: metrics_signature.to_vec(),
+//             metrics: metrics.to_vec(),
+//         }))
+//         .await?;
+//     backend_client
+//         .update_node_data(Request::new(SignedNodeData {
+//             signature: node_data_signature.to_vec(),
+//             node_data: Some(node_data.clone()),
+//         }))
+//         .await?;
+//     Ok(())
+// }
 
 #[derive(PartialEq, Debug)]
 enum TelemetryToken {

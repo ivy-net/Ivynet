@@ -16,9 +16,12 @@ pub async fn parse_avs_subcommands(subcmd: NodeCommands) -> Result<(), AnyError>
                 println!("Setup complete, EigenDA config saved to {}", config.path.display());
                 NodeConfig::EigenDA(config).store();
             }
-            NodeType::LagrangeWorker => {
+            NodeType::LagrangeHoleskyWorker => {
                 let config = LagrangeConfig::new_from_prompt().await?;
-                println!("Setup complete, Lagrange config saved to {}", config.path.display());
+                println!(
+                    "Setup complete, Lagrange holesky config saved to {}",
+                    config.path.display()
+                );
                 NodeConfig::Lagrange(config).store();
             }
             _ => unimplemented!("Node type not implemented: {:?}", node_type),

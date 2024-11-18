@@ -7,10 +7,10 @@ use ethers::{
 };
 use ivynet_macros::h160;
 
-use crate::IvyProvider;
 use crate::{
     eigen::strategy::{holesky::HOLESKY_LST_STRATEGIES, mainnet::MAINNET_LST_STRATEGIES},
     error::IvyError,
+    IvyProvider,
 };
 
 abigen!(

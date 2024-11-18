@@ -1,8 +1,4 @@
-use crate::{
-    config::IvyConfig,
-    eigen::quorum::QuorumType,
-    error::IvyError,
-};
+use crate::{config::IvyConfig, eigen::quorum::QuorumType, error::IvyError};
 
 use std::collections::HashMap;
 
