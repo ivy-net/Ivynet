@@ -12,7 +12,7 @@ use zip::result::ZipError;
 
 use crate::{
     docker::dockercmd::DockerError, eigen::quorum::QuorumError, grpc::client::ClientError,
-    IvyProvider, IvyProviderError,
+    telemetry::dispatch::TelemetryMsg, IvyProvider, IvyProviderError,
 };
 
 #[derive(Debug, Error)]
@@ -196,6 +196,21 @@ pub enum IvyError {
 
     #[error(transparent)]
     SignerMiddlewareError(#[from] IvyProviderError),
+
+    #[error(transparent)]
+    TelemetrySendError(#[from] tokio::sync::mpsc::error::SendError<TelemetryMsg>),
+
+    #[error(transparent)]
+    NodeTypeError(#[from] crate::node_type::NodeTypeError),
+
+    #[error("Docker Image Error")]
+    DockerImageError,
+
+    #[error(transparent)]
+    TelemetryDispatchError(#[from] crate::telemetry::dispatch::TelemetryDispatchError),
+
+    #[error("{0}")]
+    CustomError(String),
 }
 
 #[derive(Debug, Error)]
@@ -230,5 +245,11 @@ impl From<ContractError<IvyProvider>> for IvyError {
 impl From<IvyError> for Status {
     fn from(e: IvyError) -> Self {
         Self::from_error(Box::new(e))
+    }
+}
+
+impl From<String> for IvyError {
+    fn from(e: String) -> Self {
+        IvyError::CommandError(e)
     }
 }

@@ -14,8 +14,10 @@ pub mod keychain;
 pub mod keys;
 pub mod messenger;
 pub mod metadata;
+pub mod node_type;
 pub mod signature;
 pub mod system;
+pub mod telemetry;
 pub mod utils;
 pub mod wallet;
 

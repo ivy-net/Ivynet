@@ -1,7 +1,7 @@
 use anyhow::{Error as AnyError, Result};
 use clap::{Parser, Subcommand};
-use cli::{avs, config, error::Error, key};
-use ivynet_core::{avs::commands::AvsCommands, config::IvyConfig, grpc::client::Uri};
+use cli::{avs, config, error::Error, key, monitor};
+use ivynet_core::{avs::commands::NodeCommands, config::IvyConfig, grpc::client::Uri};
 use std::{fs, path::PathBuf, str::FromStr as _};
 use tracing_subscriber::FmtSubscriber;
 
@@ -41,10 +41,10 @@ struct Args {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    #[command(name = "avs", about = "Request information about an AVS or boot up a node")]
-    Avs {
+    #[command(name = "avs", about = "Request information about or boot a node")]
+    Node {
         #[command(subcommand)]
-        subcmd: AvsCommands,
+        subcmd: NodeCommands,
     },
     #[command(name = "config", about = "Manage rpc and config information")]
     Config {
@@ -56,6 +56,8 @@ enum Commands {
         #[command(subcommand)]
         subcmd: key::KeyCommands,
     },
+    #[command(name = "monitor", about = "Start node monitor daemon")]
+    Monitor,
 }
 
 #[tokio::main]
@@ -87,7 +89,8 @@ async fn main() -> Result<(), AnyError> {
             config::parse_config_subcommands(subcmd, config).await?;
         }
         Commands::Key { subcmd } => key::parse_key_subcommands(subcmd).await?,
-        Commands::Avs { subcmd } => avs::parse_avs_subcommands(subcmd).await?,
+        Commands::Node { subcmd } => avs::parse_avs_subcommands(subcmd).await?,
+        Commands::Monitor => monitor::start_monitor().await?,
     }
 
     Ok(())

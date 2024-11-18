@@ -1,7 +1,7 @@
 use anyhow::{Error as AnyError, Result};
 use ivynet_core::{
     avs::{
-        commands::AvsCommands,
+        commands::NodeCommands,
         config::{NodeConfig, NodeType},
         eigenda::EigenDAConfig,
         lagrange::config::LagrangeConfig,
@@ -9,9 +9,9 @@ use ivynet_core::{
     error::IvyError,
 };
 
-pub async fn parse_avs_subcommands(subcmd: AvsCommands) -> Result<(), AnyError> {
+pub async fn parse_avs_subcommands(subcmd: NodeCommands) -> Result<(), AnyError> {
     match subcmd {
-        AvsCommands::Configure { node_type } => match node_type {
+        NodeCommands::Configure { node_type } => match node_type {
             NodeType::EigenDA => {
                 let config = EigenDAConfig::new_from_prompt().await?;
                 NodeConfig::EigenDA(config).store();
@@ -23,16 +23,16 @@ pub async fn parse_avs_subcommands(subcmd: AvsCommands) -> Result<(), AnyError> 
             _ => unimplemented!("Node type not implemented: {:?}", node_type),
         },
 
-        AvsCommands::Info {} => {
+        NodeCommands::Info {} => {
             todo!()
         }
-        AvsCommands::Register {} => {
+        NodeCommands::Register {} => {
             todo!()
         }
-        AvsCommands::Unregister {} => {
+        NodeCommands::Unregister {} => {
             todo!()
         }
-        AvsCommands::Start {} => {
+        NodeCommands::Start {} => {
             // Prompt user for config to start
             let config_files = NodeConfig::all().map_err(IvyError::from)?;
 
@@ -54,7 +54,7 @@ pub async fn parse_avs_subcommands(subcmd: AvsCommands) -> Result<(), AnyError> 
                 _ => unimplemented!("Node type not implemented: {:?}", node_config.node_type()),
             };
         }
-        AvsCommands::Stop {} => {
+        NodeCommands::Stop {} => {
             todo!()
         }
         _ => unimplemented!("Command not implemented: {:?}", subcmd),

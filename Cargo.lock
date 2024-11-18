@@ -2773,6 +2773,7 @@ dependencies = [
  "dotenvy",
  "eth-keystore",
  "ethers",
+ "futures",
  "futures-util",
  "hyper-util",
  "indexmap 2.6.0",

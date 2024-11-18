@@ -155,9 +155,11 @@ pub struct NodeConfigBuilder {
 }
 
 impl NodeConfigBuilder {
+    #[allow(dead_code)]
     fn new(node_type: NodeType) -> Self {
         Self { node_type }
     }
+    #[allow(dead_code)]
     fn default_resources_dir(&self) -> PathBuf {
         match self.node_type {
             NodeType::EigenDA => dirs::home_dir()

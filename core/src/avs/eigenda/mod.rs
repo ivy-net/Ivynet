@@ -1,14 +1,7 @@
-use crate::{download::dl_progress_bar, eigen::quorum::QuorumType, error::IvyError};
+use crate::eigen::quorum::QuorumType;
 use core::str;
-use dialoguer::Input;
-use std::{
-    fs::{self, File},
-    io::{copy, BufReader},
-    path::{Path, PathBuf},
-};
 use thiserror::Error as ThisError;
-use tracing::{debug, error, info};
-use zip::read::ZipArchive;
+use tracing::error;
 
 mod config;
 mod contracts;

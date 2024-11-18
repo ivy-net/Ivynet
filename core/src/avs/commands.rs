@@ -20,7 +20,7 @@ pub enum RegisterCommands {
 }
 
 #[derive(Subcommand, Debug)]
-pub enum AvsCommands {
+pub enum NodeCommands {
     #[command(name = "info", about = "Get information about the currently running AVS")]
     Info {},
     #[command(name = "configure", about = "Configure a new node instance.")]
@@ -61,21 +61,21 @@ pub enum AvsCommands {
     },
 }
 
-impl Display for AvsCommands {
+impl Display for NodeCommands {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AvsCommands::Info {} => write!(f, "get information about the currently running AVS"),
-            AvsCommands::Configure { node_type } => {
+            NodeCommands::Info {} => write!(f, "get information about the currently running AVS"),
+            NodeCommands::Configure { node_type } => {
                 write!(f, "Configure a new {node_type} node instance")
             }
-            AvsCommands::Register {} => write!(f, "register"),
-            AvsCommands::Unregister {} => write!(f, "unregister"),
-            AvsCommands::Start { .. } => write!(f, "start"),
-            AvsCommands::Stop {} => write!(f, "stop"),
-            AvsCommands::Attach { .. } => {
+            NodeCommands::Register {} => write!(f, "register"),
+            NodeCommands::Unregister {} => write!(f, "unregister"),
+            NodeCommands::Start { .. } => write!(f, "start"),
+            NodeCommands::Stop {} => write!(f, "stop"),
+            NodeCommands::Attach { .. } => {
                 write!(f, "Attaching to active AVS")
             }
-            AvsCommands::Inspect { avs: _, chain: _ } => {
+            NodeCommands::Inspect { avs: _, chain: _ } => {
                 write!(f, "inspect logs")
             }
         }

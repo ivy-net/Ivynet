@@ -13,7 +13,6 @@ pub static DEFAULT_CONFIG_PATH: Lazy<PathBuf> = Lazy::new(|| {
 });
 
 use crate::{
-    avs::names::AvsName,
     error::IvyError,
     io::{read_toml, write_toml, IoError},
     metadata::Metadata,
@@ -28,20 +27,8 @@ pub struct BackendInfo {
     pub identity_key: String,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub enum StartMode {
-    No,
-    Yes,
-    Attach,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Service {
-    pub service: AvsName,
-    pub chain: Chain,
-    pub autostart: StartMode,
-}
-
+// TODO: Change rpc urls to hashmap or remove entirely
+// add reference to keyfile for identity keys instead of using provider id
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct IvyConfig {
     /// Storage path for serialized config file
@@ -58,8 +45,6 @@ pub struct IvyConfig {
     pub metadata: Metadata,
     /// Web server information
     pub backend_info: BackendInfo,
-    /// Service configuration
-    pub configured_service: Option<Vec<Service>>,
 }
 
 impl Default for IvyConfig {
@@ -76,7 +61,6 @@ impl Default for IvyConfig {
                 server_ca: "".into(),
                 identity_key: "".into(),
             },
-            configured_service: None,
         }
     }
 }
