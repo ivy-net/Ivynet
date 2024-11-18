@@ -1,13 +1,9 @@
 use anyhow::{Error as AnyError, Result};
 use clap::{Parser, Subcommand};
-use cli::{avs, config, error::Error, key, service};
-use ivynet_core::{
-    avs::commands::AvsCommands,
-    config::IvyConfig,
-    fluentd::{make_fluentd_compose, make_fluentd_conf},
-    grpc::client::Uri,
-};
+use cli::{avs, config, error::Error, key, monitor};
+use ivynet_core::{avs::commands::NodeCommands, config::IvyConfig, grpc::client::Uri};
 use std::{fs, path::PathBuf, str::FromStr as _};
+use tracing::info;
 use tracing_subscriber::FmtSubscriber;
 
 #[allow(unused_imports)]
@@ -22,10 +18,6 @@ mod version_hash {
 struct Args {
     #[command(subcommand)]
     cmd: Commands,
-
-    /// The network to connect to: mainnet, holesky, local
-    #[arg(long, short, default_value = "holesky")]
-    network: String,
 
     /// IvyNet servers Uri for communication
     #[arg(long, env = "SERVER_URL", value_parser = Uri::from_str, default_value = if cfg!(debug_assertions) {
@@ -42,6 +34,7 @@ struct Args {
     /// Decide the level of verbosity for the logs
     #[arg(long, env = "LOG_LEVEL", default_value_t = Level::INFO)]
     pub log_level: Level,
+
     /// Skip backend connection
     #[arg(long, env = "NO_BACKEND", default_value_t = false)]
     pub no_backend: bool,
@@ -49,10 +42,10 @@ struct Args {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    #[command(name = "avs", about = "Request information about an AVS or boot up a node")]
-    Avs {
+    #[command(name = "node", about = "Request information about or boot a node")]
+    Node {
         #[command(subcommand)]
-        subcmd: AvsCommands,
+        subcmd: NodeCommands,
     },
     #[command(name = "config", about = "Manage rpc and config information")]
     Config {
@@ -64,26 +57,8 @@ enum Commands {
         #[command(subcommand)]
         subcmd: key::KeyCommands,
     },
-    // #[command(name = "operator", about = "Request information, register, or manage your
-    // operator")] Operator {
-    //     #[command(subcommand)]
-    //     subcmd: operator::OperatorCommands,
-    // },
-    // #[command(name = "staker", about = "Request information about stakers")]
-    // Staker {
-    //     #[command(subcommand)]
-    //     subcmd: staker::StakerCommands,
-    // },
-    #[command(
-        name = "serve",
-        about = "Start the Ivynet service with a specified AVS on CHAIN selected for startup. --avs <AVS> --chain <CHAIN>"
-    )]
-    Serve {
-        #[clap(required(false), long, requires("chain"))]
-        avs: Option<String>,
-        #[clap(required(false), long, requires("avs"))]
-        chain: Option<String>,
-    },
+    #[command(name = "monitor", about = "Start node monitor daemon")]
+    Monitor,
 }
 
 #[tokio::main]
@@ -92,7 +67,7 @@ async fn main() -> Result<(), AnyError> {
 
     start_tracing(args.log_level)?;
 
-    let mut config = {
+    let config = {
         match IvyConfig::load_from_default_path() {
             Ok(c) => c,
             Err(_) => {
@@ -102,8 +77,6 @@ async fn main() -> Result<(), AnyError> {
                     config.set_server_ca(ca.clone());
                 }
 
-                make_fluentd_compose(config.get_dir());
-                make_fluentd_conf(config.get_dir());
                 create_config_dir(config.get_path())?;
                 config.store()?;
 
@@ -112,19 +85,15 @@ async fn main() -> Result<(), AnyError> {
         }
     };
 
+    info!("Parsing commands...");
+
     match args.cmd {
         Commands::Config { subcmd } => {
             config::parse_config_subcommands(subcmd, config).await?;
         }
-        Commands::Key { subcmd } => key::parse_key_subcommands(subcmd, config).await?,
-        // Commands::Operator { subcmd } => {
-        //     operator::parse_operator_subcommands(subcmd, &config).await?
-        // }
-        // Commands::Staker { subcmd } => staker::parse_staker_subcommands(subcmd, &config).await?,
-        Commands::Avs { subcmd } => avs::parse_avs_subcommands(subcmd, &config).await?,
-        Commands::Serve { avs, chain } => {
-            service::serve(avs, chain, &mut config, args.no_backend).await?
-        }
+        Commands::Key { subcmd } => key::parse_key_subcommands(subcmd).await?,
+        Commands::Node { subcmd } => avs::parse_avs_subcommands(subcmd).await?,
+        Commands::Monitor => monitor::start_monitor().await?,
     }
 
     Ok(())

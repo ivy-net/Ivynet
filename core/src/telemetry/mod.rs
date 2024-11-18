@@ -1,9 +1,7 @@
-use std::sync::Arc;
-
-use ivynet_core::{
-    avs::{names::AvsName, AvsProvider, AvsVariant},
+use crate::{
+    avs::names::AvsName,
     config::get_detailed_system_information,
-    docker::dockerapi,
+    docker::dockerapi::{Container, DockerClient},
     error::IvyError,
     ethers::types::{Address, Chain},
     grpc::{
@@ -11,66 +9,137 @@ use ivynet_core::{
         messages::{Metrics, MetricsAttribute, NodeData, SignedMetrics, SignedNodeData},
         tonic::{transport::Channel, Request},
     },
-    rpc_management::IvyProvider,
+    node_type::NodeType,
     signature::{sign_metrics, sign_node_data},
     wallet::IvyWallet,
 };
-use tokio::{
-    sync::RwLock,
-    time::{sleep, Duration},
-};
-use tracing::{debug, error, info};
+use dispatch::TelemetryDispatchHandle;
+use tokio::time::{sleep, Duration};
+use tracing::{error, info};
 use uuid::Uuid;
 
-const EIGENDA_DOCKER_IMAGE_NAME: &str = "ghcr.io/layr-labs/eigenda/opr-node";
+pub mod dispatch;
 
 const TELEMETRY_INTERVAL_IN_MINUTES: u64 = 1;
 
 pub async fn listen(
-    avs_provider: Arc<RwLock<AvsProvider>>,
-    mut backend_client: BackendClient<Channel>,
+    backend_client: BackendClient<Channel>,
     machine_id: Uuid,
     identity_wallet: IvyWallet,
 ) -> Result<(), IvyError> {
-    let mut metrics_url;
+    let machine_id = machine_id.to_string();
+    let docker = DockerClient::default();
+    let dispatch = TelemetryDispatchHandle::from_client(backend_client).await;
+    let mut error_rx = dispatch.error_rx.resubscribe();
 
-    loop {
-        let (metrics, node_data) = {
-            let provider = avs_provider.read().await;
-            let name = avs_name(&provider.avs);
-            let running = if let Some(avs) = &provider.avs { avs.is_running() } else { false };
-
-            if running {
-                match name {
-                    Some(ref avs_name) => {
-                        //TODO: Forcing update of metrics_url every time
-                        // because caching it makes the endpoint stay as "None"
-                        // even after the endpoint has been built
-                        // More elegant solution needed in the future
-                        metrics_url = metrics_endpoint(avs_name).await;
-                    }
-                    None => {
-                        metrics_url = None;
-                    }
-                }
-            } else {
-                metrics_url = None;
+    tokio::select! {
+        metrics_err = listen_metrics(&docker, &machine_id, &identity_wallet, &dispatch) => {
+            match metrics_err {
+                Ok(_) => unreachable!("Metrics listener should never return Ok"),
+                Err(err) => {
+                    error!("Cannot listen for metrics ({err:?})");
+                    Err(err)
+                },
             }
-            let node_data = node_data(&provider.avs, &name, machine_id, &provider.provider).await?;
-            (collect(&name, &metrics_url, &node_data, provider.chain().await.ok()).await, node_data)
-        };
-        if let Ok(metrics) = metrics {
-            info!("Sending metrics...");
-            // TODO: This avs_name has to be the name of the container. But the observability is
-            // not ready for it just yet
-            match send(&metrics, &node_data, machine_id, "", &identity_wallet, &mut backend_client)
-                .await
-            {
-                Ok(_) => {}
-                Err(err) => error!("Cannot send metrics to backend ({err:?})"),
+        }
+        Ok(error) = error_rx.recv() => {
+            error!("Received telemetry error: {}", error);
+            Err(IvyError::CustomError(error.to_string()))
+        }
+    }
+
+    //     loop {
+    //         let (metrics, node_data) = {
+    //             match name {
+    //                 Some(ref avs_name) => {
+    //                     //TODO: Forcing update of metrics_url every time
+    //                     // because caching it makes the endpoint stay as "None"
+    //                     // even after the endpoint has been built
+    //                     // More elegant solution needed in the future
+    //                     metrics_url = metrics_endpoint(avs_name).await;
+    //                 }
+    //             }
+    //             let node_data = node_data(&provider.avs, &name, machine_id,
+    // &provider.provider).await?;             (collect(&name, &metrics_url, &node_data,
+    // provider.chain().await.ok()).await, node_data)         };
+    //         if let Ok(metrics) = metrics {
+    //             info!("Sending metrics...");
+    //             // TODO: This avs_name has to be the name of the container. But the observability
+    // is             // not ready for it just yet
+    //             match send(&metrics, &node_data, machine_id, "", &identity_wallet, &mut
+    // backend_client)                 .await
+    //             {
+    //                 Ok(_) => {}
+    //                 Err(err) => error!("Cannot send metrics to backend ({err:?})"),
+    //             }
+    //         }
+    //
+    //         sleep(Duration::from_secs(TELEMETRY_INTERVAL_IN_MINUTES * 60)).await;
+    //     }
+}
+
+pub async fn listen_metrics(
+    docker: &DockerClient,
+    machine_id: &str,
+    identity_wallet: &IvyWallet,
+    dispatch: &TelemetryDispatchHandle,
+) -> Result<(), IvyError> {
+    loop {
+        let node_containers = docker.find_all_node_containers().await;
+        let mut nodes_with_metrics: Vec<(&Container, String)> = Vec::new();
+
+        for node in node_containers.iter() {
+            let ports = node.public_ports();
+
+            for port in ports {
+                let url = format!("http://localhost:{}/metrics", port);
+                if reqwest::get(&url).await.is_ok() {
+                    nodes_with_metrics.push((node, url));
+                }
             }
         }
 
+        for node in nodes_with_metrics {
+            let (container, url) = node;
+            let avs_name = container.image().ok_or(IvyError::DockerImageError)?.to_string();
+            let node_data = NodeData {
+                avs_name: avs_name.clone(),
+                avs_type: NodeType::try_from_docker_image_name(&avs_name)?.to_string(),
+                machine_id: machine_id.into(),
+                operator_id: identity_wallet.address().as_bytes().to_vec(),
+                active_set: None,
+                avs_version: None,
+            };
+
+            // TODO: node_data does not accept an option, but collect does. Is that correct?
+            let metrics = collect(&Some(avs_name.clone()), &Some(url), &node_data, None).await;
+
+            if let Ok(metrics) = metrics {
+                info!("Sending metrics...");
+
+                let metrics_signature = sign_metrics(&metrics, identity_wallet)?;
+                let signed_metrics = SignedMetrics {
+                    machine_id: machine_id.into(),
+                    avs_name,
+                    signature: metrics_signature.to_vec(),
+                    metrics: metrics.to_vec(),
+                };
+
+                let node_data_signature = sign_node_data(&node_data, identity_wallet)?;
+                let signed_node_data = SignedNodeData {
+                    signature: node_data_signature.to_vec(),
+                    node_data: Some(node_data),
+                };
+
+                // client.metrics(Request::new(signed_metrics)).await;
+                // client.update_node_data(Request::new(signed_node_data)).await;
+
+                dispatch.send_metrics(signed_metrics).await?;
+                dispatch.send_node_data(signed_node_data).await?;
+            } else {
+                error!("Cannot collect metrics for container {:?}", container.image());
+            }
+        }
         sleep(Duration::from_secs(TELEMETRY_INTERVAL_IN_MINUTES * 60)).await;
     }
 }
@@ -101,53 +170,58 @@ pub async fn delete_node_data_payload(
         .await?;
     Ok(())
 }
-fn avs_name(avs: &Option<Box<dyn AvsVariant>>) -> Option<String> {
-    avs.as_ref().map(|avs_type| avs_type.name().to_string())
-}
 
-async fn metrics_endpoint(avs_name: &str) -> Option<String> {
-    if let Ok(AvsName::EigenDA) = AvsName::try_from(avs_name) {
-        let info = dockerapi::inspect(EIGENDA_DOCKER_IMAGE_NAME).await;
-        if let Some(info) = info {
-            let ports = dockerapi::get_active_ports(&info);
-            debug!("Ports: {:?}", ports);
-            for port in ports {
-                let url = format!("http://localhost:{}/metrics", port);
-                if reqwest::get(&url).await.is_ok() {
-                    return Some(url);
-                }
-            }
-        }
-    }
-    None
-}
+// async fn metrics_endpoint(docker_image_name: &str) -> Option<String> {
+//     let node_type = NodeType::try_from_docker_image_name(docker_image_name)?;
+//     let url: Option<String> = match node_type {
+//         NodeType::EigenDA => {
+//             let container_info = dockerapi::inspect(node_type.default_docker_image_name()).await;
+//         }
+//         _ => None,
+//     };
+//     if let Ok(AvsName::EigenDA) = AvsName::try_from(avs_name) {
+//         let info = dockerapi::inspect(EIGENDA_DOCKER_IMAGE_NAME).await;
+//         if let Some(info) = info {
+//             let ports = dockerapi::get_active_ports(&info);
+//             debug!("Ports: {:?}", ports);
+//             for port in ports {
+//                 let url = format!("http://localhost:{}/metrics", port);
+//                 if reqwest::get(&url).await.is_ok() {
+//                     return Some(url);
+//                 }
+//             }
+//         }
+//     }
+//     todo!()
+// }
 
-async fn node_data(
-    avs: &Option<Box<dyn AvsVariant>>,
-    avs_name: &Option<String>,
-    machine_id: Uuid,
-    provider: &Arc<IvyProvider>,
-) -> Result<NodeData, IvyError> {
-    Ok(if let Some(avs) = avs {
-        NodeData {
-            avs_type: avs.name().to_string(),
-            machine_id: machine_id.into(),
-            operator_id: provider.address().as_bytes().to_vec(),
-            avs_name: avs_name.clone().unwrap_or("".to_string()),
-            avs_version: avs.version().ok().map(|v| v.to_string()),
-            active_set: Some(avs.active_set(provider.clone()).await),
-        }
-    } else {
-        NodeData {
-            avs_type: "".to_string(),
-            machine_id: machine_id.into(),
-            operator_id: provider.address().as_bytes().to_vec(),
-            avs_name: "".to_string(),
-            avs_version: Some("0.0.0".to_string()),
-            active_set: Some(false),
-        }
-    })
-}
+// TODO: Ask about if/else for this function
+// async fn node_data(
+//     avs_name: &Option<String>,
+//     machine_id: Uuid,
+//     provider: &Arc<IvyProvider>,
+// ) -> Result<NodeData, IvyError> {
+//     Ok(if let Some(avs) = avs {
+//         NodeData {
+//             avs_type: avs.name().to_string(),
+//             machine_id: machine_id.into(),
+//             operator_id: provider.address().as_bytes().to_vec(),
+//             avs_name: avs_name.clone().unwrap_or("".to_string()),
+//             avs_version: avs.version().ok().map(|v| v.to_string()),
+//             active_set: Some(avs.active_set(provider.clone()).await),
+//         }
+//     } else {
+//         NodeData {
+//             avs_type: "".to_string(),
+//             machine_id: machine_id.into(),
+//             operator_id: provider.address().as_bytes().to_vec(),
+//             avs_name: "".to_string(),
+//             avs_version: Some("0.0.0".to_string()),
+//             active_set: Some(false),
+//         }
+//     })
+// }
+
 async fn collect(
     avs: &Option<String>,
     metrics_url: &Option<String>,
@@ -242,7 +316,7 @@ async fn collect(
                         .avs_version
                         .as_ref()
                         .map(|v| v.to_string())
-                        .unwrap_or("0.0.0".to_string()),
+                        .unwrap_or_else(|| "0.0.0".to_string()),
                 },
             ]
         } else {
@@ -253,33 +327,33 @@ async fn collect(
     Ok(metrics)
 }
 
-async fn send(
-    metrics: &[Metrics],
-    node_data: &NodeData,
-    machine_id: Uuid,
-    avs_name: &str,
-    identity_wallet: &IvyWallet,
-    backend_client: &mut BackendClient<Channel>,
-) -> Result<(), IvyError> {
-    let metrics_signature = sign_metrics(metrics, identity_wallet)?;
-
-    let node_data_signature = sign_node_data(node_data, identity_wallet)?;
-    backend_client
-        .metrics(Request::new(SignedMetrics {
-            machine_id: machine_id.into(),
-            avs_name: avs_name.to_string(),
-            signature: metrics_signature.to_vec(),
-            metrics: metrics.to_vec(),
-        }))
-        .await?;
-    backend_client
-        .update_node_data(Request::new(SignedNodeData {
-            signature: node_data_signature.to_vec(),
-            node_data: Some(node_data.clone()),
-        }))
-        .await?;
-    Ok(())
-}
+// async fn send(
+//     metrics: &[Metrics],
+//     node_data: &NodeData,
+//     machine_id: Uuid,
+//     avs_name: &str,
+//     identity_wallet: &IvyWallet,
+//     backend_client: &mut BackendClient<Channel>,
+// ) -> Result<(), IvyError> {
+//     let metrics_signature = sign_metrics(metrics, identity_wallet)?;
+//
+//     let node_data_signature = sign_node_data(node_data, identity_wallet)?;
+//     backend_client
+//         .metrics(Request::new(SignedMetrics {
+//             machine_id: machine_id.into(),
+//             avs_name: avs_name.to_string(),
+//             signature: metrics_signature.to_vec(),
+//             metrics: metrics.to_vec(),
+//         }))
+//         .await?;
+//     backend_client
+//         .update_node_data(Request::new(SignedNodeData {
+//             signature: node_data_signature.to_vec(),
+//             node_data: Some(node_data.clone()),
+//         }))
+//         .await?;
+//     Ok(())
+// }
 
 #[derive(PartialEq, Debug)]
 enum TelemetryToken {

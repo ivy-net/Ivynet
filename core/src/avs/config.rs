@@ -1,155 +1,162 @@
-use std::{collections::HashMap, fs::create_dir_all, path::PathBuf};
+use std::{collections::HashMap, path::PathBuf};
 
-use ethers::types::{Chain, H160};
 use serde::{Deserialize, Serialize};
 use thiserror::Error as ThisError;
-use tracing::info;
-use url::Url;
 
-use crate::io::{read_toml, write_toml, IoError};
+use crate::{
+    env_parser::EnvLineError,
+    io::{read_toml, write_toml, IoError},
+    node_type::NodeType,
+};
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct AvsConfig {
-    // Name access for storage
-    pub avs_name: String,
-    // Setup map for pathing and is_custom determination
-    pub setup_map: HashMap<Chain, Setup>,
-    // AVS Specific Settings that can be deserialized
-    pub avs_settings: HashMap<Chain, toml::Value>,
+use super::{eigenda::EigenDAConfig, lagrange::config::LagrangeConfig};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum NodeConfig {
+    EigenDA(EigenDAConfig),
+    Lagrange(LagrangeConfig),
+    Other(HashMap<String, toml::Value>),
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct Setup {
-    pub path: PathBuf,
-    pub rpc_url: Url,
-    pub operator_address: H160,
-    pub is_custom: bool,
-}
-
-impl AvsConfig {
-    pub fn new(avs_name: &str) -> Self {
-        Self {
-            avs_name: String::from(avs_name),
-            setup_map: HashMap::new(),
-            //Abstract and empty on purpose - avs should use and modify as needed
-            avs_settings: HashMap::new(),
-        }
-    }
-
-    pub fn load(avs_name: &str) -> Result<Self, AvsConfigError> {
-        if !AvsConfig::exists(avs_name) {
-            let configs_path = dirs::home_dir()
-                .expect("Could not get a home directory")
-                .join(".ivynet/avs_configs");
-            create_dir_all(configs_path).expect("Could not create AVS configs directory");
-            AvsConfig::new(avs_name).store();
-        }
-        let avs_config_path = Self::avs_config_path(avs_name);
-        let avs_config: Self = read_toml(&avs_config_path)?;
-        Ok(avs_config)
-    }
-
-    pub fn exists(name: &str) -> bool {
-        let toml_path = dirs::home_dir()
-            .expect("Could not get a home directory")
-            .join(".ivynet/avs_configs")
-            .join(format!("{}.toml", name));
-        info!("{}", toml_path.exists());
-        toml_path.exists()
-    }
-
-    pub fn ask_for_path() -> PathBuf {
-        let path = dialoguer::Input::<String>::new()
-            .with_prompt(
-                "Enter the path of the directory containining the AVS's docker-compose.yml",
-            )
-            .interact()
-            .expect("Could not get path");
-
-        Self::strip_docker_compose(PathBuf::from(path))
-
-        //TODO: Validate docker-compose.yml exists within directory
-    }
-
-    fn strip_docker_compose(path: PathBuf) -> PathBuf {
-        let mut path = path;
-        if path.ends_with("docker-compose.yml") {
-            path.pop(); // Remove "docker-compose.yml"
-        }
-        path
+/// TODO: Result for Other type
+impl NodeConfig {
+    pub fn load(path: &PathBuf) -> Result<Self, IoError> {
+        read_toml(path)
     }
 
     pub fn store(&self) {
-        let path = &Self::avs_config_path(&self.avs_name);
-        write_toml(path, self).expect("Could not write AVS config");
+        if !&self.path().exists() {
+            std::fs::create_dir_all(self.path().parent().expect("Could not get parent directory"))
+                .expect("Could not create config directory");
+        }
+        write_toml(&self.path(), self).expect("Could not write AVS config");
     }
 
-    // Grabs full path using AVS name from main avs configs directory
-    pub fn avs_config_path(avs_name: &str) -> PathBuf {
-        dirs::home_dir()
-            .expect("Could not get a home directory")
-            .join(".ivynet/avs_configs")
-            .join(format!("{}.toml", avs_name))
+    pub fn path(&self) -> PathBuf {
+        match self {
+            NodeConfig::EigenDA(config) => config.path.clone(),
+            NodeConfig::Lagrange(config) => config.path.clone(),
+            NodeConfig::Other(config) => {
+                if let Some(path) = config.get("path") {
+                    PathBuf::from(path.to_string())
+                } else {
+                    panic!("No path found in node config")
+                }
+            }
+        }
     }
 
-    pub fn log_path() -> PathBuf {
-        dirs::home_dir().expect("Could not get a home directory").join(".ivynet/fluentd/log")
+    pub fn name(&self) -> String {
+        match self {
+            NodeConfig::EigenDA(config) => config.name(),
+            NodeConfig::Lagrange(config) => config.name(),
+            NodeConfig::Other(config) => {
+                if let Some(name) = config.get("name") {
+                    name.to_string()
+                } else {
+                    panic!("No name found in node config")
+                }
+            }
+        }
     }
 
-    pub fn get_path(&self, chain: Chain) -> PathBuf {
-        self.setup_map
-            .get(&chain)
-            .expect("No path found - please run the setup command")
-            .path
-            .clone()
+    pub fn all() -> Result<Vec<Self>, NodeConfigError> {
+        let config_dir = default_config_dir();
+        let mut configs = vec![];
+        for entry in std::fs::read_dir(config_dir)? {
+            let entry = entry?;
+            let path = entry.path();
+            if path.is_file() && path.extension().unwrap_or_default() == "toml" {
+                let config = NodeConfig::load(&path)?;
+                configs.push(config);
+            }
+        }
+        Ok(configs)
     }
 
-    pub fn get_rpc_url(&self, chain: Chain) -> Url {
-        self.setup_map
-            .get(&chain)
-            .expect("No path found - please run the setup command")
-            .rpc_url
-            .clone()
-    }
-
-    pub fn init(
-        &mut self,
-        chain: Chain,
-        rpc_url: Url,
-        path: PathBuf,
-        operator_address: H160,
-        is_custom: bool,
-    ) {
-        self.setup_map.insert(chain, Setup::new(path, rpc_url, operator_address, is_custom));
-    }
-
-    pub fn get_settings(&self, chain: Chain) -> toml::Value {
-        self.avs_settings
-            .get(&chain)
-            .unwrap_or_else(|| panic!("No settings found for {}", chain))
-            .clone()
-    }
-
-    pub fn set_settings(&mut self, chain: Chain, settings: toml::Value) {
-        self.avs_settings.insert(chain, settings);
-    }
-
-    pub fn operator_address(&self, chain: Chain) -> H160 {
-        self.setup_map
-            .get(&chain)
-            .expect("No path found - please run the setup command")
-            .operator_address
+    pub fn node_type(&self) -> NodeType {
+        match self {
+            NodeConfig::EigenDA(_) => NodeType::EigenDA,
+            NodeConfig::Lagrange(_) => NodeType::LagrangeHoleskyWorker,
+            NodeConfig::Other(_) => NodeType::Unknown,
+        }
     }
 }
 
-impl Setup {
-    pub fn new(path: PathBuf, rpc_url: Url, operator_address: H160, is_custom: bool) -> Self {
-        Self { path, rpc_url, operator_address, is_custom }
+impl From<EigenDAConfig> for NodeConfig {
+    fn from(config: EigenDAConfig) -> Self {
+        NodeConfig::EigenDA(config)
     }
 }
 
 #[derive(ThisError, Debug)]
-pub enum AvsConfigError {
+pub enum NodeConfigError {
     #[error(transparent)]
-    ConfigIo(#[from] IoError),
+    ConfigIoError(#[from] IoError),
+    #[error(transparent)]
+    FromHexError(#[from] rustc_hex::FromHexError),
+    #[error("transpanret")]
+    UrlParseError(#[from] url::ParseError),
+    #[error(transparent)]
+    DialoguerError(#[from] dialoguer::Error),
+    #[error("File not found: {0}")]
+    FileNotFound(String),
+    #[error(transparent)]
+    ReqwestError(#[from] reqwest::Error),
+    #[error(transparent)]
+    ZipError(#[from] zip::result::ZipError),
+    #[error(transparent)]
+    IoError(#[from] std::io::Error),
+    #[error("No .env.example file found")]
+    NoEnvExample,
+    #[error(transparent)]
+    EnvLineError(#[from] EnvLineError),
+    #[error(transparent)]
+    KeychainError(#[from] crate::keychain::KeychainError),
+    #[error(transparent)]
+    DownloadError(#[from] crate::download::DownloadError),
+    #[error(transparent)]
+    DockerCmdError(#[from] crate::docker::dockercmd::DockerError),
+}
+
+pub fn default_config_dir() -> PathBuf {
+    dirs::home_dir().expect("Could not get a home directory").join(".ivynet/node_configs")
+}
+
+// Node config builder tpy ein progress.
+pub struct NodeConfigBuilder {
+    pub node_type: NodeType,
+}
+
+impl NodeConfigBuilder {
+    #[allow(dead_code)]
+    fn new(node_type: NodeType) -> Self {
+        Self { node_type }
+    }
+    #[allow(dead_code)]
+    fn default_resources_dir(&self) -> PathBuf {
+        match self.node_type {
+            NodeType::EigenDA => dirs::home_dir()
+                .expect("Could not get a home directory")
+                .join(".eigenlayer/eigenda"),
+            NodeType::LagrangeHoleskyWorker => dirs::home_dir()
+                .expect("Could not get a home directory")
+                .join(".eigenlayer/lagrange"),
+            NodeType::Unknown => panic!("Unknown node type"),
+        }
+    }
+}
+
+#[derive(Eq, PartialEq, Debug, Clone)]
+pub struct Password(String);
+
+impl Password {
+    pub fn from_dialog(dialog_text: Option<&str>) -> Self {
+        let prompt = dialog_text.unwrap_or("Enter password");
+        let password = dialoguer::Password::new()
+            .with_prompt(prompt)
+            .interact()
+            .expect("Could not get user input");
+        Self(password)
+    }
 }

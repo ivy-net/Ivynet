@@ -4,8 +4,6 @@ use ethers::{
 };
 use ivynet_macros::h160;
 
-use crate::rpc_management::IvyProvider;
-
 pub type ZKMRStakeRegistry = ZKMRStakeRegistryAbi<IvyProvider>;
 
 abigen!(

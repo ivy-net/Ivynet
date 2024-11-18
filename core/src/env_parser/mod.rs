@@ -4,8 +4,6 @@ use std::{
     path::Path,
 };
 
-use crate::error::IvyError;
-
 #[derive(Debug, Clone)]
 enum EnvLine {
     KeyValue(String, String),
@@ -17,8 +15,14 @@ pub struct EnvLines {
     lines: Vec<EnvLine>,
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum EnvLineError {
+    #[error(transparent)]
+    IoError(#[from] std::io::Error),
+}
+
 impl EnvLines {
-    pub fn load(path: &Path) -> Result<Self, IvyError> {
+    pub fn load(path: &Path) -> Result<Self, EnvLineError> {
         let file = File::open(path)?;
         let reader = BufReader::new(file);
         let mut lines = Vec::new();
@@ -39,7 +43,7 @@ impl EnvLines {
         Ok(Self { lines })
     }
 
-    pub fn save(&self, path: &Path) -> Result<(), IvyError> {
+    pub fn save(&self, path: &Path) -> Result<(), EnvLineError> {
         let mut file = File::create(path)?;
         for line in &self.lines {
             match line {

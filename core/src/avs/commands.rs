@@ -1,6 +1,8 @@
 use clap::Subcommand;
 use std::fmt::Display;
 
+use crate::node_type::NodeType;
+
 #[derive(Subcommand, Debug)]
 pub enum RegisterCommands {
     #[command(
@@ -18,17 +20,14 @@ pub enum RegisterCommands {
 }
 
 #[derive(Subcommand, Debug)]
-pub enum AvsCommands {
+pub enum NodeCommands {
     #[command(name = "info", about = "Get information about the currently running AVS")]
     Info {},
+    #[command(name = "configure", about = "Configure a new node instance.")]
+    Configure { node_type: NodeType },
     #[command(
         name = "setup",
         about = "Setup a new AVS instance or enter path information to attach to an existing AVS."
-    )]
-    Setup { avs: String, chain: String },
-    #[command(
-        name = "register",
-        about = "Register an operator for the loaded AVS. Not valid for all AVS types. See AVS specific dcoumentation for details."
     )]
     Register {},
     #[command(
@@ -36,20 +35,13 @@ pub enum AvsCommands {
         about = "Unregister an operator for the loaded AVS. Not valid for all AVS types. See AVS specific dcoumentation for details."
     )]
     Unregister {},
-    #[command(name = "start", about = "Start running an AVS node in a docker container.")]
-    Start {
-        #[clap(required(false), long, requires("chain"))]
-        avs: Option<String>,
-        #[clap(required(false), long, requires("avs"))]
-        chain: Option<String>,
-    },
+    #[command(
+        name = "start",
+        about = "Start running an AVS node in a docker container based on a configuration file."
+    )]
+    Start {},
     #[command(name = "stop", about = "Stop running the active AVS docker container.")]
     Stop {},
-    #[command(
-        name = "select",
-        about = "Unload the current AVS instance and load in a new instance."
-    )]
-    Select { avs: String, chain: String },
     #[command(name = "attach", about = "Attach a running AVS node to a docker container.")]
     Attach {
         #[clap(required(false), long, requires("chain"))]
@@ -69,22 +61,21 @@ pub enum AvsCommands {
     },
 }
 
-impl Display for AvsCommands {
+impl Display for NodeCommands {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            AvsCommands::Info {} => write!(f, "get information about the currently running AVS"),
-            AvsCommands::Setup { avs, chain } => write!(f, "setup {} on chain {}", avs, chain),
-            AvsCommands::Register {} => write!(f, "register"),
-            AvsCommands::Unregister {} => write!(f, "unregister"),
-            AvsCommands::Start { .. } => write!(f, "start"),
-            AvsCommands::Stop {} => write!(f, "stop"),
-            AvsCommands::Attach { .. } => {
+            NodeCommands::Info {} => write!(f, "get information about the currently running AVS"),
+            NodeCommands::Configure { node_type } => {
+                write!(f, "Configure a new {node_type} node instance")
+            }
+            NodeCommands::Register {} => write!(f, "register"),
+            NodeCommands::Unregister {} => write!(f, "unregister"),
+            NodeCommands::Start { .. } => write!(f, "start"),
+            NodeCommands::Stop {} => write!(f, "stop"),
+            NodeCommands::Attach { .. } => {
                 write!(f, "Attaching to active AVS")
             }
-            AvsCommands::Select { avs, chain } => {
-                write!(f, "set AVS to {} on chain {}", avs, chain)
-            }
-            AvsCommands::Inspect { avs: _, chain: _ } => {
+            NodeCommands::Inspect { avs: _, chain: _ } => {
                 write!(f, "inspect logs")
             }
         }

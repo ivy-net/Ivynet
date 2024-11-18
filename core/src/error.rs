@@ -5,17 +5,13 @@ use ethers::{
     types::{Bytes, Chain, SignatureError, TryFromPrimitiveError},
     utils::hex::FromHexError,
 };
-use indicatif::style::TemplateError;
 use thiserror::Error;
 use tonic::Status;
 use zip::result::ZipError;
 
 use crate::{
-    avs::{eigenda::EigenDAError, lagrange::LagrangeError},
-    docker::dockercmd::DockerError,
-    eigen::quorum::QuorumError,
-    grpc::client::ClientError,
-    rpc_management::IvyProvider,
+    docker::dockercmd::DockerError, eigen::quorum::QuorumError, grpc::client::ClientError,
+    telemetry::dispatch::TelemetryMsg, IvyProvider, IvyProviderError,
 };
 
 #[derive(Debug, Error)]
@@ -56,19 +52,7 @@ pub enum IvyError {
     QuorumError(#[from] QuorumError),
 
     #[error(transparent)]
-    EigenDAError(#[from] EigenDAError),
-
-    #[error(transparent)]
-    LagrangeError(#[from] LagrangeError),
-
-    #[error(transparent)]
     ZipError(#[from] ZipError),
-
-    #[error(transparent)]
-    TemplateError(#[from] TemplateError),
-
-    #[error(transparent)]
-    TryFromChainError(#[from] TryFromPrimitiveError<Chain>),
 
     #[error(transparent)]
     GRPCError(#[from] Status),
@@ -82,22 +66,14 @@ pub enum IvyError {
     #[error(transparent)]
     ConfigError(#[from] crate::config::ConfigError),
 
+    #[error("Config type mismatch: expected {0}, found {1}")]
+    ConfigMatchError(String, String),
+
     #[error(transparent)]
     ProviderError(#[from] ProviderError),
 
     #[error(transparent)]
     ClientError(#[from] ClientError),
-
-    #[error(
-        "AVS {0} on chain {1} is currently running. Stop the AVS before using this operation."
-    )]
-    AvsRunningError(String, Chain),
-
-    #[error("No valid key was found. Please create a key before trying again.")]
-    NoKeyFoundError,
-
-    #[error("AVS already started")]
-    AvsNotLoadedError,
 
     #[error("Chain not supported {0}")]
     ChainNotSupportedError(Chain),
@@ -117,23 +93,17 @@ pub enum IvyError {
     #[error("No address field")]
     AddressFieldError,
 
-    #[error("Folder inaccesible")]
-    DirInaccessible,
-
     #[error("Unknown contract error")]
     UnknownContractError,
-
-    #[error("Avs parse error: ensure the name of the requested AVS is valid")]
-    InvalidAvsType(String),
-
-    #[error("No AVS is initialized")]
-    AvsNotInitializedError,
 
     #[error("Incorrect key type")]
     IncorrectKeyTypeError,
 
     #[error("Incorrect address format")]
     IncorrectAddressError,
+
+    #[error(transparent)]
+    TryFromPrimitiveError(#[from] TryFromPrimitiveError<Chain>),
 
     #[error("Can't parse to h160")]
     H160Error,
@@ -144,29 +114,8 @@ pub enum IvyError {
     #[error("JSON RPC Error {0}")]
     JsonRrcError(JsonRpcError),
 
-    #[error("Download error")]
-    DownloadError,
-
-    #[error("Download interupted")]
-    DownloadInt,
-
-    #[error("No quorums to boot")]
-    NoQuorums,
-
-    #[error("Malformed config found, ensure ivynet setup was run correctly")]
-    MalformedConfigError,
-
-    #[error("IvyWallet identity key not found")]
-    IdentityKeyError,
-
-    #[error("No keyfile password found")]
-    KeyfilePasswordError,
-
     #[error("Unknown network")]
     UnknownNetwork,
-
-    #[error("Unknown AVS")]
-    UnknownAVS,
 
     #[error("Unimplemented")]
     Unimplemented,
@@ -188,11 +137,44 @@ pub enum IvyError {
     #[error(transparent)]
     IvyYamlError(#[from] crate::ivy_yaml::IvyYamlError),
 
-    #[error("No logfiles found for {0}")]
-    NoLogFiles(String),
-
     #[error(transparent)]
     DockerError(#[from] DockerError),
+
+    #[error(transparent)]
+    IvyWalletError(#[from] crate::wallet::IvyWalletError),
+
+    #[error(transparent)]
+    NodeConfigError(#[from] crate::avs::config::NodeConfigError),
+
+    #[error(transparent)]
+    KeychainError(#[from] crate::keychain::KeychainError),
+
+    #[error(transparent)]
+    EnvLineError(#[from] crate::env_parser::EnvLineError),
+
+    #[error("Invalid docker-compose file: {0}")]
+    InvalidDockerCompose(String),
+
+    #[error(transparent)]
+    DownloadError(#[from] crate::download::DownloadError),
+
+    #[error(transparent)]
+    SignerMiddlewareError(#[from] IvyProviderError),
+
+    #[error(transparent)]
+    TelemetrySendError(#[from] Box<tokio::sync::mpsc::error::SendError<TelemetryMsg>>),
+
+    #[error(transparent)]
+    NodeTypeError(#[from] crate::node_type::NodeTypeError),
+
+    #[error("Docker Image Error")]
+    DockerImageError,
+
+    #[error(transparent)]
+    TelemetryDispatchError(#[from] crate::telemetry::dispatch::TelemetryDispatchError),
+
+    #[error("{0}")]
+    CustomError(String),
 }
 
 #[derive(Debug, Error)]
@@ -227,5 +209,11 @@ impl From<ContractError<IvyProvider>> for IvyError {
 impl From<IvyError> for Status {
     fn from(e: IvyError) -> Self {
         Self::from_error(Box::new(e))
+    }
+}
+
+impl From<String> for IvyError {
+    fn from(e: String) -> Self {
+        IvyError::CommandError(e)
     }
 }

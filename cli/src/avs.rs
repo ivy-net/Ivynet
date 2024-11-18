@@ -1,139 +1,67 @@
-use anyhow::{Context, Error as AnyError, Result};
-use dialoguer::{Password, Select};
+use anyhow::{Error as AnyError, Result};
 use ivynet_core::{
-    avs::{build_avs_provider, commands::AvsCommands, config::AvsConfig, fetch_rpc_url},
-    config::IvyConfig,
+    avs::{
+        commands::NodeCommands, config::NodeConfig, eigenda::EigenDAConfig,
+        lagrange::config::LagrangeConfig,
+    },
     error::IvyError,
-    ethers::types::H160,
-    grpc::client::{create_channel, Source},
-    keychain::{KeyType, Keychain},
-    utils::try_parse_chain,
+    node_type::NodeType,
 };
 
-use crate::{
-    client::IvynetClient,
-    error::Error,
-    inspect::{select_logfile, tail_logs},
-};
-
-pub async fn parse_avs_subcommands(
-    subcmd: AvsCommands,
-    config: &IvyConfig,
-) -> Result<(), AnyError> {
-    let sock = Source::Path(config.uds_dir());
-
-    // Setup runs local, otherwise construct a client and continue.
-    if let AvsCommands::Setup { ref avs, ref chain } = subcmd {
-        let keychain = Keychain::default();
-        let ecdsa_keyname = keychain.select_key(KeyType::Ecdsa).map_err(|e| match e {
-            IvyError::NoKeyFoundError => Error::NoECDSAKey,
-            e => e.into(),
-        })?;
-
-        let wallet_address = keychain.public_address(ecdsa_keyname.clone())?.parse::<H160>()?;
-
-        let setup_options = ["New Deployment", "Custom Attachment"];
-        let setup_type = Select::new()
-            .with_prompt(format!("Do you have an existing deployment of {}?", avs))
-            .items(&setup_options)
-            .default(0)
-            .interact()
-            .unwrap();
-
-        let bls_data = match setup_type {
-            0 => {
-                let bls_keyname = keychain.select_key(KeyType::Bls).map_err(|e| match e {
-                    IvyError::NoKeyFoundError => Error::NoBLSKey,
-                    e => e.into(),
-                })?;
-
-                let bls_password: String = Password::new()
-                    .with_prompt("Input the password for your stored operator Bls keyfile")
-                    .interact()?;
-
-                Some((format!("{bls_keyname}"), bls_password))
-            }
-            _ => None,
-        };
-
-        let mut avs = build_avs_provider(
-            Some(avs),
-            chain,
-            config,
-            Some(fetch_rpc_url(try_parse_chain(chain)?, config).await?),
-            None,
-            None,
-            None,
-        )
-        .await?;
-        avs.setup(config, wallet_address, bls_data).await.map_err(|e| match e {
-            IvyError::NoKeyFoundError => Error::NoBLSKey,
-            e => e.into(),
-        })?;
-
-        return Ok(());
-    }
-
-    if let AvsCommands::Inspect { .. } = subcmd {
-        let dir = AvsConfig::log_path();
-        let file = select_logfile(dir, 0).await?;
-        tail_logs(file, 100).await?;
-        return Ok(());
-    }
-
-    let channel = create_channel(sock, None).await.context("Failed to connect to the ivynet daemon. Please ensure the daemon is running and is connected to ~/.ivynet/ivynet.ipc")?;
-    let mut client = IvynetClient::from_channel(channel);
+pub async fn parse_avs_subcommands(subcmd: NodeCommands) -> Result<(), AnyError> {
     match subcmd {
-        AvsCommands::Info {} => {
-            let response = client.avs_mut().avs_info().await?;
-            println!("{:?}", response.into_inner());
-        }
-        // TODO: Fix timeout issue
-        AvsCommands::Register {} => {
-            let keychain = Keychain::default();
-            let ecdsa_keyname = keychain.select_key(KeyType::Ecdsa).map_err(|e| match e {
-                IvyError::NoKeyFoundError => Error::NoECDSAKey,
-                e => e.into(),
-            })?;
-
-            let ecdsa_password: String = Password::new()
-                .with_prompt("Input the password for your stored operator ECDSA keyfile")
-                .interact()?;
-            // We need to check if we can load the key with this password
-            if keychain.load(ecdsa_keyname.clone(), &ecdsa_password).is_ok() {
-                let response =
-                    client.avs_mut().register(ecdsa_keyname.to_string(), ecdsa_password).await?;
-
-                println!("{:?}", response.into_inner());
-            } else {
-                println!("ERROR: Bad password to selected key");
+        NodeCommands::Configure { node_type } => match node_type {
+            NodeType::EigenDA => {
+                let config = EigenDAConfig::new_from_prompt().await?;
+                println!("Setup complete, EigenDA config saved to {}", config.path.display());
+                NodeConfig::EigenDA(config).store();
             }
+            NodeType::LagrangeHoleskyWorker => {
+                let config = LagrangeConfig::new_from_prompt().await?;
+                println!(
+                    "Setup complete, Lagrange holesky config saved to {}",
+                    config.path.display()
+                );
+                NodeConfig::Lagrange(config).store();
+            }
+            _ => unimplemented!("Node type not implemented: {:?}", node_type),
+        },
+
+        NodeCommands::Info {} => {
+            todo!()
         }
-        AvsCommands::Unregister {} => {
-            let response = client.avs_mut().unregister().await?;
-            println!("{:?}", response.into_inner());
+        NodeCommands::Register {} => {
+            todo!()
         }
-        AvsCommands::Start { avs, chain } => {
-            let response = client.avs_mut().start(avs, chain).await?;
-            println!("{:?}", response.into_inner());
+        NodeCommands::Unregister {} => {
+            todo!()
         }
-        AvsCommands::Stop {} => {
-            let response = client.avs_mut().stop().await?;
-            println!("{:?}", response.into_inner());
+        NodeCommands::Start {} => {
+            // Prompt user for config to start
+            let config_files = NodeConfig::all().map_err(IvyError::from)?;
+
+            let config_names: Vec<String> = config_files.iter().map(|c| c.name()).collect();
+
+            let selected = dialoguer::Select::new()
+                .with_prompt("Select a node configuration")
+                .items(&config_names)
+                .default(0)
+                .interact()
+                .map_err(IvyError::from)?;
+
+            let selected_config_path = config_files[selected].path();
+
+            let node_config = NodeConfig::load(&selected_config_path).map_err(IvyError::from)?;
+
+            match node_config {
+                NodeConfig::EigenDA(config) => config.start().await?,
+                _ => unimplemented!("Node type not implemented: {:?}", node_config.node_type()),
+            };
         }
-        AvsCommands::Select { avs, chain } => {
-            let response = client.avs_mut().select_avs(avs, chain).await?;
-            println!("{:?}", response.into_inner());
-        }
-        AvsCommands::Attach { avs, chain } => {
-            let response = client.avs_mut().attach(avs, chain).await?;
-            println!("{:?}", response.into_inner());
+        NodeCommands::Stop {} => {
+            todo!()
         }
         _ => unimplemented!("Command not implemented: {:?}", subcmd),
     }
     Ok(())
 }
-
-// TODO:
-// Check error on following flows:
-// - Start without setup (currently returns "no such file")

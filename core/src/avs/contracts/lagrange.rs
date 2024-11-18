@@ -1,6 +1,5 @@
+use crate::IvyProvider;
 use ethers::contract::abigen;
-
-use crate::rpc_management::IvyProvider;
 
 pub type LagrangeStakeRegistry = LagrangeStakeRegistryAbi<IvyProvider>;
 

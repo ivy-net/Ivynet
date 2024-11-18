@@ -1,11 +1,7 @@
 use clap::Parser;
-use ivynet_core::{
-    config::IvyConfig,
-    ethers::core::types::Address,
-    grpc::client::{create_channel, Source},
-};
+use ivynet_core::{config::IvyConfig, ethers::core::types::Address};
 
-use crate::{client::IvynetClient, error::Error};
+use crate::error::Error;
 
 #[derive(Parser, Debug, Clone)]
 pub enum OperatorCommands {
@@ -42,8 +38,8 @@ pub async fn parse_operator_subcommands(
 }
 
 pub async fn parse_operator_getter_subcommands(
-    subgetter: OperatorGetterCommands,
-    config: &IvyConfig,
+    _subgetter: OperatorGetterCommands,
+    _config: &IvyConfig,
 ) -> Result<(), Error> {
     let sock = Source::Path(config.uds_dir());
     let mut client = IvynetClient::from_channel(create_channel(sock, None).await?);
@@ -61,5 +57,5 @@ pub async fn parse_operator_getter_subcommands(
             println!("{:?}", response.into_inner());
         }
     }
-    Ok(())
+    todo!()
 }

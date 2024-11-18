@@ -2,7 +2,7 @@ use std::{ops::Deref, sync::Arc};
 
 use ethers::{
     contract::abigen,
-    signers::Signer,
+    providers::Middleware,
     types::{Address, Chain, H160},
 };
 use ivynet_macros::h160;
@@ -10,7 +10,7 @@ use ivynet_macros::h160;
 use crate::{
     eigen::strategy::{holesky::HOLESKY_LST_STRATEGIES, mainnet::MAINNET_LST_STRATEGIES},
     error::IvyError,
-    rpc_management::IvyProvider,
+    IvyProvider,
 };
 
 abigen!(
@@ -37,8 +37,9 @@ impl Deref for DelegationManager {
 }
 
 impl DelegationManager {
-    pub fn new(provider: Arc<IvyProvider>) -> Result<Self, IvyError> {
-        let chain: Chain = Chain::try_from(provider.signer().chain_id())?;
+    pub async fn new(provider: Arc<IvyProvider>) -> Result<Self, IvyError> {
+        let chain_id = provider.get_chainid().await?;
+        let chain: Chain = Chain::try_from(chain_id)?;
         let address = Self::chain_address(chain)?;
         let manager = Self { inner: DelegationManagerAbi::new(address, provider), chain };
         Ok(manager)

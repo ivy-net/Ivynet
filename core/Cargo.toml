@@ -57,7 +57,8 @@ docker-compose-types = "0.15.0"
 axum = "0.7.7"
 eth-keystore = { version = "0.5.0" }
 uuid = { version = "1.10.0", features = ["v4", "serde"] }
-bollard = "0.17.1"
+bollard = "0.18.0"
+rustc-hex = "2.1.0"
 
 [build-dependencies]
 prost-build = "0.12"
