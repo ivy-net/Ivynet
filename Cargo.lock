@@ -769,14 +769,12 @@ dependencies = [
  "futures",
  "ivynet-core",
  "linemux",
- "reqwest 0.12.9",
  "rustix",
  "serial_test",
  "thiserror 1.0.69",
  "tokio",
  "tracing",
  "tracing-subscriber",
- "uuid 1.11.0",
 ]
 
 [[package]]
@@ -2773,7 +2771,6 @@ dependencies = [
  "dotenvy",
  "eth-keystore",
  "ethers",
- "futures",
  "futures-util",
  "hyper-util",
  "indexmap 2.6.0",
