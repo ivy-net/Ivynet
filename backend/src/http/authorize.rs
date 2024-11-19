@@ -242,7 +242,7 @@ pub async fn verify_client_ownership(
 ) -> Result<Client, BackendError> {
     let id = client_id.parse::<Address>().map_err(|_| BackendError::BadId)?;
 
-    let clients = account.clients(&pool).await?;
+    let clients = account.clients(pool).await?;
     let result = clients.iter().find(|c| c.client_id == id);
 
     match result {

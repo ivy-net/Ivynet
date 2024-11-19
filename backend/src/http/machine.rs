@@ -148,8 +148,8 @@ pub async fn status(
 
     let avs_version_map = DbAvsVersionData::get_all_avs_version(&state.pool).await?;
 
-    let (updateable_nodes, outdated_nodes) =
-        data::categorize_updateable_nodes(running_nodes.clone(), node_metrics_map, avs_version_map);
+    let updateable_nodes =
+        data::categorize_updateable_nodes(avs_version_map, running_nodes.clone(), node_metrics_map);
 
     Ok(Json(MachineStatusReport {
         total_machines: avses.len(),

@@ -106,7 +106,7 @@ fn create_router() -> Router<HttpState> {
         .route("/machine/:id", post(machine::set_name))
         .route("/machine/:id", delete(machine::delete))
         .route("/avs", get(node::all_avs_info))
-        .route("/avs/status", get(node::status))
+        .route("/avs/status", get(node::avs_status))
         .route("info/avs/version/:avs", get(info::get_version_info))
         .route("info/avs/version", get(info::get_all_version_info))
         .merge(

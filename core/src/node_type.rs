@@ -21,7 +21,7 @@ impl From<&str> for NodeType {
     fn from(s: &str) -> Self {
         match s.to_lowercase().as_str() {
             "eigenda" => NodeType::EigenDA,
-            "lagrange holesky" => NodeType::LagrangeHoleskyWorker,
+            "lagrange:holesky" => NodeType::LagrangeHoleskyWorker,
             _ => panic!("Invalid node type"),
         }
     }

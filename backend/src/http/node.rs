@@ -3,14 +3,13 @@ use std::collections::{HashMap, HashSet};
 use axum::{extract::State, http::HeaderMap, Json};
 use axum_extra::extract::CookieJar;
 
-use ivynet_core::{ethers::types::Chain, node_type::NodeType};
-use semver::Version;
+use ivynet_core::node_type::NodeType;
 use serde::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::{
-    data::{self},
+    data::{self, get_update_status, UpdateStatus},
     db::{avs::Avs, avs_version::DbAvsVersionData, metric::Metric},
     error::BackendError,
 };
@@ -50,8 +49,7 @@ pub struct AvsInfo {
     pub operator_id: Option<String>,
     pub uptime: f64,
     pub performance_score: f64,
-    pub updateable: Option<bool>,
-    pub outdated: Option<bool>,
+    pub update_status: UpdateStatus,
     pub errors: Vec<NodeError>,
 }
 
@@ -92,13 +90,13 @@ pub async fn all_avs_info(
 /// Get an overview of which nodes are healthy and unhealthy
 #[utoipa::path(
     get,
-    path = "/nodes/status",
+    path = "/avs/status",
     responses(
         (status = 200, body = Status),
         (status = 404)
     )
 )]
-pub async fn status(
+pub async fn avs_status(
     headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
@@ -118,21 +116,20 @@ pub async fn status(
         );
     }
 
-    //TODO: Update these bits
     let (running_nodes, idle_nodes) = data::categorize_running_nodes(node_metrics_map.clone());
     let (healthy_nodes, low_perf_nodes) =
         data::categorize_node_health(running_nodes.clone(), node_metrics_map.clone());
 
-    let avs_version_map = DbAvsVersionData::get_all_avs_version(&state.pool).await?;
-
-    let (updateable_nodes, outdated_nodes) =
-        data::categorize_updateable_nodes(running_nodes.clone(), node_metrics_map, avs_version_map);
+    let updateable_nodes = data::categorize_updateable_nodes(
+        DbAvsVersionData::get_all_avs_version(&state.pool).await?,
+        running_nodes.clone(),
+        node_metrics_map,
+    );
 
     let mut unhealthy_list: HashSet<Uuid> = HashSet::new();
     unhealthy_list.extend(idle_nodes);
     unhealthy_list.extend(low_perf_nodes);
-    unhealthy_list.extend(updateable_nodes);
-    unhealthy_list.extend(outdated_nodes);
+    unhealthy_list.extend(updateable_nodes.iter().map(|node| node.0));
 
     Ok(Json(NodeStatusReport {
         total_nodes: avses.len(),
@@ -141,7 +138,6 @@ pub async fn status(
     }))
 }
 
-//TODO: THIS WILL PROBABLY CHANGE ONCE CLIENT IMPL IS DONE
 pub async fn build_avs_info(
     pool: &sqlx::PgPool,
     avs: Avs,
@@ -151,55 +147,30 @@ pub async fn build_avs_info(
     let attrs = running_metric.and_then(|m| m.attributes.clone());
     let get_attr = |key| attrs.as_ref().and_then(|a| a.get(key).cloned());
 
-    let name = get_attr("avs");
+    let name = get_attr("avs_name");
+    let node_type = get_attr("avs_type");
     let version = get_attr("version");
     let chain = get_attr("chain");
-    let node_type = get_attr("avs_type");
 
-    let (updateable, outdated) = match (version.clone(), chain.clone(), node_type.clone()) {
-        (Some(v), Some(c), Some(nt)) => {
-            let node_type = NodeType::from(nt.as_str());
-            let avs_version = Version::parse(&v).ok();
-            let avs_chain = c.parse::<Chain>().ok();
+    let version_map = DbAvsVersionData::get_all_avs_version(pool).await;
 
-            match (avs_version, avs_chain) {
-                (Some(current_version), Some(ac)) if node_type != NodeType::Unknown => {
-                    if let Some(data) =
-                        DbAvsVersionData::get_avs_version_with_chain(pool, &node_type, &ac)
-                            .await
-                            .unwrap_or(None)
-                    {
-                        let outdated = data
-                            .vd
-                            .breaking_change_version
-                            .map(|breaking| current_version < breaking)
-                            .unwrap_or(false);
-
-                        let updateable = data.vd.latest_version > current_version;
-
-                        (Some(updateable), Some(outdated))
-                    } else {
-                        (None, None)
-                    }
-                }
-                _ => (None, None),
-            }
-        }
-        _ => (None, None),
-    };
+    let mut update_status = UpdateStatus::Unknown;
+    if let Ok(version_map) = version_map {
+        update_status =
+            get_update_status(version_map, version.clone(), chain.clone(), node_type.clone());
+    }
 
     AvsInfo {
         name,
         node_type,
         version,
         chain,
-        active_set: get_attr("active_set"),
-        operator_id: get_attr("operator_id"),
+        active_set: None, //FIXME: Add active set checking and operator key handling here
+        operator_id: None, //FIXME: Add active set checking and operator key handling here
         uptime: metrics.get(UPTIME_METRIC).map_or(0.0, |m| m.value),
         performance_score: metrics.get(EIGEN_PERFORMANCE_METRIC).map_or(0.0, |m| m.value),
-        updateable,
+        update_status,
         machine_id: avs.machine_id.to_string(),
-        outdated,
         errors: vec![], //FIXME: Add active set checking and operator key handling here
     }
 }

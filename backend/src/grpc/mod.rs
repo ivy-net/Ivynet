@@ -158,8 +158,7 @@ impl Backend for BackendService {
                     &Address::from_slice(&node_data.operator_id),
                     machine_id,
                     node_data.avs_name.as_str(),
-                    &NodeType::try_from(node_data.avs_name.as_str())
-                        .map_err(|_| Status::invalid_argument("Bad AVS name provided"))?,
+                    &NodeType::from(node_data.avs_name.as_str()),
                     &node_data
                         .avs_version
                         .as_ref()
