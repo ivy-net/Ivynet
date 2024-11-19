@@ -134,7 +134,7 @@ pub fn categorize_updateable_nodes(
             let version = metric_attributes.get("version")?;
 
             let avs_id = AvsID {
-                avs_name: NodeType::from(avs.as_str()),
+                avs_name: NodeType::try_from(avs.as_str()),
                 chain: chain.parse::<Chain>().ok()?,
             };
             let current_version = Version::parse(version).ok()?;

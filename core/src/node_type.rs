@@ -4,11 +4,11 @@ const EIGENDA_IMAGE_NAME: &str = "ghcr.io/layr-labs/eigenda/opr-node";
 const LAGRANGE_HOLESKY_WORKER_IMAGE_NAME: &str = "lagrangelabs/worker:holesky";
 // const LAGRANGE_MAINNET_WORKER_IMAGE_NAME: &str = "lagrangelabs/worker:mainnet";
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum NodeType {
     EigenDA,
     LagrangeHoleskyWorker,
-    Unknown(String),
+    Unknown,
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -22,7 +22,7 @@ impl From<&str> for NodeType {
         match s.to_lowercase().as_str() {
             "eigenda" => NodeType::EigenDA,
             "lagrange holesky" => NodeType::LagrangeHoleskyWorker,
-            other => NodeType::Unknown(other.to_string()),
+            _ => panic!("Invalid node type"),
         }
     }
 }
@@ -32,17 +32,18 @@ impl std::fmt::Display for NodeType {
         match self {
             NodeType::EigenDA => write!(f, "EigenDA"),
             NodeType::LagrangeHoleskyWorker => write!(f, "Lagrange Holesky Worker"),
-            NodeType::Unknown(s) => write!(f, "Unknown: {}", s),
+            NodeType::Unknown => write!(f, "Unknown"),
         }
     }
 }
 
+// We may want to put these methods elsewhere.
 impl NodeType {
     pub fn default_docker_image_name(&self) -> Result<&'static str, NodeTypeError> {
         let res = match self {
             NodeType::EigenDA => EIGENDA_IMAGE_NAME,
             NodeType::LagrangeHoleskyWorker => LAGRANGE_HOLESKY_WORKER_IMAGE_NAME,
-            NodeType::Unknown(_) => return Err(NodeTypeError::InvalidNodeType),
+            NodeType::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };
         Ok(res)
     }
@@ -59,7 +60,7 @@ impl NodeType {
         match image_name {
             EIGENDA_IMAGE_NAME => Ok(NodeType::EigenDA),
             LAGRANGE_HOLESKY_WORKER_IMAGE_NAME => Ok(NodeType::LagrangeHoleskyWorker),
-            unknown => Ok(NodeType::Unknown(unknown.to_string())),
+            _ => Err(NodeTypeError::InvalidNodeType),
         }
     }
 }

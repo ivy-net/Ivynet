@@ -10,7 +10,8 @@ use crate::error::BackendError;
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct Avs {
     pub machine_id: Uuid,
-    pub avs_name: NodeType,
+    pub avs_given_name: String, //GIVEN BY THE USER OR A DEFAULT
+    pub avs_type: NodeType,
     pub avs_version: Version,
     pub operator_address: Option<Address>,
     pub active_set: bool,

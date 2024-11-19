@@ -54,7 +54,8 @@ impl TryFrom<DbAvsVersionData> for AvsVersionData {
             }
         };
         let id = AvsID {
-            avs_name: NodeType::from(db_avs_version_data.avs_name.as_str()),
+            avs_name: NodeType::try_from(db_avs_version_data.avs_name.as_str())
+                .expect("Could not parse AvsName"),
             chain: try_parse_chain(&db_avs_version_data.chain).expect("Cannot parse chain"),
         };
         Ok(AvsVersionData { id, vd: version_data })
