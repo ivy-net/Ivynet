@@ -222,7 +222,7 @@ pub async fn verify_node_ownership(
     let machine = Machine::get(&state.pool, machine_id).await?.ok_or(BackendError::BadId)?;
     if account.role.can_write() &&
         !account
-            .machines(&state.pool)
+            .all_machines(&state.pool)
             .await?
             .into_iter()
             .filter_map(|m| if m.machine_id == machine.machine_id { Some(m) } else { None })

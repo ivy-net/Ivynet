@@ -9,7 +9,7 @@ use ivynet_backend::{
     grpc, http,
     telemetry::start_tracing,
 };
-use ivynet_core::{avs::names::AvsName, utils::try_parse_chain};
+use ivynet_core::utils::try_parse_chain;
 use semver::Version;
 use sqlx::PgPool;
 use tracing::error;

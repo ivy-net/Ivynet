@@ -3,7 +3,6 @@ use crate::{
     error::BackendError,
 };
 use ivynet_core::{
-    avs::names::AvsName,
     ethers::types::{Address, Signature},
     grpc::{
         self,
