@@ -78,7 +78,8 @@ impl NodeConfig {
         match self {
             NodeConfig::EigenDA(_) => NodeType::EigenDA,
             NodeConfig::Lagrange(_) => NodeType::LagrangeHoleskyWorker,
-            NodeConfig::Other(_) => NodeType::Unknown,
+            //TODO: THE USER NEEDS TO ENTER THE NODE TYPE STRING
+            NodeConfig::Other(_) => NodeType::Unknown("Unknown".to_string()),
         }
     }
 }
@@ -142,7 +143,7 @@ impl NodeConfigBuilder {
             NodeType::LagrangeHoleskyWorker => dirs::home_dir()
                 .expect("Could not get a home directory")
                 .join(".eigenlayer/lagrange"),
-            NodeType::Unknown => panic!("Unknown node type"),
+            NodeType::Unknown(_) => panic!("Unknown node type"),
         }
     }
 }

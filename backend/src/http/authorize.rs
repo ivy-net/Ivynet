@@ -10,6 +10,7 @@ use axum_extra::extract::{
     CookieJar,
 };
 use base64::Engine as _;
+use ivynet_core::ethers::types::Address;
 use sendgrid::v3::{Email, Message, Personalization};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
@@ -20,7 +21,7 @@ use crate::{
     db::{
         machine::Machine,
         verification::{Verification, VerificationType},
-        Account,
+        Account, Client,
     },
     error::BackendError,
 };
@@ -231,5 +232,21 @@ pub async fn verify_node_ownership(
         Ok(machine)
     } else {
         Err(BackendError::Unauthorized)
+    }
+}
+
+pub async fn verify_client_ownership(
+    account: &Account,
+    pool: &PgPool,
+    client_id: &str,
+) -> Result<Client, BackendError> {
+    let id = client_id.parse::<Address>().map_err(|_| BackendError::BadId)?;
+
+    let clients = account.clients(&pool).await?;
+    let result = clients.iter().find(|c| c.client_id == id);
+
+    match result {
+        Some(client) => Ok(client.clone()),
+        None => Err(BackendError::Unauthorized),
     }
 }

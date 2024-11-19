@@ -1,8 +1,5 @@
 use chrono::NaiveDateTime;
-use ivynet_core::{
-    avs::names::{AvsName, AvsParseError},
-    ethers::types::Address,
-};
+use ivynet_core::{ethers::types::Address, node_type::NodeType};
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -13,7 +10,7 @@ use crate::error::BackendError;
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct Avs {
     pub machine_id: Uuid,
-    pub avs_name: AvsName,
+    pub avs_name: NodeType,
     pub avs_version: Version,
     pub operator_address: Option<Address>,
     pub active_set: bool,
@@ -35,7 +32,7 @@ struct DbAvs {
 #[derive(Debug, thiserror::Error)]
 enum AvsError {
     #[error(transparent)]
-    UnknownAvs(#[from] AvsParseError),
+    UnknownAvs(#[from] ivynet_core::node_type::NodeTypeError),
 
     #[error(transparent)]
     BadVersion(#[from] semver::Error),
@@ -49,7 +46,7 @@ impl TryFrom<DbAvs> for Avs {
     fn try_from(db_avs: DbAvs) -> Result<Self, Self::Error> {
         Ok(Avs {
             machine_id: Uuid::from_slice(&db_avs.machine_id)?,
-            avs_name: AvsName::try_from(db_avs.avs_name.as_str())?,
+            avs_name: NodeType::from(db_avs.avs_name.as_str()),
             avs_version: Version::parse(&db_avs.avs_version)?,
             operator_address: db_avs.operator_address.map(|a| Address::from_slice(&a)),
             active_set: db_avs.active_set,
@@ -111,7 +108,7 @@ impl Avs {
         pool: &sqlx::PgPool,
         operator_id: &Address,
         machine_id: Uuid,
-        avs_name: &AvsName,
+        avs_name: &NodeType,
         avs_version: &Version,
         active_set: bool,
     ) -> Result<(), BackendError> {
@@ -134,7 +131,7 @@ impl Avs {
         pool: &sqlx::PgPool,
         machine_id: Uuid,
         operator_id: &Address,
-        avs_name: &AvsName,
+        avs_name: &NodeType,
     ) -> Result<(), BackendError> {
         sqlx::query!(
             "DELETE FROM avs WHERE operator_address = $1 AND avs_name = $2 AND machine_id = $3",

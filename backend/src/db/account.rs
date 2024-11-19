@@ -140,6 +140,20 @@ impl Account {
         Client::get_all_for_account(pool, self).await
     }
 
+    pub async fn clients_and_machines(
+        &self,
+        pool: &PgPool,
+    ) -> Result<Vec<(Client, Vec<Machine>)>, BackendError> {
+        let mut clients = Vec::new();
+        for client in self.clients(pool).await? {
+            clients.push((
+                client.clone(),
+                Machine::get_all_for_client_id(pool, &client.client_id).await?,
+            ));
+        }
+        Ok(clients)
+    }
+
     pub async fn machines(&self, pool: &PgPool) -> Result<Vec<Machine>, BackendError> {
         let mut machines = Vec::new();
         for client in self.clients(pool).await? {

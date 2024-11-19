@@ -1,7 +1,9 @@
 mod apidoc;
 mod authorize;
-mod avs;
 mod client;
+mod info;
+mod machine;
+mod node;
 mod organization;
 
 use std::sync::Arc;
@@ -104,8 +106,8 @@ fn create_router() -> Router<HttpState> {
         .route("/client/:id", post(client::set_name))
         .route("/client/:id", delete(client::delete))
         .route("/client", get(client::client))
-        .route("/avs/:avs/version", get(avs::get_version_info))
-        .route("/avs/version", get(avs::get_all_version_info))
+        .route("/avs/:avs/version", get(info::get_version_info))
+        .route("/avs/version", get(info::get_all_version_info))
         .merge(
             SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", apidoc::ApiDoc::openapi()),
         )

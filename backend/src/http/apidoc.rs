@@ -1,6 +1,6 @@
 use utoipa::OpenApi;
 
-use super::{super::db, authorize, avs, client, organization};
+use super::{super::db, authorize, client, info, organization};
 use crate::data;
 
 #[derive(OpenApi)]
@@ -28,8 +28,8 @@ use crate::data;
         client::delete,
         client::set_name,
         client::get_all_node_data,
-        avs::get_version_info,
-        avs::get_all_version_info,
+        info::get_version_info,
+        info::get_all_version_info,
     ),
     components(
         schemas(

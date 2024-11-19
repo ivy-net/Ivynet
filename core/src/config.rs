@@ -171,13 +171,15 @@ pub fn get_system_information() -> Result<(u64, u64, u64), IvyError> {
     Ok((cpu_cores, total_memory, free_disk))
 }
 
-pub fn get_detailed_system_information() -> Result<(f64, u64, u64, u64, u64, u64), IvyError> {
+#[allow(clippy::type_complexity)]
+pub fn get_detailed_system_information() -> Result<(u64, f64, u64, u64, u64, u64, u64), IvyError> {
     let mut sys = System::new();
     sys.refresh_all();
 
     let memory_usage = sys.used_memory();
     let memory_free = sys.free_memory();
 
+    let cores = sys.cpus().len() as u64;
     let mut cpu_usage = 0.0;
     for cpu in sys.cpus() {
         cpu_usage += cpu.cpu_usage() as f64;
@@ -189,7 +191,7 @@ pub fn get_detailed_system_information() -> Result<(f64, u64, u64, u64, u64, u64
         free_disk += disk.available_space();
     }
     let uptime = System::uptime();
-    Ok((cpu_usage, memory_usage, memory_free, disk_usage, free_disk, uptime))
+    Ok((cores, cpu_usage, memory_usage, memory_free, disk_usage, free_disk, uptime))
 }
 
 #[derive(ThisError, Debug)]

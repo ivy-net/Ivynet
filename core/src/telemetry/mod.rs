@@ -1,5 +1,4 @@
 use crate::{
-    avs::names::AvsName,
     config::get_detailed_system_information,
     docker::dockerapi::{Container, DockerClient},
     error::IvyError,
@@ -149,7 +148,7 @@ pub async fn delete_node_data_payload(
     machine_id: Uuid,
     backend_client: &mut BackendClient<Channel>,
     operator_id: Address,
-    avs_type: AvsName,
+    avs_type: NodeType,
     avs_name: &str,
 ) -> Result<(), IvyError> {
     let data = NodeData {
@@ -249,8 +248,14 @@ async fn collect(
     };
 
     // Now we need to add basic metrics
-    let (cpu_usage, ram_usage, free_ram, disk_usage, free_disk, uptime) =
+    let (cores, cpu_usage, ram_usage, free_ram, disk_usage, free_disk, uptime) =
         get_detailed_system_information()?;
+
+    metrics.push(Metrics {
+        name: "cores".to_owned(),
+        value: cores as f64,
+        attributes: Default::default(),
+    });
 
     metrics.push(Metrics {
         name: "cpu_usage".to_owned(),
