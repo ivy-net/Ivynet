@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT machine_id, avs_name, avs_version, operator_address, active_set, created_at, updated_at FROM avs WHERE operator_address = $1",
+  "query": "SELECT machine_id, avs_name, avs_type, avs_version, operator_address, active_set, created_at, updated_at FROM avs WHERE machine_id = $1",
   "describe": {
     "columns": [
       {
@@ -15,36 +15,42 @@
       },
       {
         "ordinal": 2,
-        "name": "avs_version",
+        "name": "avs_type",
         "type_info": "Varchar"
       },
       {
         "ordinal": 3,
+        "name": "avs_version",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
         "name": "operator_address",
         "type_info": "Bytea"
       },
       {
-        "ordinal": 4,
+        "ordinal": 5,
         "name": "active_set",
         "type_info": "Bool"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "created_at",
         "type_info": "Timestamp"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "updated_at",
         "type_info": "Timestamp"
       }
     ],
     "parameters": {
       "Left": [
-        "Bytea"
+        "Uuid"
       ]
     },
     "nullable": [
+      false,
       false,
       false,
       false,
@@ -54,5 +60,5 @@
       false
     ]
   },
-  "hash": "4e6431810a505546861fcc6063b1d43f013b41cab93de1092fb15b08f369fd5f"
+  "hash": "fbf0a99e651720651dd98ea821cb6d7a7b99d268477aeb099ab564c8c3a4d216"
 }
