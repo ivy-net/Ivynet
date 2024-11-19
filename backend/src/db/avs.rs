@@ -10,9 +10,8 @@ use crate::error::BackendError;
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct Avs {
     pub machine_id: Uuid,
-    pub avs_given_name: String, //GIVEN BY THE USER OR A DEFAULT
+    pub avs_name: String, //GIVEN BY THE USER OR A DEFAULT
     pub avs_type: NodeType,
-    pub avs_name: String,
     pub avs_version: Version,
     pub operator_address: Option<Address>,
     pub active_set: bool,
@@ -112,7 +111,7 @@ impl Avs {
         pool: &sqlx::PgPool,
         operator_id: &Address,
         machine_id: Uuid,
-        avs_name: &NodeType,
+        avs_name: &str,
         avs_type: &NodeType,
         avs_version: &Version,
         active_set: bool,
@@ -121,7 +120,7 @@ impl Avs {
             "INSERT INTO avs (avs_name, machine_id, avs_type, avs_version, active_set, operator_address) values ($1, $2, $3, $4, $5, $6)
             ON CONFLICT (operator_address, avs_name)
             DO UPDATE SET avs_version = $4, active_set = $5",
-            avs_name.clone().to_string(),
+            avs_name.to_string(),
             machine_id,
             avs_type.clone().to_string(),
             avs_version.to_string(),
@@ -137,12 +136,12 @@ impl Avs {
         pool: &sqlx::PgPool,
         machine_id: Uuid,
         operator_id: &Address,
-        avs_name: &NodeType,
+        avs_name: &str,
     ) -> Result<(), BackendError> {
         sqlx::query!(
             "DELETE FROM avs WHERE operator_address = $1 AND avs_name = $2 AND machine_id = $3",
             operator_id.as_bytes(),
-            avs_name.clone().to_string(),
+            avs_name.to_string(),
             machine_id
         )
         .execute(pool)

@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use crate::{
     db::{
-        avs_version::{AvsID, VersionData},
+        avs_version::{NodeTypeId, VersionData},
         metric::Metric,
     },
     error::BackendError,
@@ -118,7 +118,7 @@ pub fn categorize_node_health(
 pub fn categorize_updateable_nodes(
     running_nodes: Vec<Uuid>,
     node_metrics_map: HashMap<Uuid, HashMap<String, Metric>>,
-    avs_version_map: HashMap<AvsID, VersionData>,
+    avs_version_map: HashMap<NodeTypeId, VersionData>,
 ) -> (Vec<Uuid>, Vec<Uuid>) {
     let mut updateable = Vec::new();
     let mut outdated = Vec::new();
@@ -133,8 +133,8 @@ pub fn categorize_updateable_nodes(
             let chain = metric_attributes.get("chain")?;
             let version = metric_attributes.get("version")?;
 
-            let avs_id = AvsID {
-                avs_name: NodeType::try_from(avs.as_str()),
+            let avs_id = NodeTypeId {
+                node_type: NodeType::from(avs.as_str()),
                 chain: chain.parse::<Chain>().ok()?,
             };
             let current_version = Version::parse(version).ok()?;
@@ -201,7 +201,7 @@ const CONDENSED_EIGENDA_METRICS_NAMES: [&str; 7] = [
 
 #[cfg(test)]
 mod data_filtering_tests {
-    use crate::db::avs_version::VersionData;
+    use crate::db::avs_version::{NodeTypeId, VersionData};
 
     use super::*;
     use std::{fs::File, io::BufReader};
@@ -244,8 +244,8 @@ mod data_filtering_tests {
         }
     }
 
-    fn create_id(avs_name: &str) -> AvsID {
-        AvsID { avs_name: NodeType::from(avs_name), chain: Chain::Holesky }
+    fn create_id(node_type: &str) -> NodeTypeId {
+        NodeTypeId { node_type: NodeType::from(node_type), chain: Chain::Holesky }
     }
 
     fn load_metrics_json(file_path: &str) -> Result<Vec<Metric>, Box<dyn std::error::Error>> {

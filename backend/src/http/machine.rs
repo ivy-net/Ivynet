@@ -575,8 +575,11 @@ pub async fn build_machine_info(
         let avs_info = build_avs_info(pool, avs.clone(), metrics).await;
 
         if !avs_info.errors.is_empty() {
-            let node_error_info =
-                NodeErrorInfo { name: avs.avs_name, errors: avs_info.errors.clone() };
+            let node_error_info = NodeErrorInfo {
+                name: avs.avs_name,
+                errors: avs_info.errors.clone(),
+                node_type: avs.avs_type,
+            };
             errors.push(MachineError::NodeError(node_error_info));
         }
 

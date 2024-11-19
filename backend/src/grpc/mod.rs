@@ -157,6 +157,7 @@ impl Backend for BackendService {
                     &self.pool,
                     &Address::from_slice(&node_data.operator_id),
                     machine_id,
+                    node_data.avs_name.as_str(),
                     &NodeType::try_from(node_data.avs_name.as_str())
                         .map_err(|_| Status::invalid_argument("Bad AVS name provided"))?,
                     &node_data
@@ -179,36 +180,39 @@ impl Backend for BackendService {
         &self,
         request: Request<SignedNodeData>,
     ) -> Result<Response<()>, Status> {
-        let req = request.into_inner();
+        let _req = request.into_inner();
 
-        if let Some(node_data) = &req.node_data {
-            let client_id = recover_node_data(
-                node_data,
-                &Signature::try_from(req.signature.as_slice())
-                    .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
-            )?;
+        // if let Some(node_data) = &req.node_data {
+        //     let client_id = recover_node_data(
+        //         node_data,
+        //         &Signature::try_from(req.signature.as_slice())
+        //             .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
+        //     )?;
 
-            let machine_id = Uuid::from_slice(&node_data.machine_id)
-                .map_err(|_| Status::invalid_argument("Machine id has wrong length".to_string()))?;
+        //     let machine_id = Uuid::from_slice(&node_data.machine_id)
+        //         .map_err(|_| Status::invalid_argument("Machine id has wrong
+        // length".to_string()))?;
 
-            if !Machine::is_owned_by(&self.pool, &client_id, machine_id).await.unwrap_or(false) {
-                return Err(Status::not_found(
-                    "Machine not registered for given client".to_string(),
-                ));
-            }
-            Avs::delete_avs_data(
-                &self.pool,
-                machine_id,
-                &Address::from_slice(&node_data.operator_id),
-                &NodeType::try_from(node_data.avs_name.as_str())
-                    .map_err(|_| Status::invalid_argument("Bad AVS name provided"))?,
-            )
-            .await
-            .map_err(|e| Status::internal(format!("Failed while deleting node_data: {}", e)))?;
-            Ok(Response::new(()))
-        } else {
-            Err(Status::invalid_argument("Node data is missing"))
-        }
+        //     if !Machine::is_owned_by(&self.pool, &client_id, machine_id).await.unwrap_or(false) {
+        //         return Err(Status::not_found(
+        //             "Machine not registered for given client".to_string(),
+        //         ));
+        //     }
+        //     Avs::delete_avs_data(
+        //         &self.pool,
+        //         machine_id,
+        //         &Address::from_slice(&node_data.operator_id),
+        //         node_data.avs_name.as_str(),
+        //         &NodeType::try_from(node_data.avs_name.as_str())
+        //             .map_err(|_| Status::invalid_argument("Bad AVS name provided"))?,
+        //     )
+        //     .await
+        //     .map_err(|e| Status::internal(format!("Failed while deleting node_data: {}", e)))?;
+        //     Ok(Response::new(()))
+        // } else {
+        //     Err(Status::invalid_argument("Node data is missing"))
+        // }
+        Ok(Response::new(()))
     }
 }
 

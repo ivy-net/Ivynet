@@ -10,7 +10,7 @@
       },
       {
         "ordinal": 1,
-        "name": "avs_name",
+        "name": "node_type",
         "type_info": "Varchar"
       },
       {

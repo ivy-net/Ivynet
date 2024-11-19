@@ -27,7 +27,8 @@ pub enum NodeError {
 
 #[derive(Serialize, Debug, Clone)]
 pub struct NodeErrorInfo {
-    pub name: NodeType,
+    pub name: String,
+    pub node_type: NodeType,
     pub errors: Vec<NodeError>,
 }
 
@@ -42,6 +43,7 @@ pub struct NodeStatusReport {
 pub struct AvsInfo {
     pub machine_id: String,
     pub name: Option<String>,
+    pub node_type: Option<String>,
     pub chain: Option<String>,
     pub version: Option<String>,
     pub active_set: Option<String>,
@@ -152,19 +154,20 @@ pub async fn build_avs_info(
     let name = get_attr("avs");
     let version = get_attr("version");
     let chain = get_attr("chain");
+    let node_type = get_attr("avs_type");
 
-    //Like an onion
-    let (updateable, outdated) = match (name.clone(), version.clone(), chain.clone()) {
-        (Some(n), Some(v), Some(c)) => {
-            let avs_name = Some(NodeType::from(n.as_str()));
+    let (updateable, outdated) = match (version.clone(), chain.clone(), node_type.clone()) {
+        (Some(v), Some(c), Some(nt)) => {
+            let node_type = NodeType::from(nt.as_str());
             let avs_version = Version::parse(&v).ok();
             let avs_chain = c.parse::<Chain>().ok();
 
-            match (avs_name, avs_version, avs_chain) {
-                (Some(an), Some(current_version), Some(ac)) => {
-                    if let Some(data) = DbAvsVersionData::get_avs_version_with_chain(pool, &an, &ac)
-                        .await
-                        .unwrap_or(None)
+            match (avs_version, avs_chain) {
+                (Some(current_version), Some(ac)) if node_type != NodeType::Unknown => {
+                    if let Some(data) =
+                        DbAvsVersionData::get_avs_version_with_chain(pool, &node_type, &ac)
+                            .await
+                            .unwrap_or(None)
                     {
                         let outdated = data
                             .vd
@@ -187,6 +190,7 @@ pub async fn build_avs_info(
 
     AvsInfo {
         name,
+        node_type,
         version,
         chain,
         active_set: get_attr("active_set"),
