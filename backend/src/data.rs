@@ -59,6 +59,9 @@ fn find_running_avs(metrics: &[Metric]) -> Option<String> {
 }
 
 /// Categorize the running nodes into two groups: avs running and idle.
+/// FIXME: This function is dependent on running metric impl, is there ever
+/// a case where running metric would be 0 now? I think yes, monitoring but
+/// no actual node running - could signal a broken node
 pub fn categorize_running_nodes(
     node_metrics_map: HashMap<Uuid, HashMap<String, Metric>>,
 ) -> (Vec<Uuid>, Vec<Uuid>) {
@@ -94,21 +97,21 @@ pub fn categorize_node_health(
     running_nodes: Vec<Uuid>,
     node_metrics_map: HashMap<Uuid, HashMap<String, Metric>>,
 ) -> (Vec<Uuid>, Vec<Uuid>) {
-    let mut healthy_machines = Vec::new();
-    let mut unhealthy_machines = Vec::new();
+    let mut healthy_nodes = Vec::new();
+    let mut low_performance_nodes = Vec::new();
     for node in running_nodes {
         if let Some(metrics_map) = node_metrics_map.get(&node) {
             if let Some(performance_metric) = metrics_map.get(EIGEN_PERFORMANCE_METRIC) {
                 if performance_metric.value >= EIGEN_PERFORMANCE_HEALTHY_THRESHOLD {
-                    healthy_machines.push(node);
+                    healthy_nodes.push(node);
                 } else {
-                    unhealthy_machines.push(node);
+                    low_performance_nodes.push(node);
                 }
             }
         }
     }
 
-    (healthy_machines, unhealthy_machines)
+    (healthy_nodes, low_performance_nodes)
 }
 
 /// Get nodes that need to be updated.
@@ -131,7 +134,7 @@ pub fn categorize_updateable_nodes(
             let version = metric_attributes.get("version")?;
 
             let avs_id = AvsID {
-                avs_name: NodeType::try_from(avs.as_str()).ok()?,
+                avs_name: NodeType::from(avs.as_str()),
                 chain: chain.parse::<Chain>().ok()?,
             };
             let current_version = Version::parse(version).ok()?;
@@ -242,7 +245,7 @@ mod data_filtering_tests {
     }
 
     fn create_id(avs_name: &str) -> AvsID {
-        AvsID { avs_name: NodeType::try_from(avs_name).unwrap(), chain: Chain::Holesky }
+        AvsID { avs_name: NodeType::from(avs_name), chain: Chain::Holesky }
     }
 
     fn load_metrics_json(file_path: &str) -> Result<Vec<Metric>, Box<dyn std::error::Error>> {

@@ -4,9 +4,6 @@ use axum::{
     Json,
 };
 use axum_extra::extract::CookieJar;
-use chrono::NaiveDateTime;
-use ivynet_core::ethers::types::Chain;
-use semver::Version;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, str::FromStr};
 use utoipa::ToSchema;
@@ -19,7 +16,6 @@ use crate::{
         log::{ContainerLog, LogLevel},
         machine::Machine,
         metric::Metric,
-        Account,
     },
     error::BackendError,
 };
@@ -58,7 +54,7 @@ pub enum MachineError {
 }
 
 #[derive(Serialize, ToSchema, Clone, Debug)]
-pub struct InfoReport {
+pub struct MachineInfoReport {
     pub machine_id: String,
     pub name: String,
     pub status: MachineStatus,
@@ -74,7 +70,7 @@ pub struct HardwareUsageInfo {
     pub status: HardwareInfoStatus,
 }
 
-#[derive(Serialize, ToSchema, Clone, Debug)]
+#[derive(Serialize, ToSchema, Clone, Debug, PartialEq, Eq)]
 pub enum HardwareInfoStatus {
     Healthy,
     Warning,
@@ -102,15 +98,15 @@ pub async fn machine(
     headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
-) -> Result<Json<Vec<InfoReport>>, BackendError> {
+) -> Result<Json<Vec<MachineInfoReport>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     let machines = account.all_machines(&state.pool).await?;
 
-    let mut info_reports: Vec<InfoReport> = vec![];
+    let mut info_reports: Vec<MachineInfoReport> = vec![];
 
     for machine in machines {
         let metrics = Metric::get_machine_metrics_only(&state.pool, machine.machine_id).await?;
-        let info = build_node_info(&state.pool, &machine, metrics).await?;
+        let info = build_machine_info(&state.pool, &machine, metrics).await?;
         info_reports.push(info);
     }
 
@@ -178,7 +174,7 @@ pub async fn idling(
 ) -> Result<Json<Vec<String>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
 
-    let avses = account.avses(&state.pool).await?;
+    let avses = account.all_avses(&state.pool).await?;
 
     let mut node_metrics_map = HashMap::new();
 
@@ -211,7 +207,7 @@ pub async fn unhealthy(
 ) -> Result<Json<Vec<String>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
 
-    let avses = account.avses(&state.pool).await?;
+    let avses = account.all_avses(&state.pool).await?;
 
     let mut node_metrics_map = HashMap::new();
 
@@ -246,7 +242,7 @@ pub async fn healthy(
 ) -> Result<Json<Vec<String>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
 
-    let avses = account.avses(&state.pool).await?;
+    let avses = account.all_avses(&state.pool).await?;
 
     let mut node_metrics_map = HashMap::new();
 
@@ -323,7 +319,7 @@ pub async fn delete(
 /// Get info on a specific node
 #[utoipa::path(
     get,
-    path = "/machine/:machine_id/:avs_name",
+    path = "/machine/:machine_id/",
     responses(
         (status = 200, body = Info),
         (status = 404)
@@ -333,18 +329,15 @@ pub async fn info(
     headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
-    Path((machine_id, avs_name)): Path<(String, String)>,
-) -> Result<Json<Info>, BackendError> {
+    Path(machine_id): Path<String>,
+) -> Result<Json<MachineInfoReport>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
 
     let machine =
         authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
 
-    let metrics = Metric::get_organized_for_avs(&state.pool, machine.machine_id, &avs_name).await?;
-    let avs = Avs::get_machines_avs(&state.pool, machine.machine_id, &avs_name)
-        .await?
-        .ok_or(BackendError::InvalidAvs)?;
-    Ok(Json(build_node_info(&state.pool, &machine, &avs, metrics).await))
+    let metrics = Metric::get_machine_metrics_only(&state.pool, machine.machine_id).await?;
+    Ok(Json(build_machine_info(&state.pool, &machine, metrics).await?))
 }
 
 /// Get condensed metrics for a specific node
@@ -534,11 +527,13 @@ pub async fn delete_machine_data(
 //     Ok(())
 // }
 
-pub async fn build_node_info(
+pub async fn build_machine_info(
     pool: &sqlx::PgPool,
     machine: &Machine,
     machine_metrics: HashMap<String, Metric>,
-) -> Result<InfoReport, BackendError> {
+) -> Result<MachineInfoReport, BackendError> {
+    let mut errors = vec![];
+
     let memory_info = build_hardware_info(
         machine_metrics.get(MEMORY_USAGE_METRIC).cloned(),
         machine_metrics.get(MEMORY_FREE_METRIC).cloned(),
@@ -548,6 +543,12 @@ pub async fn build_node_info(
         machine_metrics.get(DISK_USAGE_METRIC).cloned(),
         machine_metrics.get(DISK_FREE_METRIC).cloned(),
     );
+
+    if disk_info.status == HardwareInfoStatus::Critical ||
+        memory_info.status == HardwareInfoStatus::Critical
+    {
+        errors.push(MachineError::SystemResourcesUsage);
+    }
 
     let system_metrics = SystemMetrics {
         cores: if let Some(cores) = machine_metrics.get(CORES_METRIC) { cores.value } else { 0.0 },
@@ -563,21 +564,32 @@ pub async fn build_node_info(
     let avses = Avs::get_machines_avs_list(pool, machine.machine_id).await?;
     let mut avs_infos = vec![];
 
+    if avses.is_empty() {
+        errors.push(MachineError::Idle);
+    }
+
     for avs in avses {
         let metrics =
             Metric::get_organized_for_avs(pool, machine.machine_id, &avs.avs_name.to_string())
                 .await?;
-        let avs_info = build_avs_info(pool, metrics).await;
+        let avs_info = build_avs_info(pool, avs.clone(), metrics).await;
+
+        if !avs_info.errors.is_empty() {
+            let node_error_info =
+                NodeErrorInfo { name: avs.avs_name, errors: avs_info.errors.clone() };
+            errors.push(MachineError::NodeError(node_error_info));
+        }
+
         avs_infos.push(avs_info);
     }
 
-    let info_report = InfoReport {
+    let info_report = MachineInfoReport {
         machine_id: format!("{:?}", machine.machine_id),
         name: format!("{:?}", machine.name),
-        status: todo!(), //Build out status from avs's underneath
+        status: if errors.is_empty() { MachineStatus::Healthy } else { MachineStatus::Unhealthy },
         system_metrics,
         avs_list: avs_infos,
-        errors: todo!(), //Get errors from the underlying nodes
+        errors,
     };
 
     Ok(info_report)

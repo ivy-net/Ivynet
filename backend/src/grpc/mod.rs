@@ -11,6 +11,7 @@ use ivynet_core::{
         messages::{RegistrationCredentials, SignedLogs, SignedMetrics, SignedNodeData},
         server, Status,
     },
+    node_type::NodeType,
     signature::{recover_from_string, recover_metrics, recover_node_data},
 };
 use semver::Version;
@@ -156,7 +157,7 @@ impl Backend for BackendService {
                     &self.pool,
                     &Address::from_slice(&node_data.operator_id),
                     machine_id,
-                    &AvsName::try_from(node_data.avs_name.as_str())
+                    &NodeType::try_from(node_data.avs_name.as_str())
                         .map_err(|_| Status::invalid_argument("Bad AVS name provided"))?,
                     &node_data
                         .avs_version
@@ -199,7 +200,7 @@ impl Backend for BackendService {
                 &self.pool,
                 machine_id,
                 &Address::from_slice(&node_data.operator_id),
-                &AvsName::try_from(node_data.avs_name.as_str())
+                &NodeType::try_from(node_data.avs_name.as_str())
                     .map_err(|_| Status::invalid_argument("Bad AVS name provided"))?,
             )
             .await
