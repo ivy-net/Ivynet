@@ -87,6 +87,28 @@ impl Metric {
         Ok(metrics.into_iter().map(|n| n.into()).collect())
     }
 
+    pub async fn get_machine_metrics_only(
+        pool: &PgPool,
+        machine_id: Uuid,
+    ) -> Result<HashMap<String, Metric>, BackendError> {
+        let metrics = sqlx::query_as!(
+            DbMetric,
+            r#"SELECT
+                machine_id, avs_name, name, value,
+                attributes as "attributes: sqlx::types::Json<HashMap<String,String>>",
+                created_at
+               FROM
+                metric
+               WHERE
+                (machine_id = $1 AND avs_name IS NULL)"#,
+            machine_id
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(metrics.into_iter().map(|m| (m.name.clone(), m.into())).collect())
+    }
+
     pub async fn get_all_for_machine(
         pool: &PgPool,
         machine_id: Uuid,

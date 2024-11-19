@@ -24,7 +24,11 @@ use crate::{
     error::BackendError,
 };
 
-use super::{authorize, node::NodeErrorInfo, HttpState};
+use super::{
+    authorize,
+    node::{build_avs_info, AvsInfo, NodeErrorInfo},
+    HttpState,
+};
 
 const CORES_METRIC: &str = "cores";
 const CPU_USAGE_METRIC: &str = "cpu_usage";
@@ -59,7 +63,7 @@ pub struct InfoReport {
     pub name: String,
     pub status: MachineStatus,
     pub system_metrics: SystemMetrics,
-    pub avs_list: Vec<Avs>,
+    pub avs_list: Vec<AvsInfo>,
     pub errors: Vec<MachineError>,
 }
 
@@ -88,7 +92,7 @@ pub struct SystemMetrics {
 /// Grab information for every node in the organization
 #[utoipa::path(
     get,
-    path = "/machine",
+    path = "/machines",
     responses(
         (status = 200, body = [Info]),
         (status = 404)
@@ -100,25 +104,23 @@ pub async fn machine(
     jar: CookieJar,
 ) -> Result<Json<Vec<InfoReport>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    let machines = account.machines(&state.pool).await?;
+    let machines = account.all_machines(&state.pool).await?;
 
-    let mut infos: Vec<InfoReport> = vec![];
-
-    //TODO: Get metrics for just the machine not avs specific
+    let mut info_reports: Vec<InfoReport> = vec![];
 
     for machine in machines {
-        let metrics = Metric::get_all_for_machine(&state.pool, machine.machine_id).await?;
-        let info = build_node_info(&state.pool, account.clone(), &machine, metrics).await?;
-        infos.push(info);
+        let metrics = Metric::get_machine_metrics_only(&state.pool, machine.machine_id).await?;
+        let info = build_node_info(&state.pool, &machine, metrics).await?;
+        info_reports.push(info);
     }
 
-    Ok(Json(infos))
+    Ok(Json(info_reports))
 }
 
-/// Get an overview of which nodes are healthy, unhealthy, idle, and erroring
+/// Get an overview of which nodes are healthy and unhealthy
 #[utoipa::path(
     get,
-    path = "/machine/status",
+    path = "/machines/status",
     responses(
         (status = 200, body = Status),
         (status = 404)
@@ -131,7 +133,7 @@ pub async fn status(
 ) -> Result<Json<MachineStatusReport>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
 
-    let avses = account.avses(&state.pool).await?;
+    let avses = account.all_avses(&state.pool).await?;
 
     let mut node_metrics_map = HashMap::new();
 
@@ -163,7 +165,7 @@ pub async fn status(
 /// Get an overview of which nodes are idle
 #[utoipa::path(
     get,
-    path = "/client/idle",
+    path = "/machine/idle",
     responses(
         (status = 200, body = Vec<String>),
         (status = 404)
@@ -196,7 +198,7 @@ pub async fn idling(
 /// Get an overview of which nodes are unhealthy
 #[utoipa::path(
     post,
-    path = "/client/unhealthy",
+    path = "/machine/unhealthy",
     responses(
         (status = 200, body = Vec<String>),
         (status = 404)
@@ -231,7 +233,7 @@ pub async fn unhealthy(
 /// Get an overview of which nodes are healthy
 #[utoipa::path(
     post,
-    path = "/client/healthy",
+    path = "/machine/healthy",
     responses(
         (status = 200, body = Vec<String>),
         (status = 404)
@@ -271,7 +273,7 @@ pub struct NameChangeRequest {
 /// Set the name of a node
 #[utoipa::path(
     post,
-    path = "/client/:id/:name",
+    path = "/machine/:id/:name",
     responses(
         (status = 200),
         (status = 404)
@@ -297,7 +299,7 @@ pub async fn set_name(
 // TODO: We are already doing that. But there is too many things doing similar stuff
 #[utoipa::path(
     delete,
-    path = "/client/:id",
+    path = "/machine/:id",
     responses(
         (status = 200),
         (status = 404)
@@ -321,7 +323,7 @@ pub async fn delete(
 /// Get info on a specific node
 #[utoipa::path(
     get,
-    path = "/client/:machine_id/:avs_name",
+    path = "/machine/:machine_id/:avs_name",
     responses(
         (status = 200, body = Info),
         (status = 404)
@@ -348,7 +350,7 @@ pub async fn info(
 /// Get condensed metrics for a specific node
 #[utoipa::path(
     get,
-    path = "/client/:machine_id/:avs_name/metrics",
+    path = "/machine/:machine_id/:avs_name/metrics",
     responses(
         (status = 200, body = [Metric]),
         (status = 404)
@@ -374,7 +376,7 @@ pub async fn metrics_condensed(
 /// Get all metrics for a specific node
 #[utoipa::path(
     get,
-    path = "/client/:machine_id/:avs_name/metrics/all",
+    path = "/machine/:machine_id/:avs_name/metrics/all",
     responses(
         (status = 200, body = [Metric]),
         (status = 404)
@@ -396,7 +398,7 @@ pub async fn metrics_all(
 
 #[utoipa::path(
     post,
-    path = "/client/:machine_id/:avs_name/logs",
+    path = "/machine/:machine_id/:avs_name/logs",
     responses(
         (status = 200, body = [ContainerLog]),
         (status = 404)
@@ -458,7 +460,7 @@ pub async fn logs(
 /// Get all data on every running avs for a specific node
 #[utoipa::path(
     get,
-    path = "/client/:machine_id/data/",
+    path = "/machine/:machine_id/data/",
     responses(
         (status = 200, body = [Avs]),
         (status = 404)
@@ -483,7 +485,7 @@ pub async fn get_all_node_data(
 /// Delete all data for a specific node
 #[utoipa::path(
     delete,
-    path = "/client/:id/data",
+    path = "/machine/:id/data",
     responses(
         (status = 200),
         (status = 404)
@@ -509,7 +511,7 @@ pub async fn delete_machine_data(
 /// Delete all data for a specific AVS running on a node
 // #[utoipa::path(
 //     delete,
-//     path = "/client/:id/data/:avs/operator_id",
+//     path = "/machine/:id/data/:avs/operator_id",
 //     responses(
 //         (status = 200),
 //         (status = 404)
@@ -534,36 +536,48 @@ pub async fn delete_machine_data(
 
 pub async fn build_node_info(
     pool: &sqlx::PgPool,
-    account: Account,
     machine: &Machine,
-    node_metrics: HashMap<String, Metric>,
+    machine_metrics: HashMap<String, Metric>,
 ) -> Result<InfoReport, BackendError> {
     let memory_info = build_hardware_info(
-        node_metrics.get(MEMORY_USAGE_METRIC).cloned(),
-        node_metrics.get(MEMORY_FREE_METRIC).cloned(),
+        machine_metrics.get(MEMORY_USAGE_METRIC).cloned(),
+        machine_metrics.get(MEMORY_FREE_METRIC).cloned(),
     );
 
     let disk_info = build_hardware_info(
-        node_metrics.get(DISK_USAGE_METRIC).cloned(),
-        node_metrics.get(DISK_FREE_METRIC).cloned(),
+        machine_metrics.get(DISK_USAGE_METRIC).cloned(),
+        machine_metrics.get(DISK_FREE_METRIC).cloned(),
     );
 
     let system_metrics = SystemMetrics {
-        cores: if let Some(cores) = node_metrics.get(CORES_METRIC) { cores.value } else { 0.0 },
-        cpu_usage: if let Some(cpu) = node_metrics.get(CPU_USAGE_METRIC) { cpu.value } else { 0.0 },
+        cores: if let Some(cores) = machine_metrics.get(CORES_METRIC) { cores.value } else { 0.0 },
+        cpu_usage: if let Some(cpu) = machine_metrics.get(CPU_USAGE_METRIC) {
+            cpu.value
+        } else {
+            0.0
+        },
         memory_info,
         disk_info,
     };
 
-    let avses = account.avses(pool).await?;
+    let avses = Avs::get_machines_avs_list(pool, machine.machine_id).await?;
+    let mut avs_infos = vec![];
+
+    for avs in avses {
+        let metrics =
+            Metric::get_organized_for_avs(pool, machine.machine_id, &avs.avs_name.to_string())
+                .await?;
+        let avs_info = build_avs_info(pool, metrics).await;
+        avs_infos.push(avs_info);
+    }
 
     let info_report = InfoReport {
         machine_id: format!("{:?}", machine.machine_id),
         name: format!("{:?}", machine.name),
-        status: todo!(),
+        status: todo!(), //Build out status from avs's underneath
         system_metrics,
-        avs_list: avses,
-        errors: todo!(),
+        avs_list: avs_infos,
+        errors: todo!(), //Get errors from the underlying nodes
     };
 
     Ok(info_report)

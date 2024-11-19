@@ -308,14 +308,6 @@ async fn collect(
                     },
                 },
                 MetricsAttribute {
-                    name: "operator_id".to_owned(),
-                    value: format!("{:?}", Address::from_slice(&node_data.operator_id)),
-                },
-                MetricsAttribute {
-                    name: "active_set".to_owned(),
-                    value: node_data.active_set.unwrap_or(false).to_string(),
-                },
-                MetricsAttribute {
                     name: "version".to_owned(),
                     value: node_data
                         .avs_version

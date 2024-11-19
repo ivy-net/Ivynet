@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use ivynet_core::{avs::names::AvsName, ethers::types::Chain};
+use ivynet_core::{ethers::types::Chain, node_type::NodeType};
 
 use semver::Version;
 use serde::Serialize;
@@ -131,7 +131,7 @@ pub fn categorize_updateable_nodes(
             let version = metric_attributes.get("version")?;
 
             let avs_id = AvsID {
-                avs_name: AvsName::try_from(avs.as_str()).ok()?,
+                avs_name: NodeType::try_from(avs.as_str()).ok()?,
                 chain: chain.parse::<Chain>().ok()?,
             };
             let current_version = Version::parse(version).ok()?;
@@ -215,7 +215,7 @@ mod data_filtering_tests {
             value,
             created_at,
             machine_id: Uuid::new_v4(),
-            avs_name: Some(AvsName::EigenDA.to_string()),
+            avs_name: Some(NodeType::EigenDA.to_string()),
             name: "JimTheComputer".to_owned(),
             attributes,
         }
@@ -242,7 +242,7 @@ mod data_filtering_tests {
     }
 
     fn create_id(avs_name: &str) -> AvsID {
-        AvsID { avs_name: AvsName::try_from(avs_name).unwrap(), chain: Chain::Holesky }
+        AvsID { avs_name: NodeType::try_from(avs_name).unwrap(), chain: Chain::Holesky }
     }
 
     fn load_metrics_json(file_path: &str) -> Result<Vec<Metric>, Box<dyn std::error::Error>> {
