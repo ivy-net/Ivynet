@@ -1,7 +1,11 @@
-use bollard::{secret::ContainerSummary, Docker};
+use bollard::{container::LogOutput, secret::ContainerSummary, Docker};
+use tokio_stream::Stream;
 
 use crate::node_type::NodeType;
 
+use super::container::Container;
+
+#[derive(Clone)]
 pub struct DockerClient(pub Docker);
 
 pub fn connect_docker() -> Docker {
@@ -80,37 +84,42 @@ impl DockerClient {
         let node_types = NodeType::all();
         self.find_node_containers(&node_types).await
     }
-}
 
-pub struct Container(pub ContainerSummary);
-
-impl Container {
-    pub fn new(container: ContainerSummary) -> Self {
-        Self(container)
+    /// Stream logs for a given node type since a given timestamp
+    pub async fn stream_logs_for_node(
+        &self,
+        node_type: &NodeType,
+        since: i64,
+    ) -> Option<impl Stream<Item = Result<LogOutput, bollard::errors::Error>>> {
+        let container = self.find_node_container(node_type).await;
+        container.map(|container| container.stream_logs(self, since))
     }
 
-    /// Container ID
-    pub fn id(&self) -> Option<&str> {
-        self.0.id.as_deref()
+    /// Stream logs for a given node type since current time
+    pub async fn stream_logs_for_node_latest(
+        &self,
+        node_type: &NodeType,
+    ) -> Option<impl Stream<Item = Result<LogOutput, bollard::errors::Error>>> {
+        let container = self.find_node_container(node_type).await;
+        container.map(|container| container.stream_logs_latest(self))
     }
 
-    /// Image ID for the associated container
-    pub fn image_id(&self) -> Option<&str> {
-        self.0.image_id.as_deref()
+    /// Stream logs for all nodes since a given timestamp. Returns a merged stream.
+    pub async fn stream_logs_for_all_nodes(
+        &self,
+        since: i64,
+    ) -> impl Stream<Item = Result<LogOutput, bollard::errors::Error>> {
+        let containers = self.find_all_node_containers().await;
+        let streams = containers.into_iter().map(|container| container.stream_logs(self, since));
+        futures::stream::select_all(streams)
     }
 
-    /// Image name for the associated container
-    pub fn image(&self) -> Option<&str> {
-        self.0.image.as_deref()
-    }
-
-    pub fn ports(&self) -> Option<&Vec<bollard::models::Port>> {
-        self.0.ports.as_ref()
-    }
-
-    pub fn public_ports(&self) -> Vec<u16> {
-        self.ports()
-            .map(|ports| ports.iter().filter_map(|port| port.public_port).collect())
-            .unwrap_or_default()
+    /// Stream logs for all nodes since current time. Returns a merged stream.
+    pub async fn stream_logs_for_all_nodes_latest(
+        &self,
+    ) -> impl Stream<Item = Result<LogOutput, bollard::errors::Error>> {
+        let containers = self.find_all_node_containers().await;
+        let streams = containers.into_iter().map(|container| container.stream_logs_latest(self));
+        futures::stream::select_all(streams)
     }
 }

@@ -1,7 +1,7 @@
 use crate::{
     avs::names::AvsName,
     config::get_detailed_system_information,
-    docker::dockerapi::{Container, DockerClient},
+    docker::{container::Container, dockerapi::DockerClient},
     error::IvyError,
     ethers::types::{Address, Chain},
     grpc::{
