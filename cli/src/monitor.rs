@@ -112,7 +112,7 @@ pub async fn scan() -> Result<(), anyhow::Error> {
 
     let configured_avs_names =
         monitor_config.configured_avses.iter().map(|a| a.name.clone()).collect::<Vec<_>>();
-    for avs in potential_avses {
+    for avs in &potential_avses {
         if !configured_avs_names.contains(&avs.name) {
             for port in &avs.ports {
                 if let Ok(metrics) = fetch_telemetry_from(*port).await {
@@ -127,22 +127,29 @@ pub async fn scan() -> Result<(), anyhow::Error> {
         }
     }
 
-    for idx in MultiSelect::new()
-        .with_prompt("Choose what AVSes to add and accept the list with ENTER")
-        .items(
-            &avses
-                .iter()
-                .map(|a| format!("{} under container {}", a.avs_type, a.name))
-                .collect::<Vec<_>>(),
-        )
-        .interact()
-        .expect("No items selected")
-    {
-        monitor_config.configured_avses.push(avses[idx].clone());
-    }
+    if avses.is_empty() {
+        println!("No potential new AVSes found");
+    } else {
+        for idx in MultiSelect::new()
+            .with_prompt("Choose what AVSes to add and accept the list with ENTER")
+            .items(
+                &avses
+                    .iter()
+                    .map(|a| format!("{} under container {}", a.avs_type, a.name))
+                    .collect::<Vec<_>>(),
+            )
+            .interact()
+            .expect("No items selected")
+        {
+            monitor_config.configured_avses.push(avses[idx].clone());
+        }
 
-    monitor_config.store()?;
-    println!("New setup stored with {} of avses configured", monitor_config.configured_avses.len());
+        monitor_config.store()?;
+        println!(
+            "New setup stored with {} of avses configured",
+            monitor_config.configured_avses.len()
+        );
+    }
     Ok(())
 }
 
