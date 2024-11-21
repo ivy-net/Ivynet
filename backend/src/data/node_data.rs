@@ -37,6 +37,7 @@ pub enum NodeError {
     NeedsUpdate,
     CrashedNode,
     IdleNodeNoCommunication,
+    NoChainInfo,
 }
 
 #[derive(Serialize, Debug, Clone)]
@@ -85,6 +86,9 @@ pub async fn build_avs_info(
     let attrs = running_metric.and_then(|m| m.attributes.clone());
     let get_attr = |key| attrs.as_ref().and_then(|a| a.get(key).cloned());
 
+    println!("Running metric: {:#?}", running_metric);
+    println!("attrs: {:#?}", attrs);
+
     let name = get_attr("avs_name");
     let node_type = get_attr("avs_type");
     let version = get_attr("version");
@@ -120,7 +124,7 @@ pub async fn build_avs_info(
 
             if let Some(datetime) = run_met.created_at {
                 let now = chrono::Utc::now().naive_utc();
-                if now.signed_duration_since(datetime).num_minutes() < IDLE_MINUTES_THRESHOLD {
+                if now.signed_duration_since(datetime).num_minutes() > IDLE_MINUTES_THRESHOLD {
                     errors.push(NodeError::IdleNodeNoCommunication);
                 }
             }
@@ -147,6 +151,10 @@ pub async fn build_avs_info(
 
     if avs.operator_address.is_none() {
         errors.push(NodeError::NoOperatorId);
+    }
+
+    if chain.is_none() {
+        errors.push(NodeError::NoChainInfo);
     }
 
     AvsInfo {

@@ -4,9 +4,7 @@ use axum::{
     Json,
 };
 use axum_extra::extract::CookieJar;
-use serde::Deserialize;
 use std::{collections::HashMap, str::FromStr};
-use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::{
@@ -153,35 +151,36 @@ pub async fn healthy(
     Ok(Json(healthy_list.into_iter().map(|id| format!("{:?}", id)).collect()))
 }
 
-#[derive(Deserialize, Debug, Clone, ToSchema)]
-pub struct NameChangeRequest {
-    pub name: String,
-}
+// #[derive(Deserialize, Debug, Clone, ToSchema)]
+// pub struct NameChangeRequest {
+//     pub name: String,
+// }
 
-/// Set the name of a node
-#[utoipa::path(
-    post,
-    path = "/machine/:id/:name",
-    responses(
-        (status = 200),
-        (status = 404)
-    )
-)]
-pub async fn set_name(
-    headers: HeaderMap,
-    State(state): State<HttpState>,
-    jar: CookieJar,
-    Path(id): Path<String>,
-    Json(request): Json<NameChangeRequest>,
-) -> Result<(), BackendError> {
-    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    authorize::verify_node_ownership(&account, State(state.clone()), id)
-        .await?
-        .set_name(&state.pool, &request.name)
-        .await?;
+/// --- Can't do this unless we can also update it in their config ---
+// /// Set the name of a node
+// #[utoipa::path(
+//     post,
+//     path = "/machine/:id/:name",
+//     responses(
+//         (status = 200),
+//         (status = 404)
+//     )
+// )]
+// pub async fn set_name(
+//     headers: HeaderMap,
+//     State(state): State<HttpState>,
+//     jar: CookieJar,
+//     Path(id): Path<String>,
+//     Json(request): Json<NameChangeRequest>,
+// ) -> Result<(), BackendError> {
+//     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+//     authorize::verify_node_ownership(&account, State(state.clone()), id)
+//         .await?
+//         .set_name(&state.pool, &request.name)
+//         .await?;
 
-    Ok(())
-}
+//     Ok(())
+// }
 
 /// Delete a machine from the database
 // TODO: We are already doing that. But there is too many things doing similar stuff

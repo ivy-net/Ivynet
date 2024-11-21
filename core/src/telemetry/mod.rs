@@ -97,20 +97,25 @@ pub async fn listen_metrics(
                 metrics.push(Metrics {
                     name: "running".to_owned(),
                     value: 1.0,
-                    attributes: vec![MetricsAttribute {
-                        name: "avs".to_owned(),
-                        value: avs.name.clone(),
-                    }],
+                    attributes: vec![
+                        MetricsAttribute { name: "avs_name".to_owned(), value: avs.name.clone() },
+                        MetricsAttribute { name: "avs_type".to_owned(), value: avs.avs_type.to_string() },
+                        MetricsAttribute { name: "version".to_owned(), value: "0.0.0".to_string() }, //FIXME: Bazil to work on this
+                    ],
                 });
                 metrics
             } else {
                 vec![Metrics {
                     name: "running".to_owned(),
                     value: 0.0,
-                    attributes: vec![MetricsAttribute {
-                        name: "avs".to_owned(),
-                        value: avs.name.clone(),
-                    }],
+                    attributes: vec![
+                        MetricsAttribute { name: "avs_name".to_owned(), value: avs.name.clone() },
+                        MetricsAttribute {
+                            name: "avs_type".to_owned(),
+                            value: avs.avs_type.to_string(),
+                        },
+                        MetricsAttribute { name: "version".to_owned(), value: "0.0.0".to_string() }, /* FIXME: Bazil to work on this */
+                    ],
                 }]
             };
             let metrics_signature = sign_metrics(&metrics, identity_wallet)?;

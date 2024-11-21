@@ -103,7 +103,7 @@ fn create_router() -> Router<HttpState> {
         .route("/machine/:id/data", get(machine::get_all_node_data))
         .route("/machine/:id/data", delete(machine::delete_machine_data))
         .route("/machine/:id", get(machine::info))
-        .route("/machine/:id", post(machine::set_name))
+        // .route("/machine/:id", post(machine::set_name))
         .route("/machine/:id", delete(machine::delete))
         .route("/avs", get(node::all_avs_info))
         .route("/avs/status", get(node::avs_status))
