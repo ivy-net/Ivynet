@@ -770,6 +770,7 @@ dependencies = [
  "ivynet-core",
  "linemux",
  "rustix",
+ "serde",
  "serial_test",
  "thiserror 2.0.3",
  "tokio",

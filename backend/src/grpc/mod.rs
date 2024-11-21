@@ -122,7 +122,7 @@ impl Backend for BackendService {
         _ = Metric::record(
             &self.pool,
             machine_id,
-            &req.avs_name,
+            req.avs_name.as_deref(),
             &req.metrics.iter().map(|v| v.into()).collect::<Vec<_>>(),
         )
         .await
