@@ -175,6 +175,9 @@ pub enum IvyError {
 
     #[error("{0}")]
     CustomError(String),
+
+    #[error("Not found")]
+    NotFound,
 }
 
 #[derive(Debug, Error)]

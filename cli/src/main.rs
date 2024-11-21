@@ -59,6 +59,9 @@ enum Commands {
     },
     #[command(name = "monitor", about = "Start node monitor daemon")]
     Monitor,
+
+    #[command(name = "scan", about = "Scanning for existing AVS instances running on the machine")]
+    Scan,
 }
 
 #[tokio::main]
@@ -94,6 +97,7 @@ async fn main() -> Result<(), AnyError> {
         Commands::Key { subcmd } => key::parse_key_subcommands(subcmd).await?,
         Commands::Node { subcmd } => avs::parse_avs_subcommands(subcmd).await?,
         Commands::Monitor => monitor::start_monitor().await?,
+        Commands::Scan => monitor::scan().await?,
     }
 
     Ok(())

@@ -112,8 +112,9 @@ impl Backend for BackendService {
                 .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
         )
         .await?;
-        let machine_id = Uuid::from_slice(&req.machine_id)
-            .map_err(|_| Status::invalid_argument("Machine id has wrong length".to_string()))?;
+        let machine_id = Uuid::from_slice(&req.machine_id).map_err(|e| {
+            Status::invalid_argument(format!("Machine id has wrong length ({e:?})"))
+        })?;
 
         if !Machine::is_owned_by(&self.pool, &client_id, machine_id).await.unwrap_or(false) {
             return Err(Status::not_found("Machine not registered for given client".to_string()));
@@ -122,7 +123,7 @@ impl Backend for BackendService {
         _ = Metric::record(
             &self.pool,
             machine_id,
-            &req.avs_name,
+            req.avs_name.as_deref(),
             &req.metrics.iter().map(|v| v.into()).collect::<Vec<_>>(),
         )
         .await

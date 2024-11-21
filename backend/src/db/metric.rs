@@ -150,7 +150,7 @@ impl Metric {
     pub async fn record(
         pool: &PgPool,
         machine_id: Uuid,
-        avs_name: &str,
+        avs_name: Option<&str>,
         metrics: &[Metric],
     ) -> Result<(), BackendError> {
         // Remove old metrics for the node first
@@ -163,7 +163,7 @@ impl Metric {
             query!(
             "INSERT INTO metric (machine_id, avs_name, name, value, attributes, created_at) values ($1, $2, $3, $4, $5, $6)",
             Some(machine_id),
-            Some(avs_name),
+            avs_name,
             Some(&metric.name),
             Some(metric.value),
             metric.attributes.as_ref().map(|v| json!(v)),
