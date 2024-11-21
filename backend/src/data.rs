@@ -4,32 +4,31 @@ use ivynet_core::{ethers::types::Chain, node_type::NodeType};
 
 use semver::Version;
 use serde::Serialize;
-use tracing::debug;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::{
     db::{
-        avs_version::{DbAvsVersionData, NodeTypeId, VersionData},
+        avs_version::{NodeTypeId, VersionData},
         metric::Metric,
     },
     error::BackendError,
 };
 
-const RUNNING_METRIC: &str = "running";
-const EIGEN_PERFORMANCE_METRIC: &str = "eigen_performance_score";
-const IDLE_MINUTES_THRESHOLD: i64 = 15;
+pub const RUNNING_METRIC: &str = "running";
+pub const EIGEN_PERFORMANCE_METRIC: &str = "eigen_performance_score";
 
-const EIGEN_PERFORMANCE_HEALTHY_THRESHOLD: f64 = 80.0;
+pub const IDLE_MINUTES_THRESHOLD: i64 = 15;
+pub const EIGEN_PERFORMANCE_HEALTHY_THRESHOLD: f64 = 80.0;
 
-#[derive(Serialize, ToSchema, Clone, Debug)]
-pub enum NodeStatus {
-    Healthy,
-    Unhealthy,
-    Idle,
-    Error,
-    UpdateNeeded,
-}
+// #[derive(Serialize, ToSchema, Clone, Debug)]
+// pub enum NodeStatus {
+//     Healthy,
+//     Unhealthy,
+//     Idle,
+//     Error,
+//     // UpdateNeeded,
+// }
 
 #[derive(Serialize, ToSchema, Clone, Debug, PartialEq)]
 pub enum UpdateStatus {
@@ -60,7 +59,7 @@ fn filter_metrics_by_names(metrics: &[Metric], allowed_names: &[&str]) -> Vec<Me
 }
 
 /// Find the name of the running AVS.
-fn find_running_avs_type(metrics: &[Metric]) -> Option<NodeType> {
+pub fn find_running_avs_type(metrics: &[Metric]) -> Option<NodeType> {
     metrics
         .iter()
         .find(|metric| metric.name.contains("running"))
@@ -100,6 +99,11 @@ pub fn categorize_running_nodes(
     });
 
     (running_nodes, idle_nodes)
+}
+
+pub fn get_idle_nodes(node_metrics_map: HashMap<Uuid, HashMap<String, Metric>>) -> Vec<Uuid> {
+    let (_, idle_nodes) = categorize_running_nodes(node_metrics_map);
+    idle_nodes
 }
 
 /// Categorize the running nodes into two groups: healthy and unhealthy.

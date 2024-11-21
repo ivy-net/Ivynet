@@ -9,7 +9,10 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::{
-    data::{self, get_update_status, UpdateStatus},
+    data::{
+        self, get_update_status, UpdateStatus, EIGEN_PERFORMANCE_HEALTHY_THRESHOLD,
+        IDLE_MINUTES_THRESHOLD,
+    },
     db::{avs::Avs, avs_version::DbAvsVersionData, metric::Metric},
     error::BackendError,
 };
@@ -22,6 +25,11 @@ pub enum NodeError {
     NoOperatorId,
     ActiveSetNoDeployment,
     UnregisteredFromActiveSet,
+    LowPerformanceScore,
+    HardwareResourceUsage,
+    NeedsUpdate,
+    CrashedNode,
+    IdleNodeNoCommunication,
 }
 
 #[derive(Serialize, Debug, Clone)]
@@ -45,7 +53,7 @@ pub struct AvsInfo {
     pub node_type: Option<String>,
     pub chain: Option<String>,
     pub version: Option<String>,
-    pub active_set: Option<String>,
+    pub active_set: Option<bool>,
     pub operator_id: Option<String>,
     pub uptime: f64,
     pub performance_score: f64,
@@ -105,35 +113,24 @@ pub async fn avs_status(
 
     let avses = account.all_avses(&state.pool).await?;
 
-    //Hashmap of node_id to metrics
-    let mut node_metrics_map: HashMap<Uuid, HashMap<String, Metric>> = HashMap::new();
+    let mut unhealthy_list: Vec<Uuid> = vec![];
+    let mut healthy_list: Vec<Uuid> = vec![];
 
     for avs in &avses {
-        node_metrics_map.insert(
-            avs.machine_id,
+        let node_metrics_map =
             Metric::get_organized_for_avs(&state.pool, avs.machine_id, &avs.avs_name.to_string())
-                .await?,
-        );
+                .await?;
+        let avs_info = build_avs_info(&state.pool, avs.clone(), node_metrics_map).await;
+        if avs_info.errors.len() > 0 {
+            unhealthy_list.push(avs.machine_id);
+        } else {
+            healthy_list.push(avs.machine_id);
+        }
     }
-
-    let (running_nodes, idle_nodes) = data::categorize_running_nodes(node_metrics_map.clone());
-    let (healthy_nodes, low_perf_nodes) =
-        data::categorize_node_health(running_nodes.clone(), node_metrics_map.clone());
-
-    let updateable_nodes = data::categorize_updateable_nodes(
-        DbAvsVersionData::get_all_avs_version(&state.pool).await?,
-        running_nodes.clone(),
-        node_metrics_map,
-    );
-
-    let mut unhealthy_list: HashSet<Uuid> = HashSet::new();
-    unhealthy_list.extend(idle_nodes);
-    unhealthy_list.extend(low_perf_nodes);
-    unhealthy_list.extend(updateable_nodes.iter().map(|node| node.0));
 
     Ok(Json(NodeStatusReport {
         total_nodes: avses.len(),
-        healthy_nodes: healthy_nodes.iter().map(|node| format!("{node:?}")).collect(),
+        healthy_nodes: healthy_list.iter().map(|node| format!("{node:?}")).collect(),
         unhealthy_nodes: unhealthy_list.into_iter().map(|node| node.to_string()).collect(),
     }))
 }
@@ -154,10 +151,61 @@ pub async fn build_avs_info(
 
     let version_map = DbAvsVersionData::get_all_avs_version(pool).await;
 
+    //Start of error building
+    let mut errors = vec![];
+
+    if running_metric.is_none() {
+        //Running metric missing should never really happen
+        errors.push(NodeError::CrashedNode);
+
+        //But if it does and you're in the active set, flag
+        if avs.active_set {
+            errors.push(NodeError::ActiveSetNoDeployment);
+        }
+    }
+
+    if let Some(run_met) = running_metric {
+        //If running metric is not 1, the node has crashed
+        if run_met.value == 1.0 {
+            if !avs.active_set {
+                errors.push(NodeError::UnregisteredFromActiveSet);
+            }
+
+            if let Some(perf) = metrics.get(EIGEN_PERFORMANCE_METRIC) {
+                if perf.value < EIGEN_PERFORMANCE_HEALTHY_THRESHOLD {
+                    errors.push(NodeError::LowPerformanceScore);
+                }
+            }
+
+            if let Some(datetime) = run_met.created_at {
+                let now = chrono::Utc::now().naive_utc();
+                if now.signed_duration_since(datetime).num_minutes() < IDLE_MINUTES_THRESHOLD {
+                    errors.push(NodeError::IdleNodeNoCommunication);
+                }
+            }
+        } else {
+            errors.push(NodeError::CrashedNode);
+
+            //In active set but not running a node could be inactivity slashable
+            if avs.active_set {
+                errors.push(NodeError::ActiveSetNoDeployment);
+            }
+        }
+
+        if run_met.value > 0.0 {}
+    }
+
     let mut update_status = UpdateStatus::Unknown;
     if let Ok(version_map) = version_map {
         update_status =
             get_update_status(version_map, version.clone(), chain.clone(), node_type.clone());
+        if update_status != UpdateStatus::UpToDate {
+            errors.push(NodeError::NeedsUpdate);
+        }
+    }
+
+    if avs.operator_address.is_none() {
+        errors.push(NodeError::NoOperatorId);
     }
 
     AvsInfo {
@@ -165,12 +213,13 @@ pub async fn build_avs_info(
         node_type,
         version,
         chain,
-        active_set: None, //FIXME: Add active set checking and operator key handling here
+        active_set: Some(avs.active_set), /* FIXME: Add active set checking and operator key
+                                           * handling here */
         operator_id: None, //FIXME: Add active set checking and operator key handling here
         uptime: metrics.get(UPTIME_METRIC).map_or(0.0, |m| m.value),
         performance_score: metrics.get(EIGEN_PERFORMANCE_METRIC).map_or(0.0, |m| m.value),
         update_status,
         machine_id: avs.machine_id.to_string(),
-        errors: vec![], //FIXME: Add active set checking and operator key handling here
+        errors,
     }
 }

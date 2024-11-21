@@ -9,10 +9,9 @@ use std::{collections::HashMap, str::FromStr};
 use utoipa::ToSchema;
 
 use crate::{
-    data::{self},
+    data::{self, EIGEN_PERFORMANCE_HEALTHY_THRESHOLD, EIGEN_PERFORMANCE_METRIC},
     db::{
         avs::Avs,
-        avs_version::DbAvsVersionData,
         log::{ContainerLog, LogLevel},
         machine::Machine,
         metric::Metric,
@@ -128,33 +127,47 @@ pub async fn status(
     jar: CookieJar,
 ) -> Result<Json<MachineStatusReport>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let machines = account.all_machines(&state.pool).await?;
 
-    let avses = account.all_avses(&state.pool).await?;
+    let mut healthy_machines = Vec::new();
+    let mut unhealthy_machines = Vec::new();
 
-    let mut node_metrics_map = HashMap::new();
+    for machine in &machines {
+        let avses = Avs::get_machines_avs_list(&state.pool, machine.machine_id).await?;
+        let mut has_errors = false;
 
-    for avs in &avses {
-        node_metrics_map.insert(
-            avs.machine_id,
-            Metric::get_organized_for_avs(&state.pool, avs.machine_id, &avs.avs_name.to_string())
-                .await?,
-        );
+        for avs in &avses {
+            let metrics =
+                Metric::get_organized_for_avs(&state.pool, machine.machine_id, &avs.avs_name)
+                    .await?;
+            let running_nodes =
+                data::find_running_avs_type(&metrics.values().cloned().collect::<Vec<_>>());
+
+            // Check if AVS is running
+            if running_nodes.is_none() {
+                has_errors = true;
+                continue;
+            }
+
+            // Check performance if it's running
+            if let Some(perf) = metrics.get(EIGEN_PERFORMANCE_METRIC) {
+                if perf.value < EIGEN_PERFORMANCE_HEALTHY_THRESHOLD {
+                    has_errors = true;
+                }
+            }
+        }
+
+        if !avses.is_empty() && !has_errors {
+            healthy_machines.push(format!("{:?}", machine.machine_id));
+        } else {
+            unhealthy_machines.push(format!("{:?}", machine.machine_id));
+        }
     }
 
-    //TODO: Update these bits
-    let (running_nodes, idle_nodes) = data::categorize_running_nodes(node_metrics_map.clone());
-    let (healthy_nodes, unhealthy_nodes) =
-        data::categorize_node_health(running_nodes.clone(), node_metrics_map.clone());
-
-    let avs_version_map = DbAvsVersionData::get_all_avs_version(&state.pool).await?;
-
-    let updateable_nodes =
-        data::categorize_updateable_nodes(avs_version_map, running_nodes.clone(), node_metrics_map);
-
     Ok(Json(MachineStatusReport {
-        total_machines: avses.len(),
-        healthy_machines: healthy_nodes.iter().map(|node| format!("{node:?}")).collect(),
-        unhealthy_machines: unhealthy_nodes.iter().map(|node| format!("{node:?}")).collect(),
+        total_machines: machines.len(),
+        healthy_machines,
+        unhealthy_machines,
     }))
 }
 
