@@ -1,8 +1,10 @@
+use std::time::Duration;
+
 use bollard::{
     container::{LogOutput, LogsOptions},
     secret::ContainerSummary,
 };
-use tokio::task::JoinHandle;
+use tokio::{task::JoinSet, time};
 use tokio_stream::{Stream, StreamExt};
 use tracing::{error, info};
 
@@ -67,33 +69,61 @@ impl Container {
     }
 }
 
-pub struct LogsListenerManager(Vec<JoinHandle<Result<(), LogListenerError>>>);
+pub type LogListenerResult = Result<Container, LogListenerError>;
+pub struct LogsListenerManager(JoinSet<LogListenerResult>);
 
 impl LogsListenerManager {
-    pub fn new(handles: Vec<JoinHandle<Result<(), LogListenerError>>>) -> Self {
-        Self(handles)
+    pub fn new() -> Self {
+        let futures = JoinSet::new();
+        Self(futures)
     }
 
+    /// Add a listener to the manager as a future. The listener will be spawned and run in the
+    /// background. The future will resolve to the container that the listener is listening to once
+    /// the stream is closed for further handling, restarts, etc.
     pub async fn add_listener(&mut self, docker: &DockerClient, container: &Container) {
-        let mut listener = LogsListener::new(docker.clone(), container.clone());
-        let handle = tokio::spawn(async move {
-            loop {
-                if let Err(e) = listener.try_listen().await {
-                    error!("Listener error: {}", e);
-                    return Err(e);
-                }
-                info!(
-                    "{}",
-                    format!(
-                        "Listener for {:?} closed, attempting to reconnect...",
-                        listener.container.image()
-                    )
-                );
-                // Wait a sec for the container to come up, also don't spam
-                tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+        let listener = LogsListener::new(docker.clone(), container.clone());
+        // Spawn the listener future
+        self.0.spawn(async move {
+            if let Err(e) = listener.try_listen().await {
+                error!("Listener error: {}", e);
+                return Err(e);
             }
+            Ok(listener.container.clone())
         });
-        self.0.push(handle);
+    }
+
+    pub async fn run(mut self, docker: &DockerClient) {
+        while let Some(future) = self.0.join_next().await {
+            match future {
+                Ok(result) => {
+                    match result {
+                        Ok(container) => {
+                            info!("Listener exited for container: {:?}", container.image());
+                            info!(
+                                "Attempting to restart listener for container: {:?}",
+                                container.image()
+                            );
+                            // wait a sec for the container to potentially restart
+                            time::sleep(Duration::from_secs(5)).await;
+                            self.add_listener(docker, &container).await;
+                        }
+                        Err(e) => {
+                            error!("Listener error: {}", e);
+                        }
+                    };
+                }
+                Err(e) => {
+                    error!("Unexpected listener error: {}, listener exiting...", e);
+                }
+            }
+        }
+    }
+}
+
+impl Default for LogsListenerManager {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -107,7 +137,7 @@ impl LogsListener {
         Self { docker, container }
     }
 
-    async fn try_listen(&mut self) -> Result<(), LogListenerError> {
+    async fn try_listen(&self) -> Result<(), LogListenerError> {
         let mut stream = self.container.stream_logs_latest(&self.docker);
 
         while let Some(log_result) = stream.next().await {
@@ -134,4 +164,6 @@ impl LogsListener {
 pub enum LogListenerError {
     #[error("Docker API error: {0}")]
     DockerError(#[from] bollard::errors::Error),
+    #[error("LogListener error: {0}")]
+    LogListenerError(String),
 }
