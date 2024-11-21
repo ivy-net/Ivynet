@@ -1,39 +1,69 @@
+use std::fmt::Display;
+
 use crate::{
     avs::names::AvsName,
     config::get_detailed_system_information,
-    docker::dockerapi::{Container, DockerClient},
     error::IvyError,
-    ethers::types::{Address, Chain},
+    ethers::types::Address,
     grpc::{
         backend::backend_client::BackendClient,
         messages::{Metrics, MetricsAttribute, NodeData, SignedMetrics, SignedNodeData},
         tonic::{transport::Channel, Request},
     },
-    node_type::NodeType,
     signature::{sign_metrics, sign_node_data},
     wallet::IvyWallet,
 };
 use dispatch::TelemetryDispatchHandle;
+use serde::{Deserialize, Serialize};
 use tokio::time::{sleep, Duration};
-use tracing::{error, info};
+use tracing::error;
 use uuid::Uuid;
 
 pub mod dispatch;
 
 const TELEMETRY_INTERVAL_IN_MINUTES: u64 = 1;
 
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+pub enum AvsType {
+    EigenDA,
+    Unknown,
+}
+
+impl Display for AvsType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::EigenDA => write!(f, "eigenda"),
+            Self::Unknown => write!(f, "Unknown"),
+        }
+    }
+}
+
+impl From<&str> for AvsType {
+    fn from(value: &str) -> Self {
+        match value {
+            "da-node" => Self::EigenDA,
+            _ => Self::Unknown,
+        }
+    }
+}
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct ConfiguredAvs {
+    pub name: String,
+    pub avs_type: AvsType,
+    pub metric_port: u16,
+}
+
 pub async fn listen(
     backend_client: BackendClient<Channel>,
     machine_id: Uuid,
     identity_wallet: IvyWallet,
+    avses: &[ConfiguredAvs],
 ) -> Result<(), IvyError> {
-    let machine_id = machine_id.to_string();
-    let docker = DockerClient::default();
     let dispatch = TelemetryDispatchHandle::from_client(backend_client).await;
     let mut error_rx = dispatch.error_rx.resubscribe();
 
     tokio::select! {
-        metrics_err = listen_metrics(&docker, &machine_id, &identity_wallet, &dispatch) => {
+        metrics_err = listen_metrics(machine_id, &identity_wallet, avses, &dispatch) => {
             match metrics_err {
                 Ok(_) => unreachable!("Metrics listener should never return Ok"),
                 Err(err) => {
@@ -47,99 +77,74 @@ pub async fn listen(
             Err(IvyError::CustomError(error.to_string()))
         }
     }
-
-    //     loop {
-    //         let (metrics, node_data) = {
-    //             match name {
-    //                 Some(ref avs_name) => {
-    //                     //TODO: Forcing update of metrics_url every time
-    //                     // because caching it makes the endpoint stay as "None"
-    //                     // even after the endpoint has been built
-    //                     // More elegant solution needed in the future
-    //                     metrics_url = metrics_endpoint(avs_name).await;
-    //                 }
-    //             }
-    //             let node_data = node_data(&provider.avs, &name, machine_id,
-    // &provider.provider).await?;             (collect(&name, &metrics_url, &node_data,
-    // provider.chain().await.ok()).await, node_data)         };
-    //         if let Ok(metrics) = metrics {
-    //             info!("Sending metrics...");
-    //             // TODO: This avs_name has to be the name of the container. But the observability
-    // is             // not ready for it just yet
-    //             match send(&metrics, &node_data, machine_id, "", &identity_wallet, &mut
-    // backend_client)                 .await
-    //             {
-    //                 Ok(_) => {}
-    //                 Err(err) => error!("Cannot send metrics to backend ({err:?})"),
-    //             }
-    //         }
-    //
-    //         sleep(Duration::from_secs(TELEMETRY_INTERVAL_IN_MINUTES * 60)).await;
-    //     }
 }
 
 pub async fn listen_metrics(
-    docker: &DockerClient,
-    machine_id: &str,
+    machine_id: Uuid,
     identity_wallet: &IvyWallet,
+    avses: &[ConfiguredAvs],
     dispatch: &TelemetryDispatchHandle,
 ) -> Result<(), IvyError> {
     loop {
-        let node_containers = docker.find_all_node_containers().await;
-        let mut nodes_with_metrics: Vec<(&Container, String)> = Vec::new();
-
-        for node in node_containers.iter() {
-            let ports = node.public_ports();
-
-            for port in ports {
-                let url = format!("http://localhost:{}/metrics", port);
-                if reqwest::get(&url).await.is_ok() {
-                    nodes_with_metrics.push((node, url));
-                }
-            }
-        }
-
-        for node in nodes_with_metrics {
-            let (container, url) = node;
-            let avs_name = container.image().ok_or(IvyError::DockerImageError)?.to_string();
+        for avs in avses {
             let node_data = NodeData {
-                avs_name: avs_name.clone(),
-                avs_type: NodeType::try_from_docker_image_name(&avs_name)?.to_string(),
+                avs_name: avs.name.clone(),
+                avs_type: avs.avs_type.to_string(),
                 machine_id: machine_id.into(),
                 operator_id: identity_wallet.address().as_bytes().to_vec(),
                 active_set: None,
                 avs_version: None,
             };
 
-            // TODO: node_data does not accept an option, but collect does. Is that correct?
-            let metrics = collect(&Some(avs_name.clone()), &Some(url), &node_data, None).await;
-
-            if let Ok(metrics) = metrics {
-                info!("Sending metrics...");
-
-                let metrics_signature = sign_metrics(&metrics, identity_wallet)?;
-                let signed_metrics = SignedMetrics {
-                    machine_id: machine_id.into(),
-                    avs_name,
-                    signature: metrics_signature.to_vec(),
-                    metrics: metrics.to_vec(),
-                };
-
-                let node_data_signature = sign_node_data(&node_data, identity_wallet)?;
-                let signed_node_data = SignedNodeData {
-                    signature: node_data_signature.to_vec(),
-                    node_data: Some(node_data),
-                };
-
-                // client.metrics(Request::new(signed_metrics)).await;
-                // client.update_node_data(Request::new(signed_node_data)).await;
-
-                dispatch.send_metrics(signed_metrics).await?;
-                dispatch.send_node_data(signed_node_data).await?;
+            let metrics = if let Ok(mut metrics) = fetch_telemetry_from(avs.metric_port).await {
+                metrics.push(Metrics {
+                    name: "running".to_owned(),
+                    value: 1.0,
+                    attributes: vec![MetricsAttribute {
+                        name: "avs".to_owned(),
+                        value: avs.name.clone(),
+                    }],
+                });
+                metrics
             } else {
-                error!("Cannot collect metrics for container {:?}", container.image());
-            }
+                vec![Metrics {
+                    name: "running".to_owned(),
+                    value: 0.0,
+                    attributes: vec![MetricsAttribute {
+                        name: "avs".to_owned(),
+                        value: avs.name.clone(),
+                    }],
+                }]
+            };
+            let metrics_signature = sign_metrics(&metrics, identity_wallet)?;
+            let signed_metrics = SignedMetrics {
+                machine_id: machine_id.into(),
+                avs_name: Some(avs.name.clone()),
+                signature: metrics_signature.to_vec(),
+                metrics: metrics.to_vec(),
+            };
+
+            let node_data_signature = sign_node_data(&node_data, identity_wallet)?;
+            let signed_node_data = SignedNodeData {
+                signature: node_data_signature.to_vec(),
+                node_data: Some(node_data),
+            };
+
+            dispatch.send_metrics(signed_metrics).await?;
+            dispatch.send_node_data(signed_node_data).await?;
         }
+        // Last but not least - send system metrics
+        if let Ok(system_metrics) = fetch_system_telemetry().await {
+            let metrics_signature = sign_metrics(&system_metrics, identity_wallet)?;
+            let signed_metrics = SignedMetrics {
+                machine_id: machine_id.into(),
+                avs_name: None,
+                signature: metrics_signature.to_vec(),
+                metrics: system_metrics.to_vec(),
+            };
+            dispatch.send_metrics(signed_metrics).await?;
+        }
+
         sleep(Duration::from_secs(TELEMETRY_INTERVAL_IN_MINUTES * 60)).await;
     }
 }
@@ -171,160 +176,52 @@ pub async fn delete_node_data_payload(
     Ok(())
 }
 
-// async fn metrics_endpoint(docker_image_name: &str) -> Option<String> {
-//     let node_type = NodeType::try_from_docker_image_name(docker_image_name)?;
-//     let url: Option<String> = match node_type {
-//         NodeType::EigenDA => {
-//             let container_info = dockerapi::inspect(node_type.default_docker_image_name()).await;
-//         }
-//         _ => None,
-//     };
-//     if let Ok(AvsName::EigenDA) = AvsName::try_from(avs_name) {
-//         let info = dockerapi::inspect(EIGENDA_DOCKER_IMAGE_NAME).await;
-//         if let Some(info) = info {
-//             let ports = dockerapi::get_active_ports(&info);
-//             debug!("Ports: {:?}", ports);
-//             for port in ports {
-//                 let url = format!("http://localhost:{}/metrics", port);
-//                 if reqwest::get(&url).await.is_ok() {
-//                     return Some(url);
-//                 }
-//             }
-//         }
-//     }
-//     todo!()
-// }
+pub async fn fetch_telemetry_from(port: u16) -> Result<Vec<Metrics>, IvyError> {
+    if let Ok(resp) = reqwest::get(format!("http://localhost:{}/metrics", port)).await {
+        if let Ok(body) = resp.text().await {
+            let metrics = body
+                .split('\n')
+                .filter_map(|line| TelemetryParser::new(line).parse())
+                .collect::<Vec<_>>();
 
-// TODO: Ask about if/else for this function
-// async fn node_data(
-//     avs_name: &Option<String>,
-//     machine_id: Uuid,
-//     provider: &Arc<IvyProvider>,
-// ) -> Result<NodeData, IvyError> {
-//     Ok(if let Some(avs) = avs {
-//         NodeData {
-//             avs_type: avs.name().to_string(),
-//             machine_id: machine_id.into(),
-//             operator_id: provider.address().as_bytes().to_vec(),
-//             avs_name: avs_name.clone().unwrap_or("".to_string()),
-//             avs_version: avs.version().ok().map(|v| v.to_string()),
-//             active_set: Some(avs.active_set(provider.clone()).await),
-//         }
-//     } else {
-//         NodeData {
-//             avs_type: "".to_string(),
-//             machine_id: machine_id.into(),
-//             operator_id: provider.address().as_bytes().to_vec(),
-//             avs_name: "".to_string(),
-//             avs_version: Some("0.0.0".to_string()),
-//             active_set: Some(false),
-//         }
-//     })
-// }
-
-async fn collect(
-    avs: &Option<String>,
-    metrics_url: &Option<String>,
-    node_data: &NodeData,
-    chain: Option<Chain>,
-) -> Result<Vec<Metrics>, IvyError> {
-    info!("Collecting metrics for {metrics_url:?}...");
-    let mut metrics = if let Some(address) = metrics_url {
-        if let Ok(resp) = reqwest::get(address).await {
-            if let Ok(body) = resp.text().await {
-                let metrics = body
-                    .split('\n')
-                    .filter_map(|line| TelemetryParser::new(line).parse())
-                    .collect::<Vec<_>>();
-
-                metrics
-            } else {
-                Vec::new()
-            }
+            Ok(metrics)
         } else {
-            Vec::new()
+            Err(IvyError::NotFound)
         }
     } else {
-        Vec::new()
-    };
+        Err(IvyError::NotFound)
+    }
+}
 
+async fn fetch_system_telemetry() -> Result<Vec<Metrics>, IvyError> {
     // Now we need to add basic metrics
     let (cpu_usage, ram_usage, free_ram, disk_usage, free_disk, uptime) =
         get_detailed_system_information()?;
 
-    metrics.push(Metrics {
-        name: "cpu_usage".to_owned(),
-        value: cpu_usage,
-        attributes: Default::default(),
-    });
-
-    metrics.push(Metrics {
-        name: "ram_usage".to_owned(),
-        value: ram_usage as f64,
-        attributes: Default::default(),
-    });
-
-    metrics.push(Metrics {
-        name: "free_ram".to_owned(),
-        value: free_ram as f64,
-        attributes: Default::default(),
-    });
-    metrics.push(Metrics {
-        name: "disk_usage".to_owned(),
-        value: disk_usage as f64,
-        attributes: Default::default(),
-    });
-
-    metrics.push(Metrics {
-        name: "free_disk".to_owned(),
-        value: free_disk as f64,
-        attributes: Default::default(),
-    });
-
-    metrics.push(Metrics {
-        name: "uptime".to_owned(),
-        value: uptime as f64,
-        attributes: Default::default(),
-    });
-
-    metrics.push(Metrics {
-        name: "running".to_owned(),
-        value: if metrics_url.is_some() { 1.0 } else { 0.0 },
-        attributes: if let Some(avs) = avs {
-            vec![
-                MetricsAttribute { name: "avs".to_owned(), value: avs.to_owned() },
-                MetricsAttribute {
-                    name: "chain".to_owned(),
-                    value: {
-                        match chain {
-                            Some(chain) => chain.to_string(),
-                            None => "unknown".to_string(),
-                        }
-                    },
-                },
-                MetricsAttribute {
-                    name: "operator_id".to_owned(),
-                    value: format!("{:?}", Address::from_slice(&node_data.operator_id)),
-                },
-                MetricsAttribute {
-                    name: "active_set".to_owned(),
-                    value: node_data.active_set.unwrap_or(false).to_string(),
-                },
-                MetricsAttribute {
-                    name: "version".to_owned(),
-                    value: node_data
-                        .avs_version
-                        .as_ref()
-                        .map(|v| v.to_string())
-                        .unwrap_or_else(|| "0.0.0".to_string()),
-                },
-            ]
-        } else {
-            Default::default()
+    Ok(vec![
+        Metrics { name: "cpu_usage".to_owned(), value: cpu_usage, attributes: Default::default() },
+        Metrics {
+            name: "ram_usage".to_owned(),
+            value: ram_usage as f64,
+            attributes: Default::default(),
         },
-    });
-
-    Ok(metrics)
+        Metrics {
+            name: "free_ram".to_owned(),
+            value: free_ram as f64,
+            attributes: Default::default(),
+        },
+        Metrics {
+            name: "disk_usage".to_owned(),
+            value: disk_usage as f64,
+            attributes: Default::default(),
+        },
+        Metrics {
+            name: "free_disk".to_owned(),
+            value: free_disk as f64,
+            attributes: Default::default(),
+        },
+        Metrics { name: "uptime".to_owned(), value: uptime as f64, attributes: Default::default() },
+    ])
 }
 
 // async fn send(
@@ -366,7 +263,7 @@ enum TelemetryToken {
     Comma,
 }
 
-struct TelemetryParser {
+pub struct TelemetryParser {
     line: String,
     position: usize,
     tokens: Vec<TelemetryToken>,

@@ -14,7 +14,7 @@ message RegistrationCredentials {
 message SignedMetrics {
     bytes signature = 1;
     bytes machine_id = 2;
-    string avs_name = 3;
+    optional string avs_name = 3;
     repeated Metrics metrics = 4;
 }
 
