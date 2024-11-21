@@ -107,31 +107,33 @@ impl Avs {
         Ok(avses.into_iter().filter_map(|e| Avs::try_from(e).ok()).collect())
     }
 
-    pub async fn record_avs_data(
+    pub async fn record_avs_data_from_client(
         pool: &sqlx::PgPool,
-        operator_id: &Address,
         machine_id: Uuid,
         avs_name: &str,
         avs_type: &NodeType,
         avs_version: &Version,
-        active_set: bool,
     ) -> Result<(), BackendError> {
+        let now = chrono::Utc::now().naive_utc();
+
         sqlx::query!(
-            "INSERT INTO avs (avs_name, machine_id, avs_type, avs_version, active_set, operator_address) values ($1, $2, $3, $4, $5, $6)
-            ON CONFLICT (operator_address, avs_name)
-            DO UPDATE SET avs_version = $4, active_set = $5",
+            "INSERT INTO avs (avs_name, machine_id, avs_type, avs_version, active_set, operator_address, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+             ON CONFLICT (machine_id, avs_name)
+             DO UPDATE SET avs_version = EXCLUDED.avs_version, updated_at = $8",
             avs_name.to_string(),
             machine_id,
             avs_type.clone().to_string(),
             avs_version.to_string(),
-            active_set,
-            operator_id.as_bytes(),
+            false,
+            Option::<Vec<u8>>::None,
+            now,
+            now
         )
         .execute(pool)
         .await?;
         Ok(())
     }
-
     pub async fn delete_avs_data(
         pool: &sqlx::PgPool,
         machine_id: Uuid,

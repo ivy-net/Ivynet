@@ -43,9 +43,7 @@ message SignedNodeData {
 
 message NodeData {
     bytes machine_id = 1;
-    bytes operator_id = 2;
+    string avs_name = 2;
     string avs_type = 3;
-    string avs_name = 4;
-    optional string avs_version = 5;
-    optional bool active_set = 6;
+    optional string avs_version = 4;
 }

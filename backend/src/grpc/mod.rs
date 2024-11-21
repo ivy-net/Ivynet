@@ -153,22 +153,22 @@ impl Backend for BackendService {
                 ));
             }
 
+            let version = node_data
+                .avs_version
+                .as_deref()
+                .and_then(|v| Version::parse(v).ok())
+                .unwrap_or_else(|| Version::new(0, 0, 0));
+
             if !node_data.avs_name.is_empty() {
-                Avs::record_avs_data(
+                Avs::record_avs_data_from_client(
                     &self.pool,
-                    &Address::from_slice(&node_data.operator_id),
                     machine_id,
-                    node_data.avs_name.as_str(),
-                    &NodeType::from(node_data.avs_name.as_str()),
-                    &node_data
-                        .avs_version
-                        .as_ref()
-                        .map(|v| Version::parse(v).unwrap_or(Version::new(0, 0, 0)))
-                        .unwrap_or(Version::new(0, 0, 0)),
-                    node_data.active_set.unwrap_or(false),
+                    &node_data.avs_name,
+                    &NodeType::from(node_data.avs_type.as_str()),
+                    &version,
                 )
                 .await
-                .map_err(|e| Status::internal(format!("Failed while saving node_data: {}", e)))?;
+                .map_err(|e| Status::internal(format!("Failed while saving node_data: {e}")))?;
             }
             Ok(Response::new(()))
         } else {

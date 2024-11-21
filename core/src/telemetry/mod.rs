@@ -3,12 +3,12 @@ use std::fmt::Display;
 use crate::{
     config::get_detailed_system_information,
     error::IvyError,
-    ethers::types::Address,
     grpc::{
         backend::backend_client::BackendClient,
         messages::{Metrics, MetricsAttribute, NodeData, SignedMetrics, SignedNodeData},
         tonic::{transport::Channel, Request},
     },
+    node_type::NodeType,
     signature::{sign_metrics, sign_node_data},
     wallet::IvyWallet,
 };
@@ -90,8 +90,6 @@ pub async fn listen_metrics(
                 avs_name: avs.name.clone(),
                 avs_type: avs.avs_type.to_string(),
                 machine_id: machine_id.into(),
-                operator_id: identity_wallet.address().as_bytes().to_vec(),
-                active_set: None,
                 avs_version: None,
             };
 
@@ -152,7 +150,6 @@ pub async fn delete_node_data_payload(
     identity_wallet: &IvyWallet,
     machine_id: Uuid,
     backend_client: &mut BackendClient<Channel>,
-    operator_id: Address,
     avs_type: NodeType,
     avs_name: &str,
 ) -> Result<(), IvyError> {
@@ -160,8 +157,6 @@ pub async fn delete_node_data_payload(
         avs_name: avs_name.to_string(),
         avs_type: avs_type.to_string(),
         machine_id: machine_id.into(),
-        operator_id: operator_id.as_bytes().to_vec(),
-        active_set: None,
         avs_version: None,
     };
     let signature = sign_node_data(&data, identity_wallet)?;
