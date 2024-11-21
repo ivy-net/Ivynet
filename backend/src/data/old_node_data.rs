@@ -21,41 +21,12 @@ pub const EIGEN_PERFORMANCE_METRIC: &str = "eigen_performance_score";
 pub const IDLE_MINUTES_THRESHOLD: i64 = 15;
 pub const EIGEN_PERFORMANCE_HEALTHY_THRESHOLD: f64 = 80.0;
 
-// #[derive(Serialize, ToSchema, Clone, Debug)]
-// pub enum NodeStatus {
-//     Healthy,
-//     Unhealthy,
-//     Idle,
-//     Error,
-//     // UpdateNeeded,
-// }
-
-#[derive(Serialize, ToSchema, Clone, Debug, PartialEq)]
-pub enum UpdateStatus {
-    Outdated,
-    Updateable,
-    UpToDate,
-    Unknown,
-}
-
-/// Condense list of metrics into a smaller list of metrics for the frontend
-pub fn condense_metrics(metrics: &[Metric]) -> Result<Vec<Metric>, BackendError> {
-    let node_type = find_running_avs_type(metrics).ok_or(BackendError::NoRunningAvsFound(
-        "No running AVS found when searching for condensed metrics".to_owned(),
-    ))?;
-
-    match node_type {
-        NodeType::EigenDA => Ok(filter_metrics_by_names(metrics, &CONDENSED_EIGENDA_METRICS_NAMES)),
-        _ => Err(BackendError::CondensedMetricsNotFound(format!(
-            "No condensed metrics found for AVS: {}, use the /metrics/all endpoint instead",
-            node_type
-        ))),
-    }
-}
-
-/// Filter the metrics by the given names.
-fn filter_metrics_by_names(metrics: &[Metric], allowed_names: &[&str]) -> Vec<Metric> {
-    metrics.iter().filter(|metric| allowed_names.contains(&metric.name.as_str())).cloned().collect()
+#[derive(Serialize, ToSchema, Clone, Debug)]
+pub enum NodeStatus {
+    Healthy,
+    Unhealthy,
+    Idle,
+    Error,
 }
 
 /// Find the name of the running AVS.
@@ -161,44 +132,6 @@ pub fn categorize_updateable_nodes(
     update_statuses
 }
 
-pub fn get_update_status(
-    version_map: HashMap<NodeTypeId, VersionData>,
-    avs_version: Option<String>,
-    chain: Option<String>,
-    node_type: Option<String>,
-) -> UpdateStatus {
-    match (avs_version, chain, node_type) {
-        (Some(v), Some(c), Some(nt)) => {
-            let node_type = NodeType::from(nt.as_str());
-            let avs_version = Version::parse(&v).ok();
-            let avs_chain = c.parse::<Chain>().ok();
-
-            match (avs_version, avs_chain) {
-                (Some(current_version), Some(ac)) if node_type != NodeType::Unknown => {
-                    if let Some(data) = version_map.get(&NodeTypeId { node_type, chain: ac }) {
-                        if data
-                            .breaking_change_version
-                            .clone()
-                            .map(|breaking| current_version < breaking)
-                            .unwrap_or(false)
-                        {
-                            UpdateStatus::Outdated
-                        } else if data.latest_version > current_version {
-                            UpdateStatus::Updateable
-                        } else {
-                            UpdateStatus::UpToDate
-                        }
-                    } else {
-                        UpdateStatus::Unknown
-                    }
-                }
-                _ => UpdateStatus::Unknown,
-            }
-        }
-        _ => UpdateStatus::Unknown,
-    }
-}
-
 /// Look up NodeStatus of a specific node
 pub fn get_node_status_from_id(
     node_id: Uuid,
@@ -228,16 +161,6 @@ pub fn get_node_status(metrics: HashMap<String, Metric>) -> NodeStatus {
         _ => NodeStatus::Error,
     }
 }
-
-const CONDENSED_EIGENDA_METRICS_NAMES: [&str; 7] = [
-    "eigen_performance_score",
-    "node_reachability_status",
-    "cpu_usage",
-    "disk_usage",
-    "uptime",
-    "ram_usage",
-    "running",
-];
 
 #[cfg(test)]
 mod data_filtering_tests {

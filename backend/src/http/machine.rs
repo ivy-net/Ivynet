@@ -4,85 +4,27 @@ use axum::{
     Json,
 };
 use axum_extra::extract::CookieJar;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
 use std::{collections::HashMap, str::FromStr};
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 use crate::{
-    data::{self, EIGEN_PERFORMANCE_HEALTHY_THRESHOLD, EIGEN_PERFORMANCE_METRIC},
+    data::{
+        machine_data::{
+            build_machine_info, get_machine_health, MachineInfoReport, MachineStatusReport,
+        },
+        node_data::{self, build_avs_info, AvsInfo},
+    },
     db::{
         avs::Avs,
         log::{ContainerLog, LogLevel},
-        machine::Machine,
         metric::Metric,
     },
     error::BackendError,
 };
 
-use super::{
-    authorize,
-    node::{build_avs_info, AvsInfo, NodeErrorInfo},
-    HttpState,
-};
-
-const CORES_METRIC: &str = "cores";
-const CPU_USAGE_METRIC: &str = "cpu_usage";
-const MEMORY_USAGE_METRIC: &str = "ram_usage";
-const MEMORY_FREE_METRIC: &str = "free_ram";
-const DISK_USAGE_METRIC: &str = "disk_usage";
-const DISK_FREE_METRIC: &str = "free_disk";
-
-#[derive(Serialize, ToSchema, Clone, Debug, Default)]
-pub struct MachineStatusReport {
-    pub total_machines: usize,
-    pub healthy_machines: Vec<String>,
-    pub unhealthy_machines: Vec<String>,
-}
-
-#[derive(Serialize, ToSchema, Clone, Debug)]
-pub enum MachineStatus {
-    Healthy,
-    Unhealthy,
-}
-
-#[derive(Serialize, Debug, Clone)]
-pub enum MachineError {
-    Idle,
-    SystemResourcesUsage,
-    NodeError(NodeErrorInfo),
-}
-
-#[derive(Serialize, ToSchema, Clone, Debug)]
-pub struct MachineInfoReport {
-    pub machine_id: String,
-    pub name: String,
-    pub status: MachineStatus,
-    pub system_metrics: SystemMetrics,
-    pub avs_list: Vec<AvsInfo>,
-    pub errors: Vec<MachineError>,
-}
-
-#[derive(Serialize, ToSchema, Clone, Debug)]
-pub struct HardwareUsageInfo {
-    pub usage: f64,
-    pub free: f64,
-    pub status: HardwareInfoStatus,
-}
-
-#[derive(Serialize, ToSchema, Clone, Debug, PartialEq, Eq)]
-pub enum HardwareInfoStatus {
-    Healthy,
-    Warning,
-    Critical,
-}
-
-#[derive(Serialize, ToSchema, Clone, Debug)]
-pub struct SystemMetrics {
-    pub cores: f64,
-    pub cpu_usage: f64,
-    pub memory_info: HardwareUsageInfo,
-    pub disk_info: HardwareUsageInfo,
-}
+use super::{authorize, HttpState};
 
 /// Grab information for every node in the organization
 #[utoipa::path(
@@ -128,50 +70,18 @@ pub async fn status(
 ) -> Result<Json<MachineStatusReport>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     let machines = account.all_machines(&state.pool).await?;
+    let machine_ids = machines.iter().map(|m| m.machine_id).collect::<Vec<Uuid>>();
 
-    let mut healthy_machines = Vec::new();
-    let mut unhealthy_machines = Vec::new();
-
-    for machine in &machines {
-        let avses = Avs::get_machines_avs_list(&state.pool, machine.machine_id).await?;
-        let mut has_errors = false;
-
-        for avs in &avses {
-            let metrics =
-                Metric::get_organized_for_avs(&state.pool, machine.machine_id, &avs.avs_name)
-                    .await?;
-            let running_nodes =
-                data::find_running_avs_type(&metrics.values().cloned().collect::<Vec<_>>());
-
-            // Check if AVS is running
-            if running_nodes.is_none() {
-                has_errors = true;
-                continue;
-            }
-
-            // Check performance if it's running
-            if let Some(perf) = metrics.get(EIGEN_PERFORMANCE_METRIC) {
-                if perf.value < EIGEN_PERFORMANCE_HEALTHY_THRESHOLD {
-                    has_errors = true;
-                }
-            }
-        }
-
-        if !avses.is_empty() && !has_errors {
-            healthy_machines.push(format!("{:?}", machine.machine_id));
-        } else {
-            unhealthy_machines.push(format!("{:?}", machine.machine_id));
-        }
-    }
+    let (healthy_list, unhealthy_list) = get_machine_health(&state.pool, machine_ids).await?;
 
     Ok(Json(MachineStatusReport {
         total_machines: machines.len(),
-        healthy_machines,
-        unhealthy_machines,
+        healthy_machines: healthy_list.into_iter().map(|id| format!("{:?}", id)).collect(),
+        unhealthy_machines: unhealthy_list.into_iter().map(|id| format!("{:?}", id)).collect(),
     }))
 }
 
-/// Get an overview of which nodes are idle
+/// Get an overview of which machines are idle
 #[utoipa::path(
     get,
     path = "/machine/idle",
@@ -180,28 +90,23 @@ pub async fn status(
         (status = 404)
     )
 )]
-pub async fn idling(
+pub async fn idle(
     headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
 ) -> Result<Json<Vec<String>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let machines = account.all_machines(&state.pool).await?;
 
-    let avses = account.all_avses(&state.pool).await?;
-
-    let mut node_metrics_map = HashMap::new();
-
-    for avs in &avses {
-        node_metrics_map.insert(
-            avs.machine_id,
-            Metric::get_organized_for_avs(&state.pool, avs.machine_id, &avs.avs_name.to_string())
-                .await?,
-        );
+    let mut idle: Vec<String> = vec![];
+    for machine in &machines {
+        let avses = Avs::get_machines_avs_list(&state.pool, machine.machine_id).await?;
+        if avses.is_empty() {
+            idle.push(format!("{:?}", machine.machine_id));
+        }
     }
 
-    let (_, idle_nodes) = data::categorize_running_nodes(node_metrics_map.clone());
-
-    Ok(Json(idle_nodes.iter().map(|node| format!("{node:?}")).collect()))
+    Ok(Json(idle))
 }
 
 /// Get an overview of which nodes are unhealthy
@@ -219,24 +124,11 @@ pub async fn unhealthy(
     jar: CookieJar,
 ) -> Result<Json<Vec<String>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let machines = account.all_machines(&state.pool).await?;
+    let machine_ids = machines.iter().map(|m| m.machine_id).collect::<Vec<Uuid>>();
 
-    let avses = account.all_avses(&state.pool).await?;
-
-    let mut node_metrics_map = HashMap::new();
-
-    for avs in &avses {
-        node_metrics_map.insert(
-            avs.machine_id,
-            Metric::get_organized_for_avs(&state.pool, avs.machine_id, &avs.avs_name.to_string())
-                .await?,
-        );
-    }
-
-    let (running_nodes, _) = data::categorize_running_nodes(node_metrics_map.clone());
-    let (_, unhealthy_nodes) =
-        data::categorize_node_health(running_nodes.clone(), node_metrics_map.clone());
-
-    Ok(Json(unhealthy_nodes.iter().map(|node| format!("{node:?}")).collect()))
+    let (_healthy_list, unhealthy_list) = get_machine_health(&state.pool, machine_ids).await?;
+    Ok(Json(unhealthy_list.into_iter().map(|id| format!("{:?}", id)).collect()))
 }
 
 /// Get an overview of which nodes are healthy
@@ -254,24 +146,11 @@ pub async fn healthy(
     jar: CookieJar,
 ) -> Result<Json<Vec<String>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let machines = account.all_machines(&state.pool).await?;
+    let machine_ids = machines.iter().map(|m| m.machine_id).collect::<Vec<Uuid>>();
 
-    let avses = account.all_avses(&state.pool).await?;
-
-    let mut node_metrics_map = HashMap::new();
-
-    for avs in &avses {
-        node_metrics_map.insert(
-            avs.machine_id,
-            Metric::get_organized_for_avs(&state.pool, avs.machine_id, &avs.avs_name.to_string())
-                .await?,
-        );
-    }
-
-    let (running_nodes, _) = data::categorize_running_nodes(node_metrics_map.clone());
-    let (healthy_nodes, _) =
-        data::categorize_node_health(running_nodes.clone(), node_metrics_map.clone());
-
-    Ok(Json(healthy_nodes.iter().map(|node| format!("{node:?}")).collect()))
+    let (healthy_list, _unhealthy_list) = get_machine_health(&state.pool, machine_ids).await?;
+    Ok(Json(healthy_list.into_iter().map(|id| format!("{:?}", id)).collect()))
 }
 
 #[derive(Deserialize, Debug, Clone, ToSchema)]
@@ -332,7 +211,7 @@ pub async fn delete(
 /// Get info on a specific node
 #[utoipa::path(
     get,
-    path = "/machine/:machine_id/",
+    path = "/machine/:machine_id",
     responses(
         (status = 200, body = Info),
         (status = 404)
@@ -353,7 +232,7 @@ pub async fn info(
     Ok(Json(build_machine_info(&state.pool, &machine, metrics).await?))
 }
 
-/// Get condensed metrics for a specific node
+/// Get condensed metrics for a specific node on a specific
 #[utoipa::path(
     get,
     path = "/machine/:machine_id/:avs_name/metrics",
@@ -372,9 +251,11 @@ pub async fn metrics_condensed(
     let machine =
         authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
 
-    let metrics = Metric::get_all_for_avs(&state.pool, machine.machine_id, &avs_name).await?;
+    let avses = Avs::get_machines_avs_list(&state.pool, machine.machine_id).await?;
+    let avs = avses.iter().find(|avs| avs.avs_name == avs_name).ok_or(BackendError::InvalidAvs)?;
+    let metrics = Metric::get_all_for_avs(&state.pool, machine.machine_id, &avs.avs_name).await?;
 
-    let filtered_metrics = data::condense_metrics(&metrics)?;
+    let filtered_metrics = node_data::condense_metrics(avs.avs_type, &metrics)?;
 
     Ok(Json(filtered_metrics))
 }
@@ -395,11 +276,14 @@ pub async fn metrics_all(
     jar: CookieJar,
 ) -> Result<Json<Vec<Metric>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-
     let machine =
         authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
 
-    Ok(Metric::get_all_for_avs(&state.pool, machine.machine_id, &avs_name).await?.into())
+    let avses = Avs::get_machines_avs_list(&state.pool, machine.machine_id).await?;
+    let avs = avses.iter().find(|avs| avs.avs_name == avs_name).ok_or(BackendError::InvalidAvs)?;
+    let metrics = Metric::get_all_for_avs(&state.pool, machine.machine_id, &avs.avs_name).await?;
+
+    Ok(Json(metrics))
 }
 
 #[utoipa::path(
@@ -423,7 +307,6 @@ pub async fn logs(
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<Vec<ContainerLog>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-
     let machine =
         authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
 
@@ -477,21 +360,28 @@ pub async fn get_all_node_data(
     State(state): State<HttpState>,
     Path(machine_id): Path<String>,
     jar: CookieJar,
-) -> Result<Json<Vec<Avs>>, BackendError> {
+) -> Result<Json<Vec<AvsInfo>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     let machine =
         authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
 
     // Get all data for the node
-    let nodes_data = Avs::get_machines_avs_list(&state.pool, machine.machine_id).await?;
+    let nodes = Avs::get_machines_avs_list(&state.pool, machine.machine_id).await?;
 
-    Ok(Json(nodes_data))
+    let mut node_data = vec![];
+    for node in nodes {
+        let metrics =
+            Metric::get_organized_for_avs(&state.pool, machine.machine_id, &node.avs_name).await?;
+        node_data.push(build_avs_info(&state.pool, node.clone(), metrics).await);
+    }
+
+    Ok(Json(node_data))
 }
 
 /// Delete all data for a specific node
 #[utoipa::path(
     delete,
-    path = "/machine/:id/data",
+    path = "/machine/:id",
     responses(
         (status = 200),
         (status = 404)
@@ -511,121 +401,4 @@ pub async fn delete_machine_data(
         .await?;
 
     Ok(())
-}
-
-// TODO: To be updated
-/// Delete all data for a specific AVS running on a node
-// #[utoipa::path(
-//     delete,
-//     path = "/machine/:id/data/:avs/operator_id",
-//     responses(
-//         (status = 200),
-//         (status = 404)
-//     )
-// )]
-// pub async fn delete_avs_node_data(
-//     headers: HeaderMap,
-//     State(state): State<HttpState>,
-//     Path((id, avs, operator_id)): Path<(String, String, String)>,
-//     jar: CookieJar,
-// ) -> Result<(), BackendError> {
-//     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-//     let machine = authorize::verify_node_ownership(&account, State(state.clone()), id).await?;
-//     let avs_name = AvsName::try_from(&avs[..]).map_err(|_| BackendError::InvalidAvs)?;
-//
-//     let op_id: Address = operator_id.parse::<Address>().map_err(|_| BackendError::BadId)?;
-//
-//     avs.delete(&state.pool).await?;
-//
-//     Ok(())
-// }
-
-pub async fn build_machine_info(
-    pool: &sqlx::PgPool,
-    machine: &Machine,
-    machine_metrics: HashMap<String, Metric>,
-) -> Result<MachineInfoReport, BackendError> {
-    let mut errors = vec![];
-
-    let memory_info = build_hardware_info(
-        machine_metrics.get(MEMORY_USAGE_METRIC).cloned(),
-        machine_metrics.get(MEMORY_FREE_METRIC).cloned(),
-    );
-
-    let disk_info = build_hardware_info(
-        machine_metrics.get(DISK_USAGE_METRIC).cloned(),
-        machine_metrics.get(DISK_FREE_METRIC).cloned(),
-    );
-
-    if disk_info.status == HardwareInfoStatus::Critical ||
-        memory_info.status == HardwareInfoStatus::Critical
-    {
-        errors.push(MachineError::SystemResourcesUsage);
-    }
-
-    let system_metrics = SystemMetrics {
-        cores: if let Some(cores) = machine_metrics.get(CORES_METRIC) { cores.value } else { 0.0 },
-        cpu_usage: if let Some(cpu) = machine_metrics.get(CPU_USAGE_METRIC) {
-            cpu.value
-        } else {
-            0.0
-        },
-        memory_info,
-        disk_info,
-    };
-
-    let avses = Avs::get_machines_avs_list(pool, machine.machine_id).await?;
-    let mut avs_infos = vec![];
-
-    if avses.is_empty() {
-        errors.push(MachineError::Idle);
-    }
-
-    for avs in avses {
-        let metrics =
-            Metric::get_organized_for_avs(pool, machine.machine_id, &avs.avs_name.to_string())
-                .await?;
-        let avs_info = build_avs_info(pool, avs.clone(), metrics).await;
-
-        if !avs_info.errors.is_empty() {
-            let node_error_info = NodeErrorInfo {
-                name: avs.avs_name,
-                errors: avs_info.errors.clone(),
-                node_type: avs.avs_type,
-            };
-            errors.push(MachineError::NodeError(node_error_info));
-        }
-
-        avs_infos.push(avs_info);
-    }
-
-    let info_report = MachineInfoReport {
-        machine_id: format!("{:?}", machine.machine_id),
-        name: format!("{:?}", machine.name),
-        status: if errors.is_empty() { MachineStatus::Healthy } else { MachineStatus::Unhealthy },
-        system_metrics,
-        avs_list: avs_infos,
-        errors,
-    };
-
-    Ok(info_report)
-}
-
-pub fn build_hardware_info(
-    usage_metric: Option<Metric>,
-    free_metric: Option<Metric>,
-) -> HardwareUsageInfo {
-    let usage = if let Some(usage) = usage_metric { usage.value } else { 0.0 };
-    let free = if let Some(free) = free_metric { free.value } else { 0.0 };
-    HardwareUsageInfo {
-        usage,
-        free,
-        status: if usage > ((usage + free) * 0.95) {
-            HardwareInfoStatus::Critical
-        } else if usage > ((usage + free) * 0.9) {
-            HardwareInfoStatus::Warning
-        } else {
-            HardwareInfoStatus::Healthy
-        },
-    }
 }

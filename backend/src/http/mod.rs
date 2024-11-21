@@ -94,7 +94,7 @@ fn create_router() -> Router<HttpState> {
         .route("/client/:id", get(client::client_machines))
         .route("/machine", get(machine::machine))
         .route("/machine/status", get(machine::status))
-        .route("/machine/idle", get(machine::idling))
+        .route("/machine/idle", get(machine::idle))
         .route("/machine/unhealthy", get(machine::unhealthy))
         .route("/machine/healthy", get(machine::healthy))
         .route("/machine/:id/metrics", get(machine::metrics_condensed))
@@ -107,6 +107,7 @@ fn create_router() -> Router<HttpState> {
         .route("/machine/:id", delete(machine::delete))
         .route("/avs", get(node::all_avs_info))
         .route("/avs/status", get(node::avs_status))
+        .route("/avs/:id/:avs_name/:operator_id", delete(node::delete_avs_node_data))
         .route("info/avs/version/:avs", get(info::get_version_info))
         .route("info/avs/version", get(info::get_all_version_info))
         .merge(
