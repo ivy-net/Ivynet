@@ -17,11 +17,12 @@ use crate::init::set_backend_connection;
 const IMAGE_NAME_EIGENDA: &str = "ghcr.io/layr-labs/eigenda/opr-node";
 const METRIC_LABEL_PERFORMANCE: &str = "eigen_performance_score";
 const METRIC_ATTR_LABEL_AVS_NAME: &str = "avs_name";
-const MONITOR_CONFIG_FILE: &str = "avs-config.toml";
+const MONITOR_CONFIG_FILE: &str = "monitor-config.toml";
 
 #[derive(Clone, Debug)]
 struct PotentialAvs {
     pub name: String,
+    pub avs_type: AvsType,
     pub ports: Vec<u16>,
 }
 
@@ -93,11 +94,12 @@ pub async fn scan() -> Result<(), anyhow::Error> {
         .into_iter()
         .filter_map(|c| {
             if let (Some(names), Some(image_name), Some(ports)) = (c.names, c.image, c.ports) {
-                if potential_avs_name(&image_name) {
+                if let Some(avs_type) = potential_avs_name(&image_name) {
                     let ports = ports.into_iter().filter_map(|p| p.public_port).collect::<Vec<_>>();
                     if !ports.is_empty() {
                         return Some(PotentialAvs {
                             name: names.first().unwrap_or(&image_name).to_string(),
+                            avs_type,
                             ports,
                         });
                     }
@@ -119,7 +121,10 @@ pub async fn scan() -> Result<(), anyhow::Error> {
                     // Checking performance score metrics to read a potential avs type
                     avses.push(ConfiguredAvs {
                         name: avs.name.clone(),
-                        avs_type: guess_avs_type(metrics),
+                        avs_type: match guess_avs_type(metrics) {
+                            AvsType::Unknown => avs.avs_type,
+                            avs_type => avs_type,
+                        },
                         metric_port: *port,
                     });
                 }
@@ -153,8 +158,11 @@ pub async fn scan() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-fn potential_avs_name(name: &str) -> bool {
-    name.contains(IMAGE_NAME_EIGENDA)
+fn potential_avs_name(name: &str) -> Option<AvsType> {
+    if name.contains(IMAGE_NAME_EIGENDA) {
+        return Some(AvsType::EigenDA);
+    }
+    None
 }
 
 fn guess_avs_type(metrics: Vec<Metrics>) -> AvsType {

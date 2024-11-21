@@ -111,7 +111,7 @@ impl Avs {
         pool: &sqlx::PgPool,
         operator_id: &Address,
         machine_id: Uuid,
-        avs_name: &AvsName,
+        avs_name: &str,
         avs_version: &Version,
         active_set: bool,
     ) -> Result<(), BackendError> {
@@ -119,7 +119,7 @@ impl Avs {
             "INSERT INTO avs (avs_name, machine_id, avs_version, active_set, operator_address) values ($1, $2, $3, $4, $5)
             ON CONFLICT (operator_address, avs_name)
             DO UPDATE SET avs_version = $3, active_set = $4",
-            avs_name.clone().to_string(),
+            avs_name,
             machine_id,
             avs_version.to_string(),
             active_set,

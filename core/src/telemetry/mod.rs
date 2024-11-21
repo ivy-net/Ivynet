@@ -23,7 +23,7 @@ pub mod dispatch;
 
 const TELEMETRY_INTERVAL_IN_MINUTES: u64 = 1;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
 pub enum AvsType {
     EigenDA,
     Unknown,
@@ -32,7 +32,7 @@ pub enum AvsType {
 impl Display for AvsType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::EigenDA => write!(f, "EigenDA"),
+            Self::EigenDA => write!(f, "eigenda"),
             Self::Unknown => write!(f, "Unknown"),
         }
     }
@@ -59,12 +59,11 @@ pub async fn listen(
     identity_wallet: IvyWallet,
     avses: &[ConfiguredAvs],
 ) -> Result<(), IvyError> {
-    let machine_id = machine_id.to_string();
     let dispatch = TelemetryDispatchHandle::from_client(backend_client).await;
     let mut error_rx = dispatch.error_rx.resubscribe();
 
     tokio::select! {
-        metrics_err = listen_metrics(&machine_id, &identity_wallet, avses, &dispatch) => {
+        metrics_err = listen_metrics(machine_id, &identity_wallet, avses, &dispatch) => {
             match metrics_err {
                 Ok(_) => unreachable!("Metrics listener should never return Ok"),
                 Err(err) => {
@@ -81,7 +80,7 @@ pub async fn listen(
 }
 
 pub async fn listen_metrics(
-    machine_id: &str,
+    machine_id: Uuid,
     identity_wallet: &IvyWallet,
     avses: &[ConfiguredAvs],
     dispatch: &TelemetryDispatchHandle,
