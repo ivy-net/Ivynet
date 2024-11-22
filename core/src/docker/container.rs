@@ -77,7 +77,7 @@ impl Container {
     }
 }
 
-pub type LogListenerResult = Result<ListenerData, LogListenerError>;
+type LogListenerResult = Result<ListenerData, LogListenerError>;
 pub struct LogsListenerManager {
     listener_set: JoinSet<LogListenerResult>,
     dispatcher: TelemetryDispatchHandle,
@@ -91,7 +91,7 @@ impl LogsListenerManager {
     /// Add a listener to the manager as a future. The listener will be spawned and run in the
     /// background. The future will resolve to the container that the listener is listening to once
     /// the stream is closed for further handling, restarts, etc.
-    pub async fn add_listener(&mut self, data: ListenerData) {
+    async fn add_listener(&mut self, data: ListenerData) {
         let listener = LogsListener::new(self.docker.clone(), self.dispatcher.clone(), data);
         // Spawn the listener future
         self.listener_set.spawn(async move { listener_fut(listener).await });
@@ -195,7 +195,7 @@ pub enum LogListenerError {
 
 /// Listener future for processing the stream. Yields the data for the container that the listener
 /// was listening to once the stream is closed.
-pub async fn listener_fut(listener: LogsListener) -> Result<ListenerData, LogListenerError> {
+async fn listener_fut(listener: LogsListener) -> Result<ListenerData, LogListenerError> {
     if let Err(e) = listener.try_listen().await {
         error!("Listener error: {}", e);
         return Err(e);

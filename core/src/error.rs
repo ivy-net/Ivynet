@@ -11,7 +11,7 @@ use zip::result::ZipError;
 
 use crate::{
     docker::dockercmd::DockerError, eigen::quorum::QuorumError, grpc::client::ClientError,
-    telemetry::dispatch::TelemetryMsg, IvyProvider, IvyProviderError,
+    IvyProvider, IvyProviderError,
 };
 
 #[derive(Debug, Error)]
