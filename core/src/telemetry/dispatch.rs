@@ -4,7 +4,7 @@ use crate::{
     error::IvyError,
     grpc::{
         backend::backend_client::BackendClient,
-        messages::{SignedMetrics, SignedNodeData},
+        messages::{SignedLog, SignedMetrics, SignedNodeData},
     },
 };
 
@@ -13,6 +13,7 @@ pub enum TelemetryMsg {
     UpdateNodeData(SignedNodeData),
     DeleteNodeData(SignedNodeData),
     Metrics(SignedMetrics),
+    Log(SignedLog),
 }
 
 pub struct TelemetryDispatcher {
@@ -74,6 +75,9 @@ impl TelemetryDispatchHandle {
     }
     pub async fn send_metrics(&self, metrics: SignedMetrics) -> Result<(), IvyError> {
         self.send(TelemetryMsg::Metrics(metrics)).await
+    }
+    pub async fn send_log(&self, log: SignedLog) -> Result<(), IvyError> {
+        self.send(TelemetryMsg::Log(log).await
     }
 }
 

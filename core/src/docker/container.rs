@@ -8,6 +8,8 @@ use tokio::{task::JoinSet, time};
 use tokio_stream::{Stream, StreamExt};
 use tracing::{error, info};
 
+use crate::telemetry::dispatch::TelemetryDispatcher;
+
 use super::dockerapi::DockerClient;
 
 #[derive(Clone)]
@@ -130,11 +132,16 @@ impl Default for LogsListenerManager {
 pub struct LogsListener {
     pub docker: DockerClient,
     pub container: Container,
+    pub dispatcher: TelemetryDispatcher,
 }
 
 impl LogsListener {
-    pub fn new(docker: DockerClient, container: Container) -> Self {
-        Self { docker, container }
+    pub fn new(
+        docker: DockerClient,
+        container: Container,
+        dispatcher: TelemetryDispatcher,
+    ) -> Self {
+        Self { docker, container, dispatcher }
     }
 
     async fn try_listen(&self) -> Result<(), LogListenerError> {
@@ -155,7 +162,6 @@ impl LogsListener {
     }
 
     async fn handle_log(&self, log: LogOutput) -> Result<(), LogListenerError> {
-        println!("LOGMSG: {:?}", log);
         Ok(())
     }
 }
@@ -167,3 +173,6 @@ pub enum LogListenerError {
     #[error("LogListener error: {0}")]
     LogListenerError(String),
 }
+
+#[cfg(test)]
+mod tests {}

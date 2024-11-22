@@ -26,6 +26,7 @@ linemux = "=0.3.0"
 rustix = { version = "0.38", default-features = false, features = ["system"] }
 data-encoding = "2.6.0"
 futures = "0.3.31"
+serde = { version = "1.0.215", features = ["derive"] }
 
 [features]
 docker_tests = []

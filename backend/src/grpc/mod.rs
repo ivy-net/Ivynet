@@ -9,7 +9,7 @@ use ivynet_core::{
         self,
         backend::backend_server::{Backend, BackendServer},
         client::{Request, Response},
-        messages::{RegistrationCredentials, SignedLogs, SignedMetrics, SignedNodeData},
+        messages::{RegistrationCredentials, SignedLog, SignedMetrics, SignedNodeData},
         server, Status,
     },
     signature::{recover_from_string, recover_metrics, recover_node_data},
@@ -59,7 +59,7 @@ impl Backend for BackendService {
         Ok(Response::new(()))
     }
 
-    async fn logs(&self, request: Request<SignedLogs>) -> Result<Response<()>, Status> {
+    async fn logs(&self, request: Request<SignedLog>) -> Result<Response<()>, Status> {
         let request = request.into_inner();
         debug!("Received logs: {:?}", request.logs);
 
@@ -112,8 +112,9 @@ impl Backend for BackendService {
                 .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
         )
         .await?;
-        let machine_id = Uuid::from_slice(&req.machine_id)
-            .map_err(|_| Status::invalid_argument("Machine id has wrong length".to_string()))?;
+        let machine_id = Uuid::from_slice(&req.machine_id).map_err(|e| {
+            Status::invalid_argument(format!("Machine id has wrong length ({e:?})"))
+        })?;
 
         if !Machine::is_owned_by(&self.pool, &client_id, machine_id).await.unwrap_or(false) {
             return Err(Status::not_found("Machine not registered for given client".to_string()));
@@ -122,7 +123,7 @@ impl Backend for BackendService {
         _ = Metric::record(
             &self.pool,
             machine_id,
-            &req.avs_name,
+            req.avs_name.as_deref(),
             &req.metrics.iter().map(|v| v.into()).collect::<Vec<_>>(),
         )
         .await
@@ -157,8 +158,7 @@ impl Backend for BackendService {
                     &self.pool,
                     &Address::from_slice(&node_data.operator_id),
                     machine_id,
-                    &AvsName::try_from(node_data.avs_name.as_str())
-                        .map_err(|_| Status::invalid_argument("Bad AVS name provided"))?,
+                    node_data.avs_name.as_str(),
                     &node_data
                         .avs_version
                         .as_ref()
