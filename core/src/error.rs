@@ -162,9 +162,6 @@ pub enum IvyError {
     SignerMiddlewareError(#[from] IvyProviderError),
 
     #[error(transparent)]
-    TelemetrySendError(#[from] Box<tokio::sync::mpsc::error::SendError<TelemetryMsg>>),
-
-    #[error(transparent)]
     NodeTypeError(#[from] crate::node_type::NodeTypeError),
 
     #[error("Docker Image Error")]
@@ -178,6 +175,9 @@ pub enum IvyError {
 
     #[error("Not found")]
     NotFound,
+
+    #[error("Signature error: {0}")]
+    IvySignatureError(#[from] crate::signature::IvySigningError),
 }
 
 #[derive(Debug, Error)]

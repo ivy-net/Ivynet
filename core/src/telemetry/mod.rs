@@ -3,7 +3,6 @@ use std::fmt::Display;
 use crate::{
     avs::names::AvsName,
     config::get_detailed_system_information,
-    docker::{container::Container, dockerapi::DockerClient},
     error::IvyError,
     ethers::types::Address,
     grpc::{

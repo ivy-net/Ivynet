@@ -7,8 +7,14 @@ use bollard::{
 use tokio::{task::JoinSet, time};
 use tokio_stream::{Stream, StreamExt};
 use tracing::{error, info};
+use uuid::Uuid;
 
-use crate::telemetry::dispatch::TelemetryDispatcher;
+use crate::{
+    grpc::messages::SignedLog,
+    signature::sign_string,
+    telemetry::{dispatch::TelemetryDispatchHandle, ConfiguredAvs},
+    wallet::IvyWallet,
+};
 
 use super::dockerapi::DockerClient;
 
@@ -71,44 +77,40 @@ impl Container {
     }
 }
 
-pub type LogListenerResult = Result<Container, LogListenerError>;
-pub struct LogsListenerManager(JoinSet<LogListenerResult>);
-
+pub type LogListenerResult = Result<ListenerData, LogListenerError>;
+pub struct LogsListenerManager {
+    listener_set: JoinSet<LogListenerResult>,
+    dispatcher: TelemetryDispatchHandle,
+    docker: DockerClient,
+}
 impl LogsListenerManager {
-    pub fn new() -> Self {
-        let futures = JoinSet::new();
-        Self(futures)
+    pub fn new(dispatcher: TelemetryDispatchHandle, docker: DockerClient) -> Self {
+        Self { listener_set: JoinSet::new(), dispatcher, docker }
     }
 
     /// Add a listener to the manager as a future. The listener will be spawned and run in the
     /// background. The future will resolve to the container that the listener is listening to once
     /// the stream is closed for further handling, restarts, etc.
-    pub async fn add_listener(&mut self, docker: &DockerClient, container: &Container) {
-        let listener = LogsListener::new(docker.clone(), container.clone());
+    pub async fn add_listener(&mut self, data: ListenerData) {
+        let listener = LogsListener::new(self.docker.clone(), self.dispatcher.clone(), data);
         // Spawn the listener future
-        self.0.spawn(async move {
-            if let Err(e) = listener.try_listen().await {
-                error!("Listener error: {}", e);
-                return Err(e);
-            }
-            Ok(listener.container.clone())
-        });
+        self.listener_set.spawn(async move { listener_fut(listener).await });
     }
 
-    pub async fn run(mut self, docker: &DockerClient) {
-        while let Some(future) = self.0.join_next().await {
+    pub async fn run(mut self) {
+        while let Some(future) = self.listener_set.join_next().await {
             match future {
                 Ok(result) => {
                     match result {
-                        Ok(container) => {
-                            info!("Listener exited for container: {:?}", container.image());
+                        Ok(data) => {
+                            info!("Listener exited for container: {:?}", data.container.image());
                             info!(
                                 "Attempting to restart listener for container: {:?}",
-                                container.image()
+                                data.container.image()
                             );
                             // wait a sec for the container to potentially restart
                             time::sleep(Duration::from_secs(5)).await;
-                            self.add_listener(docker, &container).await;
+                            self.add_listener(data).await;
                         }
                         Err(e) => {
                             error!("Listener error: {}", e);
@@ -123,29 +125,33 @@ impl LogsListenerManager {
     }
 }
 
-impl Default for LogsListenerManager {
-    fn default() -> Self {
-        Self::new()
-    }
+// TODO: Not a huge fan of cloning machine_id and identity wallet to this struct via ListenerData
+// for singing, as there will be potentially lots of instances of this and it feels like a waste.
+// Cleaner pattern may be to have a signing service or actor that can be shared across listeners.
+struct LogsListener {
+    docker: DockerClient,
+    dispatcher: TelemetryDispatchHandle,
+    listener_data: ListenerData,
 }
 
-pub struct LogsListener {
-    pub docker: DockerClient,
-    pub container: Container,
-    pub dispatcher: TelemetryDispatcher,
+struct ListenerData {
+    container: Container,
+    node_data: ConfiguredAvs,
+    machine_id: Uuid,
+    identity_wallet: IvyWallet,
 }
 
 impl LogsListener {
     pub fn new(
         docker: DockerClient,
-        container: Container,
-        dispatcher: TelemetryDispatcher,
+        dispatcher: TelemetryDispatchHandle,
+        listener_data: ListenerData,
     ) -> Self {
-        Self { docker, container, dispatcher }
+        Self { docker, dispatcher, listener_data }
     }
 
     async fn try_listen(&self) -> Result<(), LogListenerError> {
-        let mut stream = self.container.stream_logs_latest(&self.docker);
+        let mut stream = self.listener_data.container.stream_logs_latest(&self.docker);
 
         while let Some(log_result) = stream.next().await {
             match log_result {
@@ -162,6 +168,15 @@ impl LogsListener {
     }
 
     async fn handle_log(&self, log: LogOutput) -> Result<(), LogListenerError> {
+        let log = log.to_string();
+        let signature = sign_string(&log, &self.listener_data.identity_wallet)?.to_vec();
+        let signed = SignedLog {
+            signature,
+            machine_id: self.listener_data.machine_id.into(),
+            avs_name: self.listener_data.node_data.name.clone(),
+            log,
+        };
+        self.dispatcher.send_log(signed).await?;
         Ok(())
     }
 }
@@ -172,6 +187,20 @@ pub enum LogListenerError {
     DockerError(#[from] bollard::errors::Error),
     #[error("LogListener error: {0}")]
     LogListenerError(String),
+    #[error("Signature error: {0}")]
+    SignatureError(#[from] crate::signature::IvySigningError),
+    #[error("Telemetry dispatch error: {0}")]
+    TelemetryDispatchError(#[from] crate::telemetry::dispatch::TelemetryDispatchError),
+}
+
+/// Listener future for processing the stream. Yields the data for the container that the listener
+/// was listening to once the stream is closed.
+pub async fn listener_fut(listener: LogsListener) -> Result<ListenerData, LogListenerError> {
+    if let Err(e) = listener.try_listen().await {
+        error!("Listener error: {}", e);
+        return Err(e);
+    }
+    Ok(listener.listener_data)
 }
 
 #[cfg(test)]
