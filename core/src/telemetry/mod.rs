@@ -2,7 +2,6 @@ use std::fmt::Display;
 
 use crate::{
     config::get_detailed_system_information,
-    docker::{container::Container, dockerapi::DockerClient},
     error::IvyError,
     grpc::{
         backend::backend_client::BackendClient,
