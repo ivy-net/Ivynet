@@ -13,6 +13,7 @@ pub struct Avs {
     pub avs_name: String, //GIVEN BY THE USER OR A DEFAULT
     pub avs_type: NodeType,
     pub avs_version: Version,
+    pub version_hash: String,
     pub operator_address: Option<Address>,
     pub active_set: bool,
     pub created_at: Option<NaiveDateTime>,
@@ -27,6 +28,7 @@ struct DbAvs {
     pub avs_version: String,
     pub operator_address: Option<Vec<u8>>,
     pub active_set: bool,
+    pub version_hash: String,
     pub created_at: Option<NaiveDateTime>,
     pub updated_at: Option<NaiveDateTime>,
 }
@@ -53,6 +55,7 @@ impl TryFrom<DbAvs> for Avs {
             avs_version: Version::parse(&db_avs.avs_version)?,
             operator_address: db_avs.operator_address.map(|a| Address::from_slice(&a)),
             active_set: db_avs.active_set,
+            version_hash: db_avs.version_hash,
             created_at: db_avs.created_at,
             updated_at: db_avs.updated_at,
         })
@@ -66,7 +69,7 @@ impl Avs {
     ) -> Result<Vec<Avs>, BackendError> {
         let avses: Vec<DbAvs> = sqlx::query_as!(
             DbAvs,
-            "SELECT machine_id, avs_name, avs_type, avs_version, operator_address, active_set, created_at, updated_at FROM avs WHERE machine_id = $1",
+            "SELECT machine_id, avs_name, avs_type, avs_version, operator_address, active_set, version_hash, created_at, updated_at FROM avs WHERE machine_id = $1",
             Some(machine_id)
         )
         .fetch_all(pool)
@@ -82,7 +85,7 @@ impl Avs {
     ) -> Result<Option<Avs>, BackendError> {
         let avs: Option<DbAvs> = sqlx::query_as!(
             DbAvs,
-            "SELECT machine_id, avs_name, avs_type, avs_version, operator_address, active_set, created_at, updated_at FROM avs WHERE machine_id = $1 AND avs_name = $2",
+            "SELECT machine_id, avs_name, avs_type, avs_version, operator_address, active_set, version_hash, created_at, updated_at FROM avs WHERE machine_id = $1 AND avs_name = $2",
             Some(machine_id),
             avs_name
         )
@@ -98,7 +101,7 @@ impl Avs {
     ) -> Result<Vec<Avs>, BackendError> {
         let avses: Vec<DbAvs> = sqlx::query_as!(
             DbAvs,
-            "SELECT machine_id, avs_name, avs_type, avs_version, operator_address, active_set, created_at, updated_at FROM avs WHERE operator_address = $1",
+            "SELECT machine_id, avs_name, avs_type, avs_version, operator_address, active_set, version_hash, created_at, updated_at FROM avs WHERE operator_address = $1",
             operator_id.as_bytes()
         )
         .fetch_all(pool)
@@ -112,21 +115,22 @@ impl Avs {
         machine_id: Uuid,
         avs_name: &str,
         avs_type: &NodeType,
-        avs_version: &Version,
+        avs_version: &str,
     ) -> Result<(), BackendError> {
         let now = chrono::Utc::now().naive_utc();
 
         sqlx::query!(
-            "INSERT INTO avs (avs_name, machine_id, avs_type, avs_version, active_set, operator_address, created_at, updated_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+            "INSERT INTO avs (avs_name, machine_id, avs_type, avs_version, active_set, operator_address, version_hash, created_at, updated_at)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
              ON CONFLICT (machine_id, avs_name)
              DO UPDATE SET avs_version = EXCLUDED.avs_version, updated_at = $8",
-            avs_name.to_string(),
+            avs_name,
             machine_id,
             avs_type.clone().to_string(),
-            avs_version.to_string(),
+            "0.0.0",
             false,
             Option::<Vec<u8>>::None,
+            avs_version,
             now,
             now
         )

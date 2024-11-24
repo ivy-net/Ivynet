@@ -35,15 +35,3 @@ message SignedLog {
     string avs_name = 3;
     string log = 4;
 }
-
-message SignedNodeData {
-    bytes signature = 1;
-    NodeData node_data = 2;
-}
-
-message NodeData {
-    bytes machine_id = 1;
-    string avs_name = 2;
-    string avs_type = 3;
-    optional string avs_version = 4;
-}

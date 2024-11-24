@@ -70,5 +70,8 @@ pub struct Config {
     pub set_avs_version: Option<String>,
 
     #[arg(long)]
+    pub add_avs_version_hash: Option<String>,
+
+    #[arg(long)]
     pub set_breaking_change_version: Option<String>,
 }
