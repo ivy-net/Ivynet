@@ -1,11 +1,8 @@
 use tonic::transport::{Channel, Uri};
 
-use crate::{
-    error::IvyError,
-    grpc::{
-        backend::backend_client::BackendClient,
-        messages::{SignedMetrics, SignedNodeData},
-    },
+use crate::grpc::{
+    backend::backend_client::BackendClient,
+    messages::{SignedLog, SignedMetrics, SignedNodeData},
 };
 
 #[derive(Debug, Clone)]
@@ -13,9 +10,10 @@ pub enum TelemetryMsg {
     UpdateNodeData(SignedNodeData),
     DeleteNodeData(SignedNodeData),
     Metrics(SignedMetrics),
+    Log(SignedLog),
 }
 
-pub struct TelemetryDispatcher {
+struct TelemetryDispatcher {
     rx: tokio::sync::mpsc::Receiver<TelemetryMsg>,
     error_tx: tokio::sync::broadcast::Sender<TelemetryDispatchError>,
     backend_client: BackendClient<Channel>,
@@ -36,6 +34,7 @@ impl TelemetryDispatcher {
                     self.backend_client.delete_node_data(node_data).await
                 }
                 TelemetryMsg::Metrics(metrics) => self.backend_client.metrics(metrics).await,
+                TelemetryMsg::Log(log) => self.backend_client.logs(log).await,
             };
             if let Err(e) = send_res {
                 let err = TelemetryDispatchError::TransportError(e);
@@ -46,14 +45,21 @@ impl TelemetryDispatcher {
     }
 }
 
+#[derive(Debug)]
 pub struct TelemetryDispatchHandle {
     tx: tokio::sync::mpsc::Sender<TelemetryMsg>,
     pub error_rx: tokio::sync::broadcast::Receiver<TelemetryDispatchError>,
 }
 
+impl Clone for TelemetryDispatchHandle {
+    fn clone(&self) -> Self {
+        Self { tx: self.tx.clone(), error_rx: self.error_rx.resubscribe() }
+    }
+}
+
 impl TelemetryDispatchHandle {
-    pub async fn send(&self, msg: TelemetryMsg) -> Result<(), IvyError> {
-        self.tx.send(msg).await.map_err(|e| IvyError::from(Box::new(e)))
+    pub async fn send(&self, msg: TelemetryMsg) -> Result<(), TelemetryDispatchError> {
+        self.tx.send(msg).await.map_err(|e| Box::new(e).into())
     }
     pub async fn from_client(client: BackendClient<Channel>) -> Self {
         let (tx, rx) = tokio::sync::mpsc::channel(256);
@@ -66,14 +72,23 @@ impl TelemetryDispatchHandle {
 
         TelemetryDispatchHandle { tx, error_rx }
     }
-    pub async fn send_node_data(&self, node_data: SignedNodeData) -> Result<(), IvyError> {
+    pub async fn send_node_data(
+        &self,
+        node_data: SignedNodeData,
+    ) -> Result<(), TelemetryDispatchError> {
         self.send(TelemetryMsg::UpdateNodeData(node_data)).await
     }
-    pub async fn delete_node_data(&self, node_data: SignedNodeData) -> Result<(), IvyError> {
+    pub async fn delete_node_data(
+        &self,
+        node_data: SignedNodeData,
+    ) -> Result<(), TelemetryDispatchError> {
         self.send(TelemetryMsg::DeleteNodeData(node_data)).await
     }
-    pub async fn send_metrics(&self, metrics: SignedMetrics) -> Result<(), IvyError> {
+    pub async fn send_metrics(&self, metrics: SignedMetrics) -> Result<(), TelemetryDispatchError> {
         self.send(TelemetryMsg::Metrics(metrics)).await
+    }
+    pub async fn send_log(&self, log: SignedLog) -> Result<(), TelemetryDispatchError> {
+        self.send(TelemetryMsg::Log(log)).await
     }
 }
 
@@ -105,4 +120,6 @@ pub enum TelemetryDispatchError {
     TransportError(tonic::Status),
     #[error("Failed to send error to the parent task.")]
     ErrorSendFailed,
+    #[error("Telemetry send error: {0}")]
+    TelemetrySendError(#[from] Box<tokio::sync::mpsc::error::SendError<TelemetryMsg>>),
 }

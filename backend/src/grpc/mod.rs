@@ -8,7 +8,7 @@ use ivynet_core::{
         self,
         backend::backend_server::{Backend, BackendServer},
         client::{Request, Response},
-        messages::{RegistrationCredentials, SignedLogs, SignedMetrics, SignedNodeData},
+        messages::{RegistrationCredentials, SignedLog, SignedMetrics, SignedNodeData},
         server, Status,
     },
     node_type::NodeType,
@@ -59,12 +59,12 @@ impl Backend for BackendService {
         Ok(Response::new(()))
     }
 
-    async fn logs(&self, request: Request<SignedLogs>) -> Result<Response<()>, Status> {
+    async fn logs(&self, request: Request<SignedLog>) -> Result<Response<()>, Status> {
         let request = request.into_inner();
-        debug!("Received logs: {:?}", request.logs);
+        debug!("Received logs: {:?}", request.log);
 
         let client_id = recover_from_string(
-            &request.logs,
+            &request.log,
             &Signature::try_from(request.signature.as_slice())
                 .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
         )?;
@@ -82,8 +82,8 @@ impl Backend for BackendService {
         }
 
         let mut parsed_logs =
-            serde_json::from_str::<Vec<ContainerLog>>(&request.logs).map_err(|e| {
-                error!("{:?} || Logs: {:?}", request.logs, e);
+            serde_json::from_str::<Vec<ContainerLog>>(&request.log).map_err(|e| {
+                error!("{:?} || Logs: {:?}", request.log, e);
                 Status::invalid_argument(format!("Log deserialization error: {:?}", e))
             })?;
 
