@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO avs_version_data (node_type, latest_version, chain)\n                    VALUES ($1, $2, $3)",
+  "query": "INSERT INTO avs_version_data (node_type, latest_version, chain)\n                VALUES ($1, $2, $3)",
   "describe": {
     "columns": [],
     "parameters": {
@@ -12,5 +12,5 @@
     },
     "nullable": []
   },
-  "hash": "5470dd9b4c658233ab1e99c7d196b33028ce922be63340c2a2b61a36cc980f9b"
+  "hash": "b46c9d97440dddcb5031a2b7c25e02e973de02682b330840bef14b60a5fe875e"
 }

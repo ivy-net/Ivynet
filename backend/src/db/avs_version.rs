@@ -4,12 +4,13 @@ use chrono::NaiveDateTime;
 use ivynet_core::{ethers::types::Chain, node_type::NodeType, utils::try_parse_chain};
 use semver::Version;
 use serde::{Deserialize, Serialize};
-use sqlx::query;
+use sqlx::{query, PgPool};
 use utoipa::ToSchema;
 
 use crate::error::BackendError;
 
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+/// Represents version information for an AVS node
+#[derive(Clone, Serialize, Deserialize, ToSchema, Eq, PartialEq, Debug)]
 pub struct AvsVersionData {
     #[serde(flatten)]
     pub id: NodeTypeId,
@@ -17,20 +18,22 @@ pub struct AvsVersionData {
     pub vd: VersionData,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+/// Unique identifier for a node type and chain combination
+#[derive(Clone, Serialize, Deserialize, ToSchema, Eq, PartialEq, Hash, Debug)]
+pub struct NodeTypeId {
+    pub node_type: NodeType,
+    pub chain: Chain,
+}
+
+/// Represents version information for an AVS node
+#[derive(Clone, Serialize, Deserialize, ToSchema, Eq, PartialEq, Debug)]
 pub struct VersionData {
     pub latest_version: Version,
     pub breaking_change_version: Option<Version>,
     pub breaking_change_datetime: Option<NaiveDateTime>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, Eq, PartialEq, Hash)]
-pub struct NodeTypeId {
-    pub node_type: NodeType,
-    pub chain: Chain,
-}
-
-#[derive(Clone, Debug)]
+#[derive(Clone, sqlx::FromRow, Debug)]
 pub struct DbAvsVersionData {
     pub id: i32,
     pub node_type: String,
@@ -42,67 +45,65 @@ pub struct DbAvsVersionData {
 
 impl TryFrom<DbAvsVersionData> for AvsVersionData {
     type Error = BackendError;
-    fn try_from(db_avs_version_data: DbAvsVersionData) -> Result<Self, BackendError> {
-        let version_data = {
-            VersionData {
-                latest_version: Version::parse(&db_avs_version_data.latest_version)
-                    .expect("Cannot parse version on dbAvsVersionData"),
-                breaking_change_version: db_avs_version_data
-                    .breaking_change_version
-                    .and_then(|v| Version::parse(&v).ok()),
-                breaking_change_datetime: db_avs_version_data.breaking_change_datetime,
-            }
+
+    fn try_from(db: DbAvsVersionData) -> Result<Self, Self::Error> {
+        let version_data = VersionData {
+            latest_version: Version::parse(&db.latest_version)
+                .map_err(|_| BackendError::InvalidVersion)?,
+            breaking_change_version: db
+                .breaking_change_version
+                .and_then(|v| Version::parse(&v).ok()),
+            breaking_change_datetime: db.breaking_change_datetime,
         };
-        let id = NodeTypeId {
-            node_type: NodeType::from(db_avs_version_data.node_type.as_str()),
-            chain: try_parse_chain(&db_avs_version_data.chain).expect("Cannot parse chain"),
-        };
-        Ok(AvsVersionData { id, vd: version_data })
+
+        Ok(Self {
+            id: NodeTypeId {
+                node_type: NodeType::from(db.node_type.as_str()),
+                chain: try_parse_chain(&db.chain).map_err(|_| BackendError::InvalidChain)?,
+            },
+            vd: version_data,
+        })
     }
 }
 
 impl DbAvsVersionData {
+    /// Retrieves all AVS version data from the database
     pub async fn get_all_avs_version(
-        pool: &sqlx::PgPool,
+        pool: &PgPool,
     ) -> Result<HashMap<NodeTypeId, VersionData>, BackendError> {
-        let avs_version_data: Vec<DbAvsVersionData> =
-            sqlx::query_as!(DbAvsVersionData, "SELECT * FROM avs_version_data")
-                .fetch_all(pool)
-                .await?;
+        let versions =
+            sqlx::query_as!(Self, "SELECT * FROM avs_version_data").fetch_all(pool).await?;
 
-        Ok(avs_version_data
+        Ok(versions
             .into_iter()
             .filter_map(|data| AvsVersionData::try_from(data).ok().map(|data| (data.id, data.vd)))
             .collect())
     }
 
+    /// Retrieves AVS version data for a specific node type
     pub async fn get_avs_version(
-        pool: &sqlx::PgPool,
+        pool: &PgPool,
         node_type: &NodeType,
     ) -> Result<Vec<AvsVersionData>, BackendError> {
-        let db_avs_version_data: Vec<DbAvsVersionData> = sqlx::query_as!(
-            DbAvsVersionData,
+        let versions = sqlx::query_as!(
+            Self,
             "SELECT * FROM avs_version_data WHERE node_type = $1",
             node_type.to_string()
         )
         .fetch_all(pool)
         .await?;
 
-        let data: Vec<AvsVersionData> = db_avs_version_data
-            .into_iter()
-            .filter_map(|data| AvsVersionData::try_from(data).ok())
-            .collect();
-
-        Ok(data)
+        Ok(versions.into_iter().filter_map(|data| AvsVersionData::try_from(data).ok()).collect())
     }
 
+    /// Retrieves AVS version data for a specific node type and chain
     pub async fn get_avs_version_with_chain(
-        pool: &sqlx::PgPool,
+        pool: &PgPool,
         node_type: &NodeType,
         chain: &Chain,
     ) -> Result<Option<AvsVersionData>, BackendError> {
-        let db_avs_version_data: Option<DbAvsVersionData> = sqlx::query_as!(
-            DbAvsVersionData,
+        let version = sqlx::query_as!(
+            Self,
             "SELECT * FROM avs_version_data WHERE node_type = $1 AND chain = $2",
             node_type.to_string(),
             chain.to_string(),
@@ -110,46 +111,34 @@ impl DbAvsVersionData {
         .fetch_optional(pool)
         .await?;
 
-        match db_avs_version_data {
-            Some(data) => Ok(Some(AvsVersionData::try_from(data)?)),
-            None => Ok(None),
-        }
+        version.map(AvsVersionData::try_from).transpose()
     }
 
+    /// Inserts new AVS version data
     pub async fn insert_avs_version(
-        pool: &sqlx::PgPool,
-        avs_version_data: &AvsVersionData,
+        pool: &PgPool,
+        data: &AvsVersionData,
     ) -> Result<(), BackendError> {
-        match (
-            &avs_version_data.vd.breaking_change_version,
-            &avs_version_data.vd.breaking_change_datetime,
-        ) {
-            (Some(breaking_change_version), Some(breaking_change_datetime)) => {
-                query!(
-                    "INSERT INTO avs_version_data (node_type, latest_version, chain, breaking_change_version, breaking_change_datetime)
-                    VALUES ($1, $2, $3, $4, $5)",
-                    avs_version_data.id.node_type.to_string(),
-                    avs_version_data.vd.latest_version.to_string(),
-                    avs_version_data.id.chain.to_string(),
-                    breaking_change_version.to_string(),
-                    breaking_change_datetime,
-                )
-                .execute(pool)
-                .await?;
-            }
-            _ => {
-                query!(
-                    "INSERT INTO avs_version_data (node_type, latest_version, chain)
-                    VALUES ($1, $2, $3)",
-                    avs_version_data.id.node_type.to_string(),
-                    avs_version_data.vd.latest_version.to_string(),
-                    avs_version_data.id.chain.to_string(),
-                )
-                .execute(pool)
-                .await?;
-            }
-        }
+        let query = match (&data.vd.breaking_change_version, &data.vd.breaking_change_datetime) {
+            (Some(ver), Some(dt)) => query!(
+                "INSERT INTO avs_version_data (node_type, latest_version, chain, breaking_change_version, breaking_change_datetime)
+                VALUES ($1, $2, $3, $4, $5)",
+                data.id.node_type.to_string(),
+                data.vd.latest_version.to_string(),
+                data.id.chain.to_string(),
+                ver.to_string(),
+                dt,
+            ),
+            _ => query!(
+                "INSERT INTO avs_version_data (node_type, latest_version, chain)
+                VALUES ($1, $2, $3)",
+                data.id.node_type.to_string(),
+                data.vd.latest_version.to_string(),
+                data.id.chain.to_string(),
+            ),
+        };
 
+        query.execute(pool).await?;
         Ok(())
     }
 
