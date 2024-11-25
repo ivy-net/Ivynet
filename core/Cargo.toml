@@ -62,7 +62,7 @@ futures = "0.3.31"
 
 [build-dependencies]
 prost-build = "0.12"
-prost-wkt-build = "0.5"
+prost-wkt-build = "0.6"
 tonic-build = "0.11"
 
 [dev-dependencies]
