@@ -2,6 +2,7 @@ mod apidoc;
 mod authorize;
 mod client;
 mod info;
+mod keys;
 mod machine;
 mod node;
 mod organization;
@@ -12,7 +13,7 @@ use crate::error::BackendError;
 
 use axum::{
     http::Method,
-    routing::{delete, get, post},
+    routing::{delete, get, post, put},
     Router,
 };
 use ivynet_core::grpc::client::Uri;
@@ -80,36 +81,70 @@ pub async fn serve(
 fn create_router() -> Router<HttpState> {
     Router::new()
         .route("/health", get(|| async { "alive" }))
-        .route("/authorize", post(authorize::authorize))
-        .route("/authorize/invitation/:id", get(authorize::check_invitation))
-        .route("/authorize/forgot_password", post(authorize::forgot_password))
-        .route("/authorize/set_password", post(authorize::set_password))
-        .route("/organization", post(organization::new))
-        .route("/organization/:id", get(organization::get))
-        .route("/organization/invite", post(organization::invite))
-        .route("/organization/confirm/:id", get(organization::confirm))
-        .route("/organization/machines", get(organization::machines))
-        .route("/organization/avses", get(organization::avses))
-        .route("/client", get(client::client))
-        .route("/client/:id", get(client::client_machines))
-        .route("/machine", get(machine::machine))
-        .route("/machine/status", get(machine::status))
-        .route("/machine/idle", get(machine::idle))
-        .route("/machine/unhealthy", get(machine::unhealthy))
-        .route("/machine/healthy", get(machine::healthy))
-        .route("/machine/:machine_id/:avs_name/metrics", get(machine::metrics_condensed))
-        .route("/machine/:machine_id/:avs_name/metrics/all", get(machine::metrics_all))
-        .route("/machine/:machine_id/:avs_name/logs", get(machine::logs))
-        .route("/machine/:machine_id/data", get(machine::get_all_node_data))
-        .route("/machine/:machine_id/data", delete(machine::delete_machine_data))
-        .route("/machine/:machine_id", get(machine::info))
-        .route("/machine/:machine_id/:name", post(machine::set_name))
-        .route("/machine/:machine_id", delete(machine::delete))
-        .route("/machine/:node_id/:avs_name", delete(machine::delete_avs_node_data))
-        .route("/avs", get(node::all_avs_info))
-        .route("/avs/status", get(node::avs_status))
-        .route("/info/avs/version/:avs", get(info::get_version_info))
-        .route("/info/avs/version", get(info::get_all_version_info))
+        .nest(
+            "/authorize",
+            Router::new()
+                .route("/", post(authorize::authorize))
+                .route("/invitation/:id", get(authorize::check_invitation))
+                .route("/forgot_password", post(authorize::forgot_password))
+                .route("/set_password", post(authorize::set_password)),
+        )
+        .nest(
+            "/organization",
+            Router::new()
+                .route("/", post(organization::new))
+                .route("/:id", get(organization::get))
+                .route("/invite", post(organization::invite))
+                .route("/confirm/:id", get(organization::confirm))
+                .route("/machines", get(organization::machines))
+                .route("/avses", get(organization::avses))
+                .route("/keys", post(organization::add_operator_key)),
+        )
+        .nest(
+            "/client",
+            Router::new()
+                .route("/", get(client::client))
+                .route("/:id", get(client::client_machines)),
+        )
+        .nest(
+            "/machine",
+            Router::new()
+                .route("/", get(machine::machine))
+                .route("/status", get(machine::status))
+                .route("/idle", get(machine::idle))
+                .route("/unhealthy", get(machine::unhealthy))
+                .route("/healthy", get(machine::healthy))
+                .route("/:machine_id/:avs_name/metrics/all", get(machine::metrics_all))
+                .route("/:machine_id/:avs_name/metrics", get(machine::metrics_condensed))
+                .route("/:machine_id/:avs_name/logs", get(machine::logs))
+                .route(
+                    "/:machine_id/data",
+                    get(machine::get_all_node_data).delete(machine::delete_machine_data),
+                )
+                .route("/:machine_id/:name", post(machine::set_name))
+                .route("/:machine_id/data/:avs_name", delete(machine::delete_avs_node_data))
+                .route("/:machine_id", get(machine::info).delete(machine::delete)),
+        )
+        .nest(
+            "/avs",
+            Router::new()
+                .route("/", get(node::all_avs_info))
+                .route("/status", get(node::avs_status)),
+        )
+        .nest(
+            "/info/avs",
+            Router::new()
+                .route("/version/:avs", get(info::get_version_info))
+                .route("/version", get(info::get_all_version_info)),
+        )
+        .nest(
+            "/keys",
+            Router::new()
+                .route("/", get(keys::get_all_keys))
+                .route("/", post(keys::create_key))
+                .route("/", put(keys::update_key_name))
+                .route("/", delete(keys::delete_key)),
+        )
         .merge(
             SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", apidoc::ApiDoc::openapi()),
         )

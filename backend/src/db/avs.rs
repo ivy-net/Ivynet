@@ -183,4 +183,38 @@ impl Avs {
 
         Ok(())
     }
+
+    pub async fn update_chain(
+        pool: &sqlx::PgPool,
+        machine_id: Uuid,
+        avs_name: &str,
+        chain: Chain,
+    ) -> Result<(), BackendError> {
+        sqlx::query!(
+            "UPDATE avs SET chain = $1 WHERE machine_id = $2 AND avs_name = $3",
+            chain.to_string(),
+            machine_id,
+            avs_name
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn update_active_set(
+        pool: &sqlx::PgPool,
+        machine_id: Uuid,
+        avs_name: &str,
+        active_set: bool,
+    ) -> Result<(), BackendError> {
+        sqlx::query!(
+            "UPDATE avs SET active_set = $1 WHERE machine_id = $2 AND avs_name = $3",
+            active_set,
+            machine_id,
+            avs_name
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
 }
