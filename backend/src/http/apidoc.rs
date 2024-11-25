@@ -40,6 +40,7 @@ use super::{super::db, authorize, client, info, keys, machine, node, organizatio
         keys::create_key,
         keys::update_key_name,
         keys::delete_key,
+        machine::update_avs,
     ),
     components(
         schemas(
@@ -68,6 +69,7 @@ use super::{super::db, authorize, client, info, keys, machine, node, organizatio
             keys::UpdateKeyNameRequest,
             keys::DeleteKeyRequest,
             db::operator_keys::OperatorKey,
+            machine::AvsUpdateAction,
         ),
     ),
     tags(

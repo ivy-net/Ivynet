@@ -4,6 +4,7 @@ use axum::{
     Json,
 };
 use axum_extra::extract::CookieJar;
+use ivynet_core::ethers::types::{Address, Chain};
 use serde::Deserialize;
 use std::{collections::HashMap, str::FromStr};
 use utoipa::ToSchema;
@@ -425,4 +426,52 @@ pub async fn delete_avs_node_data(
     Avs::delete_avs_data(&state.pool, machine.machine_id, &avs_name).await?;
 
     Ok(())
+}
+
+#[derive(Deserialize, Debug, Clone, ToSchema)]
+#[serde(rename_all = "camelCase", tag = "type")]
+pub enum AvsUpdateAction {
+    Chain { chain: Chain },
+    Operator { operator_address: Option<Address> },
+    ActiveSet { active_set: bool },
+}
+
+/// Update an AVS's operator address, chain, or active set status
+#[utoipa::path(
+    put,
+    path = "/machine/:machine_id/:avs_name",
+    request_body = AvsUpdateAction,
+    responses(
+        (status = 200),
+        (status = 404)
+    )
+)]
+pub async fn update_avs(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Path((machine_id, avs_name)): Path<(String, String)>,
+    Json(action): Json<AvsUpdateAction>,
+) -> Result<(), BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let machine =
+        authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
+
+    match action {
+        AvsUpdateAction::Chain { chain } => {
+            Avs::update_chain(&state.pool, machine.machine_id, &avs_name, chain).await
+        }
+        AvsUpdateAction::Operator { operator_address } => {
+            Avs::update_operator_address(
+                &state.pool,
+                machine.machine_id,
+                &avs_name,
+                operator_address,
+            )
+            .await
+        }
+        AvsUpdateAction::ActiveSet { active_set } => {
+            Avs::update_active_set(&state.pool, machine.machine_id, &avs_name, active_set).await
+        }
+    }
 }

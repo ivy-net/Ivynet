@@ -123,7 +123,8 @@ fn create_router() -> Router<HttpState> {
                 )
                 .route("/:machine_id/:name", post(machine::set_name))
                 .route("/:machine_id/data/:avs_name", delete(machine::delete_avs_node_data))
-                .route("/:machine_id", get(machine::info).delete(machine::delete)),
+                .route("/:machine_id", get(machine::info).delete(machine::delete))
+                .route("/:machine_id/:avs_name", put(machine::update_avs)),
         )
         .nest(
             "/avs",
