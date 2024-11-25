@@ -403,3 +403,26 @@ pub async fn delete_machine_data(
 
     Ok(())
 }
+
+/// Delete all data for a specific AVS running on a node
+#[utoipa::path(
+    delete,
+    path = "/machine/:id/:avs_name",
+    responses(
+        (status = 200),
+        (status = 404)
+    )
+)]
+pub async fn delete_avs_node_data(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    Path((id, avs_name)): Path<(String, String)>,
+    jar: CookieJar,
+) -> Result<(), BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let machine = authorize::verify_node_ownership(&account, State(state.clone()), id).await?;
+
+    Avs::delete_avs_data(&state.pool, machine.machine_id, &avs_name).await?;
+
+    Ok(())
+}

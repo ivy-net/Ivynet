@@ -18,8 +18,4 @@ impl BackendMessenger {
     pub async fn send_node_data_payload(&mut self, _node_data: &NodeData) -> Result<(), IvyError> {
         todo!()
     }
-
-    pub async fn delete_node_data_payload(&mut self) -> Result<(), IvyError> {
-        todo!()
-    }
 }

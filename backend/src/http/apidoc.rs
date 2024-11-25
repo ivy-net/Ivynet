@@ -30,11 +30,11 @@ use super::{super::db, authorize, client, info, machine, node, organization};
         machine::logs,
         machine::get_all_node_data,
         machine::delete_machine_data,
+        machine::delete_avs_node_data,
         machine::info,
         machine::delete,
         node::all_avs_info,
         node::avs_status,
-        node::delete_avs_node_data,
     ),
     components(
         schemas(

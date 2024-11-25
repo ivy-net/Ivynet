@@ -6,9 +6,8 @@ use crate::{
     grpc::{
         backend::backend_client::BackendClient,
         messages::{Metrics, MetricsAttribute, NodeData, SignedMetrics, SignedNodeData},
-        tonic::{transport::Channel, Request},
+        tonic::transport::Channel,
     },
-    node_type::NodeType,
     signature::{sign_metrics, sign_node_data},
     wallet::IvyWallet,
 };
@@ -149,30 +148,6 @@ pub async fn listen_metrics(
 
         sleep(Duration::from_secs(TELEMETRY_INTERVAL_IN_MINUTES * 60)).await;
     }
-}
-
-pub async fn delete_node_data_payload(
-    identity_wallet: &IvyWallet,
-    machine_id: Uuid,
-    backend_client: &mut BackendClient<Channel>,
-    avs_type: NodeType,
-    avs_name: &str,
-) -> Result<(), IvyError> {
-    let data = NodeData {
-        avs_name: avs_name.to_string(),
-        avs_type: avs_type.to_string(),
-        machine_id: machine_id.into(),
-        avs_version: None,
-    };
-    let signature = sign_node_data(&data, identity_wallet)?;
-
-    backend_client
-        .delete_node_data(Request::new(SignedNodeData {
-            signature: signature.to_vec(),
-            node_data: Some(data),
-        }))
-        .await?;
-    Ok(())
 }
 
 pub async fn fetch_telemetry_from(port: u16) -> Result<Vec<Metrics>, IvyError> {

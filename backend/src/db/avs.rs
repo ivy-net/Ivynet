@@ -1,5 +1,8 @@
 use chrono::NaiveDateTime;
-use ivynet_core::{ethers::types::Address, node_type::NodeType};
+use ivynet_core::{
+    ethers::types::{Address, Chain},
+    node_type::NodeType,
+};
 use semver::Version;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -13,6 +16,7 @@ pub struct Avs {
     pub avs_name: String, //GIVEN BY THE USER OR A DEFAULT
     pub avs_type: NodeType,
     pub avs_version: Version,
+    pub chain: Option<Chain>,
     pub operator_address: Option<Address>,
     pub active_set: bool,
     pub created_at: Option<NaiveDateTime>,
@@ -24,6 +28,7 @@ struct DbAvs {
     pub machine_id: Vec<u8>,
     pub avs_name: String,
     pub avs_type: String,
+    pub chain: Option<String>,
     pub avs_version: String,
     pub operator_address: Option<Vec<u8>>,
     pub active_set: bool,
@@ -55,6 +60,7 @@ impl TryFrom<DbAvs> for Avs {
             active_set: db_avs.active_set,
             created_at: db_avs.created_at,
             updated_at: db_avs.updated_at,
+            chain: db_avs.chain.and_then(|c| c.parse::<Chain>().ok()),
         })
     }
 }
@@ -66,7 +72,7 @@ impl Avs {
     ) -> Result<Vec<Avs>, BackendError> {
         let avses: Vec<DbAvs> = sqlx::query_as!(
             DbAvs,
-            "SELECT machine_id, avs_name, avs_type, avs_version, operator_address, active_set, created_at, updated_at FROM avs WHERE machine_id = $1",
+            "SELECT machine_id, avs_name, avs_type, chain, avs_version, operator_address, active_set, created_at, updated_at FROM avs WHERE machine_id = $1",
             Some(machine_id)
         )
         .fetch_all(pool)
@@ -82,7 +88,7 @@ impl Avs {
     ) -> Result<Option<Avs>, BackendError> {
         let avs: Option<DbAvs> = sqlx::query_as!(
             DbAvs,
-            "SELECT machine_id, avs_name, avs_type, avs_version, operator_address, active_set, created_at, updated_at FROM avs WHERE machine_id = $1 AND avs_name = $2",
+            "SELECT machine_id, avs_name, avs_type, chain, avs_version, operator_address, active_set, created_at, updated_at FROM avs WHERE machine_id = $1 AND avs_name = $2",
             Some(machine_id),
             avs_name
         )
@@ -98,7 +104,7 @@ impl Avs {
     ) -> Result<Vec<Avs>, BackendError> {
         let avses: Vec<DbAvs> = sqlx::query_as!(
             DbAvs,
-            "SELECT machine_id, avs_name, avs_type, avs_version, operator_address, active_set, created_at, updated_at FROM avs WHERE operator_address = $1",
+            "SELECT machine_id, avs_name, avs_type, chain, avs_version, operator_address, active_set, created_at, updated_at FROM avs WHERE operator_address = $1",
             operator_id.as_bytes()
         )
         .fetch_all(pool)
@@ -134,15 +140,14 @@ impl Avs {
         .await?;
         Ok(())
     }
+
     pub async fn delete_avs_data(
         pool: &sqlx::PgPool,
         machine_id: Uuid,
-        operator_id: &Address,
         avs_name: &str,
     ) -> Result<(), BackendError> {
         sqlx::query!(
-            "DELETE FROM avs WHERE operator_address = $1 AND avs_name = $2 AND machine_id = $3",
-            operator_id.as_bytes(),
+            "DELETE FROM avs WHERE avs_name = $1 AND machine_id = $2",
             avs_name.to_string(),
             machine_id
         )
@@ -156,6 +161,26 @@ impl Avs {
         machine_id: Uuid,
     ) -> Result<(), BackendError> {
         sqlx::query!("DELETE FROM avs WHERE machine_id = $1", machine_id).execute(pool).await?;
+        Ok(())
+    }
+
+    pub async fn update_operator_address(
+        pool: &sqlx::PgPool,
+        machine_id: Uuid,
+        avs_name: &str,
+        operator_address: Option<Address>,
+    ) -> Result<(), BackendError> {
+        sqlx::query!(
+            "UPDATE avs
+             SET operator_address = $1
+             WHERE machine_id = $2 AND avs_name = $3",
+            operator_address.map(|addr| addr.as_bytes().to_vec()),
+            machine_id,
+            avs_name
+        )
+        .execute(pool)
+        .await?;
+
         Ok(())
     }
 }

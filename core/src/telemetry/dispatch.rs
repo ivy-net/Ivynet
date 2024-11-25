@@ -8,7 +8,6 @@ use crate::grpc::{
 #[derive(Debug, Clone)]
 pub enum TelemetryMsg {
     UpdateNodeData(SignedNodeData),
-    DeleteNodeData(SignedNodeData),
     Metrics(SignedMetrics),
     Log(SignedLog),
 }
@@ -29,9 +28,6 @@ impl TelemetryDispatcher {
             let send_res = match node_data {
                 TelemetryMsg::UpdateNodeData(node_data) => {
                     self.backend_client.update_node_data(node_data).await
-                }
-                TelemetryMsg::DeleteNodeData(node_data) => {
-                    self.backend_client.delete_node_data(node_data).await
                 }
                 TelemetryMsg::Metrics(metrics) => self.backend_client.metrics(metrics).await,
                 TelemetryMsg::Log(log) => self.backend_client.logs(log).await,
@@ -77,12 +73,6 @@ impl TelemetryDispatchHandle {
         node_data: SignedNodeData,
     ) -> Result<(), TelemetryDispatchError> {
         self.send(TelemetryMsg::UpdateNodeData(node_data)).await
-    }
-    pub async fn delete_node_data(
-        &self,
-        node_data: SignedNodeData,
-    ) -> Result<(), TelemetryDispatchError> {
-        self.send(TelemetryMsg::DeleteNodeData(node_data)).await
     }
     pub async fn send_metrics(&self, metrics: SignedMetrics) -> Result<(), TelemetryDispatchError> {
         self.send(TelemetryMsg::Metrics(metrics)).await

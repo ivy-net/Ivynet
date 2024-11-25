@@ -105,9 +105,9 @@ fn create_router() -> Router<HttpState> {
         .route("/machine/:machine_id", get(machine::info))
         .route("/machine/:machine_id/:name", post(machine::set_name))
         .route("/machine/:machine_id", delete(machine::delete))
+        .route("/machine/:node_id/:avs_name", delete(machine::delete_avs_node_data))
         .route("/avs", get(node::all_avs_info))
         .route("/avs/status", get(node::avs_status))
-        .route("/avs/:node_id/:avs_name/:operator_id", delete(node::delete_avs_node_data))
         .route("/info/avs/version/:avs", get(info::get_version_info))
         .route("/info/avs/version", get(info::get_all_version_info))
         .merge(
