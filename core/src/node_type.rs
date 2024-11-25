@@ -4,7 +4,7 @@ const EIGENDA_IMAGE_NAME: &str = "ghcr.io/layr-labs/eigenda/opr-node";
 const LAGRANGE_HOLESKY_WORKER_IMAGE_NAME: &str = "lagrangelabs/worker:holesky";
 // const LAGRANGE_MAINNET_WORKER_IMAGE_NAME: &str = "lagrangelabs/worker:mainnet";
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum NodeType {
     EigenDA,
     LagrangeHoleskyWorker,
@@ -21,7 +21,7 @@ impl From<&str> for NodeType {
     fn from(s: &str) -> Self {
         match s.to_lowercase().as_str() {
             "eigenda" => NodeType::EigenDA,
-            "lagrange holesky" => NodeType::LagrangeHoleskyWorker,
+            "lagrange:holesky" => NodeType::LagrangeHoleskyWorker,
             _ => panic!("Invalid node type"),
         }
     }

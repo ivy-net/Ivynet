@@ -9,7 +9,7 @@ use ivynet_backend::{
     grpc, http,
     telemetry::start_tracing,
 };
-use ivynet_core::{avs::names::AvsName, utils::try_parse_chain};
+use ivynet_core::{node_type::NodeType, utils::try_parse_chain};
 use semver::Version;
 use sqlx::PgPool;
 use tracing::error;
@@ -68,7 +68,7 @@ async fn add_account(pool: &PgPool, org: &str) -> Result<(), BackendError> {
 
 async fn set_avs_version(pool: &sqlx::PgPool, avs_data: &str) -> Result<(), BackendError> {
     let avs_data = avs_data.split(':').collect::<Vec<_>>();
-    let name = AvsName::try_from(avs_data[0]).map_err(|_| BackendError::InvalidAvs)?;
+    let name = NodeType::from(avs_data[0]);
     let chain = try_parse_chain(avs_data[1]).expect("Cannot parse chain");
     let version = Version::parse(avs_data[2]).expect("Cannot parse version");
 
@@ -82,7 +82,7 @@ async fn set_breaking_change_version(
     avs_data: &str,
 ) -> Result<(), BackendError> {
     let avs_data = avs_data.split(':').collect::<Vec<_>>();
-    let name = AvsName::try_from(avs_data[0]).map_err(|_| BackendError::InvalidAvs)?;
+    let name = NodeType::from(avs_data[0]);
     let chain = try_parse_chain(avs_data[1]).expect("Cannot parse chain");
     let version = Version::parse(avs_data[2]).expect("Cannot parse breaking change version");
     let timestamp = avs_data[3].parse::<i64>().expect("Cannot parse datetime") / 1000;

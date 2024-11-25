@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT machine_id, avs_name, avs_version, operator_address, active_set, created_at, updated_at FROM avs WHERE operator_address = $1",
+  "query": "SELECT\n                machine_id, avs_name, name, value,\n                attributes as \"attributes: sqlx::types::Json<HashMap<String,String>>\",\n                created_at\n               FROM\n                metric\n               WHERE\n                (machine_id = $1 AND avs_name IS NULL)",
   "describe": {
     "columns": [
       {
@@ -15,44 +15,38 @@
       },
       {
         "ordinal": 2,
-        "name": "avs_version",
-        "type_info": "Varchar"
+        "name": "name",
+        "type_info": "Text"
       },
       {
         "ordinal": 3,
-        "name": "operator_address",
-        "type_info": "Bytea"
+        "name": "value",
+        "type_info": "Float8"
       },
       {
         "ordinal": 4,
-        "name": "active_set",
-        "type_info": "Bool"
+        "name": "attributes: sqlx::types::Json<HashMap<String,String>>",
+        "type_info": "Jsonb"
       },
       {
         "ordinal": 5,
         "name": "created_at",
         "type_info": "Timestamp"
-      },
-      {
-        "ordinal": 6,
-        "name": "updated_at",
-        "type_info": "Timestamp"
       }
     ],
     "parameters": {
       "Left": [
-        "Bytea"
+        "Uuid"
       ]
     },
     "nullable": [
       false,
-      false,
-      false,
       true,
       false,
       false,
+      true,
       false
     ]
   },
-  "hash": "4e6431810a505546861fcc6063b1d43f013b41cab93de1092fb15b08f369fd5f"
+  "hash": "85b9610dc36fdf7747b6e91d8b24b3d6b0cb7ef14693f34e63ded9d417210405"
 }

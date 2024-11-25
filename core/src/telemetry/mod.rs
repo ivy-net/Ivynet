@@ -1,15 +1,14 @@
 use std::fmt::Display;
 
 use crate::{
-    avs::names::AvsName,
     config::get_detailed_system_information,
     error::IvyError,
-    ethers::types::Address,
     grpc::{
         backend::backend_client::BackendClient,
         messages::{Metrics, MetricsAttribute, NodeData, SignedMetrics, SignedNodeData},
         tonic::{transport::Channel, Request},
     },
+    node_type::NodeType,
     signature::{sign_metrics, sign_node_data},
     wallet::IvyWallet,
 };
@@ -91,8 +90,6 @@ pub async fn listen_metrics(
                 avs_name: avs.name.clone(),
                 avs_type: avs.avs_type.to_string(),
                 machine_id: machine_id.into(),
-                operator_id: identity_wallet.address().as_bytes().to_vec(),
-                active_set: None,
                 avs_version: None,
             };
 
@@ -100,20 +97,25 @@ pub async fn listen_metrics(
                 metrics.push(Metrics {
                     name: "running".to_owned(),
                     value: 1.0,
-                    attributes: vec![MetricsAttribute {
-                        name: "avs".to_owned(),
-                        value: avs.name.clone(),
-                    }],
+                    attributes: vec![
+                        MetricsAttribute { name: "avs_name".to_owned(), value: avs.name.clone() },
+                        MetricsAttribute { name: "avs_type".to_owned(), value: avs.avs_type.to_string() },
+                        MetricsAttribute { name: "version".to_owned(), value: "0.0.0".to_string() }, //FIXME: Bazil to work on this
+                    ],
                 });
                 metrics
             } else {
                 vec![Metrics {
                     name: "running".to_owned(),
                     value: 0.0,
-                    attributes: vec![MetricsAttribute {
-                        name: "avs".to_owned(),
-                        value: avs.name.clone(),
-                    }],
+                    attributes: vec![
+                        MetricsAttribute { name: "avs_name".to_owned(), value: avs.name.clone() },
+                        MetricsAttribute {
+                            name: "avs_type".to_owned(),
+                            value: avs.avs_type.to_string(),
+                        },
+                        MetricsAttribute { name: "version".to_owned(), value: "0.0.0".to_string() }, /* FIXME: Bazil to work on this */
+                    ],
                 }]
             };
             let metrics_signature = sign_metrics(&metrics, identity_wallet)?;
@@ -153,16 +155,13 @@ pub async fn delete_node_data_payload(
     identity_wallet: &IvyWallet,
     machine_id: Uuid,
     backend_client: &mut BackendClient<Channel>,
-    operator_id: Address,
-    avs_type: AvsName,
+    avs_type: NodeType,
     avs_name: &str,
 ) -> Result<(), IvyError> {
     let data = NodeData {
         avs_name: avs_name.to_string(),
         avs_type: avs_type.to_string(),
         machine_id: machine_id.into(),
-        operator_id: operator_id.as_bytes().to_vec(),
-        active_set: None,
         avs_version: None,
     };
     let signature = sign_node_data(&data, identity_wallet)?;
@@ -195,7 +194,7 @@ pub async fn fetch_telemetry_from(port: u16) -> Result<Vec<Metrics>, IvyError> {
 
 async fn fetch_system_telemetry() -> Result<Vec<Metrics>, IvyError> {
     // Now we need to add basic metrics
-    let (cpu_usage, ram_usage, free_ram, disk_usage, free_disk, uptime) =
+    let (cores, cpu_usage, ram_usage, free_ram, disk_usage, free_disk, uptime) =
         get_detailed_system_information()?;
 
     Ok(vec![
@@ -220,6 +219,7 @@ async fn fetch_system_telemetry() -> Result<Vec<Metrics>, IvyError> {
             value: free_disk as f64,
             attributes: Default::default(),
         },
+        Metrics { name: "cores".to_owned(), value: cores as f64, attributes: Default::default() },
         Metrics { name: "uptime".to_owned(), value: uptime as f64, attributes: Default::default() },
     ])
 }

@@ -75,10 +75,10 @@ pub fn recover_node_data(
 
 fn build_node_data_message(data: &NodeData) -> Result<H256, IvySigningError> {
     let tokens = vec![
-        Token::Address(Address::from_slice(&data.operator_id)),
+        Token::FixedBytes(data.machine_id.clone()),
         Token::String(data.avs_name.clone()),
+        Token::String(data.avs_type.clone()),
         Token::String(data.avs_version.clone().unwrap_or_default()),
-        Token::Bool(data.active_set.unwrap_or(false)),
     ];
     Ok(H256::from(&keccak256(encode(&tokens))))
 }

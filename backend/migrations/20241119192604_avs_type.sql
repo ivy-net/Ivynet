@@ -1,0 +1,2 @@
+ALTER TABLE avs
+ADD COLUMN avs_type VARCHAR(50) NOT NULL DEFAULT 'unknown';

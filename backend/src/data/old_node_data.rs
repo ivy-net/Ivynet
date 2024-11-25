@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use ivynet_core::{avs::names::AvsName, ethers::types::Chain};
+use ivynet_core::{ethers::types::Chain, node_type::NodeType};
 
 use semver::Version;
 use serde::Serialize;
@@ -9,17 +9,17 @@ use uuid::Uuid;
 
 use crate::{
     db::{
-        avs_version::{AvsID, VersionData},
+        avs_version::{NodeTypeId, VersionData},
         metric::Metric,
     },
     error::BackendError,
 };
 
-const RUNNING_METRIC: &str = "running";
-const EIGEN_PERFORMANCE_METRIC: &str = "eigen_performance_score";
-const IDLE_MINUTES_THRESHOLD: i64 = 15;
+pub const RUNNING_METRIC: &str = "running";
+pub const EIGEN_PERFORMANCE_METRIC: &str = "eigen_performance_score";
 
-const EIGEN_PERFORMANCE_HEALTHY_THRESHOLD: f64 = 80.0;
+pub const IDLE_MINUTES_THRESHOLD: i64 = 15;
+pub const EIGEN_PERFORMANCE_HEALTHY_THRESHOLD: f64 = 80.0;
 
 #[derive(Serialize, ToSchema, Clone, Debug)]
 pub enum NodeStatus {
@@ -27,38 +27,21 @@ pub enum NodeStatus {
     Unhealthy,
     Idle,
     Error,
-    UpdateNeeded,
-}
-
-/// Condense list of metrics into a smaller list of metrics for the frontend
-pub fn condense_metrics(metrics: &[Metric]) -> Result<Vec<Metric>, BackendError> {
-    let avs = find_running_avs(metrics).ok_or(BackendError::NoRunningAvsFound(
-        "No running AVS found when searching for condensed metrics".to_owned(),
-    ))?;
-
-    match avs.as_str() {
-        "eigenda" => Ok(filter_metrics_by_names(metrics, &CONDENSED_EIGENDA_METRICS_NAMES)),
-        _ => Err(BackendError::CondensedMetricsNotFound(format!(
-            "No condensed metrics found for AVS: {}, use the /metrics/all endpoint instead",
-            avs
-        ))),
-    }
-}
-
-/// Filter the metrics by the given names.
-fn filter_metrics_by_names(metrics: &[Metric], allowed_names: &[&str]) -> Vec<Metric> {
-    metrics.iter().filter(|metric| allowed_names.contains(&metric.name.as_str())).cloned().collect()
 }
 
 /// Find the name of the running AVS.
-fn find_running_avs(metrics: &[Metric]) -> Option<String> {
+pub fn find_running_avs_type(metrics: &[Metric]) -> Option<NodeType> {
     metrics
         .iter()
         .find(|metric| metric.name.contains("running"))
-        .and_then(|metric| metric.attributes.as_ref()?.get("avs").cloned())
+        .and_then(|metric| metric.attributes.as_ref()?.get("avs_type").cloned())
+        .map(|avs_type| NodeType::from(avs_type.as_str()))
 }
 
 /// Categorize the running nodes into two groups: avs running and idle.
+/// TODO: This function is dependent on running metric impl, is there ever
+/// a case where running metric would be 0 now? I think yes, monitoring but
+/// no actual node running - could signal a broken node
 pub fn categorize_running_nodes(
     node_metrics_map: HashMap<Uuid, HashMap<String, Metric>>,
 ) -> (Vec<Uuid>, Vec<Uuid>) {
@@ -89,71 +72,64 @@ pub fn categorize_running_nodes(
     (running_nodes, idle_nodes)
 }
 
+pub fn get_idle_nodes(node_metrics_map: HashMap<Uuid, HashMap<String, Metric>>) -> Vec<Uuid> {
+    let (_, idle_nodes) = categorize_running_nodes(node_metrics_map);
+    idle_nodes
+}
+
 /// Categorize the running nodes into two groups: healthy and unhealthy.
 pub fn categorize_node_health(
     running_nodes: Vec<Uuid>,
     node_metrics_map: HashMap<Uuid, HashMap<String, Metric>>,
 ) -> (Vec<Uuid>, Vec<Uuid>) {
-    let mut healthy_machines = Vec::new();
-    let mut unhealthy_machines = Vec::new();
+    let mut healthy_nodes = Vec::new();
+    let mut low_performance_nodes = Vec::new();
     for node in running_nodes {
         if let Some(metrics_map) = node_metrics_map.get(&node) {
             if let Some(performance_metric) = metrics_map.get(EIGEN_PERFORMANCE_METRIC) {
                 if performance_metric.value >= EIGEN_PERFORMANCE_HEALTHY_THRESHOLD {
-                    healthy_machines.push(node);
+                    healthy_nodes.push(node);
                 } else {
-                    unhealthy_machines.push(node);
+                    low_performance_nodes.push(node);
                 }
             }
         }
     }
 
-    (healthy_machines, unhealthy_machines)
+    (healthy_nodes, low_performance_nodes)
 }
 
 /// Get nodes that need to be updated.
 pub fn categorize_updateable_nodes(
+    version_map: HashMap<NodeTypeId, VersionData>,
     running_nodes: Vec<Uuid>,
     node_metrics_map: HashMap<Uuid, HashMap<String, Metric>>,
-    avs_version_map: HashMap<AvsID, VersionData>,
-) -> (Vec<Uuid>, Vec<Uuid>) {
-    let mut updateable = Vec::new();
-    let mut outdated = Vec::new();
-    running_nodes
-        .iter()
-        .filter_map(|&node| {
-            let metrics = node_metrics_map.get(&node)?;
-            let running_metric = metrics.get(RUNNING_METRIC)?;
-            let metric_attributes = running_metric.attributes.as_ref()?;
+) -> Vec<(Uuid, UpdateStatus)> {
+    let mut update_statuses = Vec::new();
 
-            let avs = metric_attributes.get("avs")?;
-            let chain = metric_attributes.get("chain")?;
-            let version = metric_attributes.get("version")?;
+    for node_id in running_nodes {
+        let status = if let Some(metrics) = node_metrics_map.get(&node_id) {
+            if let Some(running_metric) = metrics.get(RUNNING_METRIC) {
+                if let Some(attributes) = &running_metric.attributes {
+                    let version = attributes.get("version").cloned();
+                    let chain = attributes.get("chain").cloned();
+                    let node_type = attributes.get("avs_type").cloned();
 
-            let avs_id = AvsID {
-                avs_name: AvsName::try_from(avs.as_str()).ok()?,
-                chain: chain.parse::<Chain>().ok()?,
-            };
-            let current_version = Version::parse(version).ok()?;
-
-            let version_data = avs_version_map.get(&avs_id)?.clone();
-            if version_data.latest_version <= current_version {
-                return None;
-            }
-
-            updateable.push(node);
-
-            if let Some(breaking) = version_data.breaking_change_version {
-                if current_version < breaking {
-                    outdated.push(node);
+                    get_update_status(version_map.clone(), version, chain, node_type)
+                } else {
+                    UpdateStatus::Unknown
                 }
+            } else {
+                UpdateStatus::Unknown
             }
+        } else {
+            UpdateStatus::Unknown
+        };
 
-            Some(())
-        })
-        .count(); // consume iterator
+        update_statuses.push((node_id, status));
+    }
 
-    (updateable, outdated)
+    update_statuses
 }
 
 /// Look up NodeStatus of a specific node
@@ -186,19 +162,9 @@ pub fn get_node_status(metrics: HashMap<String, Metric>) -> NodeStatus {
     }
 }
 
-const CONDENSED_EIGENDA_METRICS_NAMES: [&str; 7] = [
-    "eigen_performance_score",
-    "node_reachability_status",
-    "cpu_usage",
-    "disk_usage",
-    "uptime",
-    "ram_usage",
-    "running",
-];
-
 #[cfg(test)]
 mod data_filtering_tests {
-    use crate::db::avs_version::VersionData;
+    use crate::db::avs_version::{NodeTypeId, VersionData};
 
     use super::*;
     use std::{fs::File, io::BufReader};
@@ -215,7 +181,7 @@ mod data_filtering_tests {
             value,
             created_at,
             machine_id: Uuid::new_v4(),
-            avs_name: Some(AvsName::EigenDA.to_string()),
+            avs_name: Some(NodeType::EigenDA.to_string()),
             name: "JimTheComputer".to_owned(),
             attributes,
         }
@@ -226,7 +192,8 @@ mod data_filtering_tests {
             1.0,
             None,
             Some(HashMap::from([
-                ("avs".to_string(), avs.to_string()),
+                ("avs_name".to_string(), avs.to_string()),
+                ("avs_type".to_string(), avs.to_string()),
                 ("chain".to_string(), Chain::Holesky.to_string()),
                 ("version".to_string(), version.to_string()),
             ])),
@@ -241,8 +208,8 @@ mod data_filtering_tests {
         }
     }
 
-    fn create_id(avs_name: &str) -> AvsID {
-        AvsID { avs_name: AvsName::try_from(avs_name).unwrap(), chain: Chain::Holesky }
+    fn create_id(node_type: &str) -> NodeTypeId {
+        NodeTypeId { node_type: NodeType::from(node_type), chain: Chain::Holesky }
     }
 
     fn load_metrics_json(file_path: &str) -> Result<Vec<Metric>, Box<dyn std::error::Error>> {
@@ -256,8 +223,8 @@ mod data_filtering_tests {
     fn test_find_avs_name() -> Result<(), Box<dyn std::error::Error>> {
         let metrics: Vec<Metric> = load_metrics_json("test/json/eigenda_metrics.json")?;
 
-        let name = super::find_running_avs(&metrics).unwrap();
-        assert_eq!(name, "eigenda");
+        let name = super::find_running_avs_type(&metrics).unwrap();
+        assert_eq!(name, NodeType::EigenDA);
         Ok(())
     }
 
@@ -333,7 +300,7 @@ mod data_filtering_tests {
             node2,
             HashMap::from([(
                 RUNNING_METRIC.to_string(),
-                create_metric_with_version_attributes("lagrange", "2.0.0"),
+                create_metric_with_version_attributes("lagrange:holesky", "2.0.0"),
             )]),
         );
         node_metrics_map.insert(
@@ -346,25 +313,21 @@ mod data_filtering_tests {
 
         let avs_version_map = HashMap::from([
             (create_id("eigenda"), create_version_data("2.0.0", Some("1.8.0"))),
-            (create_id("lagrange"), create_version_data("2.1.0", None)),
+            (create_id("lagrange:holesky"), create_version_data("2.1.0", None)),
         ]);
 
-        let (updateable_nodes, outdated_nodes) =
-            categorize_updateable_nodes(running_nodes, node_metrics_map, avs_version_map);
+        let update_statuses =
+            categorize_updateable_nodes(avs_version_map, running_nodes, node_metrics_map);
 
-        assert_eq!(updateable_nodes.len(), 2);
-        assert!(updateable_nodes.contains(&node2));
-        assert!(updateable_nodes.contains(&node3));
-        assert!(!updateable_nodes.contains(&node1));
-
-        assert_eq!(outdated_nodes.len(), 1);
-        assert!(outdated_nodes.contains(&node3));
+        assert_eq!(update_statuses.len(), 3);
+        assert!(update_statuses.contains(&(node1, UpdateStatus::UpToDate)));
+        assert!(update_statuses.contains(&(node2, UpdateStatus::Updateable)));
+        assert!(update_statuses.contains(&(node3, UpdateStatus::Outdated)));
     }
 
     #[test]
     fn test_no_updateable_nodes() {
         let node1 = Uuid::from_u128(1);
-
         let running_nodes = vec![node1];
 
         let mut node_metrics_map = HashMap::new();
@@ -379,11 +342,11 @@ mod data_filtering_tests {
         let avs_version_map =
             HashMap::from([(create_id("eigenda"), create_version_data("2.0.0", None))]);
 
-        let (updateable_nodes, outdated_nodes) =
-            categorize_updateable_nodes(running_nodes, node_metrics_map, avs_version_map);
+        let update_statuses =
+            categorize_updateable_nodes(avs_version_map, running_nodes, node_metrics_map);
 
-        assert_eq!(updateable_nodes.len(), 0);
-        assert_eq!(outdated_nodes.len(), 0);
+        assert_eq!(update_statuses.len(), 1);
+        assert!(update_statuses.contains(&(node1, UpdateStatus::UpToDate)));
     }
 
     #[test]
@@ -405,27 +368,24 @@ mod data_filtering_tests {
             node2,
             HashMap::from([(
                 RUNNING_METRIC.to_string(),
-                create_metric_with_version_attributes("lagrange", "0.0.0"),
+                create_metric_with_version_attributes("lagrange:holesky", "0.0.0"),
             )]),
         );
 
         let avs_version_map =
             HashMap::from([(create_id("eigenda"), create_version_data("2.0.0", None))]);
 
-        let (updateable_nodes, outdated_nodes) =
-            categorize_updateable_nodes(running_nodes, node_metrics_map, avs_version_map);
+        let update_statuses =
+            categorize_updateable_nodes(avs_version_map, running_nodes, node_metrics_map);
 
-        println!("{:?}", updateable_nodes);
-
-        assert_eq!(updateable_nodes.len(), 1);
-        assert!(updateable_nodes.contains(&node1));
-        assert_eq!(outdated_nodes.len(), 0);
+        assert_eq!(update_statuses.len(), 2);
+        assert!(update_statuses.contains(&(node1, UpdateStatus::Updateable)));
+        assert!(update_statuses.contains(&(node2, UpdateStatus::Unknown)));
     }
 
     #[test]
     fn test_invalid_version_string() {
         let node1 = Uuid::from_u128(1);
-
         let running_nodes = vec![node1];
 
         let mut node_metrics_map = HashMap::new();
@@ -440,10 +400,10 @@ mod data_filtering_tests {
         let avs_version_map =
             HashMap::from([(create_id("eigenda"), create_version_data("2.0.0", None))]);
 
-        let (updateable_nodes, outdated_nodes) =
-            categorize_updateable_nodes(running_nodes, node_metrics_map, avs_version_map);
+        let update_statuses =
+            categorize_updateable_nodes(avs_version_map, running_nodes, node_metrics_map);
 
-        assert_eq!(updateable_nodes.len(), 0);
-        assert_eq!(outdated_nodes.len(), 0);
+        assert_eq!(update_statuses.len(), 1);
+        assert!(update_statuses.contains(&(node1, UpdateStatus::Unknown)));
     }
 }

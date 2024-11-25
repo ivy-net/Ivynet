@@ -51,6 +51,18 @@ impl Client {
         Ok(clients.into_iter().map(|n| n.into()).collect())
     }
 
+    pub async fn get(pool: &PgPool, client_id: &Address) -> Result<Option<Client>, BackendError> {
+        let client: Option<DbClient> = sqlx::query_as!(
+            DbClient,
+            "SELECT client_id, organization_id, created_at, updated_at FROM client WHERE client_id = $1",
+            Some(client_id.as_bytes())
+        )
+        .fetch_optional(pool)
+        .await?;
+
+        Ok(client.map(|m| m.into()))
+    }
+
     pub async fn create(
         pool: &PgPool,
         account: &Account,

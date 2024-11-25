@@ -4,7 +4,7 @@ use axum::{
     Json,
 };
 use axum_extra::extract::CookieJar;
-use ivynet_core::avs::names::AvsName;
+use ivynet_core::node_type::NodeType;
 use tracing::debug;
 
 use crate::{
@@ -17,7 +17,7 @@ use super::{authorize, HttpState};
 /// Get the latest version of an avs
 #[utoipa::path(
     get,
-    path = "/avs/:avs/version",
+    path = "/info/avs/version/:avs",
     responses(
         (status = 200, body = Metric),
         (status = 404)
@@ -30,10 +30,13 @@ pub async fn get_version_info(
     jar: CookieJar,
 ) -> Result<Json<Vec<AvsVersionData>>, BackendError> {
     let _account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    let avs_name = AvsName::try_from(&avs[..]).map_err(|_| BackendError::InvalidAvs)?;
+    let node_type = NodeType::from(avs.as_str());
 
-    // Get all data for the node
-    let avs_data = DbAvsVersionData::get_avs_version(&state.pool, &avs_name).await?;
+    if node_type == NodeType::Unknown {
+        return Err(BackendError::InvalidAvs);
+    }
+
+    let avs_data = DbAvsVersionData::get_avs_version(&state.pool, &node_type).await?;
 
     Ok(Json(avs_data))
 }
@@ -41,7 +44,7 @@ pub async fn get_version_info(
 /// Get the latest version for every AVS we support
 #[utoipa::path(
     get,
-    path = "/avs/version",
+    path = "/info/avs/version",
     responses(
         (status = 200, body = Metric),
         (status = 404)
@@ -60,7 +63,7 @@ pub async fn get_all_version_info(
     let vec_data: Vec<AvsVersionData> =
         avs_data.into_iter().map(|(id, vd)| AvsVersionData { id, vd }).collect();
 
-    debug!("/avs/version result: {:#?}", vec_data);
+    debug!("/info/avs/version result: {:#?}", vec_data);
 
     Ok(Json(vec_data))
 }

@@ -78,6 +78,7 @@ impl NodeConfig {
         match self {
             NodeConfig::EigenDA(_) => NodeType::EigenDA,
             NodeConfig::Lagrange(_) => NodeType::LagrangeHoleskyWorker,
+            //TODO: THE USER NEEDS TO ENTER THE NODE TYPE STRING
             NodeConfig::Other(_) => NodeType::Unknown,
         }
     }

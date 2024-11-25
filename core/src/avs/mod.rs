@@ -11,7 +11,6 @@ pub mod config;
 pub mod contracts;
 pub mod eigenda;
 pub mod lagrange;
-pub mod names;
 
 pub type QuorumMinMap = HashMap<Chain, HashMap<QuorumType, U256>>;
 

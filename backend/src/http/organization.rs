@@ -117,6 +117,7 @@ pub async fn get(
     Ok(Organization::get(&state.pool, id).await?.into())
 }
 
+/// Get an overview of all machines in the organization
 #[utoipa::path(
     get,
     path = "/organization/machines",
@@ -132,9 +133,10 @@ pub async fn machines(
 ) -> Result<Json<Vec<Machine>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
 
-    Ok(account.machines(&state.pool).await?.into())
+    Ok(account.all_machines(&state.pool).await?.into())
 }
 
+/// Get an overview of all AVSes in the organization
 #[utoipa::path(
     get,
     path = "/organization/avses",
@@ -150,7 +152,7 @@ pub async fn avses(
 ) -> Result<Json<Vec<Avs>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
 
-    Ok(account.avses(&state.pool).await?.into())
+    Ok(account.all_avses(&state.pool).await?.into())
 }
 
 #[utoipa::path(

@@ -3,7 +3,6 @@ use crate::{
     error::BackendError,
 };
 use ivynet_core::{
-    avs::names::AvsName,
     ethers::types::{Address, Signature},
     grpc::{
         self,
@@ -12,6 +11,7 @@ use ivynet_core::{
         messages::{RegistrationCredentials, SignedLog, SignedMetrics, SignedNodeData},
         server, Status,
     },
+    node_type::NodeType,
     signature::{recover_from_string, recover_metrics, recover_node_data},
 };
 use semver::Version;
@@ -153,21 +153,22 @@ impl Backend for BackendService {
                 ));
             }
 
+            let version = node_data
+                .avs_version
+                .as_deref()
+                .and_then(|v| Version::parse(v).ok())
+                .unwrap_or_else(|| Version::new(0, 0, 0));
+
             if !node_data.avs_name.is_empty() {
-                Avs::record_avs_data(
+                Avs::record_avs_data_from_client(
                     &self.pool,
-                    &Address::from_slice(&node_data.operator_id),
                     machine_id,
-                    node_data.avs_name.as_str(),
-                    &node_data
-                        .avs_version
-                        .as_ref()
-                        .map(|v| Version::parse(v).unwrap_or(Version::new(0, 0, 0)))
-                        .unwrap_or(Version::new(0, 0, 0)),
-                    node_data.active_set.unwrap_or(false),
+                    &node_data.avs_name,
+                    &NodeType::from(node_data.avs_type.as_str()),
+                    &version,
                 )
                 .await
-                .map_err(|e| Status::internal(format!("Failed while saving node_data: {}", e)))?;
+                .map_err(|e| Status::internal(format!("Failed while saving node_data: {e}")))?;
             }
             Ok(Response::new(()))
         } else {
@@ -179,36 +180,39 @@ impl Backend for BackendService {
         &self,
         request: Request<SignedNodeData>,
     ) -> Result<Response<()>, Status> {
-        let req = request.into_inner();
+        let _req = request.into_inner();
 
-        if let Some(node_data) = &req.node_data {
-            let client_id = recover_node_data(
-                node_data,
-                &Signature::try_from(req.signature.as_slice())
-                    .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
-            )?;
+        // if let Some(node_data) = &req.node_data {
+        //     let client_id = recover_node_data(
+        //         node_data,
+        //         &Signature::try_from(req.signature.as_slice())
+        //             .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
+        //     )?;
 
-            let machine_id = Uuid::from_slice(&node_data.machine_id)
-                .map_err(|_| Status::invalid_argument("Machine id has wrong length".to_string()))?;
+        //     let machine_id = Uuid::from_slice(&node_data.machine_id)
+        //         .map_err(|_| Status::invalid_argument("Machine id has wrong
+        // length".to_string()))?;
 
-            if !Machine::is_owned_by(&self.pool, &client_id, machine_id).await.unwrap_or(false) {
-                return Err(Status::not_found(
-                    "Machine not registered for given client".to_string(),
-                ));
-            }
-            Avs::delete_avs_data(
-                &self.pool,
-                machine_id,
-                &Address::from_slice(&node_data.operator_id),
-                &AvsName::try_from(node_data.avs_name.as_str())
-                    .map_err(|_| Status::invalid_argument("Bad AVS name provided"))?,
-            )
-            .await
-            .map_err(|e| Status::internal(format!("Failed while deleting node_data: {}", e)))?;
-            Ok(Response::new(()))
-        } else {
-            Err(Status::invalid_argument("Node data is missing"))
-        }
+        //     if !Machine::is_owned_by(&self.pool, &client_id, machine_id).await.unwrap_or(false) {
+        //         return Err(Status::not_found(
+        //             "Machine not registered for given client".to_string(),
+        //         ));
+        //     }
+        //     Avs::delete_avs_data(
+        //         &self.pool,
+        //         machine_id,
+        //         &Address::from_slice(&node_data.operator_id),
+        //         node_data.avs_name.as_str(),
+        //         &NodeType::try_from(node_data.avs_name.as_str())
+        //             .map_err(|_| Status::invalid_argument("Bad AVS name provided"))?,
+        //     )
+        //     .await
+        //     .map_err(|e| Status::internal(format!("Failed while deleting node_data: {}", e)))?;
+        //     Ok(Response::new(()))
+        // } else {
+        //     Err(Status::invalid_argument("Node data is missing"))
+        // }
+        Ok(Response::new(()))
     }
 }
 

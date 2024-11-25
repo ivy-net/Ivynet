@@ -140,7 +140,21 @@ impl Account {
         Client::get_all_for_account(pool, self).await
     }
 
-    pub async fn machines(&self, pool: &PgPool) -> Result<Vec<Machine>, BackendError> {
+    pub async fn clients_and_machines(
+        &self,
+        pool: &PgPool,
+    ) -> Result<Vec<(Client, Vec<Machine>)>, BackendError> {
+        let mut clients = Vec::new();
+        for client in self.clients(pool).await? {
+            clients.push((
+                client.clone(),
+                Machine::get_all_for_client_id(pool, &client.client_id).await?,
+            ));
+        }
+        Ok(clients)
+    }
+
+    pub async fn all_machines(&self, pool: &PgPool) -> Result<Vec<Machine>, BackendError> {
         let mut machines = Vec::new();
         for client in self.clients(pool).await? {
             let mut m = Machine::get_all_for_client_id(pool, &client.client_id).await?;
@@ -149,9 +163,9 @@ impl Account {
         Ok(machines)
     }
 
-    pub async fn avses(&self, pool: &PgPool) -> Result<Vec<Avs>, BackendError> {
+    pub async fn all_avses(&self, pool: &PgPool) -> Result<Vec<Avs>, BackendError> {
         let mut avses = Vec::new();
-        for machine in self.machines(pool).await? {
+        for machine in self.all_machines(pool).await? {
             let mut a = Avs::get_machines_avs_list(pool, machine.machine_id).await?;
             avses.append(&mut a);
         }
@@ -163,7 +177,7 @@ impl Account {
         pool: &PgPool,
     ) -> Result<Vec<(Machine, Vec<Avs>)>, BackendError> {
         let mut machines = Vec::new();
-        for machine in self.machines(pool).await? {
+        for machine in self.all_machines(pool).await? {
             machines.push((
                 machine.clone(),
                 Avs::get_machines_avs_list(pool, machine.machine_id).await?,

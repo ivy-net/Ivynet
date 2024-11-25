@@ -1,7 +1,9 @@
 mod apidoc;
 mod authorize;
-mod avs;
 mod client;
+mod info;
+mod machine;
+mod node;
 mod organization;
 
 use std::sync::Arc;
@@ -88,24 +90,26 @@ fn create_router() -> Router<HttpState> {
         .route("/organization/confirm/:id", get(organization::confirm))
         .route("/organization/machines", get(organization::machines))
         .route("/organization/avses", get(organization::avses))
-        .route("/client/status", get(client::status))
-        .route("/client/idle", get(client::idling))
-        .route("/client/unhealthy", get(client::unhealthy))
-        .route("/client/healthy", get(client::healthy))
-        .route("/client/:id/metrics", get(client::metrics_condensed))
-        .route("/client/:id/metrics/all", get(client::metrics_all))
-        .route("/client/:id/logs", get(client::logs))
-        .route("/client/:id/info", get(client::info))
-        .route("/client/:id/data", get(client::get_all_node_data))
-        // .route("/client/:id/data/:avs", get(client::get_avs_data))
-        .route("/client/:id/data", delete(client::delete_machine_data))
-        // .route("/client/:id/data/:avs/:operator_id", delete(client::delete_avs_data))
-        .route("/client/:id", get(client::info))
-        .route("/client/:id", post(client::set_name))
-        .route("/client/:id", delete(client::delete))
         .route("/client", get(client::client))
-        .route("/avs/:avs/version", get(avs::get_version_info))
-        .route("/avs/version", get(avs::get_all_version_info))
+        .route("/client/:id", get(client::client_machines))
+        .route("/machine", get(machine::machine))
+        .route("/machine/status", get(machine::status))
+        .route("/machine/idle", get(machine::idle))
+        .route("/machine/unhealthy", get(machine::unhealthy))
+        .route("/machine/healthy", get(machine::healthy))
+        .route("/machine/:machine_id/:avs_name/metrics", get(machine::metrics_condensed))
+        .route("/machine/:machine_id/:avs_name/metrics/all", get(machine::metrics_all))
+        .route("/machine/:machine_id/:avs_name/logs", get(machine::logs))
+        .route("/machine/:machine_id/data", get(machine::get_all_node_data))
+        .route("/machine/:machine_id/data", delete(machine::delete_machine_data))
+        .route("/machine/:machine_id", get(machine::info))
+        .route("/machine/:machine_id/:name", post(machine::set_name))
+        .route("/machine/:machine_id", delete(machine::delete))
+        .route("/avs", get(node::all_avs_info))
+        .route("/avs/status", get(node::avs_status))
+        .route("/avs/:node_id/:avs_name/:operator_id", delete(node::delete_avs_node_data))
+        .route("/info/avs/version/:avs", get(info::get_version_info))
+        .route("/info/avs/version", get(info::get_all_version_info))
         .merge(
             SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", apidoc::ApiDoc::openapi()),
         )

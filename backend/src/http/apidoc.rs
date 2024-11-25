@@ -1,7 +1,7 @@
+use crate::data::{machine_data, node_data};
 use utoipa::OpenApi;
 
-use super::{super::db, authorize, avs, client, organization};
-use crate::data;
+use super::{super::db, authorize, client, info, machine, node, organization};
 
 #[derive(OpenApi)]
 #[openapi(
@@ -17,19 +17,24 @@ use crate::data;
         organization::avses,
         organization::confirm,
         client::client,
-        client::logs,
-        client::status,
-        client::idling,
-        client::unhealthy,
-        client::healthy,
-        client::info,
-        client::metrics_condensed,
-        client::metrics_all,
-        client::delete,
-        client::set_name,
-        client::get_all_node_data,
-        avs::get_version_info,
-        avs::get_all_version_info,
+        client::client_machines,
+        info::get_version_info,
+        info::get_all_version_info,
+        machine::machine,
+        machine::status,
+        machine::idle,
+        machine::unhealthy,
+        machine::healthy,
+        machine::metrics_condensed,
+        machine::metrics_all,
+        machine::logs,
+        machine::get_all_node_data,
+        machine::delete_machine_data,
+        machine::info,
+        machine::delete,
+        node::all_avs_info,
+        node::avs_status,
+        node::delete_avs_node_data,
     ),
     components(
         schemas(
@@ -50,17 +55,9 @@ use crate::data;
             db::metric::Metric,
             db::log::ContainerLog,
             db::log::LogLevel,
-            data::NodeStatus,
-            client::Status,
-            client::StatusReport,
-            client::Info,
-            client::InfoReport,
-            client::Metrics,
-            client::NameChangeRequest,
-            client::InfoReport,
-            client::HardwareUsageInfo,
-            client::HardwareInfoStatus,
-            client::AvsInfo,
+            node_data::NodeStatusReport,
+            machine_data::MachineInfoReport,
+            machine_data::MachineStatusReport,
         ),
     ),
     tags(
