@@ -54,11 +54,11 @@ which = "6.0.2"
 semver = "1.0.23"
 indexmap = "2.6.0"
 docker-compose-types = "0.15.0"
-axum = "0.7.7"
 eth-keystore = { version = "0.5.0" }
 uuid = { version = "1.11.0", features = ["v4", "serde"] }
 bollard = "0.18.0"
 rustc-hex = "2.1.0"
+futures = "0.3.31"
 
 [build-dependencies]
 prost-build = "0.12"
@@ -70,7 +70,7 @@ tempfile = "3.10.1"
 serial_test = "3.1.1"
 
 [package.metadata.cargo-machete]
-ignored = ["chrono", "prost", "prost-wkt", "prost-wkt-types"]
+ignored = ["prost", "prost-wkt", "prost-wkt-types"]
 
 [features]
 docker_tests = []

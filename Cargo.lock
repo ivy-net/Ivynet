@@ -2762,7 +2762,6 @@ name = "ivynet-core"
 version = "0.2.2"
 dependencies = [
  "async-trait",
- "axum 0.7.9",
  "blsful",
  "bollard",
  "chrono",
@@ -2773,6 +2772,7 @@ dependencies = [
  "dotenvy",
  "eth-keystore",
  "ethers",
+ "futures",
  "futures-util",
  "hyper-util",
  "indexmap 2.6.0",
