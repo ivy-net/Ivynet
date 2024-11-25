@@ -1,7 +1,11 @@
 use serde::{Deserialize, Serialize};
 
+// Image names that are used for common AVSes.
 const EIGENDA_IMAGE_NAME: &str = "ghcr.io/layr-labs/eigenda/opr-node";
 const LAGRANGE_HOLESKY_WORKER_IMAGE_NAME: &str = "lagrangelabs/worker:holesky";
+
+const EIGENDA_METRICS_ID: &str = "da-node";
+
 // const LAGRANGE_MAINNET_WORKER_IMAGE_NAME: &str = "lagrangelabs/worker:mainnet";
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -11,7 +15,7 @@ pub enum NodeType {
     Unknown,
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error, Eq, PartialEq)]
 pub enum NodeTypeError {
     #[error("Invalid node type")]
     InvalidNodeType,
@@ -30,9 +34,9 @@ impl From<&str> for NodeType {
 impl std::fmt::Display for NodeType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            NodeType::EigenDA => write!(f, "EigenDA"),
-            NodeType::LagrangeHoleskyWorker => write!(f, "Lagrange Holesky Worker"),
-            NodeType::Unknown => write!(f, "Unknown"),
+            Self::EigenDA => write!(f, "EigenDA"),
+            Self::LagrangeHoleskyWorker => write!(f, "Lagrange Holesky Worker"),
+            Self::Unknown => write!(f, "Unknown"),
         }
     }
 }
@@ -41,14 +45,15 @@ impl std::fmt::Display for NodeType {
 impl NodeType {
     pub fn default_docker_image_name(&self) -> Result<&'static str, NodeTypeError> {
         let res = match self {
-            NodeType::EigenDA => EIGENDA_IMAGE_NAME,
-            NodeType::LagrangeHoleskyWorker => LAGRANGE_HOLESKY_WORKER_IMAGE_NAME,
-            NodeType::Unknown => return Err(NodeTypeError::InvalidNodeType),
+            Self::EigenDA => EIGENDA_IMAGE_NAME,
+            Self::LagrangeHoleskyWorker => LAGRANGE_HOLESKY_WORKER_IMAGE_NAME,
+            Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };
         Ok(res)
     }
 
-    pub fn all() -> Vec<NodeType> {
+    /// Get a vec of all known node types. Excludes `NodeType::Unknown`.
+    pub fn all_known() -> Vec<Self> {
         vec![NodeType::EigenDA, NodeType::LagrangeHoleskyWorker]
     }
 
@@ -56,11 +61,32 @@ impl NodeType {
         vec![EIGENDA_IMAGE_NAME, LAGRANGE_HOLESKY_WORKER_IMAGE_NAME]
     }
 
-    pub fn try_from_docker_image_name(image_name: &str) -> Result<NodeType, NodeTypeError> {
+    pub fn from_docker_image_name(image_name: &str) -> Self {
         match image_name {
-            EIGENDA_IMAGE_NAME => Ok(NodeType::EigenDA),
-            LAGRANGE_HOLESKY_WORKER_IMAGE_NAME => Ok(NodeType::LagrangeHoleskyWorker),
-            _ => Err(NodeTypeError::InvalidNodeType),
+            EIGENDA_IMAGE_NAME => NodeType::EigenDA,
+            LAGRANGE_HOLESKY_WORKER_IMAGE_NAME => Self::LagrangeHoleskyWorker,
+            _ => Self::Unknown,
         }
+    }
+    pub fn from_metrics_name(metrics_id: &str) -> Self {
+        match metrics_id {
+            EIGENDA_METRICS_ID => Self::EigenDA,
+            _ => Self::Unknown,
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_from_docker_image_name() {
+        assert_eq!(NodeType::from_docker_image_name(EIGENDA_IMAGE_NAME), NodeType::EigenDA);
+        assert_eq!(
+            NodeType::from_docker_image_name(LAGRANGE_HOLESKY_WORKER_IMAGE_NAME),
+            NodeType::LagrangeHoleskyWorker
+        );
+        assert_eq!(NodeType::from_docker_image_name("invalid"), NodeType::Unknown);
     }
 }

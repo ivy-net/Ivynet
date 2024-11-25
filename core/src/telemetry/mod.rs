@@ -2,6 +2,10 @@ use std::fmt::Display;
 
 use crate::{
     config::get_detailed_system_information,
+    docker::{
+        container::{ListenerData, LogsListenerManager},
+        dockerapi::DockerClient,
+    },
     error::IvyError,
     grpc::{
         backend::backend_client::BackendClient,
@@ -12,6 +16,7 @@ use crate::{
     signature::{sign_metrics, sign_node_data},
     wallet::IvyWallet,
 };
+use bollard::Docker;
 use dispatch::TelemetryDispatchHandle;
 use serde::{Deserialize, Serialize};
 use tokio::time::{sleep, Duration};
@@ -22,33 +27,34 @@ pub mod dispatch;
 
 const TELEMETRY_INTERVAL_IN_MINUTES: u64 = 1;
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-pub enum AvsType {
-    EigenDA,
-    Unknown,
-}
+// #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
+// pub enum AvsType {
+//     EigenDA,
+//     Unknown,
+// }
+//
+// impl Display for AvsType {
+//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+//         match self {
+//             Self::EigenDA => write!(f, "eigenda"),
+//             Self::Unknown => write!(f, "Unknown"),
+//         }
+//     }
+// }
+//
+// impl From<&str> for AvsType {
+//     fn from(value: &str) -> Self {
+//         match value {
+//             "da-node" => Self::EigenDA,
+//             _ => Self::Unknown,
+//         }
+//     }
+// }
 
-impl Display for AvsType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::EigenDA => write!(f, "eigenda"),
-            Self::Unknown => write!(f, "Unknown"),
-        }
-    }
-}
-
-impl From<&str> for AvsType {
-    fn from(value: &str) -> Self {
-        match value {
-            "da-node" => Self::EigenDA,
-            _ => Self::Unknown,
-        }
-    }
-}
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ConfiguredAvs {
     pub name: String,
-    pub avs_type: AvsType,
+    pub avs_type: NodeType,
     pub metric_port: u16,
 }
 
@@ -60,6 +66,17 @@ pub async fn listen(
 ) -> Result<(), IvyError> {
     let dispatch = TelemetryDispatchHandle::from_client(backend_client).await;
     let mut error_rx = dispatch.error_rx.resubscribe();
+    let docker = DockerClient::default();
+
+    let logs_listener = LogsListenerManager::new(dispatch.clone(), docker);
+
+    // TODO: The below loop recovers the container from a ConfiguredAvs, which feels like something
+    // that should be done elsewhere.
+
+    for avs in avses {
+        let listener_data = ListenerData::new(machine_id, identity_wallet.clone(), avses.to_vec());
+        logs_listener.add_listener(listener_data.clone(), avs.clone());
+    }
 
     tokio::select! {
         metrics_err = listen_metrics(machine_id, &identity_wallet, avses, &dispatch) => {

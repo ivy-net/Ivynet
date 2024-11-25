@@ -7,7 +7,8 @@ use ivynet_core::{
     docker::dockerapi::DockerClient,
     grpc::{self, backend::backend_client::BackendClient, messages::Metrics},
     io::{read_toml, write_toml, IoError},
-    telemetry::{fetch_telemetry_from, listen, AvsType, ConfiguredAvs},
+    node_type::NodeType,
+    telemetry::{fetch_telemetry_from, listen, ConfiguredAvs},
 };
 use serde::{Deserialize, Serialize};
 use tracing::info;
@@ -22,7 +23,7 @@ const MONITOR_CONFIG_FILE: &str = "monitor-config.toml";
 #[derive(Clone, Debug)]
 struct PotentialAvs {
     pub name: String,
-    pub avs_type: AvsType,
+    pub avs_type: NodeType,
     pub ports: Vec<u16>,
 }
 
@@ -122,7 +123,7 @@ pub async fn scan() -> Result<(), anyhow::Error> {
                     avses.push(ConfiguredAvs {
                         name: avs.name.clone(),
                         avs_type: match guess_avs_type(metrics) {
-                            AvsType::Unknown => avs.avs_type,
+                            NodeType::Unknown => avs.avs_type,
                             avs_type => avs_type,
                         },
                         metric_port: *port,
@@ -158,14 +159,15 @@ pub async fn scan() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-fn potential_avs_name(name: &str) -> Option<AvsType> {
-    if name.contains(IMAGE_NAME_EIGENDA) {
-        return Some(AvsType::EigenDA);
+// TODO: Make NodeType api uniform here
+fn potential_avs_name(name: &str) -> Option<NodeType> {
+    if let NodeType::EigenDA = NodeType::from_docker_image_name(name) {
+        return Some(NodeType::EigenDA);
     }
     None
 }
 
-fn guess_avs_type(metrics: Vec<Metrics>) -> AvsType {
+fn guess_avs_type(metrics: Vec<Metrics>) -> NodeType {
     if let Some(name) =
         metrics
             .into_iter()
@@ -190,8 +192,8 @@ fn guess_avs_type(metrics: Vec<Metrics>) -> AvsType {
             .collect::<Vec<_>>()
             .first()
     {
-        return name.as_str().into();
+        return NodeType::from_metrics_name(name);
     }
 
-    AvsType::Unknown
+    NodeType::Unknown
 }

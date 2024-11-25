@@ -91,7 +91,7 @@ impl LogsListenerManager {
     /// Add a listener to the manager as a future. The listener will be spawned and run in the
     /// background. The future will resolve to the container that the listener is listening to once
     /// the stream is closed for further handling, restarts, etc.
-    async fn add_listener(&mut self, data: ListenerData) {
+    pub async fn add_listener(&mut self, data: ListenerData) {
         let listener = LogsListener::new(self.docker.clone(), self.dispatcher.clone(), data);
         // Spawn the listener future
         self.listener_set.spawn(async move { listener_fut(listener).await });
@@ -134,11 +134,22 @@ struct LogsListener {
     listener_data: ListenerData,
 }
 
-struct ListenerData {
+pub struct ListenerData {
     container: Container,
     node_data: ConfiguredAvs,
     machine_id: Uuid,
     identity_wallet: IvyWallet,
+}
+
+impl ListenerData {
+    pub fn new(
+        container: Container,
+        node_data: ConfiguredAvs,
+        machine_id: Uuid,
+        identity_wallet: IvyWallet,
+    ) -> Self {
+        Self { container, node_data, machine_id, identity_wallet }
+    }
 }
 
 impl LogsListener {

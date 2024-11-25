@@ -81,7 +81,7 @@ impl DockerClient {
 
     /// Find all active containers for all available node types
     pub async fn find_all_node_containers(&self) -> Vec<Container> {
-        let node_types = NodeType::all();
+        let node_types = NodeType::all_known();
         self.find_node_containers(&node_types).await
     }
 
