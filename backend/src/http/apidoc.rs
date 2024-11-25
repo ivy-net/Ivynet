@@ -1,6 +1,7 @@
+use crate::data::{machine_data, node_data};
 use utoipa::OpenApi;
 
-use super::{super::db, authorize, client, info, machine, organization};
+use super::{super::db, authorize, client, info, machine, node, organization};
 
 #[derive(OpenApi)]
 #[openapi(
@@ -30,6 +31,10 @@ use super::{super::db, authorize, client, info, machine, organization};
         machine::get_all_node_data,
         machine::delete_machine_data,
         machine::info,
+        machine::delete,
+        node::all_avs_info,
+        node::avs_status,
+        node::delete_avs_node_data,
     ),
     components(
         schemas(
@@ -50,6 +55,9 @@ use super::{super::db, authorize, client, info, machine, organization};
             db::metric::Metric,
             db::log::ContainerLog,
             db::log::LogLevel,
+            node_data::NodeStatusReport,
+            machine_data::MachineInfoReport,
+            machine_data::MachineStatusReport,
         ),
     ),
     tags(

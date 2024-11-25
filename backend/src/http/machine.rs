@@ -4,7 +4,9 @@ use axum::{
     Json,
 };
 use axum_extra::extract::CookieJar;
+use serde::Deserialize;
 use std::{collections::HashMap, str::FromStr};
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::{
@@ -151,42 +153,41 @@ pub async fn healthy(
     Ok(Json(healthy_list.into_iter().map(|id| format!("{:?}", id)).collect()))
 }
 
-// #[derive(Deserialize, Debug, Clone, ToSchema)]
-// pub struct NameChangeRequest {
-//     pub name: String,
-// }
+#[derive(Deserialize, Debug, Clone, ToSchema)]
+pub struct NameChangeRequest {
+    pub name: String,
+}
 
-/// --- Can't do this unless we can also update it in their config ---
-// /// Set the name of a node
-// #[utoipa::path(
-//     post,
-//     path = "/machine/:id/:name",
-//     responses(
-//         (status = 200),
-//         (status = 404)
-//     )
-// )]
-// pub async fn set_name(
-//     headers: HeaderMap,
-//     State(state): State<HttpState>,
-//     jar: CookieJar,
-//     Path(id): Path<String>,
-//     Json(request): Json<NameChangeRequest>,
-// ) -> Result<(), BackendError> {
-//     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-//     authorize::verify_node_ownership(&account, State(state.clone()), id)
-//         .await?
-//         .set_name(&state.pool, &request.name)
-//         .await?;
+/// Set the name of a node
+#[utoipa::path(
+    post,
+    path = "/machine/machine_id:/:name",
+    responses(
+        (status = 200),
+        (status = 404)
+    )
+)]
+pub async fn set_name(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Path(machine_id): Path<String>,
+    Json(request): Json<NameChangeRequest>,
+) -> Result<(), BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    authorize::verify_node_ownership(&account, State(state.clone()), machine_id)
+        .await?
+        .set_name(&state.pool, &request.name)
+        .await?;
 
-//     Ok(())
-// }
+    Ok(())
+}
 
 /// Delete a machine from the database
 // TODO: We are already doing that. But there is too many things doing similar stuff
 #[utoipa::path(
     delete,
-    path = "/machine/:id",
+    path = "/machine/machine_id:",
     responses(
         (status = 200),
         (status = 404)
@@ -196,10 +197,10 @@ pub async fn delete(
     headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
-    Path(id): Path<String>,
+    Path(machine_id): Path<String>,
 ) -> Result<(), BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    authorize::verify_node_ownership(&account, State(state.clone()), id)
+    authorize::verify_node_ownership(&account, State(state.clone()), machine_id)
         .await?
         .delete(&state.pool)
         .await?;
@@ -285,6 +286,7 @@ pub async fn metrics_all(
     Ok(Json(metrics))
 }
 
+/// Get all logs for a specific node
 #[utoipa::path(
     post,
     path = "/machine/:machine_id/:avs_name/logs",
@@ -380,7 +382,7 @@ pub async fn get_all_node_data(
 /// Delete all data for a specific node
 #[utoipa::path(
     delete,
-    path = "/machine/:id",
+    path = "/machine/machine_id:",
     responses(
         (status = 200),
         (status = 404)
@@ -390,11 +392,11 @@ pub async fn delete_machine_data(
     headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
-    Path(id): Path<String>,
+    Path(machine_id): Path<String>,
 ) -> Result<(), BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
 
-    authorize::verify_node_ownership(&account, State(state.clone()), id)
+    authorize::verify_node_ownership(&account, State(state.clone()), machine_id)
         .await?
         .delete(&state.pool)
         .await?;
