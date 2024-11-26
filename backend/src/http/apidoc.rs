@@ -29,10 +29,9 @@ use super::{super::db, authorize, client, info, machine, node, organization, pub
         machine::metrics_all,
         machine::logs,
         machine::get_all_node_data,
-        machine::delete_machine_data,
+        machine::delete_machine,
         machine::delete_avs_node_data,
         machine::info,
-        machine::delete,
         node::all_avs_info,
         node::avs_status,
         organization::add_operator_key,
@@ -41,6 +40,7 @@ use super::{super::db, authorize, client, info, machine, node, organization, pub
         pubkey::update_key_name,
         pubkey::delete_key,
         machine::update_avs,
+        machine::set_name,
     ),
     components(
         schemas(
@@ -69,7 +69,6 @@ use super::{super::db, authorize, client, info, machine, node, organization, pub
             pubkey::UpdateKeyNameRequest,
             pubkey::DeleteKeyRequest,
             db::operator_keys::OperatorKey,
-            machine::AvsUpdateAction,
         ),
     ),
     tags(

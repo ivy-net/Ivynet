@@ -112,19 +112,20 @@ fn create_router() -> Router<HttpState> {
                 .route("/", get(machine::machine))
                 .route("/status", get(machine::status))
                 .route("/idle", get(machine::idle))
-                .route("/unhealthy", get(machine::unhealthy))
-                .route("/healthy", get(machine::healthy))
+                .route("/unhealthy", post(machine::unhealthy))
+                .route("/healthy", post(machine::healthy))
                 .route("/:machine_id/:avs_name/metrics/all", get(machine::metrics_all))
                 .route("/:machine_id/:avs_name/metrics", get(machine::metrics_condensed))
                 .route("/:machine_id/:avs_name/logs", get(machine::logs))
+                .route("/:machine_id/info", get(machine::get_all_node_data))
                 .route(
-                    "/:machine_id/data",
-                    get(machine::get_all_node_data).delete(machine::delete_machine_data),
+                    "/:machine_id/:avs_name",
+                    delete(machine::delete_avs_node_data).put(machine::update_avs),
                 )
-                .route("/:machine_id/:name", post(machine::set_name))
-                .route("/:machine_id/data/:avs_name", delete(machine::delete_avs_node_data))
-                .route("/:machine_id", get(machine::info).delete(machine::delete))
-                .route("/:machine_id/:avs_name", put(machine::update_avs)),
+                .route(
+                    "/:machine_id",
+                    get(machine::info).delete(machine::delete_machine).post(machine::set_name),
+                ),
         )
         .nest(
             "/avs",
