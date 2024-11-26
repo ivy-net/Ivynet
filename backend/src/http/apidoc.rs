@@ -65,10 +65,7 @@ use super::{super::db, authorize, client, info, machine, node, organization, pub
             machine_data::MachineInfoReport,
             machine_data::MachineStatusReport,
             organization::AddOperatorKeyRequest,
-            pubkey::CreateKeyRequest,
-            pubkey::UpdateKeyNameRequest,
-            pubkey::DeleteKeyRequest,
-            db::operator_keys::OperatorKey,
+            pubkey::KeyNameUpdate,
         ),
     ),
     tags(
