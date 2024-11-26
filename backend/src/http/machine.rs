@@ -30,7 +30,7 @@ use super::{authorize, HttpState};
     get,
     path = "/machine",
     responses(
-        (status = 200, body = [Info]),
+        (status = 200, body = [MachineInfoReport]),
         (status = 404)
     )
 )]
@@ -58,7 +58,7 @@ pub async fn machine(
     get,
     path = "/machine/status",
     responses(
-        (status = 200, body = Status),
+        (status = 200, body = MachineStatusReport),
         (status = 404)
     )
 )]
@@ -217,7 +217,7 @@ pub async fn delete_machine(
     get,
     path = "/machine/:machine_id",
     responses(
-        (status = 200, body = Info),
+        (status = 200, body = MachineInfoReport),
         (status = 404)
     )
 )]
@@ -271,10 +271,13 @@ pub async fn get_all_node_data(
 /// Delete all data for a specific AVS running on a node
 #[utoipa::path(
     delete,
-    path = "/machine/:machine_id/:avs_name",
+    path = "/machine/:machine_id",
     responses(
         (status = 200),
         (status = 404)
+    ),
+    params(
+        ("avs_name" = String, Query, description = "The name of the AVS to delete data for")
     )
 )]
 pub async fn delete_avs_node_data(
