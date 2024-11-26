@@ -2,10 +2,10 @@ mod apidoc;
 mod authorize;
 mod client;
 mod info;
-mod keys;
 mod machine;
 mod node;
 mod organization;
+mod pubkey;
 
 use std::sync::Arc;
 
@@ -139,12 +139,12 @@ fn create_router() -> Router<HttpState> {
                 .route("/version", get(info::get_all_version_info)),
         )
         .nest(
-            "/keys",
+            "/pubkey",
             Router::new()
-                .route("/", get(keys::get_all_keys))
-                .route("/", post(keys::create_key))
-                .route("/", put(keys::update_key_name))
-                .route("/", delete(keys::delete_key)),
+                .route("/", get(pubkey::get_all_keys))
+                .route("/", post(pubkey::create_key))
+                .route("/", put(pubkey::update_key_name))
+                .route("/", delete(pubkey::delete_key)),
         )
         .merge(
             SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", apidoc::ApiDoc::openapi()),

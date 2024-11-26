@@ -1,7 +1,7 @@
 use crate::data::{machine_data, node_data};
 use utoipa::OpenApi;
 
-use super::{super::db, authorize, client, info, keys, machine, node, organization};
+use super::{super::db, authorize, client, info, machine, node, organization, pubkey};
 
 #[derive(OpenApi)]
 #[openapi(
@@ -36,10 +36,10 @@ use super::{super::db, authorize, client, info, keys, machine, node, organizatio
         node::all_avs_info,
         node::avs_status,
         organization::add_operator_key,
-        keys::get_all_keys,
-        keys::create_key,
-        keys::update_key_name,
-        keys::delete_key,
+        pubkey::get_all_keys,
+        pubkey::create_key,
+        pubkey::update_key_name,
+        pubkey::delete_key,
         machine::update_avs,
     ),
     components(
@@ -65,9 +65,9 @@ use super::{super::db, authorize, client, info, keys, machine, node, organizatio
             machine_data::MachineInfoReport,
             machine_data::MachineStatusReport,
             organization::AddOperatorKeyRequest,
-            keys::CreateKeyRequest,
-            keys::UpdateKeyNameRequest,
-            keys::DeleteKeyRequest,
+            pubkey::CreateKeyRequest,
+            pubkey::UpdateKeyNameRequest,
+            pubkey::DeleteKeyRequest,
             db::operator_keys::OperatorKey,
             machine::AvsUpdateAction,
         ),

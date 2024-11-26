@@ -433,7 +433,6 @@ pub async fn delete_avs_node_data(
 pub enum AvsUpdateAction {
     Chain { chain: Chain },
     Operator { operator_address: Option<Address> },
-    ActiveSet { active_set: bool },
 }
 
 /// Update an AVS's operator address, chain, or active set status
@@ -469,9 +468,6 @@ pub async fn update_avs(
                 operator_address,
             )
             .await
-        }
-        AvsUpdateAction::ActiveSet { active_set } => {
-            Avs::update_active_set(&state.pool, machine.machine_id, &avs_name, active_set).await
         }
     }
 }

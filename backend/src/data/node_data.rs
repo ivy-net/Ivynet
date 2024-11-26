@@ -61,8 +61,8 @@ pub struct AvsInfo {
     pub node_type: Option<String>,
     pub chain: Option<String>,
     pub version: Option<String>,
-    pub active_set: Option<bool>,
     pub operator_id: Option<String>,
+    pub active_set: bool,
     pub uptime: f64,
     pub performance_score: f64,
     pub update_status: UpdateStatus,
@@ -85,9 +85,6 @@ pub async fn build_avs_info(
     let running_metric = metrics.get(RUNNING_METRIC);
     let attrs = running_metric.and_then(|m| m.attributes.clone());
     let get_attr = |key| attrs.as_ref().and_then(|a| a.get(key).cloned());
-
-    println!("Running metric: {:#?}", running_metric);
-    println!("attrs: {:#?}", attrs);
 
     let name = get_attr("avs_name");
     let node_type = get_attr("avs_type");
@@ -162,9 +159,8 @@ pub async fn build_avs_info(
         node_type,
         version,
         chain,
-        active_set: Some(avs.active_set), /* FIXME: Add active set checking and operator key
-                                           * handling here */
-        operator_id: None, //FIXME: Add active set checking and operator key handling here
+        active_set: avs.active_set, //Microservice should handle this
+        operator_id: avs.operator_address.map(|addr| addr.to_string()),
         uptime: metrics.get(UPTIME_METRIC).map_or(0.0, |m| m.value),
         performance_score: metrics.get(EIGEN_PERFORMANCE_METRIC).map_or(0.0, |m| m.value),
         update_status,

@@ -199,34 +199,6 @@ async fn fetch_system_telemetry() -> Result<Vec<Metrics>, IvyError> {
     ])
 }
 
-// async fn send(
-//     metrics: &[Metrics],
-//     node_data: &NodeData,
-//     machine_id: Uuid,
-//     avs_name: &str,
-//     identity_wallet: &IvyWallet,
-//     backend_client: &mut BackendClient<Channel>,
-// ) -> Result<(), IvyError> {
-//     let metrics_signature = sign_metrics(metrics, identity_wallet)?;
-//
-//     let node_data_signature = sign_node_data(node_data, identity_wallet)?;
-//     backend_client
-//         .metrics(Request::new(SignedMetrics {
-//             machine_id: machine_id.into(),
-//             avs_name: avs_name.to_string(),
-//             signature: metrics_signature.to_vec(),
-//             metrics: metrics.to_vec(),
-//         }))
-//         .await?;
-//     backend_client
-//         .update_node_data(Request::new(SignedNodeData {
-//             signature: node_data_signature.to_vec(),
-//             node_data: Some(node_data.clone()),
-//         }))
-//         .await?;
-//     Ok(())
-// }
-
 #[derive(PartialEq, Debug)]
 enum TelemetryToken {
     Tag(String),
