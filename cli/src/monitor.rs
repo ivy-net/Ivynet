@@ -116,7 +116,7 @@ pub async fn scan() -> Result<(), anyhow::Error> {
         if !configured_avs_names.contains(&avs.name) {
             for port in &avs.ports {
                 if let Ok(metrics) = fetch_telemetry_from(*port).await {
-                    if metrics.len() > 0 {
+                    if !metrics.is_empty() {
                         // Checking performance score metrics to read a potential avs type
                         avses.push(ConfiguredAvs {
                             name: avs.name.clone(),
