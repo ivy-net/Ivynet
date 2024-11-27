@@ -94,15 +94,13 @@ pub async fn scan() -> Result<(), anyhow::Error> {
         .into_iter()
         .filter_map(|c| {
             if let (Some(names), Some(image_name), Some(ports)) = (c.names, c.image, c.ports) {
-                if let Some(avs_type) = potential_avs_name(&image_name) {
-                    let ports = ports.into_iter().filter_map(|p| p.public_port).collect::<Vec<_>>();
-                    if !ports.is_empty() {
-                        return Some(PotentialAvs {
-                            name: names.first().unwrap_or(&image_name).to_string(),
-                            avs_type,
-                            ports,
-                        });
-                    }
+                let ports = ports.into_iter().filter_map(|p| p.public_port).collect::<Vec<_>>();
+                if !ports.is_empty() {
+                    return Some(PotentialAvs {
+                        name: names.first().unwrap_or(&image_name).to_string(),
+                        avs_type: potential_avs_name(&image_name).unwrap_or(AvsType::Unknown),
+                        ports,
+                    });
                 }
             }
             None
