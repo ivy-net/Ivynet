@@ -116,15 +116,17 @@ pub async fn scan() -> Result<(), anyhow::Error> {
         if !configured_avs_names.contains(&avs.name) {
             for port in &avs.ports {
                 if let Ok(metrics) = fetch_telemetry_from(*port).await {
-                    // Checking performance score metrics to read a potential avs type
-                    avses.push(ConfiguredAvs {
-                        name: avs.name.clone(),
-                        avs_type: match guess_avs_type(metrics) {
-                            AvsType::Unknown => avs.avs_type,
-                            avs_type => avs_type,
-                        },
-                        metric_port: *port,
-                    });
+                    if metrics.len() > 0 {
+                        // Checking performance score metrics to read a potential avs type
+                        avses.push(ConfiguredAvs {
+                            name: avs.name.clone(),
+                            avs_type: match guess_avs_type(metrics) {
+                                AvsType::Unknown => avs.avs_type,
+                                avs_type => avs_type,
+                            },
+                            metric_port: *port,
+                        });
+                    }
                 }
             }
         }
