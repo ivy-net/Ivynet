@@ -6,7 +6,6 @@ use axum::{
     Json,
 };
 use axum_extra::extract::CookieJar;
-use ivynet_core::ethers::types::Address;
 use sendgrid::v3::{Email, Message, Personalization};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -16,7 +15,6 @@ use crate::{
     db::{
         avs::Avs,
         machine::Machine,
-        operator_keys::OperatorKey,
         verification::{Verification, VerificationType},
         Account, Organization, Role,
     },
@@ -51,17 +49,6 @@ pub struct ConfirmationResponse {
 pub struct InvitationRequest {
     pub email: String,
     pub role: Role,
-}
-
-#[derive(Deserialize, Debug, Clone, ToSchema)]
-pub struct AddOperatorKeyRequest {
-    pub name: String,
-    pub key: String,
-}
-
-#[derive(Serialize, Debug, Clone, ToSchema)]
-pub struct AddOperatorKeyResponse {
-    pub id: i64,
 }
 
 #[utoipa::path(
@@ -254,35 +241,4 @@ pub async fn confirm(
     verification.delete(&state.pool).await?;
 
     Ok(ConfirmationResponse { success: true }.into())
-}
-
-#[utoipa::path(
-    post,
-    path = "/organization/keys",
-    request_body = AddOperatorKeyRequest,
-    responses(
-        (status = 200, body = AddOperatorKeyResponse),
-        (status = 401, description = "Unauthorized"),
-        (status = 403, description = "Insufficient privileges")
-    )
-)]
-pub async fn add_operator_key(
-    headers: HeaderMap,
-    State(state): State<HttpState>,
-    jar: CookieJar,
-    Json(request): Json<AddOperatorKeyRequest>,
-) -> Result<(), BackendError> {
-    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-
-    // Only admins can add operator keys
-    if !account.role.is_admin() {
-        return Err(BackendError::InsufficientPriviledges);
-    }
-
-    let key = request.key.parse::<Address>().map_err(|_| BackendError::BadId)?;
-
-    // Create new operator key
-    OperatorKey::create(&state.pool, account.organization_id, &request.name, &key).await?;
-
-    Ok(())
 }
