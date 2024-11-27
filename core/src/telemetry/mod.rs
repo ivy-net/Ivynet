@@ -90,8 +90,6 @@ pub async fn listen_metrics(
                 }
             }
 
-            println!("version_hash: {version_hash}");
-
             let metrics = if let Ok(mut metrics) = fetch_telemetry_from(avs.metric_port).await {
                 metrics.push(Metrics {
                     name: "running".to_owned(),
