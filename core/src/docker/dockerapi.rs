@@ -1,4 +1,6 @@
-use bollard::{container::LogOutput, secret::ContainerSummary, Docker};
+use std::collections::HashMap;
+
+use bollard::{container::LogOutput, image::ListImagesOptions, secret::ContainerSummary, Docker};
 use tokio_stream::Stream;
 
 use crate::node_type::NodeType;
@@ -35,10 +37,49 @@ impl DockerClient {
         self.0.list_containers::<String>(None).await.expect("Cannot list containers")
     }
 
+    pub async fn list_images(&self) -> HashMap<String, String> {
+        let mut map = HashMap::new();
+        for image in self
+            .0
+            .list_images(Some(ListImagesOptions::<String> {
+                all: true,
+                digests: true,
+                ..Default::default()
+            }))
+            .await
+            .expect("Cannot list images")
+        {
+            for digest in &image.repo_digests {
+                let elements = digest.split("@").collect::<Vec<_>>();
+                if elements.len() == 2 {
+                    for tag in &image.repo_tags {
+                        map.insert(tag.clone(), elements[1].to_string());
+                    }
+                }
+            }
+        }
+        map
+    }
+
+    /// Inspect a container by container name
+    pub async fn inspect_by_container_name(&self, container_name: &str) -> Option<Container> {
+        let containers = self.list_containers().await;
+        let cname = container_name.to_string();
+        for container in containers {
+            if let Some(name) = &container.names {
+                if name.contains(&cname) {
+                    return Some(Container::new(container.clone()));
+                }
+            }
+        }
+        None
+    }
+
     /// Inspect a container by image name
     pub async fn inspect(&self, image_name: &str) -> Option<Container> {
         let containers = self.list_containers().await;
         for container in containers {
+            println!("Checking container {container:?}");
             if let Some(ref image_string) = container.image {
                 if image_string.contains(image_name) {
                     return Some(Container::new(container.clone()));
