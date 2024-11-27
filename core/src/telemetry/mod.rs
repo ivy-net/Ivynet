@@ -1,11 +1,9 @@
-use std::fmt::Display;
-
 use crate::{
     config::get_detailed_system_information,
-    docker::{
-        container::{ListenerData, LogsListenerManager},
-        dockerapi::DockerClient,
-    },
+    // docker::{
+    //     container::{ListenerData, LogsListenerManager},
+    //     dockerapi::DockerClient,
+    // },
     error::IvyError,
     grpc::{
         backend::backend_client::BackendClient,
@@ -16,7 +14,6 @@ use crate::{
     signature::{sign_metrics, sign_node_data},
     wallet::IvyWallet,
 };
-use bollard::Docker;
 use dispatch::TelemetryDispatchHandle;
 use serde::{Deserialize, Serialize};
 use tokio::time::{sleep, Duration};
@@ -26,30 +23,6 @@ use uuid::Uuid;
 pub mod dispatch;
 
 const TELEMETRY_INTERVAL_IN_MINUTES: u64 = 1;
-
-// #[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-// pub enum AvsType {
-//     EigenDA,
-//     Unknown,
-// }
-//
-// impl Display for AvsType {
-//     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-//         match self {
-//             Self::EigenDA => write!(f, "eigenda"),
-//             Self::Unknown => write!(f, "Unknown"),
-//         }
-//     }
-// }
-//
-// impl From<&str> for AvsType {
-//     fn from(value: &str) -> Self {
-//         match value {
-//             "da-node" => Self::EigenDA,
-//             _ => Self::Unknown,
-//         }
-//     }
-// }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ConfiguredAvs {
@@ -66,17 +39,21 @@ pub async fn listen(
 ) -> Result<(), IvyError> {
     let dispatch = TelemetryDispatchHandle::from_client(backend_client).await;
     let mut error_rx = dispatch.error_rx.resubscribe();
-    let docker = DockerClient::default();
+    // let docker = DockerClient::default();
 
-    let logs_listener = LogsListenerManager::new(dispatch.clone(), docker);
+    // The logs listener spawns the future immediately and does not need to be awaited with
+    // tokio::select!
+    // let mut logs_listener = LogsListenerManager::new(dispatch.clone(), docker.clone());
 
-    // TODO: The below loop recovers the container from a ConfiguredAvs, which feels like something
-    // that should be done elsewhere.
-
-    for avs in avses {
-        let listener_data = ListenerData::new(machine_id, identity_wallet.clone(), avses.to_vec());
-        logs_listener.add_listener(listener_data.clone(), avs.clone());
-    }
+    // for node in avses {
+    //     let container = &docker
+    //         .find_container_by_name(&node.name)
+    //         .await
+    //         .ok_or_else(|| IvyError::NodeFindError(node.name.clone()))?;
+    //     let listener_data =
+    //         ListenerData::new(container.clone(), node.clone(), machine_id,
+    // identity_wallet.clone());     logs_listener.add_listener(listener_data).await;
+    // }
 
     tokio::select! {
         metrics_err = listen_metrics(machine_id, &identity_wallet, avses, &dispatch) => {
@@ -88,6 +65,7 @@ pub async fn listen(
                 },
             }
         }
+
         Ok(error) = error_rx.recv() => {
             error!("Received telemetry error: {}", error);
             Err(IvyError::CustomError(error.to_string()))
@@ -240,34 +218,6 @@ async fn fetch_system_telemetry() -> Result<Vec<Metrics>, IvyError> {
         Metrics { name: "uptime".to_owned(), value: uptime as f64, attributes: Default::default() },
     ])
 }
-
-// async fn send(
-//     metrics: &[Metrics],
-//     node_data: &NodeData,
-//     machine_id: Uuid,
-//     avs_name: &str,
-//     identity_wallet: &IvyWallet,
-//     backend_client: &mut BackendClient<Channel>,
-// ) -> Result<(), IvyError> {
-//     let metrics_signature = sign_metrics(metrics, identity_wallet)?;
-//
-//     let node_data_signature = sign_node_data(node_data, identity_wallet)?;
-//     backend_client
-//         .metrics(Request::new(SignedMetrics {
-//             machine_id: machine_id.into(),
-//             avs_name: avs_name.to_string(),
-//             signature: metrics_signature.to_vec(),
-//             metrics: metrics.to_vec(),
-//         }))
-//         .await?;
-//     backend_client
-//         .update_node_data(Request::new(SignedNodeData {
-//             signature: node_data_signature.to_vec(),
-//             node_data: Some(node_data.clone()),
-//         }))
-//         .await?;
-//     Ok(())
-// }
 
 #[derive(PartialEq, Debug)]
 enum TelemetryToken {

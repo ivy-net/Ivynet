@@ -15,7 +15,6 @@ use tracing::info;
 
 use crate::init::set_backend_connection;
 
-const IMAGE_NAME_EIGENDA: &str = "ghcr.io/layr-labs/eigenda/opr-node";
 const METRIC_LABEL_PERFORMANCE: &str = "eigen_performance_score";
 const METRIC_ATTR_LABEL_AVS_NAME: &str = "avs_name";
 const MONITOR_CONFIG_FILE: &str = "monitor-config.toml";
@@ -47,7 +46,7 @@ impl MonitorConfig {
 
     pub fn load_from_default_path() -> Result<Self, MonitorConfigError> {
         let config_path = DEFAULT_CONFIG_PATH.to_owned().join(MONITOR_CONFIG_FILE);
-        //Previous impl built a bad path - let this error properly
+        // Previous impl built a bad path - let this error properly
         Self::load(config_path)
     }
 
@@ -60,6 +59,7 @@ impl MonitorConfig {
 
 pub async fn start_monitor() -> Result<(), anyhow::Error> {
     let mut config = ivynet_core::config::IvyConfig::load_from_default_path()?;
+
     if config.identity_wallet().is_err() {
         set_backend_connection(&mut config).await?;
     }
@@ -86,6 +86,8 @@ pub async fn start_monitor() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
+/// Scan function to set up configured AVS cache file. Derives `NodeType` from the name on the
+/// metrics port and node name from the container name list.
 pub async fn scan() -> Result<(), anyhow::Error> {
     let docker = DockerClient::default();
     println!("Scanning for existing containers...");
@@ -95,15 +97,17 @@ pub async fn scan() -> Result<(), anyhow::Error> {
         .into_iter()
         .filter_map(|c| {
             if let (Some(names), Some(image_name), Some(ports)) = (c.names, c.image, c.ports) {
-                if let Some(avs_type) = potential_avs_name(&image_name) {
-                    let ports = ports.into_iter().filter_map(|p| p.public_port).collect::<Vec<_>>();
-                    if !ports.is_empty() {
-                        return Some(PotentialAvs {
-                            name: names.first().unwrap_or(&image_name).to_string(),
-                            avs_type,
-                            ports,
-                        });
-                    }
+                let avs_type = NodeType::from_image_name(&image_name);
+                let mut ports = ports.into_iter().filter_map(|p| p.public_port).collect::<Vec<_>>();
+
+                if !ports.is_empty() {
+                    ports.sort();
+                    ports.dedup();
+                    return Some(PotentialAvs {
+                        name: names.first().unwrap_or(&image_name).to_string(),
+                        avs_type,
+                        ports,
+                    });
                 }
             }
             None
@@ -119,6 +123,7 @@ pub async fn scan() -> Result<(), anyhow::Error> {
         if !configured_avs_names.contains(&avs.name) {
             for port in &avs.ports {
                 if let Ok(metrics) = fetch_telemetry_from(*port).await {
+                    println!("Got metrics");
                     // Checking performance score metrics to read a potential avs type
                     avses.push(ConfiguredAvs {
                         name: avs.name.clone(),
@@ -137,7 +142,7 @@ pub async fn scan() -> Result<(), anyhow::Error> {
         println!("No potential new AVSes found");
     } else {
         for idx in MultiSelect::new()
-            .with_prompt("Choose what AVSes to add and accept the list with ENTER")
+            .with_prompt("The following AVS types were found. Choose what AVSes to add with SPACE and accept the list with ENTER")
             .items(
                 &avses
                     .iter()
@@ -157,14 +162,6 @@ pub async fn scan() -> Result<(), anyhow::Error> {
         );
     }
     Ok(())
-}
-
-// TODO: Make NodeType api uniform here
-fn potential_avs_name(name: &str) -> Option<NodeType> {
-    if let NodeType::EigenDA = NodeType::from_docker_image_name(name) {
-        return Some(NodeType::EigenDA);
-    }
-    None
 }
 
 fn guess_avs_type(metrics: Vec<Metrics>) -> NodeType {

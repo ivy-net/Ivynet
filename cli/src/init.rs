@@ -11,8 +11,47 @@ use ivynet_core::{
     wallet::IvyWallet,
 };
 
-#[allow(unused_imports)]
-use tracing::debug;
+pub async fn register_node() -> Result<(), IvyError> {
+    let config = IvyConfig::load_from_default_path()?;
+    let wallet = config.identity_wallet()?;
+    let client_key = wallet.address();
+
+    let email = Input::new()
+        .with_prompt("Provide email address to IvyNet system")
+        .interact_text()
+        .expect("No no email provided");
+    let password = Password::new()
+        .with_prompt("Enter a password to IvyNet system")
+        .interact()
+        .expect("No password provided");
+    let mut backend = BackendClient::new(
+        create_channel(Source::Uri(config.get_server_url()?), {
+            let ca = config.get_server_ca();
+            if ca.is_empty() {
+                None
+            } else {
+                Some(ca.clone())
+            }
+        })
+        .await?,
+    );
+
+    let hostname = { String::from_utf8(rustix::system::uname().nodename().to_bytes().to_vec()) }
+        .expect("Cannot fetch hostname from the node");
+    backend
+        .register(Request::new(RegistrationCredentials {
+            machine_id: config.machine_id.into(),
+            email,
+            password,
+            hostname,
+            public_key: client_key.as_bytes().to_vec(),
+        }))
+        .await?;
+
+    println!("Node registration for key {:?} successful.", client_key);
+
+    Ok(())
+}
 
 pub async fn set_backend_connection(config: &mut IvyConfig) -> Result<(), IvyError> {
     let (identity_key, client_key) = match config.identity_wallet() {
