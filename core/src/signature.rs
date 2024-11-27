@@ -4,10 +4,7 @@ use ethers::{
     utils::keccak256,
 };
 
-use crate::{
-    grpc::messages::{Metrics, NodeData},
-    wallet::IvyWallet,
-};
+use crate::{grpc::messages::Metrics, wallet::IvyWallet};
 
 // --- General Signing ---
 pub fn sign_string(string: &str, wallet: &IvyWallet) -> Result<Signature, IvySigningError> {
@@ -58,28 +55,6 @@ fn build_metrics_message(metrics: &[Metrics]) -> Result<H256, IvySigningError> {
             tokens.push(Token::String(attribute.value.clone()));
         }
     }
-    Ok(H256::from(&keccak256(encode(&tokens))))
-}
-
-// --- Node Data ---
-pub fn sign_node_data(data: &NodeData, wallet: &IvyWallet) -> Result<Signature, IvySigningError> {
-    sign_hash(build_node_data_message(data)?, wallet)
-}
-
-pub fn recover_node_data(
-    data: &NodeData,
-    signature: &Signature,
-) -> Result<Address, IvySigningError> {
-    recover_from_hash(build_node_data_message(data)?, signature)
-}
-
-fn build_node_data_message(data: &NodeData) -> Result<H256, IvySigningError> {
-    let tokens = vec![
-        Token::FixedBytes(data.machine_id.clone()),
-        Token::String(data.avs_name.clone()),
-        Token::String(data.avs_type.clone()),
-        Token::String(data.avs_version.clone().unwrap_or_default()),
-    ];
     Ok(H256::from(&keccak256(encode(&tokens))))
 }
 

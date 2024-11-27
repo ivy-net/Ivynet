@@ -12,7 +12,6 @@ pub mod io;
 pub mod ivy_yaml;
 pub mod keychain;
 pub mod keys;
-pub mod messenger;
 pub mod metadata;
 pub mod node_type;
 pub mod signature;
