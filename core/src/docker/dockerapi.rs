@@ -105,24 +105,36 @@ impl DockerClient {
             .collect()
     }
 
+    pub async fn find_container_by_name(&self, name: &str) -> Option<Container> {
+        let containers = self.list_containers().await;
+        containers
+            .into_iter()
+            .find(|container| {
+                container
+                    .names
+                    .as_ref()
+                    .map(|names| names.iter().any(|n| n.contains(name)))
+                    .unwrap_or_default()
+            })
+            .map(Container::new)
+    }
+
     /// Find an active container for a given node type
     pub async fn find_node_container(&self, node_type: &NodeType) -> Option<Container> {
-        let image_name = node_type.default_docker_image_name().unwrap();
+        let image_name = node_type.default_image_name().unwrap();
         self.inspect(image_name).await
     }
 
     /// Find all active containers for a slice of node types
     pub async fn find_node_containers(&self, node_types: &[NodeType]) -> Vec<Container> {
-        let image_names: Vec<&str> = node_types
-            .iter()
-            .map(|node_type| node_type.default_docker_image_name().unwrap())
-            .collect();
+        let image_names: Vec<&str> =
+            node_types.iter().map(|node_type| node_type.default_image_name().unwrap()).collect();
         self.inspect_many(&image_names).await
     }
 
     /// Find all active containers for all available node types
     pub async fn find_all_node_containers(&self) -> Vec<Container> {
-        let node_types = NodeType::all();
+        let node_types = NodeType::all_known();
         self.find_node_containers(&node_types).await
     }
 

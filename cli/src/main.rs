@@ -1,6 +1,6 @@
 use anyhow::{Error as AnyError, Result};
 use clap::{Parser, Subcommand};
-use cli::{avs, config, error::Error, key, monitor};
+use cli::{avs, config, error::Error, init, key, monitor};
 use ivynet_core::{avs::commands::NodeCommands, config::IvyConfig, grpc::client::Uri};
 use std::{fs, path::PathBuf, str::FromStr as _};
 use tracing::info;
@@ -62,6 +62,12 @@ enum Commands {
 
     #[command(name = "scan", about = "Scanning for existing AVS instances running on the machine")]
     Scan,
+
+    #[command(
+        name = "register-node",
+        about = "Register a node with the backend. Requires a correctly configured IvyConfig."
+    )]
+    RegisterNode,
 }
 
 #[tokio::main]
@@ -98,6 +104,7 @@ async fn main() -> Result<(), AnyError> {
         Commands::Node { subcmd } => avs::parse_avs_subcommands(subcmd).await?,
         Commands::Monitor => monitor::start_monitor().await?,
         Commands::Scan => monitor::scan().await?,
+        Commands::RegisterNode => init::register_node().await?,
     }
 
     Ok(())

@@ -18,6 +18,7 @@ use sqlx::PgPool;
 use std::sync::Arc;
 use tracing::{debug, error};
 use uuid::Uuid;
+
 pub struct BackendService {
     pool: Arc<PgPool>,
 }
@@ -80,24 +81,14 @@ impl Backend for BackendService {
             return Err(Status::not_found("Machine not registered for given client".to_string()));
         }
 
-        let mut parsed_logs =
-            serde_json::from_str::<Vec<ContainerLog>>(&request.log).map_err(|e| {
-                error!("{:?} || Logs: {:?}", request.log, e);
-                Status::invalid_argument(format!("Log deserialization error: {:?}", e))
-            })?;
+        let parsed_log = serde_json::from_str::<ContainerLog>(&request.log).map_err(|e| {
+            error!("{:?} || Logs: {:?}", request.log, e);
+            Status::invalid_argument(format!("Log deserialization error: {:?}", e))
+        })?;
 
-        // TODO: We can also batch insert logs in the future.
-
-        let futures = parsed_logs.iter_mut().map(|log| ContainerLog::record(&self.pool, log));
-
-        let results = futures::future::join_all(futures).await;
-
-        for result in results {
-            if let Err(e) = result {
-                error!("Failed to save log: {:?}", e);
-                return Err(Status::internal("Failed to save log"));
-            }
-        }
+        ContainerLog::record(&self.pool, &parsed_log)
+            .await
+            .map_err(|e| Status::internal(format!("Failed while saving logs: {e:?}")))?;
 
         Ok(Response::new(()))
     }

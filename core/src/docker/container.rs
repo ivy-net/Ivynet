@@ -26,6 +26,11 @@ impl Container {
         Self(container)
     }
 
+    /// Returns a vec of container names. Container names must be unique per docker daemon.
+    pub fn names(&self) -> Option<&Vec<String>> {
+        self.0.names.as_ref()
+    }
+
     /// Container ID
     pub fn id(&self) -> Option<&str> {
         self.0.id.as_deref()
@@ -91,13 +96,13 @@ impl LogsListenerManager {
     /// Add a listener to the manager as a future. The listener will be spawned and run in the
     /// background. The future will resolve to the container that the listener is listening to once
     /// the stream is closed for further handling, restarts, etc.
-    async fn add_listener(&mut self, data: ListenerData) {
+    pub async fn add_listener(&mut self, data: ListenerData) {
         let listener = LogsListener::new(self.docker.clone(), self.dispatcher.clone(), data);
         // Spawn the listener future
         self.listener_set.spawn(async move { listener_fut(listener).await });
     }
 
-    pub async fn run(mut self) {
+    pub async fn listen(mut self) -> Result<(), LogListenerError> {
         while let Some(future) = self.listener_set.join_next().await {
             match future {
                 Ok(result) => {
@@ -114,14 +119,17 @@ impl LogsListenerManager {
                         }
                         Err(e) => {
                             error!("Listener error: {}", e);
+                            return Err(e);
                         }
                     };
                 }
                 Err(e) => {
                     error!("Unexpected listener error: {}, listener exiting...", e);
+                    return Err(e.into());
                 }
             }
         }
+        Ok(())
     }
 }
 
@@ -134,11 +142,22 @@ struct LogsListener {
     listener_data: ListenerData,
 }
 
-struct ListenerData {
+pub struct ListenerData {
     container: Container,
     node_data: ConfiguredAvs,
     machine_id: Uuid,
     identity_wallet: IvyWallet,
+}
+
+impl ListenerData {
+    pub fn new(
+        container: Container,
+        node_data: ConfiguredAvs,
+        machine_id: Uuid,
+        identity_wallet: IvyWallet,
+    ) -> Self {
+        Self { container, node_data, machine_id, identity_wallet }
+    }
 }
 
 impl LogsListener {
@@ -156,7 +175,6 @@ impl LogsListener {
         while let Some(log_result) = stream.next().await {
             match log_result {
                 Ok(log) => {
-                    // Process log message
                     self.handle_log(log).await?;
                 }
                 Err(e) => {
@@ -168,6 +186,7 @@ impl LogsListener {
     }
 
     async fn handle_log(&self, log: LogOutput) -> Result<(), LogListenerError> {
+        // println!("log: {:#?}", log);
         let log = log.to_string();
         let signature = sign_string(&log, &self.listener_data.identity_wallet)?.to_vec();
         let signed = SignedLog {
@@ -191,6 +210,8 @@ pub enum LogListenerError {
     SignatureError(#[from] crate::signature::IvySigningError),
     #[error("Telemetry dispatch error: {0}")]
     TelemetryDispatchError(#[from] crate::telemetry::dispatch::TelemetryDispatchError),
+    #[error("Unexpected error: {0}")]
+    JoinError(#[from] tokio::task::JoinError),
 }
 
 /// Listener future for processing the stream. Yields the data for the container that the listener

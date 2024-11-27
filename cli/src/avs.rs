@@ -30,12 +30,6 @@ pub async fn parse_avs_subcommands(subcmd: NodeCommands) -> Result<(), AnyError>
         NodeCommands::Info {} => {
             todo!()
         }
-        NodeCommands::Register {} => {
-            todo!()
-        }
-        NodeCommands::Unregister {} => {
-            todo!()
-        }
         NodeCommands::Start {} => {
             // Prompt user for config to start
             let config_files = NodeConfig::all().map_err(IvyError::from)?;
