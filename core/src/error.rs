@@ -178,6 +178,9 @@ pub enum IvyError {
 
     #[error("Signature error: {0}")]
     IvySignatureError(#[from] crate::signature::IvySigningError),
+
+    #[error("Node find error, could not find node for name {0}")]
+    NodeFindError(String),
 }
 
 #[derive(Debug, Error)]

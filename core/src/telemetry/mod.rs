@@ -1,5 +1,3 @@
-use std::fmt::Display;
-
 use crate::{
     config::get_detailed_system_information,
     docker::dockerapi::DockerClient,
@@ -9,6 +7,7 @@ use crate::{
         messages::{Metrics, MetricsAttribute, SignedMetrics},
         tonic::transport::Channel,
     },
+    node_type::NodeType,
     signature::sign_metrics,
     wallet::IvyWallet,
 };
@@ -22,33 +21,10 @@ pub mod dispatch;
 
 const TELEMETRY_INTERVAL_IN_MINUTES: u64 = 1;
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize)]
-pub enum AvsType {
-    EigenDA,
-    Unknown,
-}
-
-impl Display for AvsType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::EigenDA => write!(f, "eigenda"),
-            Self::Unknown => write!(f, "Unknown"),
-        }
-    }
-}
-
-impl From<&str> for AvsType {
-    fn from(value: &str) -> Self {
-        match value {
-            "da-node" => Self::EigenDA,
-            _ => Self::Unknown,
-        }
-    }
-}
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ConfiguredAvs {
     pub name: String,
-    pub avs_type: AvsType,
+    pub avs_type: NodeType,
     pub metric_port: u16,
 }
 
@@ -60,6 +36,21 @@ pub async fn listen(
 ) -> Result<(), IvyError> {
     let dispatch = TelemetryDispatchHandle::from_client(backend_client).await;
     let mut error_rx = dispatch.error_rx.resubscribe();
+    // let docker = DockerClient::default();
+
+    // The logs listener spawns the future immediately and does not need to be awaited with
+    // tokio::select!
+    // let mut logs_listener = LogsListenerManager::new(dispatch.clone(), docker.clone());
+
+    // for node in avses {
+    //     let container = &docker
+    //         .find_container_by_name(&node.name)
+    //         .await
+    //         .ok_or_else(|| IvyError::NodeFindError(node.name.clone()))?;
+    //     let listener_data =
+    //         ListenerData::new(container.clone(), node.clone(), machine_id,
+    // identity_wallet.clone());     logs_listener.add_listener(listener_data).await;
+    // }
 
     tokio::select! {
         metrics_err = listen_metrics(machine_id, &identity_wallet, avses, &dispatch) => {
@@ -71,6 +62,7 @@ pub async fn listen(
                 },
             }
         }
+
         Ok(error) = error_rx.recv() => {
             error!("Received telemetry error: {}", error);
             Err(IvyError::CustomError(error.to_string()))

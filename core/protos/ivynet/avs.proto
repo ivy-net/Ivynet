@@ -40,13 +40,6 @@ message StartRequest {
     map<string, string> extra_data = 2;
 }
 
-message AttachRequest {
-    // Name of the AVS type to start.
-    optional string avs = 1;
-    // Chain on which to start the above AVS.
-    optional string chain = 2;
-}
-
 // Stop the currently loaded + running AVS instance.
 message StopRequest {
 }
@@ -78,7 +71,6 @@ service Avs {
     rpc AvsInfo(AvsInfoRequest) returns (AvsInfoResponse);
     rpc Setup(SetupRequest) returns (ivy_daemon_types.RpcResponse);
     rpc Start(StartRequest) returns (ivy_daemon_types.RpcResponse);
-    rpc Attach(AttachRequest) returns (ivy_daemon_types.RpcResponse);
     rpc Stop(StopRequest) returns (ivy_daemon_types.RpcResponse);
     rpc Register(RegisterRequest) returns (ivy_daemon_types.RpcResponse);
     rpc Unregister(UnregisterRequest) returns (ivy_daemon_types.RpcResponse);
