@@ -1,5 +1,13 @@
 #!/bin/bash
 
+# Cleanup
+echo "Stopping and removing docker services and volumes..."
+docker compose -f backend-compose.yaml down -v
+
+# Wait for PostgreSQL to be ready
+echo "Waiting for PostgreSQL to be ready..."
+sleep 5  # Simple wait, could be replaced with a more robust check
+
 # Start the docker compose services
 echo "Starting docker services..."
 docker compose -f backend-compose.yaml up -d
@@ -12,13 +20,15 @@ sleep 5  # Simple wait, could be replaced with a more robust check
 export DATABASE_URL=postgresql://ivy:secret_ivy@localhost:5432/ivynet
 echo "Database URL set to: $DATABASE_URL"
 
-# sqlx prepare
-echo "Running sqlx prepare..."
-cargo sqlx prepare
-
 # Run migrations
 echo "Running database migrations..."
 sqlx migrate run
+
+# sqlx prepare
+if [ "$1" == "--prepare" ]; then
+    echo "Running sqlx prepare..."
+    cargo sqlx prepare
+fi
 
 # Add organization
 echo "Adding organization..."

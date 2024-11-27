@@ -230,7 +230,6 @@ impl Avs {
         avs_name: &str,
         version: &str,
     ) -> Result<(), BackendError> {
-        
         sqlx::query!(
             "UPDATE avs SET avs_version = $1 WHERE machine_id = $2 AND avs_name = $3",
             version,
@@ -241,6 +240,4 @@ impl Avs {
         .await?;
         Ok(())
     }
-
-
 }

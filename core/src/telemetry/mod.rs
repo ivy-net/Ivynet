@@ -86,7 +86,7 @@ pub async fn listen_metrics(
 ) -> Result<(), IvyError> {
     let docker = DockerClient::default();
     let images = docker.list_images().await;
-    info!("Got images {images:?}");
+    info!("Got images {images:#?}");
     loop {
         for avs in avses {
             let mut version_hash = "".to_string();

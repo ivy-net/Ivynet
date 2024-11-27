@@ -79,11 +79,6 @@ pub async fn build_avs_info(
     metrics: HashMap<String, Metric>,
 ) -> AvsInfo {
     let running_metric = metrics.get(RUNNING_METRIC);
-    let attrs = running_metric.and_then(|m| m.attributes.clone());
-    let get_attr = |key| attrs.as_ref().and_then(|a| a.get(key).cloned());
-
-    // let name = get_attr("avs_name");
-    let node_type = get_attr("avs_type");
 
     let version_map = DbAvsVersionData::get_all_avs_version(pool).await;
 
@@ -140,7 +135,7 @@ pub async fn build_avs_info(
                 version_map,
                 avs.avs_version.clone(),
                 Some(chain.to_string()),
-                node_type.clone(),
+                avs.avs_type,
             );
             if update_status != UpdateStatus::UpToDate || update_status != UpdateStatus::Unknown {
                 errors.push(NodeError::NeedsUpdate);
@@ -165,36 +160,20 @@ pub fn get_update_status(
     version_map: HashMap<NodeTypeId, VersionData>,
     avs_version: Version,
     chain: Option<String>,
-    node_type: Option<String>,
+    node_type: NodeType,
 ) -> UpdateStatus {
-    println!("avs_version: {:?}", avs_version);
-    // Early return if any required field is missing
-    let (chain_str, node_type_str) = match (chain, node_type) {
-        (Some(c), Some(n)) => (c, n),
-        _ => return UpdateStatus::Unknown,
+    // Early return if chain is missing
+    let chain = match chain.and_then(|c| c.parse::<Chain>().ok()) {
+        Some(c) => c,
+        None => return UpdateStatus::Unknown,
     };
-
-    println!("chain_str: {:?}, node_type_str: {:?}", chain_str, node_type_str);
-
-    // Parse and validate all required fields
-    let node_type = NodeType::from(node_type_str.as_str());
-    let chain = chain_str.parse::<Chain>().ok();
-    println!("chain: {:?}", chain);
-    println!("node_type: {:?}", node_type);
-
-    // Early return if parsing failed or node type is unknown
-    let chain = match chain {
-        Some(c) if node_type != NodeType::Unknown => c,
-        _ => return UpdateStatus::Unknown,
-    };
-    println!("chain: {:?}", chain);
 
     // Get version data for this node type and chain
     let version_data = match version_map.get(&NodeTypeId { node_type, chain }) {
         Some(data) => data,
         None => return UpdateStatus::Unknown,
     };
-    println!("version_data: {:?}", version_data);
+
     // Determine update status
     if version_data.breaking_change_version.as_ref().is_some_and(|breaking| avs_version < *breaking)
     {
@@ -261,9 +240,9 @@ mod node_data_tests {
         let version_map = create_test_version_map();
         let status = get_update_status(
             version_map,
-            Version::parse("1.2.0").unwrap(),
+            Version::new(1, 2, 0),
             Some("mainnet".to_string()),
-            Some("eigenda".to_string()),
+            NodeType::EigenDA,
         );
         assert_eq!(status, UpdateStatus::UpToDate);
     }
@@ -273,9 +252,9 @@ mod node_data_tests {
         let version_map = create_test_version_map();
         let status = get_update_status(
             version_map,
-            Some("1.1.0".to_string()),
+            Version::new(1, 1, 0),
             Some("mainnet".to_string()),
-            Some("eigenda".to_string()),
+            NodeType::EigenDA,
         );
         assert_eq!(status, UpdateStatus::Updateable);
     }
@@ -285,73 +264,52 @@ mod node_data_tests {
         let version_map = create_test_version_map();
         let status = get_update_status(
             version_map,
-            Some("0.9.0".to_string()),
+            Version::new(0, 9, 0),
             Some("mainnet".to_string()),
-            Some("eigenda".to_string()),
+            NodeType::EigenDA,
         );
         assert_eq!(status, UpdateStatus::Outdated);
     }
 
     #[test]
-    fn test_update_status_unknown_missing_data() {
+    fn test_update_status_unknown_chain_or_type() {
         let version_map = create_test_version_map();
-
-        // Test with missing version
-        let status = get_update_status(
-            version_map.clone(),
-            None,
-            Some("mainnet".to_string()),
-            Some("eigenda".to_string()),
-        );
-        assert_eq!(status, UpdateStatus::Unknown);
-
-        // Test with missing chain
-        let status = get_update_status(
-            version_map.clone(),
-            Some("1.2.0".to_string()),
-            None,
-            Some("eigenda".to_string()),
-        );
-        assert_eq!(status, UpdateStatus::Unknown);
-
-        // Test with missing node type
-        let status = get_update_status(
-            version_map.clone(),
-            Some("1.2.0".to_string()),
-            Some("mainnet".to_string()),
-            None,
-        );
-        assert_eq!(status, UpdateStatus::Unknown);
-    }
-
-    #[test]
-    fn test_update_status_invalid_data() {
-        let version_map = create_test_version_map();
-
-        // Test with invalid version format
-        let status = get_update_status(
-            version_map.clone(),
-            Some("invalid.version".to_string()),
-            Some("mainnet".to_string()),
-            Some("eigenda".to_string()),
-        );
-        assert_eq!(status, UpdateStatus::Unknown);
 
         // Test with invalid chain
         let status = get_update_status(
             version_map.clone(),
-            Some("1.2.0".to_string()),
+            Version::new(1, 2, 0),
             Some("invalid_chain".to_string()),
-            Some("eigenda".to_string()),
+            NodeType::EigenDA,
         );
         assert_eq!(status, UpdateStatus::Unknown);
 
         // Test with unknown node type
         let status = get_update_status(
             version_map,
-            Some("1.2.0".to_string()),
+            Version::new(1, 2, 0),
             Some("mainnet".to_string()),
-            Some("unknown".to_string()),
+            NodeType::Unknown,
+        );
+        assert_eq!(status, UpdateStatus::Unknown);
+    }
+
+    #[test]
+    fn test_update_status_missing_data() {
+        let version_map = create_test_version_map();
+
+        // Test with missing chain
+        let status =
+            get_update_status(version_map.clone(), Version::new(1, 2, 0), None, NodeType::EigenDA);
+        assert_eq!(status, UpdateStatus::Unknown);
+
+        // Test with empty version map
+        let empty_map = HashMap::new();
+        let status = get_update_status(
+            empty_map,
+            Version::new(1, 2, 0),
+            Some("mainnet".to_string()),
+            NodeType::EigenDA,
         );
         assert_eq!(status, UpdateStatus::Unknown);
     }
