@@ -5,6 +5,7 @@
 - [Docker](https://docs.docker.com/get-docker/)
 - [sqlx-cli](https://crates.io/crates/sqlx-cli)
 - [skopeo](https://github.com/containers/skopeo/blob/main/install.md)
+- [jq](https://jqlang.github.io/jq/download/)
 
 ## Quick Start (Automated Setup)
 
