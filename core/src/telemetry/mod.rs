@@ -2,19 +2,20 @@ use std::fmt::Display;
 
 use crate::{
     config::get_detailed_system_information,
+    docker::dockerapi::DockerClient,
     error::IvyError,
     grpc::{
         backend::backend_client::BackendClient,
-        messages::{Metrics, MetricsAttribute, NodeData, SignedMetrics, SignedNodeData},
+        messages::{Metrics, MetricsAttribute, SignedMetrics},
         tonic::transport::Channel,
     },
-    signature::{sign_metrics, sign_node_data},
+    signature::sign_metrics,
     wallet::IvyWallet,
 };
 use dispatch::TelemetryDispatchHandle;
 use serde::{Deserialize, Serialize};
 use tokio::time::{sleep, Duration};
-use tracing::error;
+use tracing::{error, info};
 use uuid::Uuid;
 
 pub mod dispatch;
@@ -83,14 +84,19 @@ pub async fn listen_metrics(
     avses: &[ConfiguredAvs],
     dispatch: &TelemetryDispatchHandle,
 ) -> Result<(), IvyError> {
+    let docker = DockerClient::default();
+    let images = docker.list_images().await;
+    info!("Got images {images:?}");
     loop {
         for avs in avses {
-            let node_data = NodeData {
-                avs_name: avs.name.clone(),
-                avs_type: avs.avs_type.to_string(),
-                machine_id: machine_id.into(),
-                avs_version: None,
-            };
+            let mut version_hash = "".to_string();
+            if let Some(inspect_data) = docker.inspect_by_container_name(&avs.name).await {
+                if let Some(image_name) = inspect_data.image() {
+                    if let Some(hash) = images.get(image_name) {
+                        version_hash = hash.clone();
+                    }
+                }
+            }
 
             let metrics = if let Ok(mut metrics) = fetch_telemetry_from(avs.metric_port).await {
                 metrics.push(Metrics {
@@ -98,8 +104,11 @@ pub async fn listen_metrics(
                     value: 1.0,
                     attributes: vec![
                         MetricsAttribute { name: "avs_name".to_owned(), value: avs.name.clone() },
-                        MetricsAttribute { name: "avs_type".to_owned(), value: avs.avs_type.to_string() },
-                        MetricsAttribute { name: "version".to_owned(), value: "0.0.0".to_string() }, //FIXME: Bazil to work on this
+                        MetricsAttribute {
+                            name: "avs_type".to_owned(),
+                            value: avs.avs_type.to_string(),
+                        },
+                        MetricsAttribute { name: "version".to_owned(), value: version_hash },
                     ],
                 });
                 metrics
@@ -125,14 +134,7 @@ pub async fn listen_metrics(
                 metrics: metrics.to_vec(),
             };
 
-            let node_data_signature = sign_node_data(&node_data, identity_wallet)?;
-            let signed_node_data = SignedNodeData {
-                signature: node_data_signature.to_vec(),
-                node_data: Some(node_data),
-            };
-
             dispatch.send_metrics(signed_metrics).await?;
-            dispatch.send_node_data(signed_node_data).await?;
         }
         // Last but not least - send system metrics
         if let Ok(system_metrics) = fetch_system_telemetry().await {

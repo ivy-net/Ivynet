@@ -26,6 +26,8 @@ async fn main() -> Result<(), BackendError> {
         Ok(add_account(&pool, &organization).await?)
     } else if let Some(avs_data) = config.set_avs_version {
         Ok(set_avs_version(&pool, &avs_data).await?)
+    } else if let Some(avs_data) = config.add_avs_version_hash {
+        Ok(add_version_hash(&pool, &avs_data).await?)
     } else if let Some(avs_data) = config.set_breaking_change_version {
         Ok(set_breaking_change_version(&pool, &avs_data).await?)
     } else {
@@ -61,6 +63,22 @@ async fn add_account(pool: &PgPool, org: &str) -> Result<(), BackendError> {
             println!("Creating organization {} with user {}", org_data[1], cred_data[0]);
             let org = db::Organization::new(pool, org_data[1], true).await?;
             org.attach_admin(pool, cred_data[0], cred_data[1]).await?;
+        }
+    }
+    Ok(())
+}
+
+async fn add_version_hash(pool: &PgPool, version: &str) -> Result<(), BackendError> {
+    let version_data = version.split('=').collect::<Vec<_>>();
+    if version_data.len() == 2 {
+        let avs_data = version_data[0].split(':').collect::<Vec<_>>();
+        if avs_data.len() == 2 {
+            println!(
+                "Adding new version ({}) for avs {} with hash = {}",
+                avs_data[0], avs_data[1], version_data[1]
+            );
+            db::AvsVersionHash::add_version(pool, avs_data[1], version_data[1], avs_data[0])
+                .await?;
         }
     }
     Ok(())

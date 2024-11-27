@@ -12,7 +12,7 @@ use crate::{
     db::{
         avs_version::{DbAvsVersionData, NodeTypeId, VersionData},
         metric::Metric,
-        Avs,
+        Avs, AvsVersionHash,
     },
     error::BackendError,
 };
@@ -88,11 +88,16 @@ pub async fn build_avs_info(
 
     let name = get_attr("avs_name");
     let node_type = get_attr("avs_type");
-    let version = get_attr("version");
+    let mut version = get_attr("version");
     let chain = get_attr("chain");
 
     let version_map = DbAvsVersionData::get_all_avs_version(pool).await;
 
+    if let Some(ref v) = &version {
+        if let Ok(ver) = AvsVersionHash::get_version(pool, v).await {
+            version = Some(ver)
+        }
+    }
     //Start of error building
     let mut errors = vec![];
 

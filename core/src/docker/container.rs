@@ -18,7 +18,7 @@ use crate::{
 
 use super::dockerapi::DockerClient;
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Container(pub ContainerSummary);
 
 impl Container {
