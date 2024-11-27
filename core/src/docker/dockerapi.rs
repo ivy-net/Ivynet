@@ -1,4 +1,6 @@
-use bollard::{container::LogOutput, secret::ContainerSummary, Docker};
+use std::collections::HashMap;
+
+use bollard::{container::LogOutput, image::ListImagesOptions, secret::ContainerSummary, Docker};
 use tokio_stream::Stream;
 
 use crate::node_type::NodeType;
@@ -35,10 +37,49 @@ impl DockerClient {
         self.0.list_containers::<String>(None).await.expect("Cannot list containers")
     }
 
+    pub async fn list_images(&self) -> HashMap<String, String> {
+        let mut map = HashMap::new();
+        for image in self
+            .0
+            .list_images(Some(ListImagesOptions::<String> {
+                all: true,
+                digests: true,
+                ..Default::default()
+            }))
+            .await
+            .expect("Cannot list images")
+        {
+            for digest in &image.repo_digests {
+                let elements = digest.split("@").collect::<Vec<_>>();
+                if elements.len() == 2 {
+                    for tag in &image.repo_tags {
+                        map.insert(tag.clone(), elements[1].to_string());
+                    }
+                }
+            }
+        }
+        map
+    }
+
+    /// Inspect a container by container name
+    pub async fn inspect_by_container_name(&self, container_name: &str) -> Option<Container> {
+        let containers = self.list_containers().await;
+        let cname = container_name.to_string();
+        for container in containers {
+            if let Some(name) = &container.names {
+                if name.contains(&cname) {
+                    return Some(Container::new(container.clone()));
+                }
+            }
+        }
+        None
+    }
+
     /// Inspect a container by image name
     pub async fn inspect(&self, image_name: &str) -> Option<Container> {
         let containers = self.list_containers().await;
         for container in containers {
+            println!("Checking container {container:?}");
             if let Some(ref image_string) = container.image {
                 if image_string.contains(image_name) {
                     return Some(Container::new(container.clone()));
@@ -64,24 +105,36 @@ impl DockerClient {
             .collect()
     }
 
+    pub async fn find_container_by_name(&self, name: &str) -> Option<Container> {
+        let containers = self.list_containers().await;
+        containers
+            .into_iter()
+            .find(|container| {
+                container
+                    .names
+                    .as_ref()
+                    .map(|names| names.iter().any(|n| n.contains(name)))
+                    .unwrap_or_default()
+            })
+            .map(Container::new)
+    }
+
     /// Find an active container for a given node type
     pub async fn find_node_container(&self, node_type: &NodeType) -> Option<Container> {
-        let image_name = node_type.default_docker_image_name().unwrap();
+        let image_name = node_type.default_image_name().unwrap();
         self.inspect(image_name).await
     }
 
     /// Find all active containers for a slice of node types
     pub async fn find_node_containers(&self, node_types: &[NodeType]) -> Vec<Container> {
-        let image_names: Vec<&str> = node_types
-            .iter()
-            .map(|node_type| node_type.default_docker_image_name().unwrap())
-            .collect();
+        let image_names: Vec<&str> =
+            node_types.iter().map(|node_type| node_type.default_image_name().unwrap()).collect();
         self.inspect_many(&image_names).await
     }
 
     /// Find all active containers for all available node types
     pub async fn find_all_node_containers(&self) -> Vec<Container> {
-        let node_types = NodeType::all();
+        let node_types = NodeType::all_known();
         self.find_node_containers(&node_types).await
     }
 

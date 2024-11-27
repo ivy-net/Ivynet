@@ -23,18 +23,11 @@ pub enum RegisterCommands {
 pub enum NodeCommands {
     #[command(name = "info", about = "Get information about the currently running AVS")]
     Info {},
-    #[command(name = "configure", about = "Configure a new node instance.")]
+    #[command(
+        name = "configure",
+        about = "Configure a new node instance type for the node launcher."
+    )]
     Configure { node_type: NodeType },
-    #[command(
-        name = "setup",
-        about = "Setup a new AVS instance or enter path information to attach to an existing AVS."
-    )]
-    Register {},
-    #[command(
-        name = "unregister",
-        about = "Unregister an operator for the loaded AVS. Not valid for all AVS types. See AVS specific dcoumentation for details."
-    )]
-    Unregister {},
     #[command(
         name = "start",
         about = "Start running an AVS node in a docker container based on a configuration file."
@@ -43,12 +36,6 @@ pub enum NodeCommands {
     #[command(name = "stop", about = "Stop running the active AVS docker container.")]
     Stop {},
     #[command(name = "attach", about = "Attach a running AVS node to a docker container.")]
-    Attach {
-        #[clap(required(false), long, requires("chain"))]
-        avs: Option<String>,
-        #[clap(required(false), long, requires("avs"))]
-        chain: Option<String>,
-    },
     #[command(
         name = "inspect",
         about = "Inspect logs from a given AVS. Defaults to currently selected AVS and chain if not provided."
@@ -68,13 +55,8 @@ impl Display for NodeCommands {
             NodeCommands::Configure { node_type } => {
                 write!(f, "Configure a new {node_type} node instance")
             }
-            NodeCommands::Register {} => write!(f, "register"),
-            NodeCommands::Unregister {} => write!(f, "unregister"),
             NodeCommands::Start { .. } => write!(f, "start"),
             NodeCommands::Stop {} => write!(f, "stop"),
-            NodeCommands::Attach { .. } => {
-                write!(f, "Attaching to active AVS")
-            }
             NodeCommands::Inspect { avs: _, chain: _ } => {
                 write!(f, "inspect logs")
             }
