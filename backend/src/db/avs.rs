@@ -121,7 +121,7 @@ impl Avs {
         machine_id: Uuid,
         avs_name: &str,
         avs_type: &NodeType,
-        avs_version: &str,
+        version_hash: &str,
     ) -> Result<(), BackendError> {
         let now = chrono::Utc::now().naive_utc();
 
@@ -136,7 +136,7 @@ impl Avs {
             "0.0.0",
             false,
             Option::<Vec<u8>>::None,
-            avs_version,
+            version_hash,
             now,
             now
         )
@@ -194,6 +194,8 @@ impl Avs {
         avs_name: &str,
         chain: Chain,
     ) -> Result<(), BackendError> {
+        println!("Updating chain");
+        println!("Machine ID: {:?}, AVS Name: {:?}, Chain: {:?}", machine_id, avs_name, chain);
         sqlx::query!(
             "UPDATE avs SET chain = $1 WHERE machine_id = $2 AND avs_name = $3",
             chain.to_string(),
@@ -221,4 +223,24 @@ impl Avs {
         .await?;
         Ok(())
     }
+
+    pub async fn update_version(
+        pool: &sqlx::PgPool,
+        machine_id: Uuid,
+        avs_name: &str,
+        version: &str,
+    ) -> Result<(), BackendError> {
+        
+        sqlx::query!(
+            "UPDATE avs SET avs_version = $1 WHERE machine_id = $2 AND avs_name = $3",
+            version,
+            machine_id,
+            avs_name
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+
 }

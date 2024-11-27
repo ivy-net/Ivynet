@@ -1,6 +1,7 @@
 use ivynet_core::node_type::NodeType;
 use serde::Serialize;
 use utoipa::ToSchema;
+use uuid::Uuid;
 
 use std::collections::HashMap;
 
@@ -56,13 +57,8 @@ pub struct NodeStatusReport {
 
 #[derive(Serialize, ToSchema, Clone, Debug)]
 pub struct AvsInfo {
-    pub machine_id: String,
-    pub name: Option<String>,
-    pub node_type: Option<String>,
-    pub chain: Option<String>,
-    pub version: Option<String>,
-    pub operator_id: Option<String>,
-    pub active_set: bool,
+    #[serde(flatten)]
+    pub avs: Avs,
     pub uptime: f64,
     pub performance_score: f64,
     pub update_status: UpdateStatus,
@@ -86,18 +82,11 @@ pub async fn build_avs_info(
     let attrs = running_metric.and_then(|m| m.attributes.clone());
     let get_attr = |key| attrs.as_ref().and_then(|a| a.get(key).cloned());
 
-    let name = get_attr("avs_name");
+    // let name = get_attr("avs_name");
     let node_type = get_attr("avs_type");
-    let mut version = get_attr("version");
-    let chain = get_attr("chain");
 
     let version_map = DbAvsVersionData::get_all_avs_version(pool).await;
 
-    if let Some(ref v) = &version {
-        if let Ok(ver) = AvsVersionHash::get_version(pool, v).await {
-            version = Some(ver)
-        }
-    }
     //Start of error building
     let mut errors = vec![];
 
@@ -143,11 +132,19 @@ pub async fn build_avs_info(
     }
 
     let mut update_status = UpdateStatus::Unknown;
-    if let Ok(version_map) = version_map {
-        update_status =
-            get_update_status(version_map, version.clone(), chain.clone(), node_type.clone());
-        if update_status != UpdateStatus::UpToDate || update_status != UpdateStatus::Unknown {
-            errors.push(NodeError::NeedsUpdate);
+    if avs.chain.is_none() {
+        errors.push(NodeError::NoChainInfo);
+    } else if let Some(chain) = avs.chain {
+        if let Ok(version_map) = version_map {
+            update_status = get_update_status(
+                version_map,
+                avs.avs_version.clone(),
+                Some(chain.to_string()),
+                node_type.clone(),
+            );
+            if update_status != UpdateStatus::UpToDate || update_status != UpdateStatus::Unknown {
+                errors.push(NodeError::NeedsUpdate);
+            }
         }
     }
 
@@ -155,60 +152,57 @@ pub async fn build_avs_info(
         errors.push(NodeError::NoOperatorId);
     }
 
-    if chain.is_none() {
-        errors.push(NodeError::NoChainInfo);
-    }
-
     AvsInfo {
-        name,
-        node_type,
-        version,
-        chain,
-        active_set: avs.active_set, //Microservice should handle this
-        operator_id: avs.operator_address.map(|addr| addr.to_string()),
+        avs,
         uptime: metrics.get(UPTIME_METRIC).map_or(0.0, |m| m.value),
         performance_score: metrics.get(EIGEN_PERFORMANCE_METRIC).map_or(0.0, |m| m.value),
         update_status,
-        machine_id: avs.machine_id.to_string(),
         errors,
     }
 }
 
 pub fn get_update_status(
     version_map: HashMap<NodeTypeId, VersionData>,
-    avs_version: Option<String>,
+    avs_version: Version,
     chain: Option<String>,
     node_type: Option<String>,
 ) -> UpdateStatus {
-    match (avs_version, chain, node_type) {
-        (Some(v), Some(c), Some(nt)) => {
-            let node_type = NodeType::from(nt.as_str());
-            let avs_version = Version::parse(&v).ok();
-            let avs_chain = c.parse::<Chain>().ok();
+    println!("avs_version: {:?}", avs_version);
+    // Early return if any required field is missing
+    let (chain_str, node_type_str) = match (chain, node_type) {
+        (Some(c), Some(n)) => (c, n),
+        _ => return UpdateStatus::Unknown,
+    };
 
-            match (avs_version, avs_chain) {
-                (Some(current_version), Some(ac)) if node_type != NodeType::Unknown => {
-                    if let Some(data) = version_map.get(&NodeTypeId { node_type, chain: ac }) {
-                        if data
-                            .breaking_change_version
-                            .clone()
-                            .map(|breaking| current_version < breaking)
-                            .unwrap_or(false)
-                        {
-                            UpdateStatus::Outdated
-                        } else if data.latest_version > current_version {
-                            UpdateStatus::Updateable
-                        } else {
-                            UpdateStatus::UpToDate
-                        }
-                    } else {
-                        UpdateStatus::Unknown
-                    }
-                }
-                _ => UpdateStatus::Unknown,
-            }
-        }
-        _ => UpdateStatus::Unknown,
+    println!("chain_str: {:?}, node_type_str: {:?}", chain_str, node_type_str);
+
+    // Parse and validate all required fields
+    let node_type = NodeType::from(node_type_str.as_str());
+    let chain = chain_str.parse::<Chain>().ok();
+    println!("chain: {:?}", chain);
+    println!("node_type: {:?}", node_type);
+
+    // Early return if parsing failed or node type is unknown
+    let chain = match chain {
+        Some(c) if node_type != NodeType::Unknown => c,
+        _ => return UpdateStatus::Unknown,
+    };
+    println!("chain: {:?}", chain);
+
+    // Get version data for this node type and chain
+    let version_data = match version_map.get(&NodeTypeId { node_type, chain }) {
+        Some(data) => data,
+        None => return UpdateStatus::Unknown,
+    };
+    println!("version_data: {:?}", version_data);
+    // Determine update status
+    if version_data.breaking_change_version.as_ref().is_some_and(|breaking| avs_version < *breaking)
+    {
+        UpdateStatus::Outdated
+    } else if version_data.latest_version > avs_version {
+        UpdateStatus::Updateable
+    } else {
+        UpdateStatus::UpToDate
     }
 }
 
@@ -229,4 +223,136 @@ pub fn condense_metrics(
 /// Filter the metrics by the given names.
 fn filter_metrics_by_names(metrics: &[Metric], allowed_names: &[&str]) -> Vec<Metric> {
     metrics.iter().filter(|metric| allowed_names.contains(&metric.name.as_str())).cloned().collect()
+}
+
+pub async fn update_avs_version(
+    pool: &sqlx::PgPool,
+    machine_id: Uuid,
+    avs_name: &str,
+    version_hash: &str,
+) -> Result<(), BackendError> {
+    let version = AvsVersionHash::get_version(pool, version_hash).await?;
+    Avs::update_version(pool, machine_id, avs_name, &version).await?;
+    Ok(())
+}
+
+#[cfg(test)]
+mod node_data_tests {
+    use super::*;
+
+    fn create_test_version_map() -> HashMap<NodeTypeId, VersionData> {
+        let mut map = HashMap::new();
+
+        // Add EigenDA test data
+        map.insert(
+            NodeTypeId { node_type: NodeType::EigenDA, chain: Chain::Mainnet },
+            VersionData {
+                latest_version: Version::new(1, 2, 0),
+                breaking_change_version: Some(Version::new(1, 0, 0)),
+                breaking_change_datetime: None,
+            },
+        );
+
+        map
+    }
+
+    #[test]
+    fn test_update_status_up_to_date() {
+        let version_map = create_test_version_map();
+        let status = get_update_status(
+            version_map,
+            Version::parse("1.2.0").unwrap(),
+            Some("mainnet".to_string()),
+            Some("eigenda".to_string()),
+        );
+        assert_eq!(status, UpdateStatus::UpToDate);
+    }
+
+    #[test]
+    fn test_update_status_updateable() {
+        let version_map = create_test_version_map();
+        let status = get_update_status(
+            version_map,
+            Some("1.1.0".to_string()),
+            Some("mainnet".to_string()),
+            Some("eigenda".to_string()),
+        );
+        assert_eq!(status, UpdateStatus::Updateable);
+    }
+
+    #[test]
+    fn test_update_status_outdated() {
+        let version_map = create_test_version_map();
+        let status = get_update_status(
+            version_map,
+            Some("0.9.0".to_string()),
+            Some("mainnet".to_string()),
+            Some("eigenda".to_string()),
+        );
+        assert_eq!(status, UpdateStatus::Outdated);
+    }
+
+    #[test]
+    fn test_update_status_unknown_missing_data() {
+        let version_map = create_test_version_map();
+
+        // Test with missing version
+        let status = get_update_status(
+            version_map.clone(),
+            None,
+            Some("mainnet".to_string()),
+            Some("eigenda".to_string()),
+        );
+        assert_eq!(status, UpdateStatus::Unknown);
+
+        // Test with missing chain
+        let status = get_update_status(
+            version_map.clone(),
+            Some("1.2.0".to_string()),
+            None,
+            Some("eigenda".to_string()),
+        );
+        assert_eq!(status, UpdateStatus::Unknown);
+
+        // Test with missing node type
+        let status = get_update_status(
+            version_map.clone(),
+            Some("1.2.0".to_string()),
+            Some("mainnet".to_string()),
+            None,
+        );
+        assert_eq!(status, UpdateStatus::Unknown);
+    }
+
+    #[test]
+    fn test_update_status_invalid_data() {
+        let version_map = create_test_version_map();
+
+        // Test with invalid version format
+        let status = get_update_status(
+            version_map.clone(),
+            Some("invalid.version".to_string()),
+            Some("mainnet".to_string()),
+            Some("eigenda".to_string()),
+        );
+        assert_eq!(status, UpdateStatus::Unknown);
+
+        // Test with invalid chain
+        let status = get_update_status(
+            version_map.clone(),
+            Some("1.2.0".to_string()),
+            Some("invalid_chain".to_string()),
+            Some("eigenda".to_string()),
+        );
+        assert_eq!(status, UpdateStatus::Unknown);
+
+        // Test with unknown node type
+        let status = get_update_status(
+            version_map,
+            Some("1.2.0".to_string()),
+            Some("mainnet".to_string()),
+            Some("unknown".to_string()),
+        );
+        assert_eq!(status, UpdateStatus::Unknown);
+    }
 }

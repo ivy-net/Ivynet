@@ -98,6 +98,8 @@ pub async fn listen_metrics(
                 }
             }
 
+            println!("version_hash: {version_hash}");
+
             let metrics = if let Ok(mut metrics) = fetch_telemetry_from(avs.metric_port).await {
                 metrics.push(Metrics {
                     name: "running".to_owned(),
@@ -108,7 +110,7 @@ pub async fn listen_metrics(
                             name: "avs_type".to_owned(),
                             value: avs.avs_type.to_string(),
                         },
-                        MetricsAttribute { name: "version".to_owned(), value: version_hash },
+                        MetricsAttribute { name: "version-hash".to_owned(), value: version_hash },
                     ],
                 });
                 metrics
@@ -122,7 +124,10 @@ pub async fn listen_metrics(
                             name: "avs_type".to_owned(),
                             value: avs.avs_type.to_string(),
                         },
-                        MetricsAttribute { name: "version".to_owned(), value: "0.0.0".to_string() }, /* FIXME: Bazil to work on this */
+                        MetricsAttribute {
+                            name: "version-hash".to_owned(),
+                            value: "0.0.0".to_string(),
+                        }, /* FIXME: Bazil to work on this */
                     ],
                 }]
             };
