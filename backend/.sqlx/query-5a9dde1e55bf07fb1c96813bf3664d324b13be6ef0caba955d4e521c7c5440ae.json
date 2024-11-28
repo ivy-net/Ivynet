@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT machine_id, avs_name, avs_type, avs_version, operator_address, active_set, version_hash, created_at, updated_at FROM avs WHERE machine_id = $1 AND avs_name = $2",
+  "query": "SELECT machine_id, avs_name, avs_type, chain, avs_version, operator_address, active_set, version_hash, created_at, updated_at FROM avs WHERE machine_id = $1 AND avs_name = $2",
   "describe": {
     "columns": [
       {
@@ -20,31 +20,36 @@
       },
       {
         "ordinal": 3,
-        "name": "avs_version",
+        "name": "chain",
         "type_info": "Varchar"
       },
       {
         "ordinal": 4,
+        "name": "avs_version",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
         "name": "operator_address",
         "type_info": "Bytea"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "active_set",
         "type_info": "Bool"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "version_hash",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "created_at",
         "type_info": "Timestamp"
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "updated_at",
         "type_info": "Timestamp"
       }
@@ -59,6 +64,7 @@
       false,
       false,
       false,
+      true,
       false,
       true,
       false,
@@ -67,5 +73,5 @@
       false
     ]
   },
-  "hash": "145bb03c86a1ccf308bafec2e9125b2fd9a39408f17950db4e57f7dd3156c42a"
+  "hash": "5a9dde1e55bf07fb1c96813bf3664d324b13be6ef0caba955d4e521c7c5440ae"
 }

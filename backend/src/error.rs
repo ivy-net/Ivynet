@@ -72,6 +72,12 @@ pub enum BackendError {
 
     #[error("Missing parameter: {0}")]
     MissingParameter(String),
+
+    #[error("Invalid version")]
+    InvalidVersion,
+
+    #[error("Invalid chain")]
+    InvalidChain,
 }
 
 impl IntoResponse for BackendError {

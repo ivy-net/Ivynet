@@ -78,7 +78,7 @@ pub async fn listen_metrics(
 ) -> Result<(), IvyError> {
     let docker = DockerClient::default();
     let images = docker.list_images().await;
-    info!("Got images {images:?}");
+    info!("Got images {images:#?}");
     loop {
         for avs in avses {
             let mut version_hash = "".to_string();
@@ -100,7 +100,7 @@ pub async fn listen_metrics(
                             name: "avs_type".to_owned(),
                             value: avs.avs_type.to_string(),
                         },
-                        MetricsAttribute { name: "version".to_owned(), value: version_hash },
+                        MetricsAttribute { name: "version-hash".to_owned(), value: version_hash },
                     ],
                 });
                 metrics
@@ -114,7 +114,10 @@ pub async fn listen_metrics(
                             name: "avs_type".to_owned(),
                             value: avs.avs_type.to_string(),
                         },
-                        MetricsAttribute { name: "version".to_owned(), value: "0.0.0".to_string() }, /* FIXME: Bazil to work on this */
+                        MetricsAttribute {
+                            name: "version-hash".to_owned(),
+                            value: "0.0.0".to_string(),
+                        }, /* FIXME: Bazil to work on this */
                     ],
                 }]
             };
