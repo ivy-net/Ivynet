@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE operator_keys SET name = $1 WHERE organization_id = $2 AND public_key = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0aa16d48b6e6cd9322aefd9836b81cbba4181d366a48334f7af8dc5586f4d4e7"
+}

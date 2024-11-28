@@ -30,7 +30,7 @@ impl From<&str> for NodeType {
         match s.to_lowercase().as_str() {
             "eigenda" => NodeType::EigenDA,
             "lagrange:holesky" => NodeType::LagrangeHoleskyWorker,
-            _ => panic!("Invalid node type"),
+            _ => NodeType::Unknown,
         }
     }
 }

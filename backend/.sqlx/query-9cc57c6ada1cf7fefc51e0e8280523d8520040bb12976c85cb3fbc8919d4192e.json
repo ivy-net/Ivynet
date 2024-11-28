@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE avs SET avs_version = $1 WHERE machine_id = $2 AND avs_name = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9cc57c6ada1cf7fefc51e0e8280523d8520040bb12976c85cb3fbc8919d4192e"
+}

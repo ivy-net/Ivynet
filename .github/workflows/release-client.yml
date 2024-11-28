@@ -32,12 +32,10 @@ jobs:
       - name: Run tests
         run: |
           . "$HOME/.cargo/env"
-          cd cli
-          cargo test
+          cargo test --bin ivynet
       - name: Build binaries
         run: |
-          cd cli
-          cargo build --release
+          cargo build --release --bin ivynet
       - name: Make release
         uses: softprops/action-gh-release@v2
         with:

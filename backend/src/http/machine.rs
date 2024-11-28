@@ -4,9 +4,8 @@ use axum::{
     Json,
 };
 use axum_extra::extract::CookieJar;
-use serde::Deserialize;
+use ivynet_core::ethers::types::{Address, Chain};
 use std::{collections::HashMap, str::FromStr};
-use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::{
@@ -29,9 +28,9 @@ use super::{authorize, HttpState};
 /// Grab information for every node in the organization
 #[utoipa::path(
     get,
-    path = "/machines",
+    path = "/machine",
     responses(
-        (status = 200, body = [Info]),
+        (status = 200, body = [MachineInfoReport]),
         (status = 404)
     )
 )]
@@ -57,9 +56,9 @@ pub async fn machine(
 /// Get an overview of which nodes are healthy and unhealthy
 #[utoipa::path(
     get,
-    path = "/machines/status",
+    path = "/machine/status",
     responses(
-        (status = 200, body = Status),
+        (status = 200, body = MachineStatusReport),
         (status = 404)
     )
 )]
@@ -153,18 +152,16 @@ pub async fn healthy(
     Ok(Json(healthy_list.into_iter().map(|id| format!("{:?}", id)).collect()))
 }
 
-#[derive(Deserialize, Debug, Clone, ToSchema)]
-pub struct NameChangeRequest {
-    pub name: String,
-}
-
 /// Set the name of a node
 #[utoipa::path(
     post,
-    path = "/machine/machine_id:/:name",
+    path = "/machine/:machine_id",
     responses(
         (status = 200),
         (status = 404)
+    ),
+    params(
+        ("name" = String, Query, description = "The new name for the node")
     )
 )]
 pub async fn set_name(
@@ -172,28 +169,35 @@ pub async fn set_name(
     State(state): State<HttpState>,
     jar: CookieJar,
     Path(machine_id): Path<String>,
-    Json(request): Json<NameChangeRequest>,
+    Query(params): Query<HashMap<String, String>>,
 ) -> Result<(), BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     authorize::verify_node_ownership(&account, State(state.clone()), machine_id)
         .await?
-        .set_name(&state.pool, &request.name)
+        .set_name(
+            &state.pool,
+            params.get("name").map(|s| s.as_str()).ok_or_else(|| {
+                BackendError::MalformedParameter(
+                    "name".to_string(),
+                    "Name cannot be empty".to_string(),
+                )
+            })?,
+        )
         .await?;
 
     Ok(())
 }
 
 /// Delete a machine from the database
-// TODO: We are already doing that. But there is too many things doing similar stuff
 #[utoipa::path(
     delete,
-    path = "/machine/machine_id:",
+    path = "/machine/:machine_id",
     responses(
         (status = 200),
         (status = 404)
     )
 )]
-pub async fn delete(
+pub async fn delete_machine(
     headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
@@ -208,12 +212,12 @@ pub async fn delete(
     Ok(())
 }
 
-/// Get info on a specific node
+/// Get info on a specific machine
 #[utoipa::path(
     get,
     path = "/machine/:machine_id",
     responses(
-        (status = 200, body = Info),
+        (status = 200, body = MachineInfoReport),
         (status = 404)
     )
 )]
@@ -230,6 +234,131 @@ pub async fn info(
 
     let metrics = Metric::get_machine_metrics_only(&state.pool, machine.machine_id).await?;
     Ok(Json(build_machine_info(&state.pool, &machine, metrics).await?))
+}
+
+/// Get all info on every running node for a specific machine
+#[utoipa::path(
+    get,
+    path = "/machine/:machine_id/info",
+    responses(
+        (status = 200, body = [AvsInfo]),
+        (status = 404)
+    )
+)]
+pub async fn get_all_node_data(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    Path(machine_id): Path<String>,
+    jar: CookieJar,
+) -> Result<Json<Vec<AvsInfo>>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let machine =
+        authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
+
+    // Get all data for the node
+    let nodes = Avs::get_machines_avs_list(&state.pool, machine.machine_id).await?;
+
+    let mut node_data = vec![];
+    for node in nodes {
+        let metrics =
+            Metric::get_organized_for_avs(&state.pool, machine.machine_id, &node.avs_name).await?;
+        node_data.push(build_avs_info(&state.pool, node.clone(), metrics).await);
+    }
+
+    Ok(Json(node_data))
+}
+
+/// Delete all data for a specific AVS running on a node
+#[utoipa::path(
+    delete,
+    path = "/machine/:machine_id",
+    responses(
+        (status = 200),
+        (status = 404)
+    ),
+    params(
+        ("avs_name" = String, Query, description = "The name of the AVS to delete data for")
+    )
+)]
+pub async fn delete_avs_node_data(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    Path(machine_id): Path<String>,
+    jar: CookieJar,
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<(), BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let machine =
+        authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
+
+    Avs::delete_avs_data(
+        &state.pool,
+        machine.machine_id,
+        params.get("avs_name").ok_or_else(|| {
+            BackendError::MalformedParameter(
+                "avs_name".to_string(),
+                "AVS name cannot be empty".to_string(),
+            )
+        })?,
+    )
+    .await?;
+
+    Ok(())
+}
+
+/* ---------------------------------------------------- */
+/* ---------- :machine_id/:avs_name Section ----------- */
+/* ---------------------------------------------------- */
+
+/// Update an AVS's operator address or chain
+#[utoipa::path(
+    put,
+    path = "/machine/:machine_id/:avs_name",
+    responses(
+        (status = 200),
+        (status = 404)
+    ),
+    params(
+        ("chain" = Option<Chain>, Query, description = "Optional chain to update to"),
+        ("operator_address" = Option<String>, Query, description = "Optional operator address to update to")
+    )
+)]
+pub async fn update_avs(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Path((machine_id, avs_name)): Path<(String, String)>,
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<(), BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let machine =
+        authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
+
+    // Handle chain update if present
+    if let Some(chain_str) = params.get("chain") {
+        let chain = Chain::from_str(chain_str).map_err(|_| {
+            BackendError::MalformedParameter("chain".to_string(), chain_str.clone())
+        })?;
+        Avs::update_chain(&state.pool, machine.machine_id, &avs_name, chain).await?;
+    }
+
+    // Handle operator address update if present
+    if let Some(operator_str) = params.get("operator_address") {
+        let operator_address = if operator_str.is_empty() {
+            None
+        } else {
+            Some(Address::from_str(operator_str).map_err(|_| {
+                BackendError::MalformedParameter(
+                    "operator_address".to_string(),
+                    operator_str.clone(),
+                )
+            })?)
+        };
+        Avs::update_operator_address(&state.pool, machine.machine_id, &avs_name, operator_address)
+            .await?;
+    }
+
+    Ok(())
 }
 
 /// Get condensed metrics for a specific node on a specific
@@ -288,16 +417,16 @@ pub async fn metrics_all(
 
 /// Get all logs for a specific node
 #[utoipa::path(
-    post,
+    get,
     path = "/machine/:machine_id/:avs_name/logs",
     responses(
         (status = 200, body = [ContainerLog]),
         (status = 404)
     ),
     params(
-        ("log_level" = String, Query, description = "Optional log level filter. Valid values: debug, info, warning, error"),
-        ("from" = String, Query, description = "Optional start timestamp"),
-        ("to" = String, Query, description = "Optional end timestamp")
+        ("log_level" = Option<String>, Query, description = "Optional log level filter. Valid values: debug, info, warning, error"),
+        ("from" = Option<i64>, Query, description = "Optional start timestamp"),
+        ("to" = Option<i64>, Query, description = "Optional end timestamp")
     )
 )]
 pub async fn logs(
@@ -344,62 +473,5 @@ pub async fn logs(
     )
     .await?;
 
-    Ok(logs.into())
-}
-
-/// Get all data on every running avs for a specific node
-#[utoipa::path(
-    get,
-    path = "/machine/:machine_id/data/",
-    responses(
-        (status = 200, body = [Avs]),
-        (status = 404)
-    )
-)]
-pub async fn get_all_node_data(
-    headers: HeaderMap,
-    State(state): State<HttpState>,
-    Path(machine_id): Path<String>,
-    jar: CookieJar,
-) -> Result<Json<Vec<AvsInfo>>, BackendError> {
-    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    let machine =
-        authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
-
-    // Get all data for the node
-    let nodes = Avs::get_machines_avs_list(&state.pool, machine.machine_id).await?;
-
-    let mut node_data = vec![];
-    for node in nodes {
-        let metrics =
-            Metric::get_organized_for_avs(&state.pool, machine.machine_id, &node.avs_name).await?;
-        node_data.push(build_avs_info(&state.pool, node.clone(), metrics).await);
-    }
-
-    Ok(Json(node_data))
-}
-
-/// Delete all data for a specific node
-#[utoipa::path(
-    delete,
-    path = "/machine/machine_id:",
-    responses(
-        (status = 200),
-        (status = 404)
-    )
-)]
-pub async fn delete_machine_data(
-    headers: HeaderMap,
-    State(state): State<HttpState>,
-    jar: CookieJar,
-    Path(machine_id): Path<String>,
-) -> Result<(), BackendError> {
-    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-
-    authorize::verify_node_ownership(&account, State(state.clone()), machine_id)
-        .await?
-        .delete(&state.pool)
-        .await?;
-
-    Ok(())
+    Ok(Json(logs))
 }
