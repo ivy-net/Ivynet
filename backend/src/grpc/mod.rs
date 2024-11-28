@@ -1,4 +1,5 @@
 use crate::{
+    data::node_data::update_avs_version,
     db::{log::ContainerLog, machine::Machine, metric::Metric, Account, Avs},
     error::BackendError,
 };
@@ -120,23 +121,23 @@ impl Backend for BackendService {
         .map_err(|e| Status::internal(format!("Failed while saving metrics: {e:?}")))?;
 
         if let Some(avs_name) = req.avs_name {
-            if let Some((avs_type, version)) = req
+            if let Some((avs_type, version_hash)) = req
                 .metrics
                 .iter()
                 .filter_map(|m| {
                     if m.name == "running" {
                         let mut avs_type = None;
-                        let mut version = None;
+                        let mut version_hash = None;
 
                         for attribute in &m.attributes {
                             if attribute.name == "avs_type" {
                                 avs_type = Some(attribute.value.clone());
-                            } else if attribute.name == "version" {
-                                version = Some(attribute.value.clone());
+                            } else if attribute.name == "version-hash" {
+                                version_hash = Some(attribute.value.clone());
                             }
                         }
-                        if let (Some(t), Some(v)) = (avs_type, version) {
-                            Some((t, v))
+                        if let (Some(t), Some(vh)) = (avs_type, version_hash) {
+                            Some((t, vh))
                         } else {
                             None
                         }
@@ -152,10 +153,11 @@ impl Backend for BackendService {
                     machine_id,
                     &avs_name,
                     &NodeType::from(avs_type.as_str()),
-                    version,
+                    version_hash,
                 )
                 .await
                 .map_err(|e| Status::internal(format!("Failed while saving node_data: {e}")))?;
+                _ = update_avs_version(&self.pool, machine_id, &avs_name, version_hash).await;
             }
         }
         Ok(Response::new(()))

@@ -9,6 +9,7 @@ pub mod client;
 pub mod log;
 pub mod machine;
 pub mod metric;
+pub mod operator_keys;
 pub mod organization;
 pub mod verification;
 

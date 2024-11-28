@@ -1,14 +1,9 @@
-use axum::{
-    extract::{Path, State},
-    http::HeaderMap,
-    Json,
-};
+use axum::{extract::State, http::HeaderMap, Json};
 use axum_extra::extract::CookieJar;
-use ivynet_core::ethers::types::Address;
 
 use crate::{
     data::node_data::{build_avs_info, AvsInfo, NodeStatusReport},
-    db::{metric::Metric, Avs},
+    db::metric::Metric,
     error::BackendError,
 };
 
@@ -82,29 +77,4 @@ pub async fn avs_status(
         healthy_nodes: healthy_list,
         unhealthy_nodes: unhealthy_list,
     }))
-}
-
-/// Delete all data for a specific AVS running on a node
-#[utoipa::path(
-    delete,
-    path = "/avs/:id/:avs_name/:operator_id",
-    responses(
-        (status = 200),
-        (status = 404)
-    )
-)]
-pub async fn delete_avs_node_data(
-    headers: HeaderMap,
-    State(state): State<HttpState>,
-    Path((id, avs_name, operator_id)): Path<(String, String, String)>,
-    jar: CookieJar,
-) -> Result<(), BackendError> {
-    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    let machine = authorize::verify_node_ownership(&account, State(state.clone()), id).await?;
-
-    let op_id = operator_id.parse::<Address>().map_err(|_| BackendError::BadId)?;
-
-    Avs::delete_avs_data(&state.pool, machine.machine_id, &op_id, &avs_name).await?;
-
-    Ok(())
 }
