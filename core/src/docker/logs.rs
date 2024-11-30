@@ -46,11 +46,11 @@ mod test_log_parse {
 
     #[test]
     fn test_log_level_detection() {
-        assert_eq!(get_log_level(ERR_LOG), "ERR");
-        assert_eq!(get_log_level(DBG_LOG), "DBG");
-        assert_eq!(get_log_level(WRN_LOG), "WRN");
-        assert_eq!(get_log_level(INF_LOG), "INF");
-        assert_eq!(get_log_level(UNKNOWN_LOG), "UNKNOWN");
+        assert_eq!(get_log_level(ERR_LOG), "error");
+        assert_eq!(get_log_level(DBG_LOG), "debug");
+        assert_eq!(get_log_level(WRN_LOG), "warning");
+        assert_eq!(get_log_level(INF_LOG), "info");
+        assert_eq!(get_log_level(UNKNOWN_LOG), "unknown");
     }
 
     #[test]
