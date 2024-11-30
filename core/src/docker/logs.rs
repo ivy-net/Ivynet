@@ -8,19 +8,20 @@ const TIMESTAMP_REGEX: &str = r"^\w{3} \d{2} \d{2}:\d{2}:\d{2}\.\d{3}";
 pub fn format_docker_log(log: &str) -> (String, String, String) {
     let timestamp = get_log_timestamp(log);
     let log_level = get_log_level(log);
-    (log.to_string(), timestamp, log_level)
+    (log.to_string(), timestamp.to_string(), log_level)
 }
 
-fn get_log_timestamp(log: &str) -> String {
+fn get_log_timestamp(log: &str) -> NaiveDateTime {
     let re = regex::Regex::new(TIMESTAMP_REGEX).unwrap();
     if let Some(timestamp) = re.find(log) {
-        if let Ok(timestamp) = parse_timestamp(timestamp.as_str()) {
-            return timestamp.to_string();
+        let this_year = chrono::Utc::now().year();
+        if let Ok(timestamp) = parse_timestamp(timestamp.as_str(), this_year) {
+            return timestamp;
         }
     }
     let now = chrono::Utc::now();
     #[allow(deprecated)]
-    NaiveDateTime::from_timestamp(now.timestamp(), now.timestamp_subsec_nanos()).to_string()
+    NaiveDateTime::from_timestamp(now.timestamp(), now.timestamp_subsec_nanos())
 }
 
 pub fn get_log_level(log: &str) -> String {
@@ -37,10 +38,8 @@ pub fn get_log_level(log: &str) -> String {
     }
 }
 
-// WARN: Getting year internally is a hard antipattern when it comes to testing this func. Needs to
-// be rewritten to be more flexible with year for tests.
-fn parse_timestamp(timestamp: &str) -> Result<NaiveDateTime, chrono::ParseError> {
-    let this_year = chrono::Utc::now().year();
+// TODO: This should probably be a method of a struct that composes the log transformation process
+fn parse_timestamp(timestamp: &str, this_year: i32) -> Result<NaiveDateTime, chrono::ParseError> {
     let timestamp_with_year = format!("{} {}", this_year, timestamp);
     NaiveDateTime::parse_from_str(&timestamp_with_year, "%Y %b %d %H:%M:%S.%3f")
 }
@@ -56,14 +55,6 @@ mod test_log_parse {
     const UNKNOWN_LOG: &str = r#"I'M A LUMBERJACK AND I'M OKAY!"#;
 
     #[test]
-    fn test_invalid_timestamp_format() {
-        let invalid_log = "Invalid timestamp format";
-        // This will return current timestamp, but we can't assert exact value
-        // since it may change. Just verify it returns something non-empty
-        assert!(!get_log_timestamp(invalid_log).is_empty());
-    }
-
-    #[test]
     fn test_log_level_detection() {
         assert_eq!(get_log_level(ERR_LOG), "ERR");
         assert_eq!(get_log_level(DBG_LOG), "DBG");
@@ -73,15 +64,11 @@ mod test_log_parse {
     }
 
     #[test]
-    fn test_format_docker_log() {
-        let (log, timestamp, level) = format_docker_log(ERR_LOG);
-        assert_eq!(log, ERR_LOG);
-        assert!(!timestamp.is_empty());
-        assert_eq!(level, "ERR");
-
-        let (log, timestamp, level) = format_docker_log(INF_LOG);
-        assert_eq!(log, INF_LOG);
-        assert!(timestamp.is_empty());
-        assert_eq!(level, "INF");
+    fn test_log_timestamp_parsing() {
+        let this_year = 2024;
+        let expected_timestamp =
+            NaiveDateTime::parse_from_str("2024 Nov 28 06:43:08.470", "%Y %b %d %H:%M:%S.%3f")
+                .unwrap();
+        assert_eq!(parse_timestamp("Nov 28 06:43:08.470", this_year).unwrap(), expected_timestamp);
     }
 }
