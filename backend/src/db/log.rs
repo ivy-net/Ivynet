@@ -28,6 +28,7 @@ impl FromStr for LogLevel {
             "info" => Ok(LogLevel::Info),
             "warning" => Ok(LogLevel::Warning),
             "error" => Ok(LogLevel::Error),
+            "unknown" => Ok(LogLevel::Unknown),
             _ => Err(format!("Invalid log level: {}", s)),
         }
     }

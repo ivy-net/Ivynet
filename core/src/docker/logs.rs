@@ -3,38 +3,28 @@ use chrono::{Datelike, NaiveDateTime};
 /// regex for timestamp string in the format of "Nov 28 06:37:07.908"
 const TIMESTAMP_REGEX: &str = r"^\w{3} \d{2} \d{2}:\d{2}:\d{2}\.\d{3}";
 
-/// This function formats the docker log to find timestamp and log level in string and return a tuple of
-/// the log, the timestamp, and the log level.
-pub fn format_docker_log(log: &str) -> (String, String, String) {
-    let timestamp = get_log_timestamp(log);
-    let log_level = get_log_level(log);
-    (log.to_string(), timestamp.to_string(), log_level)
-}
-
-fn get_log_timestamp(log: &str) -> NaiveDateTime {
+pub fn get_log_timestamp(log: &str) -> i64 {
     let re = regex::Regex::new(TIMESTAMP_REGEX).unwrap();
     if let Some(timestamp) = re.find(log) {
         let this_year = chrono::Utc::now().year();
         if let Ok(timestamp) = parse_timestamp(timestamp.as_str(), this_year) {
-            return timestamp;
+            return timestamp.and_utc().timestamp();
         }
     }
-    let now = chrono::Utc::now();
-    #[allow(deprecated)]
-    NaiveDateTime::from_timestamp(now.timestamp(), now.timestamp_subsec_nanos())
+    chrono::Utc::now().timestamp()
 }
 
 pub fn get_log_level(log: &str) -> String {
     if log.contains("ERR") {
-        "ERR".to_string()
+        "error".to_string()
     } else if log.contains("WRN") {
-        "WRN".to_string()
+        "warning".to_string()
     } else if log.contains("INF") {
-        "INF".to_string()
+        "info".to_string()
     } else if log.contains("DBG") {
-        "DBG".to_string()
+        "debug".to_string()
     } else {
-        "UNKNOWN".to_string()
+        "unknown".to_string()
     }
 }
 
