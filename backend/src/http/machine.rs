@@ -110,10 +110,10 @@ pub async fn idle(
 
 /// Get an overview of which nodes are unhealthy
 #[utoipa::path(
-    post,
+    get,
     path = "/machine/unhealthy",
     responses(
-        (status = 200, body = Vec<String>),
+        (status = 200, body = [String]),
         (status = 404)
     )
 )]
@@ -132,10 +132,10 @@ pub async fn unhealthy(
 
 /// Get an overview of which nodes are healthy
 #[utoipa::path(
-    post,
+    get,
     path = "/machine/healthy",
     responses(
-        (status = 200, body = Vec<String>),
+        (status = 200, body = [String]),
         (status = 404)
     )
 )]
@@ -277,44 +277,6 @@ pub async fn get_all_node_data(
     Ok(Json(node_data))
 }
 
-/// Delete all data for a specific AVS running on a node
-#[utoipa::path(
-    delete,
-    path = "/machine/:machine_id",
-    responses(
-        (status = 200),
-        (status = 404)
-    ),
-    params(
-        ("avs_name" = String, Query, description = "The name of the AVS to delete data for")
-    )
-)]
-pub async fn delete_avs_node_data(
-    headers: HeaderMap,
-    State(state): State<HttpState>,
-    Path(machine_id): Path<String>,
-    jar: CookieJar,
-    Query(params): Query<HashMap<String, String>>,
-) -> Result<(), BackendError> {
-    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    let machine =
-        authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
-
-    Avs::delete_avs_data(
-        &state.pool,
-        machine.machine_id,
-        params.get("avs_name").ok_or_else(|| {
-            BackendError::MalformedParameter(
-                "avs_name".to_string(),
-                "AVS name cannot be empty".to_string(),
-            )
-        })?,
-    )
-    .await?;
-
-    Ok(())
-}
-
 /* ---------------------------------------------------- */
 /* ---------- :machine_id?avs_name Section ----------- */
 /* ---------------------------------------------------- */
@@ -427,6 +389,9 @@ pub async fn metrics_condensed(
     responses(
         (status = 200, body = [Metric]),
         (status = 404)
+    ),
+    params(
+        ("avs_name" = String, Query, description = "The name of the AVS to get metrics for")
     )
 )]
 pub async fn metrics_all(
@@ -463,6 +428,7 @@ pub async fn metrics_all(
         (status = 404)
     ),
     params(
+        ("avs_name" = String, Query, description = "The name of the AVS to get logs for"),
         ("log_level" = Option<String>, Query, description = "Optional log level filter. Valid values: debug, info, warning, error"),
         ("from" = Option<i64>, Query, description = "Optional start timestamp"),
         ("to" = Option<i64>, Query, description = "Optional end timestamp")
@@ -472,12 +438,19 @@ pub async fn logs(
     headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
-    Path((machine_id, avs_name)): Path<(String, String)>,
+    Path(machine_id): Path<String>,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<Vec<ContainerLog>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     let machine =
         authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
+
+    let avs_name = params.get("avs_name").ok_or_else(|| {
+        BackendError::MalformedParameter(
+            "avs_name".to_string(),
+            "AVS name cannot be empty".to_string(),
+        )
+    })?;
 
     let log_level = params
         .get("log_level")
@@ -505,7 +478,7 @@ pub async fn logs(
     let logs = ContainerLog::get_all_for_avs(
         &state.pool,
         machine.machine_id,
-        &avs_name,
+        avs_name,
         from,
         to,
         log_level,
@@ -513,4 +486,42 @@ pub async fn logs(
     .await?;
 
     Ok(Json(logs))
+}
+
+/// Delete all data for a specific AVS running on a node
+#[utoipa::path(
+    delete,
+    path = "/machine/:machine_id",
+    responses(
+        (status = 200),
+        (status = 404)
+    ),
+    params(
+        ("avs_name" = String, Query, description = "The name of the AVS to delete data for")
+    )
+)]
+pub async fn delete_avs_node_data(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    Path(machine_id): Path<String>,
+    jar: CookieJar,
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<(), BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let machine =
+        authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
+
+    Avs::delete_avs_data(
+        &state.pool,
+        machine.machine_id,
+        params.get("avs_name").ok_or_else(|| {
+            BackendError::MalformedParameter(
+                "avs_name".to_string(),
+                "AVS name cannot be empty".to_string(),
+            )
+        })?,
+    )
+    .await?;
+
+    Ok(())
 }
