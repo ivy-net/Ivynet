@@ -12,12 +12,14 @@ use std::sync::Arc;
 use crate::error::BackendError;
 
 use axum::{
-    http::Method,
+    http::{Method, StatusCode},
+    response::Json,
     routing::{delete, get, post, put},
     Router,
 };
 use ivynet_core::grpc::client::Uri;
 use sendgrid::v3::Sender;
+use serde_json::{json, Value};
 use sqlx::PgPool;
 use tower_http::cors::CorsLayer;
 use tracing::info;
@@ -111,19 +113,19 @@ fn create_router() -> Router<HttpState> {
                 .route("/", get(machine::machine))
                 .route("/status", get(machine::status))
                 .route("/idle", get(machine::idle))
-                .route("/unhealthy", post(machine::unhealthy))
-                .route("/healthy", post(machine::healthy))
-                .route("/:machine_id/:avs_name/metrics/all", get(machine::metrics_all))
-                .route("/:machine_id/:avs_name/metrics", get(machine::metrics_condensed))
-                .route("/:machine_id/:avs_name/logs", get(machine::logs))
+                .route("/unhealthy", get(machine::unhealthy))
+                .route("/healthy", get(machine::healthy))
+                .route("/delete", delete(machine::delete_machine))
+                .route("/:machine_id/metrics/all", get(machine::metrics_all))
+                .route("/:machine_id/metrics", get(machine::metrics_condensed))
+                .route("/:machine_id/logs", get(machine::logs))
                 .route("/:machine_id/info", get(machine::get_all_node_data))
-                .route(
-                    "/:machine_id/:avs_name",
-                    delete(machine::delete_avs_node_data).put(machine::update_avs),
-                )
+                .route("/:machine_id", put(machine::update_avs))
                 .route(
                     "/:machine_id",
-                    get(machine::info).delete(machine::delete_machine).post(machine::set_name),
+                    get(machine::info)
+                        .delete(machine::delete_avs_node_data)
+                        .post(machine::set_name),
                 ),
         )
         .nest(
@@ -149,4 +151,16 @@ fn create_router() -> Router<HttpState> {
         .merge(
             SwaggerUi::new("/swagger-ui").url("/api-docs/openapi.json", apidoc::ApiDoc::openapi()),
         )
+        .fallback(handler_404_with_logging)
+}
+
+async fn handler_404_with_logging(uri: axum::http::Uri) -> (StatusCode, Json<Value>) {
+    println!("404 Not Found for path: {}", uri.path());
+    (
+        StatusCode::NOT_FOUND,
+        Json(json!({
+            "error": "Not Found",
+            "message": "The requested resource does not exist"
+        })),
+    )
 }
