@@ -3,7 +3,7 @@ use chrono::{Datelike, NaiveDateTime};
 /// regex for timestamp string in the format of "Nov 28 06:37:07.908"
 const TIMESTAMP_REGEX: &str = r"^\w{3} \d{2} \d{2}:\d{2}:\d{2}\.\d{3}";
 
-pub fn get_log_timestamp(log: &str) -> i64 {
+pub fn find_or_create_log_timestamp(log: &str) -> i64 {
     let re = regex::Regex::new(TIMESTAMP_REGEX).unwrap();
     if let Some(timestamp) = re.find(log) {
         let this_year = chrono::Utc::now().year();
@@ -14,7 +14,7 @@ pub fn get_log_timestamp(log: &str) -> i64 {
     chrono::Utc::now().timestamp()
 }
 
-pub fn get_log_level(log: &str) -> String {
+pub fn find_log_level(log: &str) -> String {
     if log.contains("ERR") {
         "error".to_string()
     } else if log.contains("WRN") {
@@ -34,6 +34,10 @@ fn parse_timestamp(timestamp: &str, this_year: i32) -> Result<NaiveDateTime, chr
     NaiveDateTime::parse_from_str(&timestamp_with_year, "%Y %b %d %H:%M:%S.%3f")
 }
 
+pub fn sanitize_log(input: &str) -> String {
+    String::from_utf8_lossy(input.as_bytes()).to_string()
+}
+
 #[cfg(test)]
 mod test_log_parse {
     use super::*;
@@ -44,13 +48,15 @@ mod test_log_parse {
     const INF_LOG: &str = r#"Nov 28 06:43:07.908 INF node/node.go:270 Complete an expiration cycle to remove expired batches component=Node "num expired batches found and removed"=0 "num expired mappings found and removed"=0 "num expired blobs found and removed"=0"#;
     const UNKNOWN_LOG: &str = r#"I'M A LUMBERJACK AND I'M OKAY!"#;
 
+    const INVALID_UTF8_LOG: &str = "2024-11-28 14:29:20 eigenda-native-node  | Nov 28 20:29:20.271 ERR node/node.go:775 Reachability check - dispersal socket is UNREACHABLE component=Node socket=000.000.000.00:00000 error from daemon in stream: Error grabbing logs: invalid character '\x00' looking for beginning of value";
+
     #[test]
     fn test_log_level_detection() {
-        assert_eq!(get_log_level(ERR_LOG), "error");
-        assert_eq!(get_log_level(DBG_LOG), "debug");
-        assert_eq!(get_log_level(WRN_LOG), "warning");
-        assert_eq!(get_log_level(INF_LOG), "info");
-        assert_eq!(get_log_level(UNKNOWN_LOG), "unknown");
+        assert_eq!(find_log_level(ERR_LOG), "error");
+        assert_eq!(find_log_level(DBG_LOG), "debug");
+        assert_eq!(find_log_level(WRN_LOG), "warning");
+        assert_eq!(find_log_level(INF_LOG), "info");
+        assert_eq!(find_log_level(UNKNOWN_LOG), "unknown");
     }
 
     #[test]
@@ -60,5 +66,11 @@ mod test_log_parse {
             NaiveDateTime::parse_from_str("2024 Nov 28 06:43:08.470", "%Y %b %d %H:%M:%S.%3f")
                 .unwrap();
         assert_eq!(parse_timestamp("Nov 28 06:43:08.470", this_year).unwrap(), expected_timestamp);
+    }
+
+    #[test]
+    fn test_sanitize_log() {
+        let sanitized = sanitize_log(INVALID_UTF8_LOG);
+        println!("{}", sanitized);
     }
 }

@@ -9,7 +9,7 @@ use crate::{
     error::BackendError,
 };
 use ivynet_core::{
-    docker::logs::{get_log_level, get_log_timestamp},
+    docker::logs::{find_log_level, find_or_create_log_timestamp, sanitize_log},
     ethers::types::{Address, Signature},
     grpc::{
         self,
@@ -91,13 +91,15 @@ impl Backend for BackendService {
         let machine_id = Uuid::from_slice(&request.machine_id)
             .map_err(|_| Status::invalid_argument("Machine id has wrong length".to_string()))?;
         let avs_name = request.avs_name;
-        let log = request.log;
-        let log_level = LogLevel::from_str(&get_log_level(&log))
+        let log = sanitize_log(&request.log);
+        let log_level = LogLevel::from_str(&find_log_level(&log))
             .map_err(|_| Status::invalid_argument("Log level is invalid".to_string()))?;
-        let created_at = Some(get_log_timestamp(&log));
+        let created_at = Some(find_or_create_log_timestamp(&log));
 
         let log =
             ContainerLog { machine_id, avs_name, log, log_level, created_at, other_fields: None };
+
+        debug!("STORING LOG: {:?}", log);
 
         ContainerLog::record(&self.pool, &log)
             .await
