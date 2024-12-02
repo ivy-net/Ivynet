@@ -193,9 +193,14 @@ impl LogsListener {
             signature,
             machine_id: self.listener_data.machine_id.into(),
             avs_name: self.listener_data.node_data.name.clone(),
-            log,
+            log: log.clone(),
         };
-        self.dispatcher.send_log(signed).await?;
+        match self.dispatcher.send_log(signed).await {
+            Ok(_) => {}
+            Err(e) => {
+                error!("Failed to send or save log: {} | With log: {}", e, &log);
+            }
+        };
         Ok(())
     }
 }

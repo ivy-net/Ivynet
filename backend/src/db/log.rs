@@ -3,7 +3,7 @@ use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{json, Value};
 use sqlx::{query, query_as, PgPool};
-use std::{collections::HashMap, str::FromStr};
+use std::{collections::HashMap, fmt::Display, str::FromStr};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -43,6 +43,16 @@ pub struct ContainerLog {
     pub created_at: Option<i64>,
     #[serde(flatten, deserialize_with = "deserialize_other_fields")]
     pub other_fields: Option<HashMap<String, String>>,
+}
+
+impl Display for ContainerLog {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "ContainerLog {{ machine_id: {}, avs_name: {}, log: {}, log_level: {:?}, created_at: {:?}, other_fields: {:?} }}",
+            self.machine_id, self.avs_name, self.log, self.log_level, self.created_at, self.other_fields
+        )
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, sqlx::FromRow, PartialEq)]
