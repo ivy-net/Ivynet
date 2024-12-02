@@ -192,7 +192,7 @@ impl LogsListener {
         let signed = SignedLog {
             signature,
             machine_id: self.listener_data.machine_id.into(),
-            avs_name: self.listener_data.node_data.name.clone(),
+            avs_name: self.listener_data.node_data.assigned_name.clone(),
             log,
         };
         self.dispatcher.send_log(signed).await?;

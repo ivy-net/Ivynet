@@ -21,7 +21,7 @@ const MONITOR_CONFIG_FILE: &str = "monitor-config.toml";
 
 #[derive(Clone, Debug)]
 struct PotentialAvs {
-    pub name: String,
+    pub container_name: String,
     pub avs_type: NodeType,
     pub ports: Vec<u16>,
 }
@@ -64,6 +64,22 @@ pub async fn start_monitor() -> Result<(), anyhow::Error> {
         set_backend_connection(&mut config).await?;
     }
 
+    let monitor_config = MonitorConfig::load_from_default_path().unwrap_or_default();
+    if monitor_config.configured_avses.is_empty() {
+        return Err(anyhow!("No AVSes configured to monitor"));
+    }
+
+    // Validate uniqueness of assigned names
+    let mut seen_names = std::collections::HashSet::new();
+    for avs in &monitor_config.configured_avses {
+        if !seen_names.insert(&avs.assigned_name) {
+            return Err(anyhow!(
+                "Duplicate AVS name found: {}. Each AVS must have a unique name.",
+                avs.assigned_name
+            ));
+        }
+    }
+
     let identity_wallet = config.identity_wallet()?;
     let machine_id = config.machine_id;
     let backend_url = config.get_server_url()?;
@@ -75,11 +91,6 @@ pub async fn start_monitor() -> Result<(), anyhow::Error> {
             .await
             .expect("Cannot create channel"),
     );
-
-    let monitor_config = MonitorConfig::load_from_default_path().unwrap_or_default();
-    if monitor_config.configured_avses.is_empty() {
-        return Err(anyhow!("No AVSes configured to monitor"));
-    }
 
     info!("Starting monitor listener...");
     listen(backend_client, machine_id, identity_wallet, &monitor_config.configured_avses).await?;
@@ -104,7 +115,7 @@ pub async fn scan() -> Result<(), anyhow::Error> {
                     ports.sort();
                     ports.dedup();
                     return Some(PotentialAvs {
-                        name: names.first().unwrap_or(&image_name).to_string(),
+                        container_name: names.first().unwrap_or(&image_name).to_string(),
                         avs_type,
                         ports,
                     });
@@ -117,16 +128,21 @@ pub async fn scan() -> Result<(), anyhow::Error> {
     let mut monitor_config = MonitorConfig::load_from_default_path().unwrap_or_default();
     let mut avses = Vec::new();
 
-    let configured_avs_names =
-        monitor_config.configured_avses.iter().map(|a| a.name.clone()).collect::<Vec<_>>();
+    let configured_avs_names = monitor_config
+        .configured_avses
+        .iter()
+        .map(|a| a.container_name.clone())
+        .collect::<Vec<_>>();
     for avs in &potential_avses {
-        if !configured_avs_names.contains(&avs.name) {
+        if !configured_avs_names.contains(&avs.container_name) {
             for port in &avs.ports {
                 if let Ok(metrics) = fetch_telemetry_from(*port).await {
                     if !metrics.is_empty() {
                         // Checking performance score metrics to read a potential avs type
+
                         avses.push(ConfiguredAvs {
-                            name: avs.name.clone(),
+                            assigned_name: "".to_string(),
+                            container_name: avs.container_name.clone(),
                             avs_type: match guess_avs_type(metrics) {
                                 NodeType::Unknown => avs.avs_type,
                                 avs_type => avs_type,
@@ -147,13 +163,48 @@ pub async fn scan() -> Result<(), anyhow::Error> {
             .items(
                 &avses
                     .iter()
-                    .map(|a| format!("{} under container {}", a.avs_type, a.name))
+                    .map(|a| format!("{} under container {}", a.avs_type, a.container_name))
                     .collect::<Vec<_>>(),
             )
             .interact()
             .expect("No items selected")
         {
+
             monitor_config.configured_avses.push(avses[idx].clone());
+        }
+
+        let mut seen_names = std::collections::HashSet::new();
+        for avs in &mut monitor_config.configured_avses {
+            let mut assigned_name;
+            loop {
+                assigned_name = dialoguer::Input::new()
+                    .with_prompt(format!(
+                        "Enter a name for this AVS that is Unique Per Machine: {}",
+                        avs.container_name
+                    ))
+                    .interact_text()
+                    .expect("Failed to get assigned name");
+
+                if seen_names.contains(&assigned_name) {
+                    println!(
+                        "Error: Name '{}' is already in use. Please choose a unique name.",
+                        assigned_name
+                    );
+                    continue;
+                }
+
+                if configured_avs_names.contains(&assigned_name) {
+                    println!(
+                        "Error: Name '{}' is already configured. Please choose a unique name.",
+                        assigned_name
+                    );
+                    continue;
+                }
+
+                seen_names.insert(assigned_name.clone());
+                break;
+            }
+            avs.assigned_name = assigned_name;
         }
 
         monitor_config.store()?;

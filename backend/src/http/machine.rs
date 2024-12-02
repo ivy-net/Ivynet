@@ -313,6 +313,12 @@ pub async fn update_avs(
         )
     })?;
 
+    //Check that AVS name exists
+    let avses = Avs::get_machines_avs_list(&state.pool, machine.machine_id).await?;
+    if !avses.iter().any(|avs| avs.avs_name == *avs_name) {
+        return Err(BackendError::InvalidAvs);
+    }
+
     // Handle chain update if present
     if let Some(chain_str) = params.get("chain") {
         let chain = Chain::from_str(chain_str).map_err(|_| {
