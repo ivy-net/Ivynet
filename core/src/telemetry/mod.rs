@@ -83,13 +83,16 @@ pub async fn listen_metrics(
     loop {
         for avs in avses {
             let mut version_hash = "".to_string();
-            if let Some(inspect_data) = docker.inspect_by_container_name(&avs.assigned_name).await {
+            if let Some(inspect_data) = docker.inspect_by_container_name(&avs.container_name).await
+            {
                 if let Some(image_name) = inspect_data.image() {
                     if let Some(hash) = images.get(image_name) {
                         version_hash = hash.clone();
                     }
                 }
             }
+
+            println!("Version hash: {}", version_hash);
 
             let metrics = if let Ok(mut metrics) = fetch_telemetry_from(avs.metric_port).await {
                 metrics.push(Metrics {
@@ -123,7 +126,7 @@ pub async fn listen_metrics(
                         },
                         MetricsAttribute {
                             name: "version-hash".to_owned(),
-                            value: "0.0.0".to_string(),
+                            value: "NONE".to_string(),
                         }, /* FIXME: Bazil to work on this */
                     ],
                 }]
