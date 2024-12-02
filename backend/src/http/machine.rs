@@ -110,10 +110,10 @@ pub async fn idle(
 
 /// Get an overview of which nodes are unhealthy
 #[utoipa::path(
-    post,
+    get,
     path = "/machine/unhealthy",
     responses(
-        (status = 200, body = Vec<String>),
+        (status = 200, body = [String]),
         (status = 404)
     )
 )]
@@ -132,10 +132,10 @@ pub async fn unhealthy(
 
 /// Get an overview of which nodes are healthy
 #[utoipa::path(
-    post,
+    get,
     path = "/machine/healthy",
     responses(
-        (status = 200, body = Vec<String>),
+        (status = 200, body = [String]),
         (status = 404)
     )
 )]
@@ -191,20 +191,29 @@ pub async fn set_name(
 /// Delete a machine from the database
 #[utoipa::path(
     delete,
-    path = "/machine/:machine_id",
+    path = "/machine",
     responses(
         (status = 200),
         (status = 404)
+    ),
+    params(
+        ("machine_id" = String, Query, description = "The ID of the machine to delete")
     )
 )]
 pub async fn delete_machine(
     headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
-    Path(machine_id): Path<String>,
+    Query(params): Query<HashMap<String, String>>,
 ) -> Result<(), BackendError> {
+    let machine_id = params.get("machine_id").ok_or_else(|| {
+        BackendError::MalformedParameter(
+            "machine_id".to_string(),
+            "Machine ID cannot be empty".to_string(),
+        )
+    })?;
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    authorize::verify_node_ownership(&account, State(state.clone()), machine_id)
+    authorize::verify_node_ownership(&account, State(state.clone()), machine_id.clone())
         .await?
         .delete(&state.pool)
         .await?;
@@ -268,6 +277,217 @@ pub async fn get_all_node_data(
     Ok(Json(node_data))
 }
 
+/* ---------------------------------------------------- */
+/* ---------- :machine_id?avs_name Section ----------- */
+/* ---------------------------------------------------- */
+
+/// Update an AVS's operator address or chain
+#[utoipa::path(
+    put,
+    path = "/machine/:machine_id",
+    responses(
+        (status = 200),
+        (status = 404)
+    ),
+    params(
+        ("avs_name" = String, Query, description = "The name of the AVS to update"),
+        ("chain" = Option<Chain>, Query, description = "Optional chain to update to"),
+        ("operator_address" = Option<String>, Query, description = "Optional operator address to update to")
+    )
+)]
+pub async fn update_avs(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Path(machine_id): Path<String>,
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<(), BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let machine =
+        authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
+
+    let avs_name = params.get("avs_name").ok_or_else(|| {
+        BackendError::MalformedParameter(
+            "avs_name".to_string(),
+            "AVS name cannot be empty".to_string(),
+        )
+    })?;
+
+    // Handle chain update if present
+    if let Some(chain_str) = params.get("chain") {
+        let chain = Chain::from_str(chain_str).map_err(|_| {
+            BackendError::MalformedParameter("chain".to_string(), chain_str.clone())
+        })?;
+        Avs::update_chain(&state.pool, machine.machine_id, avs_name, chain).await?;
+    }
+
+    // Handle operator address update if present
+    if let Some(operator_str) = params.get("operator_address") {
+        let operator_address = if operator_str.is_empty() {
+            None
+        } else {
+            Some(Address::from_str(operator_str).map_err(|_| {
+                BackendError::MalformedParameter(
+                    "operator_address".to_string(),
+                    operator_str.clone(),
+                )
+            })?)
+        };
+        Avs::update_operator_address(&state.pool, machine.machine_id, avs_name, operator_address)
+            .await?;
+    }
+
+    Ok(())
+}
+
+/// Get condensed metrics for a specific node on a specific
+#[utoipa::path(
+    get,
+    path = "/machine/:machine_id/metrics",
+    responses(
+        (status = 200, body = [Metric]),
+        (status = 404)
+    ),
+    params(
+        ("avs_name" = String, Query, description = "The name of the AVS to get metrics for")
+    )
+)]
+pub async fn metrics_condensed(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    Path(machine_id): Path<String>,
+    jar: CookieJar,
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<Json<Vec<Metric>>, BackendError> {
+    println!("Request received - machine_id: {}, params: {:?}", machine_id, params);
+
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let machine =
+        authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
+
+    let avs_name = params.get("avs_name").ok_or_else(|| {
+        BackendError::MalformedParameter(
+            "avs_name".to_string(),
+            "AVS name cannot be empty".to_string(),
+        )
+    })?;
+
+    let avses = Avs::get_machines_avs_list(&state.pool, machine.machine_id).await?;
+    println!("Found AVSes: {:?}", avses.iter().map(|avs| &avs.avs_name).collect::<Vec<_>>());
+
+    let avs = avses.iter().find(|avs| avs.avs_name == *avs_name).ok_or(BackendError::InvalidAvs)?;
+    let metrics = Metric::get_all_for_avs(&state.pool, machine.machine_id, &avs.avs_name).await?;
+    let filtered_metrics = node_data::condense_metrics(avs.avs_type, &metrics)?;
+
+    Ok(Json(filtered_metrics))
+}
+
+/// Get all metrics for a specific node
+#[utoipa::path(
+    get,
+    path = "/machine/:machine_id/metrics/all",
+    responses(
+        (status = 200, body = [Metric]),
+        (status = 404)
+    ),
+    params(
+        ("avs_name" = String, Query, description = "The name of the AVS to get metrics for")
+    )
+)]
+pub async fn metrics_all(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    Path(machine_id): Path<String>,
+    jar: CookieJar,
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<Json<Vec<Metric>>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let machine =
+        authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
+
+    let avs_name = params.get("avs_name").ok_or_else(|| {
+        BackendError::MalformedParameter(
+            "avs_name".to_string(),
+            "AVS name cannot be empty".to_string(),
+        )
+    })?;
+
+    let avses = Avs::get_machines_avs_list(&state.pool, machine.machine_id).await?;
+    let avs = avses.iter().find(|avs| avs.avs_name == *avs_name).ok_or(BackendError::InvalidAvs)?;
+    let metrics = Metric::get_all_for_avs(&state.pool, machine.machine_id, &avs.avs_name).await?;
+
+    Ok(Json(metrics))
+}
+
+/// Get all logs for a specific node
+#[utoipa::path(
+    get,
+    path = "/machine/:machine_id/logs",
+    responses(
+        (status = 200, body = [ContainerLog]),
+        (status = 404)
+    ),
+    params(
+        ("avs_name" = String, Query, description = "The name of the AVS to get logs for"),
+        ("log_level" = Option<String>, Query, description = "Optional log level filter. Valid values: debug, info, warning, error"),
+        ("from" = Option<i64>, Query, description = "Optional start timestamp"),
+        ("to" = Option<i64>, Query, description = "Optional end timestamp")
+    )
+)]
+pub async fn logs(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Path(machine_id): Path<String>,
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<Json<Vec<ContainerLog>>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let machine =
+        authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
+
+    let avs_name = params.get("avs_name").ok_or_else(|| {
+        BackendError::MalformedParameter(
+            "avs_name".to_string(),
+            "AVS name cannot be empty".to_string(),
+        )
+    })?;
+
+    let log_level = params
+        .get("log_level")
+        .map(|level| {
+            LogLevel::from_str(level).map_err(|_| {
+                BackendError::MalformedParameter("log_level".to_string(), level.clone())
+            })
+        })
+        .transpose()?;
+
+    let from = params.get("from").map(|s| s.parse::<i64>()).transpose().map_err(|_| {
+        BackendError::MalformedParameter("from".to_string(), "Invalid timestamp".to_string())
+    })?;
+    let to = params.get("to").map(|s| s.parse::<i64>()).transpose().map_err(|_| {
+        BackendError::MalformedParameter("to".to_string(), "Invalid timestamp".to_string())
+    })?;
+
+    if from.is_some() != to.is_some() {
+        return Err(BackendError::MalformedParameter(
+            "from/to".to_string(),
+            "Both parameters must be present when querying by timestamp".to_string(),
+        ));
+    }
+
+    let logs = ContainerLog::get_all_for_avs(
+        &state.pool,
+        machine.machine_id,
+        avs_name,
+        from,
+        to,
+        log_level,
+    )
+    .await?;
+
+    Ok(Json(logs))
+}
+
 /// Delete all data for a specific AVS running on a node
 #[utoipa::path(
     delete,
@@ -304,174 +524,4 @@ pub async fn delete_avs_node_data(
     .await?;
 
     Ok(())
-}
-
-/* ---------------------------------------------------- */
-/* ---------- :machine_id/:avs_name Section ----------- */
-/* ---------------------------------------------------- */
-
-/// Update an AVS's operator address or chain
-#[utoipa::path(
-    put,
-    path = "/machine/:machine_id/:avs_name",
-    responses(
-        (status = 200),
-        (status = 404)
-    ),
-    params(
-        ("chain" = Option<Chain>, Query, description = "Optional chain to update to"),
-        ("operator_address" = Option<String>, Query, description = "Optional operator address to update to")
-    )
-)]
-pub async fn update_avs(
-    headers: HeaderMap,
-    State(state): State<HttpState>,
-    jar: CookieJar,
-    Path((machine_id, avs_name)): Path<(String, String)>,
-    Query(params): Query<HashMap<String, String>>,
-) -> Result<(), BackendError> {
-    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    let machine =
-        authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
-
-    // Handle chain update if present
-    if let Some(chain_str) = params.get("chain") {
-        let chain = Chain::from_str(chain_str).map_err(|_| {
-            BackendError::MalformedParameter("chain".to_string(), chain_str.clone())
-        })?;
-        Avs::update_chain(&state.pool, machine.machine_id, &avs_name, chain).await?;
-    }
-
-    // Handle operator address update if present
-    if let Some(operator_str) = params.get("operator_address") {
-        let operator_address = if operator_str.is_empty() {
-            None
-        } else {
-            Some(Address::from_str(operator_str).map_err(|_| {
-                BackendError::MalformedParameter(
-                    "operator_address".to_string(),
-                    operator_str.clone(),
-                )
-            })?)
-        };
-        Avs::update_operator_address(&state.pool, machine.machine_id, &avs_name, operator_address)
-            .await?;
-    }
-
-    Ok(())
-}
-
-/// Get condensed metrics for a specific node on a specific
-#[utoipa::path(
-    get,
-    path = "/machine/:machine_id/:avs_name/metrics",
-    responses(
-        (status = 200, body = [Metric]),
-        (status = 404)
-    )
-)]
-pub async fn metrics_condensed(
-    headers: HeaderMap,
-    State(state): State<HttpState>,
-    Path((machine_id, avs_name)): Path<(String, String)>,
-    jar: CookieJar,
-) -> Result<Json<Vec<Metric>>, BackendError> {
-    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    let machine =
-        authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
-
-    let avses = Avs::get_machines_avs_list(&state.pool, machine.machine_id).await?;
-    let avs = avses.iter().find(|avs| avs.avs_name == avs_name).ok_or(BackendError::InvalidAvs)?;
-    let metrics = Metric::get_all_for_avs(&state.pool, machine.machine_id, &avs.avs_name).await?;
-
-    let filtered_metrics = node_data::condense_metrics(avs.avs_type, &metrics)?;
-
-    Ok(Json(filtered_metrics))
-}
-
-/// Get all metrics for a specific node
-#[utoipa::path(
-    get,
-    path = "/machine/:machine_id/:avs_name/metrics/all",
-    responses(
-        (status = 200, body = [Metric]),
-        (status = 404)
-    )
-)]
-pub async fn metrics_all(
-    headers: HeaderMap,
-    State(state): State<HttpState>,
-    Path((machine_id, avs_name)): Path<(String, String)>,
-    jar: CookieJar,
-) -> Result<Json<Vec<Metric>>, BackendError> {
-    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    let machine =
-        authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
-
-    let avses = Avs::get_machines_avs_list(&state.pool, machine.machine_id).await?;
-    let avs = avses.iter().find(|avs| avs.avs_name == avs_name).ok_or(BackendError::InvalidAvs)?;
-    let metrics = Metric::get_all_for_avs(&state.pool, machine.machine_id, &avs.avs_name).await?;
-
-    Ok(Json(metrics))
-}
-
-/// Get all logs for a specific node
-#[utoipa::path(
-    get,
-    path = "/machine/:machine_id/:avs_name/logs",
-    responses(
-        (status = 200, body = [ContainerLog]),
-        (status = 404)
-    ),
-    params(
-        ("log_level" = Option<String>, Query, description = "Optional log level filter. Valid values: debug, info, warning, error"),
-        ("from" = Option<i64>, Query, description = "Optional start timestamp"),
-        ("to" = Option<i64>, Query, description = "Optional end timestamp")
-    )
-)]
-pub async fn logs(
-    headers: HeaderMap,
-    State(state): State<HttpState>,
-    jar: CookieJar,
-    Path((machine_id, avs_name)): Path<(String, String)>,
-    Query(params): Query<HashMap<String, String>>,
-) -> Result<Json<Vec<ContainerLog>>, BackendError> {
-    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    let machine =
-        authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
-
-    let log_level = params
-        .get("log_level")
-        .map(|level| {
-            LogLevel::from_str(level).map_err(|_| {
-                BackendError::MalformedParameter("log_level".to_string(), level.clone())
-            })
-        })
-        .transpose()?;
-
-    let from = params.get("from").map(|s| s.parse::<i64>()).transpose().map_err(|_| {
-        BackendError::MalformedParameter("from".to_string(), "Invalid timestamp".to_string())
-    })?;
-    let to = params.get("to").map(|s| s.parse::<i64>()).transpose().map_err(|_| {
-        BackendError::MalformedParameter("to".to_string(), "Invalid timestamp".to_string())
-    })?;
-
-    if from.is_some() != to.is_some() {
-        return Err(BackendError::MalformedParameter(
-            "from/to".to_string(),
-            "Both parameters must be present when querying by timestamp".to_string(),
-        ));
-    }
-
-    let logs = ContainerLog::get_all_for_avs(
-        &state.pool,
-        machine.machine_id,
-        &avs_name,
-        from,
-        to,
-        log_level,
-    )
-    .await?;
-
-    Ok(Json(logs))
 }
