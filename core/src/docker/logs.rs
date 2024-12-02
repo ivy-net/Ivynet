@@ -34,8 +34,9 @@ fn parse_timestamp(timestamp: &str, this_year: i32) -> Result<NaiveDateTime, chr
     NaiveDateTime::parse_from_str(&timestamp_with_year, "%Y %b %d %H:%M:%S.%3f")
 }
 
+/// Simple function to remove null bytes from a string
 pub fn sanitize_log(input: &str) -> String {
-    String::from_utf8_lossy(input.as_bytes()).to_string()
+    input.chars().filter(|c| *c != '\0').collect()
 }
 
 #[cfg(test)]
@@ -48,7 +49,7 @@ mod test_log_parse {
     const INF_LOG: &str = r#"Nov 28 06:43:07.908 INF node/node.go:270 Complete an expiration cycle to remove expired batches component=Node "num expired batches found and removed"=0 "num expired mappings found and removed"=0 "num expired blobs found and removed"=0"#;
     const UNKNOWN_LOG: &str = r#"I'M A LUMBERJACK AND I'M OKAY!"#;
 
-    const INVALID_UTF8_LOG: &str = "2024-11-28 14:29:20 eigenda-native-node  | Nov 28 20:29:20.271 ERR node/node.go:775 Reachability check - dispersal socket is UNREACHABLE component=Node socket=000.000.000.00:00000 error from daemon in stream: Error grabbing logs: invalid character '\x00' looking for beginning of value";
+    const INVALID_UTF8_LOG: &str = "2024-11-28 14:29:20 eigenda-native-node  | Nov 28 20:29:20.271 ERR node/node.go:775 Reachability check - dispersal socket is UNREACHABLE component=Node socket=216.254.247.80:32005 error from daemon in stream: Error grabbing logs: invalid character '\x00' looking for beginning of value";
 
     #[test]
     fn test_log_level_detection() {
@@ -71,6 +72,8 @@ mod test_log_parse {
     #[test]
     fn test_sanitize_log() {
         let sanitized = sanitize_log(INVALID_UTF8_LOG);
-        println!("{}", sanitized);
+        let expected = r#"2024-11-28 14:29:20 eigenda-native-node  | Nov 28 20:29:20.271 ERR node/node.go:775 Reachability check - dispersal socket is UNREACHABLE component=Node socket=216.254.247.80:32005 error from daemon in stream: Error grabbing logs: invalid character '' looking for beginning of value"#;
+        assert_ne!(INVALID_UTF8_LOG, sanitized);
+        assert_eq!(&sanitized, expected);
     }
 }
