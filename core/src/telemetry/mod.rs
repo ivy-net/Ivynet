@@ -1,6 +1,9 @@
 use crate::{
     config::get_detailed_system_information,
-    docker::dockerapi::DockerClient,
+    docker::{
+        container::{ListenerData, LogsListenerManager},
+        dockerapi::DockerClient,
+    },
     error::IvyError,
     grpc::{
         backend::backend_client::BackendClient,
@@ -37,21 +40,21 @@ pub async fn listen(
 ) -> Result<(), IvyError> {
     let dispatch = TelemetryDispatchHandle::from_client(backend_client).await;
     let mut error_rx = dispatch.error_rx.resubscribe();
-    // let docker = DockerClient::default();
+    let docker = DockerClient::default();
 
     // The logs listener spawns the future immediately and does not need to be awaited with
     // tokio::select!
-    // let mut logs_listener = LogsListenerManager::new(dispatch.clone(), docker.clone());
+    let mut logs_listener = LogsListenerManager::new(dispatch.clone(), docker.clone());
 
-    // for node in avses {
-    //     let container = &docker
-    //         .find_container_by_name(&node.name)
-    //         .await
-    //         .ok_or_else(|| IvyError::NodeFindError(node.name.clone()))?;
-    //     let listener_data =
-    //         ListenerData::new(container.clone(), node.clone(), machine_id,
-    // identity_wallet.clone());     logs_listener.add_listener(listener_data).await;
-    // }
+    for node in avses {
+        let container = &docker
+            .find_container_by_name(&node.container_name)
+            .await
+            .ok_or_else(|| IvyError::NodeFindError(node.container_name.clone()))?;
+        let listener_data =
+            ListenerData::new(container.clone(), node.clone(), machine_id, identity_wallet.clone());
+        logs_listener.add_listener(listener_data).await;
+    }
 
     tokio::select! {
         metrics_err = listen_metrics(machine_id, &identity_wallet, avses, &dispatch) => {
