@@ -3,6 +3,7 @@ use sqlx::{pool::PoolOptions, PgPool};
 
 pub mod account;
 pub mod avs;
+pub mod avs_active_set;
 pub mod avs_version;
 pub mod avs_version_hash;
 pub mod client;
@@ -15,6 +16,7 @@ pub mod verification;
 
 pub use account::{Account, Role};
 pub use avs::Avs;
+pub use avs_active_set::AvsActiveSet;
 pub use avs_version::AvsVersionData;
 pub use avs_version_hash::AvsVersionHash;
 pub use client::Client;
