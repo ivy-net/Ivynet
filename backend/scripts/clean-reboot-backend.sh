@@ -1,14 +1,17 @@
-#!/bin/bash
+#!/usr/bin/env bash -x
+
 set -euo pipefail
 
-# Load environment variables
-source .env 2>/dev/null || {
+# Load environment variables with proper error handling
+if [ -f .env ]; then
+    source .env
+else
     echo "Warning: .env file not found. Using defaults."
-    export DB_USER=${DB_USER:-ivy}
-    export DB_PASS=${DB_PASS:-secret_ivy}
-    export DB_NAME=${DB_NAME:-ivynet}
-    export DB_PORT=${DB_PORT:-5432}
-}
+    DB_USER=${DB_USER:-ivy}
+    DB_PASS=${DB_PASS:-secret_ivy}
+    DB_NAME=${DB_NAME:-ivynet}
+    DB_PORT=${DB_PORT:-5432}
+fi
 
 export DATABASE_URL="postgresql://${DB_USER}:${DB_PASS}@localhost:${DB_PORT}/${DB_NAME}"
 
@@ -28,47 +31,60 @@ trap cleanup SIGINT SIGTERM
 # Health check function
 wait_for_postgres() {
     local retries=30
-    until pg_isready -h localhost -p "${DB_PORT}" -U "${DB_USER}" || [ $retries -eq 0 ]; do
+    while [ $retries -gt 0 ]; do
+        if command -v pg_isready >/dev/null; then
+            if pg_isready -h localhost -p "${DB_PORT}" -U "${DB_USER}"; then
+                return 0
+            fi
+        else
+            if docker compose -f backend-compose.yaml exec db pg_isready -U "${DB_USER}"; then
+                return 0
+            fi
+        fi
         log "Waiting for PostgreSQL... $((retries-=1)) attempts remaining"
         sleep 1
     done
 
-    if [ $retries -eq 0 ]; then
-        log "Error: PostgreSQL failed to start"
-        exit 1
-    fi
+    log "Error: PostgreSQL failed to start"
+    return 1
 }
 
 # Main deployment steps
 main() {
+    # Check for docker compose
+    if ! command -v docker compose >/dev/null; then
+        log "Error: docker compose not found. Please install Docker Desktop for Mac"
+        exit 1
+    fi
+
     log "Stopping existing services..."
-    docker compose -f backend-compose.yaml down -v
+    docker compose -f backend-compose.yaml down -v || true
 
     log "Starting services..."
     docker compose -f backend-compose.yaml up -d
 
     log "Checking PostgreSQL readiness..."
-    wait_for_postgres
+    wait_for_postgres || exit 1
 
     log "Running database migrations..."
-    sqlx migrate run || {
+    if ! sqlx migrate run; then
         log "Error: Migration failed"
         exit 1
-    }
+    fi
 
     if [ "${1:-}" = "--prepare" ]; then
         log "Running sqlx prepare..."
-        cargo sqlx prepare || {
+        if ! cargo sqlx prepare; then
             log "Error: sqlx prepare failed"
             exit 1
-        }
+        fi
     fi
 
     log "Adding organization..."
-    cargo run -- --add-organization testuser@ivynet.dev:test1234/testorg || {
+    if ! cargo run -- --add-organization testuser@ivynet.dev:test1234/testorg; then
         log "Error: Failed to add organization"
         exit 1
-    }
+    fi
 
     log "Configuring versions..."
     cargo run -- --set-avs-version eigenda:holesky:0.8.4

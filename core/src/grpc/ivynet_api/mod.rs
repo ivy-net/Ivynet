@@ -2,17 +2,6 @@
 /// (ivy_daemon.types) because the latter does not work with tonic::include_proto!(), which breaks
 /// on the period in the string and does not handle module renaming.
 
-pub mod ivy_daemon_types {
-    tonic::include_proto!("ivy_daemon_types");
-}
-
-pub mod ivy_daemon_avs {
-    tonic::include_proto!("avs");
-}
-
 pub mod ivy_daemon_operator {
     tonic::include_proto!("operator");
 }
-
-#[test]
-fn test_api_types() {}

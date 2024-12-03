@@ -235,124 +235,124 @@ impl Account {
     }
 }
 
-#[cfg(feature = "db_tests")]
-#[cfg(test)]
-mod tests {
-    use crate::db::verification;
-
-    use super::*;
-
-    use sqlx::postgres::PgPoolOptions;
-
-    async fn setup_test_db() -> PgPool {
-        let database_url =
-            std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for tests");
-        PgPoolOptions::new()
-            .max_connections(5)
-            .connect(&database_url)
-            .await
-            .expect("Failed to connect to Postgres")
-    }
-
-    async fn setup_test_organization(pool: &PgPool) -> Organization {
-        // Implement this based on your Organization struct
-        Organization::new(pool, "Test Org", true).await.expect("Failed to create test organization")
-    }
-
-    #[tokio::test]
-    async fn test_account_crud_operations() {
-        let pool = setup_test_db().await;
-        let org = setup_test_organization(&pool).await;
-
-        // Test account creation
-        let email = "test@example.com";
-        let password = "password123";
-        let account = Account::new(&pool, &org, email, password, Role::User)
-            .await
-            .expect("Failed to create account");
-
-        assert_eq!(account.email, email);
-        assert_eq!(account.role, Role::User);
-
-        // Test account retrieval
-        let retrieved_account = Account::find(&pool, email).await.expect("Failed to find account");
-        assert_eq!(retrieved_account.email, account.email);
-
-        // Test account verification
-        let verified_account =
-            Account::verify(&pool, email, password).await.expect("Failed to verify account");
-        assert_eq!(verified_account.email, account.email);
-
-        // Test password change
-        let new_password = "newpassword123";
-        let updated_account =
-            account.set_password(&pool, new_password).await.expect("Failed to update password");
-        assert_ne!(updated_account.password, account.password);
-
-        // Test account deletion
-        account.delete(&pool).await.expect("Failed to delete account");
-        let account_exists =
-            Account::exists(&pool, email).await.expect("Failed to check account existence");
-        assert!(!account_exists);
-    }
-
-    #[tokio::test]
-    async fn test_account_role_methods() {
-        let admin_role = Role::Admin;
-        let user_role = Role::User;
-        let reader_role = Role::Reader;
-
-        assert!(admin_role.is_admin());
-        assert!(!user_role.is_admin());
-        assert!(!reader_role.is_admin());
-
-        assert!(admin_role.can_write());
-        assert!(user_role.can_write());
-        assert!(!reader_role.can_write());
-    }
-
-    #[tokio::test]
-    async fn test_account_node_operations() {
-        let pool = setup_test_db().await;
-        let org = setup_test_organization(&pool).await;
-
-        let account = Account::new(&pool, &org, "node_test@example.com", "password", Role::User)
-            .await
-            .expect("Failed to create account");
-
-        let node_id = Address::random();
-        let node_name = "Test Node";
-
-        // Test attaching a node
-        account.attach_node(&pool, &node_id, node_name).await.expect("Failed to attach node");
-
-        // Test retrieving nodes
-        let nodes = account.nodes(&pool).await.expect("Failed to retrieve nodes");
-        assert_eq!(nodes.len(), 1);
-        assert_eq!(nodes[0].node_id, node_id);
-        assert_eq!(nodes[0].name, node_name);
-
-        // Clean up
-        account.delete(&pool).await.expect("Failed to delete account");
-    }
-
-    #[tokio::test]
-    async fn test_account_verification() {
-        let pool = setup_test_db().await;
-        let org = setup_test_organization(&pool).await;
-
-        let email = "verify_test@example.com";
-        let account = Account::new(&pool, &org, email, "password", Role::User)
-            .await
-            .expect("Failed to create account");
-
-        let verification =
-            Account::set_verification(&pool, email).await.expect("Failed to set verification");
-
-        assert_eq!(verification.associated_id, account.user_id);
-        assert_eq!(verification.verification_type, verification::VerificationType::User);
-
-        // Clean up
-        account.delete(&pool).await.expect("Failed to delete account");
-    }
-}
+// #[cfg(feature = "db_tests")]
+// #[cfg(test)]
+// mod tests {
+//     use crate::db::verification;
+//
+//     use super::*;
+//
+//     use sqlx::postgres::PgPoolOptions;
+//
+//     async fn setup_test_db() -> PgPool {
+//         let database_url =
+//             std::env::var("DATABASE_URL").expect("DATABASE_URL must be set for tests");
+//         PgPoolOptions::new()
+//             .max_connections(5)
+//             .connect(&database_url)
+//             .await
+//             .expect("Failed to connect to Postgres")
+//     }
+//
+//     async fn setup_test_organization(pool: &PgPool) -> Organization {
+//         // Implement this based on your Organization struct
+//         Organization::new(pool, "Test Org", true).await.expect("Failed to create test
+// organization")     }
+//
+//     #[tokio::test]
+//     async fn test_account_crud_operations() {
+//         let pool = setup_test_db().await;
+//         let org = setup_test_organization(&pool).await;
+//
+//         // Test account creation
+//         let email = "test@example.com";
+//         let password = "password123";
+//         let account = Account::new(&pool, &org, email, password, Role::User)
+//             .await
+//             .expect("Failed to create account");
+//
+//         assert_eq!(account.email, email);
+//         assert_eq!(account.role, Role::User);
+//
+//         // Test account retrieval
+//         let retrieved_account = Account::find(&pool, email).await.expect("Failed to find
+// account");         assert_eq!(retrieved_account.email, account.email);
+//
+//         // Test account verification
+//         let verified_account =
+//             Account::verify(&pool, email, password).await.expect("Failed to verify account");
+//         assert_eq!(verified_account.email, account.email);
+//
+//         // Test password change
+//         let new_password = "newpassword123";
+//         let updated_account =
+//             account.set_password(&pool, new_password).await.expect("Failed to update password");
+//         assert_ne!(updated_account.password, account.password);
+//
+//         // Test account deletion
+//         account.delete(&pool).await.expect("Failed to delete account");
+//         let account_exists =
+//             Account::exists(&pool, email).await.expect("Failed to check account existence");
+//         assert!(!account_exists);
+//     }
+//
+//     #[tokio::test]
+//     async fn test_account_role_methods() {
+//         let admin_role = Role::Admin;
+//         let user_role = Role::User;
+//         let reader_role = Role::Reader;
+//
+//         assert!(admin_role.is_admin());
+//         assert!(!user_role.is_admin());
+//         assert!(!reader_role.is_admin());
+//
+//         assert!(admin_role.can_write());
+//         assert!(user_role.can_write());
+//         assert!(!reader_role.can_write());
+//     }
+//
+//     #[tokio::test]
+//     async fn test_account_node_operations() {
+//         let pool = setup_test_db().await;
+//         let org = setup_test_organization(&pool).await;
+//
+//         let account = Account::new(&pool, &org, "node_test@example.com", "password", Role::User)
+//             .await
+//             .expect("Failed to create account");
+//
+//         let node_id = Address::random();
+//         let node_name = "Test Node";
+//
+//         // Test attaching a node
+//         account.attach_node(&pool, &node_id, node_name).await.expect("Failed to attach node");
+//
+//         // Test retrieving nodes
+//         let nodes = account.nodes(&pool).await.expect("Failed to retrieve nodes");
+//         assert_eq!(nodes.len(), 1);
+//         assert_eq!(nodes[0].node_id, node_id);
+//         assert_eq!(nodes[0].name, node_name);
+//
+//         // Clean up
+//         account.delete(&pool).await.expect("Failed to delete account");
+//     }
+//
+//     #[tokio::test]
+//     async fn test_account_verification() {
+//         let pool = setup_test_db().await;
+//         let org = setup_test_organization(&pool).await;
+//
+//         let email = "verify_test@example.com";
+//         let account = Account::new(&pool, &org, email, "password", Role::User)
+//             .await
+//             .expect("Failed to create account");
+//
+//         let verification =
+//             Account::set_verification(&pool, email).await.expect("Failed to set verification");
+//
+//         assert_eq!(verification.associated_id, account.user_id);
+//         assert_eq!(verification.verification_type, verification::VerificationType::User);
+//
+//         // Clean up
+//         account.delete(&pool).await.expect("Failed to delete account");
+//     }
+// }

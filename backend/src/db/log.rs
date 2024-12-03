@@ -3,7 +3,7 @@ use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{json, Value};
 use sqlx::{query, query_as, PgPool};
-use std::{collections::HashMap, str::FromStr};
+use std::{collections::HashMap, fmt::Display, str::FromStr};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -28,6 +28,7 @@ impl FromStr for LogLevel {
             "info" => Ok(LogLevel::Info),
             "warning" => Ok(LogLevel::Warning),
             "error" => Ok(LogLevel::Error),
+            "unknown" => Ok(LogLevel::Unknown),
             _ => Err(format!("Invalid log level: {}", s)),
         }
     }
@@ -42,6 +43,16 @@ pub struct ContainerLog {
     pub created_at: Option<i64>,
     #[serde(flatten, deserialize_with = "deserialize_other_fields")]
     pub other_fields: Option<HashMap<String, String>>,
+}
+
+impl Display for ContainerLog {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "ContainerLog {{ machine_id: {}, avs_name: {}, log: {}, log_level: {:?}, created_at: {:?}, other_fields: {:?} }}",
+            self.machine_id, self.avs_name, self.log, self.log_level, self.created_at, self.other_fields
+        )
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema, sqlx::FromRow, PartialEq)]
@@ -292,226 +303,289 @@ where
     Ok(Some(map))
 }
 
-// TODO: Fluentd is to be removed. Not fixing this test right now
-// #[cfg(test)]
-// mod logs_backend_tests {
-//     use crate::db::log::ContainerLog;
-//
-//     #[test]
-//     fn test_deserialize_fluentd_msg() {
-//         let log_str =
-// "[{\"container_name\":\"fluentd\",\"created_at\":1729036593,\"log\":\"starting fluentd worker
-// pid=16 ppid=7
-// worker=0\",\"log_level\":\"UNKNOWN\",\"pid\":16,\"ppid\":7,\"worker\":0},{\"bind\":\"0.0.0.0\",\"
-// container_name\":\"fluentd\",\"created_at\":1729036593,\"log\":\"listening port port=24224
-// bind=\\\"0.0.0.0\\\"\",\"log_level\":\"UNKNOWN\",\"port\":24224},{\"container_name\":\"fluentd\",
-// \"created_at\":1729036593,\"log\":\"fluentd worker is now running
-// worker=0\",\"log_level\":\"UNKNOWN\",\"worker\":0}]";         let container_logs =
-// serde_json::from_str::<Vec<ContainerLog>>(log_str);         assert!(container_logs.is_ok());
-//
-//         let log_str = "[{\"container_id\":\"99b899e97e76cb3978f5b14627e0448515b33c4b17864348cbfa0f124ab35249\",\"container_name\":\"/eigenda-native-node\",\"created_at\":1729047253,\"log\":\"\\u001b[2mOct 16 02:54:13.038\\u001b[0m DBG \\u001b[2mnode/node.go:684\\u001b[0m Calling reachability check \\u001b[2mcomponent=\\u001b[0mNode \\u001b[2murl=\\u001b[0m\\\"https://dataapi-holesky.eigenda.xyz/api/v1/operators-info/port-check?operator_id=b8803017a8a79caf923721c33653df7a2153f127af95ecd72cc9fc064ff6afa0\\\"\",\"log_level\":\"DEBUG\",\"source\":\"stdout\"},{\"container_id\":\"99b899e97e76cb3978f5b14627e0448515b33c4b17864348cbfa0f124ab35249\",\"container_name\":\"/eigenda-native-node\",\"created_at\":1729047253,\"log\":\"\\u001b[2mOct 16 02:54:13.438\\u001b[0m \\u001b[93mWRN\\u001b[0m \\u001b[2mnode/node.go:695\\u001b[0m Reachability check operator id not found \\u001b[2mcomponent=\\u001b[0mNode \\u001b[2mstatus=\\u001b[0m404 \\u001b[2moperator_id=\\u001b[0mb8803017a8a79caf923721c33653df7a2153f127af95ecd72cc9fc064ff6afa0\",\"log_level\":\"WARNING\",\"source\":\"stdout\"}]";
-//         let _container_logs = serde_json::from_str::<Vec<ContainerLog>>(log_str);
-//         let value = serde_json::from_str::<Vec<ContainerLog>>(log_str);
-//         println!("{:#?}", value);
-//         //         assert!(container_logs.is_ok());
-//     }
-// }
-
 #[cfg(feature = "db_tests")]
 #[cfg(test)]
 mod logs_db_tests {
+    use ivynet_core::{
+        docker::logs::{find_log_level, find_or_create_log_timestamp, sanitize_log},
+        ethers::types::Address,
+        node_type::NodeType,
+    };
+
+    use crate::db::{Account, Avs, Client, Machine, Organization, Role};
+
     use super::*;
-    use crate::db::node::DbNode;
-    use chrono::Utc;
-    use ivynet_core::ethers::types::Address;
 
-    #[sqlx::test(fixtures(
-        "../../../backend/fixtures/organization.sql",
-        "../../../backend/fixtures/node.sql"
-    ))]
-    async fn test_insert_and_retrieve_logs(pool: PgPool) -> sqlx::Result<()> {
-        let node_id = "0x00000000000000000000000000000000deadbeef".parse::<Address>().unwrap();
+    const INVALID_UTF8_LOG: &str = "2024-11-28 14:29:20 eigenda-native-node  | Nov 28 20:29:20.271 ERR node/node.go:775 Reachability check - dispersal socket is UNREACHABLE component=Node socket=216.254.247.80:32005 error from daemon in stream: Error grabbing logs: invalid character '\x00' looking for beginning of value";
 
-        let node = DbNode::get(&pool, &node_id).await;
+    #[sqlx::test()]
+    async fn test_post_log(pool: PgPool) -> sqlx::Result<()> {
+        // Setup organization
+        Organization::new(&pool, "Test Org", true).await.unwrap();
+        let _ = Organization::get(&pool, 1).await.expect("Failed to fetch org 1");
 
-        let log1 = ContainerLog {
-            node_id: Some(node_id),
-            container_id: Some("container1".to_string()),
-            container_name: "test_container_1".to_string(),
-            log: "This is a test log for container 1".to_string(),
-            log_level: LogLevel::Info, // Assuming you have a LogLevel enum
-            created_at: Some(Utc::now().timestamp()),
-            other_fields: Some(HashMap::new()),
+        // Setup client
+        let client_id = Address::from_slice(&[8; 20]);
+        let account = Account {
+            user_id: 1234567890,
+            organization_id: 1,
+            email: "db_test_user@ivynet.dev".to_string(),
+            password: "db_test_1234".to_string(),
+            role: Role::User,
+            created_at: None,
+            updated_at: None,
         };
 
-        // wait for two seconds
-        std::thread::sleep(std::time::Duration::from_secs(2));
+        Client::create(&pool, &account, &client_id).await.unwrap();
 
-        let log2 = ContainerLog {
-            node_id: Some(node_id),
-            container_id: Some("container2".to_string()),
-            container_name: "test_container_2".to_string(),
-            log: "This is a test log for container 2".to_string(),
-            log_level: LogLevel::Error,
-            created_at: Some(Utc::now().timestamp()),
-            other_fields: Some(HashMap::new()),
-        };
+        // Setup Machine
+        let name = "test_machine";
+        let machine_id = Uuid::new_v4();
 
-        // Insert the logs into the database
-        ContainerLog::record(&pool, &log1).await.unwrap();
-        ContainerLog::record(&pool, &log2).await.unwrap();
+        Machine::create(&pool, &client_id, name, machine_id).await.unwrap();
 
-        let logs = ContainerLog::get_all_for_node(&pool, node_id).await.unwrap();
+        // Setup Avs
+        let avs_name = "test_avs";
+        let avs_type = NodeType::Unknown;
+        let version_hash = "test_hash";
 
-        assert_eq!(logs.len(), 2);
-        assert_eq!(logs, vec![log1, log2]);
-
-        Ok(())
-    }
-
-    #[sqlx::test(fixtures(
-        "../../../backend/fixtures/organization.sql",
-        "../../../backend/fixtures/node.sql"
-    ))]
-    async fn test_record_and_get_all_for_node(pool: PgPool) -> sqlx::Result<()> {
-        let node_id = "0x00000000000000000000000000000000deadbeef".parse::<Address>().unwrap();
-        let log = ContainerLog {
-            node_id: Some(node_id),
-            container_id: Some("container1".to_string()),
-            container_name: "test_container".to_string(),
-            log: "Test log".to_string(),
-            log_level: LogLevel::Info,
-            created_at: Some(Utc::now().timestamp()),
-            other_fields: Some(HashMap::new()),
-        };
-
-        ContainerLog::record(&pool, &log).await.unwrap();
-        let logs = ContainerLog::get_all_for_node(&pool, node_id).await.unwrap();
-        assert_eq!(logs.len(), 1);
-        assert_eq!(logs[0], log);
-
-        Ok(())
-    }
-
-    #[sqlx::test(fixtures(
-        "../../../backend/fixtures/organization.sql",
-        "../../../backend/fixtures/node.sql"
-    ))]
-    async fn test_get_all_for_node_between_timestamps(pool: PgPool) -> sqlx::Result<()> {
-        let node_id = "0x00000000000000000000000000000000deadbeef".parse::<Address>().unwrap();
-        let now = Utc::now().timestamp();
-        let log1 = ContainerLog {
-            node_id: Some(node_id),
-            container_id: Some("container1".to_string()),
-            container_name: "test_container1".to_string(),
-            log: "Test log 1".to_string(),
-            log_level: LogLevel::Info,
-            created_at: Some(now),
-            other_fields: Some(HashMap::new()),
-        };
-        let log2 = ContainerLog {
-            node_id: Some(node_id),
-            container_id: Some("container2".to_string()),
-            container_name: "test_container2".to_string(),
-            log: "Test log 2".to_string(),
-            log_level: LogLevel::Error,
-            created_at: Some(now + 100),
-            other_fields: Some(HashMap::new()),
-        };
-
-        ContainerLog::record(&pool, &log1).await.unwrap();
-        ContainerLog::record(&pool, &log2).await.unwrap();
-
-        let logs =
-            ContainerLog::get_all_for_node_between_timestamps(&pool, node_id, now - 50, now + 50)
-                .await
-                .unwrap();
-        assert_eq!(logs.len(), 1);
-        assert_eq!(logs[0], log1);
-
-        Ok(())
-    }
-
-    #[sqlx::test(fixtures(
-        "../../../backend/fixtures/organization.sql",
-        "../../../backend/fixtures/node.sql"
-    ))]
-    async fn test_get_all_for_node_with_log_level(pool: PgPool) -> sqlx::Result<()> {
-        let node_id = "0x00000000000000000000000000000000deadbeef".parse::<Address>().unwrap();
-        let log1 = ContainerLog {
-            node_id: Some(node_id),
-            container_id: Some("container1".to_string()),
-            container_name: "test_container1".to_string(),
-            log: "Test log 1".to_string(),
-            log_level: LogLevel::Info,
-            created_at: Some(Utc::now().timestamp()),
-            other_fields: Some(HashMap::new()),
-        };
-        let log2 = ContainerLog {
-            node_id: Some(node_id),
-            container_id: Some("container2".to_string()),
-            container_name: "test_container2".to_string(),
-            log: "Test log 2".to_string(),
-            log_level: LogLevel::Error,
-            created_at: Some(Utc::now().timestamp()),
-            other_fields: Some(HashMap::new()),
-        };
-
-        ContainerLog::record(&pool, &log1).await.unwrap();
-        ContainerLog::record(&pool, &log2).await.unwrap();
-
-        let logs = ContainerLog::get_all_for_node_with_log_level(&pool, node_id, LogLevel::Info)
+        Avs::record_avs_data_from_client(&pool, machine_id, avs_name, &avs_type, version_hash)
             .await
             .unwrap();
-        assert_eq!(logs.len(), 1);
-        assert_eq!(logs[0], log1);
 
-        Ok(())
-    }
+        // log data
+        let sanitized = sanitize_log(INVALID_UTF8_LOG);
+        let log_level = LogLevel::from_str(&find_log_level(&sanitized)).unwrap();
+        let created_at = Some(find_or_create_log_timestamp(&sanitized));
 
-    #[sqlx::test(fixtures(
-        "../../../backend/fixtures/organization.sql",
-        "../../../backend/fixtures/node.sql"
-    ))]
-    async fn test_get_all_for_node_between_timestamps_with_log_level(
-        pool: PgPool,
-    ) -> sqlx::Result<()> {
-        let node_id = "0x00000000000000000000000000000000deadbeef".parse::<Address>().unwrap();
-        let now = Utc::now().timestamp();
-        let log1 = ContainerLog {
-            node_id: Some(node_id),
-            container_id: Some("container1".to_string()),
-            container_name: "test_container1".to_string(),
-            log: "Test log 1".to_string(),
-            log_level: LogLevel::Info,
-            created_at: Some(now),
-            other_fields: Some(HashMap::new()),
-        };
-        let log2 = ContainerLog {
-            node_id: Some(node_id),
-            container_id: Some("container2".to_string()),
-            container_name: "test_container2".to_string(),
-            log: "Test log 2".to_string(),
-            log_level: LogLevel::Error,
-            created_at: Some(now + 100),
-            other_fields: Some(HashMap::new()),
+        let unsanitized_log = ContainerLog {
+            machine_id,
+            avs_name: avs_name.to_string(),
+            log: INVALID_UTF8_LOG.to_string(),
+            log_level,
+            created_at,
+            other_fields: None,
         };
 
-        ContainerLog::record(&pool, &log1).await.unwrap();
-        ContainerLog::record(&pool, &log2).await.unwrap();
+        let try_record_unsanitized = ContainerLog::record(&pool, &unsanitized_log).await;
+        assert!(try_record_unsanitized.is_err());
 
-        let logs = ContainerLog::get_all_for_node_between_timestamps_with_log_level(
-            &pool,
-            node_id,
-            now - 50,
-            now + 150,
-            LogLevel::Error,
-        )
-        .await
-        .unwrap();
+        let sanitized_log = ContainerLog {
+            machine_id,
+            avs_name: avs_name.to_string(),
+            log: sanitized,
+            log_level,
+            created_at,
+            other_fields: None,
+        };
+
+        let try_record_sanitized = ContainerLog::record(&pool, &sanitized_log).await;
+        assert!(try_record_sanitized.is_ok());
+
+        let logs =
+            ContainerLog::get_all_for_machine(&pool, sanitized_log.machine_id).await.unwrap();
         assert_eq!(logs.len(), 1);
-        assert_eq!(logs[0], log2);
+        assert_eq!(logs[0], sanitized_log);
 
         Ok(())
     }
 }
+
+// #[cfg(feature = "db_tests")]
+// #[cfg(test)]
+// mod logs_db_tests {
+//     use super::*;
+//     use crate::db::node::DbNode;
+//     use chrono::Utc;
+//     use ivynet_core::ethers::types::Address;
+//
+//     #[sqlx::test(fixtures(
+//         "../../../backend/fixtures/organization.sql",
+//         "../../../backend/fixtures/node.sql"
+//     ))]
+//     async fn test_insert_and_retrieve_logs(pool: PgPool) -> sqlx::Result<()> {
+//         let node_id = "0x00000000000000000000000000000000deadbeef".parse::<Address>().unwrap();
+//
+//         let node = DbNode::get(&pool, &node_id).await;
+//
+//         let log1 = ContainerLog {
+//             node_id: Some(node_id),
+//             container_id: Some("container1".to_string()),
+//             container_name: "test_container_1".to_string(),
+//             log: "This is a test log for container 1".to_string(),
+//             log_level: LogLevel::Info, // Assuming you have a LogLevel enum
+//             created_at: Some(Utc::now().timestamp()),
+//             other_fields: Some(HashMap::new()),
+//         };
+//
+//         // wait for two seconds
+//         std::thread::sleep(std::time::Duration::from_secs(2));
+//
+//         let log2 = ContainerLog {
+//             node_id: Some(node_id),
+//             container_id: Some("container2".to_string()),
+//             container_name: "test_container_2".to_string(),
+//             log: "This is a test log for container 2".to_string(),
+//             log_level: LogLevel::Error,
+//             created_at: Some(Utc::now().timestamp()),
+//             other_fields: Some(HashMap::new()),
+//         };
+//
+//         // Insert the logs into the database
+//         ContainerLog::record(&pool, &log1).await.unwrap();
+//         ContainerLog::record(&pool, &log2).await.unwrap();
+//
+//         let logs = ContainerLog::get_all_for_node(&pool, node_id).await.unwrap();
+//
+//         assert_eq!(logs.len(), 2);
+//         assert_eq!(logs, vec![log1, log2]);
+//
+//         Ok(())
+//     }
+//
+//     #[sqlx::test(fixtures(
+//         "../../../backend/fixtures/organization.sql",
+//         "../../../backend/fixtures/node.sql"
+//     ))]
+//     async fn test_record_and_get_all_for_node(pool: PgPool) -> sqlx::Result<()> {
+//         let node_id = "0x00000000000000000000000000000000deadbeef".parse::<Address>().unwrap();
+//         let log = ContainerLog {
+//             node_id: Some(node_id),
+//             container_id: Some("container1".to_string()),
+//             container_name: "test_container".to_string(),
+//             log: "Test log".to_string(),
+//             log_level: LogLevel::Info,
+//             created_at: Some(Utc::now().timestamp()),
+//             other_fields: Some(HashMap::new()),
+//         };
+//
+//         ContainerLog::record(&pool, &log).await.unwrap();
+//         let logs = ContainerLog::get_all_for_node(&pool, node_id).await.unwrap();
+//         assert_eq!(logs.len(), 1);
+//         assert_eq!(logs[0], log);
+//
+//         Ok(())
+//     }
+//
+//     #[sqlx::test(fixtures(
+//         "../../../backend/fixtures/organization.sql",
+//         "../../../backend/fixtures/node.sql"
+//     ))]
+//     async fn test_get_all_for_node_between_timestamps(pool: PgPool) -> sqlx::Result<()> {
+//         let node_id = "0x00000000000000000000000000000000deadbeef".parse::<Address>().unwrap();
+//         let now = Utc::now().timestamp();
+//         let log1 = ContainerLog {
+//             node_id: Some(node_id),
+//             container_id: Some("container1".to_string()),
+//             container_name: "test_container1".to_string(),
+//             log: "Test log 1".to_string(),
+//             log_level: LogLevel::Info,
+//             created_at: Some(now),
+//             other_fields: Some(HashMap::new()),
+//         };
+//         let log2 = ContainerLog {
+//             node_id: Some(node_id),
+//             container_id: Some("container2".to_string()),
+//             container_name: "test_container2".to_string(),
+//             log: "Test log 2".to_string(),
+//             log_level: LogLevel::Error,
+//             created_at: Some(now + 100),
+//             other_fields: Some(HashMap::new()),
+//         };
+//
+//         ContainerLog::record(&pool, &log1).await.unwrap();
+//         ContainerLog::record(&pool, &log2).await.unwrap();
+//
+//         let logs =
+//             ContainerLog::get_all_for_node_between_timestamps(&pool, node_id, now - 50, now + 50)
+//                 .await
+//                 .unwrap();
+//         assert_eq!(logs.len(), 1);
+//         assert_eq!(logs[0], log1);
+//
+//         Ok(())
+//     }
+//
+//     #[sqlx::test(fixtures(
+//         "../../../backend/fixtures/organization.sql",
+//         "../../../backend/fixtures/node.sql"
+//     ))]
+//     async fn test_get_all_for_node_with_log_level(pool: PgPool) -> sqlx::Result<()> {
+//         let node_id = "0x00000000000000000000000000000000deadbeef".parse::<Address>().unwrap();
+//         let log1 = ContainerLog {
+//             node_id: Some(node_id),
+//             container_id: Some("container1".to_string()),
+//             container_name: "test_container1".to_string(),
+//             log: "Test log 1".to_string(),
+//             log_level: LogLevel::Info,
+//             created_at: Some(Utc::now().timestamp()),
+//             other_fields: Some(HashMap::new()),
+//         };
+//         let log2 = ContainerLog {
+//             node_id: Some(node_id),
+//             container_id: Some("container2".to_string()),
+//             container_name: "test_container2".to_string(),
+//             log: "Test log 2".to_string(),
+//             log_level: LogLevel::Error,
+//             created_at: Some(Utc::now().timestamp()),
+//             other_fields: Some(HashMap::new()),
+//         };
+//
+//         ContainerLog::record(&pool, &log1).await.unwrap();
+//         ContainerLog::record(&pool, &log2).await.unwrap();
+//
+//         let logs = ContainerLog::get_all_for_node_with_log_level(&pool, node_id, LogLevel::Info)
+//             .await
+//             .unwrap();
+//         assert_eq!(logs.len(), 1);
+//         assert_eq!(logs[0], log1);
+//
+//         Ok(())
+//     }
+//
+//     #[sqlx::test(fixtures(
+//         "../../../backend/fixtures/organization.sql",
+//         "../../../backend/fixtures/node.sql"
+//     ))]
+//     async fn test_get_all_for_node_between_timestamps_with_log_level(
+//         pool: PgPool,
+//     ) -> sqlx::Result<()> {
+//         let node_id = "0x00000000000000000000000000000000deadbeef".parse::<Address>().unwrap();
+//         let now = Utc::now().timestamp();
+//         let log1 = ContainerLog {
+//             node_id: Some(node_id),
+//             container_id: Some("container1".to_string()),
+//             container_name: "test_container1".to_string(),
+//             log: "Test log 1".to_string(),
+//             log_level: LogLevel::Info,
+//             created_at: Some(now),
+//             other_fields: Some(HashMap::new()),
+//         };
+//         let log2 = ContainerLog {
+//             node_id: Some(node_id),
+//             container_id: Some("container2".to_string()),
+//             container_name: "test_container2".to_string(),
+//             log: "Test log 2".to_string(),
+//             log_level: LogLevel::Error,
+//             created_at: Some(now + 100),
+//             other_fields: Some(HashMap::new()),
+//         };
+//
+//         ContainerLog::record(&pool, &log1).await.unwrap();
+//         ContainerLog::record(&pool, &log2).await.unwrap();
+//
+//         let logs = ContainerLog::get_all_for_node_between_timestamps_with_log_level(
+//             &pool,
+//             node_id,
+//             now - 50,
+//             now + 150,
+//             LogLevel::Error,
+//         )
+//         .await
+//         .unwrap();
+//         assert_eq!(logs.len(), 1);
+//         assert_eq!(logs[0], log2);
+//
+//         Ok(())
+//     }
+// }
