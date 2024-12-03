@@ -26,7 +26,8 @@ const TELEMETRY_INTERVAL_IN_MINUTES: u64 = 1;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct ConfiguredAvs {
-    pub name: String,
+    pub assigned_name: String,
+    pub container_name: String,
     pub avs_type: NodeType,
     pub metric_port: u16,
 }
@@ -47,9 +48,9 @@ pub async fn listen(
 
     for node in avses {
         let container = &docker
-            .find_container_by_name(&node.name)
+            .find_container_by_name(&node.container_name)
             .await
-            .ok_or_else(|| IvyError::NodeFindError(node.name.clone()))?;
+            .ok_or_else(|| IvyError::NodeFindError(node.container_name.clone()))?;
         let listener_data =
             ListenerData::new(container.clone(), node.clone(), machine_id, identity_wallet.clone());
         logs_listener.add_listener(listener_data).await;
@@ -85,7 +86,8 @@ pub async fn listen_metrics(
     loop {
         for avs in avses {
             let mut version_hash = "".to_string();
-            if let Some(inspect_data) = docker.inspect_by_container_name(&avs.name).await {
+            if let Some(inspect_data) = docker.inspect_by_container_name(&avs.container_name).await
+            {
                 if let Some(image_name) = inspect_data.image() {
                     if let Some(hash) = images.get(image_name) {
                         version_hash = hash.clone();
@@ -98,7 +100,10 @@ pub async fn listen_metrics(
                     name: "running".to_owned(),
                     value: 1.0,
                     attributes: vec![
-                        MetricsAttribute { name: "avs_name".to_owned(), value: avs.name.clone() },
+                        MetricsAttribute {
+                            name: "avs_name".to_owned(),
+                            value: avs.assigned_name.clone(),
+                        },
                         MetricsAttribute {
                             name: "avs_type".to_owned(),
                             value: avs.avs_type.to_string(),
@@ -112,14 +117,17 @@ pub async fn listen_metrics(
                     name: "running".to_owned(),
                     value: 0.0,
                     attributes: vec![
-                        MetricsAttribute { name: "avs_name".to_owned(), value: avs.name.clone() },
+                        MetricsAttribute {
+                            name: "avs_name".to_owned(),
+                            value: avs.assigned_name.clone(),
+                        },
                         MetricsAttribute {
                             name: "avs_type".to_owned(),
                             value: avs.avs_type.to_string(),
                         },
                         MetricsAttribute {
                             name: "version-hash".to_owned(),
-                            value: "0.0.0".to_string(),
+                            value: "NONE".to_string(),
                         }, /* FIXME: Bazil to work on this */
                     ],
                 }]
@@ -127,7 +135,7 @@ pub async fn listen_metrics(
             let metrics_signature = sign_metrics(&metrics, identity_wallet)?;
             let signed_metrics = SignedMetrics {
                 machine_id: machine_id.into(),
-                avs_name: Some(avs.name.clone()),
+                avs_name: Some(avs.assigned_name.clone()),
                 signature: metrics_signature.to_vec(),
                 metrics: metrics.to_vec(),
             };
