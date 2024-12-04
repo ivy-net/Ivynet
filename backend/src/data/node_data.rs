@@ -137,7 +137,8 @@ pub async fn build_avs_info(
                 Some(chain.to_string()),
                 avs.avs_type,
             );
-            if update_status != UpdateStatus::UpToDate || update_status != UpdateStatus::Unknown {
+            if update_status == UpdateStatus::Outdated || update_status == UpdateStatus::Updateable
+            {
                 errors.push(NodeError::NeedsUpdate);
             }
         }
