@@ -45,7 +45,7 @@ rand = "0.8"
 tower = { version = "0.5.1", features = ["util"] }
 prost = "0.12"
 prost-wkt = "0.5"
-prost-wkt-types = "0.5"
+prost-wkt-types = "0.6"
 tonic = { version = "0.11", features = ["tls", "tls-roots"] }
 tonic-reflection = "0.11"
 tokio-stream = { version = "0.1.15", features = ["net"] }
