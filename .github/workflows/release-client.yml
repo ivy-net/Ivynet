@@ -53,8 +53,9 @@ jobs:
         run: |
           cd target/release
           mkdir bucket
-          cp ivynet bucket/${NAME}
-          sha256sum ${NAME} >> bucket/${NAME}.sha256
+          cd bucket
+          cp ../ivynet ${NAME}
+          sha256sum ${NAME} >> ${NAME}.sha256
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
