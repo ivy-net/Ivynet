@@ -20,10 +20,8 @@ use crate::{
 const LAGRANGE_WORKER_SETUP_REPO: &str =
     "https://github.com/ivy-net/lagrange-worker/archive/refs/heads/main.zip";
 
-/// Types associated with the Lagrange worker config, stored locally in
-/// ${LAGRANGE_WORKER_DIR}/worker-conf.toml
-
 /// Config type for the lagrange worker, defined in worker-conf.toml of the Lagrange spec.
+/// stored locally in ${LAGRANGE_WORKER_DIR}/worker-conf.toml
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LagrangeConfig {
     pub path: PathBuf,
