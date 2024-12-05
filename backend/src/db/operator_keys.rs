@@ -28,7 +28,10 @@ impl TryFrom<DbOperatorKey> for OperatorKey {
             id: key.id,
             organization_id: key.organization_id,
             name: key.name,
-            public_key: key.public_key.parse::<Address>().map_err(|_| BackendError::BadId)?,
+            public_key: key
+                .public_key
+                .parse::<Address>()
+                .map_err(|e| BackendError::CantParsePubKey(e.to_string()))?,
         })
     }
 }
@@ -71,7 +74,7 @@ impl OperatorKey {
             "INSERT INTO operator_keys (organization_id, name, public_key) values ($1, $2, $3)",
             organization_id,
             name,
-            public_key.to_string(),
+            format!("{:?}", public_key),
         )
         .execute(pool)
         .await?;
