@@ -59,6 +59,7 @@ uuid = { version = "1.11.0", features = ["v4", "serde"] }
 bollard = "0.18.0"
 rustc-hex = "2.1.0"
 futures = "0.3.31"
+docker-registry = "0.7.0"
 
 [build-dependencies]
 prost-build = "0.12"
