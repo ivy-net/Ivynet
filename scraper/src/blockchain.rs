@@ -190,7 +190,8 @@ pub async fn report_directory_event(
         DirectoryEvents::OperatorAVSRegistrationStatusUpdatedFilter(f) => {
             backend
                 .report_event(Request::new(Event {
-                    directory: f.avs.as_bytes().to_vec(),
+                    directory: event.1.address.as_bytes().to_vec(), //TODO: address is NOT from the
+                    //list of available
                     chain_id,
                     address: f.operator.as_bytes().to_vec(),
                     active: f.status > 0,

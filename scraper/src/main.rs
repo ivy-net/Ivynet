@@ -36,7 +36,7 @@ pub struct Params {
     #[arg(long, env = "ADDRESSES", default_value = "0x055733000064333CaDDbC92763c58BF0192fFeBf")]
     pub addresses: String,
 
-    #[arg(long, env = "LOG_LEVEL", default_value_t = LevelFilter::DEBUG)]
+    #[arg(long, env = "LOG_LEVEL", default_value_t = LevelFilter::INFO)]
     pub log_level: LevelFilter,
 }
 
