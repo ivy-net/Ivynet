@@ -55,6 +55,9 @@ pub enum BackendError {
     #[error("Bad id")]
     BadId,
 
+    #[error("Can't parse pubkey: {0}")]
+    CantParsePubKey(String),
+
     #[error("Already set")]
     AlreadySet,
 
