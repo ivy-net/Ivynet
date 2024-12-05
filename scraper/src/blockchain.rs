@@ -148,7 +148,7 @@ pub async fn fetch(
             >)
         .await;
     }
-    debug!("Start listening...");
+    info!("Start listening...");
 
     _ = pool.process().await?;
     error!("Dying...");
@@ -186,8 +186,6 @@ pub async fn report_directory_event(
     chain_id: u64,
     event: (DirectoryEvents, LogMeta),
 ) -> Result<u64> {
-    debug!("Reading event {event:?}");
-
     match event.0 {
         DirectoryEvents::OperatorAVSRegistrationStatusUpdatedFilter(f) => {
             backend
@@ -201,7 +199,7 @@ pub async fn report_directory_event(
                 }))
                 .await?;
         }
-        _ => debug!("Don't care on this event"),
+        _ => {}
     }
 
     Ok(0)
