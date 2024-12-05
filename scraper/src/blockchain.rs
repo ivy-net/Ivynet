@@ -11,7 +11,7 @@ use ivynet_core::grpc::{
 };
 use std::{pin::Pin, sync::Arc};
 use tokio::sync::Mutex;
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 
 const PAGE_SIZE: u64 = 50_000;
 
@@ -20,7 +20,7 @@ abigen!(
     Directory,
     r#"[
         event AVSMetadataURIUpdated(address indexed avs, string metadataURI)
-        event OperatorAVSRegistrationStatusUpdated(address indexed operator, address indexed avs, uint256 status)
+        event OperatorAVSRegistrationStatusUpdated(address indexed operator, address indexed avs, uint8 status)
     ]"#,
 );
 
@@ -93,7 +93,7 @@ pub async fn fetch(
     from_block: u64,
     addresses: &[Address],
 ) -> Result<()> {
-    info!("Starting even listener for ledger and BRIX contracts under {rpc_url}");
+    info!("Starting even listener contracts under {rpc_url}");
 
     let mut start_block = from_block;
     info!("Blockchain event streaming started from {start_block} block...");
@@ -109,8 +109,10 @@ pub async fn fetch(
     let directories =
         addresses.iter().map(|a| Directory::new(*a, client.clone())).collect::<Vec<_>>();
 
+    info!("Directories to listen to {directories:?}");
+
     for dir in &directories {
-        let last_checked = backend
+        let mut last_checked = backend
             .get_latest_block(Request::new(LatestBlockRequest {
                 address: dir.address().as_bytes().to_vec(),
                 chain_id,
@@ -118,6 +120,9 @@ pub async fn fetch(
             .await?
             .into_inner()
             .block_number;
+        if last_checked < from_block {
+            last_checked = from_block;
+        }
         fetch_all_directory_events_between(
             &mut backend,
             &client,
@@ -146,6 +151,7 @@ pub async fn fetch(
     debug!("Start listening...");
 
     _ = pool.process().await?;
+    error!("Dying...");
     Ok(())
 }
 
@@ -161,10 +167,11 @@ async fn fetch_all_directory_events_between(
     info!("Fetching directory events between {start} and {end}");
     let mut provider_events = provider.get_logs_paginated(&dir_filter, PAGE_SIZE);
     while let Some(logs) = provider_events.next().await {
-        if let Ok(log) = logs {
-            let meta = LogMeta::from(&log);
+        if let Ok(ref log) = logs {
+            let meta = LogMeta::from(log);
+
             let event: std::result::Result<DirectoryEvents, ivynet_core::ethers::abi::Error> =
-                parse_log(log);
+                parse_log(log.clone());
             if let Ok(event) = event {
                 _ = report_directory_event(backend, chain_id, (event, meta)).await;
             }
@@ -181,17 +188,20 @@ pub async fn report_directory_event(
 ) -> Result<u64> {
     debug!("Reading event {event:?}");
 
-    if let DirectoryEvents::OperatorAVSRegistrationStatusUpdatedFilter(f) = event.0 {
-        backend
-            .report_event(Request::new(Event {
-                directory: f.avs.as_bytes().to_vec(),
-                chain_id,
-                address: f.operator.as_bytes().to_vec(),
-                active: f.status.low_u64() > 0,
-                block_number: event.1.block_number.as_u64(),
-                log_index: event.1.log_index.as_u64(),
-            }))
-            .await?;
+    match event.0 {
+        DirectoryEvents::OperatorAVSRegistrationStatusUpdatedFilter(f) => {
+            backend
+                .report_event(Request::new(Event {
+                    directory: f.avs.as_bytes().to_vec(),
+                    chain_id,
+                    address: f.operator.as_bytes().to_vec(),
+                    active: f.status > 0,
+                    block_number: event.1.block_number.as_u64(),
+                    log_index: event.1.log_index.as_u64(),
+                }))
+                .await?;
+        }
+        _ => debug!("Don't care on this event"),
     }
 
     Ok(0)
