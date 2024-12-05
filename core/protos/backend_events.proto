@@ -1,0 +1,28 @@
+syntax = "proto3";
+package backend_events;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+message LatestBlockRequest {
+    bytes address = 1;
+    uint64 chain_id = 2;
+}
+
+message LatestBlock {
+    uint64 block_number = 1;
+}
+
+message Event {
+    bytes directory = 1;
+    uint64 chain_id = 2;
+    bytes address = 3;
+    bool active = 4;
+    uint64 block_number = 5;
+    uint64 log_index = 6;
+}
+
+service BackendEvents {
+    rpc GetLatestBlock(LatestBlockRequest) returns (LatestBlock);
+    rpc ReportEvent(Event) returns (google.protobuf.Empty);
+}

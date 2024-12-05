@@ -15,6 +15,7 @@ use crate::{
     wallet::IvyWallet,
 };
 use dispatch::TelemetryDispatchHandle;
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use tokio::time::{sleep, Duration};
 use tracing::{error, info};
@@ -159,7 +160,13 @@ pub async fn listen_metrics(
 }
 
 pub async fn fetch_telemetry_from(port: u16) -> Result<Vec<Metrics>, IvyError> {
-    if let Ok(resp) = reqwest::get(format!("http://localhost:{}/metrics", port)).await {
+    let client = Client::new();
+    if let Ok(resp) = client
+        .get(format!("http://localhost:{}/metrics", port))
+        .timeout(Duration::from_secs(10))
+        .send()
+        .await
+    {
         if let Ok(body) = resp.text().await {
             let metrics = body
                 .split('\n')
