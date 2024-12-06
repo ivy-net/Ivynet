@@ -49,12 +49,24 @@ async fn main() -> Result<(), BackendError> {
             config.pass_reset_template,
             config.http_port,
         );
-        let grpc_service =
-            grpc::serve(pool, config.grpc_tls_cert, config.grpc_tls_key, config.grpc_port);
+        let grpc_service = grpc::backend_serve(
+            pool.clone(),
+            config.grpc_tls_cert,
+            config.grpc_tls_key,
+            config.grpc_port,
+        );
+
+        let events_service = grpc::events_serve(
+            pool,
+            config.events_tls_cert,
+            config.events_tls_key,
+            config.events_port,
+        );
 
         tokio::select! {
             e = http_service => error!("HTTP server stopped. Reason {e:?}"),
             e = grpc_service => error!("Executor has stopped. Reason: {e:?}"),
+            e = events_service => error!("Events service has stopped. Reason: {e:?}"),
         }
 
         Ok(())

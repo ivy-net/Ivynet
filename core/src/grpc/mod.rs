@@ -5,6 +5,10 @@ pub mod backend {
     tonic::include_proto!("backend");
 }
 
+pub mod backend_events {
+    tonic::include_proto!("backend_events");
+}
+
 pub mod messages {
     tonic::include_proto!("messages");
 }
