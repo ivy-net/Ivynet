@@ -19,7 +19,7 @@
 
 - name: Download ivynet-backend
   ansible.builtin.import_tasks:
-    file: get_ivynet.yml
+    file: get_backend.yml
 
 - name: Configure DB for backend
   ansible.builtin.import_tasks:
@@ -58,6 +58,26 @@
     - general
     - ivynet
     - systemd
+
+- name: Copy Scrapper Service file
+  ansible.builtin.template:
+    src: ivynet-scrapper.service.j2
+    dest: /etc/systemd/system/ivynet-scrapper-{{ item }}.service
+    owner: root
+    group: root
+    mode: "0644"
+  loop:
+    - mainnet
+    - holesky
+  notify:
+    - Reload daemon
+    - Restart service
+  tags:
+    - ivynet_scrapper
+    - general
+    - ivynet
+    - systemd
+
 
 - name: Populate service facts
   ansible.builtin.service_facts:
