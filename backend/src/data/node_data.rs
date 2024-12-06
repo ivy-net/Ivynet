@@ -74,6 +74,7 @@ pub enum UpdateStatus {
     Unknown,
 }
 
+/// TODO: We need to fill that mapping for all avs directories addresses we want to resolve
 fn avs_directory(avs_type: NodeType, chain: Chain) -> Option<H160> {
     match (avs_type, chain) {
         (NodeType::EigenDA, Chain::Holesky) => {
