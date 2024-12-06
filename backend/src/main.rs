@@ -148,7 +148,7 @@ async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
         for (tag, digest) in tags {
             let name = entry.registry_entry().name;
             match db::AvsVersionHash::add_version(pool, &name, &digest, &tag).await {
-                Ok(_) => {}
+                Ok(_) => info!("Added {}:{}:{}", name, tag, digest),
                 Err(e) => warn!("Failed to add {}:{}:{} | {}", name, tag, digest, e),
             };
         }

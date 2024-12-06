@@ -1,5 +1,7 @@
 use tokio_stream::StreamExt;
 
+use crate::node_type::NodeType;
+
 pub mod compose_images;
 pub mod container;
 pub mod dockerapi;
@@ -9,12 +11,6 @@ pub mod logs;
 pub struct DockerRegistry {
     client: docker_registry::v2::Client,
     image: String,
-}
-
-#[derive(Debug, thiserror::Error)]
-pub enum DockerRegistryError {
-    #[error(transparent)]
-    RegistryError(#[from] docker_registry::errors::Error),
 }
 
 impl DockerRegistry {
@@ -73,13 +69,50 @@ pub enum NodeRegistryEntry {
     EigenDA,
     LagrangeZKCoprocessor,
     LagrangeStateCommittee,
+    Ava,
+    Eoracle,
+    K3Labs,
     Hyperlane,
     // Brevis // Probably not possible - github accessible
-    Ava,
     // WitnesschainWatchtower,
-    // Predicate // Probably not possible - binary only
-    // Eoracle, // Unknown as of yet
-    K3Labs,
+    // Predicate,
+}
+
+impl TryFrom<&str> for NodeRegistryEntry {
+    type Error = DockerRegistryError;
+
+    fn try_from(node_type: &str) -> Result<Self, Self::Error> {
+        let res = match node_type {
+            "eigenda" => NodeRegistryEntry::EigenDA,
+            "lagrange-zk-worker" => NodeRegistryEntry::LagrangeZKCoprocessor,
+            "lagrange-state-committee" => NodeRegistryEntry::LagrangeStateCommittee,
+            "ap_avs" => NodeRegistryEntry::Ava,
+            "eoracle" => NodeRegistryEntry::Eoracle,
+            "k3-labs-avs-operator" => NodeRegistryEntry::K3Labs,
+            "hyperlane-operator" => NodeRegistryEntry::Hyperlane,
+            _ => return Err(DockerRegistryError::NodeTypeError(NodeType::from(node_type))),
+        };
+        Ok(res)
+    }
+}
+
+// TODO: Eventually deprecate NodeRegistryEntry and run these directly on NodeType
+impl TryFrom<&NodeType> for NodeRegistryEntry {
+    type Error = DockerRegistryError;
+
+    fn try_from(node_type: &NodeType) -> Result<Self, Self::Error> {
+        let res = match node_type {
+            NodeType::EigenDA => NodeRegistryEntry::EigenDA,
+            NodeType::LagrangeHoleskyWorker => NodeRegistryEntry::LagrangeZKCoprocessor,
+            // NodeType::LagrangeStateCommittee => NodeRegistryEntry::LagrangeStateCommittee,
+            // NodeType::Ava => NodeRegistryEntry::Ava,
+            // NodeType::Eoracle => NodeRegistryEntry::Eoracle,
+            // NodeType::K3Labs => NodeRegistryEntry::K3Labs,
+            // NodeType::Hyperlane => NodeRegistryEntry::Hyperlane,
+            _ => return Err(DockerRegistryError::NodeTypeError(*node_type)),
+        };
+        Ok(res)
+    }
 }
 
 impl NodeRegistryEntry {
@@ -88,9 +121,10 @@ impl NodeRegistryEntry {
             NodeRegistryEntry::EigenDA,
             NodeRegistryEntry::LagrangeZKCoprocessor,
             NodeRegistryEntry::LagrangeStateCommittee,
-            // NodeRegistryEntry::Hyperlane,
             NodeRegistryEntry::Ava,
             NodeRegistryEntry::K3Labs,
+            // NodeRegistryEntry::Hyperlane,
+            // NodeRegistryEntry::Eoracle,
         ]
     }
 
@@ -129,6 +163,11 @@ impl NodeRegistryEntry {
                 registry: "registry-1.docker.io".to_string(),
                 image: "k3official/k3-labs-avs-operator".to_string(),
             },
+            NodeRegistryEntry::Eoracle => RegistryEntry {
+                name: "eoracle".to_string(),
+                registry: "ghcr.io".to_string(),
+                image: "eoracle-data-validator".to_string(),
+            },
         }
     }
 }
@@ -140,15 +179,21 @@ pub struct RegistryEntry {
     pub image: String,
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum DockerRegistryError {
+    #[error(transparent)]
+    RegistryError(#[from] docker_registry::errors::Error),
+    #[error("Error fetching node registry entry from node type: {0}")]
+    NodeTypeError(NodeType),
+}
+
 #[cfg(test)]
-mod tests {
+mod docker_registry_tests {
 
     use super::*;
 
     #[tokio::test]
     async fn test_tags() -> Result<(), Box<dyn std::error::Error>> {
-        let registry = "registry-1.docker.io";
-        let image = "lagrangelabs/lagrange-node";
         let registry = "ghcr.io";
         let image = "layr-labs/eigenda/opr-node";
         println!("[{}] requesting tags for image {}", registry, image);
@@ -176,6 +221,147 @@ mod tests {
             assert!(!tags.is_empty());
             let digest = client.get_tag_digest(&tags[0]).await;
         }
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_get_eigenda_digests() -> Result<(), Box<dyn std::error::Error>> {
+        let registry_entry = NodeRegistryEntry::EigenDA;
+
+        let client: DockerRegistry =
+            DockerRegistry::from_node_registry_entry(&registry_entry).await?;
+        let tags = client.get_tags().await?;
+        assert!(!tags.is_empty());
+        let mut digests = Vec::new();
+
+        for tag in tags.iter() {
+            let digest = client.get_tag_digest(&tag).await?;
+            if let Some(digest) = digest {
+                digests.push(digest);
+            }
+        }
+        assert_eq!(tags.len(), digests.len());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_get_lagrage_zkcoprocessor_digests() -> Result<(), Box<dyn std::error::Error>> {
+        let registry_entry = NodeRegistryEntry::LagrangeZKCoprocessor;
+
+        let client: DockerRegistry =
+            DockerRegistry::from_node_registry_entry(&registry_entry).await?;
+        let tags = client.get_tags().await?;
+        assert!(!tags.is_empty());
+        let mut digests = Vec::new();
+
+        for tag in tags.iter() {
+            let digest = client.get_tag_digest(&tag).await?;
+            if let Some(digest) = digest {
+                digests.push(digest);
+            }
+        }
+        assert_eq!(tags.len(), digests.len());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_get_lagrage_state_committee_digests() -> Result<(), Box<dyn std::error::Error>> {
+        let registry_entry = NodeRegistryEntry::LagrangeStateCommittee;
+
+        let client: DockerRegistry =
+            DockerRegistry::from_node_registry_entry(&registry_entry).await?;
+        let tags = client.get_tags().await?;
+        assert!(!tags.is_empty());
+        let mut digests = Vec::new();
+
+        for tag in tags.iter() {
+            let digest = client.get_tag_digest(tag).await?;
+            if let Some(digest) = digest {
+                digests.push(digest);
+            }
+        }
+        assert_eq!(tags.len(), digests.len());
+        Ok(())
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn test_get_hyperlane_digests() -> Result<(), Box<dyn std::error::Error>> {
+        let registry_entry = NodeRegistryEntry::Hyperlane;
+
+        let client: DockerRegistry =
+            DockerRegistry::from_node_registry_entry(&registry_entry).await?;
+        let tags = client.get_tags().await?;
+        assert!(!tags.is_empty());
+        let mut digests = Vec::new();
+
+        for tag in tags.iter() {
+            let digest = client.get_tag_digest(tag).await?;
+            if let Some(digest) = digest {
+                digests.push(digest);
+            }
+        }
+        assert_eq!(tags.len(), digests.len());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_get_avaprotocol_digests() -> Result<(), Box<dyn std::error::Error>> {
+        let registry_entry = NodeRegistryEntry::Ava;
+
+        let client: DockerRegistry =
+            DockerRegistry::from_node_registry_entry(&registry_entry).await?;
+        let tags = client.get_tags().await?;
+        assert!(!tags.is_empty());
+        let mut digests = Vec::new();
+
+        for tag in tags.iter() {
+            let digest = client.get_tag_digest(tag).await?;
+            if let Some(digest) = digest {
+                digests.push(digest);
+            }
+        }
+        assert_eq!(tags.len(), digests.len());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn test_get_k3_digests() -> Result<(), Box<dyn std::error::Error>> {
+        let registry_entry = NodeRegistryEntry::K3Labs;
+
+        let client: DockerRegistry =
+            DockerRegistry::from_node_registry_entry(&registry_entry).await?;
+        let tags = client.get_tags().await?;
+        assert!(!tags.is_empty());
+        let mut digests = Vec::new();
+
+        for tag in tags.iter() {
+            let digest = client.get_tag_digest(tag).await?;
+            if let Some(digest) = digest {
+                digests.push(digest);
+            }
+        }
+        assert_eq!(tags.len(), digests.len());
+        Ok(())
+    }
+
+    #[tokio::test]
+    async fn get_get_eoracle_digests() -> Result<(), Box<dyn std::error::Error>> {
+        let registry_entry = NodeRegistryEntry::Eoracle;
+
+        let client: DockerRegistry =
+            DockerRegistry::from_node_registry_entry(&registry_entry).await?;
+        let tags = client.get_tags().await?;
+        assert!(!tags.is_empty());
+        let mut digests = Vec::new();
+
+        for tag in tags.iter() {
+            let digest = client.get_tag_digest(tag).await?;
+            if let Some(digest) = digest {
+                digests.push(digest);
+            }
+        }
+        assert_eq!(tags.len(), digests.len());
         Ok(())
     }
 }

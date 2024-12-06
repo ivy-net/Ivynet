@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 // `ghcr.io/layr-labs/eigenda/opr-node:0.8.4`.
 const EIGENDA_IMAGE_NAME: &str = "ghcr.io/layr-labs/eigenda/opr-node";
 const LAGRANGE_HOLESKY_WORKER_IMAGE_NAME: &str = "lagrangelabs/worker:holesky";
+const AVA_IMAGE_NAME: &str = "avaprotocol/ap-avs";
 
 const EIGENDA_METRICS_ID: &str = "da-node";
 
@@ -12,6 +13,7 @@ const EIGENDA_METRICS_ID: &str = "da-node";
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum NodeType {
+    Ava,
     EigenDA,
     LagrangeHoleskyWorker,
     Unknown,
@@ -28,6 +30,7 @@ pub enum NodeTypeError {
 impl From<&str> for NodeType {
     fn from(s: &str) -> Self {
         match s.to_lowercase().as_str() {
+            "ava" => NodeType::Ava,
             "eigenda" => NodeType::EigenDA,
             "lagrange:holesky" => NodeType::LagrangeHoleskyWorker,
             _ => NodeType::Unknown,
@@ -38,6 +41,7 @@ impl From<&str> for NodeType {
 impl std::fmt::Display for NodeType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::Ava => write!(f, "Ava"),
             Self::EigenDA => write!(f, "EigenDA"),
             Self::LagrangeHoleskyWorker => write!(f, "Lagrange Holesky Worker"),
             Self::Unknown => write!(f, "Unknown"),
@@ -49,6 +53,7 @@ impl std::fmt::Display for NodeType {
 impl NodeType {
     pub fn default_image_name(&self) -> Result<&'static str, NodeTypeError> {
         let res = match self {
+            Self::Ava => AVA_IMAGE_NAME,
             Self::EigenDA => EIGENDA_IMAGE_NAME,
             Self::LagrangeHoleskyWorker => LAGRANGE_HOLESKY_WORKER_IMAGE_NAME,
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
@@ -58,6 +63,7 @@ impl NodeType {
 
     pub fn default_container_name(&self) -> Result<&'static str, NodeTypeError> {
         let res = match self {
+            Self::Ava => todo!(),
             Self::EigenDA => "eigenda-native-node",
             Self::LagrangeHoleskyWorker => todo!(),
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
@@ -67,7 +73,7 @@ impl NodeType {
 
     /// Get a vec of all known node types. Excludes `NodeType::Unknown`.
     pub fn all_known() -> Vec<Self> {
-        vec![NodeType::EigenDA, NodeType::LagrangeHoleskyWorker]
+        vec![NodeType::Ava, NodeType::EigenDA, NodeType::LagrangeHoleskyWorker]
     }
 
     pub fn all_image_names() -> Vec<&'static str> {
@@ -77,6 +83,7 @@ impl NodeType {
 
     pub fn from_image_name(image_name: &str) -> Self {
         match image_name {
+            AVA_IMAGE_NAME => Self::Ava,
             EIGENDA_IMAGE_NAME => Self::EigenDA,
             LAGRANGE_HOLESKY_WORKER_IMAGE_NAME => Self::LagrangeHoleskyWorker,
             _ => Self::Unknown,

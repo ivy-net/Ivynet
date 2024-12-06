@@ -4,6 +4,7 @@ use crate::error::BackendError;
 
 #[derive(Clone, Debug)]
 pub struct AvsVersionHash {
+    pub id: i64,
     pub avs_type: String,
     pub hash: String,
     pub version: String,
@@ -18,6 +19,31 @@ impl AvsVersionHash {
                 .await?;
 
         Ok(avs_version.version)
+    }
+
+    pub async fn get_all_tags_for_type(
+        pool: &sqlx::PgPool,
+        avs_type: &str,
+    ) -> Result<Vec<String>, BackendError> {
+        println!("Query debug: SELECT * FROM avs_version_hash WHERE avs_type = {}", avs_type);
+        let tags = sqlx::query_as!(
+            AvsVersionHash,
+            r#"SELECT * FROM avs_version_hash WHERE avs_type = $1"#,
+            avs_type
+        )
+        .fetch_all(pool)
+        .await?;
+
+        let tags_test = sqlx::query_as!(
+            AvsVersionHash,
+            r#"SELECT * FROM avs_version_hash WHERE avs_type = 'eigenda'"#,
+        )
+        .fetch_all(pool)
+        .await?;
+
+        println!("TAGS TEST: {:?}", tags_test.len());
+
+        Ok(tags.into_iter().map(|tag| tag.version).collect())
     }
 
     pub async fn add_version(

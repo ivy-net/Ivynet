@@ -199,4 +199,24 @@ impl DbAvsVersionData {
 
         Ok(())
     }
+
+    pub async fn set_latest_version(
+        pool: &sqlx::PgPool,
+        node_type: &NodeType,
+        chain: &Chain,
+        latest_version: &Version,
+    ) -> Result<(), BackendError> {
+        query!(
+            "UPDATE avs_version_data
+            SET latest_version = $3
+            WHERE node_type = $1 AND chain = $2",
+            node_type.to_string(),
+            chain.to_string(),
+            latest_version.to_string(),
+        )
+        .execute(pool)
+        .await?;
+
+        Ok(())
+    }
 }

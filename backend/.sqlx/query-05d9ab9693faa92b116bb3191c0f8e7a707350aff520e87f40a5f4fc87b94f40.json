@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE avs_version_data\n            SET latest_version = $3\n            WHERE node_type = $1 AND chain = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "05d9ab9693faa92b116bb3191c0f8e7a707350aff520e87f40a5f4fc87b94f40"
+}

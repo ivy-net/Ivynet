@@ -143,6 +143,7 @@ impl NodeConfigBuilder {
             NodeType::LagrangeHoleskyWorker => dirs::home_dir()
                 .expect("Could not get a home directory")
                 .join(".eigenlayer/lagrange"),
+            NodeType::Ava => todo!(),
             NodeType::Unknown => panic!("Unknown node type"),
         }
     }

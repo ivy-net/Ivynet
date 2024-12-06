@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT * FROM avs_version_hash WHERE hash = $1",
+  "query": "SELECT * FROM avs_version_hash WHERE avs_type = 'eigenda'",
   "describe": {
     "columns": [
       {
@@ -30,9 +30,7 @@
       }
     ],
     "parameters": {
-      "Left": [
-        "Text"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -42,5 +40,5 @@
       false
     ]
   },
-  "hash": "70386041245d0e385674cff1ad115594de4f624d81625b0100443cd3025c5ef7"
+  "hash": "465ce4ac82675ddde3423af73d4950893d9a97947e19efab5b029f5d5d233034"
 }

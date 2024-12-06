@@ -136,7 +136,6 @@ sleep 5  # Simple wait, could be replaced with a more robust check
 export DATABASE_URL=postgresql://ivy:secret_ivy@localhost:5432/ivynet
 echo "Database URL set to: $DATABASE_URL"
 
-
 # Run migrations
 echo "Running database migrations..."
 sqlx migrate run
@@ -144,7 +143,6 @@ sqlx migrate run
 # sqlx prepare
 echo "Running sqlx prepare..."
 cargo sqlx prepare
-
 
 # Add organization
 echo "Adding organization..."
