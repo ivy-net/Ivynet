@@ -78,6 +78,9 @@ pub enum BackendError {
 
     #[error("Invalid chain")]
     InvalidChain,
+
+    #[error(transparent)]
+    DockerRegistryError(#[from] ivynet_core::docker::DockerRegistryError),
 }
 
 impl IntoResponse for BackendError {

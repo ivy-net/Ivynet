@@ -1,3 +1,5 @@
+use tokio_stream::StreamExt;
+
 pub mod compose_images;
 pub mod container;
 pub mod dockerapi;
@@ -5,60 +7,175 @@ pub mod dockercmd;
 pub mod logs;
 
 pub struct DockerRegistry {
-    pub host: String,
+    client: docker_registry::v2::Client,
+    image: String,
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum DockerRegistryError {
+    #[error(transparent)]
+    RegistryError(#[from] docker_registry::errors::Error),
+}
+
+impl DockerRegistry {
+    pub fn new(client: docker_registry::v2::Client, image: &str) -> Self {
+        Self { client, image: image.to_owned() }
+    }
+
+    pub async fn from_host_and_image(host: &str, image: &str) -> Result<Self, DockerRegistryError> {
+        let client = docker_registry::v2::Client::configure()
+            .registry(host)
+            .insecure_registry(false)
+            .build()?;
+        let login_scope = format!("repository:{}:pull", image);
+        let client = client.authenticate(&[&login_scope]).await?;
+        Ok(Self::new(client, image))
+    }
+
+    pub async fn from_registry_entry(entry: &RegistryEntry) -> Result<Self, DockerRegistryError> {
+        Self::from_host_and_image(&entry.registry, &entry.image).await
+    }
+
+    pub async fn from_node_registry_entry(
+        entry: &NodeRegistryEntry,
+    ) -> Result<Self, DockerRegistryError> {
+        let entry = entry.registry_entry();
+        Self::from_registry_entry(&entry).await
+    }
+
+    pub async fn get_tags(&self) -> Result<Vec<String>, DockerRegistryError> {
+        // A bit terse, explanation: we collect the results of the get_tags stream into a Vec, then iterate
+        // over the results, logging any errors and filtering them out. Finally, we collect the
+        // results into a Vec.
+        let res = self
+            .client
+            .get_tags(&self.image, None)
+            .collect::<Vec<_>>()
+            .await
+            .into_iter()
+            .map(|r| r.map_err(|e| tracing::error!("Error fetching tags: {}", e)))
+            .filter_map(Result::ok)
+            .collect::<Vec<_>>();
+
+        Ok(res)
+    }
+
+    /// Fetches content digest for a particular tag. This is the same digest accessible via `docker
+    /// image ls --digests`
+    pub async fn get_tag_digest(&self, tag: &str) -> Result<Option<String>, DockerRegistryError> {
+        self.client.get_manifestref(&self.image, tag).await.map_err(Into::into)
+    }
+}
+
+// Associated functions can probably later be implemented for NodeType instead
+#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
+pub enum NodeRegistryEntry {
+    EigenDA,
+    LagrangeZKCoprocessor,
+    LagrangeStateCommittee,
+    Hyperlane,
+    // Brevis // Probably not possible - github accessible
+    Ava,
+    // WitnesschainWatchtower,
+    // Predicate // Probably not possible - binary only
+    // Eoracle, // Unknown as of yet
+    K3Labs,
+}
+
+impl NodeRegistryEntry {
+    pub fn all() -> Vec<NodeRegistryEntry> {
+        vec![
+            NodeRegistryEntry::EigenDA,
+            NodeRegistryEntry::LagrangeZKCoprocessor,
+            NodeRegistryEntry::LagrangeStateCommittee,
+            // NodeRegistryEntry::Hyperlane,
+            NodeRegistryEntry::Ava,
+            NodeRegistryEntry::K3Labs,
+        ]
+    }
+
+    pub fn registry_entry(&self) -> RegistryEntry {
+        match self {
+            NodeRegistryEntry::EigenDA => RegistryEntry {
+                name: "eigenda".to_string(),
+                registry: "ghcr.io".to_string(),
+                image: "layr-labs/eigenda/opr-node".to_string(),
+            },
+            NodeRegistryEntry::LagrangeZKCoprocessor => RegistryEntry {
+                name: "lagrange-zk-worker".to_string(),
+                registry: "registry-1.docker.io".to_string(),
+                image: "lagrangelabs/worker".to_string(),
+            },
+            NodeRegistryEntry::LagrangeStateCommittee => RegistryEntry {
+                name: "lagrange-state-committee".to_string(),
+                registry: "registry-1.docker.io".to_string(),
+                image: "lagrangelabs/lagrange-node".to_string(),
+            },
+            NodeRegistryEntry::Hyperlane => RegistryEntry {
+                name: "hyperlane-operator".to_string(),
+                registry: "ghcr.io".to_string(),
+                image: "".to_string(),
+            },
+            NodeRegistryEntry::Ava => RegistryEntry {
+                name: "ap_avs".to_string(),
+                registry: "registry-1.docker.io".to_string(),
+                image: "avaprotocol/ap-avs".to_string(),
+            },
+            // NodeRegistryEntry::WitnesschainWatchtower => {
+            //     RegistryEntry { registry: "".to_string(), image: "".to_string() }
+            // }
+            NodeRegistryEntry::K3Labs => RegistryEntry {
+                name: "k3-labs-avs-operator".to_string(),
+                registry: "registry-1.docker.io".to_string(),
+                image: "k3official/k3-labs-avs-operator".to_string(),
+            },
+        }
+    }
+}
+
+pub struct RegistryEntry {
+    // TODO: Need to discuss canonical chain-agnostic names for AVSes
+    pub name: String,
+    pub registry: String,
+    pub image: String,
 }
 
 #[cfg(test)]
 mod tests {
-    use std::boxed;
 
-    use tokio_stream::StreamExt;
+    use super::*;
 
-    async fn run(
-        host: &str,
-        user: Option<String>,
-        passwd: Option<String>,
-        image: &str,
-    ) -> Result<(), boxed::Box<dyn std::error::Error>> {
-        let client = docker_registry::v2::Client::configure()
-            .registry(host)
-            .insecure_registry(false)
-            .username(user)
-            .password(passwd)
-            .build()?;
+    #[tokio::test]
+    async fn test_tags() -> Result<(), Box<dyn std::error::Error>> {
+        let registry = "registry-1.docker.io";
+        let image = "lagrangelabs/lagrange-node";
+        let registry = "ghcr.io";
+        let image = "layr-labs/eigenda/opr-node";
+        println!("[{}] requesting tags for image {}", registry, image);
 
-        let login_scope = format!("repository:{}:pull", image);
-        let dclient = client.authenticate(&[&login_scope]).await?;
+        let client: DockerRegistry = DockerRegistry::from_host_and_image(registry, image).await?;
+        let tags = client.get_tags().await?;
+        assert!(!tags.is_empty());
 
-        // Get all tags (passing None instead of Some(7) for limit)
-        dclient
-            .get_tags(image, None)
-            .collect::<Vec<_>>()
-            .await
-            .into_iter()
-            .map(Result::unwrap)
-            .for_each(|tag| {
-                println!("{}", tag); // Print just the tag name without debug formatting
-            });
+        let digest = client.get_tag_digest("0.8.4").await;
+        println!("digest: {:?}", digest);
 
         Ok(())
     }
 
     #[tokio::test]
-    async fn test_tags() {
-        let registry = "registry-1.docker.io";
-        let image = "lagrangelabs/lagrange-node";
-
-        println!("[{}] requesting tags for image {}", registry, image);
-
-        // Optional authentication if needed
-        let user = std::env::var("DKREG_USER").ok();
-        let password = std::env::var("DKREG_PASSWD").ok();
-
-        let res = run(registry, user, password, image).await;
-        if let Err(e) = res {
-            println!("[{}] {}", registry, e);
-            std::process::exit(1);
-        };
+    async fn test_registry_entry_tags() -> Result<(), Box<dyn std::error::Error>> {
+        let all_entries = NodeRegistryEntry::all();
+        for entry in all_entries {
+            let entry = entry.registry_entry();
+            println!("[{}] requesting tags for image {}", entry.registry, entry.image);
+            let client: DockerRegistry =
+                DockerRegistry::from_host_and_image(&entry.registry, &entry.image).await?;
+            let tags = client.get_tags().await?;
+            println!("Tags for image {}: {:?}", entry.image, tags.to_vec());
+            assert!(!tags.is_empty());
+            let digest = client.get_tag_digest(&tags[0]).await;
+        }
+        Ok(())
     }
 }

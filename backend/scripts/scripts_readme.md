@@ -119,3 +119,16 @@ DB_PORT=5432
 - Update version numbers in script as needed
 - Modify organization credentials for production
 - Adjust timeout values if needed
+
+Script docker image sources:
+
+- GREEN (Eigenda)[https://github.com/Layr-Labs/eigenda] - `docker://ghcr.io/layr-labs/eigenda/opr-node` - semver
+- ORANGE (Hyperlane)[https://github.com/hyperlane-xyz/hyperlane-monorepo] - `docker://gcr.io/abacus-labs-dev/hyperlane-agent` - not semver
+- RED (Brevis)[https://github.com/brevis-network/brevis-avs] - No remote image available
+- GREEN (Ava)[https://github.com/AvaProtocol/EigenLayer-AVS] - `docker://avaprotocol/ap-avs` - semver + main + latest
+- GREEN (Lagrange ZK Prover (lgn-coprocessor))[https://github.com/Lagrange-Labs/lgn-coprocessor] - `docker://lagrangelabs/worker` - semver
+- GREEN (Lagrange State Committees (lsc-node))[https://github.com/Lagrange-Labs/lsc-node] - semver
+- ORANGE (Witnesschain Watchtower)[https://github.com/orgs/witnesschain-com/repositories] - ??
+- RED (Predicate)[https://github.com/orgs/PredicateLabs/repositories] - No image available (Binary only)
+- ?? (Eoracle)[https://github.com/orgs/Eoracle/repositories] - `eoracle-data-validator`
+- GREEN (K3 Labs)[https://github.com/orgs/k3-labs/repositories] - `k3official/k3-labs-avs-operator` - latest

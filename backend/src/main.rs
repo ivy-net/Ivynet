@@ -1,4 +1,4 @@
-use std::sync::Arc;
+use std::{collections::HashMap, sync::Arc};
 
 use chrono::DateTime;
 use clap::Parser as _;
@@ -9,10 +9,14 @@ use ivynet_backend::{
     grpc, http,
     telemetry::start_tracing,
 };
-use ivynet_core::{node_type::NodeType, utils::try_parse_chain};
+use ivynet_core::{
+    docker::{DockerRegistry, NodeRegistryEntry},
+    node_type::NodeType,
+    utils::try_parse_chain,
+};
 use semver::Version;
 use sqlx::PgPool;
-use tracing::error;
+use tracing::{error, info, warn};
 
 #[tokio::main]
 async fn main() -> Result<(), BackendError> {
@@ -30,6 +34,8 @@ async fn main() -> Result<(), BackendError> {
         Ok(add_version_hash(&pool, &avs_data).await?)
     } else if let Some(avs_data) = config.set_breaking_change_version {
         Ok(set_breaking_change_version(&pool, &avs_data).await?)
+    } else if config.add_node_version_hashes {
+        Ok(add_node_version_hashes(&pool).await?)
     } else {
         let cache = memcache::connect(config.cache_url.to_string())?;
         let http_service = http::serve(
@@ -53,6 +59,15 @@ async fn main() -> Result<(), BackendError> {
 
         Ok(())
     }
+}
+
+#[derive(clap::Parser, Debug, Clone)]
+pub enum BackendCommands {
+    #[command(
+        name = "add-version-hashes",
+        about = "Add version hashes for all nodes in the registry to backend db"
+    )]
+    AddNodeVersionHashes,
 }
 
 async fn add_account(pool: &PgPool, org: &str) -> Result<(), BackendError> {
@@ -112,4 +127,46 @@ async fn set_breaking_change_version(
     );
     DbAvsVersionData::set_breaking_change_version(pool, &name, &chain, &version, &datetime).await?;
     Ok(())
+}
+
+async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
+    let registry_tags = get_node_version_hashes().await?;
+    for (entry, tags) in registry_tags {
+        info!("Adding version hashes for {}", entry.registry_entry().name);
+        for (tag, digest) in tags {
+            let name = entry.registry_entry().name;
+            match db::AvsVersionHash::add_version(pool, &name, &digest, &tag).await {
+                Ok(_) => {}
+                Err(e) => warn!("Failed to add {}:{}:{} | {}", name, tag, digest, e),
+            };
+        }
+    }
+    Ok(())
+}
+
+//  Resulting hashmap returns a vec - tuple of (tag, digest), with digest as an empty string if not found
+async fn get_node_version_hashes(
+) -> Result<HashMap<NodeRegistryEntry, Vec<(String, String)>>, BackendError> {
+    let mut registry_tags = HashMap::new();
+
+    for entry in NodeRegistryEntry::all() {
+        let client = DockerRegistry::from_node_registry_entry(&entry).await?;
+        info!("Requesting tags for image {}", entry.registry_entry().image);
+        let tags = client.get_tags().await?;
+
+        let mut num_valid_digests = 0;
+        let mut tag_digests = Vec::new();
+
+        let tags_len = tags.len();
+        for tag in tags {
+            let digest = client.get_tag_digest(&tag).await?.unwrap_or_default();
+            if !digest.is_empty() {
+                num_valid_digests += 1;
+            }
+            tag_digests.push((tag, digest));
+        }
+        info!("Found {} valid digests for {} tags", num_valid_digests, tags_len);
+        registry_tags.insert(entry, tag_digests);
+    }
+    Ok(registry_tags)
 }
