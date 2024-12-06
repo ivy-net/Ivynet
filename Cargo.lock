@@ -4624,7 +4624,7 @@ dependencies = [
  "futures",
  "ivynet-core",
  "serde_json",
- "thiserror 2.0.3",
+ "thiserror 2.0.4",
  "tokio",
  "tracing",
 ]
