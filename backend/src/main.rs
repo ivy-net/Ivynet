@@ -144,7 +144,8 @@ async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
     Ok(())
 }
 
-//  Resulting hashmap returns a vec - tuple of (tag, digest), with digest as an empty string if not found
+//  Resulting hashmap returns a vec - tuple of (tag, digest), with digest as an empty string if not
+// found
 async fn get_node_version_hashes(
 ) -> Result<HashMap<NodeRegistryEntry, Vec<(String, String)>>, BackendError> {
     let mut registry_tags = HashMap::new();

@@ -44,9 +44,9 @@ impl DockerRegistry {
     }
 
     pub async fn get_tags(&self) -> Result<Vec<String>, DockerRegistryError> {
-        // A bit terse, explanation: we collect the results of the get_tags stream into a Vec, then iterate
-        // over the results, logging any errors and filtering them out. Finally, we collect the
-        // results into a Vec.
+        // A bit terse, explanation: we collect the results of the get_tags stream into a Vec, then
+        // iterate over the results, logging any errors and filtering them out. Finally, we
+        // collect the results into a Vec.
         let res = self
             .client
             .get_tags(&self.image, None)
