@@ -2740,6 +2740,7 @@ dependencies = [
  "chrono",
  "clap",
  "ivynet-core",
+ "ivynet-macros",
  "memcache",
  "semver",
  "sendgrid",
