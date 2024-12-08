@@ -161,3 +161,8 @@ chmod +x ./scripts/get_version_hashes.sh
 
 echo "Setup complete!"
 ```
+
+TODO: 
+1. Create run opt which will call find_latest_avs_version and set latest_version in DbAvsVerisonData
+
+2. Create http call which will return a list of Avses for a given X and whether or not they are the latest version

@@ -84,6 +84,9 @@ pub enum BackendError {
 
     #[error(transparent)]
     DockerRegistryError(#[from] ivynet_core::docker::DockerRegistryError),
+
+    #[error("No valid node versions found")]
+    NoVersionsFound,
 }
 
 impl IntoResponse for BackendError {

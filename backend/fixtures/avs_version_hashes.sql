@@ -16,10 +16,13 @@ INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('ap_avs', 'sha256
 INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('ap_avs', 'sha256:984e77b994bf319f014c2c163fea33cb7983d23b2d41f220a4f8e02925355074', 'fa6335b');
 INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('ap_avs', 'sha256:c45686b77ce2477278c2dcec16c93292e8809cf60cccbc8ab52c4474f429af24', 'main');
 INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('ap_avs', 'sha256:ba2eea6dd5a31c3f61aace5e7dc1794efcaf9c268533dff3b4f3f23ea5ea140f', 'unstable');
+INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('ap_avs', 'sha256:c430ea5c37d64ed5c51aaea5e5e447b5327d6832b3538f1c85fe6797fc532187', '1.2.0');
 INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('ap_avs', 'sha256:f778f358b24956d7dfcecbb6c8e7e4e4fd82148e3c0f7954600f1e00d8028941', '1.1.0');
 INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('ap_avs', 'sha256:c430ea5c37d64ed5c51aaea5e5e447b5327d6832b3538f1c85fe6797fc532187', '1.2');
 INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('ap_avs', 'sha256:0c5bf6731cc07c784296f184a909e55af7447ad7cf9eb17985c0812d109821f9', '4c2a01e');
 INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('ap_avs', 'sha256:19e75e29cd66cad582a54c83e211e7768aa68f5a63793fd3a901b46359682d30', 'add-operator-docker');
+INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('ap_avs', 'sha256:2da1ae1a863c77a0bd8abd40f12f8edd94af04afe77c8f03402760ebd187d2d1', '1.2.0-feat-prerelease');
+
 
 INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('k3-labs-avs-operator', 'sha256:d09567b4681e27488878ca9b4727691be1b578935d3420a7d7a2c55b91955b3b', 'experimental');
 INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('k3-labs-avs-operator', 'sha256:2a0bcaa6755ac7898901f898a1cbb2db7bd56e375cbe8943ac3b9929b3518613', 'latest');
