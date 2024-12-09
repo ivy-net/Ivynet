@@ -2,12 +2,15 @@ use crate::error::Result;
 use ethers::{
     contract::{abigen, parse_log, ContractError, LogMeta},
     providers::{Middleware, Provider, Ws},
-    types::Address,
+    types::{Address, Chain},
 };
 use futures::{stream::SelectAll, Stream, StreamExt};
-use ivynet_core::grpc::{
-    backend_events::{backend_events_client::BackendEventsClient, Event, LatestBlockRequest},
-    tonic::{transport::Channel, Request},
+use ivynet_core::{
+    directory::get_all_directories_for_chain,
+    grpc::{
+        backend_events::{backend_events_client::BackendEventsClient, Event, LatestBlockRequest},
+        tonic::{transport::Channel, Request},
+    },
 };
 use std::{pin::Pin, sync::Arc};
 use tokio::sync::Mutex;
@@ -20,7 +23,7 @@ abigen!(
     Directory,
     r#"[
         event AVSMetadataURIUpdated(address indexed avs, string metadataURI)
-        event OperatorAVSRegistrationStatusUpdated(address indexed operator, address indexed avs, uint256 status)
+        event OperatorAVSRegistrationStatusUpdated(address indexed operator, address indexed avs, uint8 status)
     ]"#,
 );
 
@@ -93,7 +96,7 @@ pub async fn fetch(
     from_block: u64,
     addresses: &[Address],
 ) -> Result<()> {
-    info!("Starting even listener for ledger and BRIX contracts under {rpc_url}");
+    info!("Starting even listener under {rpc_url}");
 
     let mut start_block = from_block;
     info!("Blockchain event streaming started from {start_block} block...");
@@ -101,7 +104,18 @@ pub async fn fetch(
     let provider = Provider::<Ws>::connect_with_reconnects(rpc_url, 0).await?;
     let chain_id = provider.get_chainid().await?.as_u64();
     let last_block = provider.get_block_number().await?.as_u64();
+    debug!("Chain id is {chain_id}");
+    let addresses = if addresses.is_empty() {
+        get_all_directories_for_chain(chain_id.try_into().unwrap_or(Chain::Mainnet))
+    } else {
+        addresses
+    };
 
+    if addresses.is_empty() {
+        panic!("No contracts to monitor");
+    }
+
+    debug!("We will listen at {addresses:?}");
     start_block = last_block;
 
     let client = Arc::new(provider.clone());
@@ -182,12 +196,14 @@ pub async fn report_directory_event(
     debug!("Reading event {event:?}");
 
     if let DirectoryEvents::OperatorAVSRegistrationStatusUpdatedFilter(f) = event.0 {
+        // TODO: Just for testing, let's try to match up what it is
+        info!("This event comes from avs {:?}", f.avs);
         backend
             .report_event(Request::new(Event {
                 directory: f.avs.as_bytes().to_vec(),
                 chain_id,
                 address: f.operator.as_bytes().to_vec(),
-                active: f.status.low_u64() > 0,
+                active: f.status > 0,
                 block_number: event.1.block_number.as_u64(),
                 log_index: event.1.log_index.as_u64(),
             }))
