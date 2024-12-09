@@ -29,7 +29,7 @@ impl BackendEvents for EventsService {
         request: Request<LatestBlockRequest>,
     ) -> Result<Response<LatestBlock>, Status> {
         let req = request.into_inner();
-        let block_number = AvsActiveSet::get_latest_block(&self.pool, &req.address, req.chain_id)
+        let block_number = AvsActiveSet::get_latest_block(&self.pool, req.chain_id)
             .await
             .map_err(|a| Status::invalid_argument(format!("Bad arguments provided {a:?}")))?;
         Ok(Response::new(LatestBlock { block_number }))

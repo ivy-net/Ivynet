@@ -34,13 +34,10 @@ static ALL_AVSES: &[(Chain, NodeType, H160)] = &[
 pub fn get_all_avses() -> &'static HashMap<Chain, HashMap<NodeType, H160>> {
     static INSTANCE: OnceLock<HashMap<Chain, HashMap<NodeType, H160>>> = OnceLock::new();
     INSTANCE.get_or_init(|| {
-        let mut directories_by_chain = HashMap::new();
+        let mut directories_by_chain: HashMap<Chain, HashMap<NodeType, H160>> = HashMap::new();
 
         for (chain, node_type, address) in ALL_AVSES {
-            directories_by_chain
-                .entry(*chain)
-                .or_insert(HashMap::new())
-                .insert(*node_type, *address);
+            directories_by_chain.entry(*chain).or_default().insert(*node_type, *address);
         }
 
         directories_by_chain

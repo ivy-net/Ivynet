@@ -88,14 +88,9 @@ impl AvsActiveSet {
         Ok(set.map(|a| a.active).unwrap_or(false))
     }
 
-    pub async fn get_latest_block(
-        pool: &sqlx::PgPool,
-        directory: &[u8],
-        chain: u64,
-    ) -> Result<u64, BackendError> {
+    pub async fn get_latest_block(pool: &sqlx::PgPool, chain: u64) -> Result<u64, BackendError> {
         if let Some(block) = sqlx::query_scalar!(
-            r#"SELECT max(block) FROM avs_active_set WHERE directory = $1 AND chain_id = $2"#,
-            directory,
+            r#"SELECT max(block) FROM avs_active_set WHERE chain_id = $1"#,
             (chain as u64) as i64
         )
         .fetch_optional(pool)

@@ -188,6 +188,8 @@ async fn fetch_all_directory_events_between(
         }
     }
 
+    info!("Successfully fetched all directory events between {start} and {end}");
+
     Ok(())
 }
 
