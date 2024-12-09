@@ -124,7 +124,7 @@ pub async fn fetch(
         addresses.iter().map(|a| Directory::new(*a, client.clone())).collect::<Vec<_>>();
 
     for dir in &directories {
-        let last_checked = backend
+        let mut last_checked = backend
             .get_latest_block(Request::new(LatestBlockRequest {
                 address: dir.address().as_bytes().to_vec(),
                 chain_id,
@@ -132,6 +132,9 @@ pub async fn fetch(
             .await?
             .into_inner()
             .block_number;
+        if last_checked < last_block {
+            last_checked = last_block;
+        }
         fetch_all_directory_events_between(
             &mut backend,
             &client,
