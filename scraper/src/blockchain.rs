@@ -196,8 +196,6 @@ pub async fn report_directory_event(
     debug!("Reading event {event:?}");
 
     if let DirectoryEvents::OperatorAVSRegistrationStatusUpdatedFilter(f) = event.0 {
-        // TODO: Just for testing, let's try to match up what it is
-        info!("This event comes from avs {:?}", f.avs);
         backend
             .report_event(Request::new(Event {
                 directory: f.avs.as_bytes().to_vec(),
