@@ -211,5 +211,5 @@ pub async fn report_directory_event(
             .await?;
     }
 
-    Ok(0)
+    Ok(event.1.block_number.as_u64())
 }
