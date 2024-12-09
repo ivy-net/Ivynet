@@ -75,9 +75,9 @@ pub enum UpdateStatus {
 
 pub async fn build_avs_info(
     pool: &sqlx::PgPool,
-    avs: Avs,
+    mut avs: Avs,
     metrics: HashMap<String, Metric>,
-) -> AvsInfo {
+) -> Result<AvsInfo, BackendError> {
     let running_metric = metrics.get(RUNNING_METRIC);
 
     let version_map = DbAvsVersionData::get_all_avs_version(pool).await;
@@ -94,6 +94,9 @@ pub async fn build_avs_info(
     } else {
         false
     };
+
+    avs.active_set = active_set;
+    Avs::update_active_set(pool, avs.machine_id, &avs.avs_name, active_set).await?;
 
     if running_metric.is_none() {
         //Running metric missing should never really happen
@@ -158,13 +161,13 @@ pub async fn build_avs_info(
         errors.push(NodeError::NoOperatorId);
     }
 
-    AvsInfo {
+    Ok(AvsInfo {
         avs,
         uptime: metrics.get(UPTIME_METRIC).map_or(0.0, |m| m.value),
         performance_score: metrics.get(EIGEN_PERFORMANCE_METRIC).map_or(0.0, |m| m.value),
         update_status,
         errors,
-    }
+    })
 }
 
 pub fn get_update_status(
