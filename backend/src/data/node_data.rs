@@ -87,7 +87,7 @@ pub async fn build_avs_info(
 
     let active_set = if let (Some(address), Some(chain)) = (avs.operator_address, avs.chain) {
         if let Some(directory) = avs_contract(avs.avs_type, chain) {
-            AvsActiveSet::get_active_set(&pool, directory, address, chain).await.unwrap_or(false)
+            AvsActiveSet::get_active_set(pool, directory, address, chain).await.unwrap_or(false)
         } else {
             false
         }
