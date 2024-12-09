@@ -132,8 +132,8 @@ pub async fn fetch(
             .await?
             .into_inner()
             .block_number;
-        if last_checked < last_block {
-            last_checked = last_block;
+        if last_checked < from_block {
+            last_checked = from_block;
         }
         fetch_all_directory_events_between(
             &mut backend,
