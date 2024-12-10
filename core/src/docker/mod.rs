@@ -105,7 +105,7 @@ mod docker_registry_tests {
             let tags = client.get_tags().await?;
             println!("Tags for image {}: {:?}", registry, tags.to_vec());
             assert!(!tags.is_empty());
-            let digest = client.get_tag_digest(&tags[0]).await?;
+            let _digest = client.get_tag_digest(&tags[0]).await?;
         }
         Ok(())
     }
@@ -171,7 +171,7 @@ mod docker_registry_tests {
     #[ignore]
     async fn test_get_hyperlane_digests() -> Result<(), Box<dyn std::error::Error>> {
         let node_type = NodeType::Hyperlane;
-
+        let client = DockerRegistry::from_node_type(&node_type).await?;
         let tags = client.get_tags().await?;
         assert!(!tags.is_empty());
         let mut digests = Vec::new();
