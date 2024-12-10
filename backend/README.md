@@ -169,5 +169,3 @@ echo "Setup complete!"
 
 - Update node data versions
 `cargo run -- -- update-node-data-versions`
-
-
