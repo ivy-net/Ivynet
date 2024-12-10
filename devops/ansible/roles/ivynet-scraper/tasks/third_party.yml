@@ -1,0 +1,34 @@
+---
+- name: Install extra python packages(for github access)
+  ansible.builtin.pip:  # noqa: package-latest
+    name: "{{ item }}"
+    state: latest
+    break_system_packages: true
+  loop:
+    - github3.py
+    - psycopg2-binary
+  tags:
+    - ivynet_backend
+    - general
+    - download
+    - github
+    - postgres
+
+- name: Download sqlx-cli
+  ansible.builtin.get_url:
+    url: "{{ ivynet_backend_sqlx_url }}/{{ item }}"
+    dest: "{{ ivynet_backend_path_install }}/bin"
+    mode: "0755"
+    owner: root
+    group: root
+  loop:
+    - sqlx
+    - cargo-sqlx
+  register: upload_results
+  tags:
+    - ivynet_backend
+    - general
+    - download
+    - gcp
+    - postgres
+    - sqlx
