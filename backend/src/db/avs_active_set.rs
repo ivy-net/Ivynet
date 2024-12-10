@@ -61,7 +61,7 @@ impl AvsActiveSet {
         sqlx::query!(
             "INSERT INTO avs_active_set (directory, avs, operator, chain_id, active, block, log_index)
              VALUES ($1, $2, $3, $4, $5, $6, $7)
-             ON CONFLICT (directory, avs, operator, chain_id)
+             ON CONFLICT (avs, operator, chain_id)
              DO UPDATE SET active = $5, block = $6, log_index = $7",
              event.directory,
              event.avs,
