@@ -3,7 +3,6 @@ use ivynet_core::{
     ethers::types::{Address, Chain},
     node_type::NodeType,
 };
-use semver::Version;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -15,13 +14,30 @@ pub struct Avs {
     pub machine_id: Uuid,
     pub avs_name: String, //GIVEN BY THE USER OR A DEFAULT
     pub avs_type: NodeType,
-    pub avs_version: Version,
+    pub avs_version: String,
     pub chain: Option<Chain>,
     pub version_hash: String,
     pub operator_address: Option<Address>,
     pub active_set: bool,
     pub created_at: Option<NaiveDateTime>,
     pub updated_at: Option<NaiveDateTime>,
+}
+
+pub struct NodeContainer {
+    pub image: NodeImage,
+}
+
+/// Represents a specific docker image underlying the docker container for a node.
+pub struct NodeImage {
+    /// Registry where the image is stored, usually either "ghcr.io" or "registry-1.docker.io"
+    pub registry: String,
+    /// Repository where the image is stored, such as "avaprotocol/ap-avs" or
+    /// "ghcr.io/layr-labs/eigenda/opr-node"
+    pub repository: String,
+    /// Tag of the image, typically either semver, previxed semver, or "latest"
+    pub tag: String,
+    /// Image digest, the sha256 hash of the image digest w/o bult config.
+    pub digest: String,
 }
 
 #[derive(Clone, Debug)]
@@ -57,7 +73,7 @@ impl TryFrom<DbAvs> for Avs {
             machine_id: Uuid::from_slice(&db_avs.machine_id)?,
             avs_type: NodeType::from(db_avs.avs_type.as_str()),
             avs_name: db_avs.avs_name,
-            avs_version: Version::parse(&db_avs.avs_version)?,
+            avs_version: db_avs.avs_version,
             operator_address: db_avs.operator_address.map(|a| Address::from_slice(&a)),
             active_set: db_avs.active_set,
             version_hash: db_avs.version_hash,
@@ -229,10 +245,12 @@ impl Avs {
         machine_id: Uuid,
         avs_name: &str,
         version: &str,
+        image_digest: &str,
     ) -> Result<(), BackendError> {
         sqlx::query!(
-            "UPDATE avs SET avs_version = $1 WHERE machine_id = $2 AND avs_name = $3",
+            "UPDATE avs SET avs_version = $1, version_hash = $2 WHERE machine_id = $3 AND avs_name = $4",
             version,
+            image_digest,
             machine_id,
             avs_name
         )

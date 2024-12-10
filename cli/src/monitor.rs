@@ -108,7 +108,7 @@ pub async fn scan() -> Result<(), anyhow::Error> {
         .into_iter()
         .filter_map(|c| {
             if let (Some(names), Some(image_name), Some(ports)) = (c.names, c.image, c.ports) {
-                let avs_type = NodeType::from_image_name(&image_name);
+                let avs_type = NodeType::from_image(&image_name).unwrap_or(NodeType::Unknown);
                 let mut ports = ports.into_iter().filter_map(|p| p.public_port).collect::<Vec<_>>();
 
                 if !ports.is_empty() {

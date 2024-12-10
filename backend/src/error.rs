@@ -87,6 +87,9 @@ pub enum BackendError {
 
     #[error("No valid node versions found")]
     NoVersionsFound,
+
+    #[error(transparent)]
+    NodeTypeError(#[from] ivynet_core::node_type::NodeTypeError),
 }
 
 impl IntoResponse for BackendError {

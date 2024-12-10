@@ -2,7 +2,6 @@ use std::collections::HashMap;
 
 use chrono::NaiveDateTime;
 use ivynet_core::{ethers::types::Chain, node_type::NodeType, utils::try_parse_chain};
-use semver::Version;
 use serde::{Deserialize, Serialize};
 use sqlx::{query, PgPool};
 use utoipa::ToSchema;
@@ -19,6 +18,8 @@ pub struct AvsVersionData {
 }
 
 /// Unique identifier for a node type and chain combination
+/// NOTE: When this is serialized, the NodeType is serialized as a string which differs from the
+/// to_string() implementation.
 #[derive(Clone, Serialize, Deserialize, ToSchema, Eq, PartialEq, Hash, Debug)]
 pub struct NodeTypeId {
     pub node_type: NodeType,
@@ -28,8 +29,10 @@ pub struct NodeTypeId {
 /// Represents version information for an AVS node
 #[derive(Clone, Serialize, Deserialize, ToSchema, Eq, PartialEq, Debug)]
 pub struct VersionData {
-    pub latest_version: Version,
-    pub breaking_change_version: Option<Version>,
+    pub latest_version: String,
+    // Necessary for fixed-version node types (`latest`, `holesky`, etc.)
+    pub latest_version_digest: String,
+    pub breaking_change_version: Option<String>,
     pub breaking_change_datetime: Option<NaiveDateTime>,
 }
 
@@ -38,8 +41,9 @@ pub struct DbAvsVersionData {
     pub id: i32,
     pub node_type: String,
     pub chain: String,
-    pub latest_version: String,
-    pub breaking_change_version: Option<String>,
+    pub latest_version_tag: String,
+    pub latest_version_digest: String,
+    pub breaking_change_tag: Option<String>,
     pub breaking_change_datetime: Option<NaiveDateTime>,
 }
 
@@ -48,11 +52,9 @@ impl TryFrom<DbAvsVersionData> for AvsVersionData {
 
     fn try_from(db: DbAvsVersionData) -> Result<Self, Self::Error> {
         let version_data = VersionData {
-            latest_version: Version::parse(&db.latest_version)
-                .map_err(|_| BackendError::InvalidVersion)?,
-            breaking_change_version: db
-                .breaking_change_version
-                .and_then(|v| Version::parse(&v).ok()),
+            latest_version: db.latest_version_tag,
+            latest_version_digest: db.latest_version_digest,
+            breaking_change_version: db.breaking_change_tag.to_owned(),
             breaking_change_datetime: db.breaking_change_datetime,
         };
 
@@ -73,6 +75,8 @@ impl DbAvsVersionData {
     ) -> Result<HashMap<NodeTypeId, VersionData>, BackendError> {
         let versions =
             sqlx::query_as!(Self, "SELECT * FROM avs_version_data").fetch_all(pool).await?;
+
+        println!("{:#?}", versions);
 
         Ok(versions
             .into_iter()
@@ -121,19 +125,19 @@ impl DbAvsVersionData {
     ) -> Result<(), BackendError> {
         let query = match (&data.vd.breaking_change_version, &data.vd.breaking_change_datetime) {
             (Some(ver), Some(dt)) => query!(
-                "INSERT INTO avs_version_data (node_type, latest_version, chain, breaking_change_version, breaking_change_datetime)
+                "INSERT INTO avs_version_data (node_type, latest_version_tag, chain, breaking_change_tag, breaking_change_datetime)
                 VALUES ($1, $2, $3, $4, $5)",
                 data.id.node_type.to_string(),
-                data.vd.latest_version.to_string(),
+                data.vd.latest_version,
                 data.id.chain.to_string(),
-                ver.to_string(),
+                ver,
                 dt,
             ),
             _ => query!(
-                "INSERT INTO avs_version_data (node_type, latest_version, chain)
+                "INSERT INTO avs_version_data (node_type, latest_version_tag, chain)
                 VALUES ($1, $2, $3)",
                 data.id.node_type.to_string(),
-                data.vd.latest_version.to_string(),
+                data.vd.latest_version,
                 data.id.chain.to_string(),
             ),
         };
@@ -162,14 +166,16 @@ impl DbAvsVersionData {
         pool: &sqlx::PgPool,
         node_type: &NodeType,
         chain: &Chain,
-        latest_version: &Version,
+        latest_version_tag: &str,
+        latest_version_digest: &str,
     ) -> Result<(), BackendError> {
         query!(
-            "INSERT INTO avs_version_data (node_type, latest_version, chain)
-            VALUES ($1, $2, $3)
-            ON CONFLICT (node_type, chain) DO UPDATE SET latest_version = $2",
+            "INSERT INTO avs_version_data (node_type, latest_version_tag, latest_version_digest, chain)
+            VALUES ($1, $2, $3, $4)
+            ON CONFLICT (node_type, chain) DO UPDATE SET latest_version_tag = $2, latest_version_digest = $3",
             node_type.to_string(),
-            latest_version.to_string(),
+            latest_version_tag,
+            latest_version_digest,
             chain.to_string(),
         )
         .execute(pool)
@@ -182,37 +188,17 @@ impl DbAvsVersionData {
         pool: &sqlx::PgPool,
         node_type: &NodeType,
         chain: &Chain,
-        breaking_change_version: &Version,
+        breaking_change_version: &str,
         breaking_change_datetime: &NaiveDateTime,
     ) -> Result<(), BackendError> {
         query!(
             "UPDATE avs_version_data
-            SET breaking_change_version = $3, breaking_change_datetime = $4
+            SET breaking_change_tag = $3, breaking_change_datetime = $4
             WHERE node_type = $1 AND chain = $2",
             node_type.to_string(),
             chain.to_string(),
             Some(breaking_change_version.to_string()),
             Some(breaking_change_datetime)
-        )
-        .execute(pool)
-        .await?;
-
-        Ok(())
-    }
-
-    pub async fn set_latest_version(
-        pool: &sqlx::PgPool,
-        node_type: &NodeType,
-        chain: &Chain,
-        latest_version: &Version,
-    ) -> Result<(), BackendError> {
-        query!(
-            "UPDATE avs_version_data
-            SET latest_version = $3
-            WHERE node_type = $1 AND chain = $2",
-            node_type.to_string(),
-            chain.to_string(),
-            latest_version.to_string(),
         )
         .execute(pool)
         .await?;

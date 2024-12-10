@@ -14,7 +14,7 @@ use super::{eigenda::EigenDAConfig, lagrange::config::LagrangeConfig};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum NodeConfig {
     EigenDA(EigenDAConfig),
-    Lagrange(LagrangeConfig),
+    LagrangeZkWorkerHolesky(LagrangeConfig),
     Other(HashMap<String, toml::Value>),
 }
 
@@ -35,7 +35,7 @@ impl NodeConfig {
     pub fn path(&self) -> PathBuf {
         match self {
             NodeConfig::EigenDA(config) => config.path.clone(),
-            NodeConfig::Lagrange(config) => config.path.clone(),
+            NodeConfig::LagrangeZkWorkerHolesky(config) => config.path.clone(),
             NodeConfig::Other(config) => {
                 if let Some(path) = config.get("path") {
                     PathBuf::from(path.to_string())
@@ -49,7 +49,7 @@ impl NodeConfig {
     pub fn name(&self) -> String {
         match self {
             NodeConfig::EigenDA(config) => config.name(),
-            NodeConfig::Lagrange(config) => config.name(),
+            NodeConfig::LagrangeZkWorkerHolesky(config) => config.name(),
             NodeConfig::Other(config) => {
                 if let Some(name) = config.get("name") {
                     name.to_string()
@@ -77,7 +77,7 @@ impl NodeConfig {
     pub fn node_type(&self) -> NodeType {
         match self {
             NodeConfig::EigenDA(_) => NodeType::EigenDA,
-            NodeConfig::Lagrange(_) => NodeType::LagrangeHoleskyWorker,
+            NodeConfig::LagrangeZkWorkerHolesky(_) => NodeType::LagrangeZkWorkerHolesky,
             //TODO: THE USER NEEDS TO ENTER THE NODE TYPE STRING
             NodeConfig::Other(_) => NodeType::Unknown,
         }
@@ -140,11 +140,14 @@ impl NodeConfigBuilder {
             NodeType::EigenDA => dirs::home_dir()
                 .expect("Could not get a home directory")
                 .join(".eigenlayer/eigenda"),
-            NodeType::LagrangeHoleskyWorker => dirs::home_dir()
+            NodeType::LagrangeZkWorkerHolesky => dirs::home_dir()
                 .expect("Could not get a home directory")
                 .join(".eigenlayer/lagrange"),
-            NodeType::Ava => todo!(),
+            NodeType::LagrangeZkWorkerMainnet => dirs::home_dir()
+                .expect("Could not get a home directory")
+                .join(".eigenlayer/lagrange"),
             NodeType::Unknown => panic!("Unknown node type"),
+            _ => todo!(),
         }
     }
 }

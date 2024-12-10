@@ -4,17 +4,15 @@ use chrono::DateTime;
 use clap::Parser as _;
 use ivynet_backend::{
     config::Config,
+    data::avs_version::{find_latest_avs_version, VersionType},
     db::{self, avs_version::DbAvsVersionData, configure},
     error::BackendError,
     grpc, http,
     telemetry::start_tracing,
 };
 use ivynet_core::{
-    docker::{DockerRegistry, NodeRegistryEntry},
-    node_type::NodeType,
-    utils::try_parse_chain,
+    docker::DockerRegistry, ethers::types::Chain, node_type::NodeType, utils::try_parse_chain,
 };
-use semver::Version;
 use sqlx::PgPool;
 use tracing::{error, info, warn};
 
@@ -36,6 +34,10 @@ async fn main() -> Result<(), BackendError> {
         Ok(set_breaking_change_version(&pool, &avs_data).await?)
     } else if config.add_node_version_hashes {
         Ok(add_node_version_hashes(&pool).await?)
+    } else if config.update_node_data_versions {
+        update_node_data_versions(&pool, &Chain::Mainnet).await?;
+        update_node_data_versions(&pool, &Chain::Holesky).await?;
+        return Ok(());
     } else {
         let cache = memcache::connect(config.cache_url.to_string())?;
         let http_service = http::serve(
@@ -111,14 +113,19 @@ async fn add_version_hash(pool: &PgPool, version: &str) -> Result<(), BackendErr
     Ok(())
 }
 
+// TODO: Guards around setters. You should not be able to set a version that does not exist in the
+// db.
+
 async fn set_avs_version(pool: &sqlx::PgPool, avs_data: &str) -> Result<(), BackendError> {
     let avs_data = avs_data.split(':').collect::<Vec<_>>();
-    let name = NodeType::from(avs_data[0]);
+    let node_type = NodeType::from(avs_data[0]);
     let chain = try_parse_chain(avs_data[1]).expect("Cannot parse chain");
-    let version = Version::parse(avs_data[2]).expect("Cannot parse version");
+    let version = avs_data[2];
+    let digest =
+        db::AvsVersionHash::get_digest_for_version(pool, &node_type.to_string(), version).await?;
 
-    println!("Setting version {:?} for avs {:?} on {:?}", version, name, chain);
-    DbAvsVersionData::set_avs_version(pool, &name, &chain, &version).await?;
+    println!("Setting version {:?} for avs {:?} on {:?}", version, node_type, chain);
+    DbAvsVersionData::set_avs_version(pool, &node_type, &chain, version, &digest).await?;
     Ok(())
 }
 
@@ -129,7 +136,7 @@ async fn set_breaking_change_version(
     let avs_data = avs_data.split(':').collect::<Vec<_>>();
     let name = NodeType::from(avs_data[0]);
     let chain = try_parse_chain(avs_data[1]).expect("Cannot parse chain");
-    let version = Version::parse(avs_data[2]).expect("Cannot parse breaking change version");
+    let version = avs_data[2];
     let timestamp = avs_data[3].parse::<i64>().expect("Cannot parse datetime") / 1000;
     let datetime = DateTime::from_timestamp(timestamp, 0).expect("Invalid timestamp").naive_utc();
 
@@ -137,34 +144,56 @@ async fn set_breaking_change_version(
         "Setting breaking change version {:?} at {:?} for avs {:?} on {:?}",
         version, datetime, name, chain
     );
-    DbAvsVersionData::set_breaking_change_version(pool, &name, &chain, &version, &datetime).await?;
+    DbAvsVersionData::set_breaking_change_version(pool, &name, &chain, version, &datetime).await?;
     Ok(())
 }
 
 async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
     let registry_tags = get_node_version_hashes().await?;
     for (entry, tags) in registry_tags {
-        info!("Adding version hashes for {}", entry.registry_entry().name);
-        for (tag, digest) in tags {
-            let name = entry.registry_entry().name;
-            match db::AvsVersionHash::add_version(pool, &name, &digest, &tag).await {
-                Ok(_) => info!("Added {}:{}:{}", name, tag, digest),
-                Err(e) => warn!("Failed to add {}:{}:{} | {}", name, tag, digest, e),
-            };
+        let name = entry.to_string();
+        match VersionType::from(&entry) {
+            VersionType::SemVer => {
+                info!("Adding SemVer version hashes for {}", name);
+                for (tag, digest) in tags {
+                    match db::AvsVersionHash::add_version(pool, &name, &digest, &tag).await {
+                        Ok(_) => info!("Added {}:{}:{}", name, tag, digest),
+                        Err(e) => warn!("Failed to add {}:{}:{} | {}", name, tag, digest, e),
+                    };
+                }
+            }
+            VersionType::FixedVer => {
+                info!("Updating fixed version hashes for {}", name);
+                for (tag, digest) in tags {
+                    match db::AvsVersionHash::update_version(pool, &name, &digest, &tag).await {
+                        Ok(_) => info!("Updated {}:{}:{}", name, tag, digest),
+                        Err(e) => warn!("Failed to update {}:{}:{} | {}", name, tag, digest, e),
+                    };
+                }
+            }
         }
     }
     Ok(())
 }
 
-//  Resulting hashmap returns a vec - tuple of (tag, digest), with digest as an empty string if not
-// found
-async fn get_node_version_hashes(
-) -> Result<HashMap<NodeRegistryEntry, Vec<(String, String)>>, BackendError> {
+async fn update_node_data_versions(pool: &PgPool, chain: &Chain) -> Result<(), BackendError> {
+    let node_types = NodeType::all_known();
+    for node in node_types {
+        let (tag, digest) = find_latest_avs_version(pool, &node).await?;
+        db::DbAvsVersionData::set_avs_version(pool, &node, chain, &tag, &digest).await?;
+    }
+    Ok(())
+}
+
+///  Resulting hashmap returns a vec - tuple of (tag, digest), with digest as an empty string if not
+/// found. TODO: Thould be its own system that fetches tags more granularly to handle failures.
+async fn get_node_version_hashes() -> Result<HashMap<NodeType, Vec<(String, String)>>, BackendError>
+{
     let mut registry_tags = HashMap::new();
 
-    for entry in NodeRegistryEntry::all() {
-        let client = DockerRegistry::from_node_registry_entry(&entry).await?;
-        info!("Requesting tags for image {}", entry.registry_entry().image);
+    for entry in NodeType::all_known() {
+        let client = DockerRegistry::from_node_type(&entry).await?;
+        info!("Requesting tags for image {}", entry.default_repository()?);
         let tags = client.get_tags().await?;
 
         let mut num_valid_digests = 0;

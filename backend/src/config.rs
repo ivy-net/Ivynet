@@ -89,4 +89,7 @@ pub struct Config {
 
     #[arg(long)]
     pub add_node_version_hashes: bool,
+
+    #[arg(long)]
+    pub update_node_data_versions: bool,
 }

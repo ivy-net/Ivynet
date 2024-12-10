@@ -123,12 +123,13 @@ DB_PORT=5432
 Script docker image sources:
 
 - [X] (Eigenda)[https://github.com/Layr-Labs/eigenda] - `docker://ghcr.io/layr-labs/eigenda/opr-node` - semver
-- [X] (Hyperlane)[https://github.com/hyperlane-xyz/hyperlane-monorepo] - `docker://gcr.io/abacus-labs-dev/hyperlane-agent` - not semver
-- RED (Brevis)[https://github.com/brevis-network/brevis-avs] - No remote image available
 - [X] (Ava)[https://github.com/AvaProtocol/EigenLayer-AVS] - `docker://avaprotocol/ap-avs` - semver + main + latest
 - [X] (Lagrange ZK Prover (lgn-coprocessor))[https://github.com/Lagrange-Labs/lgn-coprocessor] - `docker://lagrangelabs/worker` - semver
-- [X] (Lagrange State Committees (lsc-node))[https://github.com/Lagrange-Labs/lsc-node] - semver
+- [X] (Lagrange State Committees (lsc-node))[https://github.com/Lagrange-Labs/lsc-node] - `lagrange-node` - semver
+- [X] (K3 Labs)[https://github.com/orgs/k3-labs/repositories] - `k3official/k3-labs-avs-operator` - latest
+
+- [X](Eoracle)[https://github.com/orgs/Eoracle/repositories] - `eoracle/data-validator`
+- [X] (Hyperlane)[https://github.com/hyperlane-xyz/hyperlane-monorepo] - `docker://gcr.io/abacus-labs-dev/hyperlane-agent` - not semver
 - ORANGE (Witnesschain Watchtower)[https://github.com/orgs/witnesschain-com/repositories] - ??
 - [X] (Predicate)[https://github.com/orgs/PredicateLabs/repositories] - No image available (Binary only)
-- [X](Eoracle)[https://github.com/orgs/Eoracle/repositories] - `eoracle-data-validator`
-- [X] (K3 Labs)[https://github.com/orgs/k3-labs/repositories] - `k3official/k3-labs-avs-operator` - latest
+- RED (Brevis)[https://github.com/brevis-network/brevis-avs] - No remote image available

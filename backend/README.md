@@ -162,7 +162,12 @@ chmod +x ./scripts/get_version_hashes.sh
 echo "Setup complete!"
 ```
 
-TODO: 
-1. Create run opt which will call find_latest_avs_version and set latest_version in DbAvsVerisonData
+### Backend commands
 
-2. Create http call which will return a list of Avses for a given X and whether or not they are the latest version
+- Fetch all node versions for valid docker images:
+`cargo run -- --add-node-version-hashes`
+
+- Update node data versions
+`cargo run -- -- update-node-data-versions`
+
+

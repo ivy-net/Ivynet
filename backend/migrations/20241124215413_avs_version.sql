@@ -7,4 +7,4 @@ CREATE TABLE IF NOT EXISTS avs_version_hash (
 );
 
 ALTER TABLE avs_version_hash
-ADD CONSTRAINT unique_avs_type_version UNIQUE (avs_type, version);
+ADD CONSTRAINT unique_avs_type_version_hash UNIQUE (avs_type, version);

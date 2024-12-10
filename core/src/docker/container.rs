@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{str::FromStr, time::Duration};
 
 use bollard::{
     container::{LogOutput, LogsOptions},
@@ -17,6 +17,25 @@ use crate::{
 };
 
 use super::dockerapi::DockerClient;
+
+/// Type representing a docker image verison `repository:tag.` Primarily for tracking image version
+/// between container and image.
+pub struct DockerImageVersion {
+    pub repository: String,
+    pub tag: String,
+}
+
+impl FromStr for DockerImageVersion {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let parts: Vec<&str> = s.rsplitn(2, ':').collect();
+        if parts.len() != 2 {
+            return Err("Invalid image version string".to_string());
+        }
+        Ok(Self { repository: parts[0].to_string(), tag: parts[1].to_string() })
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct Container(pub ContainerSummary);

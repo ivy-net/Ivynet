@@ -1,3 +1,5 @@
+-- Table for a particular node on a given machine.
+
 CREATE TABLE IF NOT EXISTS avs (
     avs_name          VARCHAR(250) NOT NULL,
     machine_id        UUID NOT NULL REFERENCES machine
