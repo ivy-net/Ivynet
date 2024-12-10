@@ -4,8 +4,6 @@
     name: "{{ item }}"
     update_cache: true
   loop:
-    - libssl-dev
-    - pkg-config
     - libmemcached-tools
     - memcached
     - postgresql
