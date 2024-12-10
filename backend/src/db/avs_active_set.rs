@@ -8,7 +8,7 @@ use utoipa::ToSchema;
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct AvsActiveSet {
-    pub directory: Option<Address>,
+    pub directory: Address,
     pub avs: Address,
     pub operator: Address,
     pub chain_id: u64,
@@ -19,7 +19,7 @@ pub struct AvsActiveSet {
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct DbAvsActiveSet {
-    pub directory: Option<Vec<u8>>,
+    pub directory: Vec<u8>,
     pub avs: Vec<u8>,
     pub operator: Vec<u8>,
     pub chain_id: i64,
@@ -31,7 +31,7 @@ pub struct DbAvsActiveSet {
 impl From<AvsActiveSet> for DbAvsActiveSet {
     fn from(key: AvsActiveSet) -> Self {
         DbAvsActiveSet {
-            directory: key.directory.map(|d| d.as_bytes().to_vec()),
+            directory: key.directory.as_bytes().to_vec(),
             avs: key.avs.as_bytes().to_vec(),
             operator: key.operator.as_bytes().to_vec(),
             chain_id: key.chain_id as i64,
@@ -45,7 +45,7 @@ impl From<AvsActiveSet> for DbAvsActiveSet {
 impl From<DbAvsActiveSet> for AvsActiveSet {
     fn from(key: DbAvsActiveSet) -> Self {
         AvsActiveSet {
-            directory: key.directory.map(|d| Address::from_slice(&d)),
+            directory: Address::from_slice(&key.directory),
             avs: Address::from_slice(&key.avs),
             operator: Address::from_slice(&key.operator),
             chain_id: key.chain_id as u64,
