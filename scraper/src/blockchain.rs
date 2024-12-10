@@ -160,7 +160,7 @@ pub async fn fetch(
             >)
         .await;
     }
-    debug!("Start listening...");
+    info!("Start listening...");
 
     _ = pool.process().await?;
     Ok(())
