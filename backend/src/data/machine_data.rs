@@ -114,7 +114,7 @@ pub async fn build_machine_info(
         let metrics =
             Metric::get_organized_for_avs(pool, machine.machine_id, &avs.avs_name.to_string())
                 .await?;
-        let avs_info = build_avs_info(pool, avs.clone(), metrics).await;
+        let avs_info = build_avs_info(pool, avs.clone(), metrics).await?;
 
         if !avs_info.errors.is_empty() {
             let node_error_info = NodeErrorInfo {
@@ -174,7 +174,7 @@ pub async fn get_machine_health(
             let node_metrics_map =
                 Metric::get_organized_for_avs(pool, avs.machine_id, &avs.avs_name.to_string())
                     .await?;
-            let avs_info = build_avs_info(pool, avs.clone(), node_metrics_map).await;
+            let avs_info = build_avs_info(pool, avs.clone(), node_metrics_map).await?;
             if !avs_info.errors.is_empty() {
                 has_errors = true;
                 break;

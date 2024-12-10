@@ -16,6 +16,7 @@ tracing = { version = "0.1", features = ["log"] }
 ivynet-core = { path = "../core" }
 futures = "0.3.31"
 ethers = { version = "2.0.14", features = ["ws", "abigen"] }
+tracing-subscriber = "0.3.19"
 
 [lints]
 workspace = true

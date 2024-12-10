@@ -1,4 +1,4 @@
-use ivynet_core::node_type::NodeType;
+use ivynet_core::{directory::avs_contract, node_type::NodeType};
 use serde::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -13,7 +13,7 @@ use crate::{
     db::{
         avs_version::{DbAvsVersionData, NodeTypeId, VersionData},
         metric::Metric,
-        Avs, AvsVersionHash,
+        Avs, AvsActiveSet, AvsVersionHash,
     },
     error::BackendError,
 };
@@ -75,9 +75,9 @@ pub enum UpdateStatus {
 
 pub async fn build_avs_info(
     pool: &sqlx::PgPool,
-    avs: Avs,
+    mut avs: Avs,
     metrics: HashMap<String, Metric>,
-) -> AvsInfo {
+) -> Result<AvsInfo, BackendError> {
     let running_metric = metrics.get(RUNNING_METRIC);
 
     let version_map = DbAvsVersionData::get_all_avs_version(pool).await;
@@ -85,12 +85,25 @@ pub async fn build_avs_info(
     //Start of error building
     let mut errors = vec![];
 
+    let active_set = if let (Some(address), Some(chain)) = (avs.operator_address, avs.chain) {
+        if let Some(directory) = avs_contract(avs.avs_type, chain) {
+            AvsActiveSet::get_active_set(pool, directory, address, chain).await.unwrap_or(false)
+        } else {
+            false
+        }
+    } else {
+        false
+    };
+
+    avs.active_set = active_set;
+    Avs::update_active_set(pool, avs.machine_id, &avs.avs_name, active_set).await?;
+
     if running_metric.is_none() {
         //Running metric missing should never really happen
         errors.push(NodeError::CrashedNode);
 
         //But if it does and you're in the active set, flag
-        if avs.active_set {
+        if active_set {
             errors.push(NodeError::ActiveSetNoDeployment);
         }
     }
@@ -98,7 +111,7 @@ pub async fn build_avs_info(
     if let Some(run_met) = running_metric {
         //If running metric is not 1, the node has crashed
         if run_met.value == 1.0 {
-            if !avs.active_set {
+            if !active_set {
                 errors.push(NodeError::UnregisteredFromActiveSet);
             }
 
@@ -118,7 +131,7 @@ pub async fn build_avs_info(
             errors.push(NodeError::CrashedNode);
 
             //In active set but not running a node could be inactivity slashable
-            if avs.active_set {
+            if active_set {
                 errors.push(NodeError::ActiveSetNoDeployment);
             }
         }
@@ -148,13 +161,13 @@ pub async fn build_avs_info(
         errors.push(NodeError::NoOperatorId);
     }
 
-    AvsInfo {
+    Ok(AvsInfo {
         avs,
         uptime: metrics.get(UPTIME_METRIC).map_or(0.0, |m| m.value),
         performance_score: metrics.get(EIGEN_PERFORMANCE_METRIC).map_or(0.0, |m| m.value),
         update_status,
         errors,
-    }
+    })
 }
 
 pub fn get_update_status(

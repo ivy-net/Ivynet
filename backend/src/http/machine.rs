@@ -271,7 +271,7 @@ pub async fn get_all_node_data(
     for node in nodes {
         let metrics =
             Metric::get_organized_for_avs(&state.pool, machine.machine_id, &node.avs_name).await?;
-        node_data.push(build_avs_info(&state.pool, node.clone(), metrics).await);
+        node_data.push(build_avs_info(&state.pool, node.clone(), metrics).await?);
     }
 
     Ok(Json(node_data))
