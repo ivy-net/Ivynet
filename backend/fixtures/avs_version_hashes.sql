@@ -32,7 +32,7 @@ INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('lagrange-zk-work
 INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('lagrange-zk-worker-holesky', 'sha256:b01e1dc761729088821cd2b2656decf18c869827600fc38c3ea715a3df25f050', 'v1.1.0');
 INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('lagrange-zk-worker-holesky', 'sha256:91d149d9c6a032d0f9f204fe67ca0ea1e337cd39acfca41f1fd8a020acc5a706', 'v1_base');
 INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('eoracle', 'sha256:2da1ae1a863c77a0bd8abd40f4328edd94af04afe77c8f03402760ebd187d2d2', 'v0.1.7-arm64');
-INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('eoracle', 'sha256:2da1ae1a863c77a0bd8abd40f4328edd94af04afe77c8f03402760ebd187d2d3', 'v0.1.8'); 
-INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('eoracle', 'sha256:2da1ae1a863c77a0bd8abd40f4328edd94af04afe77c8f03402760ebd187d2d4', 'v0.1.8-amd64');   
-INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('eoracle', 'sha256:2da1ae1a863c77a0bd8abd40f4328edd94af04afe77c8f03402760ebd187d2d5', 'v0.1.8-arm64');   
-INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('eoracle', 'sha256:2da1ae1a863c77a0bd8abd40f4328edd94af04afe77c8f03402760ebd187d2d6', 'v0.1.9'); 
+INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('eoracle', 'sha256:2da1ae1a863c77a0bd8abd40f4328edd94af04afe77c8f03402760ebd187d2d3', 'v0.1.8');
+INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('eoracle', 'sha256:2da1ae1a863c77a0bd8abd40f4328edd94af04afe77c8f03402760ebd187d2d4', 'v0.1.8-amd64');
+INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('eoracle', 'sha256:2da1ae1a863c77a0bd8abd40f4328edd94af04afe77c8f03402760ebd187d2d5', 'v0.1.8-arm64');
+INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('eoracle', 'sha256:2da1ae1a863c77a0bd8abd40f4328edd94af04afe77c8f03402760ebd187d2d6', 'v0.1.9');
