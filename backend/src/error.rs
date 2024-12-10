@@ -90,6 +90,9 @@ pub enum BackendError {
 
     #[error(transparent)]
     NodeTypeError(#[from] ivynet_core::node_type::NodeTypeError),
+
+    #[error("Invalid data for set_avs_version")]
+    InvalidSetAvsVersionData,
 }
 
 impl IntoResponse for BackendError {

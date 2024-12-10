@@ -118,8 +118,11 @@ async fn add_version_hash(pool: &PgPool, version: &str) -> Result<(), BackendErr
 
 async fn set_avs_version(pool: &sqlx::PgPool, avs_data: &str) -> Result<(), BackendError> {
     let avs_data = avs_data.split(':').collect::<Vec<_>>();
+    if avs_data.len() < 3 {
+        return Err(BackendError::InvalidSetAvsVersionData);
+    }
     let node_type = NodeType::from(avs_data[0]);
-    let chain = try_parse_chain(avs_data[1]).expect("Cannot parse chain");
+    let chain = try_parse_chain(avs_data[1]).map_err(|_| BackendError::InvalidChain)?;
     let version = avs_data[2];
     let digest =
         db::AvsVersionHash::get_digest_for_version(pool, &node_type.to_string(), version).await?;
