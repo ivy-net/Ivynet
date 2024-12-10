@@ -8,15 +8,3 @@
     name: ivynet-backend
     state: restarted
     enabled: true
-
-- name: Restart scraper holesky service
-  ansible.builtin.systemd_service:
-    name: ivynet-scraper-holesky
-    state: restarted
-    enabled: true
-
-- name: Restart scraper mainnet service
-  ansible.builtin.systemd_service:
-    name: ivynet-scraper-mainnet
-    state: restarted
-    enabled: true
