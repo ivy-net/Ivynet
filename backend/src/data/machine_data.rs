@@ -181,7 +181,7 @@ pub async fn get_machine_health(
             }
         }
 
-        if !avses.is_empty() && !has_errors {
+        if avses.is_empty() || has_errors {
             unhealthy_list.push(machine_id);
         } else {
             healthy_list.push(machine_id);
@@ -189,4 +189,9 @@ pub async fn get_machine_health(
     }
 
     Ok((healthy_list, unhealthy_list))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
 }
