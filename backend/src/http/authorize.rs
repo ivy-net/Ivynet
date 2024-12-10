@@ -194,6 +194,7 @@ pub async fn verify(
         let session = jar.get("session_id").ok_or(BackendError::Unauthorized)?.value();
 
         let user_id = cache.get(session)?.ok_or(BackendError::Unauthorized)?;
+        cache.set(session, user_id, 15 * 60)?;
         Account::get(pool, user_id).await
     }
 }

@@ -13,6 +13,14 @@ const EIGENDA_METRICS_ID: &str = "da-node";
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum NodeType {
     EigenDA,
+    Lagrange,
+    EOracle,
+    Hyperlane,
+    WitnessChain,
+    K3,
+    AVA,
+    Predicate,
+    Brevis,
     LagrangeHoleskyWorker,
     Unknown,
 }
@@ -29,6 +37,14 @@ impl From<&str> for NodeType {
     fn from(s: &str) -> Self {
         match s.to_lowercase().as_str() {
             "eigenda" => NodeType::EigenDA,
+            "lagrange" => NodeType::Lagrange,
+            "eoracle" => NodeType::EOracle,
+            "hyperlane" => NodeType::Hyperlane,
+            "witnesschain" => NodeType::WitnessChain,
+            "k3" => NodeType::K3,
+            "ava" => NodeType::AVA,
+            "predicate" => NodeType::Predicate,
+            "brevis" => NodeType::Brevis,
             "lagrange:holesky" => NodeType::LagrangeHoleskyWorker,
             _ => NodeType::Unknown,
         }
@@ -39,6 +55,14 @@ impl std::fmt::Display for NodeType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::EigenDA => write!(f, "EigenDA"),
+            Self::Lagrange => write!(f, "Lagrange"),
+            Self::EOracle => write!(f, "EOracle"),
+            Self::Hyperlane => write!(f, "Hyperlane"),
+            Self::WitnessChain => write!(f, "WitnessChain"),
+            Self::K3 => write!(f, "K3"),
+            Self::AVA => write!(f, "AVA"),
+            Self::Predicate => write!(f, "Predicate"),
+            Self::Brevis => write!(f, "Brevis"),
             Self::LagrangeHoleskyWorker => write!(f, "Lagrange Holesky Worker"),
             Self::Unknown => write!(f, "Unknown"),
         }
@@ -50,6 +74,14 @@ impl NodeType {
     pub fn default_image_name(&self) -> Result<&'static str, NodeTypeError> {
         let res = match self {
             Self::EigenDA => EIGENDA_IMAGE_NAME,
+            Self::Lagrange => todo!(),
+            Self::EOracle => todo!(),
+            Self::Hyperlane => todo!(),
+            Self::WitnessChain => todo!(),
+            Self::K3 => todo!(),
+            Self::AVA => todo!(),
+            Self::Predicate => todo!(),
+            Self::Brevis => todo!(),
             Self::LagrangeHoleskyWorker => LAGRANGE_HOLESKY_WORKER_IMAGE_NAME,
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };
@@ -59,6 +91,14 @@ impl NodeType {
     pub fn default_container_name(&self) -> Result<&'static str, NodeTypeError> {
         let res = match self {
             Self::EigenDA => "eigenda-native-node",
+            Self::Lagrange => todo!(),
+            Self::EOracle => todo!(),
+            Self::Hyperlane => todo!(),
+            Self::WitnessChain => todo!(),
+            Self::K3 => todo!(),
+            Self::AVA => todo!(),
+            Self::Predicate => todo!(),
+            Self::Brevis => todo!(),
             Self::LagrangeHoleskyWorker => todo!(),
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };
