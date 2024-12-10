@@ -14,12 +14,13 @@ message LatestBlock {
 }
 
 message Event {
-    bytes directory = 1;
-    uint64 chain_id = 2;
-    bytes address = 3;
-    bool active = 4;
-    uint64 block_number = 5;
-    uint64 log_index = 6;
+    bytes collection = 1;
+    bytes directory = 2;
+    uint64 chain_id = 3;
+    bytes address = 4;
+    bool active = 5;
+    uint64 block_number = 6;
+    uint64 log_index = 7;
 }
 
 service BackendEvents {

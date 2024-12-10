@@ -55,16 +55,17 @@ impl From<DbAvsActiveSet> for AvsActiveSet {
 impl AvsActiveSet {
     pub async fn record_event(pool: &sqlx::PgPool, event: &Event) -> Result<(), BackendError> {
         sqlx::query!(
-            "INSERT INTO avs_active_set (directory, operator, chain_id, active, block, log_index)
-             VALUES ($1, $2, $3, $4, $5, $6)
-             ON CONFLICT (directory, operator, chain_id)
-             DO UPDATE SET active = $4, block = $5, log_index = $6",
-            event.directory,
-            event.address,
-            event.chain_id as i64,
-            event.active,
-            event.block_number as i64,
-            event.log_index as i64
+            "INSERT INTO avs_active_set (collection, directory, operator, chain_id, active, block, log_index)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)
+             ON CONFLICT (collection, directory, operator, chain_id)
+             DO UPDATE SET active = $5, block = $6, log_index = $7",
+             event.collection,
+             event.directory,
+             event.address,
+             event.chain_id as i64,
+             event.active,
+             event.block_number as i64,
+             event.log_index as i64
         )
         .execute(pool)
         .await?;
@@ -88,9 +89,14 @@ impl AvsActiveSet {
         Ok(set.map(|a| a.active).unwrap_or(false))
     }
 
-    pub async fn get_latest_block(pool: &sqlx::PgPool, chain: u64) -> Result<u64, BackendError> {
+    pub async fn get_latest_block(
+        pool: &sqlx::PgPool,
+        collection: &[u8],
+        chain: u64,
+    ) -> Result<u64, BackendError> {
         if let Some(block) = sqlx::query_scalar!(
-            r#"SELECT max(block) FROM avs_active_set WHERE chain_id = $1"#,
+            r#"SELECT max(block) FROM avs_active_set WHERE collection = $1 AND chain_id = $2"#,
+            collection,
             (chain as u64) as i64
         )
         .fetch_optional(pool)

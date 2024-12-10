@@ -203,6 +203,7 @@ pub async fn report_directory_event(
     if let DirectoryEvents::OperatorAVSRegistrationStatusUpdatedFilter(f) = event.0 {
         backend
             .report_event(Request::new(Event {
+                collection: event.1.address.as_bytes().to_vec(),
                 directory: f.avs.as_bytes().to_vec(),
                 chain_id,
                 address: f.operator.as_bytes().to_vec(),
