@@ -37,7 +37,7 @@
     group: root
     mode: "0600"
   notify:
-    - Restart service
+    - Restart backend service
   tags:
     - general
     - ivynet
@@ -52,7 +52,7 @@
     mode: "0644"
   notify:
     - Reload daemon
-    - Restart service
+    - Restart backend service
   tags:
     - ivynet_backend
     - general
