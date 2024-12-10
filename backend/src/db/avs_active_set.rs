@@ -8,7 +8,8 @@ use utoipa::ToSchema;
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct AvsActiveSet {
-    pub directory: Address,
+    pub directory: Option<Address>,
+    pub avs: Address,
     pub operator: Address,
     pub chain_id: u64,
     pub active: bool,
@@ -18,7 +19,8 @@ pub struct AvsActiveSet {
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct DbAvsActiveSet {
-    pub directory: Vec<u8>,
+    pub directory: Option<Vec<u8>>,
+    pub avs: Vec<u8>,
     pub operator: Vec<u8>,
     pub chain_id: i64,
     pub active: bool,
@@ -29,7 +31,8 @@ pub struct DbAvsActiveSet {
 impl From<AvsActiveSet> for DbAvsActiveSet {
     fn from(key: AvsActiveSet) -> Self {
         DbAvsActiveSet {
-            directory: key.directory.as_bytes().to_vec(),
+            directory: key.directory.map(|d| d.as_bytes().to_vec()),
+            avs: key.avs.as_bytes().to_vec(),
             operator: key.operator.as_bytes().to_vec(),
             chain_id: key.chain_id as i64,
             active: key.active,
@@ -42,7 +45,8 @@ impl From<AvsActiveSet> for DbAvsActiveSet {
 impl From<DbAvsActiveSet> for AvsActiveSet {
     fn from(key: DbAvsActiveSet) -> Self {
         AvsActiveSet {
-            directory: Address::from_slice(&key.directory),
+            directory: key.directory.map(|d| Address::from_slice(&d)),
+            avs: Address::from_slice(&key.avs),
             operator: Address::from_slice(&key.operator),
             chain_id: key.chain_id as u64,
             active: key.active,
@@ -55,12 +59,12 @@ impl From<DbAvsActiveSet> for AvsActiveSet {
 impl AvsActiveSet {
     pub async fn record_event(pool: &sqlx::PgPool, event: &Event) -> Result<(), BackendError> {
         sqlx::query!(
-            "INSERT INTO avs_active_set (collection, directory, operator, chain_id, active, block, log_index)
+            "INSERT INTO avs_active_set (directory, avs, operator, chain_id, active, block, log_index)
              VALUES ($1, $2, $3, $4, $5, $6, $7)
-             ON CONFLICT (collection, directory, operator, chain_id)
+             ON CONFLICT (directory, avs, operator, chain_id)
              DO UPDATE SET active = $5, block = $6, log_index = $7",
-             event.collection,
              event.directory,
+             event.avs,
              event.address,
              event.chain_id as i64,
              event.active,
@@ -74,14 +78,14 @@ impl AvsActiveSet {
 
     pub async fn get_active_set(
         pool: &sqlx::PgPool,
-        directory: Address,
+        avs: Address,
         operator: Address,
         chain: Chain,
     ) -> Result<bool, BackendError> {
         let set = sqlx::query_as!(
-            DbAvsActiveSet, r#"SELECT directory, operator, chain_id, active, block, log_index
-                            FROM avs_active_set WHERE directory = $1 AND operator = $2 AND chain_id = $3"#,
-            directory.as_bytes(),
+            DbAvsActiveSet, r#"SELECT directory, avs, operator, chain_id, active, block, log_index
+                            FROM avs_active_set WHERE avs = $1 AND operator = $2 AND chain_id = $3"#,
+            avs.as_bytes(),
             operator.as_bytes(),
             (chain as u64) as i64
             ).fetch_optional(pool).await?;
@@ -91,12 +95,12 @@ impl AvsActiveSet {
 
     pub async fn get_latest_block(
         pool: &sqlx::PgPool,
-        collection: &[u8],
+        directory: &[u8],
         chain: u64,
     ) -> Result<u64, BackendError> {
         if let Some(block) = sqlx::query_scalar!(
-            r#"SELECT max(block) FROM avs_active_set WHERE collection = $1 AND chain_id = $2"#,
-            collection,
+            r#"SELECT max(block) FROM avs_active_set WHERE directory = $1 AND chain_id = $2"#,
+            directory,
             (chain as u64) as i64
         )
         .fetch_optional(pool)

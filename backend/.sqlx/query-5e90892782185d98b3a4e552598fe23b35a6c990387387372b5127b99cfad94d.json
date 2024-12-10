@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT max(block) FROM avs_active_set WHERE collection = $1 AND chain_id = $2",
+  "query": "SELECT max(block) FROM avs_active_set WHERE directory = $1 AND chain_id = $2",
   "describe": {
     "columns": [
       {
@@ -19,5 +19,5 @@
       null
     ]
   },
-  "hash": "5fe64370300080a38f51e1717d342376a0f67b17133bf1ab5fed84098e23257a"
+  "hash": "5e90892782185d98b3a4e552598fe23b35a6c990387387372b5127b99cfad94d"
 }

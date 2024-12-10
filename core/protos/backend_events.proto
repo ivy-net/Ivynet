@@ -14,8 +14,8 @@ message LatestBlock {
 }
 
 message Event {
-    bytes collection = 1;
-    bytes directory = 2;
+    bytes directory = 1;
+    bytes avs = 2;
     uint64 chain_id = 3;
     bytes address = 4;
     bool active = 5;
