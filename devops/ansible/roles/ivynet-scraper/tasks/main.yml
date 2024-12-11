@@ -24,6 +24,8 @@
     owner: root
     group: root
     mode: "0644"
+    vars:
+      network: "{{ item }}"
   loop:
     - mainnet
     - holesky

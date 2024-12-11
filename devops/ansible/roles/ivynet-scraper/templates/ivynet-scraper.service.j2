@@ -3,7 +3,7 @@ Description=Ivynet Scraper {{ ivynet_scraper_network }} service
 After=network.target
 
 [Service]
-Environment="RPC_URL={{ ivynet_scraper_rpc[ivynet_scraper_network] }}"
+Environment="RPC_URL={{ ivynet_scraper_rpc[network] }}"
 ExecStart={{ ivynet_scraper_path_install }}/bin/scraper
 Type=simple
 Restart=always
