@@ -167,24 +167,17 @@ pub async fn get_machine_health(
     let mut healthy_list: Vec<Uuid> = vec![];
 
     for machine_id in machine_ids {
-        let avses = Avs::get_machines_avs_list(pool, machine_id).await?;
-        let mut has_errors = false;
+        let Some(machine) = Machine::get(pool, machine_id).await? else {
+            continue;
+        };
 
-        for avs in &avses {
-            let node_metrics_map =
-                Metric::get_organized_for_avs(pool, avs.machine_id, &avs.avs_name.to_string())
-                    .await?;
-            let avs_info = build_avs_info(pool, avs.clone(), node_metrics_map).await?;
-            if !avs_info.errors.is_empty() {
-                has_errors = true;
-                break;
-            }
-        }
+        let machine_metrics = Metric::get_machine_metrics_only(pool, machine_id).await?;
+        let machine_info = build_machine_info(pool, &machine, machine_metrics).await?;
 
-        if avses.is_empty() || has_errors {
-            unhealthy_list.push(machine_id);
-        } else {
+        if machine_info.errors.is_empty() {
             healthy_list.push(machine_id);
+        } else {
+            unhealthy_list.push(machine_id);
         }
     }
 
@@ -192,6 +185,4 @@ pub async fn get_machine_health(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-}
+mod tests {}

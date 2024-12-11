@@ -200,16 +200,11 @@ pub fn get_update_status(
 }
 
 /// Condense list of metrics into a smaller list of metrics for the frontend
-pub fn condense_metrics(
-    node_type: NodeType,
-    metrics: &[Metric],
-) -> Result<Vec<Metric>, BackendError> {
+pub fn condense_metrics(node_type: NodeType, metrics: &[Metric]) -> Vec<Metric> {
     match node_type {
-        NodeType::EigenDA => Ok(filter_metrics_by_names(metrics, &CONDENSED_EIGENDA_METRICS_NAMES)),
-        _ => Err(BackendError::CondensedMetricsNotFound(format!(
-            "No condensed metrics found for AVS: {}, use the /metrics/all endpoint instead",
-            node_type
-        ))),
+        NodeType::EigenDA => filter_metrics_by_names(metrics, &CONDENSED_EIGENDA_METRICS_NAMES),
+        _ => metrics.to_vec(), /* If we haven't implemented a condensed metrics list for this
+                                * node type, just return all metrics */
     }
 }
 

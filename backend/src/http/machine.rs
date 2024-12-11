@@ -25,7 +25,7 @@ use crate::{
 
 use super::{authorize, HttpState};
 
-/// Grab information for every node in the organization
+/// Grab information for every machine in the organization
 #[utoipa::path(
     get,
     path = "/machine",
@@ -53,7 +53,7 @@ pub async fn machine(
     Ok(Json(info_reports))
 }
 
-/// Get an overview of which nodes are healthy and unhealthy
+/// Get an overview of which machines are healthy and unhealthy
 #[utoipa::path(
     get,
     path = "/machine/status",
@@ -108,7 +108,7 @@ pub async fn idle(
     Ok(Json(idle))
 }
 
-/// Get an overview of which nodes are unhealthy
+/// Get an overview of which machines are unhealthy
 #[utoipa::path(
     get,
     path = "/machine/unhealthy",
@@ -130,7 +130,7 @@ pub async fn unhealthy(
     Ok(Json(unhealthy_list.into_iter().map(|id| format!("{:?}", id)).collect()))
 }
 
-/// Get an overview of which nodes are healthy
+/// Get an overview of which machines are healthy
 #[utoipa::path(
     get,
     path = "/machine/healthy",
@@ -152,7 +152,7 @@ pub async fn healthy(
     Ok(Json(healthy_list.into_iter().map(|id| format!("{:?}", id)).collect()))
 }
 
-/// Set the name of a node
+/// Set the name of a machine
 #[utoipa::path(
     post,
     path = "/machine/:machine_id",
@@ -161,7 +161,7 @@ pub async fn healthy(
         (status = 404)
     ),
     params(
-        ("name" = String, Query, description = "The new name for the node")
+        ("name" = String, Query, description = "The new name for the machine")
     )
 )]
 pub async fn set_name(
@@ -172,7 +172,7 @@ pub async fn set_name(
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<(), BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    authorize::verify_node_ownership(&account, State(state.clone()), machine_id)
+    authorize::verify_machine_ownership(&account, State(state.clone()), machine_id)
         .await?
         .set_name(
             &state.pool,
@@ -213,7 +213,7 @@ pub async fn delete_machine(
         )
     })?;
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    authorize::verify_node_ownership(&account, State(state.clone()), machine_id.clone())
+    authorize::verify_machine_ownership(&account, State(state.clone()), machine_id.clone())
         .await?
         .delete(&state.pool)
         .await?;
@@ -239,13 +239,13 @@ pub async fn info(
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
 
     let machine =
-        authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
+        authorize::verify_machine_ownership(&account, State(state.clone()), machine_id).await?;
 
     let metrics = Metric::get_machine_metrics_only(&state.pool, machine.machine_id).await?;
     Ok(Json(build_machine_info(&state.pool, &machine, metrics).await?))
 }
 
-/// Get all info on every running node for a specific machine
+/// Get all info on just the nodes running from a specific machine
 #[utoipa::path(
     get,
     path = "/machine/:machine_id/info",
@@ -254,7 +254,7 @@ pub async fn info(
         (status = 404)
     )
 )]
-pub async fn get_all_node_data(
+pub async fn get_all_machine_data(
     headers: HeaderMap,
     State(state): State<HttpState>,
     Path(machine_id): Path<String>,
@@ -262,26 +262,27 @@ pub async fn get_all_node_data(
 ) -> Result<Json<Vec<AvsInfo>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     let machine =
-        authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
+        authorize::verify_machine_ownership(&account, State(state.clone()), machine_id).await?;
 
-    // Get all data for the node
-    let nodes = Avs::get_machines_avs_list(&state.pool, machine.machine_id).await?;
+    // Get all data for the machine
+    let machines = Avs::get_machines_avs_list(&state.pool, machine.machine_id).await?;
 
-    let mut node_data = vec![];
-    for node in nodes {
+    let mut machine_data = vec![];
+    for machine in machines {
         let metrics =
-            Metric::get_organized_for_avs(&state.pool, machine.machine_id, &node.avs_name).await?;
-        node_data.push(build_avs_info(&state.pool, node.clone(), metrics).await?);
+            Metric::get_organized_for_avs(&state.pool, machine.machine_id, &machine.avs_name)
+                .await?;
+        machine_data.push(build_avs_info(&state.pool, machine.clone(), metrics).await?);
     }
 
-    Ok(Json(node_data))
+    Ok(Json(machine_data))
 }
 
 /* ---------------------------------------------------- */
 /* ---------- :machine_id?avs_name Section ----------- */
 /* ---------------------------------------------------- */
 
-/// Update an AVS's operator address or chain
+/// Update an node's operator address or chain on a specific machine
 #[utoipa::path(
     put,
     path = "/machine/:machine_id",
@@ -304,7 +305,7 @@ pub async fn update_avs(
 ) -> Result<(), BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     let machine =
-        authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
+        authorize::verify_machine_ownership(&account, State(state.clone()), machine_id).await?;
 
     let avs_name = params.get("avs_name").ok_or_else(|| {
         BackendError::MalformedParameter(
@@ -346,7 +347,7 @@ pub async fn update_avs(
     Ok(())
 }
 
-/// Get condensed metrics for a specific node on a specific
+/// Get important metrics for a specific node on a specific machine if integrated or returns all
 #[utoipa::path(
     get,
     path = "/machine/:machine_id/metrics",
@@ -369,7 +370,7 @@ pub async fn metrics_condensed(
 
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     let machine =
-        authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
+        authorize::verify_machine_ownership(&account, State(state.clone()), machine_id).await?;
 
     let avs_name = params.get("avs_name").ok_or_else(|| {
         BackendError::MalformedParameter(
@@ -383,12 +384,12 @@ pub async fn metrics_condensed(
 
     let avs = avses.iter().find(|avs| avs.avs_name == *avs_name).ok_or(BackendError::InvalidAvs)?;
     let metrics = Metric::get_all_for_avs(&state.pool, machine.machine_id, &avs.avs_name).await?;
-    let filtered_metrics = node_data::condense_metrics(avs.avs_type, &metrics)?;
+    let filtered_metrics = node_data::condense_metrics(avs.avs_type, &metrics);
 
     Ok(Json(filtered_metrics))
 }
 
-/// Get all metrics for a specific node
+/// Get all metrics for a specific node on a specific machine
 #[utoipa::path(
     get,
     path = "/machine/:machine_id/metrics/all",
@@ -409,7 +410,7 @@ pub async fn metrics_all(
 ) -> Result<Json<Vec<Metric>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     let machine =
-        authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
+        authorize::verify_machine_ownership(&account, State(state.clone()), machine_id).await?;
 
     let avs_name = params.get("avs_name").ok_or_else(|| {
         BackendError::MalformedParameter(
@@ -425,7 +426,7 @@ pub async fn metrics_all(
     Ok(Json(metrics))
 }
 
-/// Get all logs for a specific node
+/// Get all logs for a specific node on a specific machine
 #[utoipa::path(
     get,
     path = "/machine/:machine_id/logs",
@@ -449,7 +450,7 @@ pub async fn logs(
 ) -> Result<Json<Vec<ContainerLog>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     let machine =
-        authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
+        authorize::verify_machine_ownership(&account, State(state.clone()), machine_id).await?;
 
     let avs_name = params.get("avs_name").ok_or_else(|| {
         BackendError::MalformedParameter(
@@ -494,7 +495,7 @@ pub async fn logs(
     Ok(Json(logs))
 }
 
-/// Delete all data for a specific AVS running on a node
+/// Delete all data for a specific AVS running on a machine
 #[utoipa::path(
     delete,
     path = "/machine/:machine_id",
@@ -515,7 +516,7 @@ pub async fn delete_avs_node_data(
 ) -> Result<(), BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     let machine =
-        authorize::verify_node_ownership(&account, State(state.clone()), machine_id).await?;
+        authorize::verify_machine_ownership(&account, State(state.clone()), machine_id).await?;
 
     Avs::delete_avs_data(
         &state.pool,

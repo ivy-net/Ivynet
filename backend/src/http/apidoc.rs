@@ -28,7 +28,7 @@ use super::{super::db, authorize, client, info, machine, node, organization, pub
         machine::metrics_condensed,
         machine::metrics_all,
         machine::logs,
-        machine::get_all_node_data,
+        machine::get_all_machine_data,
         machine::delete_machine,
         machine::delete_avs_node_data,
         machine::info,

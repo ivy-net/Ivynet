@@ -119,7 +119,7 @@ fn create_router() -> Router<HttpState> {
                 .route("/:machine_id/metrics/all", get(machine::metrics_all))
                 .route("/:machine_id/metrics", get(machine::metrics_condensed))
                 .route("/:machine_id/logs", get(machine::logs))
-                .route("/:machine_id/info", get(machine::get_all_node_data))
+                .route("/:machine_id/info", get(machine::get_all_machine_data))
                 .route("/:machine_id", put(machine::update_avs))
                 .route(
                     "/:machine_id",

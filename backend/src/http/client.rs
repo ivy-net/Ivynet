@@ -31,7 +31,7 @@ pub async fn client(
     Ok(Json(clients))
 }
 
-/// Grab grab IDs for every machine under every client in the organization
+/// Grab information from a specific client id
 #[utoipa::path(
     get,
     path = "/client/:id",
