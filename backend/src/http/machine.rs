@@ -383,7 +383,7 @@ pub async fn metrics_condensed(
 
     let avs = avses.iter().find(|avs| avs.avs_name == *avs_name).ok_or(BackendError::InvalidAvs)?;
     let metrics = Metric::get_all_for_avs(&state.pool, machine.machine_id, &avs.avs_name).await?;
-    let filtered_metrics = node_data::condense_metrics(avs.avs_type, &metrics)?;
+    let filtered_metrics = node_data::condense_metrics(avs.avs_type, &metrics);
 
     Ok(Json(filtered_metrics))
 }
