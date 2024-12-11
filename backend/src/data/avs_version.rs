@@ -128,6 +128,7 @@ mod avs_version_tests {
 
     // TODO: These tests need to be more abstract and run over dummy data instead of live db data.
 
+    #[ignore]
     #[sqlx::test(fixtures("../../fixtures/avs_version_hashes.sql"))]
     fn test_eigenda_version_parsing(pool: PgPool) -> sqlx::Result<(), Box<dyn std::error::Error>> {
         std::env::set_var("DATABASE_URL", "postgresql://ivy:secret_ivy@localhost:5432/ivynet");
@@ -137,6 +138,7 @@ mod avs_version_tests {
         Ok(())
     }
 
+    #[ignore]
     #[sqlx::test(fixtures("../../fixtures/avs_version_hashes.sql"))]
     fn test_ava_version_parsing(pool: PgPool) -> sqlx::Result<(), Box<dyn std::error::Error>> {
         std::env::set_var("DATABASE_URL", "postgresql://ivy:secret_ivy@localhost:5432/ivynet");
@@ -145,6 +147,7 @@ mod avs_version_tests {
         Ok(())
     }
 
+    #[ignore]
     #[sqlx::test(fixtures("../../fixtures/avs_version_hashes.sql"))]
     fn test_k3labs_version_parsing(pool: PgPool) -> sqlx::Result<(), Box<dyn std::error::Error>> {
         std::env::set_var("DATABASE_URL", "postgresql://ivy:secret_ivy@localhost:5432/ivynet");
@@ -153,6 +156,7 @@ mod avs_version_tests {
         Ok(())
     }
 
+    #[ignore]
     #[sqlx::test(fixtures("../../fixtures/avs_version_hashes.sql"))]
     fn test_lagrange_zk_holesky_version_parsing(
         pool: PgPool,
