@@ -20,7 +20,7 @@ pub const WITNESSCHAIN: &str = "witnesschain";
 pub enum NodeType {
     AvaProtocol,
     EigenDA,
-    // LagrangeStateCommittee,
+    LagrangeStateCommittee,
     LagrangeZkWorkerHolesky,
     LagrangeZkWorkerMainnet,
     K3LabsAvs,
@@ -37,7 +37,7 @@ impl From<&str> for NodeType {
         match s.to_lowercase().as_str() {
             AVA_PROTOCOL => Self::AvaProtocol,
             EIGENDA => Self::EigenDA,
-            // LAGRANGE_STATE_COMMITTEE => Self::LagrangeStateCommittee,
+            LAGRANGE_STATE_COMMITTEE => Self::LagrangeStateCommittee,
             LAGRANGE_ZK_WORKER_HOLESKY => Self::LagrangeZkWorkerHolesky,
             LAGRANGE_ZK_WORKER_MAINNET => Self::LagrangeZkWorkerMainnet,
             K3_LABS_AVS => Self::K3LabsAvs,
@@ -56,8 +56,7 @@ impl std::fmt::Display for NodeType {
         match self {
             Self::AvaProtocol => write!(f, "{}", AVA_PROTOCOL),
             Self::EigenDA => write!(f, "{}", EIGENDA),
-            // Self::LagrangeStateCommittee => write!(f, "{}",
-            // LAGRANGE_STATE_COMMITTEE),
+            Self::LagrangeStateCommittee => write!(f, "{}", LAGRANGE_STATE_COMMITTEE),
             Self::LagrangeZkWorkerHolesky => write!(f, "{}", LAGRANGE_ZK_WORKER_HOLESKY),
             Self::LagrangeZkWorkerMainnet => write!(f, "{}", LAGRANGE_ZK_WORKER_MAINNET),
             Self::K3LabsAvs => write!(f, "{}", K3_LABS_AVS),
@@ -77,7 +76,7 @@ impl NodeType {
         let res = match self {
             Self::AvaProtocol => "avaprotocol/ap-avs",
             Self::EigenDA => "ghcr.io/layr-labs/eigenda/opr-node",
-            // Self::LagrangeStateCommittee => "lagrangelabs/lagrange-node",
+            Self::LagrangeStateCommittee => "lagrangelabs/lagrange-node",
             Self::LagrangeZkWorkerHolesky => "lagrangelabs/worker",
             Self::LagrangeZkWorkerMainnet => "lagrangelabs/worker",
             Self::K3LabsAvs => "k3official/k3-labs-avs-operator",
@@ -98,7 +97,7 @@ impl NodeType {
             Self::EigenDA => "ghcr.io",
             Self::EOracle => "registry-1.docker.io",
             Self::AvaProtocol => "registry-1.docker.io",
-            // Self::LagrangeStateCommittee => "registry-1.docker.io",
+            Self::LagrangeStateCommittee => "registry-1.docker.io",
             Self::LagrangeZkWorkerMainnet => "registry-1.docker.io",
             Self::LagrangeZkWorkerHolesky => "registry-1.docker.io",
             Self::K3LabsAvs => "registry-1.docker.io",
@@ -119,7 +118,7 @@ impl NodeType {
             Self::EigenDA => "eigenda-native-node",
             Self::EOracle => "eoracle-data-validator",
             Self::AvaProtocol => "temp_ap_avs",
-            // Self::LagrangeStateCommittee => "temp_lagrange-state-committee",
+            Self::LagrangeStateCommittee => "temp_lagrange-state-committee",
             Self::LagrangeZkWorkerHolesky => "temp_lagrange-zk-worker-holesky",
             Self::LagrangeZkWorkerMainnet => "temp_lagrange-zk-worker-mainnet",
             Self::K3LabsAvs => "temp_k3-labs-avs-operator",
@@ -170,7 +169,7 @@ impl NodeType {
             // tag-agnostic nodes
             "avaprotocol/ap-avs" => Some(Self::AvaProtocol),
             "ghcr.io/layr-labs/eigenda/opr-node" => Some(Self::EigenDA),
-            // "lagrangelabs/lagrange-node" => Some(Self::LagrangeStateCommittee),
+            "lagrangelabs/lagrange-node" => Some(Self::LagrangeStateCommittee),
             "k3official/k3-labs-avs-operator" => Some(Self::K3LabsAvs),
             "eoracle/data-validator" => Some(Self::EOracle),
             "ghcr.io/predicatelabs/operator" => Some(Self::Predicate),
