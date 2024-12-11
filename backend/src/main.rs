@@ -173,6 +173,12 @@ async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
 async fn update_node_data_versions(pool: &PgPool, chain: &Chain) -> Result<(), BackendError> {
     let node_types = NodeType::all_known();
     for node in node_types {
+        if node == NodeType::LagrangeZkWorkerHolesky && chain == &Chain::Mainnet {
+            continue;
+        }
+        if node == NodeType::LagrangeZkWorkerMainnet && chain == &Chain::Holesky {
+            continue;
+        }
         let (tag, digest) = find_latest_avs_version(pool, &node).await?;
         db::DbAvsVersionData::set_avs_version(pool, &node, chain, &tag, &digest).await?;
     }

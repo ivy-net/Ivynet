@@ -76,8 +76,6 @@ impl DbAvsVersionData {
         let versions =
             sqlx::query_as!(Self, "SELECT * FROM avs_version_data").fetch_all(pool).await?;
 
-        println!("{:#?}", versions);
-
         Ok(versions
             .into_iter()
             .filter_map(|data| AvsVersionData::try_from(data).ok().map(|data| (data.id, data.vd)))
