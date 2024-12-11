@@ -14,6 +14,7 @@ const EIGENDA_METRICS_ID: &str = "da-node";
 pub enum NodeType {
     EigenDA,
     Lagrange,
+    LagrangeZKProover,
     EOracle,
     Hyperlane,
     WitnessChain,
@@ -38,6 +39,7 @@ impl From<&str> for NodeType {
         match s.to_lowercase().as_str() {
             "eigenda" => NodeType::EigenDA,
             "lagrange" => NodeType::Lagrange,
+            "lagrange-zkproover" => NodeType::Lagrange,
             "eoracle" => NodeType::EOracle,
             "hyperlane" => NodeType::Hyperlane,
             "witnesschain" => NodeType::WitnessChain,
@@ -56,6 +58,7 @@ impl std::fmt::Display for NodeType {
         match self {
             Self::EigenDA => write!(f, "EigenDA"),
             Self::Lagrange => write!(f, "Lagrange"),
+            Self::LagrangeZKProover => write!(f, "Lagrange-ZKProover"),
             Self::EOracle => write!(f, "EOracle"),
             Self::Hyperlane => write!(f, "Hyperlane"),
             Self::WitnessChain => write!(f, "WitnessChain"),
@@ -75,6 +78,7 @@ impl NodeType {
         let res = match self {
             Self::EigenDA => EIGENDA_IMAGE_NAME,
             Self::Lagrange => todo!(),
+            Self::LagrangeZKProover => todo!(),
             Self::EOracle => todo!(),
             Self::Hyperlane => todo!(),
             Self::WitnessChain => todo!(),
@@ -92,6 +96,7 @@ impl NodeType {
         let res = match self {
             Self::EigenDA => "eigenda-native-node",
             Self::Lagrange => todo!(),
+            Self::LagrangeZKProover => todo!(),
             Self::EOracle => todo!(),
             Self::Hyperlane => todo!(),
             Self::WitnessChain => todo!(),

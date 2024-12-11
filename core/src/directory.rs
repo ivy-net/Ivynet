@@ -15,6 +15,11 @@ static ALL_AVSES: &[(Chain, NodeType, H160)] = &[
     (Chain::Holesky, NodeType::EigenDA, h160!(0xD4A7E1Bd8015057293f0D0A557088c286942e84b)),
     (Chain::Mainnet, NodeType::Lagrange, h160!(0x35F4f28A8d3Ff20EEd10e087e8F96Ea2641E6AA2)),
     (Chain::Holesky, NodeType::Lagrange, h160!(0x18A74E66cc90F0B1744Da27E72Df338cEa0A542b)),
+    (
+        Chain::Mainnet,
+        NodeType::LagrangeZKProover,
+        h160!(0x22cac0e6a1465f043428e8aef737b3cb09d0eeda),
+    ),
     (Chain::Mainnet, NodeType::EOracle, h160!(0x23221c5bB90C7c57ecc1E75513e2E4257673F0ef)),
     (Chain::Holesky, NodeType::EOracle, h160!(0x80FE337623Bc849F4b7379f4AB28aF2b470bEa98)),
     (Chain::Mainnet, NodeType::Hyperlane, h160!(0xe8E59c6C8B56F2c178f63BCFC4ce5e5e2359c8fc)),
