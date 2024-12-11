@@ -53,7 +53,7 @@
     owner: root
     group: root
     mode: "0444"
-  notify: Restart service
+  notify: Restart backend service
   tags:
     - ivynet_backend
     - ivynet
