@@ -88,4 +88,4 @@ jobs:
           ssh-agent > ~/.ssh-env
           source ~/.ssh-env
           ssh-add sa.prv
-          ./scraper_update.sh
+          ./backend_update.sh
