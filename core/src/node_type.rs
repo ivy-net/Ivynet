@@ -138,7 +138,7 @@ impl NodeType {
         vec![
             NodeType::AvaProtocol,
             NodeType::EigenDA,
-            //NodeType::LagrangeStateCommittee,
+            NodeType::LagrangeStateCommittee,
             NodeType::LagrangeZkWorkerHolesky,
             NodeType::LagrangeZkWorkerMainnet,
             NodeType::K3LabsAvs,
