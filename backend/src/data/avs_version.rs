@@ -18,7 +18,6 @@ impl From<&NodeType> for VersionType {
             NodeType::EigenDA => VersionType::SemVer,
             NodeType::LagrangeZkWorkerHolesky => VersionType::FixedVer,
             NodeType::LagrangeZkWorkerMainnet => VersionType::FixedVer,
-            //NodeType::LagrangeStateCommittee => VersionType::SemVer,
             NodeType::AvaProtocol => VersionType::SemVer,
             NodeType::EOracle => VersionType::SemVer,
             NodeType::K3LabsAvs => VersionType::FixedVer,
@@ -27,6 +26,7 @@ impl From<&NodeType> for VersionType {
             NodeType::Brevis => unreachable!("Brevis has no docker versioning, unenterable"),
             NodeType::WitnessChain => VersionType::SemVer,
             NodeType::Unknown => VersionType::SemVer,
+            NodeType::LagrangeStateCommittee => VersionType::SemVer,
         }
     }
 }
@@ -131,7 +131,9 @@ mod avs_version_tests {
 
     #[ignore]
     #[sqlx::test(fixtures("../../fixtures/avs_version_hashes.sql"))]
-    fn test_eigenda_version_parsing(pool: PgPool) -> sqlx::Result<(), Box<dyn std::error::Error>> {
+    async fn test_eigenda_version_parsing(
+        pool: PgPool,
+    ) -> sqlx::Result<(), Box<dyn std::error::Error>> {
         std::env::set_var("DATABASE_URL", "postgresql://ivy:secret_ivy@localhost:5432/ivynet");
         println!("{:#?}", pool.options());
         let node_registry_entry = NodeType::EigenDA;
@@ -141,7 +143,9 @@ mod avs_version_tests {
 
     #[ignore]
     #[sqlx::test(fixtures("../../fixtures/avs_version_hashes.sql"))]
-    fn test_ava_version_parsing(pool: PgPool) -> sqlx::Result<(), Box<dyn std::error::Error>> {
+    async fn test_ava_version_parsing(
+        pool: PgPool,
+    ) -> sqlx::Result<(), Box<dyn std::error::Error>> {
         std::env::set_var("DATABASE_URL", "postgresql://ivy:secret_ivy@localhost:5432/ivynet");
         let node_registry_entry = NodeType::AvaProtocol;
         let _ = find_latest_avs_version(&pool, &node_registry_entry).await?;
@@ -150,7 +154,9 @@ mod avs_version_tests {
 
     #[ignore]
     #[sqlx::test(fixtures("../../fixtures/avs_version_hashes.sql"))]
-    fn test_k3labs_version_parsing(pool: PgPool) -> sqlx::Result<(), Box<dyn std::error::Error>> {
+    async fn test_k3labs_version_parsing(
+        pool: PgPool,
+    ) -> sqlx::Result<(), Box<dyn std::error::Error>> {
         std::env::set_var("DATABASE_URL", "postgresql://ivy:secret_ivy@localhost:5432/ivynet");
         let node_registry_entry = NodeType::K3LabsAvs;
         let _ = find_latest_avs_version(&pool, &node_registry_entry).await?;
@@ -159,7 +165,7 @@ mod avs_version_tests {
 
     #[ignore]
     #[sqlx::test(fixtures("../../fixtures/avs_version_hashes.sql"))]
-    fn test_lagrange_zk_holesky_version_parsing(
+    async fn test_lagrange_zk_holesky_version_parsing(
         pool: PgPool,
     ) -> sqlx::Result<(), Box<dyn std::error::Error>> {
         std::env::set_var("DATABASE_URL", "postgresql://ivy:secret_ivy@localhost:5432/ivynet");

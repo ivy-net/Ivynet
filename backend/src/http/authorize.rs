@@ -214,7 +214,7 @@ fn decode(input: &str) -> Result<(String, Option<String>), BackendError> {
     })
 }
 
-pub async fn verify_node_ownership(
+pub async fn verify_machine_ownership(
     account: &Account,
     State(state): State<HttpState>,
     machine_id: String,

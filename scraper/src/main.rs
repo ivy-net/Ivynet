@@ -25,7 +25,7 @@ pub struct Params {
     #[arg(long, env = "RPC_URL")]
     pub rpc_url: String,
 
-    #[arg(long, env = "START_BLOCK", default_value_t = 19492759)]
+    #[arg(long, env = "START_BLOCK", default_value_t = 0)]
     pub start_block: u64,
 
     #[arg(long, env = "ADDRESSES")]
