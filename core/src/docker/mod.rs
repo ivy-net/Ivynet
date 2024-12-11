@@ -228,4 +228,22 @@ mod docker_registry_tests {
         assert_eq!(tags.len(), digests.len());
         Ok(())
     }
+
+    #[tokio::test]
+    async fn test_get_witnesschain_digests() -> Result<(), Box<dyn std::error::Error>> {
+        let node_type = NodeType::WitnessChain;
+        let client = DockerRegistry::from_node_type(&node_type).await?;
+        let tags = client.get_tags().await?;
+        assert!(!tags.is_empty());
+        let mut digests = Vec::new();
+
+        for tag in tags.iter() {
+            let digest = client.get_tag_digest(tag).await?;
+            if let Some(digest) = digest {
+                digests.push(digest);
+            }
+        }
+        assert_eq!(tags.len(), digests.len());
+        Ok(())
+    }
 }
