@@ -58,10 +58,12 @@ pub async fn create_key(
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<(), BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+
     let public_key = params.get("public_key").ok_or(BackendError::MalformedParameter(
         "public_key".to_string(),
         "Public key cannot be empty".to_string(),
     ))?;
+
     let name = params.get("name").ok_or(BackendError::MalformedParameter(
         "name".to_string(),
         "Name cannot be empty".to_string(),
@@ -84,8 +86,8 @@ pub async fn create_key(
     path = "/pubkey",
     params(
         ("public_key" = String, Query, description = "The public key to update"),
+        ("name" = String, Query, description = "The new name for the key"),
     ),
-    request_body = KeyNameUpdate,
     responses(
         (status = 200),
         (status = 400)
@@ -96,12 +98,16 @@ pub async fn update_key_name(
     State(state): State<HttpState>,
     jar: CookieJar,
     Query(params): Query<HashMap<String, String>>,
-    Json(update): Json<KeyNameUpdate>,
 ) -> Result<(), BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     let public_key = params.get("public_key").ok_or(BackendError::MalformedParameter(
         "public_key".to_string(),
         "Public key cannot be empty".to_string(),
+    ))?;
+
+    let name = params.get("name").ok_or(BackendError::MalformedParameter(
+        "name".to_string(),
+        "Name cannot be empty".to_string(),
     ))?;
 
     let public_key: Address = public_key.parse().map_err(|_| {
@@ -111,8 +117,7 @@ pub async fn update_key_name(
         )
     })?;
 
-    OperatorKey::change_name(&state.pool, account.organization_id, &public_key, &update.name)
-        .await?;
+    OperatorKey::change_name(&state.pool, account.organization_id, &public_key, name).await?;
     Ok(())
 }
 
