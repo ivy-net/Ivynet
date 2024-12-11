@@ -75,15 +75,6 @@ async fn main() -> Result<(), BackendError> {
     }
 }
 
-#[derive(clap::Parser, Debug, Clone)]
-pub enum BackendCommands {
-    #[command(
-        name = "add-version-hashes",
-        about = "Add version hashes for all nodes in the registry to backend db"
-    )]
-    AddNodeVersionHashes,
-}
-
 async fn add_account(pool: &PgPool, org: &str) -> Result<(), BackendError> {
     let org_data = org.split('/').collect::<Vec<_>>();
     if org_data.len() == 2 {

@@ -215,19 +215,19 @@ pub fn get_update_status(
                 }
             }
 
-            if query_semver < latest_semver {
-                return UpdateStatus::Updateable;
+            if query_semver >= latest_semver {
+                return UpdateStatus::UpToDate;
             }
 
-            UpdateStatus::UpToDate
+            UpdateStatus::Updateable
         }
         // TODO: This is pretty dumb at the moment, no real way to check for breaking change
         // versions for fixed versions
         VersionType::FixedVer => {
-            if node_image_digest != version_data.latest_version_digest {
-                return UpdateStatus::Updateable;
+            if node_image_digest == version_data.latest_version_digest {
+                return UpdateStatus::UpToDate;
             }
-            UpdateStatus::UpToDate
+            UpdateStatus::Updateable
         }
     }
 }

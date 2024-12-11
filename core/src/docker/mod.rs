@@ -103,13 +103,12 @@ mod docker_registry_tests {
             println!("[{}] requesting tags for image {}", registry, repo);
             let client: DockerRegistry = DockerRegistry::from_host_and_repo(registry, repo).await?;
             let tags = client.get_tags().await?;
-            println!("Tags for image {}: {:?}", registry, tags.to_vec());
+            println!("Assert tags for image {}", registry);
             assert!(!tags.is_empty());
             let _digest = client.get_tag_digest(&tags[0]).await?;
         }
         Ok(())
     }
-
     #[tokio::test]
     async fn test_get_eigenda_digests() -> Result<(), Box<dyn std::error::Error>> {
         let node_type = NodeType::EigenDA;
@@ -120,7 +119,7 @@ mod docker_registry_tests {
         let mut digests = Vec::new();
 
         for tag in tags.iter() {
-            let digest = client.get_tag_digest(&tag).await?;
+            let digest = client.get_tag_digest(tag).await?;
             if let Some(digest) = digest {
                 digests.push(digest);
             }
@@ -139,7 +138,7 @@ mod docker_registry_tests {
         let mut digests = Vec::new();
 
         for tag in tags.iter() {
-            let digest = client.get_tag_digest(&tag).await?;
+            let digest = client.get_tag_digest(tag).await?;
             if let Some(digest) = digest {
                 digests.push(digest);
             }
@@ -223,7 +222,7 @@ mod docker_registry_tests {
     }
 
     #[tokio::test]
-    async fn get_eoracle_digests() -> Result<(), Box<dyn std::error::Error>> {
+    async fn test_get_eoracle_digests() -> Result<(), Box<dyn std::error::Error>> {
         let node_type = NodeType::EOracle;
         let client = DockerRegistry::from_node_type(&node_type).await?;
         let tags = client.get_tags().await?;

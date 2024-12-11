@@ -86,8 +86,8 @@ pub async fn build_machine_info(
         machine_metrics.get(DISK_FREE_METRIC).cloned(),
     );
 
-    if disk_info.status == HardwareInfoStatus::Critical ||
-        memory_info.status == HardwareInfoStatus::Critical
+    if disk_info.status == HardwareInfoStatus::Critical
+        || memory_info.status == HardwareInfoStatus::Critical
     {
         errors.push(MachineError::SystemResourcesUsage);
     }
@@ -189,9 +189,4 @@ pub async fn get_machine_health(
     }
 
     Ok((healthy_list, unhealthy_list))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
 }

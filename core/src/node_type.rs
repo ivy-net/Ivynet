@@ -1,7 +1,5 @@
 use serde::{Deserialize, Serialize};
 
-// `ghcr.io/layr-labs/eigenda/opr-node:0.8.4`.
-
 const EIGENDA_METRICS_ID: &str = "da-node";
 
 pub const AVA_PROTOCOL: &str = "ava-protocol";
@@ -13,6 +11,8 @@ pub const K3_LABS_AVS: &str = "k3-labs-avs";
 pub const EORACLE: &str = "eoracle";
 pub const PREDICATE: &str = "predicate-operator";
 pub const HYPERLANE: &str = "hyperlane";
+pub const BREVIS: &str = "brevis";
+pub const WITNESSCHAIN: &str = "witnesschain";
 
 // const LAGRANGE_MAINNET_WORKER_IMAGE_NAME: &str = "lagrangelabs/worker:mainnet";
 
@@ -27,6 +27,8 @@ pub enum NodeType {
     EOracle,
     Predicate,
     Hyperlane,
+    Brevis,
+    WitnessChain,
     Unknown,
 }
 
@@ -42,6 +44,8 @@ impl From<&str> for NodeType {
             EORACLE => Self::EOracle,
             PREDICATE => Self::Predicate,
             HYPERLANE => Self::Hyperlane,
+            BREVIS => Self::Brevis,
+            WITNESSCHAIN => Self::WitnessChain,
             _ => Self::Unknown,
         }
     }
@@ -60,6 +64,8 @@ impl std::fmt::Display for NodeType {
             Self::EOracle => write!(f, "{}", EORACLE),
             Self::Predicate => write!(f, "{}", PREDICATE),
             Self::Hyperlane => write!(f, "{}", HYPERLANE),
+            Self::Brevis => write!(f, "{}", BREVIS),
+            Self::WitnessChain => write!(f, "{}", WITNESSCHAIN),
             Self::Unknown => write!(f, "unknown"),
         }
     }
@@ -78,6 +84,10 @@ impl NodeType {
             Self::EOracle => "eoracle/data-validator",
             Self::Predicate => "ghcr.io/predicatelabs/operator",
             Self::Hyperlane => "abacus-labs-dev/hyperlane-agent",
+            Self::Brevis => {
+                unreachable!("Brevis node type has no repository. This should be unenterable.")
+            }
+            Self::WitnessChain => todo!(),
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };
         Ok(res)
@@ -94,6 +104,10 @@ impl NodeType {
             Self::K3LabsAvs => "registry-1.docker.io",
             Self::Predicate => "ghcr.io",
             Self::Hyperlane => "gcr.io",
+            Self::Brevis => {
+                unreachable!("Brevis node type has no docker registry. This should be unenterable.")
+            }
+            Self::WitnessChain => todo!(),
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };
         Ok(res)
@@ -111,6 +125,10 @@ impl NodeType {
             Self::K3LabsAvs => "temp_k3-labs-avs-operator",
             Self::Predicate => "temp_predicate-operator",
             Self::Hyperlane => "temp_hyperlane-agent",
+            Self::Brevis => {
+                unreachable!("Brevis node type has no container. This should be unenterable.")
+            }
+            Self::WitnessChain => todo!(),
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };
         Ok(res)
@@ -127,7 +145,9 @@ impl NodeType {
             NodeType::K3LabsAvs,
             NodeType::EOracle,
             NodeType::Predicate,
-            // NodeType::Hyperlane,
+            NodeType::Hyperlane,
+            // NodeType::Brevis,
+            // NodeType::WitnessChain,
         ]
     }
 

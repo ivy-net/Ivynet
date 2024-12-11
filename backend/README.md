@@ -150,7 +150,7 @@ cargo run -- --add-organization testuser@ivynet.dev:test1234/testorg
 
 # Set AVS version
 echo "Setting AVS version..."
-cargo run -- --set-avs-version eigenda:holesky:0.8.4
+cargo run -- --set-avs-version eigenda:holesky:0.8.4:sha256:6650119a385f2447ca60f03080f381cf4f10ad7f920a2ce27fe0d973ac43e993
 
 # Set breaking change version
 echo "Setting breaking change version..."

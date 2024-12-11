@@ -23,23 +23,6 @@ pub struct Avs {
     pub updated_at: Option<NaiveDateTime>,
 }
 
-pub struct NodeContainer {
-    pub image: NodeImage,
-}
-
-/// Represents a specific docker image underlying the docker container for a node.
-pub struct NodeImage {
-    /// Registry where the image is stored, usually either "ghcr.io" or "registry-1.docker.io"
-    pub registry: String,
-    /// Repository where the image is stored, such as "avaprotocol/ap-avs" or
-    /// "ghcr.io/layr-labs/eigenda/opr-node"
-    pub repository: String,
-    /// Tag of the image, typically either semver, previxed semver, or "latest"
-    pub tag: String,
-    /// Image digest, the sha256 hash of the image digest w/o bult config.
-    pub digest: String,
-}
-
 #[derive(Clone, Debug)]
 struct DbAvs {
     pub machine_id: Vec<u8>,
