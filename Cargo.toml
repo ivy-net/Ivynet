@@ -3,7 +3,7 @@ members = ["cli", "core", "macros", "backend", "scraper"]
 resolver = "2"
 
 [workspace.package]
-version = "0.1.0"
+version = "0.4.0"
 edition = "2021"
 repository = "https://github.com/ivy-net/ivynet"
 categories = ["cryptography::cryptocurrencies"]
