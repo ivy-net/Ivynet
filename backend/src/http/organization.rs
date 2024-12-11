@@ -101,6 +101,23 @@ pub async fn new(
 
 #[utoipa::path(
     get,
+    path = "/organization",
+    responses(
+        (status = 200, body = Organization),
+        (status = 404)
+    )
+)]
+pub async fn get_me(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+) -> Result<Json<Organization>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    Ok(Organization::get(&state.pool, account.organization_id.try_into().unwrap()).await?.into())
+}
+
+#[utoipa::path(
+    get,
     path = "/organization/:id",
     params(
         ("id", description = "Organization id")
