@@ -75,7 +75,7 @@ pub enum UpdateStatus {
 
 pub async fn build_avs_info(
     pool: &sqlx::PgPool,
-    mut avs: Avs,
+    avs: Avs,
     metrics: HashMap<String, Metric>,
 ) -> Result<AvsInfo, BackendError> {
     let running_metric = metrics.get(RUNNING_METRIC);
@@ -85,25 +85,12 @@ pub async fn build_avs_info(
     //Start of error building
     let mut errors = vec![];
 
-    let active_set = if let (Some(address), Some(chain)) = (avs.operator_address, avs.chain) {
-        if let Some(directory) = avs_contract(avs.avs_type, chain) {
-            AvsActiveSet::get_active_set(pool, directory, address, chain).await.unwrap_or(false)
-        } else {
-            false
-        }
-    } else {
-        false
-    };
-
-    avs.active_set = active_set;
-    Avs::update_active_set(pool, avs.machine_id, &avs.avs_name, active_set).await?;
-
     if running_metric.is_none() {
         //Running metric missing should never really happen
         errors.push(NodeError::CrashedNode);
 
         //But if it does and you're in the active set, flag
-        if active_set {
+        if avs.active_set {
             errors.push(NodeError::ActiveSetNoDeployment);
         }
     }
@@ -111,7 +98,7 @@ pub async fn build_avs_info(
     if let Some(run_met) = running_metric {
         //If running metric is not 1, the node has crashed
         if run_met.value == 1.0 {
-            if !active_set {
+            if !avs.active_set {
                 errors.push(NodeError::UnregisteredFromActiveSet);
             }
 
@@ -131,7 +118,7 @@ pub async fn build_avs_info(
             errors.push(NodeError::CrashedNode);
 
             //In active set but not running a node could be inactivity slashable
-            if active_set {
+            if avs.active_set {
                 errors.push(NodeError::ActiveSetNoDeployment);
             }
         }
@@ -254,6 +241,32 @@ pub async fn update_avs_version(
 ) -> Result<(), BackendError> {
     let version = AvsVersionHash::get_version(pool, digest).await?;
     Avs::update_version(pool, machine_id, avs_name, &version, digest).await?;
+
+    Ok(())
+}
+
+pub async fn update_avs_active_set(
+    pool: &sqlx::PgPool,
+    machine_id: Uuid,
+    avs_name: &str,
+) -> Result<(), BackendError> {
+    let avs = Avs::get_machines_avs(pool, machine_id, avs_name).await?;
+
+    let active_set = if let Some(avs) = avs {
+        if let (Some(address), Some(chain)) = (avs.operator_address, avs.chain) {
+            if let Some(directory) = avs_contract(avs.avs_type, chain) {
+                AvsActiveSet::get_active_set(pool, directory, address, chain).await.unwrap_or(false)
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    } else {
+        false
+    };
+
+    Avs::update_active_set(pool, machine_id, avs_name, active_set).await?;
     Ok(())
 }
 

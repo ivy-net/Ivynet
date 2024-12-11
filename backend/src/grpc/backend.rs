@@ -1,5 +1,5 @@
 use crate::{
-    data::node_data::update_avs_version,
+    data::node_data::{update_avs_active_set, update_avs_version},
     db::{
         log::{ContainerLog, LogLevel},
         machine::Machine,
@@ -169,7 +169,9 @@ impl Backend for BackendService {
                 )
                 .await
                 .map_err(|e| Status::internal(format!("Failed while saving node_data: {e}")))?;
+
                 _ = update_avs_version(&self.pool, machine_id, &avs_name, version_hash).await;
+                _ = update_avs_active_set(&self.pool, machine_id, &avs_name).await;
             }
         }
         Ok(Response::new(()))
