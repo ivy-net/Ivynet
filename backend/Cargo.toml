@@ -39,6 +39,7 @@ utoipa-swagger-ui = { version = "7.1.0", features = ["axum"] }
 base64 = "0.22.1"
 tower-http = { version = "0.6.1", features = ["cors"] }
 semver = "1.0.23"
+regex = "1.11.1"
 
 [features]
 db_tests = []

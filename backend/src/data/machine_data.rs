@@ -190,8 +190,3 @@ pub async fn get_machine_health(
 
     Ok((healthy_list, unhealthy_list))
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-}
