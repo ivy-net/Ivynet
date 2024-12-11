@@ -254,7 +254,7 @@ pub async fn info(
         (status = 404)
     )
 )]
-pub async fn get_all_machine_data(
+pub async fn get_all_node_data(
     headers: HeaderMap,
     State(state): State<HttpState>,
     Path(machine_id): Path<String>,
@@ -265,17 +265,16 @@ pub async fn get_all_machine_data(
         authorize::verify_machine_ownership(&account, State(state.clone()), machine_id).await?;
 
     // Get all data for the machine
-    let machines = Avs::get_machines_avs_list(&state.pool, machine.machine_id).await?;
+    let nodes = Avs::get_machines_avs_list(&state.pool, machine.machine_id).await?;
 
-    let mut machine_data = vec![];
-    for machine in machines {
+    let mut node_data = vec![];
+    for node in nodes {
         let metrics =
-            Metric::get_organized_for_avs(&state.pool, machine.machine_id, &machine.avs_name)
-                .await?;
-        machine_data.push(build_avs_info(&state.pool, machine.clone(), metrics).await?);
+            Metric::get_organized_for_avs(&state.pool, machine.machine_id, &node.avs_name).await?;
+        node_data.push(build_avs_info(&state.pool, node.clone(), metrics).await?);
     }
 
-    Ok(Json(machine_data))
+    Ok(Json(node_data))
 }
 
 /* ---------------------------------------------------- */
