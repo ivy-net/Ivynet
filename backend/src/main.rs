@@ -4,7 +4,7 @@ use chrono::DateTime;
 use clap::Parser as _;
 use ivynet_backend::{
     config::Config,
-    data::avs_version::{find_latest_avs_version, VersionType},
+    data::avs_version::{extract_semver, find_latest_avs_version, VersionType},
     db::{self, avs_version::DbAvsVersionData, configure},
     error::BackendError,
     grpc, http,
@@ -188,10 +188,21 @@ async fn get_node_version_hashes() -> Result<HashMap<NodeType, Vec<(String, Stri
     for entry in NodeType::all_known() {
         let client = DockerRegistry::from_node_type(&entry).await?;
         info!("Requesting tags for image {}", entry.default_repository()?);
-        let tags = client.get_tags().await?;
+        let mut tags = client.get_tags().await?;
 
         let mut num_valid_digests = 0;
         let mut tag_digests = Vec::new();
+
+        // If semantic version type, cull non-adhering tags from the list
+        if VersionType::from(&entry) == VersionType::SemVer {
+            tags.retain(|tag| {
+                let semver_tag = extract_semver(tag).is_some();
+                if !semver_tag {
+                    warn!("Discarding non-semver tag {}", tag);
+                }
+                semver_tag
+            });
+        }
 
         let tags_len = tags.len();
         for tag in tags {

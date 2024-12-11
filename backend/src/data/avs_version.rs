@@ -1,11 +1,10 @@
 use ivynet_core::node_type::NodeType;
 use serde::{Deserialize, Serialize};
 use tracing::info;
-use utoipa::ToSchema;
 
 use crate::{db::AvsVersionHash, error::BackendError};
 
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub enum VersionType {
     SemVer,
     /// For node types with fixed docker versioning tags, such as `latest` or `holesky`
@@ -24,8 +23,10 @@ impl From<&NodeType> for VersionType {
             NodeType::EOracle => VersionType::SemVer,
             NodeType::K3LabsAvs => VersionType::FixedVer,
             NodeType::Predicate => VersionType::SemVer,
-            // NodeType::Hyperlane => todo!(),
-            _ => todo!("{:?} version type not yet implemented", node_type.to_string()),
+            NodeType::Hyperlane => VersionType::SemVer,
+            NodeType::Brevis => unreachable!("Brevis has no docker versioning, unenterable"),
+            NodeType::WitnessChain => VersionType::SemVer,
+            NodeType::Unknown => VersionType::SemVer,
         }
     }
 }

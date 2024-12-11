@@ -148,24 +148,24 @@ cargo sqlx prepare
 echo "Adding organization..."
 cargo run -- --add-organization testuser@ivynet.dev:test1234/testorg
 
-# Set AVS version
-echo "Setting AVS version..."
-cargo run -- --set-avs-version eigenda:holesky:0.8.4:sha256:6650119a385f2447ca60f03080f381cf4f10ad7f920a2ce27fe0d973ac43e993
+# Fetch node version hashes for valid docker images
+echo "Fetching node version hashes..."
+cargo run -- --add-node-version-hashes
 
-# Set breaking change version
-echo "Setting breaking change version..."
-cargo run -- --set-breaking-change-version eigenda:holesky:0.8.0:1728622800000
-
-chmod +x ./scripts/get_version_hashes.sh
-./scripts/get_version_hashes.sh
+# Update latest node data versions
+echo "Updating node data versions..."
+cargo run -- --update-node-data-versions
 
 echo "Setup complete!"
 ```
 
-### Backend commands
+Manually set the latest version or breaking change:
+```sh
+# Set AVS version
+echo "Setting AVS version..."
+cargo run -- --set-avs-version eigenda:holesky:0.8.4
 
-- Fetch all node versions for valid docker images:
-`cargo run -- --add-node-version-hashes`
-
-- Update node data versions
-`cargo run -- -- update-node-data-versions`
+# Set breaking change version
+echo "Setting breaking change version..."
+cargo run -- --set-breaking-change-version eigenda:holesky:0.8.0:1728622800000
+```

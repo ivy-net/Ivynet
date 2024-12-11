@@ -87,7 +87,7 @@ impl NodeType {
             Self::Brevis => {
                 unreachable!("Brevis node type has no repository. This should be unenterable.")
             }
-            Self::WitnessChain => todo!(),
+            Self::WitnessChain => "witnesschain/watchtower",
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };
         Ok(res)
@@ -107,7 +107,7 @@ impl NodeType {
             Self::Brevis => {
                 unreachable!("Brevis node type has no docker registry. This should be unenterable.")
             }
-            Self::WitnessChain => todo!(),
+            Self::WitnessChain => "registry-1.docker.io",
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };
         Ok(res)
@@ -128,7 +128,7 @@ impl NodeType {
             Self::Brevis => {
                 unreachable!("Brevis node type has no container. This should be unenterable.")
             }
-            Self::WitnessChain => todo!(),
+            Self::WitnessChain => "temp_witnesschain",
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };
         Ok(res)
@@ -147,7 +147,7 @@ impl NodeType {
             NodeType::Predicate,
             NodeType::Hyperlane,
             // NodeType::Brevis,
-            // NodeType::WitnessChain,
+            NodeType::WitnessChain,
         ]
     }
 
@@ -175,6 +175,7 @@ impl NodeType {
             "eoracle/data-validator" => Some(Self::EOracle),
             "ghcr.io/predicatelabs/operator" => Some(Self::Predicate),
             "gcr.io/abacus-labs-dev/hyperlane-agent" => Some(Self::Hyperlane),
+            "witnesschain/watchtower" => Some(Self::WitnessChain),
             // tag-specific nodes
             "lagrangelabs/worker" => match tag {
                 "holesky" => Some(Self::LagrangeZkWorkerHolesky),
