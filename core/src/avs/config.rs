@@ -147,7 +147,7 @@ impl NodeConfigBuilder {
                 .expect("Could not get a home directory")
                 .join(".eigenlayer/lagrange"),
             NodeType::Unknown => panic!("Unknown node type"),
-            _ => todo!(),
+            _ => panic!("Unimplementeded node type"),
         }
     }
 }

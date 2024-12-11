@@ -32,7 +32,7 @@ pub async fn all_avs_info(
         let metrics =
             Metric::get_organized_for_avs(&state.pool, avs.machine_id, &avs.avs_name.to_string())
                 .await?;
-        let info = build_avs_info(&state.pool, avs, metrics).await;
+        let info = build_avs_info(&state.pool, avs, metrics).await?;
         info_reports.push(info);
     }
 
@@ -64,7 +64,7 @@ pub async fn avs_status(
         let node_metrics_map =
             Metric::get_organized_for_avs(&state.pool, avs.machine_id, &avs.avs_name.to_string())
                 .await?;
-        let avs_info = build_avs_info(&state.pool, avs.clone(), node_metrics_map).await;
+        let avs_info = build_avs_info(&state.pool, avs.clone(), node_metrics_map).await?;
         if !avs_info.errors.is_empty() {
             unhealthy_list.push(avs.avs_name.clone());
         } else {
