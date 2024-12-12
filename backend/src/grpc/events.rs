@@ -9,6 +9,7 @@ use ivynet_core::grpc::{
 };
 use sqlx::PgPool;
 use std::sync::Arc;
+use tracing::info;
 
 use crate::{db::AvsActiveSet, error::BackendError};
 
@@ -49,7 +50,9 @@ impl BackendEvents for EventsService {
         &self,
         request: Request<MetadataUriEvent>,
     ) -> Result<Response<()>, Status> {
-        todo!()
+        info!("Report metadata uri event {request:?}");
+        // info!("Need to implement db side of this");
+        Ok(Response::new(()))
     }
 }
 

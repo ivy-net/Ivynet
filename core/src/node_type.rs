@@ -55,7 +55,7 @@ pub enum NodeType {
     XterioMACH,
     Omni,
     Automata,
-    DODOchain,
+    DodoChain,
     OpenLayer,
     CyberMach,
     Aethos,
@@ -92,7 +92,7 @@ impl From<&str> for NodeType {
             XTERIO_MACH => Self::XterioMACH,
             OMNI => Self::Omni,
             AUTOMATA => Self::Automata,
-            DODOCHAIN => Self::DODOchain,
+            DODOCHAIN => Self::DodoChain,
             OPENLAYER => Self::OpenLayer,
             CYBERMACH => Self::CyberMach,
             AETHOS => Self::Aethos,
@@ -131,7 +131,7 @@ impl std::fmt::Display for NodeType {
             Self::XterioMACH => write!(f, "{}", XTERIO_MACH),
             Self::Omni => write!(f, "{}", OMNI),
             Self::Automata => write!(f, "{}", AUTOMATA),
-            Self::DODOchain => write!(f, "{}", DODOCHAIN),
+            Self::DodoChain => write!(f, "{}", DODOCHAIN),
             Self::OpenLayer => write!(f, "{}", OPENLAYER),
             Self::CyberMach => write!(f, "{}", CYBERMACH),
             Self::Aethos => write!(f, "{}", AETHOS),
@@ -165,10 +165,8 @@ impl NodeType {
             Self::EOracle => "eoracle/data-validator",
             Self::Predicate => "ghcr.io/predicatelabs/operator",
             Self::Hyperlane => "abacus-labs-dev/hyperlane-agent",
-            Self::Brevis => {
-                unreachable!("Brevis node type has no repository. This should be unenterable.")
-            }
             Self::WitnessChain => "witnesschain/watchtower",
+
             Self::AvaProtocol => todo!(),
             Self::EigenDA => todo!(),
             Self::LagrangeStateCommittee => todo!(),
@@ -184,7 +182,7 @@ impl NodeType {
             Self::XterioMACH => todo!(),
             Self::Omni => todo!(),
             Self::Automata => todo!(),
-            Self::DODOchain => todo!(),
+            Self::DodoChain => todo!(),
             Self::OpenLayer => todo!(),
             Self::CyberMach => todo!(),
             Self::Aethos => todo!(),
@@ -200,6 +198,9 @@ impl NodeType {
             Self::UngateInfiniRoutePolygon => todo!(),
             Self::PrimevMevCommit => todo!(),
             Self::AlignedLayer => todo!(),
+            Self::Brevis => {
+                unreachable!("Brevis node type has no repository. This should be unenterable.")
+            }
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };
         Ok(res)
@@ -216,9 +217,7 @@ impl NodeType {
             Self::K3LabsAvs => "registry-1.docker.io",
             Self::Predicate => "ghcr.io",
             Self::Hyperlane => "gcr.io",
-            Self::Brevis => {
-                unreachable!("Brevis node type has no docker registry. This should be unenterable.")
-            }
+
             Self::WitnessChain => "registry-1.docker.io",
             Self::AvaProtocol => todo!(),
             Self::EigenDA => todo!(),
@@ -235,7 +234,7 @@ impl NodeType {
             Self::XterioMACH => todo!(),
             Self::Omni => todo!(),
             Self::Automata => todo!(),
-            Self::DODOchain => todo!(),
+            Self::DodoChain => todo!(),
             Self::OpenLayer => todo!(),
             Self::CyberMach => todo!(),
             Self::Aethos => todo!(),
@@ -251,6 +250,9 @@ impl NodeType {
             Self::UngateInfiniRoutePolygon => todo!(),
             Self::PrimevMevCommit => todo!(),
             Self::AlignedLayer => todo!(),
+            Self::Brevis => {
+                unreachable!("Brevis node type has no docker registry. This should be unenterable.")
+            }
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };
         Ok(res)
@@ -268,9 +270,6 @@ impl NodeType {
             Self::K3LabsAvs => "temp_k3-labs-avs-operator",
             Self::Predicate => "temp_predicate-operator",
             Self::Hyperlane => "temp_hyperlane-agent",
-            Self::Brevis => {
-                unreachable!("Brevis node type has no container. This should be unenterable.")
-            }
             Self::WitnessChain => "temp_witnesschain",
             Self::AvaProtocol => todo!(),
             Self::EigenDA => todo!(),
@@ -287,7 +286,7 @@ impl NodeType {
             Self::XterioMACH => todo!(),
             Self::Omni => todo!(),
             Self::Automata => todo!(),
-            Self::DODOchain => todo!(),
+            Self::DodoChain => todo!(),
             Self::OpenLayer => todo!(),
             Self::CyberMach => todo!(),
             Self::Aethos => todo!(),
@@ -303,6 +302,9 @@ impl NodeType {
             Self::UngateInfiniRoutePolygon => todo!(),
             Self::PrimevMevCommit => todo!(),
             Self::AlignedLayer => todo!(),
+            Self::Brevis => {
+                unreachable!("Brevis node type has no container. This should be unenterable.")
+            }
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };
         Ok(res)
@@ -320,8 +322,8 @@ impl NodeType {
             NodeType::EOracle,
             NodeType::Predicate,
             NodeType::Hyperlane,
-            // NodeType::Brevis,
             NodeType::WitnessChain,
+            // NodeType::Brevis,
         ]
     }
 
