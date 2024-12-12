@@ -11,6 +11,7 @@ use super::{super::db, authorize, client, info, machine, node, organization, pub
         authorize::set_password,
         authorize::forgot_password,
         organization::new,
+        organization::get_me,
         organization::get,
         organization::invite,
         organization::machines,

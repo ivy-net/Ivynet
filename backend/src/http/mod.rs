@@ -95,6 +95,7 @@ fn create_router() -> Router<HttpState> {
             "/organization",
             Router::new()
                 .route("/", post(organization::new))
+                .route("/", get(organization::get_me))
                 .route("/:id", get(organization::get))
                 .route("/invite", post(organization::invite))
                 .route("/confirm/:id", get(organization::confirm))
