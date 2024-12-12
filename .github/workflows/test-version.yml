@@ -1,5 +1,5 @@
 ---
-name: Release Client
+name: Testing Version
 
 on:
   push:
@@ -26,9 +26,10 @@ jobs:
       - name: Prepare version
         id: set-version
         run: |
-          echo "${{ github.action_ref }}"
-          echo "${{ github.action_ref }}" | awk -F- '{print $2}'
-          version=$( echo "${{ github.action_ref }}" | awk -F- '{print $2}')
+          echo "${{ GITHUB.REF_NAME }}"
+          echo "${{ GITHUB.REF }}"
+          echo "${{ GITHUB.REF }}" | awk -F- '{print $2}'
+          version=$( echo "${{ GITHUB.REF }}" | awk -F- '{print $2}')
           echo "VERSION=${version}" >> "$GITHUB_OUTPUT"
           echo ${version}
       - name: Create versioned binaries
