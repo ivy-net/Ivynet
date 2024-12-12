@@ -1,0 +1,52 @@
+---
+name: Release Client
+
+on:
+  push:
+    tags:
+      - test-*.*.*
+
+permissions:
+  id-token: write  # This is required for requesting the JWT
+  contents: write  # This is required for creating a release
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build-binary:
+    name: Build and push binaries to github release page
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Refresh source list
+        run: |
+          sudo apt update
+      - name: Prepare version
+        id: set-version
+        run: |
+          version=$( echo ${{ github.action_ref }} | awk -F- '{print $2}')
+          echo "VERSION=${version}" >> "$GITHUB_OUTPUT"
+          echo ${version}
+      - name: Create versioned binaries
+        env:
+          NAME: ivynet-${{ steps.set-version.outputs.VERSION }}
+        run: |
+          echo ${NAME}
+          #          cd target/release
+          #          mkdir bucket
+          #          cd bucket
+          #          cp ../ivynet ${NAME}
+          #          sha256sum ${NAME} >> ${NAME}.sha256
+          #      - name: Authenticate to Google Cloud
+          #        uses: google-github-actions/auth@v2
+          #        with:
+          #          credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
+          #      - name: Upload file to the bucket
+          #        uses: google-github-actions/upload-cloud-storage@v2
+          #        with:
+          #          path: target/release/bucket
+          #          glob: '*'
+          #          destination: ivynet-share-test
+          #          parent: false
