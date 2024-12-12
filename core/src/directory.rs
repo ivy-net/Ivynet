@@ -34,7 +34,7 @@ static ALL_MAINNET_AVSES: &[(Chain, NodeType, H160)] = &[
     (Chain::Mainnet, NodeType::XterioMACH, h160!(0x6026b61bdd2252160691cb3f6005b6b72e0ec044)),
     (Chain::Mainnet, NodeType::Omni, h160!(0xed2f4d90b073128ae6769a9a8d51547b1df766c8)),
     (Chain::Mainnet, NodeType::Automata, h160!(0xe5445838c475a2980e6a88054ff1514230b83aeb)),
-    (Chain::Mainnet, NodeType::DODOchain, h160!(0xd50e0931703302b080880c45148f5d83ea66ae2a)),
+    (Chain::Mainnet, NodeType::DodoChain, h160!(0xd50e0931703302b080880c45148f5d83ea66ae2a)),
     (Chain::Mainnet, NodeType::OpenLayer, h160!(0xf7fcff55d5fdaf2c3bbeb140be5e62a2c7d26db3)),
     (Chain::Mainnet, NodeType::CyberMach, h160!(0x1f2c296448f692af840843d993ffc0546619dcdb)),
     (Chain::Mainnet, NodeType::Aethos, h160!(0x07e26bf8060e33fa3771d88128b75493750515c1)),

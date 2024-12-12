@@ -1,43 +1,10 @@
+use convert_case::{Case, Casing};
 use serde::{Deserialize, Serialize};
+use strum::{EnumIter, IntoEnumIterator};
 
 const EIGENDA_METRICS_ID: &str = "da-node";
 
-pub const AVA_PROTOCOL: &str = "ava-protocol";
-pub const EIGENDA: &str = "eigenda";
-pub const LAGRANGE_STATE_COMMITTEE: &str = "lagrange-state-committee";
-pub const LAGRANGE_ZK_WORKER_HOLESKY: &str = "lagrange-zk-worker-holesky";
-pub const LAGRANGE_ZK_WORKER_MAINNET: &str = "lagrange-zk-worker-mainnet";
-pub const K3_LABS_AVS: &str = "k3-labs-avs";
-pub const EORACLE: &str = "eoracle";
-pub const PREDICATE: &str = "predicate-operator";
-pub const HYPERLANE: &str = "hyperlane";
-pub const BREVIS: &str = "brevis";
-pub const WITNESSCHAIN: &str = "witnesschain";
-//New
-pub const ALTLAYER_MACH: &str = "altlayer-mach";
-pub const XTERIO_MACH: &str = "xterio-mach";
-pub const OMNI: &str = "omni";
-pub const AUTOMATA: &str = "automata";
-pub const DODOCHAIN: &str = "dodochain";
-pub const OPENLAYER: &str = "openlayer";
-pub const CYBERMACH: &str = "cyber-mach";
-pub const AETHOS: &str = "aethos";
-pub const ARPANETWORK: &str = "arpa-network";
-pub const OPACITYNETWORK: &str = "opacity-network";
-pub const GMNETWORKMACH: &str = "gm-network-mach";
-pub const UNIFIAVS: &str = "unifi-avs";
-pub const SKATECHAINBASE: &str = "skate-chain-base";
-pub const SKATECHAINMANTLE: &str = "skate-chain-mantle";
-pub const CHAINBASENETWORKAVS: &str = "chainbase-network-avs";
-pub const GOPLUSAVS: &str = "go-plus-avs";
-pub const UNGATEINFINIROUTEBASE: &str = "ungate-infini-route-base";
-pub const UNGATEINFINIROUTEPOLYGON: &str = "ungate-infini-route-polygon";
-pub const PRIMEVMEVCOMMIT: &str = "primev-mev-commit";
-pub const ALIGNEDLAYER: &str = "aligned-layer";
-
-// const LAGRANGE_MAINNET_WORKER_IMAGE_NAME: &str = "lagrangelabs/worker:mainnet";
-
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter)]
 pub enum NodeType {
     AvaProtocol,
     EigenDA,
@@ -74,81 +41,31 @@ pub enum NodeType {
     Unknown,
 }
 
+// Works with lower case and kebab case - kebab case is what is displayed
 impl From<&str> for NodeType {
     fn from(s: &str) -> Self {
-        match s.to_lowercase().as_str() {
-            AVA_PROTOCOL => Self::AvaProtocol,
-            EIGENDA => Self::EigenDA,
-            LAGRANGE_STATE_COMMITTEE => Self::LagrangeStateCommittee,
-            LAGRANGE_ZK_WORKER_HOLESKY => Self::LagrangeZkWorkerHolesky,
-            LAGRANGE_ZK_WORKER_MAINNET => Self::LagrangeZkWorkerMainnet,
-            K3_LABS_AVS => Self::K3LabsAvs,
-            EORACLE => Self::EOracle,
-            PREDICATE => Self::Predicate,
-            HYPERLANE => Self::Hyperlane,
-            BREVIS => Self::Brevis,
-            WITNESSCHAIN => Self::WitnessChain,
-            ALTLAYER_MACH => Self::AltlayerMach,
-            XTERIO_MACH => Self::XterioMACH,
-            OMNI => Self::Omni,
-            AUTOMATA => Self::Automata,
-            DODOCHAIN => Self::DodoChain,
-            OPENLAYER => Self::OpenLayer,
-            CYBERMACH => Self::CyberMach,
-            AETHOS => Self::Aethos,
-            ARPANETWORK => Self::ArpaNetwork,
-            OPACITYNETWORK => Self::OpacityNetwork,
-            GMNETWORKMACH => Self::GMNetworkMach,
-            UNIFIAVS => Self::UnifiAVS,
-            SKATECHAINBASE => Self::SkateChainBase,
-            SKATECHAINMANTLE => Self::SkateChainMantle,
-            CHAINBASENETWORKAVS => Self::ChainbaseNetworkAVS,
-            GOPLUSAVS => Self::GoPlusAVS,
-            UNGATEINFINIROUTEBASE => Self::UngateInfiniRouteBase,
-            UNGATEINFINIROUTEPOLYGON => Self::UngateInfiniRoutePolygon,
-            PRIMEVMEVCOMMIT => Self::PrimevMevCommit,
-            ALIGNEDLAYER => Self::AlignedLayer,
-            _ => Self::Unknown,
-        }
+        let input = s.to_string();
+        let kebab = input.to_case(Case::Kebab);
+        let lower = input.to_case(Case::Lower);
+
+        // Get all variants as strings in different cases for comparison
+        NodeType::iter()
+            .find(|variant| {
+                let variant_str = format!("{:?}", variant);
+                let variant_kebab = variant_str.to_case(Case::Kebab);
+                let variant_lower = variant_str.to_case(Case::Lower);
+
+                kebab == variant_kebab || lower == variant_lower
+            })
+            .unwrap_or(Self::Unknown)
     }
 }
 
 impl std::fmt::Display for NodeType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::AvaProtocol => write!(f, "{}", AVA_PROTOCOL),
-            Self::EigenDA => write!(f, "{}", EIGENDA),
-            Self::LagrangeStateCommittee => write!(f, "{}", LAGRANGE_STATE_COMMITTEE),
-            Self::LagrangeZkWorkerHolesky => write!(f, "{}", LAGRANGE_ZK_WORKER_HOLESKY),
-            Self::LagrangeZkWorkerMainnet => write!(f, "{}", LAGRANGE_ZK_WORKER_MAINNET),
-            Self::K3LabsAvs => write!(f, "{}", K3_LABS_AVS),
-            Self::EOracle => write!(f, "{}", EORACLE),
-            Self::Predicate => write!(f, "{}", PREDICATE),
-            Self::Hyperlane => write!(f, "{}", HYPERLANE),
-            Self::Brevis => write!(f, "{}", BREVIS),
-            Self::WitnessChain => write!(f, "{}", WITNESSCHAIN),
-            Self::AltlayerMach => write!(f, "{}", ALTLAYER_MACH),
-            Self::XterioMACH => write!(f, "{}", XTERIO_MACH),
-            Self::Omni => write!(f, "{}", OMNI),
-            Self::Automata => write!(f, "{}", AUTOMATA),
-            Self::DodoChain => write!(f, "{}", DODOCHAIN),
-            Self::OpenLayer => write!(f, "{}", OPENLAYER),
-            Self::CyberMach => write!(f, "{}", CYBERMACH),
-            Self::Aethos => write!(f, "{}", AETHOS),
-            Self::ArpaNetwork => write!(f, "{}", ARPANETWORK),
-            Self::OpacityNetwork => write!(f, "{}", OPACITYNETWORK),
-            Self::GMNetworkMach => write!(f, "{}", GMNETWORKMACH),
-            Self::UnifiAVS => write!(f, "{}", UNIFIAVS),
-            Self::SkateChainBase => write!(f, "{}", SKATECHAINBASE),
-            Self::SkateChainMantle => write!(f, "{}", SKATECHAINMANTLE),
-            Self::ChainbaseNetworkAVS => write!(f, "{}", CHAINBASENETWORKAVS),
-            Self::GoPlusAVS => write!(f, "{}", GOPLUSAVS),
-            Self::UngateInfiniRouteBase => write!(f, "{}", UNGATEINFINIROUTEBASE),
-            Self::UngateInfiniRoutePolygon => write!(f, "{}", UNGATEINFINIROUTEPOLYGON),
-            Self::PrimevMevCommit => write!(f, "{}", PRIMEVMEVCOMMIT),
-            Self::AlignedLayer => write!(f, "{}", ALIGNEDLAYER),
-            Self::Unknown => write!(f, "unknown"),
-        }
+        // Convert enum variant name to kebab case
+        let name = format!("{:?}", self).to_case(Case::Kebab);
+        write!(f, "{}", name)
     }
 }
 
