@@ -1,3 +1,4 @@
+use crate::container_registry::ContainerRegistry::{self, DockerHub, Github, GoogleCloud, AWS};
 use convert_case::{Case, Casing};
 use serde::{Deserialize, Serialize};
 use strum::{EnumIter, IntoEnumIterator};
@@ -17,18 +18,17 @@ pub enum NodeType {
     Hyperlane,
     Brevis,
     WitnessChain,
-    //New
-    AltlayerMach,
-    XterioMACH,
+    AltlayerMach,  // Altlayer Mach AVS
+    XterioMach,    // Altlayer Mach AVS
+    DodoChainMach, // Altlayer Mach AVS
+    CyberMach,     // Altlayer Mach AVS
+    GMNetworkMach, // Altlayer Mach AVS
     Omni,
     Automata,
-    DodoChain,
     OpenLayer,
-    CyberMach,
     Aethos,
     ArpaNetwork,
     OpacityNetwork,
-    GMNetworkMach,
     UnifiAVS,
     SkateChainBase,
     SkateChainMantle,
@@ -100,17 +100,17 @@ impl NodeType {
             Self::Predicate => "ghcr.io/predicatelabs/operator",
             Self::Hyperlane => "abacus-labs-dev/hyperlane-agent",
             Self::WitnessChain => "witnesschain/watchtower",
-            Self::AltlayerMach => todo!(),
-            Self::XterioMACH => todo!(),
+            Self::AltlayerMach => "altlayer/alt-generic-operator",
+            Self::XterioMach => "altlayer/mach-operator",
+            Self::DodoChainMach => "altlayer/mach-operator",
+            Self::CyberMach => "altlayer/mach-operator",
+            Self::GMNetworkMach => "altlayer/alt-generic-operator",
             Self::Omni => todo!(),
             Self::Automata => todo!(),
-            Self::DodoChain => todo!(),
             Self::OpenLayer => todo!(),
-            Self::CyberMach => todo!(),
             Self::Aethos => todo!(),
             Self::ArpaNetwork => todo!(),
             Self::OpacityNetwork => todo!(),
-            Self::GMNetworkMach => todo!(),
             Self::UnifiAVS => todo!(),
             Self::SkateChainBase => todo!(),
             Self::SkateChainMantle => todo!(),
@@ -129,29 +129,29 @@ impl NodeType {
         Ok(res)
     }
 
-    pub fn registry(&self) -> Result<&'static str, NodeTypeError> {
+    pub fn registry(&self) -> Result<ContainerRegistry, NodeTypeError> {
         let res = match self {
-            Self::EigenDA => "ghcr.io",
-            Self::EOracle => "registry-1.docker.io",
-            Self::AvaProtocol => "registry-1.docker.io",
-            Self::LagrangeStateCommittee => "registry-1.docker.io",
-            Self::LagrangeZkWorkerMainnet => "registry-1.docker.io",
-            Self::LagrangeZkWorkerHolesky => "registry-1.docker.io",
-            Self::K3LabsAvs => "registry-1.docker.io",
-            Self::Predicate => "ghcr.io",
-            Self::Hyperlane => "gcr.io",
-            Self::WitnessChain => "registry-1.docker.io",
-            Self::AltlayerMach => todo!(),
-            Self::XterioMACH => todo!(),
+            Self::EigenDA => Github,
+            Self::EOracle => DockerHub,
+            Self::AvaProtocol => DockerHub,
+            Self::LagrangeStateCommittee => DockerHub,
+            Self::LagrangeZkWorkerMainnet => DockerHub,
+            Self::LagrangeZkWorkerHolesky => DockerHub,
+            Self::K3LabsAvs => DockerHub,
+            Self::Predicate => Github,
+            Self::Hyperlane => GoogleCloud,
+            Self::WitnessChain => DockerHub,
+            Self::AltlayerMach => AWS,
+            Self::XterioMach => AWS,
+            Self::DodoChainMach => AWS,
+            Self::CyberMach => AWS,
+            Self::GMNetworkMach => AWS,
             Self::Omni => todo!(),
             Self::Automata => todo!(),
-            Self::DodoChain => todo!(),
             Self::OpenLayer => todo!(),
-            Self::CyberMach => todo!(),
             Self::Aethos => todo!(),
             Self::ArpaNetwork => todo!(),
             Self::OpacityNetwork => todo!(),
-            Self::GMNetworkMach => todo!(),
             Self::UnifiAVS => todo!(),
             Self::SkateChainBase => todo!(),
             Self::SkateChainMantle => todo!(),
@@ -171,7 +171,7 @@ impl NodeType {
     }
 
     // TODO: Find real default names of nodes marked with `temp_`
-    pub fn default_container_name(&self) -> Result<&'static str, NodeTypeError> {
+    pub fn default_container_name_mainnet(&self) -> Result<&'static str, NodeTypeError> {
         let res = match self {
             Self::EigenDA => "eigenda-native-node",
             Self::EOracle => "eoracle-data-validator",
@@ -183,17 +183,59 @@ impl NodeType {
             Self::Predicate => "temp_predicate-operator",
             Self::Hyperlane => "temp_hyperlane-agent",
             Self::WitnessChain => "temp_witnesschain",
-            Self::AltlayerMach => todo!(),
-            Self::XterioMACH => todo!(),
+            Self::AltlayerMach => "mach-avs-ethereum",
+            Self::XterioMach => "mach-avs-ethereum-xterio",
+            Self::DodoChainMach => "mach-avs-ethereum-dodochain",
+            Self::CyberMach => "mach-avs-ethereum-cyber",
+            Self::GMNetworkMach => "mach-avs-ethereum-gmnetwork",
             Self::Omni => todo!(),
             Self::Automata => todo!(),
-            Self::DodoChain => todo!(),
             Self::OpenLayer => todo!(),
-            Self::CyberMach => todo!(),
             Self::Aethos => todo!(),
             Self::ArpaNetwork => todo!(),
             Self::OpacityNetwork => todo!(),
-            Self::GMNetworkMach => todo!(),
+            Self::UnifiAVS => todo!(),
+            Self::SkateChainBase => todo!(),
+            Self::SkateChainMantle => todo!(),
+            Self::ChainbaseNetworkV1 => todo!(),
+            Self::ChainbaseNetworkV2 => todo!(),
+            Self::GoPlusAVS => todo!(),
+            Self::UngateInfiniRouteBase => todo!(),
+            Self::UngateInfiniRoutePolygon => todo!(),
+            Self::PrimevMevCommit => todo!(),
+            Self::AlignedLayer => todo!(),
+            Self::Brevis => {
+                unreachable!("Brevis node type has no container. This should be unenterable.")
+            }
+            Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
+        };
+        Ok(res)
+    }
+
+    // TODO: Find real default names of nodes marked with `temp_`
+    pub fn default_container_name_holesky(&self) -> Result<&'static str, NodeTypeError> {
+        let res = match self {
+            Self::EigenDA => "eigenda-native-node",
+            Self::EOracle => "eoracle-data-validator",
+            Self::AvaProtocol => "temp_ap_avs",
+            Self::LagrangeStateCommittee => "temp_lagrange-state-committee",
+            Self::LagrangeZkWorkerHolesky => "temp_lagrange-zk-worker-holesky",
+            Self::LagrangeZkWorkerMainnet => "temp_lagrange-zk-worker-mainnet",
+            Self::K3LabsAvs => "temp_k3-labs-avs-operator",
+            Self::Predicate => "temp_predicate-operator",
+            Self::Hyperlane => "temp_hyperlane-agent",
+            Self::WitnessChain => "temp_witnesschain",
+            Self::AltlayerMach => "mach-avs-holesky",
+            Self::XterioMach => "mach-avs-holesky-xterio-testnet",
+            Self::DodoChainMach => "mach-avs-holesky-dodochain",
+            Self::CyberMach => "mach-avs-holesky-cyber-testnet-operator-node",
+            Self::GMNetworkMach => "mach-avs-holesky-gmnetwork",
+            Self::Omni => todo!(),
+            Self::Automata => todo!(),
+            Self::OpenLayer => todo!(),
+            Self::Aethos => todo!(),
+            Self::ArpaNetwork => todo!(),
+            Self::OpacityNetwork => todo!(),
             Self::UnifiAVS => todo!(),
             Self::SkateChainBase => todo!(),
             Self::SkateChainMantle => todo!(),

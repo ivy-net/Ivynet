@@ -31,7 +31,7 @@ impl DockerRegistry {
     pub async fn from_node_type(entry: &NodeType) -> Result<Self, DockerRegistryError> {
         let registry = entry.registry()?;
         let repo = entry.default_repository()?;
-        Self::from_host_and_repo(registry, repo).await
+        Self::from_host_and_repo(&registry.to_string(), repo).await
     }
 
     pub async fn get_tags(&self) -> Result<Vec<String>, DockerRegistryError> {
@@ -101,7 +101,8 @@ mod docker_registry_tests {
             let registry = entry.registry()?;
             let repo = entry.default_repository()?;
             println!("[{}] requesting tags for image {}", registry, repo);
-            let client: DockerRegistry = DockerRegistry::from_host_and_repo(registry, repo).await?;
+            let client: DockerRegistry =
+                DockerRegistry::from_host_and_repo(&registry.to_string(), repo).await?;
             let tags = client.get_tags().await?;
             println!("Assert tags for image {}", registry);
             assert!(!tags.is_empty());

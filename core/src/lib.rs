@@ -2,6 +2,7 @@ pub mod avs;
 pub mod bls;
 pub mod config;
 pub mod constants;
+pub mod container_registry;
 pub mod directory;
 pub mod docker;
 pub mod download;

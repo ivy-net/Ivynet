@@ -42,12 +42,11 @@ static ALL_MAINNET_AVSES: &[(Chain, NodeType, H160)] = &[
     (Chain::Mainnet, NodeType::OpacityNetwork, h160!(0xce06c5fe42d22ff827a519396583fd9f5176e3d3)),
     (Chain::Mainnet, NodeType::GMNetworkMach, h160!(0xb3acaf09a1b801e36655b786da4eaa6ae9f5dc37)),
     (Chain::Mainnet, NodeType::UnifiAVS, h160!(0x2d86e90ed40a034c753931ee31b1bd5e1970113d)),
-    //Which one is right?
     (Chain::Mainnet, NodeType::SkateChainBase, h160!(0xe008064df9f019d0bff0735fe6887d70b23825ca)),
     (Chain::Mainnet, NodeType::SkateChainMantle, h160!(0xfc569b3b74e15cf48aa684144e072e839fd89380)),
     (
         Chain::Mainnet,
-        NodeType::ChainbaseNetworkAVS,
+        NodeType::ChainbaseNetworkV1,
         h160!(0xb73a87e8f7f9129816d40940ca19dfa396944c71),
     ),
     (Chain::Mainnet, NodeType::GoPlusAVS, h160!(0xa3f64d3102a035db35c42a9001bbc83e08c7a366)),
@@ -80,7 +79,7 @@ static ALL_HOLESKY_AVSES: &[(Chain, NodeType, H160)] = &[
     ),
     (Chain::Holesky, NodeType::EOracle, h160!(0x80FE337623Bc849F4b7379f4AB28aF2b470bEa98)),
     (Chain::Holesky, NodeType::Hyperlane, h160!(0xc76E477437065093D353b7d56c81ff54D167B0Ab)),
-    // TODO: K3 doesn't seem to have a testnet
+    // K3 doesn't seem to have a testnet
     (Chain::Holesky, NodeType::WitnessChain, h160!(0xa987EC494b13b21A8a124F8Ac03c9F530648C87D)),
     (Chain::Holesky, NodeType::AvaProtocol, h160!(0xEA3E82F9Ae371A6a372A6DCffB1a9bD17e0608eF)),
     (Chain::Holesky, NodeType::Predicate, h160!(0x4FC1132230fE16f67531D82ACbB9d78993B23825)),
@@ -94,6 +93,7 @@ static ALL_HOLESKY_AVSES: &[(Chain, NodeType, H160)] = &[
     (Chain::Holesky, NodeType::ArpaNetwork, h160!(0xd36b6e5eee8311d7bffb2f3bb33301a1ab7de101)),
     (Chain::Holesky, NodeType::OpacityNetwork, h160!(0xfd2ed3ccbba7209b04c7820145afcd9829f0b6cf)),
     (Chain::Holesky, NodeType::UnifiAVS, h160!(0x9b43f227ca57c685a8fe8898eef7dfbd399505df)),
+    //The skatechains might be swapped around - unsure
     (Chain::Holesky, NodeType::SkateChainBase, h160!(0x5d592a255a4369982aa7fb55c6cbc12c7103e5e4)),
     (Chain::Holesky, NodeType::SkateChainMantle, h160!(0x32612e4ec0eec067be22bc0d21e26d2cd3322d84)),
     (
