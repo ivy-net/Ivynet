@@ -86,25 +86,60 @@ impl std::fmt::Display for NodeType {
     }
 }
 
+/* ----------------------------------- */
+/* -------- NODE REPOSITORIES -------- */
+/* ----------------------------------- */
+pub const AVAPROTOCOL_REPO: &str = "avaprotocol/ap-avs";
+pub const EIGENDA_REPO: &str = "ghcr.io/layr-labs/eigenda/opr-node";
+pub const LAGRANGE_STATECOMS_REPO: &str = "lagrangelabs/lagrange-node";
+pub const K3LABS_REPO: &str = "k3official/k3-labs-avs-operator";
+pub const EORACLE_REPO: &str = "eoracle/data-validator";
+pub const PREDICATE_REPO: &str = "ghcr.io/predicatelabs/operator";
+pub const HYPERLANE_REPO: &str = "abacus-labs-dev/hyperlane-agent";
+pub const WITNESSCHAIN_REPO: &str = "witnesschain/watchtower";
+pub const ALTLAYER_GENERIC_REPO: &str = "altlayer/alt-generic-operator";
+pub const ALTLAYER_MACH_REPO: &str = "altlayer/mach-operator";
+pub const LAGRANGE_WORKER_REPO: &str = "lagrangelabs/worker";
+
+/* ------------------------------------ */
+/* ------- NODE CONTAINER NAMES ------- */
+/* ------------------------------------ */
+//Mainnet:
+pub const MACH_AVS_ETHEREUM: &str = "mach-avs-ethereum";
+pub const MACH_AVS_ETHEREUM_XTERIO: &str = "mach-avs-ethereum-xterio";
+pub const MACH_AVS_ETHEREUM_DODOCHAIN: &str = "mach-avs-ethereum-dodochain";
+pub const MACH_AVS_ETHEREUM_CYBER: &str = "mach-avs-ethereum-cyber";
+pub const MACH_AVS_ETHEREUM_GMNETWORK: &str = "mach-avs-ethereum-gmnetwork";
+pub const EIGENDA_NATIVE_NODE: &str = "eigenda-native-node";
+pub const EORACLE_DATA_VALIDATOR: &str = "eoracle-data-validator";
+
+//Holesky (Will only have a holesky container name if it isn't the same as mainnet):
+pub const MACH_AVS_HOLESKY: &str = "mach-avs-holesky";
+pub const MACH_AVS_HOLESKY_XTERIO_TESTNET: &str = "mach-avs-holesky-xterio-testnet";
+pub const MACH_AVS_HOLESKY_DODOCHAIN: &str = "mach-avs-holesky-dodochain";
+pub const MACH_AVS_HOLESKY_CYBER_TESTNET_OPERATOR_NODE: &str =
+    "mach-avs-holesky-cyber-testnet-operator-node";
+pub const MACH_AVS_HOLESKY_GMNETWORK: &str = "mach-avs-holesky-gmnetwork";
+
 // We may want to put these methods elsewhere.
 impl NodeType {
     pub fn default_repository(&self) -> Result<&'static str, NodeTypeError> {
         let res = match self {
-            Self::AvaProtocol => "avaprotocol/ap-avs",
-            Self::EigenDA => "ghcr.io/layr-labs/eigenda/opr-node",
-            Self::LagrangeStateCommittee => "lagrangelabs/lagrange-node",
-            Self::LagrangeZkWorkerHolesky => "lagrangelabs/worker",
-            Self::LagrangeZkWorkerMainnet => "lagrangelabs/worker",
-            Self::K3LabsAvs => "k3official/k3-labs-avs-operator",
-            Self::EOracle => "eoracle/data-validator",
-            Self::Predicate => "ghcr.io/predicatelabs/operator",
-            Self::Hyperlane => "abacus-labs-dev/hyperlane-agent",
-            Self::WitnessChain => "witnesschain/watchtower",
-            Self::AltlayerMach => "altlayer/alt-generic-operator",
-            Self::XterioMach => "altlayer/mach-operator",
-            Self::DodoChainMach => "altlayer/mach-operator",
-            Self::CyberMach => "altlayer/mach-operator",
-            Self::GMNetworkMach => "altlayer/alt-generic-operator",
+            Self::AvaProtocol => AVAPROTOCOL_REPO,
+            Self::EigenDA => EIGENDA_REPO,
+            Self::LagrangeStateCommittee => LAGRANGE_STATECOMS_REPO,
+            Self::LagrangeZkWorkerHolesky => LAGRANGE_WORKER_REPO,
+            Self::LagrangeZkWorkerMainnet => LAGRANGE_WORKER_REPO,
+            Self::K3LabsAvs => K3LABS_REPO,
+            Self::EOracle => EORACLE_REPO,
+            Self::Predicate => PREDICATE_REPO,
+            Self::Hyperlane => HYPERLANE_REPO,
+            Self::WitnessChain => WITNESSCHAIN_REPO,
+            Self::AltlayerMach => ALTLAYER_GENERIC_REPO,
+            Self::GMNetworkMach => ALTLAYER_GENERIC_REPO,
+            Self::XterioMach => ALTLAYER_MACH_REPO,
+            Self::DodoChainMach => ALTLAYER_MACH_REPO,
+            Self::CyberMach => ALTLAYER_MACH_REPO,
             Self::Omni => todo!(),
             Self::Automata => todo!(),
             Self::OpenLayer => todo!(),
@@ -173,21 +208,21 @@ impl NodeType {
     // TODO: Find real default names of nodes marked with `temp_`
     pub fn default_container_name_mainnet(&self) -> Result<&'static str, NodeTypeError> {
         let res = match self {
-            Self::EigenDA => "eigenda-native-node",
-            Self::EOracle => "eoracle-data-validator",
-            Self::AvaProtocol => "temp_ap_avs",
-            Self::LagrangeStateCommittee => "temp_lagrange-state-committee",
-            Self::LagrangeZkWorkerHolesky => "temp_lagrange-zk-worker-holesky",
-            Self::LagrangeZkWorkerMainnet => "temp_lagrange-zk-worker-mainnet",
-            Self::K3LabsAvs => "temp_k3-labs-avs-operator",
-            Self::Predicate => "temp_predicate-operator",
-            Self::Hyperlane => "temp_hyperlane-agent",
-            Self::WitnessChain => "temp_witnesschain",
-            Self::AltlayerMach => "mach-avs-ethereum",
-            Self::XterioMach => "mach-avs-ethereum-xterio",
-            Self::DodoChainMach => "mach-avs-ethereum-dodochain",
-            Self::CyberMach => "mach-avs-ethereum-cyber",
-            Self::GMNetworkMach => "mach-avs-ethereum-gmnetwork",
+            Self::EigenDA => EIGENDA_NATIVE_NODE,
+            Self::EOracle => EORACLE_DATA_VALIDATOR,
+            Self::AltlayerMach => MACH_AVS_ETHEREUM,
+            Self::XterioMach => MACH_AVS_ETHEREUM_XTERIO,
+            Self::DodoChainMach => MACH_AVS_ETHEREUM_DODOCHAIN,
+            Self::CyberMach => MACH_AVS_ETHEREUM_CYBER,
+            Self::GMNetworkMach => MACH_AVS_ETHEREUM_GMNETWORK,
+            Self::AvaProtocol => todo!(),
+            Self::LagrangeStateCommittee => todo!(),
+            Self::LagrangeZkWorkerHolesky => todo!(),
+            Self::LagrangeZkWorkerMainnet => todo!(),
+            Self::K3LabsAvs => todo!(),
+            Self::Predicate => todo!(),
+            Self::Hyperlane => todo!(),
+            Self::WitnessChain => todo!(),
             Self::Omni => todo!(),
             Self::Automata => todo!(),
             Self::OpenLayer => todo!(),
@@ -215,21 +250,21 @@ impl NodeType {
     // TODO: Find real default names of nodes marked with `temp_`
     pub fn default_container_name_holesky(&self) -> Result<&'static str, NodeTypeError> {
         let res = match self {
-            Self::EigenDA => "eigenda-native-node",
-            Self::EOracle => "eoracle-data-validator",
-            Self::AvaProtocol => "temp_ap_avs",
-            Self::LagrangeStateCommittee => "temp_lagrange-state-committee",
-            Self::LagrangeZkWorkerHolesky => "temp_lagrange-zk-worker-holesky",
-            Self::LagrangeZkWorkerMainnet => "temp_lagrange-zk-worker-mainnet",
-            Self::K3LabsAvs => "temp_k3-labs-avs-operator",
-            Self::Predicate => "temp_predicate-operator",
-            Self::Hyperlane => "temp_hyperlane-agent",
-            Self::WitnessChain => "temp_witnesschain",
-            Self::AltlayerMach => "mach-avs-holesky",
-            Self::XterioMach => "mach-avs-holesky-xterio-testnet",
-            Self::DodoChainMach => "mach-avs-holesky-dodochain",
-            Self::CyberMach => "mach-avs-holesky-cyber-testnet-operator-node",
-            Self::GMNetworkMach => "mach-avs-holesky-gmnetwork",
+            Self::EigenDA => EIGENDA_NATIVE_NODE,
+            Self::EOracle => EORACLE_DATA_VALIDATOR,
+            Self::AltlayerMach => MACH_AVS_HOLESKY,
+            Self::XterioMach => MACH_AVS_HOLESKY_XTERIO_TESTNET,
+            Self::DodoChainMach => MACH_AVS_HOLESKY_DODOCHAIN,
+            Self::CyberMach => MACH_AVS_HOLESKY_CYBER_TESTNET_OPERATOR_NODE,
+            Self::GMNetworkMach => MACH_AVS_HOLESKY_GMNETWORK,
+            Self::AvaProtocol => todo!(),
+            Self::LagrangeStateCommittee => todo!(),
+            Self::LagrangeZkWorkerHolesky => todo!(),
+            Self::LagrangeZkWorkerMainnet => todo!(),
+            Self::K3LabsAvs => todo!(),
+            Self::Predicate => todo!(),
+            Self::Hyperlane => todo!(),
+            Self::WitnessChain => todo!(),
             Self::Omni => todo!(),
             Self::Automata => todo!(),
             Self::OpenLayer => todo!(),
@@ -267,7 +302,11 @@ impl NodeType {
             NodeType::Predicate,
             NodeType::Hyperlane,
             NodeType::WitnessChain,
-            // NodeType::Brevis,
+            // NodeType::AltlayerMach, //AWS rate limits currently
+            // NodeType::XterioMach,
+            // NodeType::DodoChainMach,
+            // NodeType::CyberMach,
+            // NodeType::GMNetworkMach,
         ]
     }
 
@@ -281,23 +320,43 @@ impl NodeType {
         if parts.len() != 2 {
             return None;
         }
-        Self::from_repo_tag(parts[1], parts[0])
+        Self::from_repo(parts[1], parts[0])
     }
 
-    pub fn from_repo_tag(repo: &str, tag: &str) -> Option<Self> {
+    pub fn from_default_container_name(container_name: &str) -> Option<Self> {
+        let node_type = match container_name {
+            EIGENDA_NATIVE_NODE => Self::EigenDA,
+            EORACLE_DATA_VALIDATOR => Self::EOracle,
+            MACH_AVS_ETHEREUM => Self::AltlayerMach,
+            MACH_AVS_ETHEREUM_XTERIO => Self::XterioMach,
+            MACH_AVS_ETHEREUM_DODOCHAIN => Self::DodoChainMach,
+            MACH_AVS_ETHEREUM_CYBER => Self::CyberMach,
+            MACH_AVS_ETHEREUM_GMNETWORK => Self::GMNetworkMach,
+            MACH_AVS_HOLESKY => Self::AltlayerMach,
+            MACH_AVS_HOLESKY_XTERIO_TESTNET => Self::XterioMach,
+            MACH_AVS_HOLESKY_DODOCHAIN => Self::DodoChainMach,
+            MACH_AVS_HOLESKY_CYBER_TESTNET_OPERATOR_NODE => Self::CyberMach,
+            MACH_AVS_HOLESKY_GMNETWORK => Self::GMNetworkMach,
+            _ => return None,
+        };
+        Some(node_type)
+    }
+
+    // Given a repo and tag, get the NodeType, since they have a 1:1 relationship
+    pub fn from_repo(repo: &str, tag: &str) -> Option<Self> {
         println!("repo: {}, tag: {}", repo, tag);
         match repo {
             // tag-agnostic nodes
-            "avaprotocol/ap-avs" => Some(Self::AvaProtocol),
-            "ghcr.io/layr-labs/eigenda/opr-node" => Some(Self::EigenDA),
-            "lagrangelabs/lagrange-node" => Some(Self::LagrangeStateCommittee),
-            "k3official/k3-labs-avs-operator" => Some(Self::K3LabsAvs),
-            "eoracle/data-validator" => Some(Self::EOracle),
-            "ghcr.io/predicatelabs/operator" => Some(Self::Predicate),
-            "gcr.io/abacus-labs-dev/hyperlane-agent" => Some(Self::Hyperlane),
-            "witnesschain/watchtower" => Some(Self::WitnessChain),
+            AVAPROTOCOL_REPO => Some(Self::AvaProtocol),
+            EIGENDA_REPO => Some(Self::EigenDA),
+            LAGRANGE_STATECOMS_REPO => Some(Self::LagrangeStateCommittee),
+            K3LABS_REPO => Some(Self::K3LabsAvs),
+            EORACLE_REPO => Some(Self::EOracle),
+            PREDICATE_REPO => Some(Self::Predicate),
+            HYPERLANE_REPO => Some(Self::Hyperlane),
+            WITNESSCHAIN_REPO => Some(Self::WitnessChain),
             // tag-specific nodes
-            "lagrangelabs/worker" => match tag {
+            LAGRANGE_WORKER_REPO => match tag {
                 "holesky" => Some(Self::LagrangeZkWorkerHolesky),
                 "mainnet" => Some(Self::LagrangeZkWorkerMainnet),
                 _ => None,

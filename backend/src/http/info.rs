@@ -19,7 +19,7 @@ use super::{authorize, HttpState};
     get,
     path = "/info/avs/version/:avs",
     responses(
-        (status = 200, body = Metric),
+        (status = 200, body = Vec<AvsVersionData>),
         (status = 404)
     )
 )]
@@ -46,7 +46,7 @@ pub async fn get_version_info(
     get,
     path = "/info/avs/version",
     responses(
-        (status = 200, body = Metric),
+        (status = 200, body = Vec<AvsVersionData>),
         (status = 404)
     )
 )]
