@@ -31,7 +31,7 @@ impl From<&NodeType> for VersionType {
             NodeType::XterioMACH => todo!(),
             NodeType::Omni => todo!(),
             NodeType::Automata => todo!(),
-            NodeType::DODOchain => todo!(),
+            NodeType::DodoChain => todo!(),
             NodeType::OpenLayer => todo!(),
             NodeType::CyberMach => todo!(),
             NodeType::Aethos => todo!(),

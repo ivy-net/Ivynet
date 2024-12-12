@@ -45,17 +45,40 @@ pub enum NodeType {
 impl From<&str> for NodeType {
     fn from(s: &str) -> Self {
         let input = s.to_string();
+
+        // Generate different case variations for comparison
         let kebab = input.to_case(Case::Kebab);
         let lower = input.to_case(Case::Lower);
+        let pascal = input.to_case(Case::Pascal);
+        // Add camel case for compound words
+        let camel = input.to_case(Case::Camel);
 
-        // Get all variants as strings in different cases for comparison
+        // Remove common separators for more flexible matching
+        let normalized = input.replace("-", "").replace("_", "").replace(" ", "").to_lowercase();
+
         NodeType::iter()
             .find(|variant| {
                 let variant_str = format!("{:?}", variant);
                 let variant_kebab = variant_str.to_case(Case::Kebab);
                 let variant_lower = variant_str.to_case(Case::Lower);
+                let variant_pascal = variant_str.to_case(Case::Pascal);
+                let variant_camel = variant_str.to_case(Case::Camel);
+                let variant_normalized =
+                    variant_str.replace("-", "").replace("_", "").replace(" ", "").to_lowercase();
 
-                kebab == variant_kebab || lower == variant_lower
+                println!("variant_str: {}", variant_str);
+                println!("variant_kebab: {}", variant_kebab);
+                println!("variant_lower: {}", variant_lower);
+                println!("variant_pascal: {}", variant_pascal);
+                println!("variant_camel: {}", variant_camel);
+                println!("variant_normalized: {}", variant_normalized);
+
+                kebab == variant_kebab ||
+                    lower == variant_lower ||
+                    pascal == variant_pascal ||
+                    camel == variant_camel ||
+                    normalized == variant_normalized ||
+                    input.eq_ignore_ascii_case(&variant_str)
             })
             .unwrap_or(Self::Unknown)
     }
@@ -281,5 +304,62 @@ mod tests {
         let unknown_image_name = "unknown";
         let unknown_node_type = NodeType::from_image(unknown_image_name);
         assert_eq!(unknown_node_type, None);
+    }
+
+    #[test]
+    fn test_from_str_kebab_case() {
+        let test_cases = vec![
+            ("eigen-da", NodeType::EigenDA),
+            ("ava-protocol", NodeType::AvaProtocol),
+            ("lagrange-state-committee", NodeType::LagrangeStateCommittee),
+            ("lagrange-zk-worker-holesky", NodeType::LagrangeZkWorkerHolesky),
+            ("e-oracle", NodeType::EOracle),
+            ("predicate", NodeType::Predicate),
+            ("witness-chain", NodeType::WitnessChain),
+        ];
+
+        for (input, expected) in test_cases {
+            assert_eq!(NodeType::from(input), expected, "Failed for input: {}", input);
+        }
+    }
+
+    #[test]
+    fn test_from_str_lower_case() {
+        let test_cases = vec![
+            ("eigenda", NodeType::EigenDA),
+            ("avaprotocol", NodeType::AvaProtocol),
+            ("lagrangestatecommittee", NodeType::LagrangeStateCommittee),
+            ("lagrangezkworkermainnet", NodeType::LagrangeZkWorkerMainnet),
+            ("eoracle", NodeType::EOracle),
+            ("hyperlane", NodeType::Hyperlane),
+        ];
+
+        for (input, expected) in test_cases {
+            assert_eq!(NodeType::from(input), expected, "Failed for input: {}", input);
+        }
+    }
+
+    #[test]
+    fn test_from_str_unknown() {
+        let test_cases = vec!["not_a_node", "random", "", "123", "unknown-node-type"];
+
+        for input in test_cases {
+            assert_eq!(NodeType::from(input), NodeType::Unknown, "Failed for input: {}", input);
+        }
+    }
+
+    #[test]
+    fn test_from_str_case_insensitive() {
+        let test_cases = vec![
+            ("EIGENDA", NodeType::EigenDA),
+            ("eigenDA", NodeType::EigenDA),
+            ("EigenDa", NodeType::EigenDA),
+            ("HYPERLANE", NodeType::Hyperlane),
+            ("HyperLane", NodeType::Hyperlane),
+        ];
+
+        for (input, expected) in test_cases {
+            assert_eq!(NodeType::from(input), expected, "Failed for input: {}", input);
+        }
     }
 }
