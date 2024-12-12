@@ -48,13 +48,8 @@ async fn main() -> Result<(), anyhow::Error> {
 
     info!("IvyNet scraper service starting...");
 
-    let backend = BackendEventsClient::new(
-        create_channel(
-            ivynet_core::grpc::client::Source::Uri(params.backend_uri),
-            params.grpc_tls_ca,
-        )
-        .await?,
-    );
+    let backend =
+        BackendEventsClient::new(create_channel(params.backend_uri, params.grpc_tls_ca).await?);
 
     blockchain::fetch(&params.rpc_url, backend, params.start_block, &addresses).await?;
 

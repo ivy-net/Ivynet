@@ -28,7 +28,7 @@ reqwest = { version = "0.12", features = ["stream"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.117"
 serde_yaml = "0.9.33"
-sysinfo = "0.32.0"
+sysinfo = "0.33"
 thiserror = "2.0.3"
 tokio = { version = "1.37.0", features = ["full"] }
 toml = "0.8.15"
@@ -42,15 +42,13 @@ blsful = "2.5.7"
 rand = "0.8"
 
 #grpc
-tower = { version = "0.5.1", features = ["util"] }
-prost = "0.12"
-prost-wkt = "0.5"
-prost-wkt-types = "0.5"
-tonic = { version = "0.11", features = ["tls", "tls-roots"] }
-tonic-reflection = "0.11"
+prost = "0.13"
+prost-wkt = "0.6"
+prost-wkt-types = "0.6"
+tonic = { version = "0.12", features = ["tls", "tls-roots"] }
+tonic-reflection = "0.12"
 tokio-stream = { version = "0.1.15", features = ["net"] }
-hyper-util = { version = "0.1.9", features = ["full", "tokio"] }
-which = "6.0.2"
+which = "7.0"
 semver = "1.0.23"
 indexmap = "2.6.0"
 docker-compose-types = "0.15.0"
@@ -62,9 +60,9 @@ futures = "0.3.31"
 docker-registry = "0.7.0"
 
 [build-dependencies]
-prost-build = "0.12"
-prost-wkt-build = "0.5"
-tonic-build = "0.11"
+prost-build = "0.13"
+prost-wkt-build = "0.6"
+tonic-build = "0.12"
 
 [dev-dependencies]
 tempfile = "3.10.1"
