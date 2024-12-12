@@ -45,7 +45,7 @@ jobs:
       - name: Prepare version
         id: set-version
         run: |
-          version=$( echo ${{ github.action_ref }} | awk -F- '{print $2}')
+          version=$( echo "${{ GITHUB.REF_NAME }}" | awk -F- '{print $2}')
           echo "VERSION=${version}" >> "$GITHUB_OUTPUT"
       - name: Create versioned binaries
         env:
