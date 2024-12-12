@@ -65,7 +65,7 @@ jobs:
         with:
           path: target/release/bucket
           glob: '*'
-          destination: ivynet-shared-test
+          destination: ivynet-share-test
           parent: false
 
   build-image:
