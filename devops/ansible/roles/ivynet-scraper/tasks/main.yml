@@ -17,15 +17,28 @@
   ansible.builtin.import_tasks:
     file: third_party.yml
 
+- name: Install and configure 3rd party tools
+  ansible.builtin.import_tasks:
+    file: get_scraper.yml
+
+- name: Help
+  ansible.builtin.debug:
+    msg: "{{ network }}"
+  vars:
+    network: "{{ item }}"
+  loop:
+    - mainnet
+    - holesky
+
 - name: Copy Scraper Service files
   ansible.builtin.template:
-    src: ivynet-scrapper.service.j2
-    dest: /etc/systemd/system/ivynet-scrapper-{{ item }}.service
+    src: ivynet-scraper.service.j2
+    dest: /etc/systemd/system/ivynet-scraper-{{ item }}.service
     owner: root
     group: root
     mode: "0644"
-    vars:
-      network: "{{ item }}"
+  vars:
+    network: "{{ item }}"
   loop:
     - mainnet
     - holesky
@@ -34,7 +47,7 @@
     - Restart scraper holesky service
     - Restart scraper mainnet service
   tags:
-    - ivynet_scrapper
+    - ivynet_scraper
     - general
     - ivynet
     - systemd
