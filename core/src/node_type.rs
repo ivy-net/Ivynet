@@ -32,7 +32,8 @@ pub enum NodeType {
     UnifiAVS,
     SkateChainBase,
     SkateChainMantle,
-    ChainbaseNetworkAVS,
+    ChainbaseNetworkV1,
+    ChainbaseNetworkV2,
     GoPlusAVS,
     UngateInfiniRouteBase,
     UngateInfiniRoutePolygon,
@@ -65,13 +66,6 @@ impl From<&str> for NodeType {
                 let variant_camel = variant_str.to_case(Case::Camel);
                 let variant_normalized =
                     variant_str.replace("-", "").replace("_", "").replace(" ", "").to_lowercase();
-
-                println!("variant_str: {}", variant_str);
-                println!("variant_kebab: {}", variant_kebab);
-                println!("variant_lower: {}", variant_lower);
-                println!("variant_pascal: {}", variant_pascal);
-                println!("variant_camel: {}", variant_camel);
-                println!("variant_normalized: {}", variant_normalized);
 
                 kebab == variant_kebab ||
                     lower == variant_lower ||
@@ -120,7 +114,8 @@ impl NodeType {
             Self::UnifiAVS => todo!(),
             Self::SkateChainBase => todo!(),
             Self::SkateChainMantle => todo!(),
-            Self::ChainbaseNetworkAVS => todo!(),
+            Self::ChainbaseNetworkV1 => todo!(),
+            Self::ChainbaseNetworkV2 => todo!(),
             Self::GoPlusAVS => todo!(),
             Self::UngateInfiniRouteBase => todo!(),
             Self::UngateInfiniRoutePolygon => todo!(),
@@ -160,7 +155,8 @@ impl NodeType {
             Self::UnifiAVS => todo!(),
             Self::SkateChainBase => todo!(),
             Self::SkateChainMantle => todo!(),
-            Self::ChainbaseNetworkAVS => todo!(),
+            Self::ChainbaseNetworkV1 => todo!(),
+            Self::ChainbaseNetworkV2 => todo!(),
             Self::GoPlusAVS => todo!(),
             Self::UngateInfiniRouteBase => todo!(),
             Self::UngateInfiniRoutePolygon => todo!(),
@@ -201,7 +197,8 @@ impl NodeType {
             Self::UnifiAVS => todo!(),
             Self::SkateChainBase => todo!(),
             Self::SkateChainMantle => todo!(),
-            Self::ChainbaseNetworkAVS => todo!(),
+            Self::ChainbaseNetworkV1 => todo!(),
+            Self::ChainbaseNetworkV2 => todo!(),
             Self::GoPlusAVS => todo!(),
             Self::UngateInfiniRouteBase => todo!(),
             Self::UngateInfiniRoutePolygon => todo!(),
