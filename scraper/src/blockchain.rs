@@ -1,12 +1,12 @@
-use crate::error::{Result, ScraperError};
+use crate::error::Result;
 use ethers::{
     contract::{abigen, parse_log, ContractError, LogMeta},
     providers::{Middleware, Provider, Ws},
-    types::{Address, Chain, H160, U256, U64},
+    types::{Address, Chain},
 };
 use futures::{stream::SelectAll, Stream, StreamExt};
 use ivynet_core::{
-    directory::{get_all_directories_for_chain, get_avs_from_address},
+    directory::get_all_directories_for_chain,
     grpc::{
         backend_events::{
             backend_events_client::BackendEventsClient, LatestBlockRequest, MetadataUriEvent,
@@ -15,7 +15,7 @@ use ivynet_core::{
         tonic::{transport::Channel, Request},
     },
 };
-use std::{fs::OpenOptions, io::Write, path::Path, pin::Pin, sync::Arc};
+use std::{pin::Pin, sync::Arc};
 use tokio::sync::Mutex;
 use tracing::{debug, info};
 
