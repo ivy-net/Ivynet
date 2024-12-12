@@ -20,16 +20,21 @@
       },
       {
         "ordinal": 3,
-        "name": "latest_version",
+        "name": "latest_version_tag",
         "type_info": "Varchar"
       },
       {
         "ordinal": 4,
-        "name": "breaking_change_version",
+        "name": "latest_version_digest",
         "type_info": "Varchar"
       },
       {
         "ordinal": 5,
+        "name": "breaking_change_tag",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 6,
         "name": "breaking_change_datetime",
         "type_info": "Timestamp"
       }
@@ -38,6 +43,7 @@
       "Left": []
     },
     "nullable": [
+      false,
       false,
       false,
       false,

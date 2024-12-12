@@ -7,8 +7,6 @@ use std::collections::HashMap;
 
 use ivynet_core::ethers::types::Chain;
 
-use semver::Version;
-
 use crate::{
     db::{
         avs_version::{DbAvsVersionData, NodeTypeId, VersionData},
@@ -17,6 +15,8 @@ use crate::{
     },
     error::BackendError,
 };
+
+use super::avs_version::{extract_semver, VersionType};
 
 const UPTIME_METRIC: &str = "uptime";
 pub const RUNNING_METRIC: &str = "running";
@@ -75,7 +75,7 @@ pub enum UpdateStatus {
 
 pub async fn build_avs_info(
     pool: &sqlx::PgPool,
-    mut avs: Avs,
+    avs: Avs,
     metrics: HashMap<String, Metric>,
 ) -> Result<AvsInfo, BackendError> {
     let running_metric = metrics.get(RUNNING_METRIC);
@@ -85,25 +85,12 @@ pub async fn build_avs_info(
     //Start of error building
     let mut errors = vec![];
 
-    let active_set = if let (Some(address), Some(chain)) = (avs.operator_address, avs.chain) {
-        if let Some(directory) = avs_contract(avs.avs_type, chain) {
-            AvsActiveSet::get_active_set(pool, directory, address, chain).await.unwrap_or(false)
-        } else {
-            false
-        }
-    } else {
-        false
-    };
-
-    avs.active_set = active_set;
-    Avs::update_active_set(pool, avs.machine_id, &avs.avs_name, active_set).await?;
-
     if running_metric.is_none() {
         //Running metric missing should never really happen
         errors.push(NodeError::CrashedNode);
 
         //But if it does and you're in the active set, flag
-        if active_set {
+        if avs.active_set {
             errors.push(NodeError::ActiveSetNoDeployment);
         }
     }
@@ -111,7 +98,7 @@ pub async fn build_avs_info(
     if let Some(run_met) = running_metric {
         //If running metric is not 1, the node has crashed
         if run_met.value == 1.0 {
-            if !active_set {
+            if !avs.active_set {
                 errors.push(NodeError::UnregisteredFromActiveSet);
             }
 
@@ -131,7 +118,7 @@ pub async fn build_avs_info(
             errors.push(NodeError::CrashedNode);
 
             //In active set but not running a node could be inactivity slashable
-            if active_set {
+            if avs.active_set {
                 errors.push(NodeError::ActiveSetNoDeployment);
             }
         }
@@ -146,7 +133,8 @@ pub async fn build_avs_info(
         if let Ok(version_map) = version_map {
             update_status = get_update_status(
                 version_map,
-                avs.avs_version.clone(),
+                &avs.avs_version,
+                &avs.version_hash,
                 Some(chain.to_string()),
                 avs.avs_type,
             );
@@ -170,9 +158,12 @@ pub async fn build_avs_info(
     })
 }
 
+/// node_version_tag: corresponds to the docker image tag for the node.
+/// node_image_digest: corresponds to the docker image digest for the node.
 pub fn get_update_status(
     version_map: HashMap<NodeTypeId, VersionData>,
-    avs_version: Version,
+    node_version_tag: &str,
+    node_image_digest: &str,
     chain: Option<String>,
     node_type: NodeType,
 ) -> UpdateStatus {
@@ -188,28 +179,52 @@ pub fn get_update_status(
         None => return UpdateStatus::Unknown,
     };
 
-    // Determine update status
-    if version_data.breaking_change_version.as_ref().is_some_and(|breaking| avs_version < *breaking)
-    {
-        UpdateStatus::Outdated
-    } else if version_data.latest_version > avs_version {
-        UpdateStatus::Updateable
-    } else {
-        UpdateStatus::UpToDate
+    match VersionType::from(&node_type) {
+        VersionType::SemVer => {
+            let latest_semver = match extract_semver(&version_data.latest_version) {
+                Some(semver) => semver,
+                None => return UpdateStatus::Unknown,
+            };
+
+            let query_semver = match extract_semver(node_version_tag) {
+                Some(semver) => semver,
+                None => return UpdateStatus::Unknown,
+            };
+
+            let breaking_change_semver = match version_data.breaking_change_version.as_ref() {
+                Some(breaking_change) => extract_semver(&breaking_change.to_string()),
+                None => None,
+            };
+
+            if let Some(breaking_change_semver) = breaking_change_semver {
+                if query_semver < breaking_change_semver {
+                    return UpdateStatus::Outdated;
+                }
+            }
+
+            if query_semver >= latest_semver {
+                return UpdateStatus::UpToDate;
+            }
+
+            UpdateStatus::Updateable
+        }
+        // TODO: This is pretty dumb at the moment, no real way to check for breaking change
+        // versions for fixed versions
+        VersionType::FixedVer => {
+            if node_image_digest == version_data.latest_version_digest {
+                return UpdateStatus::UpToDate;
+            }
+            UpdateStatus::Updateable
+        }
     }
 }
 
 /// Condense list of metrics into a smaller list of metrics for the frontend
-pub fn condense_metrics(
-    node_type: NodeType,
-    metrics: &[Metric],
-) -> Result<Vec<Metric>, BackendError> {
+pub fn condense_metrics(node_type: NodeType, metrics: &[Metric]) -> Vec<Metric> {
     match node_type {
-        NodeType::EigenDA => Ok(filter_metrics_by_names(metrics, &CONDENSED_EIGENDA_METRICS_NAMES)),
-        _ => Err(BackendError::CondensedMetricsNotFound(format!(
-            "No condensed metrics found for AVS: {}, use the /metrics/all endpoint instead",
-            node_type
-        ))),
+        NodeType::EigenDA => filter_metrics_by_names(metrics, &CONDENSED_EIGENDA_METRICS_NAMES),
+        _ => metrics.to_vec(), /* If we haven't implemented a condensed metrics list for this
+                                * node type, just return all metrics */
     }
 }
 
@@ -222,15 +237,44 @@ pub async fn update_avs_version(
     pool: &sqlx::PgPool,
     machine_id: Uuid,
     avs_name: &str,
-    version_hash: &str,
+    digest: &str,
 ) -> Result<(), BackendError> {
-    let version = AvsVersionHash::get_version(pool, version_hash).await?;
-    Avs::update_version(pool, machine_id, avs_name, &version).await?;
+    let version = AvsVersionHash::get_version(pool, digest).await?;
+    Avs::update_version(pool, machine_id, avs_name, &version, digest).await?;
+
     Ok(())
 }
 
+pub async fn update_avs_active_set(
+    pool: &sqlx::PgPool,
+    machine_id: Uuid,
+    avs_name: &str,
+) -> Result<(), BackendError> {
+    let avs = Avs::get_machines_avs(pool, machine_id, avs_name).await?;
+
+    let active_set = if let Some(avs) = avs {
+        if let (Some(address), Some(chain)) = (avs.operator_address, avs.chain) {
+            if let Some(directory) = avs_contract(avs.avs_type, chain) {
+                AvsActiveSet::get_active_set(pool, directory, address, chain).await.unwrap_or(false)
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    } else {
+        false
+    };
+
+    Avs::update_active_set(pool, machine_id, avs_name, active_set).await?;
+    Ok(())
+}
+
+// TODO: These need to also text fixed versions
 #[cfg(test)]
 mod node_data_tests {
+    use semver::Version;
+
     use super::*;
 
     fn create_test_version_map() -> HashMap<NodeTypeId, VersionData> {
@@ -240,8 +284,9 @@ mod node_data_tests {
         map.insert(
             NodeTypeId { node_type: NodeType::EigenDA, chain: Chain::Mainnet },
             VersionData {
-                latest_version: Version::new(1, 2, 0),
-                breaking_change_version: Some(Version::new(1, 0, 0)),
+                latest_version: Version::new(1, 2, 0).to_string(),
+                latest_version_digest: "digest".to_string(),
+                breaking_change_version: Some(Version::new(1, 0, 0).to_string()),
                 breaking_change_datetime: None,
             },
         );
@@ -252,9 +297,11 @@ mod node_data_tests {
     #[test]
     fn test_update_status_up_to_date() {
         let version_map = create_test_version_map();
+        let test_digest = "digest";
         let status = get_update_status(
             version_map,
-            Version::new(1, 2, 0),
+            Version::new(1, 2, 0).to_string().as_ref(),
+            test_digest,
             Some("mainnet".to_string()),
             NodeType::EigenDA,
         );
@@ -264,9 +311,11 @@ mod node_data_tests {
     #[test]
     fn test_update_status_updateable() {
         let version_map = create_test_version_map();
+        let test_digest = "different_digest";
         let status = get_update_status(
             version_map,
-            Version::new(1, 1, 0),
+            Version::new(1, 1, 0).to_string().as_ref(),
+            test_digest,
             Some("mainnet".to_string()),
             NodeType::EigenDA,
         );
@@ -276,9 +325,11 @@ mod node_data_tests {
     #[test]
     fn test_update_status_outdated() {
         let version_map = create_test_version_map();
+        let test_digest = "different_digest";
         let status = get_update_status(
             version_map,
-            Version::new(0, 9, 0),
+            Version::new(0, 9, 0).to_string().as_ref(),
+            test_digest,
             Some("mainnet".to_string()),
             NodeType::EigenDA,
         );
@@ -288,11 +339,12 @@ mod node_data_tests {
     #[test]
     fn test_update_status_unknown_chain_or_type() {
         let version_map = create_test_version_map();
-
+        let test_digest = "digest";
         // Test with invalid chain
         let status = get_update_status(
             version_map.clone(),
-            Version::new(1, 2, 0),
+            Version::new(1, 2, 0).to_string().as_ref(),
+            test_digest,
             Some("invalid_chain".to_string()),
             NodeType::EigenDA,
         );
@@ -301,7 +353,8 @@ mod node_data_tests {
         // Test with unknown node type
         let status = get_update_status(
             version_map,
-            Version::new(1, 2, 0),
+            Version::new(1, 2, 0).to_string().as_ref(),
+            test_digest,
             Some("mainnet".to_string()),
             NodeType::Unknown,
         );
@@ -311,17 +364,24 @@ mod node_data_tests {
     #[test]
     fn test_update_status_missing_data() {
         let version_map = create_test_version_map();
+        let test_digest = "digest";
 
         // Test with missing chain
-        let status =
-            get_update_status(version_map.clone(), Version::new(1, 2, 0), None, NodeType::EigenDA);
+        let status = get_update_status(
+            version_map.clone(),
+            Version::new(1, 2, 0).to_string().as_ref(),
+            test_digest,
+            None,
+            NodeType::EigenDA,
+        );
         assert_eq!(status, UpdateStatus::Unknown);
 
         // Test with empty version map
         let empty_map = HashMap::new();
         let status = get_update_status(
             empty_map,
-            Version::new(1, 2, 0),
+            Version::new(1, 2, 0).to_string().as_ref(),
+            test_digest,
             Some("mainnet".to_string()),
             NodeType::EigenDA,
         );
