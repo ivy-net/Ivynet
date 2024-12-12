@@ -81,6 +81,18 @@ pub enum BackendError {
 
     #[error("Invalid chain")]
     InvalidChain,
+
+    #[error(transparent)]
+    DockerRegistryError(#[from] ivynet_core::docker::DockerRegistryError),
+
+    #[error("No valid node versions found")]
+    NoVersionsFound,
+
+    #[error(transparent)]
+    NodeTypeError(#[from] ivynet_core::node_type::NodeTypeError),
+
+    #[error("Invalid data for set_avs_version")]
+    InvalidSetAvsVersionData,
 }
 
 impl IntoResponse for BackendError {

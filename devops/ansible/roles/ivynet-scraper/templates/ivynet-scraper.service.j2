@@ -1,0 +1,16 @@
+[Unit]
+Description=Ivynet Scraper {{ network }} service
+After=network.target
+
+[Service]
+Environment="RPC_URL={{ ivynet_scraper_rpc[network] }}"
+{% if network == "holesky" %}
+Environment="START_BLOCK=0"
+{% endif %}
+ExecStart={{ ivynet_scraper_path_install }}/bin/scraper
+Type=simple
+Restart=always
+
+[Install]
+WantedBy=default.target
+RequiredBy=network.target

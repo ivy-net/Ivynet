@@ -121,14 +121,14 @@ impl DockerClient {
 
     /// Find an active container for a given node type
     pub async fn find_node_container(&self, node_type: &NodeType) -> Option<Container> {
-        let image_name = node_type.default_image_name().unwrap();
+        let image_name = node_type.default_repository().unwrap();
         self.inspect(image_name).await
     }
 
     /// Find all active containers for a slice of node types
     pub async fn find_node_containers(&self, node_types: &[NodeType]) -> Vec<Container> {
         let image_names: Vec<&str> =
-            node_types.iter().map(|node_type| node_type.default_image_name().unwrap()).collect();
+            node_types.iter().map(|node_type| node_type.default_repository().unwrap()).collect();
         self.inspect_many(&image_names).await
     }
 
@@ -174,5 +174,16 @@ impl DockerClient {
         let containers = self.find_all_node_containers().await;
         let streams = containers.into_iter().map(|container| container.stream_logs_latest(self));
         futures::stream::select_all(streams)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+
+    #[tokio::test]
+    async fn test_list_images() {
+        let client = super::DockerClient::default();
+        let containers = client.list_images().await;
+        println!("{:?}", containers);
     }
 }

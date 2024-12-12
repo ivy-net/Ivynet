@@ -20,7 +20,6 @@ struct TelemetryDispatcher {
 // TODO: We don't currently await the joinhandle from this task anywhere in the parent thread.
 // Consider an initialization method which returns both the handle to the dispatcher and the
 // task joinhandle to the parent thread.
-
 impl TelemetryDispatcher {
     pub async fn run(&mut self) -> Result<(), TelemetryDispatchError> {
         while let Some(node_data) = self.rx.recv().await {

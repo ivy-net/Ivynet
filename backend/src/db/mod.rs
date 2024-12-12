@@ -17,7 +17,7 @@ pub mod verification;
 pub use account::{Account, Role};
 pub use avs::Avs;
 pub use avs_active_set::AvsActiveSet;
-pub use avs_version::AvsVersionData;
+pub use avs_version::{AvsVersionData, DbAvsVersionData};
 pub use avs_version_hash::AvsVersionHash;
 pub use client::Client;
 pub use machine::Machine;

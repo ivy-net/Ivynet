@@ -19,7 +19,7 @@
 
 - name: Download ivynet-backend
   ansible.builtin.import_tasks:
-    file: get_ivynet.yml
+    file: get_backend.yml
 
 - name: Configure DB for backend
   ansible.builtin.import_tasks:
@@ -37,7 +37,7 @@
     group: root
     mode: "0600"
   notify:
-    - Restart service
+    - Restart backend service
   tags:
     - general
     - ivynet
@@ -52,7 +52,7 @@
     mode: "0644"
   notify:
     - Reload daemon
-    - Restart service
+    - Restart backend service
   tags:
     - ivynet_backend
     - general
