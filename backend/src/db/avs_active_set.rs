@@ -1,7 +1,7 @@
 use crate::error::BackendError;
 use ivynet_core::{
     ethers::types::{Address, Chain},
-    grpc::backend_events::Event,
+    grpc::backend_events::RegistrationEvent,
 };
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -57,7 +57,10 @@ impl From<DbAvsActiveSet> for AvsActiveSet {
 }
 
 impl AvsActiveSet {
-    pub async fn record_event(pool: &sqlx::PgPool, event: &Event) -> Result<(), BackendError> {
+    pub async fn record_registration_event(
+        pool: &sqlx::PgPool,
+        event: &RegistrationEvent,
+    ) -> Result<(), BackendError> {
         sqlx::query!(
             "INSERT INTO avs_active_set (directory, avs, operator, chain_id, active, block, log_index)
              VALUES ($1, $2, $3, $4, $5, $6, $7)

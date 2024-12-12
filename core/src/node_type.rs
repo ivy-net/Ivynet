@@ -13,6 +13,27 @@ pub const PREDICATE: &str = "predicate-operator";
 pub const HYPERLANE: &str = "hyperlane";
 pub const BREVIS: &str = "brevis";
 pub const WITNESSCHAIN: &str = "witnesschain";
+//New
+pub const ALTLAYER_MACH: &str = "altlayer-mach";
+pub const XTERIO_MACH: &str = "xterio-mach";
+pub const OMNI: &str = "omni";
+pub const AUTOMATA: &str = "automata";
+pub const DODOCHAIN: &str = "dodochain";
+pub const OPENLAYER: &str = "openlayer";
+pub const CYBERMACH: &str = "cyber-mach";
+pub const AETHOS: &str = "aethos";
+pub const ARPANETWORK: &str = "arpa-network";
+pub const OPACITYNETWORK: &str = "opacity-network";
+pub const GMNETWORKMACH: &str = "gm-network-mach";
+pub const UNIFIAVS: &str = "unifi-avs";
+pub const SKATECHAINBASE: &str = "skate-chain-base";
+pub const SKATECHAINMANTLE: &str = "skate-chain-mantle";
+pub const CHAINBASENETWORKAVS: &str = "chainbase-network-avs";
+pub const GOPLUSAVS: &str = "go-plus-avs";
+pub const UNGATEINFINIROUTEBASE: &str = "ungate-infini-route-base";
+pub const UNGATEINFINIROUTEPOLYGON: &str = "ungate-infini-route-polygon";
+pub const PRIMEVMEVCOMMIT: &str = "primev-mev-commit";
+pub const ALIGNEDLAYER: &str = "aligned-layer";
 
 // const LAGRANGE_MAINNET_WORKER_IMAGE_NAME: &str = "lagrangelabs/worker:mainnet";
 
@@ -29,6 +50,27 @@ pub enum NodeType {
     Hyperlane,
     Brevis,
     WitnessChain,
+    //New
+    AltlayerMach,
+    XterioMACH,
+    Omni,
+    Automata,
+    DODOchain,
+    OpenLayer,
+    CyberMach,
+    Aethos,
+    ArpaNetwork,
+    OpacityNetwork,
+    GMNetworkMach,
+    UnifiAVS,
+    SkateChainBase,
+    SkateChainMantle,
+    ChainbaseNetworkAVS,
+    GoPlusAVS,
+    UngateInfiniRouteBase,
+    UngateInfiniRoutePolygon,
+    PrimevMevCommit,
+    AlignedLayer,
     Unknown,
 }
 
@@ -46,6 +88,26 @@ impl From<&str> for NodeType {
             HYPERLANE => Self::Hyperlane,
             BREVIS => Self::Brevis,
             WITNESSCHAIN => Self::WitnessChain,
+            ALTLAYER_MACH => Self::AltlayerMach,
+            XTERIO_MACH => Self::XterioMACH,
+            OMNI => Self::Omni,
+            AUTOMATA => Self::Automata,
+            DODOCHAIN => Self::DODOchain,
+            OPENLAYER => Self::OpenLayer,
+            CYBERMACH => Self::CyberMach,
+            AETHOS => Self::Aethos,
+            ARPANETWORK => Self::ArpaNetwork,
+            OPACITYNETWORK => Self::OpacityNetwork,
+            GMNETWORKMACH => Self::GMNetworkMach,
+            UNIFIAVS => Self::UnifiAVS,
+            SKATECHAINBASE => Self::SkateChainBase,
+            SKATECHAINMANTLE => Self::SkateChainMantle,
+            CHAINBASENETWORKAVS => Self::ChainbaseNetworkAVS,
+            GOPLUSAVS => Self::GoPlusAVS,
+            UNGATEINFINIROUTEBASE => Self::UngateInfiniRouteBase,
+            UNGATEINFINIROUTEPOLYGON => Self::UngateInfiniRoutePolygon,
+            PRIMEVMEVCOMMIT => Self::PrimevMevCommit,
+            ALIGNEDLAYER => Self::AlignedLayer,
             _ => Self::Unknown,
         }
     }
@@ -65,6 +127,26 @@ impl std::fmt::Display for NodeType {
             Self::Hyperlane => write!(f, "{}", HYPERLANE),
             Self::Brevis => write!(f, "{}", BREVIS),
             Self::WitnessChain => write!(f, "{}", WITNESSCHAIN),
+            Self::AltlayerMach => write!(f, "{}", ALTLAYER_MACH),
+            Self::XterioMACH => write!(f, "{}", XTERIO_MACH),
+            Self::Omni => write!(f, "{}", OMNI),
+            Self::Automata => write!(f, "{}", AUTOMATA),
+            Self::DODOchain => write!(f, "{}", DODOCHAIN),
+            Self::OpenLayer => write!(f, "{}", OPENLAYER),
+            Self::CyberMach => write!(f, "{}", CYBERMACH),
+            Self::Aethos => write!(f, "{}", AETHOS),
+            Self::ArpaNetwork => write!(f, "{}", ARPANETWORK),
+            Self::OpacityNetwork => write!(f, "{}", OPACITYNETWORK),
+            Self::GMNetworkMach => write!(f, "{}", GMNETWORKMACH),
+            Self::UnifiAVS => write!(f, "{}", UNIFIAVS),
+            Self::SkateChainBase => write!(f, "{}", SKATECHAINBASE),
+            Self::SkateChainMantle => write!(f, "{}", SKATECHAINMANTLE),
+            Self::ChainbaseNetworkAVS => write!(f, "{}", CHAINBASENETWORKAVS),
+            Self::GoPlusAVS => write!(f, "{}", GOPLUSAVS),
+            Self::UngateInfiniRouteBase => write!(f, "{}", UNGATEINFINIROUTEBASE),
+            Self::UngateInfiniRoutePolygon => write!(f, "{}", UNGATEINFINIROUTEPOLYGON),
+            Self::PrimevMevCommit => write!(f, "{}", PRIMEVMEVCOMMIT),
+            Self::AlignedLayer => write!(f, "{}", ALIGNEDLAYER),
             Self::Unknown => write!(f, "unknown"),
         }
     }
@@ -87,6 +169,37 @@ impl NodeType {
                 unreachable!("Brevis node type has no repository. This should be unenterable.")
             }
             Self::WitnessChain => "witnesschain/watchtower",
+            Self::AvaProtocol => todo!(),
+            Self::EigenDA => todo!(),
+            Self::LagrangeStateCommittee => todo!(),
+            Self::LagrangeZkWorkerHolesky => todo!(),
+            Self::LagrangeZkWorkerMainnet => todo!(),
+            Self::K3LabsAvs => todo!(),
+            Self::EOracle => todo!(),
+            Self::Predicate => todo!(),
+            Self::Hyperlane => todo!(),
+            Self::Brevis => todo!(),
+            Self::WitnessChain => todo!(),
+            Self::AltlayerMach => todo!(),
+            Self::XterioMACH => todo!(),
+            Self::Omni => todo!(),
+            Self::Automata => todo!(),
+            Self::DODOchain => todo!(),
+            Self::OpenLayer => todo!(),
+            Self::CyberMach => todo!(),
+            Self::Aethos => todo!(),
+            Self::ArpaNetwork => todo!(),
+            Self::OpacityNetwork => todo!(),
+            Self::GMNetworkMach => todo!(),
+            Self::UnifiAVS => todo!(),
+            Self::SkateChainBase => todo!(),
+            Self::SkateChainMantle => todo!(),
+            Self::ChainbaseNetworkAVS => todo!(),
+            Self::GoPlusAVS => todo!(),
+            Self::UngateInfiniRouteBase => todo!(),
+            Self::UngateInfiniRoutePolygon => todo!(),
+            Self::PrimevMevCommit => todo!(),
+            Self::AlignedLayer => todo!(),
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };
         Ok(res)
@@ -107,6 +220,37 @@ impl NodeType {
                 unreachable!("Brevis node type has no docker registry. This should be unenterable.")
             }
             Self::WitnessChain => "registry-1.docker.io",
+            Self::AvaProtocol => todo!(),
+            Self::EigenDA => todo!(),
+            Self::LagrangeStateCommittee => todo!(),
+            Self::LagrangeZkWorkerHolesky => todo!(),
+            Self::LagrangeZkWorkerMainnet => todo!(),
+            Self::K3LabsAvs => todo!(),
+            Self::EOracle => todo!(),
+            Self::Predicate => todo!(),
+            Self::Hyperlane => todo!(),
+            Self::Brevis => todo!(),
+            Self::WitnessChain => todo!(),
+            Self::AltlayerMach => todo!(),
+            Self::XterioMACH => todo!(),
+            Self::Omni => todo!(),
+            Self::Automata => todo!(),
+            Self::DODOchain => todo!(),
+            Self::OpenLayer => todo!(),
+            Self::CyberMach => todo!(),
+            Self::Aethos => todo!(),
+            Self::ArpaNetwork => todo!(),
+            Self::OpacityNetwork => todo!(),
+            Self::GMNetworkMach => todo!(),
+            Self::UnifiAVS => todo!(),
+            Self::SkateChainBase => todo!(),
+            Self::SkateChainMantle => todo!(),
+            Self::ChainbaseNetworkAVS => todo!(),
+            Self::GoPlusAVS => todo!(),
+            Self::UngateInfiniRouteBase => todo!(),
+            Self::UngateInfiniRoutePolygon => todo!(),
+            Self::PrimevMevCommit => todo!(),
+            Self::AlignedLayer => todo!(),
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };
         Ok(res)
@@ -128,6 +272,37 @@ impl NodeType {
                 unreachable!("Brevis node type has no container. This should be unenterable.")
             }
             Self::WitnessChain => "temp_witnesschain",
+            Self::AvaProtocol => todo!(),
+            Self::EigenDA => todo!(),
+            Self::LagrangeStateCommittee => todo!(),
+            Self::LagrangeZkWorkerHolesky => todo!(),
+            Self::LagrangeZkWorkerMainnet => todo!(),
+            Self::K3LabsAvs => todo!(),
+            Self::EOracle => todo!(),
+            Self::Predicate => todo!(),
+            Self::Hyperlane => todo!(),
+            Self::Brevis => todo!(),
+            Self::WitnessChain => todo!(),
+            Self::AltlayerMach => todo!(),
+            Self::XterioMACH => todo!(),
+            Self::Omni => todo!(),
+            Self::Automata => todo!(),
+            Self::DODOchain => todo!(),
+            Self::OpenLayer => todo!(),
+            Self::CyberMach => todo!(),
+            Self::Aethos => todo!(),
+            Self::ArpaNetwork => todo!(),
+            Self::OpacityNetwork => todo!(),
+            Self::GMNetworkMach => todo!(),
+            Self::UnifiAVS => todo!(),
+            Self::SkateChainBase => todo!(),
+            Self::SkateChainMantle => todo!(),
+            Self::ChainbaseNetworkAVS => todo!(),
+            Self::GoPlusAVS => todo!(),
+            Self::UngateInfiniRouteBase => todo!(),
+            Self::UngateInfiniRoutePolygon => todo!(),
+            Self::PrimevMevCommit => todo!(),
+            Self::AlignedLayer => todo!(),
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };
         Ok(res)

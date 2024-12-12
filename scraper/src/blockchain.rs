@@ -1,18 +1,21 @@
-use crate::error::Result;
+use crate::error::{Result, ScraperError};
 use ethers::{
     contract::{abigen, parse_log, ContractError, LogMeta},
     providers::{Middleware, Provider, Ws},
-    types::{Address, Chain},
+    types::{Address, Chain, H160, U256, U64},
 };
 use futures::{stream::SelectAll, Stream, StreamExt};
 use ivynet_core::{
-    directory::get_all_directories_for_chain,
+    directory::{get_all_directories_for_chain, get_avs_from_address},
     grpc::{
-        backend_events::{backend_events_client::BackendEventsClient, Event, LatestBlockRequest},
+        backend_events::{
+            backend_events_client::BackendEventsClient, LatestBlockRequest, MetadataUriEvent,
+            RegistrationEvent,
+        },
         tonic::{transport::Channel, Request},
     },
 };
-use std::{pin::Pin, sync::Arc};
+use std::{fs::OpenOptions, io::Write, path::Path, pin::Pin, sync::Arc};
 use tokio::sync::Mutex;
 use tracing::{debug, info};
 
@@ -200,19 +203,74 @@ pub async fn report_directory_event(
 ) -> Result<u64> {
     debug!("Reading event {event:?}");
 
-    if let DirectoryEvents::OperatorAVSRegistrationStatusUpdatedFilter(f) = event.0 {
-        backend
-            .report_event(Request::new(Event {
-                directory: event.1.address.as_bytes().to_vec(),
-                avs: f.avs.as_bytes().to_vec(),
-                chain_id,
-                address: f.operator.as_bytes().to_vec(),
-                active: f.status > 0,
-                block_number: event.1.block_number.as_u64(),
-                log_index: event.1.log_index.as_u64(),
-            }))
-            .await?;
+    match event.0 {
+        DirectoryEvents::OperatorAVSRegistrationStatusUpdatedFilter(f) => {
+            backend
+                .report_registration_event(Request::new(RegistrationEvent {
+                    directory: event.1.address.as_bytes().to_vec(),
+                    avs: f.avs.as_bytes().to_vec(),
+                    chain_id,
+                    address: f.operator.as_bytes().to_vec(),
+                    active: f.status > 0,
+                    block_number: event.1.block_number.as_u64(),
+                    log_index: event.1.log_index.as_u64(),
+                }))
+                .await?;
+        }
+        DirectoryEvents::AvsmetadataURIUpdatedFilter(ev) => {
+            info!("AVS metadata URI updated event {ev:?}");
+
+            backend
+                .report_metadata_uri_event(Request::new(MetadataUriEvent {
+                    avs: ev.avs.as_bytes().to_vec(),
+                    metadata_uri: ev.metadata_uri,
+                    block_number: event.1.block_number.as_u64(),
+                    log_index: event.1.log_index.as_u64(),
+                }))
+                .await?;
+
+            // build_dump_file_with_details(
+            //     ev.avs,
+            //     ev.metadata_uri,
+            //     event.1.block_number,
+            //     event.1.log_index,
+            //     "dump_uris.txt",
+            // )
+            // .await?;
+        }
     }
 
     Ok(event.1.block_number.as_u64())
+}
+
+pub async fn build_dump_file_with_details(
+    avs: H160,
+    metadata_uri: String,
+    block_number: U64,
+    log_index: U256,
+    path: impl AsRef<Path>,
+) -> Result<()> {
+    let mut file = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(path)
+        .map_err(|_| ScraperError::UnknownError)?;
+
+    let avs_info = get_avs_from_address(avs)
+        .map(|(chain, node_type, _)| format!("Chain: {chain:?}, Type: {node_type:?}"))
+        .unwrap_or_else(|| "Unknown AVS".to_string());
+
+    writeln!(
+        file,
+        "AVS Details: {}\n\
+         AVS Address: {:#x}\n\
+         Block: {}\n\
+         Log Index: {}\n\
+         Metadata URI: {}\n\
+         --------------------------------------------------------------",
+        avs_info, avs, block_number, log_index, metadata_uri
+    )
+    .map_err(|_| ScraperError::UnknownError)?;
+
+    Ok(())
 }

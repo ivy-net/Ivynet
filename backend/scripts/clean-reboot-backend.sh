@@ -86,13 +86,18 @@ main() {
         exit 1
     fi
 
-    log "Configuring versions..."
-    cargo run -- --set-avs-version eigenda:holesky:0.8.4
-    cargo run -- --set-breaking-change-version eigenda:holesky:0.8.0:1728622800000
 
-    log "Running version hash script..."
-    chmod +x ./scripts/get_version_hashes_new.sh
-    ./scripts/get_version_hashes_new.sh
+
+    # Fetch node version hashes for valid docker images
+    echo "Fetching node version hashes..."
+    cargo run -- --add-node-version-hashes
+
+    # Update latest node data versions
+    echo "Updating node data versions..."
+    cargo run -- --update-node-data-versions
+
+    log "Setting EigenDA breaking change version..."
+    cargo run -- --set-breaking-change-version eigenda:holesky:0.8.0:1728622800000
 
     log "Setup completed successfully"
 }
