@@ -23,8 +23,8 @@ ivynet_scraper_path_secrets: "{{ ivynet_scraper_path_install }}/secrets"
 
 # RPCs endpoints
 ivynet_scraper_rpc:
-  holesky: wss://eth-mainnet.g.alchemy.com/v2/QdZGFJvR0KVqZxOcfOyDmSZbBpMAzskz
-  mainnet: wss://eth-holesky.g.alchemy.com/v2/QdZGFJvR0KVqZxOcfOyDmSZbBpMAzskz
+  mainnet: wss://eth-mainnet.g.alchemy.com/v2/QdZGFJvR0KVqZxOcfOyDmSZbBpMAzskz
+  holesky: wss://eth-holesky.g.alchemy.com/v2/QdZGFJvR0KVqZxOcfOyDmSZbBpMAzskz
 
 # Scraper release
 ivynet_scraper_release: "0.1.0"
