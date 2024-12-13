@@ -70,7 +70,8 @@ pub async fn listen(
 
         Ok(error) = error_rx.recv() => {
             error!("Received telemetry error: {}", error);
-            Err(IvyError::CustomError(error.to_string()))
+            // Log error and continue instead of exiting
+            Ok(())
         }
     }
 }
