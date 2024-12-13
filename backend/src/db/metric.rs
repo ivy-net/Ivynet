@@ -154,9 +154,19 @@ impl Metric {
         metrics: &[Metric],
     ) -> Result<(), BackendError> {
         // Remove old metrics for the node first
-        query!("DELETE FROM metric WHERE machine_id = $1 AND avs_name = $2", machine_id, avs_name)
+        if let Some(avs_name) = avs_name {
+            query!(
+                "DELETE FROM metric WHERE machine_id = $1 AND avs_name = $2",
+                machine_id,
+                avs_name
+            )
             .execute(pool)
             .await?;
+        } else {
+            query!("DELETE FROM metric WHERE machine_id = $1 AND avs_name = null", machine_id)
+                .execute(pool)
+                .await?;
+        }
 
         let now: NaiveDateTime = Utc::now().naive_utc();
         for metric in metrics {

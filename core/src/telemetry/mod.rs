@@ -14,10 +14,13 @@ use crate::{
     signature::sign_metrics,
     wallet::IvyWallet,
 };
-use dispatch::TelemetryDispatchHandle;
+use dispatch::{TelemetryDispatchError, TelemetryDispatchHandle};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
-use tokio::time::{sleep, Duration};
+use tokio::{
+    sync::broadcast,
+    time::{sleep, Duration},
+};
 use tracing::{error, info};
 use uuid::Uuid;
 
@@ -40,7 +43,7 @@ pub async fn listen(
     avses: &[ConfiguredAvs],
 ) -> Result<(), IvyError> {
     let dispatch = TelemetryDispatchHandle::from_client(backend_client).await;
-    let mut error_rx = dispatch.error_rx.resubscribe();
+    let error_rx = dispatch.error_rx.resubscribe();
     let docker = DockerClient::default();
 
     // The logs listener spawns the future immediately and does not need to be awaited with
@@ -67,11 +70,14 @@ pub async fn listen(
                 },
             }
         }
+        _ = handle_telemetry_errors(error_rx) => Ok(())
+    }
+}
 
-        Ok(error) = error_rx.recv() => {
-            error!("Received telemetry error: {}", error);
-            Err(IvyError::CustomError(error.to_string()))
-        }
+async fn handle_telemetry_errors(mut error_rx: broadcast::Receiver<TelemetryDispatchError>) {
+    while let Ok(error) = error_rx.recv().await {
+        error!("Received telemetry error: {}", error);
+        sleep(Duration::from_secs(30)).await;
     }
 }
 

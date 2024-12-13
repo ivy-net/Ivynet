@@ -277,6 +277,30 @@ pub async fn get_all_node_data(
     Ok(Json(node_data))
 }
 
+/// Get all system metrics for a specific machine
+#[utoipa::path(
+    get,
+    path = "/machine/:machine_id/system_metrics",
+    responses(
+        (status = 200, body = [Metric]),
+        (status = 404)
+    ),
+
+)]
+pub async fn system_metrics(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    Path(machine_id): Path<String>,
+    jar: CookieJar,
+) -> Result<Json<Vec<Metric>>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let machine =
+        authorize::verify_machine_ownership(&account, State(state.clone()), machine_id).await?;
+
+    let metrics = Metric::get_machine_metrics_only(&state.pool, machine.machine_id).await?;
+    Ok(Json(metrics.values().cloned().collect::<Vec<_>>()))
+}
+
 /* ---------------------------------------------------- */
 /* ---------- :machine_id?avs_name Section ----------- */
 /* ---------------------------------------------------- */
@@ -365,8 +389,6 @@ pub async fn metrics_condensed(
     jar: CookieJar,
     Query(params): Query<HashMap<String, String>>,
 ) -> Result<Json<Vec<Metric>>, BackendError> {
-    println!("Request received - machine_id: {}, params: {:?}", machine_id, params);
-
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     let machine =
         authorize::verify_machine_ownership(&account, State(state.clone()), machine_id).await?;
@@ -379,7 +401,6 @@ pub async fn metrics_condensed(
     })?;
 
     let avses = Avs::get_machines_avs_list(&state.pool, machine.machine_id).await?;
-    println!("Found AVSes: {:?}", avses.iter().map(|avs| &avs.avs_name).collect::<Vec<_>>());
 
     let avs = avses.iter().find(|avs| avs.avs_name == *avs_name).ok_or(BackendError::InvalidAvs)?;
     let metrics = Metric::get_all_for_avs(&state.pool, machine.machine_id, &avs.avs_name).await?;

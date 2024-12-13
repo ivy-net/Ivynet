@@ -1,2 +1,0 @@
-ALTER TABLE avs
-ADD COLUMN chain VARCHAR(50);
