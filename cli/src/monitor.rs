@@ -134,9 +134,6 @@ pub async fn scan() -> Result<(), anyhow::Error> {
         .map(|a| a.container_name.clone())
         .collect::<Vec<_>>();
 
-    let existing_assigned_names: HashSet<String> =
-        monitor_config.configured_avses.iter().map(|a| a.assigned_name.clone()).collect();
-
     for avs in &potential_avses {
         if !configured_avs_names.contains(&avs.container_name) {
             for port in &avs.ports {
@@ -177,7 +174,8 @@ pub async fn scan() -> Result<(), anyhow::Error> {
             monitor_config.configured_avses.push(avses[idx].clone());
         }
 
-        let mut seen_names = existing_assigned_names;
+        let mut seen_names: HashSet<String> =
+            monitor_config.configured_avses.iter().map(|a| a.assigned_name.clone()).collect();
         for avs in &mut monitor_config.configured_avses {
             if avs.assigned_name.is_empty() {
                 let mut assigned_name: String;
