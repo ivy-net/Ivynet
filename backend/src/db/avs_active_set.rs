@@ -128,7 +128,7 @@ mod scraper_tests {
         let avs = Address::from_slice(&[1; 20]);
         let operator = Address::from_slice(&[3; 20]);
 
-        let event = Event {
+        let event = RegistrationEvent {
             directory: Address::from_slice(&[1; 20]).as_bytes().to_vec(),
             avs: avs.as_bytes().to_vec(),
             address: operator.as_bytes().to_vec(),
@@ -138,7 +138,7 @@ mod scraper_tests {
             log_index: 1,
         };
 
-        AvsActiveSet::record_event(&pool, &event).await.unwrap();
+        AvsActiveSet::record_registration_event(&pool, &event).await.unwrap();
 
         // happy path
         let set = AvsActiveSet::get_active_set(&pool, avs, operator, Chain::Mainnet).await.unwrap();
