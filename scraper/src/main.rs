@@ -15,7 +15,7 @@ pub struct Params {
     #[arg(long, env = "BACKEND_URL", value_parser = Uri::from_str, default_value = if cfg!(debug_assertions) {
         "http://localhost:50051"
     } else {
-        "https://api2.test.ivynet.dev:50051"
+        "https://api1.test.ivynet.dev:50051"
     })]
     pub backend_uri: Uri,
 
