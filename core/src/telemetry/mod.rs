@@ -77,6 +77,7 @@ pub async fn listen(
 async fn handle_telemetry_errors(mut error_rx: broadcast::Receiver<TelemetryDispatchError>) {
     while let Ok(error) = error_rx.recv().await {
         error!("Received telemetry error: {}", error);
+        sleep(Duration::from_secs(30)).await;
     }
 }
 

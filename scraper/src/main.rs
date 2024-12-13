@@ -15,7 +15,7 @@ pub struct Params {
     #[arg(long, env = "BACKEND_URL", value_parser = Uri::from_str, default_value = if cfg!(debug_assertions) {
         "http://localhost:50051"
     } else {
-        "https://api2.test.ivynet.dev:50051"
+        "https://api1.test.ivynet.dev:50051"
     })]
     pub backend_uri: Uri,
 
@@ -46,7 +46,7 @@ async fn main() -> Result<(), anyhow::Error> {
         .map(|addr| addr.split(",").filter_map(|a| a.parse::<Address>().ok()).collect::<Vec<_>>())
         .unwrap_or_else(Vec::new);
 
-    info!("IvyNet scrapper service starting...");
+    info!("IvyNet scraper service starting...");
 
     let backend = BackendEventsClient::new(
         create_channel(
