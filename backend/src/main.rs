@@ -97,8 +97,13 @@ async fn add_version_hash(pool: &PgPool, version: &str) -> Result<(), BackendErr
                 "Adding new version ({}) for avs {} with hash = {}",
                 avs_data[0], avs_data[1], version_data[1]
             );
-            db::AvsVersionHash::add_version(pool, avs_data[1], version_data[1], avs_data[0])
-                .await?;
+            db::AvsVersionHash::add_version(
+                pool,
+                &NodeType::from(avs_data[1]),
+                version_data[1],
+                avs_data[0],
+            )
+            .await?;
         }
     }
     Ok(())
@@ -150,7 +155,7 @@ async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
             VersionType::SemVer => {
                 info!("Adding SemVer version hashes for {}", name);
                 for (tag, digest) in tags {
-                    match db::AvsVersionHash::add_version(pool, &name, &digest, &tag).await {
+                    match db::AvsVersionHash::add_version(pool, &entry, &digest, &tag).await {
                         Ok(_) => info!("Added {}:{}:{}", name, tag, digest),
                         Err(e) => warn!("Failed to add {}:{}:{} | {}", name, tag, digest, e),
                     };
@@ -159,7 +164,7 @@ async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
             VersionType::FixedVer => {
                 info!("Updating fixed version hashes for {}", name);
                 for (tag, digest) in tags {
-                    match db::AvsVersionHash::update_version(pool, &name, &digest, &tag).await {
+                    match db::AvsVersionHash::update_version(pool, &entry, &digest, &tag).await {
                         Ok(_) => info!("Updated {}:{}:{}", name, tag, digest),
                         Err(e) => warn!("Failed to update {}:{}:{} | {}", name, tag, digest, e),
                     };

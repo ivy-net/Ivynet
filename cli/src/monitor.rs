@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 use dialoguer::MultiSelect;
-use std::path::PathBuf;
+use std::{collections::HashSet, path::PathBuf};
 
 use ivynet_core::{
     config::DEFAULT_CONFIG_PATH,
@@ -133,6 +133,7 @@ pub async fn scan() -> Result<(), anyhow::Error> {
         .iter()
         .map(|a| a.container_name.clone())
         .collect::<Vec<_>>();
+
     for avs in &potential_avses {
         if !configured_avs_names.contains(&avs.container_name) {
             for port in &avs.ports {
@@ -141,7 +142,7 @@ pub async fn scan() -> Result<(), anyhow::Error> {
                         // Checking performance score metrics to read a potential avs type
 
                         avses.push(ConfiguredAvs {
-                            assigned_name: "".to_string(),
+                            assigned_name: String::new(),
                             container_name: avs.container_name.clone(),
                             avs_type: match guess_avs_type(metrics) {
                                 NodeType::Unknown => avs.avs_type,
@@ -173,38 +174,33 @@ pub async fn scan() -> Result<(), anyhow::Error> {
             monitor_config.configured_avses.push(avses[idx].clone());
         }
 
-        let mut seen_names = std::collections::HashSet::new();
+        let mut seen_names: HashSet<String> =
+            monitor_config.configured_avses.iter().map(|a| a.assigned_name.clone()).collect();
         for avs in &mut monitor_config.configured_avses {
-            let mut assigned_name;
-            loop {
-                assigned_name = dialoguer::Input::new()
-                    .with_prompt(format!(
-                        "Enter a name for this AVS that is Unique Per Machine: {}",
-                        avs.container_name
-                    ))
-                    .interact_text()
-                    .expect("Failed to get assigned name");
+            if avs.assigned_name.is_empty() {
+                let mut assigned_name: String;
+                loop {
+                    assigned_name = dialoguer::Input::new()
+                        .with_prompt(format!(
+                            "Enter a name for this AVS that is Unique Per Machine: {}",
+                            avs.container_name
+                        ))
+                        .interact_text()
+                        .expect("Failed to get assigned name");
 
-                if seen_names.contains(&assigned_name) {
-                    println!(
-                        "Error: Name '{}' is already in use. Please choose a unique name.",
-                        assigned_name
-                    );
-                    continue;
+                    if seen_names.contains(&assigned_name) {
+                        println!(
+                            "Error: Name '{}' is already in use. Please choose a unique name.",
+                            assigned_name
+                        );
+                        continue;
+                    }
+
+                    seen_names.insert(assigned_name.clone());
+                    break;
                 }
-
-                if configured_avs_names.contains(&assigned_name) {
-                    println!(
-                        "Error: Name '{}' is already configured. Please choose a unique name.",
-                        assigned_name
-                    );
-                    continue;
-                }
-
-                seen_names.insert(assigned_name.clone());
-                break;
+                avs.assigned_name = assigned_name;
             }
-            avs.assigned_name = assigned_name;
         }
 
         monitor_config.store()?;

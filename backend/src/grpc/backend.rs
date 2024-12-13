@@ -4,7 +4,7 @@ use crate::{
         log::{ContainerLog, LogLevel},
         machine::Machine,
         metric::Metric,
-        Account, Avs,
+        Account, Avs, AvsVersionHash,
     },
     error::BackendError,
 };
@@ -160,11 +160,20 @@ impl Backend for BackendService {
                 .collect::<Vec<_>>()
                 .first()
             {
+                let avs_type = match NodeType::from(avs_type.as_str()) {
+                    NodeType::Unknown => {
+                        AvsVersionHash::get_avs_type_from_hash(&self.pool, version_hash)
+                            .await
+                            .unwrap_or(NodeType::Unknown)
+                    }
+                    node_type => node_type,
+                };
+
                 Avs::record_avs_data_from_client(
                     &self.pool,
                     machine_id,
                     &avs_name,
-                    &NodeType::from(avs_type.as_str()),
+                    &avs_type,
                     version_hash,
                 )
                 .await

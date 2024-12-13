@@ -193,8 +193,6 @@ impl Avs {
         avs_name: &str,
         chain: Chain,
     ) -> Result<(), BackendError> {
-        println!("Updating chain");
-        println!("Machine ID: {:?}, AVS Name: {:?}, Chain: {:?}", machine_id, avs_name, chain);
         sqlx::query!(
             "UPDATE avs SET chain = $1 WHERE machine_id = $2 AND avs_name = $3",
             chain.to_string(),
