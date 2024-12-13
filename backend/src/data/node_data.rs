@@ -210,7 +210,7 @@ pub fn get_update_status(
         }
         // TODO: This is pretty dumb at the moment, no real way to check for breaking change
         // versions for fixed versions
-        VersionType::FixedVer => {
+        VersionType::FixedVer | VersionType::HybridVer => {
             if node_image_digest == version_data.latest_version_digest {
                 return UpdateStatus::UpToDate;
             }

@@ -1,0 +1,47 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * FROM avs_version_hash WHERE avs_type = $1 AND hash = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "hash",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "avs_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "version",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "3caec552f42aaff227ac7e0959c519f9b3aa8744d37094322780de11f3e7713b"
+}
