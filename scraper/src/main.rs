@@ -46,7 +46,7 @@ async fn main() -> Result<(), anyhow::Error> {
         .map(|addr| addr.split(",").filter_map(|a| a.parse::<Address>().ok()).collect::<Vec<_>>())
         .unwrap_or_else(Vec::new);
 
-    info!("IvyNet scrapper service starting...");
+    info!("IvyNet scraper service starting...");
 
     let backend = BackendEventsClient::new(
         create_channel(
