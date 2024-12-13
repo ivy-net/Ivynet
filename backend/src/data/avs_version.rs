@@ -100,31 +100,49 @@ pub fn extract_semver(tag: &str) -> Option<semver::Version> {
 /// Taken from `https://semver.org/#is-there-a-suggested-regular-expression-regex-to-check-a-semver-string`
 /// Modified to not necessarily start from the beginning of the line, allowing for matching against
 /// tags that may have a nonstandard prefix such as `v`.
-const SEMVER_REGEX: &str = r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$";
+const SEMVER_REGEX: &str = r#"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?"#;
 
 #[cfg(test)]
 mod avs_version_tests {
     use super::*;
+    use semver::Version;
     use sqlx::PgPool;
 
     #[test]
     fn test_semver_regex() {
         let re = regex::Regex::new(SEMVER_REGEX).unwrap();
-        let valid = vec![
-            "1.0.0",
-            "1.0.0-alpha",
-            "1.0.0-alpha.1",
-            "1.0.0-0.3.7",
-            "1.0.0-x.7.z.92",
-            "1.0.0+20130313144700",
-            "1.0.0-beta+exp.sha.5114f85",
-            "v1.0.0",
-            "agent-1.0.0",
+
+        let source_and_expected_matches = [
+            ("v1.2.3.4", "1.2.3"),
+            ("1.2.3.4", "1.2.3"),
+            ("1.2.3", "1.2.3"),
+            ("agent-1.2.3-other", "1.2.3-other"),
+            ("agent-1.2.3.4-other", "1.2.3"),
+            ("0.1.2", "0.1.2"),
+            ("1.0.0-alpha", "1.0.0-alpha"),
+            ("1.0.0-alpha.1", "1.0.0-alpha.1"),
+            ("1.0.0-0.3.7", "1.0.0-0.3.7"),
+            ("1.0.0-x.7.z.92", "1.0.0-x.7.z.92"),
+            ("1.0.0+20130313144700", "1.0.0+20130313144700"),
+            ("1.0.0-beta+exp.sha.5114f85", "1.0.0-beta+exp.sha.5114f85"),
         ];
 
-        for v in valid {
-            assert!(re.is_match(v));
-        }
+        let only_expected = source_and_expected_matches
+            .iter()
+            .map(|i| re.find(i.0).map(|m| m.as_str()).unwrap())
+            .collect::<Vec<_>>();
+
+        let matches: Vec<_> = source_and_expected_matches
+            .iter()
+            .map(|i| re.find(i.0).map(|m| m.as_str()).unwrap())
+            .collect();
+
+        assert_eq!(matches, only_expected);
+
+        // assert all matches are valid SemVer
+        matches.iter().for_each(|m| {
+            Version::parse(m).unwrap();
+        });
     }
 
     // TODO: These tests need to be more abstract and run over dummy data instead of live db data.
