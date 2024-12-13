@@ -42,6 +42,7 @@
     - general
     - ivynet
     - systemd
+    - template
 
 - name: Copy Backend Service file
   ansible.builtin.template:
@@ -58,6 +59,7 @@
     - general
     - ivynet
     - systemd
+    - template
 
 - name: Populate service facts
   ansible.builtin.service_facts:
