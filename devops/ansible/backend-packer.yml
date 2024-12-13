@@ -1,7 +1,6 @@
 ---
 - hosts: default
-  become: true
-  pre-tasks:
+  pre_tasks:
     - name: Remove system cargo
       ansible.builtin.apt:
         name: "{{ item }}"
@@ -9,9 +8,17 @@
       loop:
         - cargo
         - rustc
+      become: true
     - name: Install external rust
       ansible.builtin.shell:
-        cmd: |
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
+        cmd: >
+          curl
+          --proto '=https'
+          --tlsv1.2
+          -sSf
+          https://sh.rustup.rs
+          | sh -s -- -y
+      become: true
   roles:
-    - ivynet-backend
+    - role: ivynet-backend
+      become: true
