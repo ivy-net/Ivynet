@@ -112,3 +112,36 @@ impl AvsActiveSet {
         }
     }
 }
+
+#[cfg(test)]
+mod scraper_tests {
+    use super::*;
+    use sqlx::PgPool;
+
+    #[sqlx::test]
+    async fn test_add_avs_active_set(pool: PgPool) -> sqlx::Result<(), Box<dyn std::error::Error>> {
+        let avs = Address::from_slice(&[1; 20]);
+        let operator = Address::from_slice(&[3; 20]);
+
+        let event = Event {
+            directory: Address::from_slice(&[1; 20]).as_bytes().to_vec(),
+            avs: avs.as_bytes().to_vec(),
+            address: operator.as_bytes().to_vec(),
+            chain_id: 1,
+            active: true,
+            block_number: 1,
+            log_index: 1,
+        };
+
+        AvsActiveSet::record_event(&pool, &event).await.unwrap();
+
+        // happy path
+        let set = AvsActiveSet::get_active_set(&pool, avs, operator, Chain::Mainnet).await.unwrap();
+        assert!(set);
+
+        // sad path
+        let set = AvsActiveSet::get_active_set(&pool, operator, avs, Chain::Optimism).await?;
+        assert!(!set);
+        Ok(())
+    }
+}
