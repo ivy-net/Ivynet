@@ -1,4 +1,6 @@
-use crate::container_registry::ContainerRegistry::{self, DockerHub, Github, GoogleCloud, AWS};
+use crate::container_registry::ContainerRegistry::{
+    self, Chainbase, DockerHub, Github, GoogleCloud, AWS,
+};
 use convert_case::{Case, Casing};
 use serde::{Deserialize, Serialize};
 use strum::{EnumIter, IntoEnumIterator};
@@ -27,17 +29,18 @@ pub enum NodeType {
     Automata,
     OpenLayerMainnet,
     OpenLayerHolesky,
-    Aethos,
-    ArpaNetwork,
-    OpacityNetwork,
-    UnifiAVS,
-    SkateChainBase,
-    SkateChainMantle,
+    AethosHolesky, // Predicate was Aethos - still live in holesky?
+    ArpaChainNode,
+    ArpaNetworkNodeClient,
+    // OpacityNetwork, //Doesn't really exist yet
+    UnifiAVS, // I think this is on-chain only - https://docs.puffer.fi/unifi-avs-protocol
+    SkateChainBase, /* Othentic-cli - not sure whats going on here either https://github.com/Skate-Org/avs-X-othentic/blob/main/docker-compose.yml */
+    SkateChainMantle, /* Othentic-cli - not sure whats going on here either https://github.com/Skate-Org/avs-X-othentic/blob/main/docker-compose.yml */
     ChainbaseNetworkV1,
     ChainbaseNetworkV2,
     GoPlusAVS,
-    UngateInfiniRouteBase,
-    UngateInfiniRoutePolygon,
+    UngateInfiniRouteBase,    //Built locally
+    UngateInfiniRoutePolygon, // Built locally
     PrimevMevCommit,
     AlignedLayer,
     Unknown,
@@ -105,19 +108,13 @@ pub const OMNI_REPO: &str = "omniops/halovisor"; //Holesky only
 pub const AUTOMATA_REPO: &str = "automata-network/multi-prover-avs/operator";
 pub const OPEN_LAYER_MAINNET_REPO: &str = "openoracle-de73b/operator-js";
 pub const OPEN_LAYER_HOLESKY_REPO: &str = "openoracle-de73b/operator-js-holesky";
-pub const AETHOS_REPO: &str = "TODO_";
-pub const ARPA_NETWORK_REPO: &str = "TODO_";
-pub const OPACITY_NETWORK_REPO: &str = "TODO_";
-pub const UNIFI_AVS_REPO: &str = "TODO_";
-pub const SKATE_CHAIN_BASE_REPO: &str = "TODO_";
-pub const SKATE_CHAIN_MANTLE_REPO: &str = "TODO_";
-pub const CHAINBASE_NETWORK_V1_REPO: &str = "TODO_";
-pub const CHAINBASE_NETWORK_V2_REPO: &str = "TODO_";
-pub const GOPUS_AVS_REPO: &str = "TODO_";
-pub const UNGATE_INFINI_ROUTE_BASE_REPO: &str = "TODO_";
-pub const UNGATE_INFINI_ROUTE_POLYGON_REPO: &str = "TODO_";
-pub const PRIMEV_MEV_COMMIT_REPO: &str = "TODO_";
-pub const ALIGNED_LAYER_REPO: &str = "TODO_";
+pub const AETHOS_REPO: &str = "ghcr.io/predicatelabs/operator"; //See above
+pub const ARPA_CHAIN_NODE_REPO: &str = "arpachainio/node";
+pub const ARPA_NETWORK_NODE_CLIENT_REPO: &str = "ghcr.io/arpa-network/node-client";
+pub const CHAINBASE_NETWORK_V1_REPO: &str = "network/chainbase-node";
+pub const CHAINBASE_NETWORK_V2_REPO: &str = "network/chainbase-node";
+pub const UNGATE_INFINI_ROUTE_BASE_REPO: &str = "infini-route-attestators-public-attester";
+pub const UNGATE_INFINI_ROUTE_POLYGON_REPO: &str = "infini-route-attestators-public-attester";
 
 /* ------------------------------------ */
 /* ------- NODE CONTAINER NAMES ------- */
@@ -133,6 +130,10 @@ pub const EORACLE_DATA_VALIDATOR: &str = "eoracle-data-validator";
 pub const OMNI_HALOVISOR: &str = "halo";
 pub const AUTOMATA_OPERATOR: &str = "multi-prover-operator-mainnet";
 pub const AVA_OPERATOR: &str = "ap_operator";
+pub const CHAINBASE_NETWORK_V1_NODE: &str = "manuscript_node";
+pub const CHAINBASE_NETWORK_V2_NODE: &str = "manuscript_node";
+pub const GOPLUS_CONTAINER_NAME: &str = "goplus-avs";
+pub const UNGATE_MAINNET: &str = "infini-route-attestators-public-mainnet-attester-1";
 
 //Holesky (Will only have a holesky container name if it isn't the same as mainnet):
 pub const MACH_AVS_HOLESKY: &str = "mach-avs-holesky";
@@ -142,6 +143,7 @@ pub const MACH_AVS_HOLESKY_CYBER_TESTNET_OPERATOR_NODE: &str =
     "mach-avs-holesky-cyber-testnet-operator-node";
 pub const MACH_AVS_HOLESKY_GMNETWORK: &str = "mach-avs-holesky-gmnetwork";
 pub const AUTOMATA_OPERATOR_HOLESKY: &str = "multi-prover-operator";
+pub const UNGATE_HOLESKY: &str = "infini-route-attestators-public-attester-1";
 
 // We may want to put these methods elsewhere.
 impl NodeType {
@@ -166,22 +168,22 @@ impl NodeType {
             Self::Automata => AUTOMATA_REPO,
             Self::OpenLayerMainnet => OPEN_LAYER_MAINNET_REPO,
             Self::OpenLayerHolesky => OPEN_LAYER_HOLESKY_REPO,
-            Self::Aethos => AETHOS_REPO,
-            Self::ArpaNetwork => ARPA_NETWORK_REPO,
-            Self::OpacityNetwork => OPACITY_NETWORK_REPO,
-            Self::UnifiAVS => UNIFI_AVS_REPO,
-            Self::SkateChainBase => SKATE_CHAIN_BASE_REPO,
-            Self::SkateChainMantle => SKATE_CHAIN_MANTLE_REPO,
+            Self::AethosHolesky => PREDICATE_REPO,
+            Self::ArpaChainNode => ARPA_CHAIN_NODE_REPO,
+            Self::ArpaNetworkNodeClient => ARPA_NETWORK_NODE_CLIENT_REPO,
             Self::ChainbaseNetworkV1 => CHAINBASE_NETWORK_V1_REPO,
             Self::ChainbaseNetworkV2 => CHAINBASE_NETWORK_V2_REPO,
-            Self::GoPlusAVS => GOPUS_AVS_REPO,
             Self::UngateInfiniRouteBase => UNGATE_INFINI_ROUTE_BASE_REPO,
             Self::UngateInfiniRoutePolygon => UNGATE_INFINI_ROUTE_POLYGON_REPO,
-            Self::PrimevMevCommit => PRIMEV_MEV_COMMIT_REPO,
-            Self::AlignedLayer => ALIGNED_LAYER_REPO,
             Self::Brevis => {
                 unreachable!("Brevis node type has no repository. This should be unenterable.")
             }
+            Self::AlignedLayer => return Err(NodeTypeError::NoRepository),
+            Self::PrimevMevCommit => return Err(NodeTypeError::NoRepository),
+            Self::GoPlusAVS => return Err(NodeTypeError::NoRepository),
+            Self::SkateChainBase => return Err(NodeTypeError::NoRepository),
+            Self::SkateChainMantle => return Err(NodeTypeError::NoRepository),
+            Self::UnifiAVS => return Err(NodeTypeError::InvalidNodeType),
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };
         Ok(res)
@@ -208,22 +210,22 @@ impl NodeType {
             Self::Automata => Github,
             Self::OpenLayerMainnet => GoogleCloud,
             Self::OpenLayerHolesky => GoogleCloud,
-            Self::Aethos => todo!(),
-            Self::ArpaNetwork => todo!(),
-            Self::OpacityNetwork => todo!(),
-            Self::UnifiAVS => todo!(),
-            Self::SkateChainBase => todo!(),
-            Self::SkateChainMantle => todo!(),
-            Self::ChainbaseNetworkV1 => todo!(),
-            Self::ChainbaseNetworkV2 => todo!(),
-            Self::GoPlusAVS => todo!(),
-            Self::UngateInfiniRouteBase => todo!(),
-            Self::UngateInfiniRoutePolygon => todo!(),
-            Self::PrimevMevCommit => todo!(),
-            Self::AlignedLayer => todo!(),
+            Self::AethosHolesky => Github,
+            Self::ArpaChainNode => Github,
+            Self::ArpaNetworkNodeClient => Github,
+            Self::ChainbaseNetworkV1 => Chainbase,
+            Self::ChainbaseNetworkV2 => Chainbase,
             Self::Brevis => {
                 unreachable!("Brevis node type has no docker registry. This should be unenterable.")
             }
+            Self::AlignedLayer => return Err(NodeTypeError::NoRegistry),
+            Self::PrimevMevCommit => return Err(NodeTypeError::NoRegistry),
+            Self::UngateInfiniRouteBase => return Err(NodeTypeError::NoRegistry),
+            Self::UngateInfiniRoutePolygon => return Err(NodeTypeError::NoRegistry),
+            Self::GoPlusAVS => return Err(NodeTypeError::NoRegistry),
+            Self::SkateChainBase => return Err(NodeTypeError::NoRegistry),
+            Self::SkateChainMantle => return Err(NodeTypeError::NoRegistry),
+            Self::UnifiAVS => return Err(NodeTypeError::InvalidNodeType),
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };
         Ok(res)
@@ -242,37 +244,37 @@ impl NodeType {
             Self::Automata => AUTOMATA_OPERATOR,
             Self::Omni => OMNI_HALOVISOR,
             Self::AvaProtocol => AVA_OPERATOR,
+            Self::ChainbaseNetworkV1 => CHAINBASE_NETWORK_V1_NODE,
             Self::LagrangeStateCommittee => todo!(),
             Self::LagrangeZkWorkerMainnet => todo!(),
             Self::K3LabsAvs => todo!(),
-            Self::Predicate => todo!(),
             Self::Hyperlane => todo!(),
             Self::WitnessChain => todo!(),
-            Self::Aethos => todo!(),
-            Self::ArpaNetwork => todo!(),
-            Self::OpacityNetwork => todo!(),
-            Self::UnifiAVS => todo!(),
-            Self::SkateChainBase => todo!(),
-            Self::SkateChainMantle => todo!(),
-            Self::ChainbaseNetworkV1 => todo!(),
-            Self::GoPlusAVS => todo!(),
-            Self::UngateInfiniRouteBase => todo!(),
-            Self::UngateInfiniRoutePolygon => todo!(),
-            Self::PrimevMevCommit => todo!(),
-            Self::AlignedLayer => todo!(),
+            Self::GoPlusAVS => GOPLUS_CONTAINER_NAME,
+            Self::UngateInfiniRouteBase => UNGATE_MAINNET,
+            Self::UngateInfiniRoutePolygon => UNGATE_MAINNET,
+
             Self::Brevis => {
                 unreachable!("Brevis node type has no container. This should be unenterable.")
             }
-            Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
+            Self::AlignedLayer => return Err(NodeTypeError::InvalidNodeType),
+            Self::PrimevMevCommit => return Err(NodeTypeError::InvalidNodeType),
+            Self::SkateChainBase => return Err(NodeTypeError::InvalidNodeType),
+            Self::SkateChainMantle => return Err(NodeTypeError::InvalidNodeType),
+            Self::UnifiAVS => return Err(NodeTypeError::InvalidNodeType),
+            Self::ArpaChainNode => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::ArpaNetworkNodeClient => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::Predicate => return Err(NodeTypeError::NoDefaultContainerName),
             Self::ChainbaseNetworkV2 => return Err(NodeTypeError::InvalidNodeType),
             Self::LagrangeZkWorkerHolesky => return Err(NodeTypeError::InvalidNodeType),
             Self::OpenLayerHolesky => return Err(NodeTypeError::InvalidNodeType),
+            Self::AethosHolesky => return Err(NodeTypeError::InvalidNodeType),
             Self::OpenLayerMainnet => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };
         Ok(res)
     }
 
-    // TODO: Find real default names of nodes marked with `temp_`
     pub fn default_container_name_holesky(&self) -> Result<&'static str, NodeTypeError> {
         let res = match self {
             Self::EigenDA => EIGENDA_NATIVE_NODE,
@@ -285,30 +287,30 @@ impl NodeType {
             Self::Omni => OMNI_HALOVISOR,
             Self::Automata => AUTOMATA_OPERATOR_HOLESKY,
             Self::AvaProtocol => AVA_OPERATOR,
+            Self::ChainbaseNetworkV1 => CHAINBASE_NETWORK_V1_NODE,
+            Self::ChainbaseNetworkV2 => CHAINBASE_NETWORK_V2_NODE,
             Self::LagrangeStateCommittee => todo!(),
             Self::LagrangeZkWorkerHolesky => todo!(),
             Self::K3LabsAvs => todo!(),
-            Self::Predicate => todo!(),
             Self::Hyperlane => todo!(),
             Self::WitnessChain => todo!(),
-            Self::OpenLayerHolesky => todo!(),
-            Self::Aethos => todo!(),
-            Self::ArpaNetwork => todo!(),
-            Self::OpacityNetwork => todo!(),
-            Self::UnifiAVS => todo!(),
-            Self::SkateChainBase => todo!(),
-            Self::SkateChainMantle => todo!(),
-            Self::ChainbaseNetworkV1 => todo!(),
-            Self::ChainbaseNetworkV2 => todo!(),
-            Self::GoPlusAVS => todo!(),
-            Self::UngateInfiniRouteBase => todo!(),
-            Self::UngateInfiniRoutePolygon => todo!(),
-            Self::PrimevMevCommit => todo!(),
-            Self::AlignedLayer => todo!(),
+            Self::GoPlusAVS => GOPLUS_CONTAINER_NAME,
+            Self::UngateInfiniRouteBase => UNGATE_HOLESKY,
+            Self::UngateInfiniRoutePolygon => UNGATE_HOLESKY,
             Self::Brevis => {
                 unreachable!("Brevis node type has no container. This should be unenterable.")
             }
-            Self::OpenLayerMainnet => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::AlignedLayer => return Err(NodeTypeError::InvalidNodeType),
+            Self::PrimevMevCommit => return Err(NodeTypeError::InvalidNodeType),
+            Self::SkateChainBase => return Err(NodeTypeError::InvalidNodeType),
+            Self::SkateChainMantle => return Err(NodeTypeError::InvalidNodeType),
+            Self::UnifiAVS => return Err(NodeTypeError::InvalidNodeType),
+            Self::ArpaChainNode => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::ArpaNetworkNodeClient => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::Predicate => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::AethosHolesky => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::OpenLayerHolesky => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::OpenLayerMainnet => return Err(NodeTypeError::InvalidNodeType),
             Self::LagrangeZkWorkerMainnet => return Err(NodeTypeError::InvalidNodeType),
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };
@@ -411,6 +413,10 @@ pub enum NodeTypeError {
     NodeMatchError(String),
     #[error("This node type does not have a default container name")]
     NoDefaultContainerName,
+    #[error("This node type does not have a repository")]
+    NoRepository,
+    #[error("This node type does not have a registry")]
+    NoRegistry,
 }
 
 #[cfg(test)]

@@ -35,20 +35,28 @@ impl From<&NodeType> for VersionType {
             NodeType::Automata => todo!(),
             NodeType::OpenLayerHolesky => todo!(),
             NodeType::OpenLayerMainnet => todo!(),
-            NodeType::Aethos => todo!(),
-            NodeType::ArpaNetwork => todo!(),
-            NodeType::OpacityNetwork => todo!(),
-            NodeType::UnifiAVS => todo!(),
-            NodeType::SkateChainBase => todo!(),
-            NodeType::SkateChainMantle => todo!(),
             NodeType::ChainbaseNetworkV1 => todo!(),
             NodeType::ChainbaseNetworkV2 => todo!(),
-            NodeType::GoPlusAVS => todo!(),
             NodeType::UngateInfiniRouteBase => todo!(),
             NodeType::UngateInfiniRoutePolygon => todo!(),
-            NodeType::PrimevMevCommit => todo!(),
-            NodeType::AlignedLayer => todo!(),
+            NodeType::AethosHolesky => todo!(),
+            NodeType::ArpaChainNode => todo!(),
+            NodeType::ArpaNetworkNodeClient => todo!(),
             NodeType::Brevis => unreachable!("Brevis has no docker versioning, unenterable"),
+            NodeType::PrimevMevCommit => {
+                unreachable!("PrimevMevCommit has no docker versioning, unenterable")
+            }
+            NodeType::AlignedLayer => {
+                unreachable!("AlignedLayer has no docker versioning, unenterable")
+            }
+            NodeType::GoPlusAVS => unreachable!("GoPlusAVS has no docker versioning, unenterable"),
+            NodeType::SkateChainBase => {
+                unreachable!("SkateChainBase has no docker versioning, unenterable")
+            }
+            NodeType::SkateChainMantle => {
+                unreachable!("SkateChainMantle has no docker versioning, unenterable")
+            }
+            NodeType::UnifiAVS => unreachable!("UnifiAVS has no docker versioning, unenterable"),
         }
     }
 }
