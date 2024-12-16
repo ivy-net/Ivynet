@@ -5,18 +5,11 @@ use axum::{
 };
 use axum_extra::extract::CookieJar;
 use ivynet_core::ethers::types::Address;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use utoipa::ToSchema;
 
 use crate::{db::operator_keys::OperatorKey, error::BackendError};
 
 use super::{authorize, HttpState};
-
-#[derive(Serialize, Deserialize, ToSchema)]
-pub struct KeyNameUpdate {
-    pub name: String,
-}
 
 /// Get all operator keys for the organization
 #[utoipa::path(
