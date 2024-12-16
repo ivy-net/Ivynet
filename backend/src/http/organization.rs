@@ -8,6 +8,7 @@ use axum::{
 use axum_extra::extract::CookieJar;
 use sendgrid::v3::{Email, Message, Personalization};
 use serde::{Deserialize, Serialize};
+use tracing::{debug, error};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -82,7 +83,7 @@ pub async fn new(
         arguments.insert("organization_name".to_string(), request.name);
         arguments.insert(
             "confirmation_url".to_string(),
-            format!("{}/organization_confirm/{}", state.root_url, verification.verification_id),
+            format!("{}organization_confirm/{}", state.root_url, verification.verification_id),
         );
 
         sender
@@ -187,23 +188,29 @@ pub async fn invite(
     jar: CookieJar,
     Json(request): Json<InvitationRequest>,
 ) -> Result<Json<InvitationResponse>, BackendError> {
+    debug!("Getting account");
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     if !account.role.is_admin() {
         return Err(BackendError::InsufficientPriviledges);
     }
 
+    debug!("Fetching the organization");
     let org = Organization::get(&state.pool, account.organization_id as u64).await?;
     let new_acc = org.invite(&state.pool, &request.email, request.role).await?;
-
+    debug!(
+        "Something is missing {:?}, {:?}, {:?}",
+        state.sender, state.sender_email, state.user_verification_template
+    );
     if let (Some(sender), Some(sender_address), Some(inv_template)) =
         (state.sender, state.sender_email, state.user_verification_template)
     {
+        debug!("Sending the email");
         let mut arguments = HashMap::with_capacity(1);
         arguments.insert("organization_name".to_string(), org.name);
         //TODO: Setting this url has to be properly set
         arguments.insert(
             "confirmation_url".to_string(),
-            format!("{}/password_set/{}", state.root_url, new_acc.verification_id),
+            format!("{}password_set/{}", state.root_url, new_acc.verification_id),
         );
 
         sender

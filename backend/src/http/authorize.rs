@@ -126,7 +126,7 @@ pub async fn forgot_password(
         //TODO: Setting this url has to be properly set
         arguments.insert(
             "confirmation_url".to_string(),
-            format!("{}/password_reset/{}", state.root_url, verification.verification_id),
+            format!("{}password_reset/{}", state.root_url, verification.verification_id),
         );
 
         sender
