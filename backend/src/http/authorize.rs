@@ -126,7 +126,7 @@ pub async fn forgot_password(
         //TODO: Setting this url has to be properly set
         arguments.insert(
             "confirmation_url".to_string(),
-            format!("{}/password_reset/{}", state.root_url, verification.verification_id),
+            format!("{}password_reset/{}", state.root_url, verification.verification_id),
         );
 
         sender
@@ -221,8 +221,8 @@ pub async fn verify_machine_ownership(
 ) -> Result<Machine, BackendError> {
     let machine_id = machine_id.parse::<Uuid>().map_err(|_| BackendError::BadId)?;
     let machine = Machine::get(&state.pool, machine_id).await?.ok_or(BackendError::BadId)?;
-    if account.role.can_write() &&
-        !account
+    if account.role.can_write()
+        && !account
             .all_machines(&state.pool)
             .await?
             .into_iter()
