@@ -161,8 +161,8 @@ async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
                     };
                 }
             }
-            VersionType::FixedVer => {
-                info!("Updating fixed version hashes for {}", name);
+            VersionType::FixedVer | VersionType::HybridVer => {
+                info!("Updating fixed and hybrid version hashes for {}", name);
                 for (tag, digest) in tags {
                     match db::AvsVersionHash::update_version(pool, &entry, &digest, &tag).await {
                         Ok(_) => info!("Updated {}:{}:{}", name, tag, digest),

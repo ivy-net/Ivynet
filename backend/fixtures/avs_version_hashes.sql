@@ -36,3 +36,5 @@ INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('eoracle', 'sha25
 INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('eoracle', 'sha256:2da1ae1a863c77a0bd8abd40f4328edd94af04afe77c8f03402760ebd187d2d4', 'v0.1.8-amd64');
 INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('eoracle', 'sha256:2da1ae1a863c77a0bd8abd40f4328edd94af04afe77c8f03402760ebd187d2d5', 'v0.1.8-arm64');
 INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('eoracle', 'sha256:2da1ae1a863c77a0bd8abd40f4328edd94af04afe77c8f03402760ebd187d2d6', 'v0.1.9');
+INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('eoracle', 'sha256:6132897045c12760f19742062670d06810425473ea711786c89d2b4c3a3a31c8', 'v0.1.42');
+INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('eoracle', 'sha256:6132897045c12760f19742062670d06810425473ea711786c89d2b4c3a3a31c8', 'latest');
