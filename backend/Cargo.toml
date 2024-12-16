@@ -40,6 +40,8 @@ base64 = "0.22.1"
 tower-http = { version = "0.6.1", features = ["cors"] }
 semver = "1.0.23"
 regex = "1.11.1"
+futures = "0.3.31"
+rayon = "1.10.0"
 
 [features]
 db_tests = []
