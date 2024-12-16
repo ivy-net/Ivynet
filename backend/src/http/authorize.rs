@@ -41,6 +41,7 @@ pub struct ForgotPasswordCredentials {
 
 #[derive(Deserialize, Debug, Clone, ToSchema)]
 pub struct SetPasswordCredentials {
+    pub verification_id: Uuid,
     pub password: String,
 }
 
@@ -153,10 +154,9 @@ pub async fn forgot_password(
 )]
 pub async fn set_password(
     State(state): State<HttpState>,
-    Path(id): Path<Uuid>,
     Json(credentials): Json<SetPasswordCredentials>,
 ) -> Result<Json<bool>, BackendError> {
-    let verification = Verification::get(&state.pool, id).await?;
+    let verification = Verification::get(&state.pool, credentials.verification_id).await?;
     if verification.verification_type != VerificationType::User {
         return Err(BackendError::BadId);
     }
