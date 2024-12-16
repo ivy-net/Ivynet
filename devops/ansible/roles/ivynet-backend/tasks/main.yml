@@ -77,3 +77,11 @@
     - general
     - ivynet
     - systemd
+
+- name: Stop local postgresql (for remote DB)
+  ansible.builtin.systemd_service:
+    name: postgresql
+    state: stopped
+    enabled: false
+  when:
+    - ivynet_backend_postgres_host != 'localhost'
