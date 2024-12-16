@@ -98,10 +98,14 @@ pub async fn update_key_name(
         "Public key cannot be empty".to_string(),
     ))?;
 
+    println!("public_key: {}", public_key);
+
     let name = params.get("name").ok_or(BackendError::MalformedParameter(
         "name".to_string(),
         "Name cannot be empty".to_string(),
     ))?;
+
+    println!("name: {}", name);
 
     let public_key: Address = public_key.parse().map_err(|_| {
         BackendError::MalformedParameter(
