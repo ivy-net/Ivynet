@@ -8,7 +8,7 @@ use axum::{
 use axum_extra::extract::CookieJar;
 use sendgrid::v3::{Email, Message, Personalization};
 use serde::{Deserialize, Serialize};
-use tracing::{debug, error};
+use tracing::debug;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
