@@ -21,7 +21,7 @@ use tokio::{
     sync::broadcast,
     time::{sleep, Duration},
 };
-use tracing::{error, info};
+use tracing::{debug, error};
 use uuid::Uuid;
 
 pub mod dispatch;
@@ -95,9 +95,9 @@ pub async fn listen_metrics(
     dispatch: &TelemetryDispatchHandle,
 ) -> Result<(), IvyError> {
     let docker = DockerClient::default();
-    let images = docker.list_images().await;
-    info!("Got images {images:#?}");
     loop {
+        let images = docker.list_images().await;
+        debug!("Got images {images:#?}");
         for avs in avses {
             let mut version_hash = "".to_string();
             if let Some(inspect_data) = docker.inspect_by_container_name(&avs.container_name).await
