@@ -1,5 +1,5 @@
 use crate::container_registry::ContainerRegistry::{
-    self, Chainbase, DockerHub, Github, GoogleCloud, AWS,
+    self, Chainbase, DockerHub, Github, GoogleCloud, Othentic, AWS,
 };
 use convert_case::{Case, Casing};
 use serde::{Deserialize, Serialize};
@@ -215,16 +215,16 @@ impl NodeType {
             Self::ArpaNetworkNodeClient => Github,
             Self::ChainbaseNetworkV1 => Chainbase,
             Self::ChainbaseNetworkV2 => Chainbase,
+            Self::UngateInfiniRouteBase => Othentic,
+            Self::UngateInfiniRoutePolygon => Othentic,
+            Self::GoPlusAVS => Othentic,
+            Self::SkateChainBase => Othentic,
+            Self::SkateChainMantle => Othentic,
             Self::Brevis => {
                 unreachable!("Brevis node type has no docker registry. This should be unenterable.")
             }
             Self::AlignedLayer => return Err(NodeTypeError::NoRegistry),
             Self::PrimevMevCommit => return Err(NodeTypeError::NoRegistry),
-            Self::UngateInfiniRouteBase => return Err(NodeTypeError::NoRegistry),
-            Self::UngateInfiniRoutePolygon => return Err(NodeTypeError::NoRegistry),
-            Self::GoPlusAVS => return Err(NodeTypeError::NoRegistry),
-            Self::SkateChainBase => return Err(NodeTypeError::NoRegistry),
-            Self::SkateChainMantle => return Err(NodeTypeError::NoRegistry),
             Self::UnifiAVS => return Err(NodeTypeError::InvalidNodeType),
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };

@@ -8,6 +8,7 @@ pub enum ContainerRegistry {
     GoogleCloud,
     AWS,
     Chainbase,
+    Othentic,
 }
 
 impl ContainerRegistry {
@@ -18,6 +19,7 @@ impl ContainerRegistry {
             "gcr.io" => Some(Self::GoogleCloud),
             "public.ecr.aws" => Some(Self::AWS),
             "repository.chainbase.com" => Some(Self::Chainbase),
+            "othentic" => Some(Self::Othentic),
             _ => None,
         }
     }
@@ -31,6 +33,7 @@ impl fmt::Display for ContainerRegistry {
             Self::GoogleCloud => "gcr.io",
             Self::AWS => "public.ecr.aws",
             Self::Chainbase => "repository.chainbase.com",
+            Self::Othentic => "Othentic has no registry",
         };
         write!(f, "{}", registry)
     }
