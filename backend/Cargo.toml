@@ -1,6 +1,6 @@
 [package]
 name = "ivynet-backend"
-version = "0.4.2"
+version = "0.4.7"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -40,6 +40,8 @@ base64 = "0.22.1"
 tower-http = { version = "0.6.1", features = ["cors"] }
 semver = "1.0.23"
 regex = "1.11.1"
+futures = "0.3.31"
+rayon = "1.10.0"
 
 [features]
 db_tests = []

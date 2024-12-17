@@ -12,7 +12,6 @@ ivynet_backend_github_token: !vault |
 # Logs level for IvyNet internals
 ivynet_backend_logs_lowlevel: ""
 
-
 # Path where to install binaries and other files
 ivynet_backend_path_install: "/opt/ivynet"
 
@@ -99,6 +98,9 @@ ivynet_backend_sendgrid_pass_reset: !vault |
           3330643162613637360a343433393361393039383438623763306564633838623164613136613463
           32346436663333323230313361323033316537356430306565393431336537373337396665656563
           3438666337613436303931636661313638363634343461303437
+
+# Frontend URL
+ivynet_backend_site_url: https://metrics.ivynet.dev
 
 # URL for sqlx binaries
 ivynet_backend_sqlx_url: "https://storage.googleapis.com/ivynet-share"

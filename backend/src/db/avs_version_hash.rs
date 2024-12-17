@@ -44,6 +44,23 @@ impl AvsVersionHash {
         Ok(avs_version.version)
     }
 
+    pub async fn get_versions_from_digest(
+        pool: &sqlx::PgPool,
+        avs_type: &str,
+        digest: &str,
+    ) -> Result<Vec<String>, BackendError> {
+        let tags = sqlx::query_as!(
+            DbAvsVersionHash,
+            r#"SELECT * FROM avs_version_hash WHERE avs_type = $1 AND hash = $2"#,
+            avs_type,
+            digest
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(tags.into_iter().map(|t| t.version).collect())
+    }
+
     pub async fn get_avs_type_from_hash(
         pool: &sqlx::PgPool,
         hash: &str,

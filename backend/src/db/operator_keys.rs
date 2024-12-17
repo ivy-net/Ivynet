@@ -6,7 +6,6 @@ use utoipa::ToSchema;
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct OperatorKey {
-    pub id: i64,
     pub organization_id: i64,
     pub name: String,
     pub public_key: Address,
@@ -25,7 +24,6 @@ impl TryFrom<DbOperatorKey> for OperatorKey {
 
     fn try_from(key: DbOperatorKey) -> Result<Self, Self::Error> {
         Ok(OperatorKey {
-            id: key.id,
             organization_id: key.organization_id,
             name: key.name,
             public_key: key
@@ -70,7 +68,7 @@ impl OperatorKey {
         name: &str,
         public_key: &Address,
     ) -> Result<(), BackendError> {
-        query!(
+        let result = query!(
             "INSERT INTO operator_keys (organization_id, name, public_key) values ($1, $2, $3)",
             organization_id,
             name,
@@ -78,6 +76,10 @@ impl OperatorKey {
         )
         .execute(pool)
         .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(BackendError::FailedToCreateOperatorKey);
+        }
         Ok(())
     }
 
@@ -87,14 +89,19 @@ impl OperatorKey {
         public_key: &Address,
         name: &str,
     ) -> Result<(), BackendError> {
-        query!(
+        let rows_affected = sqlx::query!(
             "UPDATE operator_keys SET name = $1 WHERE organization_id = $2 AND public_key = $3",
             name,
             organization_id,
-            public_key.to_string(),
+            format!("{:?}", public_key), // Assuming Address implements Display/ToString
         )
         .execute(pool)
-        .await?;
+        .await?
+        .rows_affected();
+
+        if rows_affected == 0 {
+            return Err(BackendError::OperatorKeyNotFound);
+        }
         Ok(())
     }
 
@@ -103,13 +110,17 @@ impl OperatorKey {
         organization_id: i64,
         public_key: &Address,
     ) -> Result<(), BackendError> {
-        query!(
+        let result = query!(
             "DELETE FROM operator_keys WHERE organization_id = $1 AND public_key = $2",
             organization_id,
-            public_key.to_string(),
+            format!("{:?}", public_key),
         )
         .execute(pool)
         .await?;
+
+        if result.rows_affected() == 0 {
+            return Err(BackendError::OperatorKeyNotFound);
+        }
         Ok(())
     }
 

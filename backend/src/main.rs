@@ -1,18 +1,16 @@
-use std::{collections::HashMap, sync::Arc};
+use std::sync::Arc;
 
 use chrono::DateTime;
 use clap::Parser as _;
 use ivynet_backend::{
     config::Config,
-    data::avs_version::{extract_semver, find_latest_avs_version, VersionType},
+    data::avs_version::{find_latest_avs_version, VersionType},
     db::{self, avs_version::DbAvsVersionData, configure},
     error::BackendError,
-    grpc, http,
+    get_node_version_hashes, grpc, http,
     telemetry::start_tracing,
 };
-use ivynet_core::{
-    docker::DockerRegistry, ethers::types::Chain, node_type::NodeType, utils::try_parse_chain,
-};
+use ivynet_core::{ethers::types::Chain, node_type::NodeType, utils::try_parse_chain};
 use sqlx::PgPool;
 use tracing::{error, info, warn};
 
@@ -161,8 +159,8 @@ async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
                     };
                 }
             }
-            VersionType::FixedVer => {
-                info!("Updating fixed version hashes for {}", name);
+            VersionType::FixedVer | VersionType::HybridVer => {
+                info!("Updating fixed and hybrid version hashes for {}", name);
                 for (tag, digest) in tags {
                     match db::AvsVersionHash::update_version(pool, &entry, &digest, &tag).await {
                         Ok(_) => info!("Updated {}:{}:{}", name, tag, digest),
@@ -188,43 +186,4 @@ async fn update_node_data_versions(pool: &PgPool, chain: &Chain) -> Result<(), B
         db::DbAvsVersionData::set_avs_version(pool, &node, chain, &tag, &digest).await?;
     }
     Ok(())
-}
-
-///  Resulting hashmap returns a vec - tuple of (tag, digest), with digest as an empty string if not
-/// found. TODO: Thould be its own system that fetches tags more granularly to handle failures.
-async fn get_node_version_hashes() -> Result<HashMap<NodeType, Vec<(String, String)>>, BackendError>
-{
-    let mut registry_tags = HashMap::new();
-
-    for entry in NodeType::all_known() {
-        let client = DockerRegistry::from_node_type(&entry).await?;
-        info!("Requesting tags for image {}", entry.default_repository()?);
-        let mut tags = client.get_tags().await?;
-
-        let mut num_valid_digests = 0;
-        let mut tag_digests = Vec::new();
-
-        // If semantic version type, cull non-adhering tags from the list
-        if VersionType::from(&entry) == VersionType::SemVer {
-            tags.retain(|tag| {
-                let semver_tag = extract_semver(tag).is_some();
-                if !semver_tag {
-                    warn!("Discarding non-semver tag {}", tag);
-                }
-                semver_tag
-            });
-        }
-
-        let tags_len = tags.len();
-        for tag in tags {
-            let digest = client.get_tag_digest(&tag).await?.unwrap_or_default();
-            if !digest.is_empty() {
-                num_valid_digests += 1;
-            }
-            tag_digests.push((tag, digest));
-        }
-        info!("Found {} valid digests for {} tags", num_valid_digests, tags_len);
-        registry_tags.insert(entry, tag_digests);
-    }
-    Ok(registry_tags)
 }
