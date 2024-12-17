@@ -161,9 +161,6 @@ pub async fn set_password(
         return Err(BackendError::BadId);
     }
     let account = Account::get(&state.pool, verification.associated_id as u64).await?;
-    if !account.password.is_empty() {
-        return Err(BackendError::AlreadySet);
-    }
 
     account.set_password(&state.pool, &credentials.password).await?;
 
