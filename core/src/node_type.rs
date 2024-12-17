@@ -134,6 +134,8 @@ pub const CHAINBASE_NETWORK_V1_NODE: &str = "manuscript_node";
 pub const CHAINBASE_NETWORK_V2_NODE: &str = "manuscript_node";
 pub const GOPLUS_CONTAINER_NAME: &str = "goplus-avs";
 pub const UNGATE_MAINNET: &str = "infini-route-attestators-public-mainnet-attester-1";
+pub const WITNESSCHAIN_CONTAINER_NAME: &str = "watchtower";
+pub const LAGRANGE_WORKER_CONTAINER_NAME: &str = "worker";
 
 //Holesky (Will only have a holesky container name if it isn't the same as mainnet):
 pub const MACH_AVS_HOLESKY: &str = "mach-avs-holesky";
@@ -246,10 +248,10 @@ impl NodeType {
             Self::AvaProtocol => AVA_OPERATOR,
             Self::ChainbaseNetworkV1 => CHAINBASE_NETWORK_V1_NODE,
             Self::LagrangeStateCommittee => todo!(),
-            Self::LagrangeZkWorkerMainnet => todo!(),
+            Self::LagrangeZkWorkerMainnet => LAGRANGE_WORKER_CONTAINER_NAME,
             Self::K3LabsAvs => todo!(),
             Self::Hyperlane => todo!(),
-            Self::WitnessChain => todo!(),
+            Self::WitnessChain => WITNESSCHAIN_CONTAINER_NAME,
             Self::GoPlusAVS => GOPLUS_CONTAINER_NAME,
             Self::UngateInfiniRouteBase => UNGATE_MAINNET,
             Self::UngateInfiniRoutePolygon => UNGATE_MAINNET,
@@ -290,10 +292,10 @@ impl NodeType {
             Self::ChainbaseNetworkV1 => CHAINBASE_NETWORK_V1_NODE,
             Self::ChainbaseNetworkV2 => CHAINBASE_NETWORK_V2_NODE,
             Self::LagrangeStateCommittee => todo!(),
-            Self::LagrangeZkWorkerHolesky => todo!(),
+            Self::LagrangeZkWorkerHolesky => LAGRANGE_WORKER_CONTAINER_NAME,
             Self::K3LabsAvs => todo!(),
             Self::Hyperlane => todo!(),
-            Self::WitnessChain => todo!(),
+            Self::WitnessChain => WITNESSCHAIN_CONTAINER_NAME,
             Self::GoPlusAVS => GOPLUS_CONTAINER_NAME,
             Self::UngateInfiniRouteBase => UNGATE_HOLESKY,
             Self::UngateInfiniRoutePolygon => UNGATE_HOLESKY,
