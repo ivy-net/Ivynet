@@ -136,6 +136,8 @@ pub const GOPLUS_CONTAINER_NAME: &str = "goplus-avs";
 pub const UNGATE_MAINNET: &str = "infini-route-attestators-public-mainnet-attester-1";
 pub const WITNESSCHAIN_CONTAINER_NAME: &str = "watchtower";
 pub const LAGRANGE_WORKER_CONTAINER_NAME: &str = "worker";
+pub const LAGRANGE_STATE_COMMITTEE_CONTAINER_NAME: &str = "lagrange-node";
+pub const HYPERLANE_AGENT_CONTAINER_NAME: &str = "ethereum-validator";
 
 //Holesky (Will only have a holesky container name if it isn't the same as mainnet):
 pub const MACH_AVS_HOLESKY: &str = "mach-avs-holesky";
@@ -247,10 +249,9 @@ impl NodeType {
             Self::Omni => OMNI_HALOVISOR,
             Self::AvaProtocol => AVA_OPERATOR,
             Self::ChainbaseNetworkV1 => CHAINBASE_NETWORK_V1_NODE,
-            Self::LagrangeStateCommittee => todo!(),
+            Self::LagrangeStateCommittee => LAGRANGE_STATE_COMMITTEE_CONTAINER_NAME,
             Self::LagrangeZkWorkerMainnet => LAGRANGE_WORKER_CONTAINER_NAME,
-            Self::K3LabsAvs => todo!(),
-            Self::Hyperlane => todo!(),
+            Self::Hyperlane => HYPERLANE_AGENT_CONTAINER_NAME,
             Self::WitnessChain => WITNESSCHAIN_CONTAINER_NAME,
             Self::GoPlusAVS => GOPLUS_CONTAINER_NAME,
             Self::UngateInfiniRouteBase => UNGATE_MAINNET,
@@ -259,6 +260,7 @@ impl NodeType {
             Self::Brevis => {
                 unreachable!("Brevis node type has no container. This should be unenterable.")
             }
+            Self::K3LabsAvs => return Err(NodeTypeError::NoDefaultContainerName),
             Self::AlignedLayer => return Err(NodeTypeError::InvalidNodeType),
             Self::PrimevMevCommit => return Err(NodeTypeError::InvalidNodeType),
             Self::SkateChainBase => return Err(NodeTypeError::InvalidNodeType),
@@ -291,10 +293,10 @@ impl NodeType {
             Self::AvaProtocol => AVA_OPERATOR,
             Self::ChainbaseNetworkV1 => CHAINBASE_NETWORK_V1_NODE,
             Self::ChainbaseNetworkV2 => CHAINBASE_NETWORK_V2_NODE,
-            Self::LagrangeStateCommittee => todo!(),
+            Self::LagrangeStateCommittee => LAGRANGE_STATE_COMMITTEE_CONTAINER_NAME,
             Self::LagrangeZkWorkerHolesky => LAGRANGE_WORKER_CONTAINER_NAME,
-            Self::K3LabsAvs => todo!(),
-            Self::Hyperlane => todo!(),
+
+            Self::Hyperlane => HYPERLANE_AGENT_CONTAINER_NAME,
             Self::WitnessChain => WITNESSCHAIN_CONTAINER_NAME,
             Self::GoPlusAVS => GOPLUS_CONTAINER_NAME,
             Self::UngateInfiniRouteBase => UNGATE_HOLESKY,
@@ -302,6 +304,7 @@ impl NodeType {
             Self::Brevis => {
                 unreachable!("Brevis node type has no container. This should be unenterable.")
             }
+            Self::K3LabsAvs => return Err(NodeTypeError::NoDefaultContainerName),
             Self::AlignedLayer => return Err(NodeTypeError::InvalidNodeType),
             Self::PrimevMevCommit => return Err(NodeTypeError::InvalidNodeType),
             Self::SkateChainBase => return Err(NodeTypeError::InvalidNodeType),
