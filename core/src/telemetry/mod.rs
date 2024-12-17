@@ -21,7 +21,7 @@ use tokio::{
     sync::broadcast,
     time::{sleep, Duration},
 };
-use tracing::{debug, error, info};
+use tracing::{debug, error};
 use uuid::Uuid;
 
 pub mod dispatch;
