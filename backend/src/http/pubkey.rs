@@ -5,18 +5,11 @@ use axum::{
 };
 use axum_extra::extract::CookieJar;
 use ivynet_core::ethers::types::Address;
-use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use utoipa::ToSchema;
 
 use crate::{db::operator_keys::OperatorKey, error::BackendError};
 
 use super::{authorize, HttpState};
-
-#[derive(Serialize, Deserialize, ToSchema)]
-pub struct KeyNameUpdate {
-    pub name: String,
-}
 
 /// Get all operator keys for the organization
 #[utoipa::path(
@@ -105,10 +98,14 @@ pub async fn update_key_name(
         "Public key cannot be empty".to_string(),
     ))?;
 
+    println!("public_key: {}", public_key);
+
     let name = params.get("name").ok_or(BackendError::MalformedParameter(
         "name".to_string(),
         "Name cannot be empty".to_string(),
     ))?;
+
+    println!("name: {}", name);
 
     let public_key: Address = public_key.parse().map_err(|_| {
         BackendError::MalformedParameter(

@@ -51,13 +51,20 @@ pub async fn listen(
     let mut logs_listener = LogsListenerManager::new(dispatch.clone(), docker.clone());
 
     for node in avses {
-        let container = &docker
-            .find_container_by_name(&node.container_name)
-            .await
-            .ok_or_else(|| IvyError::NodeFindError(node.container_name.clone()))?;
-        let listener_data =
-            ListenerData::new(container.clone(), node.clone(), machine_id, identity_wallet.clone());
-        logs_listener.add_listener(listener_data).await;
+        if let Some(container) = &docker.find_container_by_name(&node.container_name).await {
+            let listener_data = ListenerData::new(
+                container.clone(),
+                node.clone(),
+                machine_id,
+                identity_wallet.clone(),
+            );
+            logs_listener.add_listener(listener_data).await;
+        } else {
+            error!(
+                "Cannot find container {}. Removing it from current listening list.",
+                node.container_name
+            );
+        }
     }
 
     tokio::select! {

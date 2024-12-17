@@ -65,7 +65,6 @@ use super::{super::db, authorize, client, info, machine, node, organization, pub
             node_data::NodeStatusReport,
             machine_data::MachineInfoReport,
             machine_data::MachineStatusReport,
-            pubkey::KeyNameUpdate,
         ),
     ),
     tags(

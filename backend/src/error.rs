@@ -93,6 +93,12 @@ pub enum BackendError {
 
     #[error("Invalid data for set_avs_version")]
     InvalidSetAvsVersionData,
+
+    #[error("Operator key not found")]
+    OperatorKeyNotFound,
+
+    #[error("Failed to create operator key")]
+    FailedToCreateOperatorKey,
 }
 
 impl IntoResponse for BackendError {
