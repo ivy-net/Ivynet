@@ -1,9 +1,8 @@
-use crate::container_registry::ContainerRegistry::{
-    self, Chainbase, DockerHub, Github, GoogleCloud, Othentic, AWS,
-};
 use convert_case::{Case, Casing};
 use serde::{Deserialize, Serialize};
 use strum::{EnumIter, IntoEnumIterator};
+
+use crate::docker::RegistryType::{self, Chainbase, DockerHub, Github, GoogleCloud, Othentic, AWS};
 
 const EIGENDA_METRICS_ID: &str = "da-node";
 
@@ -193,7 +192,7 @@ impl NodeType {
         Ok(res)
     }
 
-    pub fn registry(&self) -> Result<ContainerRegistry, NodeTypeError> {
+    pub fn registry(&self) -> Result<RegistryType, NodeTypeError> {
         let res = match self {
             Self::EigenDA => Github,
             Self::EOracle => DockerHub,
