@@ -22,7 +22,7 @@ impl From<&NodeType> for VersionType {
             NodeType::LagrangeZkWorkerHolesky => VersionType::FixedVer,
             NodeType::LagrangeZkWorkerMainnet => VersionType::FixedVer,
             NodeType::AvaProtocol => VersionType::SemVer,
-            NodeType::EOracle => VersionType::SemVer,
+            NodeType::EOracle => VersionType::HybridVer,
             NodeType::K3LabsAvs => VersionType::FixedVer,
             NodeType::Predicate => VersionType::SemVer,
             NodeType::Hyperlane => VersionType::SemVer,
