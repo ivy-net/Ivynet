@@ -29,6 +29,18 @@ message MetricsAttribute {
     string value = 2;
 }
 
+message SignedNodeData {
+    bytes signature = 1;
+    bytes machine_id = 2;
+    NodeData node_data = 4;
+}
+
+message NodeData {
+    string name = 1;
+    string node_type = 2;
+    string manifest= 3;
+}
+
 message SignedLog {
     bytes signature =  1;
     bytes machine_id = 2;

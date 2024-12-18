@@ -7,11 +7,11 @@ use crate::{
     error::IvyError,
     grpc::{
         backend::backend_client::BackendClient,
-        messages::{Metrics, MetricsAttribute, SignedMetrics},
+        messages::{Metrics, MetricsAttribute, NodeData, SignedMetrics, SignedNodeData},
         tonic::transport::Channel,
     },
     node_type::NodeType,
-    signature::sign_metrics,
+    signature::{sign_metrics, sign_node_data},
     wallet::IvyWallet,
 };
 use dispatch::{TelemetryDispatchError, TelemetryDispatchHandle};
@@ -108,44 +108,7 @@ pub async fn listen_metrics(
                     }
                 }
             }
-
-            let metrics = if let Ok(mut metrics) = fetch_telemetry_from(avs.metric_port).await {
-                metrics.push(Metrics {
-                    name: "running".to_owned(),
-                    value: 1.0,
-                    attributes: vec![
-                        MetricsAttribute {
-                            name: "avs_name".to_owned(),
-                            value: avs.assigned_name.clone(),
-                        },
-                        MetricsAttribute {
-                            name: "avs_type".to_owned(),
-                            value: avs.avs_type.to_string(),
-                        },
-                        MetricsAttribute { name: "version-hash".to_owned(), value: version_hash },
-                    ],
-                });
-                metrics
-            } else {
-                vec![Metrics {
-                    name: "running".to_owned(),
-                    value: 0.0,
-                    attributes: vec![
-                        MetricsAttribute {
-                            name: "avs_name".to_owned(),
-                            value: avs.assigned_name.clone(),
-                        },
-                        MetricsAttribute {
-                            name: "avs_type".to_owned(),
-                            value: avs.avs_type.to_string(),
-                        },
-                        MetricsAttribute {
-                            name: "version-hash".to_owned(),
-                            value: "NONE".to_string(),
-                        }, /* FIXME: Bazil to work on this */
-                    ],
-                }]
-            };
+            let metrics = fetch_telemetry_from(avs.metric_port).await?;
             let metrics_signature = sign_metrics(&metrics, identity_wallet)?;
             let signed_metrics = SignedMetrics {
                 machine_id: machine_id.into(),
@@ -155,6 +118,23 @@ pub async fn listen_metrics(
             };
 
             dispatch.send_metrics(signed_metrics).await?;
+
+            // Send node data
+
+            let node_data = NodeData {
+                name: avs.assigned_name.to_owned(),
+                node_type: avs.avs_type.to_string(),
+                manifest: version_hash,
+            };
+
+            let node_data_signature = sign_node_data(&node_data, identity_wallet)?;
+            let signed_node_data = SignedNodeData {
+                machine_id: machine_id.into(),
+                signature: node_data_signature.to_vec(),
+                node_data: Some(node_data),
+            };
+
+            dispatch.send_node_data(signed_node_data).await?;
         }
         // Last but not least - send system metrics
         if let Ok(system_metrics) = fetch_system_telemetry().await {
@@ -167,6 +147,8 @@ pub async fn listen_metrics(
             };
             dispatch.send_metrics(signed_metrics).await?;
         }
+
+        // Construct and send node data
 
         sleep(Duration::from_secs(TELEMETRY_INTERVAL_IN_MINUTES * 60)).await;
     }

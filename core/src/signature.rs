@@ -4,7 +4,10 @@ use ethers::{
     utils::keccak256,
 };
 
-use crate::{grpc::messages::Metrics, wallet::IvyWallet};
+use crate::{
+    grpc::messages::{Metrics, NodeData},
+    wallet::IvyWallet,
+};
 
 // --- General Signing ---
 pub fn sign_string(string: &str, wallet: &IvyWallet) -> Result<Signature, IvySigningError> {
@@ -27,6 +30,30 @@ pub fn recover_from_string(
         H256::from(&keccak256(encode(&[Token::String(string.to_string())]))),
         signature,
     )
+}
+
+// --- NodeData ---
+pub fn sign_node_data(
+    node_data: &NodeData,
+    wallet: &IvyWallet,
+) -> Result<Signature, IvySigningError> {
+    sign_hash(hash_node_data(node_data)?, wallet)
+}
+
+fn hash_node_data(node_data: &NodeData) -> Result<H256, IvySigningError> {
+    let mut tokens = Vec::new();
+    let node_data = node_data.clone();
+    tokens.push(Token::String(node_data.name));
+    tokens.push(Token::String(node_data.node_type));
+    tokens.push(Token::String(node_data.manifest));
+    Ok(H256::from(&keccak256(encode(&tokens))))
+}
+
+pub async fn recover_node_data(
+    node_data: &NodeData,
+    signature: &Signature,
+) -> Result<Address, IvySigningError> {
+    recover_from_hash(hash_node_data(node_data)?, signature)
 }
 
 // --- Metrics ---
