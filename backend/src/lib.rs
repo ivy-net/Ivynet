@@ -23,7 +23,7 @@ pub async fn get_node_version_hashes(
         let client = DockerRegistry::from_node_type(&entry).await?;
         info!("Requesting tags for image {}", entry.default_repository()?);
 
-        let tags = get_filtered_tags(&client, &entry).await?;
+        let tags = client.get_tags().await?;
         let tag_digests = fetch_tag_digests(&client, tags).await?;
 
         registry_tags.insert(entry, tag_digests);
@@ -31,6 +31,7 @@ pub async fn get_node_version_hashes(
     Ok(registry_tags)
 }
 
+#[allow(dead_code)]
 async fn get_filtered_tags(
     client: &DockerRegistry,
     node_type: &NodeType,
