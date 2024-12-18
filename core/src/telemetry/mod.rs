@@ -108,7 +108,7 @@ pub async fn listen_metrics(
                     }
                 }
             }
-            let metrics = fetch_telemetry_from(avs.metric_port).await?;
+            let metrics = fetch_telemetry_from(avs.metric_port).await.unwrap_or_default();
             let metrics_signature = sign_metrics(&metrics, identity_wallet)?;
             let signed_metrics = SignedMetrics {
                 machine_id: machine_id.into(),
