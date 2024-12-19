@@ -1,14 +1,4 @@
 ---
-- name: Set  directory
-  ansible.builtin.file:
-    path: "{{ ivynet_backend_path_secrets }}"
-    state: directory
-    owner: root
-    group: root
-    mode: "0700"
-  tags:
-    - ssl
-
 - name: Check if pem file exists
   ansible.builtin.stat:
     path: "{{ ivynet_backend_path_secrets }}/self.pem"

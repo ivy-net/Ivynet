@@ -13,6 +13,17 @@
   tags:
     - general
 
+- name: Set secrets directory
+  ansible.builtin.file:
+    path: "{{ ivynet_backend_path_secrets }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  tags:
+    - general
+    - ssl
+
 - name: Install and configure 3rd party tools
   ansible.builtin.import_tasks:
     file: third_party.yml
