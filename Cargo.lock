@@ -722,7 +722,7 @@ checksum = "f46ad14479a25103f283c0f10005961cf086d8dc42205bb44c46ac563475dca6"
 
 [[package]]
 name = "cli"
-version = "0.4.3"
+version = "0.4.4"
 dependencies = [
  "anyhow",
  "clap",
@@ -2737,7 +2737,7 @@ checksum = "d75a2a4b1b190afb6f5425f10f6a8f959d2ea0b9c2b1d79553551850539e4674"
 
 [[package]]
 name = "ivynet-backend"
-version = "0.4.1"
+version = "0.4.9"
 dependencies = [
  "axum",
  "axum-extra",
@@ -2767,7 +2767,7 @@ dependencies = [
 
 [[package]]
 name = "ivynet-core"
-version = "0.4.2"
+version = "0.4.3"
 dependencies = [
  "async-trait",
  "blsful",
