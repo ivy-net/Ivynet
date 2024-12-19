@@ -175,6 +175,7 @@ async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
 }
 
 async fn update_node_data_versions(pool: &PgPool, chain: &Chain) -> Result<(), BackendError> {
+    info!("Updating node data versions for {:?}", chain);
     let node_types = NodeType::all_known();
     for node in node_types {
         if node == NodeType::LagrangeZkWorkerHolesky && chain == &Chain::Mainnet {
