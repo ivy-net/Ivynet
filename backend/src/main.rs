@@ -12,7 +12,7 @@ use ivynet_backend::{
 };
 use ivynet_core::{ethers::types::Chain, node_type::NodeType, utils::try_parse_chain};
 use sqlx::PgPool;
-use tracing::{error, info, warn};
+use tracing::{debug, error, info, warn};
 
 #[tokio::main]
 async fn main() -> Result<(), BackendError> {
@@ -147,6 +147,7 @@ async fn set_breaking_change_version(
 
 async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
     let registry_tags = get_node_version_hashes().await?;
+    info!("Adding {} total node version hashes", registry_tags.len());
     for (entry, tags) in registry_tags {
         let name = entry.to_string();
         match VersionType::from(&entry) {
@@ -154,16 +155,16 @@ async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
                 info!("Adding SemVer version hashes for {}", name);
                 for (tag, digest) in tags {
                     match db::AvsVersionHash::add_version(pool, &entry, &digest, &tag).await {
-                        Ok(_) => info!("Added {}:{}:{}", name, tag, digest),
+                        Ok(_) => debug!("Added {}:{}:{}", name, tag, digest),
                         Err(e) => warn!("Failed to add {}:{}:{} | {}", name, tag, digest, e),
                     };
                 }
             }
             VersionType::FixedVer | VersionType::HybridVer => {
-                info!("Updating fixed and hybrid version hashes for {}", name);
+                debug!("Updating fixed and hybrid version hashes for {}", name);
                 for (tag, digest) in tags {
                     match db::AvsVersionHash::update_version(pool, &entry, &digest, &tag).await {
-                        Ok(_) => info!("Updated {}:{}:{}", name, tag, digest),
+                        Ok(_) => debug!("Updated {}:{}:{}", name, tag, digest),
                         Err(e) => warn!("Failed to update {}:{}:{} | {}", name, tag, digest, e),
                     };
                 }
@@ -174,6 +175,7 @@ async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
 }
 
 async fn update_node_data_versions(pool: &PgPool, chain: &Chain) -> Result<(), BackendError> {
+    info!("Updating node data versions for {:?}", chain);
     let node_types = NodeType::all_known();
     for node in node_types {
         if node == NodeType::LagrangeZkWorkerHolesky && chain == &Chain::Mainnet {

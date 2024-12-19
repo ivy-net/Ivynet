@@ -87,12 +87,9 @@ pub async fn create_telemetry_dispatch(
 ) -> TelemetryDispatchHandle {
     // TODO: Channel size is currently limited to 256. Consider unbounded channel.
     let backend_client = BackendClient::new(
-        crate::grpc::client::create_channel(
-            crate::grpc::client::Source::Uri(backend_url),
-            backend_ca,
-        )
-        .await
-        .expect("Cannot create channel"),
+        crate::grpc::client::create_channel(backend_url, backend_ca)
+            .await
+            .expect("Cannot create channel"),
     );
     TelemetryDispatchHandle::from_client(backend_client).await
 }

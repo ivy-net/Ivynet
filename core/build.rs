@@ -16,7 +16,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         .extern_path(".google.protobuf.Timestamp", "::prost_wkt_types::Timestamp")
         .extern_path(".google.protobuf.Value", "::prost_wkt_types::Value")
         .file_descriptor_set_path(&descriptor_file);
-    tonic_build::configure().compile_with_config(config, &protos, &["protos"])?;
+    tonic_build::configure().compile_protos_with_config(config, &protos, &["protos"])?;
     let descriptor_bytes = std::fs::read(descriptor_file).unwrap();
     let descriptor = FileDescriptorSet::decode(&descriptor_bytes[..]).unwrap();
     prost_wkt_build::add_serde(out, descriptor);
