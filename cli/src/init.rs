@@ -3,10 +3,8 @@ use ivynet_core::{
     config::IvyConfig,
     error::IvyError,
     grpc::{
-        backend::backend_client::BackendClient,
-        client::{create_channel, Source},
-        messages::RegistrationCredentials,
-        tonic::Request,
+        backend::backend_client::BackendClient, client::create_channel,
+        messages::RegistrationCredentials, tonic::Request,
     },
     wallet::IvyWallet,
 };
@@ -25,7 +23,7 @@ pub async fn register_node() -> Result<(), IvyError> {
         .interact()
         .expect("No password provided");
     let mut backend = BackendClient::new(
-        create_channel(Source::Uri(config.get_server_url()?), {
+        create_channel(config.get_server_url()?, {
             let ca = config.get_server_ca();
             if ca.is_empty() {
                 None
@@ -72,7 +70,7 @@ pub async fn set_backend_connection(config: &mut IvyConfig) -> Result<(), IvyErr
             .interact()
             .expect("No password provided");
         let mut backend = BackendClient::new(
-            create_channel(Source::Uri(config.get_server_url()?), {
+            create_channel(config.get_server_url()?, {
                 let ca = config.get_server_ca();
                 if ca.is_empty() {
                     None
