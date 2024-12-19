@@ -83,8 +83,9 @@ impl CombinedWsPool<'_, EthersEvent> {
         let mut latest_block = 0;
         while let Some(event) = combined_stream.next().await {
             if let EthersEvent::DirectoryEvent(event) = event {
-                latest_block =
-                    report_directory_event(&mut self.backend, self.chain_id, *event).await?
+                latest_block = report_directory_event(&mut self.backend, self.chain_id, *event)
+                    .await
+                    .unwrap_or(0)
             }
         }
 
@@ -165,7 +166,7 @@ pub async fn fetch(
     }
     info!("Start listening...");
 
-    _ = pool.process().await?;
+    _ = pool.process().await;
     Ok(())
 }
 

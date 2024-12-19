@@ -87,9 +87,7 @@ pub async fn start_monitor() -> Result<(), anyhow::Error> {
     let backend_ca = if backend_ca.is_empty() { None } else { Some(backend_ca) };
 
     let backend_client = BackendClient::new(
-        grpc::client::create_channel(grpc::client::Source::Uri(backend_url), backend_ca)
-            .await
-            .expect("Cannot create channel"),
+        grpc::client::create_channel(backend_url, backend_ca).await.expect("Cannot create channel"),
     );
 
     info!("Starting monitor listener...");
