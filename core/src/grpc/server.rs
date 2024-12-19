@@ -16,7 +16,7 @@ use tonic::{
         Service,
     },
     server::NamedService,
-    transport::{server::Router, Body, Identity, Server as TonicServer, ServerTlsConfig},
+    transport::{server::Router, Identity, Server as TonicServer, ServerTlsConfig},
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -49,7 +49,7 @@ impl Display for Endpoint {
 impl Server {
     pub fn new<S>(service: S, cert_path: Option<String>, key_path: Option<String>) -> Self
     where
-        S: Service<Request<Body>, Response = Response<BoxBody>, Error = Infallible>
+        S: Service<Request<BoxBody>, Response = Response<BoxBody>, Error = Infallible>
             + NamedService
             + Clone
             + Send
@@ -75,7 +75,7 @@ impl Server {
 
     pub fn add_service<S>(mut self, service: S) -> Self
     where
-        S: Service<Request<Body>, Response = Response<BoxBody>, Error = Infallible>
+        S: Service<Request<BoxBody>, Response = Response<BoxBody>, Error = Infallible>
             + NamedService
             + Clone
             + Send
@@ -89,7 +89,7 @@ impl Server {
     pub fn add_reflection(mut self, encoded_file_descriptor_set: &[u8]) -> Self {
         let reflection_service = tonic_reflection::server::Builder::configure()
             .register_encoded_file_descriptor_set(encoded_file_descriptor_set)
-            .build()
+            .build_v1()
             .unwrap();
         self.router = self.router.add_service(reflection_service);
         self
