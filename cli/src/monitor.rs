@@ -165,7 +165,7 @@ pub async fn scan() -> Result<(), anyhow::Error> {
 
     for avs in &potential_avses {
         if !configured_avs_names.contains(&avs.container_name) {
-            if let Some(avs_type) = avs_hashes.get(&avs.image_hash) {
+            if let Some(avs_type) = get_type(&avs_hashes, &avs.image_hash, &avs.container_name) {
                 let mut metric_port = 0;
 
                 for port in &avs.ports {
@@ -180,7 +180,7 @@ pub async fn scan() -> Result<(), anyhow::Error> {
                 avses.push(ConfiguredAvs {
                     assigned_name: String::new(),
                     container_name: avs.container_name.clone(),
-                    avs_type: *avs_type,
+                    avs_type,
                     metric_port,
                 });
             }
@@ -241,4 +241,12 @@ pub async fn scan() -> Result<(), anyhow::Error> {
         );
     }
     Ok(())
+}
+
+fn get_type(hashes: &HashMap<String, NodeType>, hash: &str, name: &str) -> Option<NodeType> {
+    if let Some(node_type) = hashes.get(hash) {
+        Some(*node_type)
+    } else {
+        NodeType::from_image(name)
+    }
 }
