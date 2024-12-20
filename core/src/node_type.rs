@@ -1,6 +1,7 @@
 use convert_case::{Case, Casing};
 use serde::{Deserialize, Serialize};
 use strum::{EnumIter, IntoEnumIterator};
+use tracing::error;
 
 use crate::docker::RegistryType::{self, Chainbase, DockerHub, Github, GoogleCloud, Othentic, AWS};
 
@@ -350,6 +351,8 @@ impl NodeType {
     pub fn from_image(image: &str) -> Option<Self> {
         let parts: Vec<&str> = image.rsplitn(2, ':').collect();
         if parts.len() != 2 {
+            error!("Report to Ivynet Team");
+            error!("Invalid image: {}", image);
             return None;
         }
         Self::from_repo(parts[1], parts[0])
@@ -372,7 +375,15 @@ impl NodeType {
             OMNI_HALOVISOR => Self::Omni,
             AUTOMATA_OPERATOR => Self::Automata,
             AUTOMATA_OPERATOR_HOLESKY => Self::Automata,
-
+            AVA_OPERATOR => Self::AvaProtocol,
+            CHAINBASE_NETWORK_V1_NODE => Self::ChainbaseNetworkV1,
+            GOPLUS_CONTAINER_NAME => Self::GoPlusAVS,
+            UNGATE_MAINNET => Self::UngateInfiniRouteBase,
+            WITNESSCHAIN_CONTAINER_NAME => Self::WitnessChain,
+            LAGRANGE_WORKER_CONTAINER_NAME => Self::LagrangeZkWorkerMainnet,
+            LAGRANGE_STATE_COMMITTEE_CONTAINER_NAME => Self::LagrangeStateCommittee,
+            HYPERLANE_AGENT_CONTAINER_NAME => Self::Hyperlane,
+            UNGATE_HOLESKY => Self::UngateInfiniRoutePolygon,
             _ => return None,
         };
         Some(node_type)
@@ -391,6 +402,15 @@ impl NodeType {
             PREDICATE_REPO => Some(Self::Predicate),
             HYPERLANE_REPO => Some(Self::Hyperlane),
             WITNESSCHAIN_REPO => Some(Self::WitnessChain),
+            ALTLAYER_GENERIC_REPO => Some(Self::AltlayerMach),
+            ALTLAYER_MACH_REPO => Some(Self::AltlayerMach),
+            AUTOMATA_REPO => Some(Self::Automata),
+            OPEN_LAYER_MAINNET_REPO => Some(Self::OpenLayerMainnet),
+            OPEN_LAYER_HOLESKY_REPO => Some(Self::OpenLayerHolesky),
+            ARPA_CHAIN_NODE_REPO => Some(Self::ArpaChainNode),
+            ARPA_NETWORK_NODE_CLIENT_REPO => Some(Self::ArpaNetworkNodeClient),
+            CHAINBASE_NETWORK_V2_REPO => Some(Self::ChainbaseNetworkV2),
+            UNGATE_INFINI_ROUTE_BASE_REPO => Some(Self::UngateInfiniRouteBase),
             // tag-specific nodes
             LAGRANGE_WORKER_REPO => match tag {
                 "holesky" => Some(Self::LagrangeZkWorkerHolesky),

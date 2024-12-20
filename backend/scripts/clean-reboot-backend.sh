@@ -37,7 +37,7 @@ wait_for_postgres() {
                 return 0
             fi
         else
-            if docker compose -f backend-compose.yaml exec db pg_isready -U "${DB_USER}"; then
+            if docker compose -f backend-compose.yaml exec postgres pg_isready -U "${DB_USER}"; then
                 return 0
             fi
         fi
