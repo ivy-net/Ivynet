@@ -46,6 +46,7 @@ fn hash_node_data(node_data: &NodeData) -> Result<H256, IvySigningError> {
     tokens.push(Token::String(node_data.name));
     tokens.push(Token::String(node_data.node_type));
     tokens.push(Token::String(node_data.manifest));
+    tokens.push(Token::Bool(node_data.metrics_available));
     Ok(H256::from(&keccak256(encode(&tokens))))
 }
 

@@ -39,6 +39,7 @@ message NodeData {
     string name = 1;
     string node_type = 2;
     string manifest= 3;
+    bool metrics_available = 4;
 }
 
 message SignedLog {

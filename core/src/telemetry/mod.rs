@@ -21,7 +21,7 @@ use tokio::{
     sync::broadcast,
     time::{sleep, Duration},
 };
-use tracing::{debug, error};
+use tracing::{debug, error, warn};
 use uuid::Uuid;
 
 pub mod dispatch;
@@ -60,7 +60,7 @@ pub async fn listen(
             );
             logs_listener.add_listener(listener_data).await;
         } else {
-            error!(
+            warn!(
                 "Cannot find container {}. Removing it from current listening list.",
                 node.container_name
             );
@@ -88,6 +88,10 @@ async fn handle_telemetry_errors(mut error_rx: broadcast::Receiver<TelemetryDisp
     }
 }
 
+/// This function is responsible for broadcasting both metrics (if any are found for a configured
+/// node) as well as the node data for that configured node. On the receiver side, if an empty
+/// metrics vector is send, we know that metrics are not accessible for the node and we mark it
+/// as such. We can make this explicit in the future.
 pub async fn listen_metrics(
     machine_id: Uuid,
     identity_wallet: &IvyWallet,
@@ -108,7 +112,9 @@ pub async fn listen_metrics(
                     }
                 }
             }
+
             let metrics = fetch_telemetry_from(avs.metric_port).await.unwrap_or_default();
+
             let metrics_signature = sign_metrics(&metrics, identity_wallet)?;
             let signed_metrics = SignedMetrics {
                 machine_id: machine_id.into(),
@@ -125,6 +131,7 @@ pub async fn listen_metrics(
                 name: avs.assigned_name.to_owned(),
                 node_type: avs.avs_type.to_string(),
                 manifest: version_hash,
+                metrics_available: !metrics.is_empty(),
             };
 
             let node_data_signature = sign_node_data(&node_data, identity_wallet)?;

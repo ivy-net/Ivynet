@@ -131,7 +131,7 @@ impl Backend for BackendService {
             return Err(Status::not_found("Machine not registered for given client".to_string()));
         }
 
-        let NodeData { name, node_type, manifest } = node_data;
+        let NodeData { name, node_type, manifest, metrics_available } = node_data;
 
         let avs_type = match NodeType::from(node_type.as_str()) {
             NodeType::Unknown => AvsVersionHash::get_avs_type_from_hash(&self.pool, &manifest)
@@ -143,6 +143,12 @@ impl Backend for BackendService {
         Avs::record_avs_data_from_client(&self.pool, machine_id, &name, &avs_type, &manifest)
             .await
             .map_err(|e| Status::internal(format!("Failed while saving node_data: {e}")))?;
+
+        Avs::update_metrics_available(&self.pool, machine_id, &name, metrics_available)
+            .await
+            .map_err(|e| {
+                Status::internal(format!("Failed while setting metrics available flag: {e}"))
+            })?;
 
         _ = update_avs_version(&self.pool, machine_id, &name, &manifest).await;
         _ = update_avs_active_set(&self.pool, machine_id, &name).await;
