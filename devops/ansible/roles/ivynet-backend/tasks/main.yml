@@ -74,7 +74,8 @@
     name: "Run image version scanner"
     minute: 7
     hour: "0,12"
-    job: "{{ ivynet_backend_path_install }}/bin/ivynet-scanner.sh"
+    # yamllint disable-line rule:line-length
+    job: "{{ ivynet_backend_path_install }}/bin/ivynet-scanner.sh 2>&1 |logger -t scanner"
   tags:
     - ivynet_backend
     - general
