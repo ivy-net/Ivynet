@@ -93,6 +93,20 @@ impl AvsVersionHash {
         Ok(avs_version.hash)
     }
 
+    pub async fn get_versions_from_digests(
+        pool: &sqlx::PgPool,
+        digests: &[String],
+    ) -> Result<Vec<(String, String)>, BackendError> {
+        let avs_versions = sqlx::query_as!(
+            DbAvsVersionHash,
+            "SELECT * FROM avs_version_hash WHERE hash = ANY($1)",
+            digests,
+        )
+        .fetch_all(pool)
+        .await?;
+        Ok(avs_versions.into_iter().map(|v| (v.hash, v.avs_type)).collect::<Vec<_>>())
+    }
+
     pub async fn get_all_for_type(
         pool: &sqlx::PgPool,
         avs_type: &str,

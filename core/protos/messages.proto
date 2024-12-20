@@ -35,3 +35,16 @@ message SignedLog {
     string avs_name = 3;
     string log = 4;
 }
+
+message NodeType {
+    string digest = 1;
+    string node_type = 2;
+}
+
+message NodeTypes {
+    repeated NodeType node_types = 1;
+}
+
+message Digests {
+    repeated string digests = 1;
+}

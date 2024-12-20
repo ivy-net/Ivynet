@@ -1,11 +1,14 @@
 use anyhow::anyhow;
 use dialoguer::MultiSelect;
-use std::{collections::HashSet, path::PathBuf};
+use std::{
+    collections::{HashMap, HashSet},
+    path::PathBuf,
+};
 
 use ivynet_core::{
     config::DEFAULT_CONFIG_PATH,
     docker::dockerapi::DockerClient,
-    grpc::{self, backend::backend_client::BackendClient, messages::Metrics},
+    grpc::{self, backend::backend_client::BackendClient, messages::Digests, tonic::Request},
     io::{read_toml, write_toml, IoError},
     node_type::NodeType,
     telemetry::{fetch_telemetry_from, listen, ConfiguredAvs},
@@ -15,14 +18,12 @@ use tracing::info;
 
 use crate::init::set_backend_connection;
 
-const METRIC_LABEL_PERFORMANCE: &str = "eigen_performance_score";
-const METRIC_ATTR_LABEL_AVS_NAME: &str = "avs_name";
 const MONITOR_CONFIG_FILE: &str = "monitor-config.toml";
 
 #[derive(Clone, Debug)]
 struct PotentialAvs {
     pub container_name: String,
-    pub avs_type: NodeType,
+    pub image_hash: String,
     pub ports: Vec<u16>,
 }
 
@@ -98,23 +99,35 @@ pub async fn start_monitor() -> Result<(), anyhow::Error> {
 /// Scan function to set up configured AVS cache file. Derives `NodeType` from the name on the
 /// metrics port and node name from the container name list.
 pub async fn scan() -> Result<(), anyhow::Error> {
+    let config = ivynet_core::config::IvyConfig::load_from_default_path()?;
+    let backend_url = config.get_server_url()?;
+    let backend_ca = config.get_server_ca();
+    let backend_ca = if backend_ca.is_empty() { None } else { Some(backend_ca) };
+
+    let mut backend = BackendClient::new(
+        grpc::client::create_channel(backend_url, backend_ca).await.expect("Cannot create channel"),
+    );
     let docker = DockerClient::default();
     println!("Scanning for existing containers...");
+    let images = docker.list_images().await;
     let potential_avses = docker
         .list_containers()
         .await
         .into_iter()
         .filter_map(|c| {
-            if let (Some(names), Some(image_name), Some(ports)) = (c.names, c.image, c.ports) {
-                let avs_type = NodeType::from_image(&image_name).unwrap_or(NodeType::Unknown);
-                let mut ports = ports.into_iter().filter_map(|p| p.public_port).collect::<Vec<_>>();
+            if let (Some(names), Some(image_name)) = (c.names, c.image) {
+                let mut ports = if let Some(ports) = c.ports {
+                    ports.into_iter().filter_map(|p| p.public_port).collect::<Vec<_>>()
+                } else {
+                    Vec::new()
+                };
 
-                if !ports.is_empty() {
-                    ports.sort();
-                    ports.dedup();
+                ports.sort();
+                ports.dedup();
+                if let Some(image_hash) = images.get(&image_name) {
                     return Some(PotentialAvs {
                         container_name: names.first().unwrap_or(&image_name).to_string(),
-                        avs_type,
+                        image_hash: image_hash.to_string(),
                         ports,
                     });
                 }
@@ -132,24 +145,44 @@ pub async fn scan() -> Result<(), anyhow::Error> {
         .map(|a| a.container_name.clone())
         .collect::<Vec<_>>();
 
+    let digests = potential_avses
+        .iter()
+        .filter_map(|a| {
+            if configured_avs_names.contains(&a.container_name) {
+                None
+            } else {
+                Some(a.image_hash.clone())
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let mut avs_hashes = HashMap::new();
+    for ntype in
+        backend.node_types(Request::new(Digests { digests })).await?.into_inner().node_types
+    {
+        avs_hashes.insert(ntype.digest, NodeType::from(ntype.node_type.as_str()));
+    }
+
     for avs in &potential_avses {
         if !configured_avs_names.contains(&avs.container_name) {
-            for port in &avs.ports {
-                if let Ok(metrics) = fetch_telemetry_from(*port).await {
-                    if !metrics.is_empty() {
-                        // Checking performance score metrics to read a potential avs type
+            if let Some(avs_type) = avs_hashes.get(&avs.image_hash) {
+                let mut metric_port = 0;
 
-                        avses.push(ConfiguredAvs {
-                            assigned_name: String::new(),
-                            container_name: avs.container_name.clone(),
-                            avs_type: match guess_avs_type(metrics) {
-                                NodeType::Unknown => avs.avs_type,
-                                avs_type => avs_type,
-                            },
-                            metric_port: *port,
-                        });
+                for port in &avs.ports {
+                    if let Ok(metrics) = fetch_telemetry_from(*port).await {
+                        if !metrics.is_empty() {
+                            // Checking performance score metrics to read a potential avs type
+
+                            metric_port = *port;
+                        }
                     }
                 }
+                avses.push(ConfiguredAvs {
+                    assigned_name: String::new(),
+                    container_name: avs.container_name.clone(),
+                    avs_type: *avs_type,
+                    metric_port,
+                });
             }
         }
     }
@@ -208,35 +241,4 @@ pub async fn scan() -> Result<(), anyhow::Error> {
         );
     }
     Ok(())
-}
-
-fn guess_avs_type(metrics: Vec<Metrics>) -> NodeType {
-    if let Some(name) =
-        metrics
-            .into_iter()
-            .filter_map(|m| {
-                if m.name == METRIC_LABEL_PERFORMANCE {
-                    m.attributes
-                        .into_iter()
-                        .filter_map(|at| {
-                            if at.name == METRIC_ATTR_LABEL_AVS_NAME {
-                                Some(at)
-                            } else {
-                                None
-                            }
-                        })
-                        .collect::<Vec<_>>()
-                        .first()
-                        .map(|n| n.value.clone())
-                } else {
-                    None
-                }
-            })
-            .collect::<Vec<_>>()
-            .first()
-    {
-        return NodeType::from_metrics_name(name);
-    }
-
-    NodeType::Unknown
 }
