@@ -15,7 +15,10 @@ use ivynet_core::{
         self,
         backend::backend_server::{Backend, BackendServer},
         client::{Request, Response},
-        messages::{RegistrationCredentials, SignedLog, SignedMetrics},
+        messages::{
+            Digests, NodeType as NodeTypeMessage, NodeTypes, RegistrationCredentials, SignedLog,
+            SignedMetrics,
+        },
         server, Status,
     },
     node_type::NodeType,
@@ -184,6 +187,19 @@ impl Backend for BackendService {
             }
         }
         Ok(Response::new(()))
+    }
+
+    async fn node_types(&self, request: Request<Digests>) -> Result<Response<NodeTypes>, Status> {
+        let req = request.into_inner();
+        let types = AvsVersionHash::get_versions_from_digests(&self.pool, &req.digests)
+            .await
+            .map_err(|e| Status::internal(format!("Failed on database fetch {e}")))?;
+        Ok(Response::new(NodeTypes {
+            node_types: types
+                .into_iter()
+                .map(|nt| (NodeTypeMessage { digest: nt.0, node_type: nt.1 }))
+                .collect::<Vec<_>>(),
+        }))
     }
 }
 
