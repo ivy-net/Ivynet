@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT machine_id, avs_name, avs_type, chain, avs_version, operator_address, active_set, metrics_available, version_hash, created_at, updated_at FROM avs WHERE machine_id = $1 AND avs_name = $2",
+  "query": "SELECT machine_id, avs_name, avs_type, chain, avs_version, operator_address, active_set, metrics_alive, version_hash, created_at, updated_at FROM avs WHERE machine_id = $1 AND avs_name = $2",
   "describe": {
     "columns": [
       {
@@ -40,7 +40,7 @@
       },
       {
         "ordinal": 7,
-        "name": "metrics_available",
+        "name": "metrics_alive",
         "type_info": "Bool"
       },
       {
@@ -79,5 +79,5 @@
       false
     ]
   },
-  "hash": "ff007b272a067caeacf538d50296e7c921b48f00a08a55d2ab2335698173ef96"
+  "hash": "ef03e15bf1add0740ff1913b1a46c8dac6bf6091193899163f897caf477aa3b2"
 }

@@ -131,7 +131,7 @@ pub async fn listen_metrics(
                 name: avs.assigned_name.to_owned(),
                 node_type: avs.avs_type.to_string(),
                 manifest: version_hash,
-                metrics_available: !metrics.is_empty(),
+                metrics_alive: !metrics.is_empty(),
             };
 
             let node_data_signature = sign_node_data(&node_data, identity_wallet)?;

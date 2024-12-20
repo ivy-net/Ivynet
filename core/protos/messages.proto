@@ -38,8 +38,8 @@ message SignedNodeData {
 message NodeData {
     string name = 1;
     string node_type = 2;
-    string manifest= 3;
-    bool metrics_available = 4;
+    string manifest = 3;
+    bool metrics_alive = 4;
 }
 
 message SignedLog {
@@ -47,4 +47,17 @@ message SignedLog {
     bytes machine_id = 2;
     string avs_name = 3;
     string log = 4;
+}
+
+message NodeType {
+    string digest = 1;
+    string node_type = 2;
+}
+
+message NodeTypes {
+    repeated NodeType node_types = 1;
+}
+
+message Digests {
+    repeated string digests = 1;
 }

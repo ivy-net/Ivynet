@@ -78,14 +78,14 @@ pub async fn build_avs_info(
     avs: Avs,
     metrics: HashMap<String, Metric>,
 ) -> Result<AvsInfo, BackendError> {
-    let metrics_available = avs.metrics_available;
+    let metrics_alive = avs.metrics_alive;
 
     let version_map = DbAvsVersionData::get_all_avs_version(pool).await;
 
     //Start of error building
     let mut errors = vec![];
 
-    if metrics_available {
+    if metrics_alive {
         if !avs.active_set {
             errors.push(NodeError::UnregisteredFromActiveSet);
         }

@@ -15,7 +15,10 @@ use ivynet_core::{
         self,
         backend::backend_server::{Backend, BackendServer},
         client::{Request, Response},
-        messages::{NodeData, RegistrationCredentials, SignedLog, SignedMetrics, SignedNodeData},
+        messages::{
+            Digests, NodeData, NodeType as NodeTypeMessage, NodeTypes, RegistrationCredentials,
+            SignedLog, SignedMetrics, SignedNodeData,
+        },
         server, Status,
     },
     node_type::NodeType,
@@ -131,7 +134,7 @@ impl Backend for BackendService {
             return Err(Status::not_found("Machine not registered for given client".to_string()));
         }
 
-        let NodeData { name, node_type, manifest, metrics_available } = node_data;
+        let NodeData { name, node_type, manifest, metrics_alive } = node_data;
 
         let avs_type = match NodeType::from(node_type.as_str()) {
             NodeType::Unknown => AvsVersionHash::get_avs_type_from_hash(&self.pool, &manifest)
@@ -144,11 +147,9 @@ impl Backend for BackendService {
             .await
             .map_err(|e| Status::internal(format!("Failed while saving node_data: {e}")))?;
 
-        Avs::update_metrics_available(&self.pool, machine_id, &name, metrics_available)
-            .await
-            .map_err(|e| {
-                Status::internal(format!("Failed while setting metrics available flag: {e}"))
-            })?;
+        Avs::update_metrics_alive(&self.pool, machine_id, &name, metrics_alive).await.map_err(
+            |e| Status::internal(format!("Failed while setting metrics available flag: {e}")),
+        )?;
 
         _ = update_avs_version(&self.pool, machine_id, &name, &manifest).await;
         _ = update_avs_active_set(&self.pool, machine_id, &name).await;
@@ -184,6 +185,19 @@ impl Backend for BackendService {
         .map_err(|e| Status::internal(format!("Failed while saving metrics: {e:?}")))?;
 
         Ok(Response::new(()))
+    }
+
+    async fn node_types(&self, request: Request<Digests>) -> Result<Response<NodeTypes>, Status> {
+        let req = request.into_inner();
+        let types = AvsVersionHash::get_versions_from_digests(&self.pool, &req.digests)
+            .await
+            .map_err(|e| Status::internal(format!("Failed on database fetch {e}")))?;
+        Ok(Response::new(NodeTypes {
+            node_types: types
+                .into_iter()
+                .map(|nt| (NodeTypeMessage { digest: nt.0, node_type: nt.1 }))
+                .collect::<Vec<_>>(),
+        }))
     }
 }
 

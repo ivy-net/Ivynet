@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE avs SET metrics_available = $1 WHERE machine_id = $2 AND avs_name = $3",
+  "query": "UPDATE avs SET metrics_alive = $1 WHERE machine_id = $2 AND avs_name = $3",
   "describe": {
     "columns": [],
     "parameters": {
@@ -12,5 +12,5 @@
     },
     "nullable": []
   },
-  "hash": "ae98fda90e435e79ee1c4f1c0deee408d435e1cbdfe76a24d1f616e927ead2e0"
+  "hash": "45ea17594c542d616cb1537bc869537a53c45a28c27ac09ea7e02ba639d0be73"
 }
