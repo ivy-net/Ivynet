@@ -13,6 +13,8 @@ pub enum Source {
 pub enum ClientError {
     #[error(transparent)]
     SocketError(#[from] std::io::Error),
+    #[error(transparent)]
+    TransportError(#[from] tonic::transport::Error),
 }
 
 pub async fn create_channel(source: Uri, tls_ca: Option<String>) -> Result<Channel, ClientError> {
@@ -23,7 +25,7 @@ pub async fn create_channel(source: Uri, tls_ca: Option<String>) -> Result<Chann
         let tls = ClientTlsConfig::new().ca_certificate(Certificate::from_pem(ca));
         endpoint.tls_config(tls).expect("invalid CA certificate")
     } else {
-        endpoint
+        endpoint.tls_config(ClientTlsConfig::new().with_native_roots())?
     }
     .timeout(std::time::Duration::from_secs(5 * 60));
     debug!("Initialized GRPC channel: {:?}", source);
