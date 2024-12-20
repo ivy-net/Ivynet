@@ -13,6 +13,17 @@
   tags:
     - general
 
+- name: Set secrets directory
+  ansible.builtin.file:
+    path: "{{ ivynet_backend_path_secrets }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  tags:
+    - general
+    - ssl
+
 - name: Install and configure 3rd party tools
   ansible.builtin.import_tasks:
     file: third_party.yml
@@ -63,7 +74,8 @@
     name: "Run image version scanner"
     minute: 7
     hour: "0,12"
-    job: "{{ ivynet_backend_path_install }}/bin/ivynet-scanner.sh"
+    # yamllint disable-line rule:line-length
+    job: "{{ ivynet_backend_path_install }}/bin/ivynet-scanner.sh 2>&1 |logger -t scanner"
   tags:
     - ivynet_backend
     - general
