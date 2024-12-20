@@ -16,13 +16,13 @@ use ivynet_core::{
         backend::backend_server::{Backend, BackendServer},
         client::{Request, Response},
         messages::{
-            Digests, NodeType as NodeTypeMessage, NodeTypes, RegistrationCredentials, SignedLog,
-            SignedMetrics,
+            Digests, NodeData, NodeType as NodeTypeMessage, NodeTypes, RegistrationCredentials,
+            SignedLog, SignedMetrics, SignedNodeData,
         },
         server, Status,
     },
     node_type::NodeType,
-    signature::{recover_from_string, recover_metrics},
+    signature::{recover_from_string, recover_metrics, recover_node_data},
 };
 use sqlx::PgPool;
 use std::{str::FromStr, sync::Arc};
@@ -109,6 +109,54 @@ impl Backend for BackendService {
         Ok(Response::new(()))
     }
 
+    async fn node_data(&self, request: Request<SignedNodeData>) -> Result<Response<()>, Status> {
+        let req = request.into_inner();
+
+        // TODO: Why does it force this to be an option even though it's not in the proto?
+        let node_data = if let Some(node_data) = req.node_data {
+            node_data
+        } else {
+            return Err(Status::invalid_argument("Node data is missing".to_string()));
+        };
+
+        let client_id = recover_node_data(
+            &node_data,
+            &Signature::try_from(req.signature.as_slice())
+                .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
+        )
+        .await?;
+
+        let machine_id = Uuid::from_slice(&req.machine_id).map_err(|e| {
+            Status::invalid_argument(format!("Machine id has wrong length ({e:?})"))
+        })?;
+
+        if !Machine::is_owned_by(&self.pool, &client_id, machine_id).await.unwrap_or(false) {
+            return Err(Status::not_found("Machine not registered for given client".to_string()));
+        }
+
+        let NodeData { name, node_type, manifest, metrics_alive } = node_data;
+
+        let avs_type = match NodeType::from(node_type.as_str()) {
+            NodeType::Unknown => AvsVersionHash::get_avs_type_from_hash(&self.pool, &manifest)
+                .await
+                .unwrap_or(NodeType::Unknown),
+            node_type => node_type,
+        };
+
+        Avs::record_avs_data_from_client(&self.pool, machine_id, &name, &avs_type, &manifest)
+            .await
+            .map_err(|e| Status::internal(format!("Failed while saving node_data: {e}")))?;
+
+        Avs::update_metrics_alive(&self.pool, machine_id, &name, metrics_alive).await.map_err(
+            |e| Status::internal(format!("Failed while setting metrics available flag: {e}")),
+        )?;
+
+        _ = update_avs_version(&self.pool, machine_id, &name, &manifest).await;
+        _ = update_avs_active_set(&self.pool, machine_id, &name).await;
+
+        Ok(Response::new(()))
+    }
+
     async fn metrics(&self, request: Request<SignedMetrics>) -> Result<Response<()>, Status> {
         let req = request.into_inner();
 
@@ -118,6 +166,7 @@ impl Backend for BackendService {
                 .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
         )
         .await?;
+
         let machine_id = Uuid::from_slice(&req.machine_id).map_err(|e| {
             Status::invalid_argument(format!("Machine id has wrong length ({e:?})"))
         })?;
@@ -135,57 +184,6 @@ impl Backend for BackendService {
         .await
         .map_err(|e| Status::internal(format!("Failed while saving metrics: {e:?}")))?;
 
-        if let Some(avs_name) = req.avs_name {
-            if let Some((avs_type, version_hash)) = req
-                .metrics
-                .iter()
-                .filter_map(|m| {
-                    if m.name == "running" {
-                        let mut avs_type = None;
-                        let mut version_hash = None;
-
-                        for attribute in &m.attributes {
-                            if attribute.name == "avs_type" {
-                                avs_type = Some(attribute.value.clone());
-                            } else if attribute.name == "version-hash" {
-                                version_hash = Some(attribute.value.clone());
-                            }
-                        }
-                        if let (Some(t), Some(vh)) = (avs_type, version_hash) {
-                            Some((t, vh))
-                        } else {
-                            None
-                        }
-                    } else {
-                        None
-                    }
-                })
-                .collect::<Vec<_>>()
-                .first()
-            {
-                let avs_type = match NodeType::from(avs_type.as_str()) {
-                    NodeType::Unknown => {
-                        AvsVersionHash::get_avs_type_from_hash(&self.pool, version_hash)
-                            .await
-                            .unwrap_or(NodeType::Unknown)
-                    }
-                    node_type => node_type,
-                };
-
-                Avs::record_avs_data_from_client(
-                    &self.pool,
-                    machine_id,
-                    &avs_name,
-                    &avs_type,
-                    version_hash,
-                )
-                .await
-                .map_err(|e| Status::internal(format!("Failed while saving node_data: {e}")))?;
-
-                _ = update_avs_version(&self.pool, machine_id, &avs_name, version_hash).await;
-                _ = update_avs_active_set(&self.pool, machine_id, &avs_name).await;
-            }
-        }
         Ok(Response::new(()))
     }
 

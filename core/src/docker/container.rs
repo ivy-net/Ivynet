@@ -189,6 +189,7 @@ impl LogsListener {
     }
 
     async fn try_listen(&self) -> Result<(), LogListenerError> {
+        time::sleep(Duration::from_secs(10)).await;
         let mut stream = self.listener_data.container.stream_logs_latest(&self.docker);
 
         while let Some(log_result) = stream.next().await {
