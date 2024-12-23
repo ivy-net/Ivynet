@@ -87,8 +87,6 @@ pub async fn find_latest_avs_version(
 ) -> Result<(String, String), BackendError> {
     let avs_name = node_type.to_string();
 
-    println!("node_type: {:?}", node_type);
-
     let (tag, digest) = match VersionType::from(node_type) {
         VersionType::FixedVer => {
             let tag = VersionType::fixed_name(node_type)
