@@ -109,15 +109,15 @@ pub async fn fetch(
     let chain_id = provider.get_chainid().await?.as_u64();
     let last_block = provider.get_block_number().await?.as_u64();
     debug!("Chain id is {chain_id}");
-    let addresses = if addresses.is_empty() {
-        get_all_directories_for_chain(chain_id.try_into().unwrap_or(Chain::Mainnet))
-    } else {
-        addresses
-    };
 
-    if addresses.is_empty() {
-        panic!("No contracts to monitor");
-    }
+    let addresses = (!addresses.is_empty())
+        .then_some(addresses)
+        .or_else(|| {
+            get_all_directories_for_chain(chain_id.try_into().unwrap_or(Chain::Mainnet))
+                .map(|v| &**v)
+        })
+        .filter(|addrs| !addrs.is_empty())
+        .expect("No contracts to monitor");
 
     debug!("We will listen at {addresses:?}");
     start_block = last_block;
