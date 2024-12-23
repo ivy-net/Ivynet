@@ -70,6 +70,10 @@ impl VersionType {
             NodeType::LagrangeZkWorkerMainnet => Some("mainnet"),
             NodeType::K3LabsAvs => Some("latest"),
             NodeType::EOracle => Some("latest"),
+            NodeType::Omni => Some("latest"),
+            NodeType::OpenLayerMainnet => Some("latest"),
+            NodeType::OpenLayerHolesky => Some("latest"),
+            NodeType::ArpaNetworkNodeClient => Some("latest"),
             _ => None,
         }
     }
@@ -83,9 +87,13 @@ pub async fn find_latest_avs_version(
 ) -> Result<(String, String), BackendError> {
     let avs_name = node_type.to_string();
 
+    println!("node_type: {:?}", node_type);
+
     let (tag, digest) = match VersionType::from(node_type) {
         VersionType::FixedVer => {
-            let tag = VersionType::fixed_name(node_type).unwrap().to_string();
+            let tag = VersionType::fixed_name(node_type)
+                .expect("FixedVer should have a fixed name like latest")
+                .to_string();
             let digest = AvsVersionHash::get_digest_for_version(pool, &avs_name, &tag).await?;
             (tag, digest)
         }

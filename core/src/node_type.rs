@@ -87,7 +87,6 @@ pub const AUTOMATA_REPO: &str = "automata-network/multi-prover-avs/operator";
 pub const OPEN_LAYER_MAINNET_REPO: &str = "openoracle-de73b/operator-js";
 pub const OPEN_LAYER_HOLESKY_REPO: &str = "openoracle-de73b/operator-js-holesky";
 pub const AETHOS_REPO: &str = "predicatelabs/operator"; //See above
-pub const ARPA_CHAIN_NODE_REPO: &str = "arpachainio/node";
 pub const ARPA_NETWORK_NODE_CLIENT_REPO: &str = "arpa-network/node-client";
 pub const CHAINBASE_NETWORK_V1_REPO: &str = "network/chainbase-node";
 pub const CHAINBASE_NETWORK_V2_REPO: &str = "network/chainbase-node";
