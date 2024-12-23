@@ -43,7 +43,6 @@ impl From<&NodeType> for VersionType {
             NodeType::UngateInfiniRouteBase => VersionType::FixedVer,
             NodeType::UngateInfiniRoutePolygon => VersionType::FixedVer,
             NodeType::AethosHolesky => VersionType::SemVer,
-            NodeType::ArpaChainNode => VersionType::FixedVer,
             NodeType::ArpaNetworkNodeClient => VersionType::FixedVer,
             NodeType::Brevis => unreachable!("Brevis has no docker versioning, unenterable"),
             NodeType::PrimevMevCommit => {

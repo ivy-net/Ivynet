@@ -92,7 +92,6 @@ static ALL_HOLESKY_AVSES: &[(Chain, NodeType, H160)] = &[
     (Chain::Holesky, NodeType::Automata, h160!(0x4665af665df5703445645d243f0fd63ed3b9d132)),
     (Chain::Holesky, NodeType::OpenLayerHolesky, h160!(0xf9b555d1d5be5c24ad9b11a87409d7107a8b6174)),
     (Chain::Holesky, NodeType::AethosHolesky, h160!(0xde93e0da148e1919bb7f33cd8847f96e45791210)),
-    (Chain::Holesky, NodeType::ArpaChainNode, h160!(0xd36b6e5eee8311d7bffb2f3bb33301a1ab7de101)),
     (Chain::Holesky, NodeType::UnifiAVS, h160!(0x9b43f227ca57c685a8fe8898eef7dfbd399505df)),
     //The skatechains might be swapped around - unsure
     (Chain::Holesky, NodeType::SkateChainBase, h160!(0x5d592a255a4369982aa7fb55c6cbc12c7103e5e4)),

@@ -30,7 +30,6 @@ pub enum NodeType {
     OpenLayerMainnet,
     OpenLayerHolesky,
     AethosHolesky, // Predicate was Aethos - still live in holesky?
-    ArpaChainNode,
     ArpaNetworkNodeClient,
     // OpacityNetwork, //Doesn't really exist yet
     UnifiAVS, // I think this is on-chain only - https://docs.puffer.fi/unifi-avs-protocol
@@ -49,34 +48,13 @@ pub enum NodeType {
 // Works with lower case and kebab case - kebab case is what is displayed
 impl From<&str> for NodeType {
     fn from(s: &str) -> Self {
-        let input = s.to_string();
-
-        // Generate different case variations for comparison
-        let kebab = input.to_case(Case::Kebab);
-        let lower = input.to_case(Case::Lower);
-        let pascal = input.to_case(Case::Pascal);
-        // Add camel case for compound words
-        let camel = input.to_case(Case::Camel);
-
-        // Remove common separators for more flexible matching
-        let normalized = input.replace("-", "").replace("_", "").replace(" ", "").to_lowercase();
+        let normalized = s.replace(['-', '_', ' '], "").to_lowercase();
 
         NodeType::iter()
             .find(|variant| {
                 let variant_str = format!("{:?}", variant);
-                let variant_kebab = variant_str.to_case(Case::Kebab);
-                let variant_lower = variant_str.to_case(Case::Lower);
-                let variant_pascal = variant_str.to_case(Case::Pascal);
-                let variant_camel = variant_str.to_case(Case::Camel);
-                let variant_normalized =
-                    variant_str.replace("-", "").replace("_", "").replace(" ", "").to_lowercase();
-
-                kebab == variant_kebab ||
-                    lower == variant_lower ||
-                    pascal == variant_pascal ||
-                    camel == variant_camel ||
-                    normalized == variant_normalized ||
-                    input.eq_ignore_ascii_case(&variant_str)
+                let variant_normalized = variant_str.replace(['-', '_', ' '], "").to_lowercase();
+                normalized == variant_normalized
             })
             .unwrap_or(Self::Unknown)
     }
@@ -94,11 +72,11 @@ impl std::fmt::Display for NodeType {
 /* -------- NODE REPOSITORIES -------- */
 /* ----------------------------------- */
 pub const AVAPROTOCOL_REPO: &str = "avaprotocol/ap-avs";
-pub const EIGENDA_REPO: &str = "ghcr.io/layr-labs/eigenda/opr-node";
+pub const EIGENDA_REPO: &str = "layr-labs/eigenda/opr-node";
 pub const LAGRANGE_STATECOMS_REPO: &str = "lagrangelabs/lagrange-node";
 pub const K3LABS_REPO: &str = "k3official/k3-labs-avs-operator";
 pub const EORACLE_REPO: &str = "eoracle/data-validator";
-pub const PREDICATE_REPO: &str = "ghcr.io/predicatelabs/operator";
+pub const PREDICATE_REPO: &str = "predicatelabs/operator";
 pub const HYPERLANE_REPO: &str = "abacus-labs-dev/hyperlane-agent";
 pub const WITNESSCHAIN_REPO: &str = "witnesschain/watchtower";
 pub const ALTLAYER_GENERIC_REPO: &str = "altlayer/alt-generic-operator";
@@ -108,9 +86,9 @@ pub const OMNI_REPO: &str = "omniops/halovisor"; //Holesky only
 pub const AUTOMATA_REPO: &str = "automata-network/multi-prover-avs/operator";
 pub const OPEN_LAYER_MAINNET_REPO: &str = "openoracle-de73b/operator-js";
 pub const OPEN_LAYER_HOLESKY_REPO: &str = "openoracle-de73b/operator-js-holesky";
-pub const AETHOS_REPO: &str = "ghcr.io/predicatelabs/operator"; //See above
+pub const AETHOS_REPO: &str = "predicatelabs/operator"; //See above
 pub const ARPA_CHAIN_NODE_REPO: &str = "arpachainio/node";
-pub const ARPA_NETWORK_NODE_CLIENT_REPO: &str = "ghcr.io/arpa-network/node-client";
+pub const ARPA_NETWORK_NODE_CLIENT_REPO: &str = "arpa-network/node-client";
 pub const CHAINBASE_NETWORK_V1_REPO: &str = "network/chainbase-node";
 pub const CHAINBASE_NETWORK_V2_REPO: &str = "network/chainbase-node";
 pub const UNGATE_INFINI_ROUTE_BASE_REPO: &str = "infini-route-attestators-public-attester";
@@ -173,7 +151,6 @@ impl NodeType {
             Self::OpenLayerMainnet => OPEN_LAYER_MAINNET_REPO,
             Self::OpenLayerHolesky => OPEN_LAYER_HOLESKY_REPO,
             Self::AethosHolesky => PREDICATE_REPO,
-            Self::ArpaChainNode => ARPA_CHAIN_NODE_REPO,
             Self::ArpaNetworkNodeClient => ARPA_NETWORK_NODE_CLIENT_REPO,
             Self::ChainbaseNetworkV1 => CHAINBASE_NETWORK_V1_REPO,
             Self::ChainbaseNetworkV2 => CHAINBASE_NETWORK_V2_REPO,
@@ -215,7 +192,6 @@ impl NodeType {
             Self::OpenLayerMainnet => GoogleCloud,
             Self::OpenLayerHolesky => GoogleCloud,
             Self::AethosHolesky => Github,
-            Self::ArpaChainNode => Github,
             Self::ArpaNetworkNodeClient => Github,
             Self::ChainbaseNetworkV1 => Chainbase,
             Self::ChainbaseNetworkV2 => Chainbase,
@@ -266,7 +242,6 @@ impl NodeType {
             Self::SkateChainBase => return Err(NodeTypeError::InvalidNodeType),
             Self::SkateChainMantle => return Err(NodeTypeError::InvalidNodeType),
             Self::UnifiAVS => return Err(NodeTypeError::InvalidNodeType),
-            Self::ArpaChainNode => return Err(NodeTypeError::NoDefaultContainerName),
             Self::ArpaNetworkNodeClient => return Err(NodeTypeError::NoDefaultContainerName),
             Self::Predicate => return Err(NodeTypeError::NoDefaultContainerName),
             Self::ChainbaseNetworkV2 => return Err(NodeTypeError::InvalidNodeType),
@@ -310,7 +285,6 @@ impl NodeType {
             Self::SkateChainBase => return Err(NodeTypeError::InvalidNodeType),
             Self::SkateChainMantle => return Err(NodeTypeError::InvalidNodeType),
             Self::UnifiAVS => return Err(NodeTypeError::InvalidNodeType),
-            Self::ArpaChainNode => return Err(NodeTypeError::NoDefaultContainerName),
             Self::ArpaNetworkNodeClient => return Err(NodeTypeError::NoDefaultContainerName),
             Self::Predicate => return Err(NodeTypeError::NoDefaultContainerName),
             Self::AethosHolesky => return Err(NodeTypeError::NoDefaultContainerName),
@@ -335,11 +309,20 @@ impl NodeType {
             NodeType::Predicate,
             NodeType::Hyperlane,
             NodeType::WitnessChain,
-            // NodeType::AltlayerMach, //AWS rate limits currently
-            // NodeType::XterioMach,
-            // NodeType::DodoChainMach,
-            // NodeType::CyberMach,
-            // NodeType::GMNetworkMach,
+            NodeType::Omni,
+            NodeType::Automata,
+            NodeType::OpenLayerMainnet,
+            NodeType::OpenLayerHolesky,
+            NodeType::AethosHolesky,
+            NodeType::ArpaNetworkNodeClient,
+            NodeType::ChainbaseNetworkV1,
+            NodeType::ChainbaseNetworkV2,
+            //AWS rate limits currently
+            NodeType::AltlayerMach,
+            NodeType::XterioMach,
+            NodeType::DodoChainMach,
+            NodeType::CyberMach,
+            NodeType::GMNetworkMach,
         ]
     }
 
@@ -407,7 +390,6 @@ impl NodeType {
             AUTOMATA_REPO => Some(Self::Automata),
             OPEN_LAYER_MAINNET_REPO => Some(Self::OpenLayerMainnet),
             OPEN_LAYER_HOLESKY_REPO => Some(Self::OpenLayerHolesky),
-            ARPA_CHAIN_NODE_REPO => Some(Self::ArpaChainNode),
             ARPA_NETWORK_NODE_CLIENT_REPO => Some(Self::ArpaNetworkNodeClient),
             CHAINBASE_NETWORK_V2_REPO => Some(Self::ChainbaseNetworkV2),
             UNGATE_INFINI_ROUTE_BASE_REPO => Some(Self::UngateInfiniRouteBase),
@@ -449,7 +431,7 @@ mod tests {
 
     #[test]
     fn test_from_docker_image_name() {
-        let image_name = "ghcr.io/layr-labs/eigenda/opr-node:0.8.4";
+        let image_name = "layr-labs/eigenda/opr-node:0.8.4";
         let node_type = NodeType::from_image(image_name).unwrap();
         assert_eq!(node_type, NodeType::EigenDA);
 

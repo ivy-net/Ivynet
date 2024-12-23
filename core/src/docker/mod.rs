@@ -44,14 +44,14 @@ impl RegistryType {
 
     pub fn retry_delay(&self) -> Duration {
         match self {
-            Self::AWS => Duration::from_secs(2),
+            Self::AWS => Duration::from_secs(5),
             _ => Duration::from_secs(1),
         }
     }
 
     pub fn max_retries(&self) -> u32 {
         match self {
-            Self::AWS => 6,
+            Self::AWS => 12,
             _ => 4,
         }
     }
@@ -136,7 +136,7 @@ impl DockerRegistry {
                 _ => {
                     warn!("Retrying tags fetch after delay of {}s", delay.as_secs());
                     sleep(delay).await;
-                    delay *= 2;
+                    delay *= 5;
                     retries += 1;
                 }
             }
