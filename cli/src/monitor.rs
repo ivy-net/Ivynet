@@ -107,34 +107,8 @@ pub async fn scan() -> Result<(), anyhow::Error> {
     let mut backend = BackendClient::new(
         grpc::client::create_channel(backend_url, backend_ca).await.expect("Cannot create channel"),
     );
-    let docker = DockerClient::default();
-    println!("Scanning for existing containers...");
-    let images = docker.list_images().await;
-    let potential_avses = docker
-        .list_containers()
-        .await
-        .into_iter()
-        .filter_map(|c| {
-            if let (Some(names), Some(image_name)) = (c.names, c.image) {
-                let mut ports = if let Some(ports) = c.ports {
-                    ports.into_iter().filter_map(|p| p.public_port).collect::<Vec<_>>()
-                } else {
-                    Vec::new()
-                };
 
-                ports.sort();
-                ports.dedup();
-                if let Some(image_hash) = images.get(&image_name) {
-                    return Some(PotentialAvs {
-                        container_name: names.first().unwrap_or(&image_name).to_string(),
-                        image_hash: image_hash.to_string(),
-                        ports,
-                    });
-                }
-            }
-            None
-        })
-        .collect::<Vec<_>>();
+    let potential_avses = grab_potential_avss().await;
 
     let mut monitor_config = MonitorConfig::load_from_default_path().unwrap_or_default();
     let mut avses = Vec::new();
@@ -166,14 +140,14 @@ pub async fn scan() -> Result<(), anyhow::Error> {
     for avs in &potential_avses {
         if !configured_avs_names.contains(&avs.container_name) {
             if let Some(avs_type) = get_type(&avs_hashes, &avs.image_hash, &avs.container_name) {
-                let mut metric_port = 0;
+                let mut metric_port = None;
 
                 for port in &avs.ports {
                     if let Ok(metrics) = fetch_telemetry_from(*port).await {
                         if !metrics.is_empty() {
                             // Checking performance score metrics to read a potential avs type
 
-                            metric_port = *port;
+                            metric_port = Some(*port);
                         }
                     }
                 }
@@ -249,4 +223,37 @@ fn get_type(hashes: &HashMap<String, NodeType>, hash: &str, name: &str) -> Optio
     } else {
         NodeType::from_image(name)
     }
+}
+
+async fn grab_potential_avss() -> Vec<PotentialAvs> {
+    let docker = DockerClient::default();
+    println!("Scanning for existing containers...");
+    let images = docker.list_images().await;
+    let potential_avses = docker
+        .list_containers()
+        .await
+        .into_iter()
+        .filter_map(|c| {
+            if let (Some(names), Some(image_name)) = (c.names, c.image) {
+                let mut ports = if let Some(ports) = c.ports {
+                    ports.into_iter().filter_map(|p| p.public_port).collect::<Vec<_>>()
+                } else {
+                    Vec::new()
+                };
+
+                ports.sort();
+                ports.dedup();
+                if let Some(image_hash) = images.get(&image_name) {
+                    return Some(PotentialAvs {
+                        container_name: names.first().unwrap_or(&image_name).to_string(),
+                        image_hash: image_hash.to_string(),
+                        ports,
+                    });
+                }
+            }
+            None
+        })
+        .collect::<Vec<_>>();
+
+    potential_avses
 }
