@@ -1,7 +1,7 @@
 use crate::error::BackendError;
 use ivynet_core::{
     ethers::types::{Address, Chain},
-    grpc::backend_events::Event,
+    grpc::backend_events::RegistrationEvent,
 };
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -57,7 +57,10 @@ impl From<DbAvsActiveSet> for AvsActiveSet {
 }
 
 impl AvsActiveSet {
-    pub async fn record_event(pool: &sqlx::PgPool, event: &Event) -> Result<(), BackendError> {
+    pub async fn record_registration_event(
+        pool: &sqlx::PgPool,
+        event: &RegistrationEvent,
+    ) -> Result<(), BackendError> {
         sqlx::query!(
             "INSERT INTO avs_active_set (directory, avs, operator, chain_id, active, block, log_index)
              VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -125,7 +128,7 @@ mod scraper_tests {
         let avs = Address::from_slice(&[1; 20]);
         let operator = Address::from_slice(&[3; 20]);
 
-        let event = Event {
+        let event = RegistrationEvent {
             directory: Address::from_slice(&[1; 20]).as_bytes().to_vec(),
             avs: avs.as_bytes().to_vec(),
             address: operator.as_bytes().to_vec(),
@@ -135,7 +138,7 @@ mod scraper_tests {
             log_index: 1,
         };
 
-        AvsActiveSet::record_event(&pool, &event).await.unwrap();
+        AvsActiveSet::record_registration_event(&pool, &event).await.unwrap();
 
         // happy path
         let set = AvsActiveSet::get_active_set(&pool, avs, operator, Chain::Mainnet).await.unwrap();

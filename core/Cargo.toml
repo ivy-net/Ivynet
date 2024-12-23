@@ -1,6 +1,6 @@
 [package]
 name = "ivynet-core"
-version = "0.4.4"
+version = "0.4.5"
 edition = "2021"
 authors = ["Noah Foltz <noah@ivynet.dev>"]
 description = "Core library for Ivynet client functionality"
@@ -58,6 +58,8 @@ bollard = "0.18.0"
 rustc-hex = "2.1.0"
 futures = "0.3.31"
 docker-registry = "0.7.0"
+convert_case = "0.6.0"
+strum = { version = "0.26.3", features = ["derive"] }
 
 [build-dependencies]
 prost-build = "0.13"

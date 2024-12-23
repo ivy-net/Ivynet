@@ -13,7 +13,7 @@ message LatestBlock {
     uint64 block_number = 1;
 }
 
-message Event {
+message RegistrationEvent {
     bytes directory = 1;
     bytes avs = 2;
     uint64 chain_id = 3;
@@ -23,7 +23,15 @@ message Event {
     uint64 log_index = 7;
 }
 
+message MetadataUriEvent {
+    bytes avs = 1;
+    string metadata_uri = 2;
+    uint64 block_number = 3;
+    uint64 log_index = 4;
+}
+
 service BackendEvents {
     rpc GetLatestBlock(LatestBlockRequest) returns (LatestBlock);
-    rpc ReportEvent(Event) returns (google.protobuf.Empty);
+    rpc ReportRegistrationEvent(RegistrationEvent) returns (google.protobuf.Empty);
+    rpc ReportMetadataUriEvent(MetadataUriEvent) returns (google.protobuf.Empty);
 }

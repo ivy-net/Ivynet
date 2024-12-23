@@ -26,10 +26,39 @@ impl From<&NodeType> for VersionType {
             NodeType::K3LabsAvs => VersionType::FixedVer,
             NodeType::Predicate => VersionType::SemVer,
             NodeType::Hyperlane => VersionType::SemVer,
-            NodeType::Brevis => unreachable!("Brevis has no docker versioning, unenterable"),
             NodeType::WitnessChain => VersionType::SemVer,
             NodeType::Unknown => VersionType::SemVer,
             NodeType::LagrangeStateCommittee => VersionType::SemVer,
+            NodeType::AltlayerMach => VersionType::SemVer,
+            NodeType::XterioMach => VersionType::SemVer,
+            NodeType::DodoChainMach => VersionType::SemVer,
+            NodeType::CyberMach => VersionType::SemVer,
+            NodeType::GMNetworkMach => VersionType::SemVer,
+            NodeType::Omni => VersionType::FixedVer,
+            NodeType::Automata => VersionType::SemVer,
+            NodeType::OpenLayerHolesky => VersionType::FixedVer,
+            NodeType::OpenLayerMainnet => VersionType::FixedVer,
+            NodeType::ChainbaseNetworkV1 => VersionType::SemVer,
+            NodeType::ChainbaseNetworkV2 => VersionType::SemVer,
+            NodeType::UngateInfiniRouteBase => VersionType::FixedVer,
+            NodeType::UngateInfiniRoutePolygon => VersionType::FixedVer,
+            NodeType::AethosHolesky => VersionType::SemVer,
+            NodeType::ArpaNetworkNodeClient => VersionType::FixedVer,
+            NodeType::Brevis => unreachable!("Brevis has no docker versioning, unenterable"),
+            NodeType::PrimevMevCommit => {
+                unreachable!("PrimevMevCommit has no docker versioning, unenterable")
+            }
+            NodeType::AlignedLayer => {
+                unreachable!("AlignedLayer has no docker versioning, unenterable")
+            }
+            NodeType::GoPlusAVS => unreachable!("GoPlusAVS has no docker versioning, unenterable"),
+            NodeType::SkateChainBase => {
+                unreachable!("SkateChainBase has no docker versioning, unenterable")
+            }
+            NodeType::SkateChainMantle => {
+                unreachable!("SkateChainMantle has no docker versioning, unenterable")
+            }
+            NodeType::UnifiAVS => unreachable!("UnifiAVS has no docker versioning, unenterable"),
         }
     }
 }
@@ -41,6 +70,10 @@ impl VersionType {
             NodeType::LagrangeZkWorkerMainnet => Some("mainnet"),
             NodeType::K3LabsAvs => Some("latest"),
             NodeType::EOracle => Some("latest"),
+            NodeType::Omni => Some("latest"),
+            NodeType::OpenLayerMainnet => Some("latest"),
+            NodeType::OpenLayerHolesky => Some("latest"),
+            NodeType::ArpaNetworkNodeClient => Some("latest"),
             _ => None,
         }
     }
@@ -56,7 +89,9 @@ pub async fn find_latest_avs_version(
 
     let (tag, digest) = match VersionType::from(node_type) {
         VersionType::FixedVer => {
-            let tag = VersionType::fixed_name(node_type).unwrap().to_string();
+            let tag = VersionType::fixed_name(node_type)
+                .expect("FixedVer should have a fixed name like latest")
+                .to_string();
             let digest = AvsVersionHash::get_digest_for_version(pool, &avs_name, &tag).await?;
             (tag, digest)
         }

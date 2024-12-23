@@ -8,7 +8,10 @@ use futures::{stream::SelectAll, Stream, StreamExt};
 use ivynet_core::{
     directory::get_all_directories_for_chain,
     grpc::{
-        backend_events::{backend_events_client::BackendEventsClient, Event, LatestBlockRequest},
+        backend_events::{
+            backend_events_client::BackendEventsClient, LatestBlockRequest, MetadataUriEvent,
+            RegistrationEvent,
+        },
         tonic::{transport::Channel, Request},
     },
 };
@@ -106,15 +109,15 @@ pub async fn fetch(
     let chain_id = provider.get_chainid().await?.as_u64();
     let last_block = provider.get_block_number().await?.as_u64();
     debug!("Chain id is {chain_id}");
-    let addresses = if addresses.is_empty() {
-        get_all_directories_for_chain(chain_id.try_into().unwrap_or(Chain::Mainnet))
-    } else {
-        addresses
-    };
 
-    if addresses.is_empty() {
-        panic!("No contracts to monitor");
-    }
+    let addresses = (!addresses.is_empty())
+        .then_some(addresses)
+        .or_else(|| {
+            get_all_directories_for_chain(chain_id.try_into().unwrap_or(Chain::Mainnet))
+                .map(|v| &**v)
+        })
+        .filter(|addrs| !addrs.is_empty())
+        .expect("No contracts to monitor");
 
     debug!("We will listen at {addresses:?}");
     start_block = last_block;
@@ -201,18 +204,32 @@ pub async fn report_directory_event(
 ) -> Result<u64> {
     debug!("Reading event {event:?}");
 
-    if let DirectoryEvents::OperatorAVSRegistrationStatusUpdatedFilter(f) = event.0 {
-        backend
-            .report_event(Request::new(Event {
-                directory: event.1.address.as_bytes().to_vec(),
-                avs: f.avs.as_bytes().to_vec(),
-                chain_id,
-                address: f.operator.as_bytes().to_vec(),
-                active: f.status > 0,
-                block_number: event.1.block_number.as_u64(),
-                log_index: event.1.log_index.as_u64(),
-            }))
-            .await?;
+    match event.0 {
+        DirectoryEvents::OperatorAVSRegistrationStatusUpdatedFilter(f) => {
+            backend
+                .report_registration_event(Request::new(RegistrationEvent {
+                    directory: event.1.address.as_bytes().to_vec(),
+                    avs: f.avs.as_bytes().to_vec(),
+                    chain_id,
+                    address: f.operator.as_bytes().to_vec(),
+                    active: f.status > 0,
+                    block_number: event.1.block_number.as_u64(),
+                    log_index: event.1.log_index.as_u64(),
+                }))
+                .await?;
+        }
+        DirectoryEvents::AvsmetadataURIUpdatedFilter(ev) => {
+            info!("AVS metadata URI updated event {ev:?}");
+
+            backend
+                .report_metadata_uri_event(Request::new(MetadataUriEvent {
+                    avs: ev.avs.as_bytes().to_vec(),
+                    metadata_uri: ev.metadata_uri,
+                    block_number: event.1.block_number.as_u64(),
+                    log_index: event.1.log_index.as_u64(),
+                }))
+                .await?;
+        }
     }
 
     Ok(event.1.block_number.as_u64())

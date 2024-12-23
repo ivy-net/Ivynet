@@ -83,7 +83,7 @@ pub enum BackendError {
     InvalidChain,
 
     #[error(transparent)]
-    DockerRegistryError(#[from] ivynet_core::docker::DockerRegistryError),
+    RegistryError(#[from] ivynet_core::docker::RegistryError),
 
     #[error("No valid node versions found")]
     NoVersionsFound,

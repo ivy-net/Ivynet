@@ -2,7 +2,7 @@ use ivynet_core::grpc::{
     self,
     backend_events::{
         backend_events_server::{BackendEvents, BackendEventsServer},
-        Event, LatestBlock, LatestBlockRequest,
+        LatestBlock, LatestBlockRequest, MetadataUriEvent, RegistrationEvent,
     },
     client::{Request, Response},
     server, Status,
@@ -35,10 +35,21 @@ impl BackendEvents for EventsService {
         Ok(Response::new(LatestBlock { block_number }))
     }
 
-    async fn report_event(&self, request: Request<Event>) -> Result<Response<()>, Status> {
-        AvsActiveSet::record_event(&self.pool, &request.into_inner())
+    async fn report_registration_event(
+        &self,
+        request: Request<RegistrationEvent>,
+    ) -> Result<Response<()>, Status> {
+        AvsActiveSet::record_registration_event(&self.pool, &request.into_inner())
             .await
             .map_err(|a| Status::invalid_argument(format!("Bad arguments provided {a:?}")))?;
+        Ok(Response::new(()))
+    }
+
+    async fn report_metadata_uri_event(
+        &self,
+        _request: Request<MetadataUriEvent>,
+    ) -> Result<Response<()>, Status> {
+        // info!("Need to implement db side of this");
         Ok(Response::new(()))
     }
 }
