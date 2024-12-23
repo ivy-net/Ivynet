@@ -2,12 +2,13 @@ use tonic::transport::{Channel, Uri};
 
 use crate::grpc::{
     backend::backend_client::BackendClient,
-    messages::{SignedLog, SignedMetrics},
+    messages::{SignedLog, SignedMetrics, SignedNodeData},
 };
 
 #[derive(Debug, Clone)]
 pub enum TelemetryMsg {
     Metrics(SignedMetrics),
+    NodeData(SignedNodeData),
     Log(SignedLog),
 }
 
@@ -26,6 +27,7 @@ impl TelemetryDispatcher {
             let send_res = match node_data {
                 TelemetryMsg::Metrics(metrics) => self.backend_client.metrics(metrics).await,
                 TelemetryMsg::Log(log) => self.backend_client.logs(log).await,
+                TelemetryMsg::NodeData(node_data) => self.backend_client.node_data(node_data).await,
             };
             if let Err(e) = send_res {
                 let err = TelemetryDispatchError::TransportError(e);
@@ -65,6 +67,12 @@ impl TelemetryDispatchHandle {
     }
     pub async fn send_metrics(&self, metrics: SignedMetrics) -> Result<(), TelemetryDispatchError> {
         self.send(TelemetryMsg::Metrics(metrics)).await
+    }
+    pub async fn send_node_data(
+        &self,
+        node_data: SignedNodeData,
+    ) -> Result<(), TelemetryDispatchError> {
+        self.send(TelemetryMsg::NodeData(node_data)).await
     }
     pub async fn send_log(&self, log: SignedLog) -> Result<(), TelemetryDispatchError> {
         self.send(TelemetryMsg::Log(log)).await

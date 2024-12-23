@@ -131,6 +131,7 @@ impl Metric {
         Ok(metrics.into_iter().map(|m| (m.name.clone(), m.into())).collect())
     }
 
+    /// Returns a HashMap of metrics organized by metric name.
     pub async fn get_organized_for_avs(
         pool: &PgPool,
         machine_id: Uuid,
@@ -140,8 +141,8 @@ impl Metric {
 
         let mut organized = HashMap::new();
 
-        for metric in &metrics {
-            organized.insert(metric.name.clone(), metric.clone());
+        for metric in metrics.into_iter() {
+            organized.insert(metric.name.clone(), metric);
         }
 
         Ok(organized)

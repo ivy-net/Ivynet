@@ -78,14 +78,33 @@ pub async fn build_avs_info(
     avs: Avs,
     metrics: HashMap<String, Metric>,
 ) -> Result<AvsInfo, BackendError> {
-    let running_metric = metrics.get(RUNNING_METRIC);
+    let metrics_alive = avs.metrics_alive;
 
     let version_map = DbAvsVersionData::get_all_avs_version(pool).await;
 
     //Start of error building
     let mut errors = vec![];
 
-    if running_metric.is_none() {
+    if metrics_alive {
+        if !avs.active_set {
+            errors.push(NodeError::UnregisteredFromActiveSet);
+        }
+
+        if let Some(perf) = metrics.get(EIGEN_PERFORMANCE_METRIC) {
+            if perf.value < EIGEN_PERFORMANCE_HEALTHY_THRESHOLD {
+                errors.push(NodeError::LowPerformanceScore);
+            }
+        }
+
+        // TODO: The `created_at` field was never populated in the previous implementation,
+        // commented code preserved here for purposes of later implementation.
+        // if let Some(datetime) = run_met.created_at {
+        //     let now = chrono::Utc::now().naive_utc();
+        //     if now.signed_duration_since(datetime).num_minutes() > IDLE_MINUTES_THRESHOLD {
+        //         errors.push(NodeError::IdleNodeNoCommunication);
+        //     }
+        // }
+    } else {
         //Running metric missing should never really happen
         errors.push(NodeError::CrashedNode);
 
@@ -93,37 +112,6 @@ pub async fn build_avs_info(
         if avs.active_set {
             errors.push(NodeError::ActiveSetNoDeployment);
         }
-    }
-
-    if let Some(run_met) = running_metric {
-        //If running metric is not 1, the node has crashed
-        if run_met.value == 1.0 {
-            if !avs.active_set {
-                errors.push(NodeError::UnregisteredFromActiveSet);
-            }
-
-            if let Some(perf) = metrics.get(EIGEN_PERFORMANCE_METRIC) {
-                if perf.value < EIGEN_PERFORMANCE_HEALTHY_THRESHOLD {
-                    errors.push(NodeError::LowPerformanceScore);
-                }
-            }
-
-            if let Some(datetime) = run_met.created_at {
-                let now = chrono::Utc::now().naive_utc();
-                if now.signed_duration_since(datetime).num_minutes() > IDLE_MINUTES_THRESHOLD {
-                    errors.push(NodeError::IdleNodeNoCommunication);
-                }
-            }
-        } else {
-            errors.push(NodeError::CrashedNode);
-
-            //In active set but not running a node could be inactivity slashable
-            if avs.active_set {
-                errors.push(NodeError::ActiveSetNoDeployment);
-            }
-        }
-
-        if run_met.value > 0.0 {}
     }
 
     let mut update_status = UpdateStatus::Unknown;
