@@ -1,7 +1,7 @@
 use convert_case::{Case, Casing};
 use serde::{Deserialize, Serialize};
 use strum::{EnumIter, IntoEnumIterator};
-use tracing::error;
+use tracing::{error, warn};
 
 const EIGENDA_METRICS_ID: &str = "da-node";
 
@@ -290,8 +290,7 @@ impl NodeType {
     pub fn from_image(image: &str) -> Option<Self> {
         let parts: Vec<&str> = image.rsplitn(2, ':').collect();
         if parts.len() != 2 {
-            error!("Report to Ivynet Team");
-            error!("Invalid image: {}", image);
+            warn!("Unrecognized image: {}", image);
             return None;
         }
         Self::from_repo(parts[1], parts[0])

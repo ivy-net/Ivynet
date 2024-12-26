@@ -32,7 +32,7 @@ pub struct ConfiguredAvs {
     pub assigned_name: String,
     pub container_name: String,
     pub avs_type: NodeType,
-    pub metric_port: u16,
+    pub metric_port: Option<u16>,
 }
 
 pub async fn listen(
@@ -112,17 +112,23 @@ pub async fn listen_metrics(
                 }
             }
 
-            let metrics = fetch_telemetry_from(avs.metric_port).await.unwrap_or_default();
+            let metrics = if let Some(port) = avs.metric_port {
+                let metrics: Vec<Metrics> = fetch_telemetry_from(port).await.unwrap_or_default();
 
-            let metrics_signature = sign_metrics(&metrics, identity_wallet)?;
-            let signed_metrics = SignedMetrics {
-                machine_id: machine_id.into(),
-                avs_name: Some(avs.assigned_name.clone()),
-                signature: metrics_signature.to_vec(),
-                metrics: metrics.to_vec(),
+                let metrics_signature = sign_metrics(metrics.as_slice(), identity_wallet)?;
+                let signed_metrics = SignedMetrics {
+                    machine_id: machine_id.into(),
+                    avs_name: Some(avs.assigned_name.clone()),
+                    signature: metrics_signature.to_vec(),
+                    metrics: metrics.to_vec(),
+                };
+
+                dispatch.send_metrics(signed_metrics).await?;
+
+                metrics
+            } else {
+                Vec::new()
             };
-
-            dispatch.send_metrics(signed_metrics).await?;
 
             // Send node data
 
@@ -144,7 +150,7 @@ pub async fn listen_metrics(
         }
         // Last but not least - send system metrics
         if let Ok(system_metrics) = fetch_system_telemetry().await {
-            let metrics_signature = sign_metrics(&system_metrics, identity_wallet)?;
+            let metrics_signature = sign_metrics(system_metrics.as_slice(), identity_wallet)?;
             let signed_metrics = SignedMetrics {
                 machine_id: machine_id.into(),
                 avs_name: None,

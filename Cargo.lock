@@ -722,7 +722,7 @@ checksum = "f46ad14479a25103f283c0f10005961cf086d8dc42205bb44c46ac563475dca6"
 
 [[package]]
 name = "cli"
-version = "0.4.7"
+version = "0.4.8"
 dependencies = [
  "anyhow",
  "clap",
@@ -2780,7 +2780,7 @@ dependencies = [
 
 [[package]]
 name = "ivynet-core"
-version = "0.4.5"
+version = "0.4.6"
 dependencies = [
  "async-trait",
  "blsful",
@@ -2840,6 +2840,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
+ "strum",
  "thiserror 2.0.6",
  "tokio",
  "tokio-stream",
