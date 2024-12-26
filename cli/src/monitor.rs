@@ -12,8 +12,8 @@ use ivynet_core::{
     grpc::{
         self,
         backend::backend_client::BackendClient,
-        messages::Digests,
-        tonic::{transport::Channel, Request},
+        messages::{Digests, NodeTypes},
+        tonic::{transport::Channel, Request, Response},
     },
     io::{read_toml, write_toml, IoError},
     telemetry::{fetch_telemetry_from, listen, ConfiguredAvs},
@@ -155,15 +155,23 @@ async fn find_new_avses(
         return Ok(Vec::new());
     }
 
-    let avs_types = backend
+    let node_types: Option<NodeTypes> = backend
         .node_types(Request::new(Digests { digests: digests.clone() }))
         .await
-        .map_err(|e| anyhow!("Failed to fetch node types: {}", e))?
-        .into_inner()
-        .node_types
-        .into_iter()
-        .map(|nt| (nt.digest, NodeType::from(nt.node_type.as_str())))
-        .collect::<HashMap<_, _>>();
+        .map(Response::into_inner)
+        .ok();
+
+    let avs_types: Option<HashMap<String, NodeType>> = if let Some(node_types) = node_types {
+        Some(
+            node_types
+                .node_types
+                .into_iter()
+                .map(|nt| (nt.digest, NodeType::from(nt.node_type.as_str())))
+                .collect::<HashMap<_, _>>(),
+        )
+    } else {
+        None
+    };
 
     let mut new_avses = Vec::new();
     for avs in potential_avses {
@@ -250,13 +258,15 @@ fn update_monitor_config(
     Ok(())
 }
 
-fn get_type(hashes: &HashMap<String, NodeType>, hash: &str, image_name: &str) -> Option<NodeType> {
-    if let Some(node_type) = hashes.get(hash) {
-        Some(*node_type)
-    } else {
-        let image = extract_image_name(image_name);
-        NodeType::from_image(&image)
-    }
+fn get_type(
+    hashes: &Option<HashMap<String, NodeType>>,
+    hash: &str,
+    image_name: &str,
+) -> Option<NodeType> {
+    hashes
+        .clone()
+        .and_then(|h| h.get(hash).copied())
+        .or_else(|| NodeType::from_image(&extract_image_name(image_name)))
 }
 
 async fn grab_potential_avses() -> Vec<PotentialAvs> {
