@@ -7,7 +7,7 @@ use std::{
 
 use ivynet_core::{
     config::DEFAULT_CONFIG_PATH,
-    docker::dockerapi::DockerClient,
+    docker::{dockerapi::DockerClient, RegistryType},
     grpc::{self, backend::backend_client::BackendClient, messages::Digests, tonic::Request},
     io::{read_toml, write_toml, IoError},
     node_type::NodeType,
@@ -23,6 +23,7 @@ const MONITOR_CONFIG_FILE: &str = "monitor-config.toml";
 #[derive(Clone, Debug)]
 struct PotentialAvs {
     pub container_name: String,
+    pub image_name: String,
     pub image_hash: String,
     pub ports: Vec<u16>,
 }
@@ -139,7 +140,7 @@ pub async fn scan() -> Result<(), anyhow::Error> {
 
     for avs in &potential_avses {
         if !configured_avs_names.contains(&avs.container_name) {
-            if let Some(avs_type) = get_type(&avs_hashes, &avs.image_hash, &avs.container_name) {
+            if let Some(avs_type) = get_type(&avs_hashes, &avs.image_hash, &avs.image_name) {
                 let mut metric_port = None;
 
                 for port in &avs.ports {
@@ -217,17 +218,18 @@ pub async fn scan() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
-fn get_type(hashes: &HashMap<String, NodeType>, hash: &str, name: &str) -> Option<NodeType> {
+fn get_type(hashes: &HashMap<String, NodeType>, hash: &str, image_name: &str) -> Option<NodeType> {
     if let Some(node_type) = hashes.get(hash) {
         Some(*node_type)
     } else {
-        NodeType::from_image(name)
+        let image = extract_image_name(image_name);
+        NodeType::from_image(&image)
     }
 }
 
 async fn grab_potential_avss() -> Vec<PotentialAvs> {
     let docker = DockerClient::default();
-    println!("Scanning for existing containers...");
+    println!("Scanning containers...");
     let images = docker.list_images().await;
     let potential_avses = docker
         .list_containers()
@@ -246,6 +248,7 @@ async fn grab_potential_avss() -> Vec<PotentialAvs> {
                 if let Some(image_hash) = images.get(&image_name) {
                     return Some(PotentialAvs {
                         container_name: names.first().unwrap_or(&image_name).to_string(),
+                        image_name: image_name.clone(),
                         image_hash: image_hash.to_string(),
                         ports,
                     });
@@ -256,4 +259,57 @@ async fn grab_potential_avss() -> Vec<PotentialAvs> {
         .collect::<Vec<_>>();
 
     potential_avses
+}
+
+fn extract_image_name(image_name: &str) -> String {
+    RegistryType::get_registry_hosts()
+        .into_iter()
+        .find_map(|registry| {
+            image_name.contains(registry).then(|| {
+                image_name
+                    .split(&registry)
+                    .last()
+                    .unwrap_or(image_name)
+                    .trim_start_matches('/')
+                    .to_string()
+            })
+        })
+        .unwrap_or_else(|| image_name.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extract_image_name() {
+        let test_cases = vec![
+            // Standard registry cases
+            ("docker.io/ubuntu:latest", "ubuntu:latest"),
+            ("gcr.io/project/image:v1", "project/image:v1"),
+            ("ghcr.io/owner/repo:tag", "owner/repo:tag"),
+            ("public.ecr.aws/image:1.0", "image:1.0"),
+            // Edge cases
+            ("ubuntu:latest", "ubuntu:latest"), // No registry
+            ("", ""),                           // Empty string
+            ("repository.chainbase.com/", ""),  // Just registry
+            // Multiple registry-like strings
+            ("gcr.io/docker.io/image", "image"), // Should match first registry
+            // With and without tags
+            ("docker.io/image", "image"),
+            ("docker.io/org/image:latest", "org/image:latest"),
+            // Special characters
+            ("docker.io/org/image@sha256:123", "org/image@sha256:123"),
+            ("docker.io/org/image_name", "org/image_name"),
+        ];
+
+        for (input, expected) in test_cases {
+            assert_eq!(
+                extract_image_name(input),
+                expected.to_string(),
+                "Failed on input: {}",
+                input
+            );
+        }
+    }
 }
