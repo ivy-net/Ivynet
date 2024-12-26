@@ -2837,6 +2837,7 @@ dependencies = [
  "serde_json",
  "thiserror 2.0.6",
  "tokio",
+ "tracing",
  "which",
 ]
 

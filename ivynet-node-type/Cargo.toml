@@ -1,0 +1,16 @@
+[package]
+name = "ivynet-node-type"
+version = "0.1.0"
+edition = "2021"
+authors = ["Noah Foltz <noah@ivynet.dev>"]
+description = "Library for supported node types"
+repository = "https://github.com/ivy-net/ivynet"
+license = "UNLICENSED"
+
+[lib]
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[dependencies]

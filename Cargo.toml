@@ -49,4 +49,6 @@ serde_json = "1.0.117"
 serde_yaml = "0.9.33"
 thiserror = "2.0.3"
 tokio = { version = "1.37.0", features = ["full"] }
+tokio-stream = { version = "0.1.15", features = ["net"] }
+tracing = "0.1.40"
 which = "7.0"
