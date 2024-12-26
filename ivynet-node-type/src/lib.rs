@@ -167,47 +167,6 @@ impl NodeType {
         Ok(res)
     }
 
-    // pub fn registry(&self) -> Result<RegistryType, NodeTypeError> {
-    //     let res = match self {
-    //         Self::EigenDA => Github,
-    //         Self::EOracle => DockerHub,
-    //         Self::AvaProtocol => DockerHub,
-    //         Self::LagrangeStateCommittee => DockerHub,
-    //         Self::LagrangeZkWorkerMainnet => DockerHub,
-    //         Self::LagrangeZkWorkerHolesky => DockerHub,
-    //         Self::K3LabsAvs => DockerHub,
-    //         Self::Predicate => Github,
-    //         Self::Hyperlane => GoogleCloud,
-    //         Self::WitnessChain => DockerHub,
-    //         Self::AltlayerMach => AWS,
-    //         Self::XterioMach => AWS,
-    //         Self::DodoChainMach => AWS,
-    //         Self::CyberMach => AWS,
-    //         Self::GMNetworkMach => AWS,
-    //         Self::Omni => DockerHub,
-    //         Self::Automata => Github,
-    //         Self::OpenLayerMainnet => GoogleCloud,
-    //         Self::OpenLayerHolesky => GoogleCloud,
-    //         Self::AethosHolesky => Github,
-    //         Self::ArpaNetworkNodeClient => Github,
-    //         Self::ChainbaseNetworkV1 => Chainbase,
-    //         Self::ChainbaseNetworkV2 => Chainbase,
-    //         Self::UngateInfiniRouteBase => Othentic,
-    //         Self::UngateInfiniRoutePolygon => Othentic,
-    //         Self::GoPlusAVS => Othentic,
-    //         Self::SkateChainBase => Othentic,
-    //         Self::SkateChainMantle => Othentic,
-    //         Self::Brevis => {
-    //             unreachable!("Brevis node type has no docker registry. This should be
-    // unenterable.")         }
-    //         Self::AlignedLayer => return Err(NodeTypeError::NoRegistry),
-    //         Self::PrimevMevCommit => return Err(NodeTypeError::NoRegistry),
-    //         Self::UnifiAVS => return Err(NodeTypeError::InvalidNodeType),
-    //         Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
-    //     };
-    //     Ok(res)
-    // }
-
     // TODO: Find real default names of nodes marked with `temp_`
     pub fn default_container_name_mainnet(&self) -> Result<&'static str, NodeTypeError> {
         let res = match self {
