@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use strum::EnumIter;
 use tokio::time::{sleep, Duration};
 use tokio_stream::StreamExt;
 use tracing::{error, warn};
@@ -12,9 +13,10 @@ pub mod dockerapi;
 pub mod dockercmd;
 pub mod logs;
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter)]
 pub enum RegistryType {
     DockerHub,
+    OtherDockerHub,
     Github,
     GoogleCloud,
     AWS,
@@ -23,9 +25,21 @@ pub enum RegistryType {
 }
 
 impl RegistryType {
+    pub fn get_registry_hosts() -> Vec<&'static str> {
+        vec![
+            "registry-1.docker.io",
+            "docker.io",
+            "ghcr.io",
+            "gcr.io",
+            "public.ecr.aws",
+            "repository.chainbase.com",
+            "othentic",
+        ]
+    }
     pub fn from_host(host: &str) -> Option<Self> {
         match host {
-            "registry-1.docker.io" | "docker.io" => Some(Self::DockerHub),
+            "registry-1.docker.io" => Some(Self::DockerHub),
+            "docker.io" => Some(Self::OtherDockerHub),
             "ghcr.io" => Some(Self::Github),
             "gcr.io" => Some(Self::GoogleCloud),
             "public.ecr.aws" => Some(Self::AWS),
@@ -60,6 +74,7 @@ impl RegistryType {
 impl fmt::Display for RegistryType {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let registry = match self {
+            Self::OtherDockerHub => "docker.io",
             Self::DockerHub => "registry-1.docker.io",
             Self::Github => "ghcr.io",
             Self::GoogleCloud => "gcr.io",
