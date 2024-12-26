@@ -2780,7 +2780,6 @@ version = "0.4.5"
 dependencies = [
  "async-trait",
  "blsful",
- "bollard",
  "chrono",
  "clap",
  "convert_case",
@@ -2826,6 +2825,19 @@ dependencies = [
  "uuid 1.11.0",
  "which",
  "zip 2.2.1",
+]
+
+[[package]]
+name = "ivynet-docker"
+version = "0.4.4"
+dependencies = [
+ "bollard",
+ "chrono",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.6",
+ "tokio",
+ "which",
 ]
 
 [[package]]
