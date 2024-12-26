@@ -1,7 +1,7 @@
 use clap::Subcommand;
 use std::fmt::Display;
 
-use crate::node_type::NodeType;
+use ivynet_node_type::NodeType;
 
 #[derive(Subcommand, Debug)]
 pub enum RegisterCommands {

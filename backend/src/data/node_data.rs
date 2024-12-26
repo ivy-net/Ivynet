@@ -1,4 +1,5 @@
-use ivynet_core::{directory::avs_contract, node_type::NodeType};
+use ivynet_core::directory::avs_contract;
+use ivynet_node_type::NodeType;
 use serde::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;

@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use bollard::{container::LogOutput, image::ListImagesOptions, secret::ContainerSummary, Docker};
 use tokio_stream::Stream;
 
-use crate::node_type::NodeType;
+use ivynet_node_type::NodeType;
 
 use super::container::Container;
 

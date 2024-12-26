@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::LazyLock};
 use ethers::types::{Chain, H160};
 use ivynet_macros::h160;
 
-use crate::node_type::NodeType;
+use ivynet_node_type::NodeType;
 
 const ALL_DIRECTORIES: [(Chain, H160); 2] = [
     (Chain::Mainnet, h160!(0x135DDa560e946695d6f155dACaFC6f1F25C1F5AF)),

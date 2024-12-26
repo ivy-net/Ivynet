@@ -1,54 +1,148 @@
+use registry::ImageRegistry;
+use serde::{Deserialize, Serialize};
+use std::fmt;
+use tokio::time::{sleep, Duration};
 use tokio_stream::StreamExt;
+use tracing::{error, warn};
 
-use crate::node_type::{NodeType, NodeTypeError};
+use ivynet_node_type::{NodeType, NodeTypeError};
 
 pub mod compose_images;
 pub mod container;
 pub mod dockerapi;
 pub mod dockercmd;
 pub mod logs;
+pub mod registry;
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub enum RegistryType {
+    DockerHub,
+    Github,
+    GoogleCloud,
+    AWS,
+    Chainbase,
+    Othentic,
+}
+
+impl RegistryType {
+    pub fn from_host(host: &str) -> Option<Self> {
+        match host {
+            "registry-1.docker.io" | "docker.io" => Some(Self::DockerHub),
+            "ghcr.io" => Some(Self::Github),
+            "gcr.io" => Some(Self::GoogleCloud),
+            "public.ecr.aws" => Some(Self::AWS),
+            "repository.chainbase.com" => Some(Self::Chainbase),
+            "othentic" => Some(Self::Othentic),
+            _ => None,
+        }
+    }
+
+    pub fn batch_size(&self) -> usize {
+        match self {
+            Self::AWS => 5, // AWS has stricter rate limits
+            _ => 10,
+        }
+    }
+
+    pub fn retry_delay(&self) -> Duration {
+        match self {
+            Self::AWS => Duration::from_secs(5),
+            _ => Duration::from_secs(1),
+        }
+    }
+
+    pub fn max_retries(&self) -> u32 {
+        match self {
+            Self::AWS => 12,
+            _ => 4,
+        }
+    }
+}
+
+impl fmt::Display for RegistryType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let registry = match self {
+            Self::DockerHub => "registry-1.docker.io",
+            Self::Github => "ghcr.io",
+            Self::GoogleCloud => "gcr.io",
+            Self::AWS => "public.ecr.aws",
+            Self::Chainbase => "repository.chainbase.com",
+            Self::Othentic => "Othentic has no registry",
+        };
+        write!(f, "{}", registry)
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum RegistryError {
+    #[error(transparent)]
+    RegistryError(#[from] docker_registry::errors::Error),
+    #[error(transparent)]
+    NodeTypeError(#[from] NodeTypeError),
+    #[error("Registry operation failed after retries: {0}")]
+    RetryExhausted(String),
+}
 
 pub struct DockerRegistry {
     client: docker_registry::v2::Client,
     image: String,
+    registry_type: RegistryType,
 }
 
 impl DockerRegistry {
-    pub fn new(client: docker_registry::v2::Client, image: &str) -> Self {
-        Self { client, image: image.to_owned() }
+    pub fn new(
+        client: docker_registry::v2::Client,
+        image: &str,
+        registry_type: RegistryType,
+    ) -> Self {
+        Self { client, image: image.to_owned(), registry_type }
     }
 
-    pub async fn from_host_and_repo(host: &str, repo: &str) -> Result<Self, DockerRegistryError> {
+    pub async fn from_host_and_repo(host: &str, repo: &str) -> Result<Self, RegistryError> {
+        let registry_type = RegistryType::from_host(host)
+            .ok_or_else(|| RegistryError::RetryExhausted("Unknown registry host".to_string()))?;
+
         let client = docker_registry::v2::Client::configure()
             .registry(host)
             .insecure_registry(false)
             .build()?;
+
         let login_scope = format!("repository:{}:pull", repo);
         let client = client.authenticate(&[&login_scope]).await?;
-        Ok(Self::new(client, repo))
+
+        Ok(Self::new(client, repo, registry_type))
     }
 
-    pub async fn from_node_type(entry: &NodeType) -> Result<Self, DockerRegistryError> {
+    pub async fn from_node_type(entry: &NodeType) -> Result<Self, RegistryError> {
         let registry = entry.registry()?;
         let repo = entry.default_repository()?;
-        Self::from_host_and_repo(registry, repo).await
+        Self::from_host_and_repo(&registry.to_string(), repo).await
     }
 
-    pub async fn get_tags(&self) -> Result<Vec<String>, DockerRegistryError> {
+    pub async fn get_tags(&self) -> Result<Vec<String>, RegistryError> {
         // A bit terse, explanation: we collect the results of the get_tags stream into a Vec, then
         // iterate over the results, logging any errors and filtering them out. Finally, we
         // collect the results into a Vec.
-        let res = self
-            .client
-            .get_tags(&self.image, Some(20))
-            .collect::<Vec<_>>()
-            .await
-            .into_iter()
-            .map(|r| r.map_err(|e| tracing::error!("Error fetching tags: {}", e)))
-            .filter_map(Result::ok)
-            .collect::<Vec<_>>();
+        let mut retries = 0;
+        let max_retries = self.registry_type.max_retries();
+        let mut delay = self.registry_type.retry_delay();
 
-        Ok(res)
+        loop {
+            match self.client.get_tags(&self.image, Some(50)).collect::<Vec<_>>().await {
+                tags if tags.iter().all(|r| r.is_ok()) => {
+                    return Ok(tags.into_iter().filter_map(|r| r.ok()).collect());
+                }
+                _ if retries >= max_retries => {
+                    return Err(RegistryError::RetryExhausted("Failed to fetch tags".to_string()));
+                }
+                _ => {
+                    warn!("Retrying tags fetch after delay of {}s", delay.as_secs());
+                    sleep(delay).await;
+                    delay *= 5;
+                    retries += 1;
+                }
+            }
+        }
     }
 
     /// Fetches content digest for a particular tag. This is the same digest accessible via `docker
@@ -78,6 +172,17 @@ mod docker_registry_tests {
 
     use super::*;
 
+    #[test]
+    fn test_registry_from_host() {
+        assert_eq!(RegistryType::from_host("ghcr.io"), Some(RegistryType::Github));
+        assert_eq!(RegistryType::from_host("invalid"), None);
+    }
+
+    #[test]
+    fn test_registry_host() {
+        assert_eq!(RegistryType::Github.to_string(), "ghcr.io");
+    }
+
     #[tokio::test]
     async fn test_tags() -> Result<(), Box<dyn std::error::Error>> {
         let registry = "ghcr.io";
@@ -101,7 +206,8 @@ mod docker_registry_tests {
             let registry = entry.registry()?;
             let repo = entry.default_repository()?;
             println!("[{}] requesting tags for image {}", registry, repo);
-            let client: DockerRegistry = DockerRegistry::from_host_and_repo(registry, repo).await?;
+            let client: DockerRegistry =
+                DockerRegistry::from_host_and_repo(&registry.to_string(), repo).await?;
             let tags = client.get_tags().await?;
             println!("Assert tags for image {}", registry);
             assert!(!tags.is_empty());

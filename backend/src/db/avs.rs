@@ -1,8 +1,6 @@
 use chrono::NaiveDateTime;
-use ivynet_core::{
-    ethers::types::{Address, Chain},
-    node_type::NodeType,
-};
+use ivynet_core::ethers::types::{Address, Chain};
+use ivynet_node_type::NodeType;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -42,7 +40,7 @@ struct DbAvs {
 #[derive(Debug, thiserror::Error)]
 enum AvsError {
     #[error(transparent)]
-    UnknownAvs(#[from] ivynet_core::node_type::NodeTypeError),
+    UnknownAvs(#[from] ivynet_node_type::NodeTypeError),
 
     #[error(transparent)]
     BadVersion(#[from] semver::Error),

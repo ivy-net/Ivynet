@@ -14,3 +14,8 @@ path = "src/lib.rs"
 workspace = true
 
 [dependencies]
+convert_case.workspace = true
+serde.workspace = true
+strum.workspace = true
+thiserror.workspace = true
+tracing.workspace = true

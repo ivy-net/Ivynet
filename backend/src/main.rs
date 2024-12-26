@@ -10,7 +10,8 @@ use ivynet_backend::{
     get_node_version_hashes, grpc, http,
     telemetry::start_tracing,
 };
-use ivynet_core::{ethers::types::Chain, node_type::NodeType, utils::try_parse_chain};
+use ivynet_core::{ethers::types::Chain, utils::try_parse_chain};
+use ivynet_node_type::NodeType;
 use sqlx::PgPool;
 use tracing::{debug, error, info, warn};
 

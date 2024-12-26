@@ -1,20 +1,18 @@
 use crate::{
     config::get_detailed_system_information,
-    docker::{
-        container::{ListenerData, LogsListenerManager},
-        dockerapi::DockerClient,
-    },
     error::IvyError,
     grpc::{
         backend::backend_client::BackendClient,
         messages::{Metrics, MetricsAttribute, NodeData, SignedMetrics, SignedNodeData},
         tonic::transport::Channel,
     },
-    node_type::NodeType,
     signature::{sign_metrics, sign_node_data},
     wallet::IvyWallet,
 };
 use dispatch::{TelemetryDispatchError, TelemetryDispatchHandle};
+use ivynet_docker::dockerapi::DockerClient;
+use ivynet_node_type::NodeType;
+use logs_listener::{ListenerData, LogsListenerManager};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use tokio::{
@@ -25,6 +23,7 @@ use tracing::{debug, error, warn};
 use uuid::Uuid;
 
 pub mod dispatch;
+pub mod logs_listener;
 
 const TELEMETRY_INTERVAL_IN_MINUTES: u64 = 1;
 

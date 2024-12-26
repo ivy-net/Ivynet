@@ -1,4 +1,4 @@
-use ivynet_core::docker::dockercmd::DockerError;
+use ivynet_docker::dockercmd::DockerError;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
