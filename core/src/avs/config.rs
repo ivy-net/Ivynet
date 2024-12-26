@@ -1,12 +1,12 @@
 use std::{collections::HashMap, path::PathBuf};
 
+use ivynet_node_type::NodeType;
 use serde::{Deserialize, Serialize};
 use thiserror::Error as ThisError;
 
 use crate::{
     env_parser::EnvLineError,
     io::{read_toml, write_toml, IoError},
-    node_type::NodeType,
 };
 
 use super::{eigenda::EigenDAConfig, lagrange::config::LagrangeConfig};
@@ -117,7 +117,7 @@ pub enum NodeConfigError {
     #[error(transparent)]
     DownloadError(#[from] crate::download::DownloadError),
     #[error(transparent)]
-    DockerCmdError(#[from] crate::docker::dockercmd::DockerError),
+    DockerCmdError(#[from] ivynet_docker::dockercmd::DockerError),
 }
 
 pub fn default_config_dir() -> PathBuf {

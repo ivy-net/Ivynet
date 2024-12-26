@@ -1,5 +1,7 @@
 use anyhow::anyhow;
 use dialoguer::MultiSelect;
+use ivynet_docker::{dockerapi::DockerClient, RegistryType};
+use ivynet_node_type::NodeType;
 use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
@@ -7,10 +9,8 @@ use std::{
 
 use ivynet_core::{
     config::DEFAULT_CONFIG_PATH,
-    docker::{dockerapi::DockerClient, RegistryType},
     grpc::{self, backend::backend_client::BackendClient, messages::Digests, tonic::Request},
     io::{read_toml, write_toml, IoError},
-    node_type::NodeType,
     telemetry::{fetch_telemetry_from, listen, ConfiguredAvs},
 };
 use serde::{Deserialize, Serialize};

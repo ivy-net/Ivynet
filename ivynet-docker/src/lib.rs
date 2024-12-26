@@ -1,3 +1,4 @@
+use registry::ImageRegistry;
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use strum::EnumIter;
@@ -5,13 +6,14 @@ use tokio::time::{sleep, Duration};
 use tokio_stream::StreamExt;
 use tracing::{error, warn};
 
-use crate::node_type::{NodeType, NodeTypeError};
+use ivynet_node_type::{NodeType, NodeTypeError};
 
 pub mod compose_images;
 pub mod container;
 pub mod dockerapi;
 pub mod dockercmd;
 pub mod logs;
+pub mod registry;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter)]
 pub enum RegistryType {

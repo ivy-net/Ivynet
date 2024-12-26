@@ -83,13 +83,13 @@ pub enum BackendError {
     InvalidChain,
 
     #[error(transparent)]
-    RegistryError(#[from] ivynet_core::docker::RegistryError),
+    RegistryError(#[from] ivynet_docker::RegistryError),
 
     #[error("No valid node versions found")]
     NoVersionsFound,
 
     #[error(transparent)]
-    NodeTypeError(#[from] ivynet_core::node_type::NodeTypeError),
+    NodeTypeError(#[from] ivynet_node_type::NodeTypeError),
 
     #[error("Invalid data for set_avs_version")]
     InvalidSetAvsVersionData,

@@ -5,14 +5,12 @@ use ethers::{
     types::{Bytes, Chain, SignatureError, TryFromPrimitiveError},
     utils::hex::FromHexError,
 };
+use ivynet_docker::dockercmd::DockerError;
 use thiserror::Error;
 use tonic::Status;
 use zip::result::ZipError;
 
-use crate::{
-    docker::dockercmd::DockerError, eigen::quorum::QuorumError, grpc::client::ClientError,
-    IvyProvider, IvyProviderError,
-};
+use crate::{eigen::quorum::QuorumError, grpc::client::ClientError, IvyProvider, IvyProviderError};
 
 #[derive(Debug, Error)]
 pub enum IvyError {
@@ -162,7 +160,7 @@ pub enum IvyError {
     SignerMiddlewareError(#[from] IvyProviderError),
 
     #[error(transparent)]
-    NodeTypeError(#[from] crate::node_type::NodeTypeError),
+    NodeTypeError(#[from] ivynet_node_type::NodeTypeError),
 
     #[error("Docker Image Error")]
     DockerImageError,

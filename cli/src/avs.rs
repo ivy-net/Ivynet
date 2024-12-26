@@ -5,8 +5,8 @@ use ivynet_core::{
         lagrange::config::LagrangeConfig,
     },
     error::IvyError,
-    node_type::NodeType,
 };
+use ivynet_node_type::NodeType;
 
 pub async fn parse_avs_subcommands(subcmd: NodeCommands) -> Result<(), AnyError> {
     match subcmd {

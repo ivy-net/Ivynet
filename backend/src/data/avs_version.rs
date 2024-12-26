@@ -1,4 +1,4 @@
-use ivynet_core::node_type::NodeType;
+use ivynet_node_type::NodeType;
 use tracing::info;
 
 use crate::{db::AvsVersionHash, error::BackendError};

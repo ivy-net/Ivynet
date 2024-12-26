@@ -6,6 +6,7 @@ use std::{
 
 use dialoguer::Input;
 use ethers::types::Address;
+use ivynet_docker::dockercmd::DockerCmd;
 use serde::{Deserialize, Serialize};
 use tokio::process::Child;
 use tracing::{debug, error, info};
@@ -14,7 +15,6 @@ use zip::ZipArchive;
 
 use crate::{
     avs::config::{default_config_dir, NodeConfig, NodeConfigError},
-    docker::dockercmd::DockerCmd,
     download::dl_progress_bar,
     env_parser::EnvLines,
     error::IvyError,

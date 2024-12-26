@@ -4,7 +4,7 @@ use axum::{
     Json,
 };
 use axum_extra::extract::CookieJar;
-use ivynet_core::node_type::NodeType;
+use ivynet_node_type::NodeType;
 use tracing::debug;
 
 use crate::{

@@ -730,6 +730,8 @@ dependencies = [
  "dialoguer",
  "futures",
  "ivynet-core",
+ "ivynet-docker",
+ "ivynet-node-type",
  "linemux",
  "rustix",
  "serde",
@@ -2755,6 +2757,8 @@ dependencies = [
  "clap",
  "futures",
  "ivynet-core",
+ "ivynet-docker",
+ "ivynet-node-type",
  "memcache",
  "rayon",
  "regex",
@@ -2781,21 +2785,19 @@ dependencies = [
  "async-trait",
  "blsful",
  "bollard",
- "chrono",
  "clap",
- "convert_case",
  "dialoguer",
  "dirs",
  "docker-compose-types",
- "docker-registry",
  "dotenvy",
  "eth-keystore",
  "ethers",
- "futures",
  "futures-util",
  "indexmap 2.7.0",
  "indicatif",
+ "ivynet-docker",
  "ivynet-macros",
+ "ivynet-node-type",
  "once_cell",
  "prost",
  "prost-build",
@@ -2811,7 +2813,6 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "serial_test",
- "strum",
  "sysinfo",
  "tempfile",
  "thiserror 2.0.6",
@@ -2824,8 +2825,27 @@ dependencies = [
  "tracing",
  "url",
  "uuid 1.11.0",
- "which",
  "zip 2.2.1",
+]
+
+[[package]]
+name = "ivynet-docker"
+version = "0.1.0"
+dependencies = [
+ "bollard",
+ "chrono",
+ "docker-registry",
+ "futures",
+ "ivynet-node-type",
+ "regex",
+ "serde",
+ "serde_json",
+ "strum",
+ "thiserror 2.0.6",
+ "tokio",
+ "tokio-stream",
+ "tracing",
+ "which",
 ]
 
 [[package]]
@@ -2833,6 +2853,17 @@ name = "ivynet-macros"
 version = "0.4.0"
 dependencies = [
  "quote",
+]
+
+[[package]]
+name = "ivynet-node-type"
+version = "0.1.0"
+dependencies = [
+ "convert_case",
+ "serde",
+ "strum",
+ "thiserror 2.0.6",
+ "tracing",
 ]
 
 [[package]]

@@ -1,5 +1,5 @@
 use chrono::NaiveDateTime;
-use ivynet_core::node_type::NodeType;
+use ivynet_node_type::NodeType;
 
 use crate::error::BackendError;
 
