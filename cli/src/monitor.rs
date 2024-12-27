@@ -1,12 +1,5 @@
 use anyhow::anyhow;
 use dialoguer::MultiSelect;
-use ivynet_docker::{dockerapi::DockerClient, RegistryType};
-use ivynet_node_type::NodeType;
-use std::{
-    collections::{HashMap, HashSet},
-    path::PathBuf,
-};
-
 use ivynet_core::{
     config::DEFAULT_CONFIG_PATH,
     grpc::{
@@ -18,7 +11,13 @@ use ivynet_core::{
     io::{read_toml, write_toml, IoError},
     telemetry::{fetch_telemetry_from, listen, ConfiguredAvs},
 };
+use ivynet_docker::{dockerapi::DockerClient, RegistryType};
+use ivynet_node_type::NodeType;
 use serde::{Deserialize, Serialize};
+use std::{
+    collections::{HashMap, HashSet},
+    path::PathBuf,
+};
 use tracing::info;
 
 use crate::init::set_backend_connection;
@@ -263,10 +262,14 @@ fn get_type(
     hash: &str,
     image_name: &str,
 ) -> Option<NodeType> {
-    hashes
+    let node_type = hashes
         .clone()
         .and_then(|h| h.get(hash).copied())
-        .or_else(|| NodeType::from_image(&extract_image_name(image_name)))
+        .or_else(|| NodeType::from_image(&extract_image_name(image_name)));
+    if node_type.is_none() {
+        println!("No avs found for {}", image_name);
+    }
+    node_type
 }
 
 async fn grab_potential_avses() -> Vec<PotentialAvs> {

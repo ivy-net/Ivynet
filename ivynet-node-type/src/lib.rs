@@ -1,7 +1,7 @@
 use convert_case::{Case, Casing};
 use serde::{Deserialize, Serialize};
 use strum::{EnumIter, IntoEnumIterator};
-use tracing::{error, warn};
+use tracing::{debug, error, warn};
 
 const EIGENDA_METRICS_ID: &str = "da-node";
 
@@ -290,7 +290,7 @@ impl NodeType {
     pub fn from_image(image: &str) -> Option<Self> {
         let parts: Vec<&str> = image.rsplitn(2, ':').collect();
         if parts.len() != 2 {
-            warn!("Unrecognized image: {}", image);
+            warn!("Unrecognized image format: {}", image);
             return None;
         }
         Self::from_repo(parts[1], parts[0])
@@ -329,7 +329,7 @@ impl NodeType {
 
     // Given a repo and tag, get the NodeType, since they have a 1:1 relationship
     pub fn from_repo(repo: &str, tag: &str) -> Option<Self> {
-        println!("repo: {}, tag: {}", repo, tag);
+        debug!("repo: {}, tag: {}", repo, tag);
         match repo {
             // tag-agnostic nodes
             AVAPROTOCOL_REPO => Some(Self::AvaProtocol),
