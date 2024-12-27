@@ -1,0 +1,34 @@
+[package]
+name = "ivynet-database"
+version = "0.4.0"
+edition.workspace = true
+repository.workspace = true
+categories.workspace = true
+license.workspace = true
+
+[dependencies]
+anyhow = "1.0"
+clap = { version = "4.5", features = ["derive", "env"] }
+sqlx = { version = "0.8", features = ["postgres", "chrono", "runtime-tokio", "tls-rustls", "uuid", "bigdecimal"] }
+thiserror.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread"] }
+tracing.workspace = true
+tracing-subscriber = "0.3"
+ivynet-core = { path = "../core" }
+ivynet-docker.workspace = true
+ivynet-node-type.workspace = true
+serde.workspace = true
+uuid = "1.11"
+chrono.workspace = true
+sha256 = "1.5"
+semver = "1.0"
+serde_json.workspace = true
+ethers = "2.0"
+regex.workspace = true
+futures-util = "0.3"
+
+[lints]
+workspace = true
+
+[features]
+db_tests = []

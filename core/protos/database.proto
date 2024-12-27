@@ -1,0 +1,102 @@
+syntax = "proto3";
+package database;
+
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/empty.proto";
+import "messages.proto";
+
+message Credentials {
+    string username = 1;
+    string password = 2;
+}
+
+message Email {
+    string email = 1;
+}
+
+message Id {
+    uint64 id = 1;
+}
+
+message Address {
+    bytes id = 1;
+}
+enum Role {
+    Reader = 0;
+    User = 1;
+    Admin = 2;
+    Owner = 3;
+}
+
+message Account {
+    uint64 id = 1;
+    uint64 organization_id = 2;
+    string username = 3;
+    Role role = 4;
+    google.protobuf.Timestamp created_at = 5;
+    google.protobuf.Timestamp updated_at = 6;
+}
+
+message Organization {
+    uint64 id = 1;
+    string name = 2;
+    bool verified = 3;
+    google.protobuf.Timestamp created_at = 4;
+    google.protobuf.Timestamp updated_at = 5;
+}
+
+message Invite {
+    uint64 organization_id = 1;
+    string email = 2;
+    Role role = 3;
+}
+
+message Clients {
+    repeated bytes clients = 1;
+}
+
+message Machine {
+    bytes id = 1;
+    bytes client_id = 2;
+    string name = 3;
+}
+
+message Machines {
+    repeated Machine machines = 1;
+}
+
+message OperatorUpdate {
+    bytes machine_id = 1;
+    string name = 2;
+    bytes operator = 3;
+}
+
+message Avs {
+    bytes machine_id = 1;
+    string name = 2;
+    string avs_type = 3;
+    string chain = 4;
+    string version = 5;
+    bytes operator = 6;
+    bool active_set = 7;
+    bool metrics_alive = 8;
+    string version_hash = 9;
+    google.protobuf.Timestamp created_at = 10;
+    google.protobuf.Timestamp updated_at = 11;
+}
+
+message Avses {
+    repeated Avs avses = 1;
+}
+
+service Database {
+    rpc VerifyAccount(Credentials) returns (google.protobuf.Empty);
+    rpc ExistsAccount(Email) returns (google.protobuf.Empty);
+    rpc GetAccount(Id) returns (Account);
+    rpc GetClientsForAccount(Id) returns (Clients);
+    rpc GetMachinesForClient(Address) returns (Machines);
+    rpc GetAvsesForMachine(Address) returns (Avses);
+    rpc UpdateOperator(OperatorUpdate) returns (google.protobuf.Empty);
+    rpc InviteUser(Invite) returns (google.protobuf.Empty);
+    rpc GetOrganization(Id) returns (Organization);
+}
