@@ -178,7 +178,9 @@ async fn find_new_avses(
             continue;
         }
 
-        if let Some(avs_type) = get_type(&avs_types, &avs.image_hash, &avs.image_name) {
+        if let Some(avs_type) =
+            get_type(&avs_types, &avs.image_hash, &avs.image_name, &avs.container_name)
+        {
             // Try to get metrics port but don't fail if unavailable
             let metric_port = match get_metrics_port(&avs.ports).await {
                 Ok(port) => port,
@@ -261,11 +263,13 @@ fn get_type(
     hashes: &Option<HashMap<String, NodeType>>,
     hash: &str,
     image_name: &str,
+    container_name: &str,
 ) -> Option<NodeType> {
     let node_type = hashes
         .clone()
         .and_then(|h| h.get(hash).copied())
-        .or_else(|| NodeType::from_image(&extract_image_name(image_name)));
+        .or_else(|| NodeType::from_image(&extract_image_name(image_name)))
+        .or_else(|| NodeType::from_default_container_name(container_name.trim_start_matches('/')));
     if node_type.is_none() {
         println!("No avs found for {}", image_name);
     }
