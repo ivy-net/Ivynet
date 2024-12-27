@@ -1,19 +1,23 @@
 use anyhow::anyhow;
 use dialoguer::MultiSelect;
+use ivynet_core::{
+    config::DEFAULT_CONFIG_PATH,
+    grpc::{
+        self,
+        backend::backend_client::BackendClient,
+        messages::{Digests, NodeTypes},
+        tonic::{transport::Channel, Request, Response},
+    },
+    io::{read_toml, write_toml, IoError},
+    telemetry::{fetch_telemetry_from, listen, ConfiguredAvs},
+};
 use ivynet_docker::{dockerapi::DockerClient, RegistryType};
 use ivynet_node_type::NodeType;
+use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
 };
-
-use ivynet_core::{
-    config::DEFAULT_CONFIG_PATH,
-    grpc::{self, backend::backend_client::BackendClient, messages::Digests, tonic::Request},
-    io::{read_toml, write_toml, IoError},
-    telemetry::{fetch_telemetry_from, listen, ConfiguredAvs},
-};
-use serde::{Deserialize, Serialize};
 use tracing::info;
 
 use crate::init::set_backend_connection;
@@ -105,129 +109,174 @@ pub async fn scan() -> Result<(), anyhow::Error> {
     let backend_ca = config.get_server_ca();
     let backend_ca = if backend_ca.is_empty() { None } else { Some(backend_ca) };
 
-    let mut backend = BackendClient::new(
-        grpc::client::create_channel(backend_url, backend_ca).await.expect("Cannot create channel"),
+    let backend = BackendClient::new(
+        grpc::client::create_channel(backend_url, backend_ca)
+            .await
+            .map_err(|e| anyhow!("Failed to create backend channel: {}", e))?,
     );
 
-    let potential_avses = grab_potential_avss().await;
-
     let mut monitor_config = MonitorConfig::load_from_default_path().unwrap_or_default();
-    let mut avses = Vec::new();
+    let configured_avs_names: HashSet<_> =
+        monitor_config.configured_avses.iter().map(|a| a.container_name.clone()).collect();
 
-    let configured_avs_names = monitor_config
-        .configured_avses
-        .iter()
-        .map(|a| a.container_name.clone())
-        .collect::<Vec<_>>();
+    let potential_avses = grab_potential_avses().await;
+    let new_avses = find_new_avses(&potential_avses, backend, &configured_avs_names).await?;
 
-    let digests = potential_avses
-        .iter()
-        .filter_map(|a| {
-            if configured_avs_names.contains(&a.container_name) {
-                None
-            } else {
-                Some(a.image_hash.clone())
-            }
-        })
-        .collect::<Vec<_>>();
-
-    let mut avs_hashes = HashMap::new();
-    for ntype in
-        backend.node_types(Request::new(Digests { digests })).await?.into_inner().node_types
-    {
-        avs_hashes.insert(ntype.digest, NodeType::from(ntype.node_type.as_str()));
-    }
-
-    for avs in &potential_avses {
-        if !configured_avs_names.contains(&avs.container_name) {
-            if let Some(avs_type) = get_type(&avs_hashes, &avs.image_hash, &avs.image_name) {
-                let mut metric_port = None;
-
-                for port in &avs.ports {
-                    if let Ok(metrics) = fetch_telemetry_from(*port).await {
-                        if !metrics.is_empty() {
-                            // Checking performance score metrics to read a potential avs type
-
-                            metric_port = Some(*port);
-                        }
-                    }
-                }
-                avses.push(ConfiguredAvs {
-                    assigned_name: String::new(),
-                    container_name: avs.container_name.clone(),
-                    avs_type,
-                    metric_port,
-                });
-            }
-        }
-    }
-
-    if avses.is_empty() {
+    if new_avses.is_empty() {
         println!("No potential new AVSes found");
-    } else {
-        for idx in MultiSelect::new()
-            .with_prompt("The following AVS types were found. Choose what AVSes to add with SPACE and accept the list with ENTER")
-            .items(
-                &avses
-                    .iter()
-                    .map(|a| format!("{} under container {}", a.avs_type, a.container_name))
-                    .collect::<Vec<_>>(),
-            )
-            .interact()
-            .expect("No items selected")
-        {
-
-            monitor_config.configured_avses.push(avses[idx].clone());
-        }
-
-        let mut seen_names: HashSet<String> =
-            monitor_config.configured_avses.iter().map(|a| a.assigned_name.clone()).collect();
-        for avs in &mut monitor_config.configured_avses {
-            if avs.assigned_name.is_empty() {
-                let mut assigned_name: String;
-                loop {
-                    assigned_name = dialoguer::Input::new()
-                        .with_prompt(format!(
-                            "Enter a name for this AVS that is Unique Per Machine: {}",
-                            avs.container_name
-                        ))
-                        .interact_text()
-                        .expect("Failed to get assigned name");
-
-                    if seen_names.contains(&assigned_name) {
-                        println!(
-                            "Error: Name '{}' is already in use. Please choose a unique name.",
-                            assigned_name
-                        );
-                        continue;
-                    }
-
-                    seen_names.insert(assigned_name.clone());
-                    break;
-                }
-                avs.assigned_name = assigned_name;
-            }
-        }
-
-        monitor_config.store()?;
-        println!(
-            "New setup stored with {} of avses configured",
-            monitor_config.configured_avses.len()
-        );
+        return Ok(());
     }
+
+    let selected_avses = select_avses(&new_avses)?;
+    if selected_avses.is_empty() {
+        println!("No AVSes selected");
+        return Ok(());
+    }
+
+    update_monitor_config(&mut monitor_config, selected_avses)?;
+    println!("New setup stored with {} AVSes configured", monitor_config.configured_avses.len());
+
     Ok(())
 }
 
-fn get_type(hashes: &HashMap<String, NodeType>, hash: &str, image_name: &str) -> Option<NodeType> {
-    if let Some(node_type) = hashes.get(hash) {
-        Some(*node_type)
-    } else {
-        let image = extract_image_name(image_name);
-        NodeType::from_image(&image)
+async fn find_new_avses(
+    potential_avses: &[PotentialAvs],
+    mut backend: BackendClient<Channel>,
+    configured_names: &HashSet<String>,
+) -> Result<Vec<ConfiguredAvs>, anyhow::Error> {
+    let digests: Vec<_> = potential_avses
+        .iter()
+        .filter(|a| !configured_names.contains(&a.container_name))
+        .map(|a| a.image_hash.clone())
+        .collect();
+
+    if digests.is_empty() {
+        return Ok(Vec::new());
     }
+
+    let node_types: Option<NodeTypes> = backend
+        .node_types(Request::new(Digests { digests: digests.clone() }))
+        .await
+        .map(Response::into_inner)
+        .ok();
+
+    let avs_types: Option<HashMap<String, NodeType>> = if let Some(node_types) = node_types {
+        Some(
+            node_types
+                .node_types
+                .into_iter()
+                .map(|nt| (nt.digest, NodeType::from(nt.node_type.as_str())))
+                .collect::<HashMap<_, _>>(),
+        )
+    } else {
+        None
+    };
+
+    let mut new_avses = Vec::new();
+    for avs in potential_avses {
+        if configured_names.contains(&avs.container_name) {
+            continue;
+        }
+
+        if let Some(avs_type) =
+            get_type(&avs_types, &avs.image_hash, &avs.image_name, &avs.container_name)
+        {
+            // Try to get metrics port but don't fail if unavailable
+            let metric_port = match get_metrics_port(&avs.ports).await {
+                Ok(port) => port,
+                Err(e) => {
+                    info!("Metrics unavailable for {}: {}", avs.container_name, e);
+                    None
+                }
+            };
+
+            new_avses.push(ConfiguredAvs {
+                assigned_name: String::new(),
+                container_name: avs.container_name.clone(),
+                avs_type,
+                metric_port,
+            });
+        }
+    }
+
+    Ok(new_avses)
 }
 
-async fn grab_potential_avss() -> Vec<PotentialAvs> {
+async fn get_metrics_port(ports: &[u16]) -> Result<Option<u16>, anyhow::Error> {
+    for &port in ports {
+        if let Ok(metrics) = fetch_telemetry_from(port).await {
+            if !metrics.is_empty() {
+                return Ok(Some(port));
+            }
+        }
+    }
+    Ok(None)
+}
+
+fn select_avses(avses: &[ConfiguredAvs]) -> Result<Vec<ConfiguredAvs>, anyhow::Error> {
+    let items: Vec<String> = avses
+        .iter()
+        .map(|a| format!("{} under container {}", a.avs_type, a.container_name))
+        .collect();
+
+    let selected = MultiSelect::new()
+        .with_prompt("Select AVSes to add (SPACE to select, ENTER to confirm)")
+        .items(&items)
+        .interact()
+        .map_err(|e| anyhow!("Selection failed: {}", e))?;
+
+    Ok(selected.into_iter().map(|idx| avses[idx].clone()).collect())
+}
+
+fn update_monitor_config(
+    config: &mut MonitorConfig,
+    mut new_avses: Vec<ConfiguredAvs>,
+) -> Result<(), anyhow::Error> {
+    let mut seen_names: HashSet<String> =
+        config.configured_avses.iter().map(|a| a.assigned_name.clone()).collect();
+
+    for avs in &mut new_avses {
+        loop {
+            let assigned_name: String = dialoguer::Input::new()
+                .with_prompt(format!("Enter a unique name for AVS {}", avs.container_name))
+                .interact_text()
+                .map_err(|e| anyhow!("Failed to get input: {}", e))?;
+
+            if seen_names.contains(&assigned_name) {
+                println!("Error: Name '{}' is already in use", assigned_name);
+                continue;
+            }
+
+            seen_names.insert(assigned_name.clone());
+            avs.assigned_name = assigned_name;
+            break;
+        }
+    }
+
+    config.configured_avses.extend(new_avses);
+    config.store().map_err(|e| anyhow!("Failed to store config: {}", e))?;
+
+    Ok(())
+}
+
+fn get_type(
+    hashes: &Option<HashMap<String, NodeType>>,
+    hash: &str,
+    image_name: &str,
+    container_name: &str,
+) -> Option<NodeType> {
+    let node_type = hashes
+        .clone()
+        .and_then(|h| h.get(hash).copied())
+        .or_else(|| NodeType::from_image(&extract_image_name(image_name)))
+        .or_else(|| NodeType::from_default_container_name(container_name.trim_start_matches('/')));
+    if node_type.is_none() {
+        println!("No avs found for {}", image_name);
+    }
+    node_type
+}
+
+async fn grab_potential_avses() -> Vec<PotentialAvs> {
     let docker = DockerClient::default();
     println!("Scanning containers...");
     let images = docker.list_images().await;
