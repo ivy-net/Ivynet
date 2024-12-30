@@ -11,7 +11,7 @@ use ivynet_core::{
     config::DEFAULT_CONFIG_PATH,
     grpc::{self, backend::backend_client::BackendClient, messages::Digests, tonic::Request},
     io::{read_toml, write_toml, IoError},
-    telemetry::{fetch_telemetry_from, listen, ConfiguredAvs},
+    telemetry::{listen, metrics_listener::fetch_telemetry_from, ConfiguredAvs},
 };
 use serde::{Deserialize, Serialize};
 use tracing::info;

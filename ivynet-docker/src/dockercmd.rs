@@ -203,17 +203,6 @@ impl DockerChild {
     }
 }
 
-pub struct DockerStream(mpsc::UnboundedReceiver<(String, bool)>);
-
-impl Stream for DockerStream {
-    type Item = (String, bool);
-
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let inner = self.get_mut();
-        inner.0.poll_recv(cx)
-    }
-}
-
 #[allow(dead_code)]
 /// Returns an async command for docker-compose or docker compose.
 fn which_dockercmd() -> Command {

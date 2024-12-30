@@ -1,6 +1,12 @@
 use std::collections::HashMap;
 
-use bollard::{container::LogOutput, image::ListImagesOptions, secret::ContainerSummary, Docker};
+use bollard::{
+    container::LogOutput,
+    errors::Error,
+    image::ListImagesOptions,
+    secret::{ContainerSummary, EventMessage},
+    Docker,
+};
 use tokio_stream::Stream;
 
 use ivynet_node_type::NodeType;
@@ -59,20 +65,6 @@ impl DockerClient {
             }
         }
         map
-    }
-
-    /// Inspect a container by container name
-    pub async fn inspect_by_container_name(&self, container_name: &str) -> Option<Container> {
-        let containers = self.list_containers().await;
-        let cname = container_name.to_string();
-        for container in containers {
-            if let Some(name) = &container.names {
-                if name.contains(&cname) {
-                    return Some(Container::new(container.clone()));
-                }
-            }
-        }
-        None
     }
 
     /// Inspect a container by image name
@@ -175,6 +167,25 @@ impl DockerClient {
         let streams = containers.into_iter().map(|container| container.stream_logs_latest(self));
         futures::stream::select_all(streams)
     }
+
+    pub fn stream_events(&self) -> impl Stream<Item = Result<EventMessage, Error>> {
+        self.0.events::<&str>(None)
+    }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum DockerStreamError {
+    #[error("Docker API error: {0}")]
+    DockerError(bollard::errors::Error),
+
+    #[error("Dockerstream is missing the actor field")]
+    MissingActor,
+
+    #[error("Dockerstream is missing the attributes field")]
+    MissingAttributes,
+
+    #[error("Dockerstream image name mismatch: {0} != {1}")]
+    ImageNameMismatch(String, String),
 }
 
 #[cfg(test)]
