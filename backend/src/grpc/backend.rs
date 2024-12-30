@@ -16,11 +16,11 @@ use ivynet_core::{
         client::{Request, Response},
         messages::{
             Digests, NodeData, NodeType as NodeTypeMessage, NodeTypes, RegistrationCredentials,
-            SignedLog, SignedMetrics, SignedNodeData,
+            SignedLog, SignedMetrics, SignedNameChange, SignedNodeData,
         },
         server, Status,
     },
-    signature::{recover_from_string, recover_metrics, recover_node_data},
+    signature::{recover_from_string, recover_metrics, recover_name_change, recover_node_data},
 };
 
 use ivynet_docker::logs::{find_log_level, find_or_create_log_timestamp, sanitize_log};
@@ -199,6 +199,36 @@ impl Backend for BackendService {
                 .map(|nt| (NodeTypeMessage { digest: nt.0, node_type: nt.1 }))
                 .collect::<Vec<_>>(),
         }))
+    }
+
+    async fn name_change(
+        &self,
+        request: Request<SignedNameChange>,
+    ) -> Result<Response<()>, Status> {
+        let req = request.into_inner();
+
+        let client_id = recover_name_change(
+            &req.old_name,
+            &req.new_name,
+            &Signature::try_from(req.signature.as_slice())
+                .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
+        )
+        .await?;
+
+        let machine_id = Uuid::from_slice(&req.machine_id).map_err(|e| {
+            Status::invalid_argument(format!("Machine id has wrong length ({e:?})"))
+        })?;
+
+        if !Machine::is_owned_by(&self.pool, &client_id, machine_id).await.unwrap_or(false) {
+            return Err(Status::not_found("Machine not registered for given client".to_string()));
+        }
+
+        Avs::update_name(&self.pool, machine_id, &req.old_name, &req.new_name)
+            .await
+            .map_err(|e| Status::internal(format!("Failed while updating machine name: {e}")))?;
+
+        //TODO:
+        Ok(Response::new(()))
     }
 }
 
