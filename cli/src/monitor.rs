@@ -1,14 +1,15 @@
 use anyhow::anyhow;
-use dialoguer::MultiSelect;
+use dialoguer::{Input, MultiSelect, Select};
 use ivynet_core::{
-    config::DEFAULT_CONFIG_PATH,
+    config::{IvyConfig, DEFAULT_CONFIG_PATH},
     grpc::{
         self,
         backend::backend_client::BackendClient,
-        messages::{Digests, NodeTypes},
+        messages::{Digests, NodeTypes, SignedNameChange},
         tonic::{transport::Channel, Request, Response},
     },
     io::{read_toml, write_toml, IoError},
+    signature::sign_name_change,
     telemetry::{fetch_telemetry_from, listen, ConfiguredAvs},
 };
 use ivynet_docker::{dockerapi::DockerClient, RegistryType};
@@ -61,11 +62,79 @@ impl MonitorConfig {
         write_toml(&config_path, self)?;
         Ok(())
     }
+
+    pub fn change_avs_name(
+        &mut self,
+        old_name: &str,
+        new_name: &str,
+    ) -> Result<(), MonitorConfigError> {
+        self.configured_avses.iter_mut().for_each(|avs| {
+            if avs.assigned_name == old_name {
+                avs.assigned_name = new_name.to_string();
+            }
+        });
+        self.store()
+    }
 }
 
-pub async fn start_monitor() -> Result<(), anyhow::Error> {
-    let mut config = ivynet_core::config::IvyConfig::load_from_default_path()?;
+pub async fn rename_node(
+    config: &IvyConfig,
+    old_name: Option<String>,
+    new_name: Option<String>,
+) -> Result<(), anyhow::Error> {
+    let mut monitor_config = MonitorConfig::load_from_default_path()?;
 
+    let old = match old_name {
+        Some(old_name) => old_name,
+        None => {
+            let configured_avs = &monitor_config
+                .configured_avses
+                .iter()
+                .map(|a| a.assigned_name.clone())
+                .collect::<Vec<_>>();
+            let old_name = Select::new()
+                .with_prompt("Select the old avs of the node to rename")
+                .items(configured_avs)
+                .default(0)
+                .interact()
+                .map_err(|e| anyhow!("Failed to get input: {}", e))?;
+            configured_avs[old_name].clone()
+        }
+    };
+
+    let new = match new_name {
+        Some(new_name) => new_name,
+        None => Input::new()
+            .with_prompt("Enter the new name for the node")
+            .interact_text()
+            .map_err(|e| anyhow!("Failed to get input: {}", e))?,
+    };
+
+    let signature = sign_name_change(&old, &new, &config.identity_wallet()?)?;
+
+    let machine_id = config.machine_id;
+    let backend_url = config.get_server_url()?;
+    let backend_ca = config.get_server_ca();
+    let backend_ca = if backend_ca.is_empty() { None } else { Some(backend_ca) };
+
+    let mut backend_client = BackendClient::new(
+        grpc::client::create_channel(backend_url, backend_ca).await.expect("Cannot create channel"),
+    );
+
+    let name_change_request = Request::new(SignedNameChange {
+        signature: signature.into(),
+        machine_id: machine_id.into(),
+        old_name: old.clone(),
+        new_name: new.clone(),
+    });
+
+    backend_client.name_change(name_change_request).await?;
+
+    monitor_config.change_avs_name(&old, &new)?;
+    Ok(())
+}
+
+pub async fn start_monitor(mut config: IvyConfig) -> Result<(), anyhow::Error> {
     if config.identity_wallet().is_err() {
         set_backend_connection(&mut config).await?;
     }
@@ -103,8 +172,7 @@ pub async fn start_monitor() -> Result<(), anyhow::Error> {
 
 /// Scan function to set up configured AVS cache file. Derives `NodeType` from the name on the
 /// metrics port and node name from the container name list.
-pub async fn scan() -> Result<(), anyhow::Error> {
-    let config = ivynet_core::config::IvyConfig::load_from_default_path()?;
+pub async fn scan(config: &IvyConfig) -> Result<(), anyhow::Error> {
     let backend_url = config.get_server_url()?;
     let backend_ca = config.get_server_ca();
     let backend_ca = if backend_ca.is_empty() { None } else { Some(backend_ca) };
