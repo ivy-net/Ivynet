@@ -16,7 +16,6 @@ pub mod eventstream;
 pub mod logs;
 pub mod registry;
 
-
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter)]
 pub enum RegistryType {
     DockerHub,

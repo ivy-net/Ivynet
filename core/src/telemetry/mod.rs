@@ -60,7 +60,7 @@ pub async fn listen(
                                 let actor= event.actor.ok_or(DockerStreamError::MissingActor)?;
                                 let attributes = actor.attributes.ok_or(DockerStreamError::MissingAttributes)?;
                                 let container_name = attributes.get("name").ok_or(DockerStreamError::MissingAttributes)?;
-                                
+
                                 let image = attributes.get("image").ok_or(DockerStreamError::MissingAttributes)?;
 
                                 let container = match docker.find_container_by_name(container_name).await {
@@ -92,7 +92,7 @@ pub async fn listen(
                                             container_name: container_name.clone(),
                                             avs_type: NodeType::Unknown,
                                             metric_port: Some(metrics_port),
-                                        
+
                                         }
                                     }
                                 };
@@ -130,7 +130,7 @@ pub async fn listen(
 }
 
 async fn handle_docker_event(event: EventMessage) {
-    let 
+    let
 }
 
 async fn handle_telemetry_errors(mut error_rx: broadcast::Receiver<TelemetryDispatchError>) {

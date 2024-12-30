@@ -1,5 +1,4 @@
-use bollard::models::EventMessage;
-use bollard::{errors::Error, secret::EventMessageTypeEnum};
+use bollard::{errors::Error, models::EventMessage, secret::EventMessageTypeEnum};
 use tokio_stream::{Stream, StreamExt};
 use tracing::error;
 
