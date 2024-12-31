@@ -10,10 +10,7 @@ use thiserror::Error;
 use tonic::Status;
 use zip::result::ZipError;
 
-use crate::{
-    eigen::quorum::QuorumError, grpc::client::ClientError,
-    telemetry::metrics_listener::MetricsListenerError, IvyProvider, IvyProviderError,
-};
+use crate::{eigen::quorum::QuorumError, grpc::client::ClientError, IvyProvider, IvyProviderError};
 
 #[derive(Debug, Error)]
 pub enum IvyError {

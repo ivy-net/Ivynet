@@ -5,7 +5,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::{
-    data::node_data::{build_avs_info, AvsInfo, NodeErrorInfo},
+    data::node_data::{build_avs_info, AvsInfo},
     db::{avs::Avs, machine::Machine, metric::Metric},
     error::BackendError,
 };
@@ -34,7 +34,6 @@ pub enum MachineStatus {
 pub enum MachineError {
     Idle,
     SystemResourcesUsage,
-    NodeError(NodeErrorInfo),
 }
 
 #[derive(Serialize, ToSchema, Clone, Debug)]
@@ -115,15 +114,6 @@ pub async fn build_machine_info(
             Metric::get_organized_for_avs(pool, machine.machine_id, &avs.avs_name.to_string())
                 .await?;
         let avs_info = build_avs_info(pool, avs.clone(), metrics).await?;
-
-        if !avs_info.errors.is_empty() {
-            let node_error_info = NodeErrorInfo {
-                name: avs.avs_name,
-                errors: avs_info.errors.clone(),
-                node_type: avs.avs_type,
-            };
-            errors.push(MachineError::NodeError(node_error_info));
-        }
 
         avs_infos.push(avs_info);
     }

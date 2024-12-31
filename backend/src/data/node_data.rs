@@ -38,15 +38,8 @@ pub enum NodeError {
     HardwareResourceUsage,
     NeedsUpdate,
     CrashedNode,
-    IdleNodeNoCommunication,
     NoChainInfo,
-}
-
-#[derive(Serialize, Debug, Clone)]
-pub struct NodeErrorInfo {
-    pub name: String,
-    pub node_type: NodeType,
-    pub errors: Vec<NodeError>,
+    NoMetrics,
 }
 
 #[derive(Serialize, ToSchema, Clone, Debug, Default)]
@@ -86,33 +79,29 @@ pub async fn build_avs_info(
     //Start of error building
     let mut errors = vec![];
 
-    if metrics_alive {
-        if !avs.active_set {
-            errors.push(NodeError::UnregisteredFromActiveSet);
-        }
+    if !avs.active_set {
+        errors.push(NodeError::UnregisteredFromActiveSet);
+    }
 
-        if let Some(perf) = metrics.get(EIGEN_PERFORMANCE_METRIC) {
-            if perf.value < EIGEN_PERFORMANCE_HEALTHY_THRESHOLD {
-                errors.push(NodeError::LowPerformanceScore);
+    if let Some(perf) = metrics.get(EIGEN_PERFORMANCE_METRIC) {
+        if perf.value < EIGEN_PERFORMANCE_HEALTHY_THRESHOLD {
+            errors.push(NodeError::LowPerformanceScore);
+        }
+    }
+
+    if let Some(datetime) = avs.updated_at {
+        let now = chrono::Utc::now().naive_utc();
+        if now.signed_duration_since(datetime).num_minutes() > IDLE_MINUTES_THRESHOLD {
+            errors.push(NodeError::CrashedNode);
+
+            if avs.active_set {
+                errors.push(NodeError::ActiveSetNoDeployment);
             }
         }
+    }
 
-        // TODO: The `created_at` field was never populated in the previous implementation,
-        // commented code preserved here for purposes of later implementation.
-        // if let Some(datetime) = run_met.created_at {
-        //     let now = chrono::Utc::now().naive_utc();
-        //     if now.signed_duration_since(datetime).num_minutes() > IDLE_MINUTES_THRESHOLD {
-        //         errors.push(NodeError::IdleNodeNoCommunication);
-        //     }
-        // }
-    } else {
-        //Running metric missing should never really happen
-        errors.push(NodeError::CrashedNode);
-
-        //But if it does and you're in the active set, flag
-        if avs.active_set {
-            errors.push(NodeError::ActiveSetNoDeployment);
-        }
+    if !metrics_alive {
+        errors.push(NodeError::NoMetrics);
     }
 
     let mut update_status = UpdateStatus::Unknown;
