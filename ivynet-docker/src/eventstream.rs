@@ -58,24 +58,3 @@ impl<T> DockerEventStream<T> {
         }
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use crate::dockerapi::DockerClient;
-
-    use super::*;
-
-    #[tokio::test]
-    async fn test_docker_stream() {
-        let client = DockerClient::default();
-        let handler = DockerEventHandler::new(&client);
-        let stream = client.stream_events();
-        let stream = DockerEventStream::new(
-            stream,
-            handler.on_container(|client, msg| {
-                println!("Container event: {:?}", msg);
-            }),
-        );
-        stream.start().await;
-    }
-}

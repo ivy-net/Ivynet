@@ -13,7 +13,7 @@ use ivynet_node_type::NodeType;
 
 use super::container::Container;
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct DockerClient(pub Docker);
 
 pub fn connect_docker() -> Docker {

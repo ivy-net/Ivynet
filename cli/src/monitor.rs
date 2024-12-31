@@ -9,7 +9,12 @@ use std::{
 
 use ivynet_core::{
     config::DEFAULT_CONFIG_PATH,
-    grpc::{self, backend::backend_client::BackendClient, messages::Digests, tonic::Request},
+    grpc::{
+        self,
+        backend::backend_client::BackendClient,
+        messages::{Digests, NodeTypes},
+        tonic::{transport::Channel, Request, Response},
+    },
     io::{read_toml, write_toml, IoError},
     telemetry::{listen, metrics_listener::fetch_telemetry_from, ConfiguredAvs},
 };

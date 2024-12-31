@@ -15,12 +15,12 @@ use crate::{
 };
 
 type LogListenerResult = Result<ListenerData, LogListenerError>;
-pub struct LogsListenerManager {
+pub struct LogsListenerHandle {
     listener_set: JoinSet<LogListenerResult>,
     dispatcher: TelemetryDispatchHandle,
     docker: DockerClient,
 }
-impl LogsListenerManager {
+impl LogsListenerHandle {
     pub fn new(dispatcher: TelemetryDispatchHandle, docker: DockerClient) -> Self {
         Self { listener_set: JoinSet::new(), dispatcher, docker }
     }
@@ -32,36 +32,6 @@ impl LogsListenerManager {
         let listener = LogsListener::new(self.docker.clone(), self.dispatcher.clone(), data);
         // Spawn the listener future
         self.listener_set.spawn(async move { listener_fut(listener).await });
-    }
-
-    pub async fn listen(mut self) -> Result<(), LogListenerError> {
-        while let Some(future) = self.listener_set.join_next().await {
-            match future {
-                Ok(result) => {
-                    match result {
-                        Ok(data) => {
-                            info!("Listener exited for container: {:?}", data.container.image());
-                            info!(
-                                "Attempting to restart listener for container: {:?}",
-                                data.container.image()
-                            );
-                            // wait a sec for the container to potentially restart
-                            time::sleep(Duration::from_secs(5)).await;
-                            self.add_listener(data).await;
-                        }
-                        Err(e) => {
-                            error!("Listener error: {}", e);
-                            return Err(e);
-                        }
-                    };
-                }
-                Err(e) => {
-                    error!("Unexpected listener error: {}, listener exiting...", e);
-                    return Err(e.into());
-                }
-            }
-        }
-        Ok(())
     }
 }
 

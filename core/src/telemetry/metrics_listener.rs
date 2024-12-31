@@ -3,7 +3,7 @@ use std::time::Duration;
 use ivynet_docker::dockerapi::DockerClient;
 use reqwest::Client;
 use tokio::{sync::mpsc, time::sleep};
-use tracing::{debug, error};
+use tracing::{debug, error, info};
 use uuid::Uuid;
 
 use crate::{
@@ -18,6 +18,7 @@ use super::{dispatch::TelemetryDispatchHandle, ConfiguredAvs};
 
 const TELEMETRY_INTERVAL_IN_MINUTES: u64 = 1;
 
+#[derive(Debug, Clone)]
 pub struct MetricsListenerHandle {
     tx: mpsc::Sender<MetricsListenerAction>,
 }
@@ -42,12 +43,20 @@ impl MetricsListenerHandle {
     }
 
     pub async fn add_node(&self, avs: ConfiguredAvs) -> Result<(), MetricsListenerError> {
-        self.tx.send(MetricsListenerAction::AddAvs(avs)).await?;
+        self.tx.send(MetricsListenerAction::AddNode(avs)).await?;
         Ok(())
     }
 
     pub async fn remove_node(&self, avs: ConfiguredAvs) -> Result<(), MetricsListenerError> {
-        self.tx.send(MetricsListenerAction::RemoveAvs(avs)).await?;
+        self.tx.send(MetricsListenerAction::RemoveNode(avs)).await?;
+        Ok(())
+    }
+
+    pub async fn remove_node_by_name(
+        &self,
+        container_name: &str,
+    ) -> Result<(), MetricsListenerError> {
+        self.tx.send(MetricsListenerAction::RemoveNodeByName(container_name.to_string())).await?;
         Ok(())
     }
 }
@@ -84,16 +93,11 @@ impl MetricsListener {
     pub async fn run(mut self) {
         let mut interval =
             tokio::time::interval(Duration::from_secs(60 * TELEMETRY_INTERVAL_IN_MINUTES));
-        // we get an update event or once a minute, whichever comes first
+        // broadcast metrics when we get an update event or once a minute, whichever comes first
         loop {
             let res = tokio::select! {
                 _ = interval.tick() => {
-                    report_metrics(
-                        self.machine_id,
-                        &self.identity_wallet,
-                        self.avses.as_slice(),
-                        &self.dispatch
-                    ).await
+                    self.broadcast_metrics().await
                 }
                 Some(action) = self.rx.recv() => {
                     self.handle_action(action).await
@@ -105,32 +109,41 @@ impl MetricsListener {
         }
     }
 
-    pub async fn handle_action(&mut self, action: MetricsListenerAction) -> Result<(), IvyError> {
-        match action {
-            MetricsListenerAction::AddAvs(avs) => {
-                if self.avses.iter().any(|x| x.container_name == avs.container_name) {
-                    // if container with name already exists, drop it for replacement
-                    self.avses.retain(|x| x.container_name != avs.container_name);
-                }
-                self.avses.push(avs);
+    async fn broadcast_metrics(&self) -> Result<(), IvyError> {
+        report_metrics(
+            self.machine_id,
+            &self.identity_wallet,
+            self.avses.as_slice(),
+            &self.dispatch,
+        )
+        .await
+    }
 
-                report_metrics(
-                    self.machine_id,
-                    &self.identity_wallet,
-                    self.avses.as_slice(),
-                    &self.dispatch,
-                )
-                .await
+    async fn handle_action(&mut self, action: MetricsListenerAction) -> Result<(), IvyError> {
+        match action {
+            MetricsListenerAction::AddNode(avs) => {
+                // if container with name already exists, replace avs_type and metric_port
+                if let Some(existing) =
+                    self.avses.iter_mut().find(|x| x.container_name == avs.container_name)
+                {
+                    existing.avs_type = avs.avs_type;
+                    existing.metric_port = avs.metric_port;
+                } else {
+                    self.avses.push(avs);
+                }
+                self.broadcast_metrics().await
             }
-            MetricsListenerAction::RemoveAvs(avs) => {
+            MetricsListenerAction::RemoveNode(avs) => {
                 self.avses.retain(|x| x.container_name != avs.container_name);
-                report_metrics(
-                    self.machine_id,
-                    &self.identity_wallet,
-                    self.avses.as_slice(),
-                    &self.dispatch,
-                )
-                .await
+                self.broadcast_metrics().await
+            }
+            MetricsListenerAction::RemoveNodeByName(container_name) => {
+                let avs_num = self.avses.len();
+                self.avses.retain(|x| x.container_name != container_name);
+                if avs_num != self.avses.len() {
+                    info!("Detected container stop: {}", container_name);
+                }
+                self.broadcast_metrics().await
             }
         }
     }
@@ -138,8 +151,10 @@ impl MetricsListener {
 
 #[derive(Clone)]
 pub enum MetricsListenerAction {
-    AddAvs(ConfiguredAvs),
-    RemoveAvs(ConfiguredAvs),
+    AddNode(ConfiguredAvs),
+    RemoveNode(ConfiguredAvs),
+    /// Remove a node by its container name
+    RemoveNodeByName(String),
 }
 
 pub async fn report_metrics(
@@ -153,7 +168,7 @@ pub async fn report_metrics(
     debug!("Got images {images:#?}");
     for avs in avses {
         let mut version_hash = "".to_string();
-        if let Some(inspect_data) = docker.inspect_by_container_name(&avs.container_name).await {
+        if let Some(inspect_data) = docker.find_container_by_name(&avs.container_name).await {
             if let Some(image_name) = inspect_data.image() {
                 if let Some(hash) = images.get(image_name) {
                     version_hash = hash.clone();
