@@ -149,7 +149,8 @@ pub async fn listen(
         }
     }
 
-    // Metrics listener handle spans the metrics listener on init. Errors no longer cause the program to stop, but instead throw an error msg up to console.
+    // Metrics listener handle spans the metrics listener on init. Errors no longer cause the
+    // program to stop, but instead throw an error msg up to console.
     let metrics_listener_handle =
         MetricsListenerHandle::new(machine_id, &identity_wallet, avses, &dispatch);
 
