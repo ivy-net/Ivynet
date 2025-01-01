@@ -10,10 +10,7 @@ use thiserror::Error;
 use tonic::Status;
 use zip::result::ZipError;
 
-use crate::{
-    eigen::quorum::QuorumError, grpc::client::ClientError,
-    telemetry::metrics_listener::MetricsListenerError, IvyProvider, IvyProviderError,
-};
+use crate::{eigen::quorum::QuorumError, grpc::client::ClientError, IvyProvider, IvyProviderError};
 
 #[derive(Debug, Error)]
 pub enum IvyError {
@@ -182,9 +179,6 @@ pub enum IvyError {
 
     #[error("Node find error, could not find node for name {0}")]
     NodeFindError(String),
-
-    #[error(transparent)]
-    MetricsListenerError(#[from] MetricsListenerError),
 
     #[error(transparent)]
     DockerStreamError(#[from] ivynet_docker::dockerapi::DockerStreamError),

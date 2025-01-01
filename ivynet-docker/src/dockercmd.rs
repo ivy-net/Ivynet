@@ -4,12 +4,9 @@ use std::{
     collections::HashMap,
     ops::{Deref, DerefMut},
     path::{Path, PathBuf},
-    pin::Pin,
     process::Command as BlockingCommand,
-    task::{Context, Poll},
 };
-use tokio::{process::Command, sync::mpsc};
-use tokio_stream::Stream;
+use tokio::process::Command;
 use tracing::{error, info};
 
 /// Module for interacting with Docker and Docker Compose.

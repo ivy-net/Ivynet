@@ -5,7 +5,6 @@ use bollard::{
     container::{LogOutput, LogsOptions},
     secret::ContainerSummary,
 };
-use futures::FutureExt;
 use tokio_stream::Stream;
 
 /// Type representing a docker image verison `repository:tag.` Primarily for tracking image version

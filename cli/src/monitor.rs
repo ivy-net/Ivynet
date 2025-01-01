@@ -19,7 +19,7 @@ use ivynet_core::{
     telemetry::{listen, metrics_listener::fetch_telemetry_from, ConfiguredAvs},
 };
 use serde::{Deserialize, Serialize};
-use tracing::info;
+use tracing::{info, warn};
 
 use crate::init::set_backend_connection;
 
@@ -161,16 +161,13 @@ async fn find_new_avses(
         .map(Response::into_inner)
         .ok();
 
-    let avs_types: Option<HashMap<String, NodeType>> = if let Some(node_types) = node_types {
-        Some(
-            node_types
-                .node_types
-                .into_iter()
-                .map(|nt| (nt.digest, NodeType::from(nt.node_type.as_str())))
-                .collect::<HashMap<_, _>>(),
-        )
-    } else {
-        None
+    let avs_types: HashMap<String, NodeType> = match node_types {
+        Some(types) => types
+            .node_types
+            .into_iter()
+            .map(|nt| (nt.digest, NodeType::from(nt.node_type.as_str())))
+            .collect::<HashMap<_, _>>(),
+        None => HashMap::new(),
     };
 
     let mut new_avses = Vec::new();
@@ -260,23 +257,6 @@ fn update_monitor_config(
     Ok(())
 }
 
-fn get_type(
-    hashes: &Option<HashMap<String, NodeType>>,
-    hash: &str,
-    image_name: &str,
-    container_name: &str,
-) -> Option<NodeType> {
-    let node_type = hashes
-        .clone()
-        .and_then(|h| h.get(hash).copied())
-        .or_else(|| NodeType::from_image(&extract_image_name(image_name)))
-        .or_else(|| NodeType::from_default_container_name(container_name.trim_start_matches('/')));
-    if node_type.is_none() {
-        println!("No avs found for {}", image_name);
-    }
-    node_type
-}
-
 async fn grab_potential_avses() -> Vec<PotentialAvs> {
     let docker = DockerClient::default();
     println!("Scanning containers...");
@@ -325,6 +305,23 @@ fn extract_image_name(image_name: &str) -> String {
             })
         })
         .unwrap_or_else(|| image_name.to_string())
+}
+
+pub fn get_type(
+    hashes: &HashMap<String, NodeType>,
+    hash: &str,
+    image_name: &str,
+    container_name: &str,
+) -> Option<NodeType> {
+    let node_type = hashes
+        .get(hash)
+        .copied()
+        .or_else(|| NodeType::from_image(&extract_image_name(image_name)))
+        .or_else(|| NodeType::from_default_container_name(container_name.trim_start_matches('/')));
+    if node_type.is_none() {
+        warn!("No node type found for {}", image_name);
+    }
+    node_type
 }
 
 #[cfg(test)]

@@ -173,11 +173,8 @@ impl DockerClient {
     }
 }
 
-#[derive(Debug, thiserror::Error)]
+#[derive(Clone, Debug, thiserror::Error)]
 pub enum DockerStreamError {
-    #[error("Docker API error: {0}")]
-    DockerError(bollard::errors::Error),
-
     #[error("Dockerstream is missing the actor field")]
     MissingActor,
 
