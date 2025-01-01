@@ -86,6 +86,28 @@ fn build_metrics_message(metrics: &[Metrics]) -> H256 {
     H256::from(&keccak256(encode(&tokens)))
 }
 
+// --- NameChange ---
+pub fn sign_name_change(
+    old_name: &str,
+    new_name: &str,
+    wallet: &IvyWallet,
+) -> Result<Signature, IvySigningError> {
+    sign_hash(hash_name_change(old_name, new_name)?, wallet)
+}
+
+fn hash_name_change(old_name: &str, new_name: &str) -> Result<H256, IvySigningError> {
+    let tokens = vec![Token::String(old_name.to_string()), Token::String(new_name.to_string())];
+    Ok(H256::from(&keccak256(encode(&tokens))))
+}
+
+pub async fn recover_name_change(
+    old_name: &str,
+    new_name: &str,
+    signature: &Signature,
+) -> Result<Address, IvySigningError> {
+    recover_from_hash(hash_name_change(old_name, new_name)?, signature)
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum IvySigningError {
     #[error("Bls signing error: {0}")]
