@@ -99,6 +99,9 @@ pub enum BackendError {
 
     #[error("Failed to create operator key")]
     FailedToCreateOperatorKey,
+
+    #[error("Serialization error: {0}")]
+    SerializationError(String),
 }
 
 impl IntoResponse for BackendError {
