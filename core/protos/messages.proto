@@ -61,3 +61,10 @@ message NodeTypes {
 message Digests {
     repeated string digests = 1;
 }
+
+message SignedNameChange {
+    bytes signature = 1;
+    bytes machine_id = 2;
+    string old_name = 3;
+    string new_name = 4;
+}

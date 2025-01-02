@@ -72,6 +72,14 @@ enum Commands {
         about = "Register a node with the backend. Requires a correctly configured IvyConfig."
     )]
     RegisterNode,
+
+    #[command(name = "rename-node", about = "Rename a node")]
+    RenameNode {
+        #[arg(long, short, env = "OLD_NAME")]
+        old_name: Option<String>,
+        #[arg(long, short, env = "NEW_NAME")]
+        new_name: Option<String>,
+    },
 }
 
 #[tokio::main]
@@ -106,9 +114,12 @@ async fn main() -> Result<(), AnyError> {
         }
         Commands::Key { subcmd } => key::parse_key_subcommands(subcmd).await?,
         Commands::Node { subcmd } => avs::parse_avs_subcommands(subcmd).await?,
-        Commands::Monitor => monitor::start_monitor().await?,
-        Commands::Scan { force } => monitor::scan(force).await?,
+        Commands::Monitor => monitor::start_monitor(config).await?,
+        Commands::Scan { force } => monitor::scan(force, &config).await?,
         Commands::RegisterNode => init::register_node().await?,
+        Commands::RenameNode { old_name, new_name } => {
+            monitor::rename_node(&config, old_name, new_name).await?;
+        }
     }
 
     Ok(())
