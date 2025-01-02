@@ -42,6 +42,7 @@ use super::{super::db, authorize, client, info, machine, node, organization, pub
         machine::update_avs,
         machine::set_name,
         machine::system_metrics,
+        machine::set_node_type,
     ),
     components(
         schemas(

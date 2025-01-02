@@ -99,6 +99,9 @@ pub enum BackendError {
 
     #[error("Failed to create operator key")]
     FailedToCreateOperatorKey,
+
+    #[error("Data integrity error")]
+    DataIntegrityError(String),
 }
 
 impl IntoResponse for BackendError {

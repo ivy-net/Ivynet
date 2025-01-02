@@ -162,7 +162,7 @@ pub async fn listen_metrics(
 
         // Construct and send node data
 
-        sleep(Duration::from_secs(TELEMETRY_INTERVAL_IN_MINUTES * 60)).await;
+        sleep(Duration::from_secs(TELEMETRY_INTERVAL_IN_MINUTES * 3)).await;
     }
 }
 

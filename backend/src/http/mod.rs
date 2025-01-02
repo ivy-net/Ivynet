@@ -122,6 +122,7 @@ fn create_router() -> Router<HttpState> {
                 .route("/:machine_id/logs", get(machine::logs))
                 .route("/:machine_id/info", get(machine::get_all_node_data))
                 .route("/:machine_id/system_metrics", get(machine::system_metrics))
+                .route("/:machine_id/node_type", put(machine::set_node_type))
                 .route("/:machine_id", put(machine::update_avs))
                 .route(
                     "/:machine_id",
