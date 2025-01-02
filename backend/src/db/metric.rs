@@ -5,8 +5,7 @@ use crate::error::BackendError;
 use chrono::{NaiveDateTime, Utc};
 use ivynet_core::grpc::messages::Metrics;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
-use sqlx::{query, PgPool};
+use sqlx::PgPool;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
