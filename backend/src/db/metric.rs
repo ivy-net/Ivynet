@@ -164,7 +164,7 @@ impl Metric {
             .execute(pool)
             .await?;
         } else {
-            query!("DELETE FROM metric WHERE machine_id = $1 AND avs_name = null", machine_id)
+            query!("DELETE FROM metric WHERE machine_id = $1 AND avs_name IS NULL", machine_id)
                 .execute(pool)
                 .await?;
         }
