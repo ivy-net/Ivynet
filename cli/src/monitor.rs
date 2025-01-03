@@ -19,7 +19,7 @@ use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
 };
-use tracing::info;
+use tracing::{debug, info};
 
 use crate::init::set_backend_connection;
 
@@ -346,8 +346,9 @@ fn get_type(
 
 async fn grab_potential_avses() -> Vec<PotentialAvs> {
     let docker = DockerClient::default();
-    println!("Scanning containers...");
+    info!("Scanning for containers, use LOG_LEVEL=debug to see images");
     let images = docker.list_images().await;
+    debug!("images: {:#?}", images);
     let potential_avses = docker
         .list_containers()
         .await
@@ -366,6 +367,16 @@ async fn grab_potential_avses() -> Vec<PotentialAvs> {
                     return Some(PotentialAvs {
                         container_name: names.first().unwrap_or(&image_name).to_string(),
                         image_name: image_name.clone(),
+                        image_hash: image_hash.to_string(),
+                        ports,
+                    });
+                } else if let Some(key) = images.keys().find(|key| key.contains(&image_name)) {
+                    debug!("SHOULD BE: No version tag image: {}", image_name);
+                    let image_hash = images.get(key).unwrap();
+                    debug!("key (should be with version tag, and its what we'll use for potential avs): {}", key);
+                    return Some(PotentialAvs {
+                        container_name: names.first().unwrap_or(&image_name).to_string(),
+                        image_name: key.clone(),
                         image_hash: image_hash.to_string(),
                         ports,
                     });
