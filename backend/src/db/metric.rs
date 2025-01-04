@@ -186,8 +186,11 @@ impl Metric {
 
         for metric in metrics {
             let attributes_str = match &metric.attributes {
-                Some(attrs) if !attrs.is_empty() => serde_json::to_string(attrs)
-                    .map_err(|e| BackendError::SerializationError(e.to_string()))?,
+                Some(attrs) => {
+                    let attrs_string = serde_json::to_string(attrs)
+                        .map_err(|e| BackendError::SerializationError(e.to_string()))?;
+                    Self::escape_copy_value(&attrs_string)
+                }
                 _ => String::from("\\N"),
             };
 
