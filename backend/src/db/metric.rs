@@ -5,8 +5,7 @@ use crate::error::BackendError;
 use chrono::{NaiveDateTime, Utc};
 use ivynet_core::grpc::messages::Metrics;
 use serde::{Deserialize, Serialize};
-use serde_json::json;
-use sqlx::{query, PgPool};
+use sqlx::PgPool;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -154,35 +153,72 @@ impl Metric {
         avs_name: Option<&str>,
         metrics: &[Metric],
     ) -> Result<(), BackendError> {
-        // Remove old metrics for the node first
-        if let Some(avs_name) = avs_name {
-            query!(
-                "DELETE FROM metric WHERE machine_id = $1 AND avs_name = $2",
-                machine_id,
-                avs_name
-            )
-            .execute(pool)
-            .await?;
-        } else {
-            query!("DELETE FROM metric WHERE machine_id = $1 AND avs_name = null", machine_id)
-                .execute(pool)
+        let now: NaiveDateTime = Utc::now().naive_utc();
+        let mut tx = pool.begin().await?;
+
+        // Delete existing metrics (keeping this part the same)
+        match avs_name {
+            Some(name) => {
+                sqlx::query!(
+                    "DELETE FROM metric WHERE machine_id = $1 AND avs_name = $2",
+                    machine_id,
+                    name
+                )
+                .execute(&mut *tx)
                 .await?;
+            }
+            None => {
+                sqlx::query!(
+                    "DELETE FROM metric WHERE machine_id = $1 AND avs_name IS NULL",
+                    machine_id
+                )
+                .execute(&mut *tx)
+                .await?;
+            }
         }
 
-        let now: NaiveDateTime = Utc::now().naive_utc();
-        for metric in metrics {
-            query!(
-            "INSERT INTO metric (machine_id, avs_name, name, value, attributes, created_at) values ($1, $2, $3, $4, $5, $6)",
-            Some(machine_id),
-            avs_name,
-            Some(&metric.name),
-            Some(metric.value),
-            metric.attributes.as_ref().map(|v| json!(v)),
-            Some(now)
+        // Start COPY operation
+        let mut copy = tx
+            .copy_in_raw(
+                "COPY metric (machine_id, avs_name, name, value, attributes, created_at) FROM STDIN",
             )
-            .execute(pool)
             .await?;
+
+        for metric in metrics {
+            let attributes_str = match &metric.attributes {
+                Some(attrs) => {
+                    let attrs_string = serde_json::to_string(attrs)
+                        .map_err(|e| BackendError::SerializationError(e.to_string()))?;
+                    Self::escape_copy_value(&attrs_string)
+                }
+                _ => String::from("\\N"),
+            };
+
+            let avs_name_str =
+                avs_name.map(Self::escape_copy_value).unwrap_or_else(|| String::from("\\N"));
+
+            let row = format!(
+                "{}\t{}\t{}\t{}\t{}\t{}\n",
+                machine_id,
+                avs_name_str,
+                Self::escape_copy_value(&metric.name),
+                metric.value,
+                attributes_str,
+                now
+            );
+            copy.send(row.as_bytes()).await?;
         }
+
+        copy.finish().await?;
+        tx.commit().await?;
         Ok(())
+    }
+
+    fn escape_copy_value(value: &str) -> String {
+        if value.is_empty() {
+            return "\\N".to_string();
+        }
+
+        value.replace('\\', "\\\\").replace('\t', "\\t").replace('\n', "\\n").replace('\r', "\\r")
     }
 }

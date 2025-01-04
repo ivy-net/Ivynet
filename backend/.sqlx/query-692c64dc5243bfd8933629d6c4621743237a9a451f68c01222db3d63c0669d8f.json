@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "DELETE FROM metric WHERE machine_id = $1 AND avs_name = null",
+  "query": "DELETE FROM metric WHERE machine_id = $1 AND avs_name IS NULL",
   "describe": {
     "columns": [],
     "parameters": {
@@ -10,5 +10,5 @@
     },
     "nullable": []
   },
-  "hash": "5b224153ed458f4caec056b271f362a10cb03bfbe456555fb3705ce7d2343a36"
+  "hash": "692c64dc5243bfd8933629d6c4621743237a9a451f68c01222db3d63c0669d8f"
 }
