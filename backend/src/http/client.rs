@@ -6,10 +6,7 @@ use axum::{
 use axum_extra::extract::CookieJar;
 
 use super::{authorize, HttpState};
-use crate::{
-    db::{Client, Machine},
-    error::BackendError,
-};
+use crate::error::BackendError;
 
 /// Grab grab IDs for every machine under every client in the organization
 #[utoipa::path(
@@ -25,7 +22,7 @@ pub async fn client(
     State(state): State<HttpState>,
     jar: CookieJar,
 ) -> Result<Json<Vec<(Client, Vec<Machine>)>>, BackendError> {
-    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let account = authorize::verify(&state.database, &headers, &state.cache, &jar).await?;
     let clients = account.clients_and_machines(&state.pool).await?;
 
     Ok(Json(clients))

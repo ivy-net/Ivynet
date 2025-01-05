@@ -17,10 +17,11 @@ use axum::{
     routing::{delete, get, post, put},
     Router,
 };
-use ivynet_core::grpc::client::Uri;
+use ivynet_core::grpc::{
+    client::Uri, database::database_client::DatabaseClient, tonic::transport::Channel,
+};
 use sendgrid::v3::Sender;
 use serde_json::{json, Value};
-use sqlx::PgPool;
 use tower_http::cors::CorsLayer;
 use tracing::info;
 
@@ -29,7 +30,7 @@ use utoipa_swagger_ui::SwaggerUi;
 
 #[derive(Clone)]
 pub struct HttpState {
-    pub pool: Arc<PgPool>,
+    pub database: Arc<DatabaseClient<Channel>>,
     pub cache: memcache::Client,
     pub sender: Option<Sender>,
     pub sender_email: Option<String>,
@@ -41,7 +42,7 @@ pub struct HttpState {
 
 #[allow(clippy::too_many_arguments)]
 pub async fn serve(
-    pool: Arc<PgPool>,
+    database: Arc<DatabaseClient<Channel>>,
     cache: memcache::Client,
     root_url: Uri,
     sendgrid_api_key: Option<String>,
@@ -55,7 +56,7 @@ pub async fn serve(
     let sender = sendgrid_api_key.map(|key| Sender::new(key, None));
 
     let state = HttpState {
-        pool,
+        database,
         cache,
         sender,
         sender_email,

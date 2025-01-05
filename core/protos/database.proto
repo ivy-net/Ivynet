@@ -5,6 +5,19 @@ import "google/protobuf/timestamp.proto";
 import "google/protobuf/empty.proto";
 import "messages.proto";
 
+
+enum Role {
+    Reader = 0;
+    User = 1;
+    Admin = 2;
+    Owner = 3;
+}
+
+enum VerificationType {
+    Organization = 0;
+    User = 2;
+}
+
 message Credentials {
     string username = 1;
     string password = 2;
@@ -21,12 +34,7 @@ message Id {
 message Address {
     bytes id = 1;
 }
-enum Role {
-    Reader = 0;
-    User = 1;
-    Admin = 2;
-    Owner = 3;
-}
+
 
 message Account {
     uint64 id = 1;
@@ -43,6 +51,12 @@ message Organization {
     bool verified = 3;
     google.protobuf.Timestamp created_at = 4;
     google.protobuf.Timestamp updated_at = 5;
+}
+
+message OrganizationCreation {
+    string name = 1;
+    string admin_email = 2;
+    string admin_password = 3;
 }
 
 message Invite {
@@ -89,14 +103,34 @@ message Avses {
     repeated Avs avses = 1;
 }
 
+message VerificationCreation {
+    VerificationType verification_type = 1;
+    bytes id = 2;
+}
+
+message Verification {
+    bytes id = 1;
+    VerificationType verification_type = 2;
+    uint64 object_id = 3;
+    google.protobuf.Timestamp expires = 4;
+}
+
 service Database {
     rpc VerifyAccount(Credentials) returns (google.protobuf.Empty);
     rpc ExistsAccount(Email) returns (google.protobuf.Empty);
+    rpc FindAccount(Email) returns (Account);
     rpc GetAccount(Id) returns (Account);
     rpc GetClientsForAccount(Id) returns (Clients);
     rpc GetMachinesForClient(Address) returns (Machines);
+    rpc GetAllMachinesForAccount(Id) returns (Machines);
+    rpc GetAllAvsesForAccount(Id) returns (Avses);
     rpc GetAvsesForMachine(Address) returns (Avses);
     rpc UpdateOperator(OperatorUpdate) returns (google.protobuf.Empty);
-    rpc InviteUser(Invite) returns (google.protobuf.Empty);
+    rpc InviteUser(Invite) returns (Verification);
     rpc GetOrganization(Id) returns (Organization);
+    rpc VerifyOrganization(id) returns (Organization);
+    rpc NewOrganization(OrganizationCreation) returns (Organization);
+    rpc NewVerification(VerificationCreation) returns (Verification);
+    rpc GetVerification(Address) returns (Verification);
+    rpc CloseVerification(Address) returns (google.protobuf.Empty);
 }

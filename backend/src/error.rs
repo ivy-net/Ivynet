@@ -2,7 +2,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use ivynet_core::grpc::server::ServerError;
+use ivynet_core::grpc::{client::ClientError, server::ServerError};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -30,6 +30,9 @@ pub enum BackendError {
 
     #[error(transparent)]
     MigrateError(#[from] sqlx::migrate::MigrateError),
+
+    #[error(transparent)]
+    GRPCClientError(#[from] ClientError),
 
     #[error("Condensed metrics not found: {0}")]
     CondensedMetricsNotFound(String),

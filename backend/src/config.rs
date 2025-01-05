@@ -32,15 +32,6 @@ pub struct Config {
     #[arg(long, env = "IVY_GRPC_PORT", default_value_t = 50050)]
     pub grpc_port: u16,
 
-    #[arg(long, env = "IVY_EVENTS_TLS_CA")]
-    pub events_tls_ca: Option<String>,
-
-    #[arg(long, env = "IVY_EVENTS_TLS_CERT")]
-    pub events_tls_cert: Option<String>,
-
-    #[arg(long, env = "IVY_EVENTS_TLS_KEY")]
-    pub events_tls_key: Option<String>,
-
     #[arg(long, env = "IVY_EVENTS_PORT", default_value_t = 50051)]
     pub events_port: u16,
 
@@ -65,31 +56,6 @@ pub struct Config {
     #[arg(long, env = "IVY_CACHE_URL", value_parser = Uri::from_str, default_value = "memcache://localhost:11211" )]
     pub cache_url: Uri,
 
-    #[arg(
-        long,
-        env = "DATABASE_URL",
-        default_value = "postgresql://ivy:secret_ivy@localhost:5432/ivynet"
-    )]
-    pub db_uri: String,
-
-    #[arg(long, env = "IVY_MIGRATE", default_value_t = false)]
-    pub migrate: bool,
-
-    #[arg(long)]
-    pub add_organization: Option<String>,
-
-    #[arg(long)]
-    pub set_avs_version: Option<String>,
-
-    #[arg(long)]
-    pub add_avs_version_hash: Option<String>,
-
-    #[arg(long)]
-    pub set_breaking_change_version: Option<String>,
-
-    #[arg(long)]
-    pub add_node_version_hashes: bool,
-
-    #[arg(long)]
-    pub update_node_data_versions: bool,
+    #[arg(long, env = "IVY_DATABASE_URL", value_parser = Uri::from_str, default_value = "http://localhost:50060")]
+    pub backend_uri: Uri,
 }

@@ -6,21 +6,17 @@ use axum::{
     Json,
 };
 use axum_extra::extract::CookieJar;
+use ivynet_core::grpc::{
+    database::{Address, Email as EmailReq, Id, Invite},
+    tonic::{IntoRequest, Request},
+};
 use sendgrid::v3::{Email, Message, Personalization};
 use serde::{Deserialize, Serialize};
 use tracing::debug;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::{
-    db::{
-        avs::Avs,
-        machine::Machine,
-        verification::{Verification, VerificationType},
-        Account, Organization, Role,
-    },
-    error::BackendError,
-};
+use crate::error::BackendError;
 
 use super::{authorize, HttpState};
 
@@ -65,16 +61,35 @@ pub async fn new(
     State(state): State<HttpState>,
     Json(request): Json<CreationRequest>,
 ) -> Result<Json<CreationResult>, BackendError> {
-    if Account::exists(&state.pool, &request.email).await? {
+    if state
+        .database
+        .exists_account(Request::new(EmailReq { email: request.email.clone() }))
+        .await
+        .is_ok()
+    {
         return Err(BackendError::AccountExists);
     }
 
-    let org = Organization::new(&state.pool, &request.name, false).await?;
+    let org = state
+        .database
+        .new_organization(Request::new(OrganizationCreation {
+            name: request.name.clone(),
+            admin_email: request.email.clone(),
+            admin_password: request.password,
+        }))
+        .await?
+        .into_inner();
 
-    org.attach_admin(&state.pool, &request.email, &request.password).await?;
+    let verification = state
+        .database
+        .new_verification(Request::new(VerificationCreation {
+            verification_type: VerificationType::Organization,
+            verification_id: org.id,
+        }))
+        .await?
+        .into_inner();
 
-    let verification =
-        Verification::new(&state.pool, VerificationType::Organization, org.organization_id).await?;
+    let verification_id = Uuid::from_bytes(verification.id);
 
     if let (Some(sender), Some(sender_address), Some(org_template)) =
         (state.sender, state.sender_email, state.org_verification_template)
@@ -83,7 +98,7 @@ pub async fn new(
         arguments.insert("organization_name".to_string(), request.name);
         arguments.insert(
             "confirmation_url".to_string(),
-            format!("{}organization_confirm/{}", state.root_url, verification.verification_id),
+            format!("{}organization_confirm/{}", state.root_url, verification_id),
         );
 
         sender
@@ -113,8 +128,14 @@ pub async fn get_me(
     State(state): State<HttpState>,
     jar: CookieJar,
 ) -> Result<Json<Organization>, BackendError> {
-    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    Ok(Organization::get(&state.pool, account.organization_id.try_into().unwrap()).await?.into())
+    let account = authorize::verify(&state.database, &headers, &state.cache, &jar).await?;
+
+    Ok(state
+        .database
+        .get_organization(Request::new(Id { id: account.organization_id }))
+        .await?
+        .into_inner()
+        .into())
 }
 
 #[utoipa::path(
@@ -132,7 +153,12 @@ pub async fn get(
     State(state): State<HttpState>,
     Path(id): Path<u64>,
 ) -> Result<Json<Organization>, BackendError> {
-    Ok(Organization::get(&state.pool, id).await?.into())
+    Ok(state
+        .database
+        .get_organization(Request::new(Id { id: account.organization_id }))
+        .await?
+        .into_inner()
+        .into())
 }
 
 /// Get an overview of all machines in the organization
@@ -149,9 +175,14 @@ pub async fn machines(
     State(state): State<HttpState>,
     jar: CookieJar,
 ) -> Result<Json<Vec<Machine>>, BackendError> {
-    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let account = authorize::verify(&state.database, &headers, &state.cache, &jar).await?;
 
-    Ok(account.all_machines(&state.pool).await?.into())
+    Ok(state
+        .database
+        .get_all_machines_for_account(Request::new(Id { id: account.id }))
+        .await?
+        .into_inner()
+        .into())
 }
 
 /// Get an overview of all AVSes in the organization
@@ -170,7 +201,12 @@ pub async fn avses(
 ) -> Result<Json<Vec<Avs>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
 
-    Ok(account.all_avses(&state.pool).await?.into())
+    Ok(state
+        .database
+        .get_all_avses_for_account(Request::new(Id { id: account.id }))
+        .await?
+        .into_inner()
+        .into())
 }
 
 #[utoipa::path(
@@ -188,29 +224,37 @@ pub async fn invite(
     jar: CookieJar,
     Json(request): Json<InvitationRequest>,
 ) -> Result<Json<InvitationResponse>, BackendError> {
-    debug!("Getting account");
-    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    if !account.role.is_admin() {
+    let account = authorize::verify(&state.database, &headers, &state.cache, &jar).await?;
+    if authorize::is_admin(&account) {
         return Err(BackendError::InsufficientPriviledges);
     }
 
-    debug!("Fetching the organization");
-    let org = Organization::get(&state.pool, account.organization_id as u64).await?;
-    let new_acc = org.invite(&state.pool, &request.email, request.role).await?;
-    debug!(
-        "Something is missing {:?}, {:?}, {:?}",
-        state.sender, state.sender_email, state.user_verification_template
-    );
+    let org = state
+        .database
+        .get_organization(Request::new(Id { id: account.organization_id }))
+        .await?
+        .into_inner();
+    let account_verification = state
+        .database
+        .invite_user(Request::new(Invite {
+            organization_id: org.id,
+            email: request.email.clone(),
+            role: request.role.into(),
+        }))
+        .await?
+        .into_inner();
+
+    let verification_id = Uuid::from_slice(account_verification.id);
+
     if let (Some(sender), Some(sender_address), Some(inv_template)) =
         (state.sender, state.sender_email, state.user_verification_template)
     {
-        debug!("Sending the email");
         let mut arguments = HashMap::with_capacity(1);
         arguments.insert("organization_name".to_string(), org.name);
         //TODO: Setting this url has to be properly set
         arguments.insert(
             "confirmation_url".to_string(),
-            format!("{}password_set/{}", state.root_url, new_acc.verification_id),
+            format!("{}password_set/{}", state.root_url, verification_id),
         );
 
         sender
@@ -225,7 +269,7 @@ pub async fn invite(
             .await?;
     }
 
-    Ok(InvitationResponse { id: new_acc.verification_id }.into())
+    Ok(InvitationResponse { id: verification_id }.into())
 }
 
 #[utoipa::path(
@@ -245,24 +289,33 @@ pub async fn confirm(
     jar: CookieJar,
     Path(id): Path<Uuid>,
 ) -> Result<Json<ConfirmationResponse>, BackendError> {
-    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let account = authorize::verify(&state.database, &headers, &state.cache, &jar).await?;
     if account.role != Role::Owner {
         return Err(BackendError::InsufficientPriviledges);
     }
 
-    let verification = Verification::get(&state.pool, id).await?;
+    let verification = state
+        .database
+        .get_verification(Request::new(Address { id: id.to_bytes_le().to_vec() }))
+        .await?
+        .into_inner();
+
     if verification.verification_type != VerificationType::Organization {
         return Err(BackendError::BadId);
     }
 
-    let mut org = Organization::get(&state.pool, verification.associated_id as u64).await?;
+    let org = state
+        .database
+        .get_organization(Request::new(Id { id: verification.object_id }))
+        .await?
+        .into_inner();
 
-    if account.organization_id != org.organization_id {
+    if account.organization_id != org.id {
         return Err(BackendError::InsufficientPriviledges);
     }
 
-    org.verify(&state.pool).await?;
-    verification.delete(&state.pool).await?;
+    state.database.verify_organization(Request::new(Id { id: org.id })).await?;
+    state.database.close_verification(Request::new(Address { id: verification.id })).await?;
 
     Ok(ConfirmationResponse { success: true }.into())
 }
