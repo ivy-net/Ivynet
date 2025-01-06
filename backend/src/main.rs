@@ -161,7 +161,7 @@ async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
                             Err(e) => warn!("Failed to add {}:{}:{} | {}", name, tag, digest, e),
                         };
                     } else {
-                        error!("Dropping adding an empty entry (tag {tag} digest {digest})");
+                        error!("Dropping adding an empty entry (tag '{tag}' digest '{digest}')");
                     }
                 }
             }
@@ -175,7 +175,9 @@ async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
                             Err(e) => warn!("Failed to update {}:{}:{} | {}", name, tag, digest, e),
                         };
                     } else {
-                        error!("Dropping updating to an empty entry (tag {tag} digest {digest})");
+                        error!(
+                            "Dropping updating to an empty entry (tag '{tag}' digest '{digest}')"
+                        );
                     }
                 }
             }
