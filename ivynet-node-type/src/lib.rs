@@ -13,6 +13,7 @@ pub enum NodeType {
     LagrangeZkWorkerHolesky,
     LagrangeZkWorkerMainnet,
     K3LabsAvs,
+    K3LabsAvsHolesky,
     EOracle,
     Predicate,
     Hyperlane,
@@ -73,6 +74,7 @@ pub const AVAPROTOCOL_REPO: &str = "avaprotocol/ap-avs";
 pub const EIGENDA_REPO: &str = "layr-labs/eigenda/opr-node";
 pub const LAGRANGE_STATECOMS_REPO: &str = "lagrangelabs/lagrange-node";
 pub const K3LABS_REPO: &str = "k3official/k3-labs-avs-operator";
+pub const K3LABS_HOLESKY_REPO: &str = "k3official/k3-labs-avs-operator-dev";
 pub const EORACLE_REPO: &str = "eoracle/data-validator";
 pub const PREDICATE_REPO: &str = "predicatelabs/operator";
 pub const HYPERLANE_REPO: &str = "abacus-labs-dev/hyperlane-agent";
@@ -134,6 +136,7 @@ impl NodeType {
             Self::LagrangeZkWorkerHolesky => LAGRANGE_WORKER_REPO,
             Self::LagrangeZkWorkerMainnet => LAGRANGE_WORKER_REPO,
             Self::K3LabsAvs => K3LABS_REPO,
+            Self::K3LabsAvsHolesky => K3LABS_HOLESKY_REPO,
             Self::EOracle => EORACLE_REPO,
             Self::Predicate => PREDICATE_REPO,
             Self::Hyperlane => HYPERLANE_REPO,
@@ -193,6 +196,7 @@ impl NodeType {
                 unreachable!("Brevis node type has no container. This should be unenterable.")
             }
             Self::K3LabsAvs => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::K3LabsAvsHolesky => return Err(NodeTypeError::NoDefaultContainerName),
             Self::AlignedLayer => return Err(NodeTypeError::InvalidNodeType),
             Self::PrimevMevCommit => return Err(NodeTypeError::InvalidNodeType),
             Self::SkateChainBase => return Err(NodeTypeError::InvalidNodeType),
@@ -236,6 +240,7 @@ impl NodeType {
                 unreachable!("Brevis node type has no container. This should be unenterable.")
             }
             Self::K3LabsAvs => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::K3LabsAvsHolesky => return Err(NodeTypeError::NoDefaultContainerName),
             Self::AlignedLayer => return Err(NodeTypeError::InvalidNodeType),
             Self::PrimevMevCommit => return Err(NodeTypeError::InvalidNodeType),
             Self::SkateChainBase => return Err(NodeTypeError::InvalidNodeType),
@@ -261,6 +266,7 @@ impl NodeType {
             NodeType::LagrangeZkWorkerHolesky,
             NodeType::LagrangeZkWorkerMainnet,
             NodeType::K3LabsAvs,
+            NodeType::K3LabsAvsHolesky,
             NodeType::EOracle,
             NodeType::Predicate,
             NodeType::Hyperlane,
@@ -336,6 +342,7 @@ impl NodeType {
             EIGENDA_REPO => Some(Self::EigenDA),
             LAGRANGE_STATECOMS_REPO => Some(Self::LagrangeStateCommittee),
             K3LABS_REPO => Some(Self::K3LabsAvs),
+            K3LABS_HOLESKY_REPO => Some(Self::K3LabsAvsHolesky),
             EORACLE_REPO => Some(Self::EOracle),
             PREDICATE_REPO => Some(Self::Predicate),
             HYPERLANE_REPO => Some(Self::Hyperlane),

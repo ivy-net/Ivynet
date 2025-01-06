@@ -16,6 +16,7 @@ impl ImageRegistry for NodeType {
             Self::LagrangeZkWorkerMainnet => DockerHub,
             Self::LagrangeZkWorkerHolesky => DockerHub,
             Self::K3LabsAvs => DockerHub,
+            Self::K3LabsAvsHolesky => DockerHub,
             Self::Predicate => Github,
             Self::Hyperlane => GoogleCloud,
             Self::WitnessChain => DockerHub,
