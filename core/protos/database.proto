@@ -65,8 +65,19 @@ message Invite {
     Role role = 3;
 }
 
+message ClientAttachment {
+    string name = 1;
+    bytes client_id = 2;
+    bytes machine_id = 3;
+}
+
 message Clients {
     repeated bytes clients = 1;
+}
+
+message ClientAndOwner {
+    uint64 owner_id = 1;
+    bytes client = 2;
 }
 
 message Machine {
@@ -77,6 +88,11 @@ message Machine {
 
 message Machines {
     repeated Machine machines = 1;
+}
+
+message MachineOwnershipCheck {
+    bytes client_id = 1;
+    bytes machine_id = 2;
 }
 
 message OperatorUpdate {
@@ -121,6 +137,9 @@ service Database {
     rpc FindAccount(Email) returns (Account);
     rpc GetAccount(Id) returns (Account);
     rpc GetClientsForAccount(Id) returns (Clients);
+    rpc GetClient(ClientAndOwner) returns (Address);
+    rpc AttachClient(ClientAttachment) returns (google.protobuf.Empty);
+    rpc CheckMachineOwnerShip(MachineOwnershipCheck) returns (google.protoguf.Empty);
     rpc GetMachinesForClient(Address) returns (Machines);
     rpc GetAllMachinesForAccount(Id) returns (Machines);
     rpc GetAllAvsesForAccount(Id) returns (Avses);

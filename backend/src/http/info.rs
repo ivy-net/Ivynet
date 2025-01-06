@@ -29,7 +29,7 @@ pub async fn get_version_info(
     Path(avs): Path<String>,
     jar: CookieJar,
 ) -> Result<Json<Vec<AvsVersionData>>, BackendError> {
-    let _account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let _account = authorize::verify(&state.database, &headers, &state.cache, &jar).await?;
     let node_type = NodeType::from(avs.as_str());
 
     if node_type == NodeType::Unknown {

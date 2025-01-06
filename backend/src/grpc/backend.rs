@@ -14,11 +14,14 @@ use ivynet_core::{
         self,
         backend::backend_server::{Backend, BackendServer},
         client::{Request, Response},
+        database::database_client::DatabaseClient,
         messages::{
             Digests, NodeData, NodeType as NodeTypeMessage, NodeTypes, RegistrationCredentials,
             SignedLog, SignedMetrics, SignedNodeData,
         },
-        server, Status,
+        server,
+        tonic::transport::Channel,
+        Status,
     },
     signature::{recover_from_string, recover_metrics, recover_node_data},
 };
@@ -31,12 +34,12 @@ use tracing::debug;
 use uuid::Uuid;
 
 pub struct BackendService {
-    pool: Arc<PgPool>,
+    database: Arc<DatabaseClient<Channel>>,
 }
 
 impl BackendService {
-    pub fn new(pool: Arc<PgPool>) -> Self {
-        Self { pool }
+    pub fn new(database: Arc<DatabaseClient<Channel>>) -> Self {
+        Self { database }
     }
 }
 
@@ -47,25 +50,21 @@ impl Backend for BackendService {
         request: Request<RegistrationCredentials>,
     ) -> Result<Response<()>, Status> {
         let req = request.into_inner();
-        let account =
-            Account::verify(&self.pool, &req.email, &req.password).await.map_err(|_| {
-                Status::not_found(format!("User {} not found or password is incorrect", req.email))
-            })?;
-        let client_id = Address::from_slice(&req.public_key);
-        account
-            .attach_client(
-                &self.pool,
-                &client_id,
-                Uuid::from_slice(&req.machine_id)
-                    .map_err(|_| Status::invalid_argument("Wrong machine_id size".to_string()))?,
-                &req.hostname,
-            )
-            .await
-            .map_err(|_| Status::not_found(format!("Cannot register new node for {account:?}",)))?;
-        debug!(
-            "User {} has registered new client with address {:?} and machine id {:?}",
-            &req.email, client_id, req.machine_id
-        );
+        let account = self
+            .database
+            .verify_account(Request::new(Credentials {
+                username: req.email.clone(),
+                password: req.password,
+            }))
+            .await?
+            .into_inner();
+        self.database
+            .attach_client(Request::new(ClientAttachment {
+                name: req.hostname,
+                client_id: req.public_key,
+                machine_id: req.machine_id,
+            }))
+            .await?;
 
         Ok(Response::new(()))
     }
@@ -80,20 +79,16 @@ impl Backend for BackendService {
                 .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
         )?;
 
-        if !Machine::is_owned_by(
-            &self.pool,
-            &client_id,
-            Uuid::from_slice(&request.machine_id)
-                .map_err(|_| Status::invalid_argument("Machine id has wrong length".to_string()))?,
-        )
-        .await
-        .unwrap_or(false)
-        {
-            return Err(Status::not_found("Machine not registered for given client".to_string()));
-        }
-
         let machine_id = Uuid::from_slice(&request.machine_id)
             .map_err(|_| Status::invalid_argument("Machine id has wrong length".to_string()))?;
+
+        self.database
+            .check_machine_ownership(Request::new(MachineOwnershipCheck {
+                client_id: client_id.as_bytes().to_vec(),
+                machine_id: request.machine_id,
+            }))
+            .await?;
+
         let avs_name = request.avs_name;
         let log = sanitize_log(&request.log);
         let log_level = LogLevel::from_str(&find_log_level(&log))
@@ -203,13 +198,13 @@ impl Backend for BackendService {
 }
 
 pub async fn serve(
-    pool: Arc<PgPool>,
+    database: Arc<DatabaseClient<Channel>>,
     tls_cert: Option<String>,
     tls_key: Option<String>,
     port: u16,
 ) -> Result<(), BackendError> {
     tracing::info!("Starting GRPC server on port {port}");
-    server::Server::new(BackendServer::new(BackendService::new(pool)), tls_cert, tls_key)
+    server::Server::new(BackendServer::new(BackendService::new(database)), tls_cert, tls_key)
         .serve(server::Endpoint::Port(port))
         .await?;
 

@@ -23,7 +23,11 @@ pub async fn client(
     jar: CookieJar,
 ) -> Result<Json<Vec<(Client, Vec<Machine>)>>, BackendError> {
     let account = authorize::verify(&state.database, &headers, &state.cache, &jar).await?;
-    let clients = account.clients_and_machines(&state.pool).await?;
+    let clients = state
+        .database
+        .get_clients_for_account(Request::new(Id { id: account.id }))
+        .await?
+        .into_inner();
 
     Ok(Json(clients))
 }
@@ -44,8 +48,19 @@ pub async fn client_machines(
     Path(id): Path<String>,
 ) -> Result<Json<(Client, Vec<Machine>)>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    let client = authorize::verify_client_ownership(&account, &state.pool, &id).await?;
-    let machines = Machine::get_all_for_client_id(&state.pool, &client.client_id).await?;
-
+    let address = id.parse::<Address>().map_err(|_| BackendError::BadId)?;
+    let client = state
+        .database
+        .get_client(Request::new(ClientAndOwner {
+            owner_id: account.id,
+            client: address.as_bytes().to_bytes(),
+        }))
+        .await?
+        .into_inner();
+    let machines = state
+        .database
+        .get_machines_for_client(Request::new(Address { id: address.as_bytes().to_vec() }))
+        .await?
+        .into_inner();
     Ok(Json((client, machines)))
 }
