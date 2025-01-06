@@ -21,6 +21,7 @@ use super::{super::db, authorize, client, info, machine, node, organization, pub
         client::client_machines,
         info::get_version_info,
         info::get_all_version_info,
+        info::get_node_types,
         machine::machine,
         machine::status,
         machine::idle,

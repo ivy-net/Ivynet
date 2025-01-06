@@ -143,6 +143,7 @@ fn create_router() -> Router<HttpState> {
                 .route("/version/:avs", get(info::get_version_info))
                 .route("/version", get(info::get_all_version_info)),
         )
+        .nest("/info/nodetypes", Router::new().route("/", get(info::get_node_types)))
         .nest(
             "/pubkey",
             Router::new()

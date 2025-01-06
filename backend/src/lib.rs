@@ -20,7 +20,7 @@ pub async fn get_node_version_hashes(
 ) -> Result<HashMap<NodeType, Vec<(String, String)>>, BackendError> {
     let mut registry_tags = HashMap::new();
 
-    for entry in NodeType::all_known() {
+    for entry in NodeType::all_known_with_repo() {
         let client = DockerRegistry::from_node_type(&entry).await?;
         info!("Requesting tags for image {}", entry.default_repository()?);
 
