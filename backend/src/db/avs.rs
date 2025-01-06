@@ -131,14 +131,14 @@ impl Avs {
         // when the new type is not Unknown
         let result = sqlx::query!(
             "INSERT INTO avs (
-                avs_name, machine_id, avs_type, avs_version, 
-                active_set, operator_address, version_hash, 
+                avs_name, machine_id, avs_type, avs_version,
+                active_set, operator_address, version_hash,
                 created_at, updated_at
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-            ON CONFLICT (machine_id, avs_name) DO UPDATE 
-            SET avs_type = CASE 
-                    WHEN EXCLUDED.avs_type != 'unknown' THEN EXCLUDED.avs_type 
-                    ELSE avs.avs_type 
+            ON CONFLICT (machine_id, avs_name) DO UPDATE
+            SET avs_type = CASE
+                    WHEN EXCLUDED.avs_type != 'unknown' THEN EXCLUDED.avs_type
+                    ELSE avs.avs_type
                 END,
                 updated_at = EXCLUDED.updated_at,
                 version_hash = EXCLUDED.version_hash",
