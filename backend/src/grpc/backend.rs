@@ -176,6 +176,10 @@ impl Backend for BackendService {
             return Err(Status::not_found("Machine not registered for given client".to_string()));
         }
 
+        setup_avs_old(&self.pool, machine_id, req.clone()).await.map_err(|e| {
+            Status::internal(format!("Failed while saving metrics, please update your client: {e}"))
+        })?;
+
         _ = Metric::record(
             &self.pool,
             machine_id,
@@ -230,6 +234,59 @@ impl Backend for BackendService {
         //TODO:
         Ok(Response::new(()))
     }
+}
+
+pub async fn setup_avs_old(
+    pool: &Arc<PgPool>,
+    machine_id: Uuid,
+    req: SignedMetrics,
+) -> Result<(), BackendError> {
+    if let Some(avs_name) = req.clone().avs_name {
+        if let Some((avs_type, version_hash)) = req
+            .metrics
+            .iter()
+            .filter_map(|m| {
+                if m.name == "running" {
+                    let mut avs_type = None;
+                    let mut version_hash = None;
+
+                    for attribute in &m.attributes {
+                        if attribute.name == "avs_type" {
+                            avs_type = Some(attribute.value.clone());
+                        } else if attribute.name == "version-hash" {
+                            version_hash = Some(attribute.value.clone());
+                        }
+                    }
+                    if let (Some(t), Some(vh)) = (avs_type, version_hash) {
+                        Some((t, vh))
+                    } else {
+                        None
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect::<Vec<_>>()
+            .first()
+        {
+            let avs_type = match NodeType::from(avs_type.as_str()) {
+                NodeType::Unknown => AvsVersionHash::get_avs_type_from_hash(pool, version_hash)
+                    .await
+                    .unwrap_or(NodeType::Unknown),
+                node_type => node_type,
+            };
+
+            Avs::record_avs_data_from_client(pool, machine_id, &avs_name, &avs_type, version_hash)
+                .await
+                .map_err(|e| {
+                    Status::internal(format!(
+                        "Failed while saving node_data, please update your client: {e}"
+                    ))
+                })?;
+        }
+    }
+
+    Ok(())
 }
 
 pub async fn serve(
