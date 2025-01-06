@@ -155,19 +155,28 @@ async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
             VersionType::SemVer => {
                 info!("Adding SemVer version hashes for {}", name);
                 for (tag, digest) in tags {
-                    match db::AvsVersionHash::add_version(pool, &entry, &digest, &tag).await {
-                        Ok(_) => debug!("Added {}:{}:{}", name, tag, digest),
-                        Err(e) => warn!("Failed to add {}:{}:{} | {}", name, tag, digest, e),
-                    };
+                    if !tag.is_empty() && !digest.is_empty() {
+                        match db::AvsVersionHash::add_version(pool, &entry, &digest, &tag).await {
+                            Ok(_) => debug!("Added {}:{}:{}", name, tag, digest),
+                            Err(e) => warn!("Failed to add {}:{}:{} | {}", name, tag, digest, e),
+                        };
+                    } else {
+                        error!("Dropping adding an empty entry (tag {tag} digest {digest})");
+                    }
                 }
             }
             VersionType::FixedVer | VersionType::HybridVer => {
                 debug!("Updating fixed and hybrid version hashes for {}", name);
                 for (tag, digest) in tags {
-                    match db::AvsVersionHash::update_version(pool, &entry, &digest, &tag).await {
-                        Ok(_) => debug!("Updated {}:{}:{}", name, tag, digest),
-                        Err(e) => warn!("Failed to update {}:{}:{} | {}", name, tag, digest, e),
-                    };
+                    if !tag.is_empty() && !digest.is_empty() {
+                        match db::AvsVersionHash::update_version(pool, &entry, &digest, &tag).await
+                        {
+                            Ok(_) => debug!("Updated {}:{}:{}", name, tag, digest),
+                            Err(e) => warn!("Failed to update {}:{}:{} | {}", name, tag, digest, e),
+                        };
+                    } else {
+                        error!("Dropping updating to an empty entry (tag {tag} digest {digest})");
+                    }
                 }
             }
         }
