@@ -1,4 +1,5 @@
 use ivynet_core::directory::avs_contract;
+use ivynet_docker::{registry::ImageRegistry, RegistryType};
 use ivynet_node_type::NodeType;
 use serde::Serialize;
 use utoipa::ToSchema;
@@ -72,6 +73,7 @@ pub async fn build_avs_info(
     avs: Avs,
     metrics: HashMap<String, Metric>,
 ) -> Result<AvsInfo, BackendError> {
+    let mut avs = avs;
     let metrics_alive = avs.metrics_alive;
 
     let version_map = DbAvsVersionData::get_all_avs_version(pool).await;
@@ -125,6 +127,10 @@ pub async fn build_avs_info(
 
     if avs.operator_address.is_none() {
         errors.push(NodeError::NoOperatorId);
+    }
+
+    if avs.avs_type.registry() == Ok(RegistryType::Othentic) {
+        avs.avs_version = "Othentic".to_string();
     }
 
     Ok(AvsInfo {

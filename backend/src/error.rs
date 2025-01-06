@@ -102,7 +102,7 @@ pub enum BackendError {
 
     #[error("Data integrity error")]
     DataIntegrityError(String),
-    
+
     #[error("Serialization error: {0}")]
     SerializationError(String),
 }
