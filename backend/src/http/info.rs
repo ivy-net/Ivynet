@@ -67,3 +67,22 @@ pub async fn get_all_version_info(
 
     Ok(Json(vec_data))
 }
+
+#[utoipa::path(
+    get,
+    path = "/info/nodetypes",
+    responses(
+        (status = 200, body = Vec<NodeType>),
+        (status = 404)
+    )
+)]
+pub async fn get_node_types(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+) -> Result<Json<Vec<NodeType>>, BackendError> {
+    let _account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let all_variants: Vec<NodeType> = NodeType::list_all_variants();
+
+    Ok(Json(all_variants))
+}
