@@ -17,6 +17,7 @@ workspace = true
 #locals
 ivynet-node-type.workspace = true
 
+async-trait.workspace = true
 bollard.workspace = true
 chrono.workspace = true
 docker-registry.workspace = true

@@ -17,6 +17,9 @@ pub mod eventstream;
 pub mod logs;
 pub mod registry;
 
+#[cfg(test)]
+pub mod mocks;
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter)]
 pub enum RegistryType {
     DockerHub,
@@ -339,25 +342,6 @@ mod docker_registry_tests {
         assert_eq!(tags.len(), digests.len());
         Ok(())
     }
-
-    // #[tokio::test]
-    // async fn test_get_lagrage_state_committee_digests() -> Result<(), Box<dyn std::error::Error>>
-    // {     let node_type = NodeType::LagrangeStateCommittee;
-
-    //     let client = DockerRegistry::from_node_type(&node_type).await?;
-    //     let tags = client.get_tags().await?;
-    //     assert!(!tags.is_empty());
-    //     let mut digests = Vec::new();
-
-    //     for tag in tags.iter() {
-    //         let digest = client.get_tag_digest(tag).await?;
-    //         if let Some(digest) = digest {
-    //             digests.push(digest);
-    //         }
-    //     }
-    //     assert_eq!(tags.len(), digests.len());
-    //     Ok(())
-    // }
 
     #[tokio::test]
     async fn test_get_hyperlane_digests() -> Result<(), Box<dyn std::error::Error>> {
