@@ -4,6 +4,7 @@ use ivynet_core::{
     ethers::types::Chain,
     grpc::client::Uri,
     metadata::Metadata,
+    system::get_system_information,
     utils::try_parse_chain,
 };
 
@@ -126,7 +127,7 @@ fn parse_config_getter_commands(
             println!("{metadata:#?}");
         }
         ConfigGetCommands::SysInfo {} => {
-            let (cpus, mem_info, disk_info) = config::get_system_information()?;
+            let (cpus, mem_info, disk_info) = get_system_information();
             println!(" --- System Information: --- ");
             println!("CPU Cores: {cpus}");
             println!("Memory Information:");

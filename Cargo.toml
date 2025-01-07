@@ -54,7 +54,7 @@ useless_let_if_seq = "warn"
 ivynet-docker = { path = "ivynet-docker" }
 ivynet-node-type = { path = "ivynet-node-type" }
 
-bollard = "0.18.0"
+bollard = "0.18.1"
 convert_case = "0.6.0"
 chrono = "0.4.0"
 docker-registry = "0.7.0"
@@ -70,3 +70,4 @@ tokio = { version = "1.37.0", features = ["full"] }
 tokio-stream = { version = "0.1.15", features = ["net"] }
 tracing = "0.1.40"
 which = "7.0"
+async-trait = "0.1.80"

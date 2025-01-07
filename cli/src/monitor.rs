@@ -1,5 +1,5 @@
 use anyhow::anyhow;
-use ivynet_docker::{dockerapi::DockerClient, RegistryType};
+use ivynet_docker::{dockerapi::DockerClient, get_node_type};
 use ivynet_node_type::NodeType;
 use std::{
     collections::{HashMap, HashSet},
@@ -20,7 +20,7 @@ use ivynet_core::{
     telemetry::{listen, metrics_listener::fetch_telemetry_from, ConfiguredAvs},
 };
 use serde::{Deserialize, Serialize};
-use tracing::{info, warn};
+use tracing::info;
 
 use crate::init::set_backend_connection;
 
@@ -245,7 +245,7 @@ async fn find_new_avses(
         }
 
         if let Some(avs_type) =
-            get_type(&avs_types, &avs.image_hash, &avs.image_name, &avs.container_name)
+            get_node_type(&avs_types, &avs.image_hash, &avs.image_name, &avs.container_name)
         {
             // Try to get metrics port but don't fail if unavailable
             let metric_port = match get_metrics_port(&avs.ports).await {
@@ -357,74 +357,4 @@ async fn grab_potential_avses() -> Vec<PotentialAvs> {
         .collect::<Vec<_>>();
 
     potential_avses
-}
-
-fn extract_image_name(image_name: &str) -> String {
-    RegistryType::get_registry_hosts()
-        .into_iter()
-        .find_map(|registry| {
-            image_name.contains(registry).then(|| {
-                image_name
-                    .split(&registry)
-                    .last()
-                    .unwrap_or(image_name)
-                    .trim_start_matches('/')
-                    .to_string()
-            })
-        })
-        .unwrap_or_else(|| image_name.to_string())
-}
-
-pub fn get_type(
-    hashes: &HashMap<String, NodeType>,
-    hash: &str,
-    image_name: &str,
-    container_name: &str,
-) -> Option<NodeType> {
-    let node_type = hashes
-        .get(hash)
-        .copied()
-        .or_else(|| NodeType::from_image(&extract_image_name(image_name)))
-        .or_else(|| NodeType::from_default_container_name(container_name.trim_start_matches('/')));
-    if node_type.is_none() {
-        warn!("No node type found for {}", image_name);
-    }
-    node_type
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_extract_image_name() {
-        let test_cases = vec![
-            // Standard registry cases
-            ("docker.io/ubuntu:latest", "ubuntu:latest"),
-            ("gcr.io/project/image:v1", "project/image:v1"),
-            ("ghcr.io/owner/repo:tag", "owner/repo:tag"),
-            ("public.ecr.aws/image:1.0", "image:1.0"),
-            // Edge cases
-            ("ubuntu:latest", "ubuntu:latest"), // No registry
-            ("", ""),                           // Empty string
-            ("repository.chainbase.com/", ""),  // Just registry
-            // Multiple registry-like strings
-            ("gcr.io/docker.io/image", "image"), // Should match first registry
-            // With and without tags
-            ("docker.io/image", "image"),
-            ("docker.io/org/image:latest", "org/image:latest"),
-            // Special characters
-            ("docker.io/org/image@sha256:123", "org/image@sha256:123"),
-            ("docker.io/org/image_name", "org/image_name"),
-        ];
-
-        for (input, expected) in test_cases {
-            assert_eq!(
-                extract_image_name(input),
-                expected.to_string(),
-                "Failed on input: {}",
-                input
-            );
-        }
-    }
 }

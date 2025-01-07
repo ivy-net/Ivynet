@@ -1,7 +1,10 @@
 use std::{collections::HashMap, time::Duration};
 
 use bollard::secret::{EventMessage, EventMessageTypeEnum};
-use ivynet_docker::dockerapi::{DockerClient, DockerStreamError};
+use ivynet_docker::{
+    dockerapi::{DockerClient, DockerStreamError},
+    get_node_type,
+};
 use ivynet_node_type::NodeType;
 use tokio::time::sleep;
 use tokio_stream::StreamExt;
@@ -9,12 +12,9 @@ use tonic::{transport::Channel, Request, Response};
 use tracing::{debug, error};
 use uuid::Uuid;
 
-use crate::{
-    get_type,
-    grpc::{
-        backend::backend_client::BackendClient,
-        messages::{Digests, NodeTypes},
-    },
+use crate::grpc::{
+    backend::backend_client::BackendClient,
+    messages::{Digests, NodeTypes},
 };
 
 use super::{
@@ -44,8 +44,7 @@ impl DockerStreamListener {
     }
 
     pub async fn run(mut self, known_nodes: Vec<ConfiguredAvs>) -> Result<(), DockerStreamError> {
-        let docker = DockerClient::default();
-        let mut docker_stream = docker.stream_events();
+        let mut docker_stream = self.docker.stream_events();
         while let Some(Ok(event)) = docker_stream.next().await {
             debug!("Dockerstream Event | {:?}", event);
             if event.typ == Some(EventMessageTypeEnum::CONTAINER) {
@@ -118,7 +117,8 @@ impl DockerStreamListener {
                     None => HashMap::new(),
                 };
 
-                let node_type = get_type(&hashes, &container_digest, &image_name, container_name);
+                let node_type =
+                    get_node_type(&hashes, &container_digest, &image_name, container_name);
                 node_type.map(|node_type| ConfiguredAvs {
                     assigned_name: format!("{}-{}", container_name, Uuid::new_v4()),
                     container_name: container_name.clone(),

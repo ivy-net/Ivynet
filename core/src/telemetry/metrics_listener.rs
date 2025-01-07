@@ -21,6 +21,26 @@ use super::{
 
 const TELEMETRY_INTERVAL_IN_MINUTES: u64 = 1;
 
+/**
+ * ----------METRICS LISTENER----------
+ * The MetricsListener is responsible for querying and transmitting metrics updates from
+ * metrics-enabled docker containers to the telemetry dispatch (see `telemetry/dispatch.rs`).
+ *
+ * The metrics listener broadcasts metrics updates at a regular interval, as well as when it
+ * receives a signal to add or remove a node from its list of monitored AVSes.
+ *
+ * MetricsListenerHandle can be safely cloned and shared across threads.
+ *
+ * -- Initialization --
+ * The MetricsListener is initialized with via the `MetricsListenerHandle::new` function, which
+ * spawns a new tokio task to run the MetricsListener. The MetricsListener is initialized with
+ * the `machine_id` and `identity_wallet` for signing and authentication, a list of `avses`
+ * which are the AVS configurations for the containers to monitor, a `dispatch` handle for
+ * sending the metrics to the telemetry dispatch, and an `error_tx` for sending errors to the
+ * main thread (or wherever errors are being handled).
+ *
+ */
+
 #[derive(Debug, Clone)]
 pub struct MetricsListenerHandle {
     tx: mpsc::Sender<MetricsListenerAction>,
@@ -28,6 +48,7 @@ pub struct MetricsListenerHandle {
 
 impl MetricsListenerHandle {
     pub fn new(
+        docker: &DockerClient,
         machine_id: Uuid,
         identity_wallet: &IvyWallet,
         avses: &[ConfiguredAvs],
@@ -36,6 +57,7 @@ impl MetricsListenerHandle {
     ) -> Self {
         let (tx, rx) = mpsc::channel(100);
         let listener = MetricsListener::new(
+            docker,
             machine_id,
             identity_wallet.clone(),
             avses.to_vec(),
@@ -87,6 +109,7 @@ pub enum MetricsListenerError {
 /// updating the AVS list accordingly. `avses` would probably be better represented by a set keyed
 /// to the container_name name, which is unique per docker sysem.
 pub struct MetricsListener {
+    docker: DockerClient,
     machine_id: Uuid,
     identity_wallet: IvyWallet,
     avses: Vec<ConfiguredAvs>,
@@ -96,7 +119,8 @@ pub struct MetricsListener {
 }
 
 impl MetricsListener {
-    pub fn new(
+    fn new(
+        docker: &DockerClient,
         machine_id: Uuid,
         identity_wallet: IvyWallet,
         avses: Vec<ConfiguredAvs>,
@@ -104,7 +128,7 @@ impl MetricsListener {
         rx: mpsc::Receiver<MetricsListenerAction>,
         error_tx: ErrorChannelTx,
     ) -> Self {
-        Self { machine_id, identity_wallet, avses, dispatch, rx, error_tx }
+        Self { docker: docker.clone(), machine_id, identity_wallet, avses, dispatch, rx, error_tx }
     }
 
     pub async fn run(mut self) {
@@ -114,9 +138,11 @@ impl MetricsListener {
         loop {
             let res = tokio::select! {
                 _ = interval.tick() => {
+                    info!("Interval tick");
                     self.broadcast_metrics().await
                 }
                 Some(action) = self.rx.recv() => {
+                    info!("Action received: {:#?}", action);
                     self.handle_action(action).await
                 }
             };
@@ -128,6 +154,7 @@ impl MetricsListener {
 
     async fn broadcast_metrics(&self) -> Result<(), MetricsListenerError> {
         report_metrics(
+            &self.docker,
             self.machine_id,
             &self.identity_wallet,
             self.avses.as_slice(),
@@ -152,11 +179,9 @@ impl MetricsListener {
                     self.avses.push(avs.clone());
                     info!("Added metrics listener for container: {}", avs.container_name);
                 }
-                self.broadcast_metrics().await
             }
             MetricsListenerAction::RemoveNode(avs) => {
                 self.avses.retain(|x| x.container_name != avs.container_name);
-                self.broadcast_metrics().await
             }
             MetricsListenerAction::RemoveNodeByName(container_name) => {
                 let avs_num = self.avses.len();
@@ -164,13 +189,13 @@ impl MetricsListener {
                 if avs_num != self.avses.len() {
                     info!("Detected container stop: {}", container_name);
                 }
-                self.broadcast_metrics().await
             }
         }
+        self.broadcast_metrics().await
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub enum MetricsListenerAction {
     AddNode(ConfiguredAvs),
     RemoveNode(ConfiguredAvs),
@@ -179,12 +204,12 @@ pub enum MetricsListenerAction {
 }
 
 pub async fn report_metrics(
+    docker: &DockerClient,
     machine_id: Uuid,
     identity_wallet: &IvyWallet,
     avses: &[ConfiguredAvs],
     dispatch: &TelemetryDispatchHandle,
 ) -> Result<(), MetricsListenerError> {
-    let docker = DockerClient::default();
     let images = docker.list_images().await;
     debug!("Got images {images:#?}");
     for avs in avses {
@@ -217,6 +242,8 @@ pub async fn report_metrics(
         };
 
         // Send node data
+
+        info!("Sending node data with version hash: {:#?}", version_hash);
 
         let node_data = NodeData {
             name: avs.assigned_name.to_owned(),
