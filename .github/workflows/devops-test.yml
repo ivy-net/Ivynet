@@ -6,6 +6,7 @@ on:
     branches-ignore:
       - dev
       - master
+      - release-*
     paths:
       - .github/**
       - devops/**
