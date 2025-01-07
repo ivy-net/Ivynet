@@ -1,7 +1,7 @@
 use chrono::NaiveDateTime;
 use ivynet_node_type::NodeType;
 
-use crate::error::BackendError;
+use crate::error::DatabaseError;
 
 #[derive(Clone, Debug)]
 pub struct AvsVersionHash {
@@ -32,7 +32,7 @@ impl From<DbAvsVersionHash> for AvsVersionHash {
 }
 
 impl AvsVersionHash {
-    pub async fn get_version(pool: &sqlx::PgPool, hash: &str) -> Result<String, BackendError> {
+    pub async fn get_version(pool: &sqlx::PgPool, hash: &str) -> Result<String, DatabaseError> {
         let avs_version: DbAvsVersionHash = sqlx::query_as!(
             DbAvsVersionHash,
             "SELECT * FROM avs_version_hash WHERE hash = $1",
@@ -48,7 +48,7 @@ impl AvsVersionHash {
         pool: &sqlx::PgPool,
         avs_type: &str,
         digest: &str,
-    ) -> Result<Vec<String>, BackendError> {
+    ) -> Result<Vec<String>, DatabaseError> {
         let tags = sqlx::query_as!(
             DbAvsVersionHash,
             r#"SELECT * FROM avs_version_hash WHERE avs_type = $1 AND hash = $2"#,
@@ -64,7 +64,7 @@ impl AvsVersionHash {
     pub async fn get_avs_type_from_hash(
         pool: &sqlx::PgPool,
         hash: &str,
-    ) -> Result<NodeType, BackendError> {
+    ) -> Result<NodeType, DatabaseError> {
         let avs_version: DbAvsVersionHash = sqlx::query_as!(
             DbAvsVersionHash,
             "SELECT * FROM avs_version_hash WHERE hash = $1",
@@ -80,7 +80,7 @@ impl AvsVersionHash {
         pool: &sqlx::PgPool,
         avs_type: &str,
         version: &str,
-    ) -> Result<String, BackendError> {
+    ) -> Result<String, DatabaseError> {
         let avs_version: DbAvsVersionHash = sqlx::query_as!(
             DbAvsVersionHash,
             "SELECT * FROM avs_version_hash WHERE avs_type = $1 AND version = $2",
@@ -96,7 +96,7 @@ impl AvsVersionHash {
     pub async fn get_versions_from_digests(
         pool: &sqlx::PgPool,
         digests: &[String],
-    ) -> Result<Vec<(String, String)>, BackendError> {
+    ) -> Result<Vec<(String, String)>, DatabaseError> {
         let avs_versions = sqlx::query_as!(
             DbAvsVersionHash,
             "SELECT * FROM avs_version_hash WHERE hash = ANY($1)",
@@ -110,7 +110,7 @@ impl AvsVersionHash {
     pub async fn get_all_for_type(
         pool: &sqlx::PgPool,
         avs_type: &str,
-    ) -> Result<Vec<AvsVersionHash>, BackendError> {
+    ) -> Result<Vec<AvsVersionHash>, DatabaseError> {
         let tags = sqlx::query_as!(
             DbAvsVersionHash,
             r#"SELECT * FROM avs_version_hash WHERE avs_type = $1"#,
@@ -127,7 +127,7 @@ impl AvsVersionHash {
         avs_type: &NodeType,
         hash: &str,
         version: &str,
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), DatabaseError> {
         sqlx::query!(
             "INSERT INTO avs_version_hash (avs_type, hash, version) values ($1, $2, $3)",
             avs_type.to_string(),
@@ -145,7 +145,7 @@ impl AvsVersionHash {
         avs_type: &NodeType,
         hash: &str,
         version: &str,
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), DatabaseError> {
         // Uses above for reference but runs an insert and updates on conflict
         sqlx::query!(
             "INSERT INTO avs_version_hash (avs_type, hash, version) values ($1, $2, $3) ON CONFLICT (avs_type, version) DO UPDATE SET version = $3, hash = $2",

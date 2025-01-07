@@ -6,10 +6,8 @@ use axum::{
 use axum_extra::extract::CookieJar;
 
 use super::{authorize, HttpState};
-use crate::{
-    db::{Client, Machine},
-    error::BackendError,
-};
+use crate::error::BackendError;
+use db::{Client, Machine};
 
 /// Grab grab IDs for every machine under every client in the organization
 #[utoipa::path(

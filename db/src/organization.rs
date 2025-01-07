@@ -2,7 +2,7 @@ use chrono::{NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{query, PgPool};
 
-use crate::error::BackendError;
+use crate::error::DatabaseError;
 
 use super::{verification::Verification, Account, Role};
 
@@ -20,7 +20,7 @@ impl Organization {
         pool: &PgPool,
         name: &str,
         verified: bool,
-    ) -> Result<Organization, BackendError> {
+    ) -> Result<Organization, DatabaseError> {
         let now: NaiveDateTime = Utc::now().naive_utc();
         let org = sqlx::query_as!(
             Organization,
@@ -37,7 +37,7 @@ impl Organization {
         Ok(org)
     }
 
-    pub async fn get(pool: &PgPool, id: u64) -> Result<Organization, BackendError> {
+    pub async fn get(pool: &PgPool, id: u64) -> Result<Organization, DatabaseError> {
         let org = sqlx::query_as!(
             Organization,
             r#"SELECT organization_id, name, verified, created_at, updated_at FROM organization
@@ -54,7 +54,7 @@ impl Organization {
         pool: &PgPool,
         email: &str,
         password: &str,
-    ) -> Result<Account, BackendError> {
+    ) -> Result<Account, DatabaseError> {
         Account::new(pool, self, email, password, Role::Admin).await
     }
 
@@ -63,7 +63,7 @@ impl Organization {
         pool: &PgPool,
         email: &str,
         role: Role,
-    ) -> Result<Verification, BackendError> {
+    ) -> Result<Verification, DatabaseError> {
         let account = Account::new(pool, self, email, "", role).await?;
 
         let verification =
@@ -73,7 +73,7 @@ impl Organization {
         Ok(verification)
     }
 
-    pub async fn verify(&mut self, pool: &PgPool) -> Result<(), BackendError> {
+    pub async fn verify(&mut self, pool: &PgPool) -> Result<(), DatabaseError> {
         self.verified = true;
         query!(
             "UPDATE organization SET verified = true WHERE organization_id = $1",
@@ -84,7 +84,7 @@ impl Organization {
         Ok(())
     }
 
-    pub async fn purge(pool: &PgPool) -> Result<(), BackendError> {
+    pub async fn purge(pool: &PgPool) -> Result<(), DatabaseError> {
         query!("DELETE FROM organization").execute(pool).await?;
         Ok(())
     }

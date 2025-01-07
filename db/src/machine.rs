@@ -5,7 +5,7 @@ use sqlx::{query, PgPool};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::error::BackendError;
+use crate::error::DatabaseError;
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct Machine {
@@ -37,7 +37,7 @@ impl From<DbMachine> for Machine {
     }
 }
 impl Machine {
-    pub async fn get(pool: &PgPool, machine_id: Uuid) -> Result<Option<Machine>, BackendError> {
+    pub async fn get(pool: &PgPool, machine_id: Uuid) -> Result<Option<Machine>, DatabaseError> {
         let machines = sqlx::query_as!(
             DbMachine,
             "SELECT machine_id, name, client_id, created_at, updated_at FROM machine WHERE machine_id = $1",
@@ -52,7 +52,7 @@ impl Machine {
     pub async fn get_all_for_client_id(
         pool: &PgPool,
         client_id: &Address,
-    ) -> Result<Vec<Machine>, BackendError> {
+    ) -> Result<Vec<Machine>, DatabaseError> {
         let machines = sqlx::query_as!(
             DbMachine,
             "SELECT machine_id, name, client_id, created_at, updated_at FROM machine WHERE client_id = $1",
@@ -68,7 +68,7 @@ impl Machine {
         pool: &PgPool,
         client_id: &Address,
         machine_id: Uuid,
-    ) -> Result<bool, BackendError> {
+    ) -> Result<bool, DatabaseError> {
         let machines = sqlx::query_as!(
             DbMachine,
             "SELECT machine_id, name, client_id, created_at, updated_at FROM machine WHERE client_id = $1 AND machine_id = $2",
@@ -85,7 +85,7 @@ impl Machine {
         client_id: &Address,
         name: &str,
         machine_id: Uuid,
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), DatabaseError> {
         let now: NaiveDateTime = Utc::now().naive_utc();
 
         query!(
@@ -101,7 +101,7 @@ impl Machine {
         Ok(())
     }
 
-    pub async fn set_name(&self, pool: &PgPool, name: &str) -> Result<(), BackendError> {
+    pub async fn set_name(&self, pool: &PgPool, name: &str) -> Result<(), DatabaseError> {
         let now: NaiveDateTime = Utc::now().naive_utc();
         query!(
             "UPDATE machine SET name = $2, updated_at = $3 WHERE machine_id = $1",
@@ -114,12 +114,12 @@ impl Machine {
         Ok(())
     }
 
-    pub async fn delete(&self, pool: &PgPool) -> Result<(), BackendError> {
+    pub async fn delete(&self, pool: &PgPool) -> Result<(), DatabaseError> {
         query!("DELETE FROM machine WHERE machine_id = $1", self.machine_id).execute(pool).await?;
         Ok(())
     }
 
-    pub async fn purge(pool: &PgPool) -> Result<(), BackendError> {
+    pub async fn purge(pool: &PgPool) -> Result<(), DatabaseError> {
         query!("DELETE FROM machine").execute(pool).await?;
         Ok(())
     }

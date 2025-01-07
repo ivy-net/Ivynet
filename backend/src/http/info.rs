@@ -1,16 +1,13 @@
+use crate::error::BackendError;
 use axum::{
     extract::{Path, State},
     http::HeaderMap,
     Json,
 };
 use axum_extra::extract::CookieJar;
+use db::{avs_version::DbAvsVersionData, AvsVersionData};
 use ivynet_node_type::NodeType;
 use tracing::debug;
-
-use crate::{
-    db::{avs_version::DbAvsVersionData, AvsVersionData},
-    error::BackendError,
-};
 
 use super::{authorize, HttpState};
 

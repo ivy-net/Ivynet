@@ -1,12 +1,10 @@
-use crate::{
+use crate::error::IngressError;
+use db::{
     data::node_data::{update_avs_active_set, update_avs_version},
-    db::{
-        log::{ContainerLog, LogLevel},
-        machine::Machine,
-        metric::Metric,
-        Account, Avs, AvsVersionHash,
-    },
-    error::BackendError,
+    log::{ContainerLog, LogLevel},
+    machine::Machine,
+    metric::Metric,
+    Account, Avs, AvsVersionHash,
 };
 use ivynet_core::{
     ethers::types::{Address, Signature},
@@ -236,7 +234,7 @@ pub async fn serve(
     tls_cert: Option<String>,
     tls_key: Option<String>,
     port: u16,
-) -> Result<(), BackendError> {
+) -> Result<(), IngressError> {
     tracing::info!("Starting GRPC server on port {port}");
     server::Server::new(BackendServer::new(BackendService::new(pool)), tls_cert, tls_key)
         .serve(server::Endpoint::Port(port))

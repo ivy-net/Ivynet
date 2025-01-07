@@ -1,4 +1,4 @@
-use crate::error::BackendError;
+use crate::error::DatabaseError;
 
 use chrono::{NaiveDateTime, Utc};
 use ivynet_core::ethers::types::Address;
@@ -9,7 +9,7 @@ use uuid::Uuid;
 
 use super::{avs::Avs, client::Client, machine::Machine, verification::Verification, Organization};
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, sqlx::Type, Deserialize, Serialize, ToSchema)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, sqlx::Type, Deserialize, Serialize, ToSchema)]
 #[sqlx(type_name = "user_role", rename_all = "lowercase")]
 pub enum Role {
     Owner,
@@ -43,7 +43,7 @@ pub struct Account {
 }
 
 impl Account {
-    pub async fn get_all(pool: &PgPool) -> Result<Vec<Account>, BackendError> {
+    pub async fn get_all(pool: &PgPool) -> Result<Vec<Account>, DatabaseError> {
         let accounts = sqlx::query_as!(
             Account,
             r#"SELECT user_id, organization_id, email, password, role AS "role!: Role", created_at, updated_at FROM account"#
@@ -58,7 +58,7 @@ impl Account {
         pool: &PgPool,
         email: &str,
         password: &str,
-    ) -> Result<Account, BackendError> {
+    ) -> Result<Account, DatabaseError> {
         let account = sqlx::query_as!(
         Account,
         r#"SELECT user_id, organization_id, email, password, role AS "role!: Role", created_at, updated_at FROM account WHERE email = $1 AND password = $2"#,
@@ -74,7 +74,7 @@ impl Account {
         &self,
         pool: &PgPool,
         password: &str,
-    ) -> Result<Account, BackendError> {
+    ) -> Result<Account, DatabaseError> {
         let account = sqlx::query_as!(
             Account,
             r#"UPDATE account SET password = $1 WHERE email = $2
@@ -87,7 +87,7 @@ impl Account {
         Ok(account)
     }
 
-    pub async fn get(pool: &PgPool, id: u64) -> Result<Account, BackendError> {
+    pub async fn get(pool: &PgPool, id: u64) -> Result<Account, DatabaseError> {
         let account = sqlx::query_as!(
         Account,
         r#"SELECT user_id, organization_id, email, password, role AS "role!: Role", created_at, updated_at FROM account WHERE user_id = $1"#,
@@ -99,7 +99,7 @@ impl Account {
         Ok(account)
     }
 
-    pub async fn exists(pool: &PgPool, email: &str) -> Result<bool, BackendError> {
+    pub async fn exists(pool: &PgPool, email: &str) -> Result<bool, DatabaseError> {
         match sqlx::query_as!(
             Account,
             r#"SELECT user_id, organization_id, email, password, role AS "role!: Role", created_at, updated_at FROM account WHERE email = $1"#,
@@ -117,7 +117,7 @@ impl Account {
     pub async fn set_verification(
         pool: &PgPool,
         email: &str,
-    ) -> Result<Verification, BackendError> {
+    ) -> Result<Verification, DatabaseError> {
         let account = Account::find(pool, email).await?;
 
         let verification =
@@ -127,7 +127,7 @@ impl Account {
         Ok(verification)
     }
 
-    pub async fn find(pool: &PgPool, email: &str) -> Result<Account, BackendError> {
+    pub async fn find(pool: &PgPool, email: &str) -> Result<Account, DatabaseError> {
         Ok(sqlx::query_as!(
             Account,
             r#"SELECT user_id, organization_id, email, password, role AS "role!: Role", created_at, updated_at FROM account WHERE email = $1"#,
@@ -136,14 +136,14 @@ impl Account {
             .await?)
     }
 
-    pub async fn clients(&self, pool: &PgPool) -> Result<Vec<Client>, BackendError> {
+    pub async fn clients(&self, pool: &PgPool) -> Result<Vec<Client>, DatabaseError> {
         Client::get_all_for_account(pool, self).await
     }
 
     pub async fn clients_and_machines(
         &self,
         pool: &PgPool,
-    ) -> Result<Vec<(Client, Vec<Machine>)>, BackendError> {
+    ) -> Result<Vec<(Client, Vec<Machine>)>, DatabaseError> {
         let mut clients = Vec::new();
         for client in self.clients(pool).await? {
             clients.push((
@@ -154,7 +154,7 @@ impl Account {
         Ok(clients)
     }
 
-    pub async fn all_machines(&self, pool: &PgPool) -> Result<Vec<Machine>, BackendError> {
+    pub async fn all_machines(&self, pool: &PgPool) -> Result<Vec<Machine>, DatabaseError> {
         let mut machines = Vec::new();
         for client in self.clients(pool).await? {
             let mut m = Machine::get_all_for_client_id(pool, &client.client_id).await?;
@@ -163,7 +163,7 @@ impl Account {
         Ok(machines)
     }
 
-    pub async fn all_avses(&self, pool: &PgPool) -> Result<Vec<Avs>, BackendError> {
+    pub async fn all_avses(&self, pool: &PgPool) -> Result<Vec<Avs>, DatabaseError> {
         let mut avses = Vec::new();
         for machine in self.all_machines(pool).await? {
             let mut a = Avs::get_machines_avs_list(pool, machine.machine_id).await?;
@@ -175,7 +175,7 @@ impl Account {
     pub async fn machines_and_avses(
         &self,
         pool: &PgPool,
-    ) -> Result<Vec<(Machine, Vec<Avs>)>, BackendError> {
+    ) -> Result<Vec<(Machine, Vec<Avs>)>, DatabaseError> {
         let mut machines = Vec::new();
         for machine in self.all_machines(pool).await? {
             machines.push((
@@ -192,7 +192,7 @@ impl Account {
         client_id: &Address,
         machine_id: Uuid,
         name: &str,
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), DatabaseError> {
         Client::create(pool, self, client_id).await?;
         Machine::create(pool, client_id, name, machine_id).await?;
         Ok(())
@@ -204,7 +204,7 @@ impl Account {
         email: &str,
         password: &str,
         role: Role,
-    ) -> Result<Account, BackendError> {
+    ) -> Result<Account, DatabaseError> {
         let now: NaiveDateTime = Utc::now().naive_utc();
 
         let account = sqlx::query_as!(
@@ -224,12 +224,12 @@ impl Account {
         Ok(account)
     }
 
-    pub async fn delete(&self, pool: &PgPool) -> Result<(), BackendError> {
+    pub async fn delete(&self, pool: &PgPool) -> Result<(), DatabaseError> {
         query!("DELETE FROM account WHERE email = $1", self.email).execute(pool).await?;
         Ok(())
     }
 
-    pub async fn purge(pool: &PgPool) -> Result<(), BackendError> {
+    pub async fn purge(pool: &PgPool) -> Result<(), DatabaseError> {
         query!("DELETE FROM account").execute(pool).await?;
         Ok(())
     }

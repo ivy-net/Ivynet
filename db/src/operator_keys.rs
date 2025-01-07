@@ -1,4 +1,4 @@
-use crate::error::BackendError;
+use crate::error::DatabaseError;
 use ivynet_core::ethers::types::Address;
 use serde::{Deserialize, Serialize};
 use sqlx::{query, PgPool};
@@ -20,7 +20,7 @@ pub struct DbOperatorKey {
 }
 
 impl TryFrom<DbOperatorKey> for OperatorKey {
-    type Error = BackendError;
+    type Error = DatabaseError;
 
     fn try_from(key: DbOperatorKey) -> Result<Self, Self::Error> {
         Ok(OperatorKey {
@@ -29,7 +29,7 @@ impl TryFrom<DbOperatorKey> for OperatorKey {
             public_key: key
                 .public_key
                 .parse::<Address>()
-                .map_err(|e| BackendError::CantParsePubKey(e.to_string()))?,
+                .map_err(|e| DatabaseError::CantParsePubKey(e.to_string()))?,
         })
     }
 }
@@ -38,7 +38,7 @@ impl OperatorKey {
     pub async fn get_all_keys_for_organization(
         pool: &PgPool,
         organization_id: i64,
-    ) -> Result<Vec<OperatorKey>, BackendError> {
+    ) -> Result<Vec<OperatorKey>, DatabaseError> {
         let keys = sqlx::query_as!(
            DbOperatorKey,
            "SELECT id, organization_id, name, public_key FROM operator_keys WHERE organization_id = $1",
@@ -50,7 +50,7 @@ impl OperatorKey {
         keys.into_iter().map(|k| k.try_into()).collect()
     }
 
-    pub async fn get(pool: &PgPool, id: i64) -> Result<Option<OperatorKey>, BackendError> {
+    pub async fn get(pool: &PgPool, id: i64) -> Result<Option<OperatorKey>, DatabaseError> {
         let key = sqlx::query_as!(
             DbOperatorKey,
             "SELECT id, organization_id, name, public_key FROM operator_keys WHERE id = $1",
@@ -67,7 +67,7 @@ impl OperatorKey {
         organization_id: i64,
         name: &str,
         public_key: &Address,
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), DatabaseError> {
         let result = query!(
             "INSERT INTO operator_keys (organization_id, name, public_key) values ($1, $2, $3)",
             organization_id,
@@ -78,7 +78,7 @@ impl OperatorKey {
         .await?;
 
         if result.rows_affected() == 0 {
-            return Err(BackendError::FailedToCreateOperatorKey);
+            return Err(DatabaseError::FailedToCreateOperatorKey);
         }
         Ok(())
     }
@@ -88,7 +88,7 @@ impl OperatorKey {
         organization_id: i64,
         public_key: &Address,
         name: &str,
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), DatabaseError> {
         let rows_affected = sqlx::query!(
             "UPDATE operator_keys SET name = $1 WHERE organization_id = $2 AND public_key = $3",
             name,
@@ -100,7 +100,7 @@ impl OperatorKey {
         .rows_affected();
 
         if rows_affected == 0 {
-            return Err(BackendError::OperatorKeyNotFound);
+            return Err(DatabaseError::OperatorKeyNotFound);
         }
         Ok(())
     }
@@ -109,7 +109,7 @@ impl OperatorKey {
         pool: &PgPool,
         organization_id: i64,
         public_key: &Address,
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), DatabaseError> {
         let result = query!(
             "DELETE FROM operator_keys WHERE organization_id = $1 AND public_key = $2",
             organization_id,
@@ -119,12 +119,12 @@ impl OperatorKey {
         .await?;
 
         if result.rows_affected() == 0 {
-            return Err(BackendError::OperatorKeyNotFound);
+            return Err(DatabaseError::OperatorKeyNotFound);
         }
         Ok(())
     }
 
-    pub async fn purge(pool: &PgPool, organization_id: i64) -> Result<(), BackendError> {
+    pub async fn purge(pool: &PgPool, organization_id: i64) -> Result<(), DatabaseError> {
         query!("DELETE FROM operator_keys WHERE organization_id = $1", organization_id)
             .execute(pool)
             .await?;

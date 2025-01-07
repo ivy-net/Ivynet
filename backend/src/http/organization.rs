@@ -1,26 +1,23 @@
 use std::collections::HashMap;
 
+use crate::error::BackendError;
 use axum::{
     extract::{Path, State},
     http::HeaderMap,
     Json,
 };
 use axum_extra::extract::CookieJar;
+use db::{
+    avs::Avs,
+    machine::Machine,
+    verification::{Verification, VerificationType},
+    Account, Organization, Role,
+};
 use sendgrid::v3::{Email, Message, Personalization};
 use serde::{Deserialize, Serialize};
 use tracing::debug;
 use utoipa::ToSchema;
 use uuid::Uuid;
-
-use crate::{
-    db::{
-        avs::Avs,
-        machine::Machine,
-        verification::{Verification, VerificationType},
-        Account, Organization, Role,
-    },
-    error::BackendError,
-};
 
 use super::{authorize, HttpState};
 

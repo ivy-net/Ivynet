@@ -1,4 +1,4 @@
-use crate::error::BackendError;
+use crate::error::DatabaseError;
 use chrono::{DateTime, NaiveDateTime, Utc};
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{json, Value};
@@ -8,7 +8,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 #[derive(
-    Copy, Clone, Debug, PartialEq, PartialOrd, sqlx::Type, Deserialize, Serialize, ToSchema,
+    Copy, Clone, Debug, PartialEq, Eq, PartialOrd, sqlx::Type, Deserialize, Serialize, ToSchema,
 )]
 #[sqlx(type_name = "log_level", rename_all = "lowercase")]
 #[serde(rename_all = "UPPERCASE")]
@@ -34,7 +34,7 @@ impl FromStr for LogLevel {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, sqlx::FromRow, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, sqlx::FromRow, PartialEq, Eq)]
 pub struct ContainerLog {
     pub machine_id: Uuid,
     pub avs_name: String,
@@ -55,7 +55,7 @@ impl Display for ContainerLog {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, sqlx::FromRow, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema, sqlx::FromRow, PartialEq, Eq)]
 pub struct ContainerDbLog {
     pub machine_id: Uuid,
     pub avs_name: String,
@@ -96,7 +96,7 @@ impl ContainerLog {
     pub async fn record(
         pool: &PgPool,
         log: &ContainerLog, // Accept a slice of logs for batch insertion
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), DatabaseError> {
         // cast timestamp to NaiveDateTime or get current time
         let created_at =
             DateTime::from_timestamp(log.created_at.unwrap_or_else(|| Utc::now().timestamp()), 0)
@@ -119,7 +119,7 @@ impl ContainerLog {
     pub async fn get_all_for_machine(
         pool: &PgPool,
         machine_id: Uuid,
-    ) -> Result<Vec<ContainerLog>, BackendError> {
+    ) -> Result<Vec<ContainerLog>, DatabaseError> {
         let db_logs: Vec<ContainerDbLog> = query_as!(
             ContainerDbLog,
             r#"SELECT machine_id, avs_name, log, log_level AS "log_level!: LogLevel", created_at, other_fields as "other_fields: sqlx::types::Json<HashMap<String,String>>" FROM log WHERE machine_id = $1"#,
@@ -139,7 +139,7 @@ impl ContainerLog {
         from: Option<i64>,
         to: Option<i64>,
         log_level: Option<LogLevel>,
-    ) -> Result<Vec<ContainerLog>, BackendError> {
+    ) -> Result<Vec<ContainerLog>, DatabaseError> {
         let db_logs: Vec<ContainerDbLog> =
             match (from, to, log_level) {
                 (Some(from), Some(to), Some(log_level)) => query_as!(

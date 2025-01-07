@@ -2,13 +2,14 @@ use std::sync::Arc;
 
 use chrono::DateTime;
 use clap::Parser as _;
-use ivynet_backend::{
-    config::Config,
+use db::{
+    self,
+    avs_version::DbAvsVersionData,
+    configure,
     data::avs_version::{find_latest_avs_version, VersionType},
-    db::{self, avs_version::DbAvsVersionData, configure},
-    error::BackendError,
-    get_node_version_hashes, grpc, http,
-    telemetry::start_tracing,
+};
+use ivynet_backend::{
+    config::Config, error::BackendError, get_node_version_hashes, http, telemetry::start_tracing,
 };
 use ivynet_core::{ethers::types::Chain, utils::try_parse_chain};
 use ivynet_node_type::NodeType;
@@ -39,7 +40,7 @@ async fn main() -> Result<(), BackendError> {
         return Ok(());
     } else {
         let cache = memcache::connect(config.cache_url.to_string())?;
-        let http_service = http::serve(
+        http::serve(
             pool.clone(),
             cache,
             config.root_url,
@@ -49,26 +50,8 @@ async fn main() -> Result<(), BackendError> {
             config.user_verification_template,
             config.pass_reset_template,
             config.http_port,
-        );
-        let grpc_service = grpc::backend_serve(
-            pool.clone(),
-            config.grpc_tls_cert,
-            config.grpc_tls_key,
-            config.grpc_port,
-        );
-
-        let events_service = grpc::events_serve(
-            pool,
-            config.events_tls_cert,
-            config.events_tls_key,
-            config.events_port,
-        );
-
-        tokio::select! {
-            e = http_service => error!("HTTP server stopped. Reason {e:?}"),
-            e = grpc_service => error!("Executor has stopped. Reason: {e:?}"),
-            e = events_service => error!("Events service has stopped. Reason: {e:?}"),
-        }
+        )
+        .await?;
 
         Ok(())
     }

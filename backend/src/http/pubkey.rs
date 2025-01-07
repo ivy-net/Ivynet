@@ -1,13 +1,13 @@
+use crate::error::BackendError;
 use axum::{
     extract::{Query, State},
     http::HeaderMap,
     Json,
 };
 use axum_extra::extract::CookieJar;
+use db::operator_keys::OperatorKey;
 use ivynet_core::ethers::types::Address;
 use std::collections::HashMap;
-
-use crate::{db::operator_keys::OperatorKey, error::BackendError};
 
 use super::{authorize, HttpState};
 

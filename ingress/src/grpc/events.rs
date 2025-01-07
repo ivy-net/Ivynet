@@ -1,3 +1,5 @@
+use crate::error::IngressError;
+use db::AvsActiveSet;
 use ivynet_core::grpc::{
     self,
     backend_events::{
@@ -9,8 +11,6 @@ use ivynet_core::grpc::{
 };
 use sqlx::PgPool;
 use std::sync::Arc;
-
-use crate::{db::AvsActiveSet, error::BackendError};
 
 pub struct EventsService {
     pool: Arc<PgPool>,
@@ -59,7 +59,7 @@ pub async fn serve(
     tls_cert: Option<String>,
     tls_key: Option<String>,
     port: u16,
-) -> Result<(), BackendError> {
+) -> Result<(), IngressError> {
     tracing::info!("Starting GRPC events server on port {port}");
     server::Server::new(BackendEventsServer::new(EventsService::new(pool)), tls_cert, tls_key)
         .serve(server::Endpoint::Port(port))
