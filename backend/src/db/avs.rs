@@ -125,14 +125,26 @@ impl Avs {
     ) -> Result<(), BackendError> {
         let now = chrono::Utc::now().naive_utc();
 
-        sqlx::query!(
-            "INSERT INTO avs (avs_name, machine_id, avs_type, avs_version, active_set, operator_address, version_hash, created_at, updated_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-             ON CONFLICT (machine_id, avs_name)
-             DO UPDATE SET avs_version = EXCLUDED.avs_version, updated_at = $8",
+        let mut tx = pool.begin().await?;
+
+        // The CASE statement in the UPDATE clause ensures we only update avs_type
+        // when the new type is not Unknown
+        let result = sqlx::query!(
+            "INSERT INTO avs (
+                avs_name, machine_id, avs_type, avs_version,
+                active_set, operator_address, version_hash,
+                created_at, updated_at
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            ON CONFLICT (machine_id, avs_name) DO UPDATE
+            SET avs_type = CASE
+                    WHEN EXCLUDED.avs_type != 'unknown' THEN EXCLUDED.avs_type
+                    ELSE avs.avs_type
+                END,
+                updated_at = EXCLUDED.updated_at,
+                version_hash = EXCLUDED.version_hash",
             avs_name,
             machine_id,
-            avs_type.clone().to_string(),
+            avs_type.to_string(),
             "0.0.0",
             false,
             Option::<Vec<u8>>::None,
@@ -140,9 +152,26 @@ impl Avs {
             now,
             now
         )
-        .execute(pool)
-        .await?;
-        Ok(())
+        .execute(&mut *tx)
+        .await;
+
+        match result {
+            Ok(pg_result) => {
+                if pg_result.rows_affected() == 1 {
+                    tx.commit().await?;
+                    Ok(())
+                } else {
+                    tx.rollback().await?;
+                    Err(BackendError::DataIntegrityError(
+                        "Unexpected number of rows affected".into(),
+                    ))
+                }
+            }
+            Err(e) => {
+                tx.rollback().await?;
+                Err(BackendError::from(e))
+            }
+        }
     }
 
     pub async fn delete_avs_data(
@@ -219,6 +248,28 @@ impl Avs {
         )
         .execute(pool)
         .await?;
+        Ok(())
+    }
+
+    pub async fn update_node_type(
+        pool: &sqlx::PgPool,
+        machine_id: Uuid,
+        avs_name: &str,
+        node_type: &NodeType,
+    ) -> Result<(), BackendError> {
+        println!("NODE TYPE: {:#?}", node_type);
+        println!("MACHINE ID: {:#?}", machine_id);
+        println!("AVS NAME: {:#?}", avs_name);
+        let result = sqlx::query!(
+            "UPDATE avs SET avs_type = $1 WHERE machine_id = $2 AND avs_name = $3",
+            node_type.to_string(),
+            machine_id,
+            avs_name
+        )
+        .execute(pool)
+        .await?;
+        println!("RESULT: {:#?}", result);
+
         Ok(())
     }
 

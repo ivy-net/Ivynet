@@ -137,14 +137,14 @@ impl Backend for BackendService {
 
         let NodeData { name, node_type, manifest, metrics_alive } = node_data;
 
-        let avs_type = match NodeType::from(node_type.as_str()) {
+        let nt = match NodeType::from(node_type.as_str()) {
             NodeType::Unknown => AvsVersionHash::get_avs_type_from_hash(&self.pool, &manifest)
                 .await
                 .unwrap_or(NodeType::Unknown),
             node_type => node_type,
         };
 
-        Avs::record_avs_data_from_client(&self.pool, machine_id, &name, &avs_type, &manifest)
+        Avs::record_avs_data_from_client(&self.pool, machine_id, &name, &nt, &manifest)
             .await
             .map_err(|e| Status::internal(format!("Failed while saving node_data: {e}")))?;
 
@@ -227,7 +227,6 @@ impl Backend for BackendService {
             .await
             .map_err(|e| Status::internal(format!("Failed while updating machine name: {e}")))?;
 
-        //TODO:
         Ok(Response::new(()))
     }
 }

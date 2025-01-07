@@ -172,7 +172,7 @@ pub async fn start_monitor(mut config: IvyConfig) -> Result<(), anyhow::Error> {
 
 /// Scan function to set up configured AVS cache file. Derives `NodeType` from the name on the
 /// metrics port and node name from the container name list.
-pub async fn scan(config: &IvyConfig) -> Result<(), anyhow::Error> {
+pub async fn scan(force: bool, config: &IvyConfig) -> Result<(), anyhow::Error> {
     let backend_url = config.get_server_url()?;
     let backend_ca = config.get_server_ca();
     let backend_ca = if backend_ca.is_empty() { None } else { Some(backend_ca) };
@@ -188,14 +188,15 @@ pub async fn scan(config: &IvyConfig) -> Result<(), anyhow::Error> {
         monitor_config.configured_avses.iter().map(|a| a.container_name.clone()).collect();
 
     let potential_avses = grab_potential_avses().await;
-    let new_avses = find_new_avses(&potential_avses, backend, &configured_avs_names).await?;
+    let (new_avses, leftover_potential_avses) =
+        find_new_avses(&potential_avses, backend, &configured_avs_names).await?;
 
-    if new_avses.is_empty() {
+    if !force && new_avses.is_empty() {
         println!("No potential new AVSes found");
         return Ok(());
     }
 
-    let selected_avses = select_avses(&new_avses)?;
+    let selected_avses = select_avses(&new_avses, &leftover_potential_avses)?;
     if selected_avses.is_empty() {
         println!("No AVSes selected");
         return Ok(());
@@ -211,7 +212,7 @@ async fn find_new_avses(
     potential_avses: &[PotentialAvs],
     mut backend: BackendClient<Channel>,
     configured_names: &HashSet<String>,
-) -> Result<Vec<ConfiguredAvs>, anyhow::Error> {
+) -> Result<(Vec<ConfiguredAvs>, Vec<PotentialAvs>), anyhow::Error> {
     let digests: Vec<_> = potential_avses
         .iter()
         .filter(|a| !configured_names.contains(&a.container_name))
@@ -219,7 +220,7 @@ async fn find_new_avses(
         .collect();
 
     if digests.is_empty() {
-        return Ok(Vec::new());
+        return Ok((Vec::new(), potential_avses.to_vec()));
     }
 
     let node_types: Option<NodeTypes> = backend
@@ -240,7 +241,8 @@ async fn find_new_avses(
         None
     };
 
-    let mut new_avses = Vec::new();
+    let mut new_configured_avses = Vec::new();
+    let mut new_potential_avses = Vec::new();
     for avs in potential_avses {
         if configured_names.contains(&avs.container_name) {
             continue;
@@ -258,16 +260,18 @@ async fn find_new_avses(
                 }
             };
 
-            new_avses.push(ConfiguredAvs {
+            new_configured_avses.push(ConfiguredAvs {
                 assigned_name: String::new(),
                 container_name: avs.container_name.clone(),
                 avs_type,
                 metric_port,
             });
+        } else {
+            new_potential_avses.push(avs.clone());
         }
     }
 
-    Ok(new_avses)
+    Ok((new_configured_avses, new_potential_avses))
 }
 
 async fn get_metrics_port(ports: &[u16]) -> Result<Option<u16>, anyhow::Error> {
@@ -281,19 +285,74 @@ async fn get_metrics_port(ports: &[u16]) -> Result<Option<u16>, anyhow::Error> {
     Ok(None)
 }
 
-fn select_avses(avses: &[ConfiguredAvs]) -> Result<Vec<ConfiguredAvs>, anyhow::Error> {
+fn select_avses(
+    avses: &[ConfiguredAvs],
+    leftover_potential_avses: &[PotentialAvs],
+) -> Result<Vec<ConfiguredAvs>, anyhow::Error> {
+    let mut selected_avses =
+        if avses.is_empty() { Vec::new() } else { select_detected_avses(avses)? };
+
+    if !leftover_potential_avses.is_empty() && should_add_manual_avses()? {
+        selected_avses.extend(select_manual_avses(leftover_potential_avses)?);
+    }
+
+    if selected_avses.is_empty() {
+        return Err(anyhow!("No AVSes were selected"));
+    }
+
+    Ok(selected_avses)
+}
+
+fn select_detected_avses(avses: &[ConfiguredAvs]) -> Result<Vec<ConfiguredAvs>, anyhow::Error> {
+    debug_assert!(!avses.is_empty(), "avses must not be empty");
+
     let items: Vec<String> = avses
         .iter()
         .map(|a| format!("{} under container {}", a.avs_type, a.container_name))
         .collect();
 
     let selected = MultiSelect::new()
-        .with_prompt("Select AVSes to add (SPACE to select, ENTER to confirm)")
+        .with_prompt("Select detected AVSes (SPACE to select, ENTER to confirm)")
         .items(&items)
         .interact()
         .map_err(|e| anyhow!("Selection failed: {}", e))?;
 
     Ok(selected.into_iter().map(|idx| avses[idx].clone()).collect())
+}
+
+fn should_add_manual_avses() -> Result<bool, anyhow::Error> {
+    dialoguer::Confirm::new()
+        .with_prompt("Would you like to manually add undetected AVSes?")
+        .default(false) // Makes pressing enter equivalent to 'n'
+        .interact()
+        .map_err(|e| anyhow!("Selection failed: {}", e))
+}
+
+fn select_manual_avses(
+    potential_avses: &[PotentialAvs],
+) -> Result<Vec<ConfiguredAvs>, anyhow::Error> {
+    debug_assert!(!potential_avses.is_empty(), "potential_avses must not be empty");
+
+    let items: Vec<String> = potential_avses
+        .iter()
+        .map(|a| format!("{} under container {}", a.image_name, a.container_name))
+        .collect();
+
+    let selected = MultiSelect::new()
+        .with_prompt("Select AVSes to add manually (SPACE to select, ENTER to confirm)")
+        .items(&items)
+        .interact()
+        .map_err(|e| anyhow!("Selection failed: {}", e))?;
+
+    Ok(selected
+        .into_iter()
+        .map(|idx| ConfiguredAvs {
+            assigned_name: String::new(),
+            container_name: potential_avses[idx].container_name.to_string(),
+            avs_type: NodeType::Unknown,
+            metric_port: None,
+        })
+        .collect())
 }
 
 fn update_monitor_config(

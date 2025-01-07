@@ -61,7 +61,11 @@ enum Commands {
     Monitor,
 
     #[command(name = "scan", about = "Scanning for existing AVS instances running on the machine")]
-    Scan,
+    Scan {
+        /// For forcing manual container addition even when all other AVS's are already configured
+        #[arg(short, long, default_value_t = false)]
+        force: bool,
+    },
 
     #[command(
         name = "register-node",
@@ -111,7 +115,7 @@ async fn main() -> Result<(), AnyError> {
         Commands::Key { subcmd } => key::parse_key_subcommands(subcmd).await?,
         Commands::Node { subcmd } => avs::parse_avs_subcommands(subcmd).await?,
         Commands::Monitor => monitor::start_monitor(config).await?,
-        Commands::Scan => monitor::scan(&config).await?,
+        Commands::Scan { force } => monitor::scan(force, &config).await?,
         Commands::RegisterNode => init::register_node().await?,
         Commands::RenameNode { old_name, new_name } => {
             monitor::rename_node(&config, old_name, new_name).await?;

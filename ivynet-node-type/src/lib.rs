@@ -258,7 +258,7 @@ impl NodeType {
     }
 
     /// Get a vec of all known node types. Excludes `NodeType::Unknown`.
-    pub fn all_known() -> Vec<Self> {
+    pub fn all_known_with_repo() -> Vec<Self> {
         vec![
             NodeType::AvaProtocol,
             NodeType::EigenDA,
@@ -289,7 +289,7 @@ impl NodeType {
     }
 
     pub fn all_default_repositories() -> Vec<&'static str> {
-        let all = Self::all_known();
+        let all = Self::all_known_with_repo();
         all.iter().map(|node_type| node_type.default_repository().unwrap()).collect()
     }
 
@@ -370,6 +370,10 @@ impl NodeType {
             EIGENDA_METRICS_ID => Self::EigenDA,
             _ => Self::Unknown,
         }
+    }
+
+    pub fn list_all_variants() -> Vec<Self> {
+        Self::iter().collect()
     }
 }
 
