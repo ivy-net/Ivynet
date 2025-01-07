@@ -1,8 +1,10 @@
-use crate::data::{machine_data, node_data};
+use db::{
+    self,
+    data::{machine_data, node_data},
+};
 use utoipa::OpenApi;
 
-use super::{super::db, authorize, client, info, machine, node, organization, pubkey};
-
+use super::{authorize, client, info, machine, node, organization, pubkey};
 #[derive(OpenApi)]
 #[openapi(
     paths(

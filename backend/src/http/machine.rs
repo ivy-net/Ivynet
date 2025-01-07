@@ -1,3 +1,4 @@
+use crate::error::BackendError;
 use axum::{
     extract::{Path, Query, State},
     http::HeaderMap,
@@ -9,19 +10,16 @@ use ivynet_node_type::NodeType;
 use std::{collections::HashMap, str::FromStr};
 use uuid::Uuid;
 
-use crate::{
+use db::{
+    avs::Avs,
     data::{
         machine_data::{
             build_machine_info, get_machine_health, MachineInfoReport, MachineStatusReport,
         },
         node_data::{self, build_avs_info, AvsInfo},
     },
-    db::{
-        avs::Avs,
-        log::{ContainerLog, LogLevel},
-        metric::Metric,
-    },
-    error::BackendError,
+    log::{ContainerLog, LogLevel},
+    metric::Metric,
 };
 
 use super::{authorize, HttpState};

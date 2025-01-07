@@ -1,11 +1,11 @@
-use crate::error::BackendError;
+use crate::error::DatabaseError;
 
 use chrono::{NaiveDateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{query, PgPool};
 use uuid::Uuid;
 
-#[derive(Clone, Debug, PartialEq, PartialOrd, sqlx::Type, Deserialize, Serialize)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd, sqlx::Type, Deserialize, Serialize)]
 #[sqlx(type_name = "verification_kind", rename_all = "lowercase")]
 pub enum VerificationType {
     Organization,
@@ -22,7 +22,7 @@ pub struct Verification {
 }
 
 impl Verification {
-    pub async fn get_all(pool: &PgPool) -> Result<Vec<Verification>, BackendError> {
+    pub async fn get_all(pool: &PgPool) -> Result<Vec<Verification>, DatabaseError> {
         let verifications = sqlx::query_as!(
             Verification,
             r#"SELECT verification_id, associated_id, verification_type AS "verification_type!: VerificationType", created_at, updated_at FROM verification"#
@@ -33,7 +33,7 @@ impl Verification {
         Ok(verifications)
     }
 
-    pub async fn get(pool: &PgPool, id: Uuid) -> Result<Verification, BackendError> {
+    pub async fn get(pool: &PgPool, id: Uuid) -> Result<Verification, DatabaseError> {
         let verification = sqlx::query_as!(
             Verification,
             r#"SELECT verification_id, associated_id, verification_type AS "verification_type!: VerificationType", created_at, updated_at FROM verification WHERE verification_id = $1"#,
@@ -49,7 +49,7 @@ impl Verification {
         pool: &PgPool,
         verification_type: VerificationType,
         associated_id: i64,
-    ) -> Result<Verification, BackendError> {
+    ) -> Result<Verification, DatabaseError> {
         let now: NaiveDateTime = Utc::now().naive_utc();
 
         let verification_id = Uuid::new_v4();
@@ -69,7 +69,7 @@ impl Verification {
         Ok(verification)
     }
 
-    pub async fn delete(&self, pool: &PgPool) -> Result<(), BackendError> {
+    pub async fn delete(&self, pool: &PgPool) -> Result<(), DatabaseError> {
         query!("DELETE FROM verification WHERE verification_id = $1", self.verification_id)
             .execute(pool)
             .await?;

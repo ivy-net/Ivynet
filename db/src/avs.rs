@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::error::BackendError;
+use crate::error::DatabaseError;
 
 #[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct Avs {
@@ -72,7 +72,7 @@ impl Avs {
     pub async fn get_machines_avs_list(
         pool: &sqlx::PgPool,
         machine_id: Uuid,
-    ) -> Result<Vec<Avs>, BackendError> {
+    ) -> Result<Vec<Avs>, DatabaseError> {
         let avses: Vec<DbAvs> = sqlx::query_as!(
             DbAvs,
             "SELECT machine_id, avs_name, avs_type, chain, avs_version, operator_address, version_hash, active_set, metrics_alive, created_at, updated_at FROM avs WHERE machine_id = $1",
@@ -88,7 +88,7 @@ impl Avs {
         pool: &sqlx::PgPool,
         machine_id: Uuid,
         avs_name: &str,
-    ) -> Result<Option<Avs>, BackendError> {
+    ) -> Result<Option<Avs>, DatabaseError> {
         let avs: Option<DbAvs> = sqlx::query_as!(
             DbAvs,
             "SELECT machine_id, avs_name, avs_type, chain, avs_version, operator_address, active_set, metrics_alive, version_hash, created_at, updated_at FROM avs WHERE machine_id = $1 AND avs_name = $2",
@@ -98,13 +98,13 @@ impl Avs {
         .fetch_optional(pool)
         .await?;
 
-        avs.map(|avs| Avs::try_from(avs).map_err(|_| BackendError::BadId)).transpose()
+        avs.map(|avs| Avs::try_from(avs).map_err(|_| DatabaseError::BadId)).transpose()
     }
 
     pub async fn get_operator_avs_list(
         pool: &sqlx::PgPool,
         operator_id: &Address,
-    ) -> Result<Vec<Avs>, BackendError> {
+    ) -> Result<Vec<Avs>, DatabaseError> {
         let avses: Vec<DbAvs> = sqlx::query_as!(
             DbAvs,
             "SELECT machine_id, avs_name, avs_type, chain, avs_version, operator_address, active_set, metrics_alive, version_hash, created_at, updated_at FROM avs WHERE operator_address = $1",
@@ -122,7 +122,7 @@ impl Avs {
         avs_name: &str,
         avs_type: &NodeType,
         version_hash: &str,
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), DatabaseError> {
         let now = chrono::Utc::now().naive_utc();
 
         let mut tx = pool.begin().await?;
@@ -162,14 +162,14 @@ impl Avs {
                     Ok(())
                 } else {
                     tx.rollback().await?;
-                    Err(BackendError::DataIntegrityError(
+                    Err(DatabaseError::DataIntegrityError(
                         "Unexpected number of rows affected".into(),
                     ))
                 }
             }
             Err(e) => {
                 tx.rollback().await?;
-                Err(BackendError::from(e))
+                Err(DatabaseError::from(e))
             }
         }
     }
@@ -178,7 +178,7 @@ impl Avs {
         pool: &sqlx::PgPool,
         machine_id: Uuid,
         avs_name: &str,
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), DatabaseError> {
         sqlx::query!(
             "DELETE FROM avs WHERE avs_name = $1 AND machine_id = $2",
             avs_name.to_string(),
@@ -192,7 +192,7 @@ impl Avs {
     pub async fn delete_all_machine_data(
         pool: &sqlx::PgPool,
         machine_id: Uuid,
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), DatabaseError> {
         sqlx::query!("DELETE FROM avs WHERE machine_id = $1", machine_id).execute(pool).await?;
         Ok(())
     }
@@ -202,7 +202,7 @@ impl Avs {
         machine_id: Uuid,
         avs_name: &str,
         operator_address: Option<Address>,
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), DatabaseError> {
         sqlx::query!(
             "UPDATE avs
              SET operator_address = $1
@@ -222,7 +222,7 @@ impl Avs {
         machine_id: Uuid,
         avs_name: &str,
         chain: Chain,
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), DatabaseError> {
         sqlx::query!(
             "UPDATE avs SET chain = $1 WHERE machine_id = $2 AND avs_name = $3",
             chain.to_string(),
@@ -239,7 +239,7 @@ impl Avs {
         machine_id: Uuid,
         avs_name: &str,
         active_set: bool,
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), DatabaseError> {
         sqlx::query!(
             "UPDATE avs SET active_set = $1 WHERE machine_id = $2 AND avs_name = $3",
             active_set,
@@ -256,7 +256,7 @@ impl Avs {
         machine_id: Uuid,
         avs_name: &str,
         node_type: &NodeType,
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), DatabaseError> {
         println!("NODE TYPE: {:#?}", node_type);
         println!("MACHINE ID: {:#?}", machine_id);
         println!("AVS NAME: {:#?}", avs_name);
@@ -279,7 +279,7 @@ impl Avs {
         avs_name: &str,
         version: &str,
         image_digest: &str,
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), DatabaseError> {
         sqlx::query!(
             "UPDATE avs SET avs_version = $1, version_hash = $2 WHERE machine_id = $3 AND avs_name = $4",
             version,
@@ -297,7 +297,7 @@ impl Avs {
         machine_id: Uuid,
         avs_name: &str,
         metrics_alive: bool,
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), DatabaseError> {
         sqlx::query!(
             "UPDATE avs SET metrics_alive = $1 WHERE machine_id = $2 AND avs_name = $3",
             metrics_alive,
@@ -314,7 +314,7 @@ impl Avs {
         machine_id: Uuid,
         old_name: &str,
         new_name: &str,
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), DatabaseError> {
         sqlx::query!(
             "UPDATE avs SET avs_name = $1 WHERE machine_id = $2 AND avs_name = $3",
             new_name,

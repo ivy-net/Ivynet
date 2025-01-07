@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{query, PgPool};
 use utoipa::ToSchema;
 
-use crate::error::BackendError;
+use crate::error::DatabaseError;
 
 use super::Account;
 
@@ -39,7 +39,7 @@ impl Client {
     pub async fn get_all_for_account(
         pool: &PgPool,
         account: &Account,
-    ) -> Result<Vec<Client>, BackendError> {
+    ) -> Result<Vec<Client>, DatabaseError> {
         let clients = sqlx::query_as!(
             DbClient,
             "SELECT client_id, organization_id, created_at, updated_at FROM client WHERE organization_id = $1",
@@ -51,7 +51,7 @@ impl Client {
         Ok(clients.into_iter().map(|n| n.into()).collect())
     }
 
-    pub async fn get(pool: &PgPool, client_id: &Address) -> Result<Option<Client>, BackendError> {
+    pub async fn get(pool: &PgPool, client_id: &Address) -> Result<Option<Client>, DatabaseError> {
         let client: Option<DbClient> = sqlx::query_as!(
             DbClient,
             "SELECT client_id, organization_id, created_at, updated_at FROM client WHERE client_id = $1",
@@ -67,7 +67,7 @@ impl Client {
         pool: &PgPool,
         account: &Account,
         client_id: &Address,
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), DatabaseError> {
         let now: NaiveDateTime = Utc::now().naive_utc();
 
         query!(
@@ -81,14 +81,14 @@ impl Client {
         .await?;
         Ok(())
     }
-    pub async fn delete(pool: &PgPool, client_id: &Address) -> Result<(), BackendError> {
+    pub async fn delete(pool: &PgPool, client_id: &Address) -> Result<(), DatabaseError> {
         query!("DELETE FROM client WHERE client_id = $1", client_id.as_bytes())
             .execute(pool)
             .await?;
         Ok(())
     }
 
-    pub async fn purge(pool: &PgPool) -> Result<(), BackendError> {
+    pub async fn purge(pool: &PgPool) -> Result<(), DatabaseError> {
         query!("DELETE FROM client").execute(pool).await?;
         Ok(())
     }

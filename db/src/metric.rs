@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use crate::error::BackendError;
+use crate::error::DatabaseError;
 
 use chrono::{NaiveDateTime, Utc};
 use ivynet_core::grpc::messages::Metrics;
@@ -64,7 +64,7 @@ impl Metric {
         pool: &PgPool,
         machine_id: Uuid,
         avs_name: &str,
-    ) -> Result<Vec<Metric>, BackendError> {
+    ) -> Result<Vec<Metric>, DatabaseError> {
         let metrics = sqlx::query_as!(
             DbMetric,
             r#"SELECT
@@ -89,7 +89,7 @@ impl Metric {
     pub async fn get_machine_metrics_only(
         pool: &PgPool,
         machine_id: Uuid,
-    ) -> Result<HashMap<String, Metric>, BackendError> {
+    ) -> Result<HashMap<String, Metric>, DatabaseError> {
         let metrics = sqlx::query_as!(
             DbMetric,
             r#"SELECT
@@ -111,7 +111,7 @@ impl Metric {
     pub async fn get_all_for_machine(
         pool: &PgPool,
         machine_id: Uuid,
-    ) -> Result<HashMap<String, Metric>, BackendError> {
+    ) -> Result<HashMap<String, Metric>, DatabaseError> {
         let metrics = sqlx::query_as!(
             DbMetric,
             r#"SELECT
@@ -135,7 +135,7 @@ impl Metric {
         pool: &PgPool,
         machine_id: Uuid,
         avs_name: &str,
-    ) -> Result<HashMap<String, Metric>, BackendError> {
+    ) -> Result<HashMap<String, Metric>, DatabaseError> {
         let metrics = Metric::get_all_for_avs(pool, machine_id, avs_name).await?;
 
         let mut organized = HashMap::new();
@@ -152,7 +152,7 @@ impl Metric {
         machine_id: Uuid,
         avs_name: Option<&str>,
         metrics: &[Metric],
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), DatabaseError> {
         let now: NaiveDateTime = Utc::now().naive_utc();
         let mut tx = pool.begin().await?;
 
@@ -188,7 +188,7 @@ impl Metric {
             let attributes_str = match &metric.attributes {
                 Some(attrs) => {
                     let attrs_string = serde_json::to_string(attrs)
-                        .map_err(|e| BackendError::SerializationError(e.to_string()))?;
+                        .map_err(|e| DatabaseError::SerializationError(e.to_string()))?;
                     Self::escape_copy_value(&attrs_string)
                 }
                 _ => String::from("\\N"),

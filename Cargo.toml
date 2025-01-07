@@ -6,7 +6,7 @@ members = [
 	"backend",
 	"scraper",
 	"ivynet-docker",
-	"ivynet-node-type",
+	"ivynet-node-type", "db", "ingress",
 ]
 resolver = "2"
 

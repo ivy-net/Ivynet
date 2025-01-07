@@ -11,7 +11,7 @@ pub enum BackendError {
     Tonic(#[from] ivynet_core::grpc::Status),
 
     #[error(transparent)]
-    DbError(#[from] sqlx::Error),
+    DbError(#[from] db::error::DatabaseError),
 
     #[error(transparent)]
     Io(#[from] std::io::Error),
@@ -52,12 +52,6 @@ pub enum BackendError {
     #[error("Insufficient priviledges")]
     InsufficientPriviledges,
 
-    #[error("Bad id")]
-    BadId,
-
-    #[error("Can't parse pubkey: {0}")]
-    CantParsePubKey(String),
-
     #[error("Already set")]
     AlreadySet,
 
@@ -79,9 +73,6 @@ pub enum BackendError {
     #[error("Invalid version")]
     InvalidVersion,
 
-    #[error("Invalid chain")]
-    InvalidChain,
-
     #[error(transparent)]
     RegistryError(#[from] ivynet_docker::RegistryError),
 
@@ -91,20 +82,14 @@ pub enum BackendError {
     #[error(transparent)]
     NodeTypeError(#[from] ivynet_node_type::NodeTypeError),
 
+    #[error("Bad id")]
+    BadId,
+
+    #[error("Invalid chain")]
+    InvalidChain,
+
     #[error("Invalid data for set_avs_version")]
     InvalidSetAvsVersionData,
-
-    #[error("Operator key not found")]
-    OperatorKeyNotFound,
-
-    #[error("Failed to create operator key")]
-    FailedToCreateOperatorKey,
-
-    #[error("Data integrity error")]
-    DataIntegrityError(String),
-
-    #[error("Serialization error: {0}")]
-    SerializationError(String),
 }
 
 impl IntoResponse for BackendError {

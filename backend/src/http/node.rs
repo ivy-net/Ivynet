@@ -1,10 +1,9 @@
+use crate::error::BackendError;
 use axum::{extract::State, http::HeaderMap, Json};
 use axum_extra::extract::CookieJar;
-
-use crate::{
+use db::{
     data::node_data::{build_avs_info, AvsInfo, NodeStatusReport},
-    db::metric::Metric,
-    error::BackendError,
+    metric::Metric,
 };
 
 use super::{authorize, HttpState};

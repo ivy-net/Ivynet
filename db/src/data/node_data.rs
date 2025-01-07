@@ -7,16 +7,13 @@ use uuid::Uuid;
 
 use std::collections::HashMap;
 
-use ivynet_core::ethers::types::Chain;
-
 use crate::{
-    db::{
-        avs_version::{DbAvsVersionData, NodeTypeId, VersionData},
-        metric::Metric,
-        Avs, AvsActiveSet, AvsVersionHash,
-    },
-    error::BackendError,
+    avs_version::{DbAvsVersionData, NodeTypeId, VersionData},
+    error::DatabaseError,
+    metric::Metric,
+    Avs, AvsActiveSet, AvsVersionHash,
 };
+use ivynet_core::ethers::types::Chain;
 
 use super::avs_version::{extract_semver, VersionType};
 
@@ -60,7 +57,7 @@ pub struct AvsInfo {
     pub errors: Vec<NodeError>,
 }
 
-#[derive(Serialize, ToSchema, Clone, Debug, PartialEq)]
+#[derive(Serialize, ToSchema, Clone, Debug, PartialEq, Eq)]
 pub enum UpdateStatus {
     Outdated,
     Updateable,
@@ -72,7 +69,7 @@ pub async fn build_avs_info(
     pool: &sqlx::PgPool,
     avs: Avs,
     metrics: HashMap<String, Metric>,
-) -> Result<AvsInfo, BackendError> {
+) -> Result<AvsInfo, DatabaseError> {
     let mut avs = avs;
     let metrics_alive = avs.metrics_alive;
 
@@ -222,7 +219,7 @@ pub async fn update_avs_version(
     machine_id: Uuid,
     avs_name: &str,
     digest: &str,
-) -> Result<(), BackendError> {
+) -> Result<(), DatabaseError> {
     let version = AvsVersionHash::get_version(pool, digest).await?;
     Avs::update_version(pool, machine_id, avs_name, &version, digest).await?;
 
@@ -233,7 +230,7 @@ pub async fn update_avs_active_set(
     pool: &sqlx::PgPool,
     machine_id: Uuid,
     avs_name: &str,
-) -> Result<(), BackendError> {
+) -> Result<(), DatabaseError> {
     let avs = Avs::get_machines_avs(pool, machine_id, avs_name).await?;
 
     let active_set = if let Some(avs) = avs {
@@ -352,7 +349,7 @@ mod node_data_tests {
 
         // Test with missing chain
         let status = get_update_status(
-            version_map.clone(),
+            version_map,
             Version::new(1, 2, 0).to_string().as_ref(),
             test_digest,
             None,

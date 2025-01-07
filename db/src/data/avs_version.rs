@@ -1,7 +1,5 @@
+use crate::{error::DatabaseError, AvsVersionHash};
 use ivynet_node_type::NodeType;
-use tracing::info;
-
-use crate::{db::AvsVersionHash, error::BackendError};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum VersionType {
@@ -86,7 +84,7 @@ impl VersionType {
 pub async fn find_latest_avs_version(
     pool: &sqlx::PgPool,
     node_type: &NodeType,
-) -> Result<(String, String), BackendError> {
+) -> Result<(String, String), DatabaseError> {
     let avs_name = node_type.to_string();
 
     let (tag, digest) = match VersionType::from(node_type) {
@@ -100,7 +98,6 @@ pub async fn find_latest_avs_version(
         VersionType::SemVer => {
             // get all tags from db
             let version_list = AvsVersionHash::get_all_for_type(pool, &avs_name).await?;
-            info!("Found {} tags for {}", version_list.len(), avs_name);
 
             // If a version type is semver, we sanitize the list, discarding the other
             // elements.
@@ -122,7 +119,7 @@ pub async fn find_latest_avs_version(
             let latest = version_vec
                 .iter()
                 .max_by_key(|(v, _, _)| v)
-                .ok_or(BackendError::NoVersionsFound)?;
+                .ok_or(DatabaseError::NoVersionsFound)?;
             (latest.1.to_string(), latest.2.to_string())
         }
         VersionType::HybridVer => {

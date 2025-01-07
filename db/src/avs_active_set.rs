@@ -1,4 +1,4 @@
-use crate::error::BackendError;
+use crate::error::DatabaseError;
 use ivynet_core::{
     ethers::types::{Address, Chain},
     grpc::backend_events::RegistrationEvent,
@@ -60,7 +60,7 @@ impl AvsActiveSet {
     pub async fn record_registration_event(
         pool: &sqlx::PgPool,
         event: &RegistrationEvent,
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), DatabaseError> {
         sqlx::query!(
             "INSERT INTO avs_active_set (directory, avs, operator, chain_id, active, block, log_index)
              VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -84,7 +84,7 @@ impl AvsActiveSet {
         avs: Address,
         operator: Address,
         chain: Chain,
-    ) -> Result<bool, BackendError> {
+    ) -> Result<bool, DatabaseError> {
         let set = sqlx::query_as!(
             DbAvsActiveSet, r#"SELECT directory, avs, operator, chain_id, active, block, log_index
                             FROM avs_active_set WHERE avs = $1 AND operator = $2 AND chain_id = $3"#,
@@ -100,7 +100,7 @@ impl AvsActiveSet {
         pool: &sqlx::PgPool,
         directory: &[u8],
         chain: u64,
-    ) -> Result<u64, BackendError> {
+    ) -> Result<u64, DatabaseError> {
         if let Some(block) = sqlx::query_scalar!(
             r#"SELECT max(block) FROM avs_active_set WHERE directory = $1 AND chain_id = $2"#,
             directory,

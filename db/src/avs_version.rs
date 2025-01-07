@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 use sqlx::{query, PgPool};
 use utoipa::ToSchema;
 
-use crate::error::BackendError;
+use crate::error::DatabaseError;
 
 /// Represents version information for an AVS node
 #[derive(Clone, Serialize, Deserialize, ToSchema, Eq, PartialEq, Debug)]
@@ -49,7 +49,7 @@ pub struct DbAvsVersionData {
 }
 
 impl TryFrom<DbAvsVersionData> for AvsVersionData {
-    type Error = BackendError;
+    type Error = DatabaseError;
 
     fn try_from(db: DbAvsVersionData) -> Result<Self, Self::Error> {
         let version_data = VersionData {
@@ -62,7 +62,7 @@ impl TryFrom<DbAvsVersionData> for AvsVersionData {
         Ok(Self {
             id: NodeTypeId {
                 node_type: NodeType::from(db.node_type.as_str()),
-                chain: try_parse_chain(&db.chain).map_err(|_| BackendError::InvalidChain)?,
+                chain: try_parse_chain(&db.chain).map_err(|_| DatabaseError::InvalidChain)?,
             },
             vd: version_data,
         })
@@ -73,7 +73,7 @@ impl DbAvsVersionData {
     /// Retrieves all AVS version data from the database
     pub async fn get_all_avs_version(
         pool: &PgPool,
-    ) -> Result<HashMap<NodeTypeId, VersionData>, BackendError> {
+    ) -> Result<HashMap<NodeTypeId, VersionData>, DatabaseError> {
         let versions =
             sqlx::query_as!(Self, "SELECT * FROM avs_version_data").fetch_all(pool).await?;
 
@@ -87,7 +87,7 @@ impl DbAvsVersionData {
     pub async fn get_avs_version(
         pool: &PgPool,
         node_type: &NodeType,
-    ) -> Result<Vec<AvsVersionData>, BackendError> {
+    ) -> Result<Vec<AvsVersionData>, DatabaseError> {
         let versions = sqlx::query_as!(
             Self,
             "SELECT * FROM avs_version_data WHERE node_type = $1",
@@ -104,7 +104,7 @@ impl DbAvsVersionData {
         pool: &PgPool,
         node_type: &NodeType,
         chain: &Chain,
-    ) -> Result<Option<AvsVersionData>, BackendError> {
+    ) -> Result<Option<AvsVersionData>, DatabaseError> {
         let version = sqlx::query_as!(
             Self,
             "SELECT * FROM avs_version_data WHERE node_type = $1 AND chain = $2",
@@ -121,7 +121,7 @@ impl DbAvsVersionData {
     pub async fn insert_avs_version(
         pool: &PgPool,
         data: &AvsVersionData,
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), DatabaseError> {
         let query = match (&data.vd.breaking_change_version, &data.vd.breaking_change_datetime) {
             (Some(ver), Some(dt)) => query!(
                 "INSERT INTO avs_version_data (node_type, latest_version_tag, chain, breaking_change_tag, breaking_change_datetime)
@@ -149,7 +149,7 @@ impl DbAvsVersionData {
         pool: &sqlx::PgPool,
         node_type: &NodeType,
         chain: &Chain,
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), DatabaseError> {
         query!(
             "DELETE FROM avs_version_data WHERE node_type = $1 AND chain = $2",
             node_type.to_string(),
@@ -167,7 +167,7 @@ impl DbAvsVersionData {
         chain: &Chain,
         latest_version_tag: &str,
         latest_version_digest: &str,
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), DatabaseError> {
         query!(
             "INSERT INTO avs_version_data (node_type, latest_version_tag, latest_version_digest, chain)
             VALUES ($1, $2, $3, $4)
@@ -189,7 +189,7 @@ impl DbAvsVersionData {
         chain: &Chain,
         breaking_change_version: &str,
         breaking_change_datetime: &NaiveDateTime,
-    ) -> Result<(), BackendError> {
+    ) -> Result<(), DatabaseError> {
         query!(
             "UPDATE avs_version_data
             SET breaking_change_tag = $3, breaking_change_datetime = $4

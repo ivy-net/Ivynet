@@ -1,4 +1,3 @@
-use crate::error::BackendError;
 use sqlx::{pool::PoolOptions, PgPool};
 
 pub mod account;
@@ -7,6 +6,8 @@ pub mod avs_active_set;
 pub mod avs_version;
 pub mod avs_version_hash;
 pub mod client;
+pub mod data;
+pub mod error;
 pub mod log;
 pub mod machine;
 pub mod metric;
@@ -23,10 +24,10 @@ pub use client::Client;
 pub use machine::Machine;
 pub use organization::Organization;
 
-pub async fn configure(uri: &str, migrate: bool) -> Result<PgPool, BackendError> {
+pub async fn configure(uri: &str, _migrate: bool) -> Result<PgPool, error::DatabaseError> {
     let pool = PoolOptions::new().max_connections(5).connect(uri).await?;
-    if migrate {
-        sqlx::migrate!().run(&pool).await?;
-    }
+    // if migrate {
+    //     sqlx::migrate!().run(&pool).await?;
+    // }
     Ok(pool)
 }

@@ -5,9 +5,11 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::{
+    avs::Avs,
     data::node_data::{build_avs_info, AvsInfo},
-    db::{avs::Avs, machine::Machine, metric::Metric},
-    error::BackendError,
+    error::DatabaseError,
+    machine::Machine,
+    metric::Metric,
 };
 
 const CORES_METRIC: &str = "cores";
@@ -72,7 +74,7 @@ pub async fn build_machine_info(
     pool: &sqlx::PgPool,
     machine: &Machine,
     machine_metrics: HashMap<String, Metric>,
-) -> Result<MachineInfoReport, BackendError> {
+) -> Result<MachineInfoReport, DatabaseError> {
     let mut errors = vec![];
 
     let memory_info = build_hardware_info(
@@ -152,7 +154,7 @@ pub fn build_hardware_info(
 pub async fn get_machine_health(
     pool: &PgPool,
     machine_ids: Vec<Uuid>,
-) -> Result<(Vec<Uuid>, Vec<Uuid>), BackendError> {
+) -> Result<(Vec<Uuid>, Vec<Uuid>), DatabaseError> {
     let mut unhealthy_list: Vec<Uuid> = vec![];
     let mut healthy_list: Vec<Uuid> = vec![];
 
