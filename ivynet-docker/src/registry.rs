@@ -32,7 +32,7 @@ impl ImageRegistry for NodeType {
             Self::AethosHolesky => Github,
             Self::ArpaNetworkNodeClient => Github,
             Self::ChainbaseNetworkV1 => Chainbase,
-            Self::ChainbaseNetworkV2 => Chainbase,
+            Self::ChainbaseNetwork => Chainbase,
             Self::UngateInfiniRouteBase => Othentic,
             Self::UngateInfiniRoutePolygon => Othentic,
             Self::GoPlusAVS => Othentic,

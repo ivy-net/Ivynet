@@ -166,6 +166,13 @@ async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
             }
         }
     }
+
+    //todo: remove every entry that isn't in the all_known_with_repo list
+
+    let all_known_with_repo = NodeType::all_known_with_repo();
+    db::AvsVersionHash::delete_avses_from_table(pool, &all_known_with_repo).await?;
+    
+
     Ok(())
 }
 

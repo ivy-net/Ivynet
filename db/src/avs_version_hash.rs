@@ -156,4 +156,18 @@ impl AvsVersionHash {
 
         Ok(())
     }
+
+    pub async fn delete_avses_from_table(
+        pool: &sqlx::PgPool,
+        avs_types_to_keep: &[NodeType],
+    ) -> Result<(), DatabaseError> {
+        let result = sqlx::query!(
+            "DELETE FROM avs_version_hash WHERE avs_type != ALL($1)",
+            &avs_types_to_keep.iter().map(|t| t.to_string()).collect::<Vec<_>>()
+        )
+        .execute(pool)
+        .await?;
+        println!("Deleted {} rows from avs_version_hash", result.rows_affected());
+        Ok(())
+    }
 }

@@ -38,7 +38,7 @@ impl From<&NodeType> for VersionType {
             NodeType::OpenLayerHolesky => VersionType::FixedVer,
             NodeType::OpenLayerMainnet => VersionType::FixedVer,
             NodeType::ChainbaseNetworkV1 => VersionType::SemVer,
-            NodeType::ChainbaseNetworkV2 => VersionType::SemVer,
+            NodeType::ChainbaseNetwork => VersionType::SemVer,
             NodeType::UngateInfiniRouteBase => VersionType::FixedVer,
             NodeType::UngateInfiniRoutePolygon => VersionType::FixedVer,
             NodeType::AethosHolesky => VersionType::SemVer,

@@ -392,14 +392,29 @@ fn get_type(
     image_name: &str,
     container_name: &str,
 ) -> Option<NodeType> {
-    let node_type = hashes
-        .clone()
-        .and_then(|h| h.get(hash).copied())
-        .or_else(|| NodeType::from_image(&extract_image_name(image_name)))
-        .or_else(|| NodeType::from_default_container_name(container_name.trim_start_matches('/')));
+    // First try the hash lookup
+    if let Some(node_type) = hashes.as_ref().and_then(|h| h.get(hash).copied()) {
+        return Some(node_type);
+    }
+
+    // Try getting type from image
+    let from_image = NodeType::from_image(&extract_image_name(image_name));
+
+    let node_type = match from_image {
+        Some(node_type) => match node_type {
+            NodeType::Unknown | NodeType::AltlayerMach => {
+                NodeType::from_default_container_name(container_name.trim_start_matches('/'))
+                    .or(Some(node_type))
+            }
+            _ => Some(node_type),
+        },
+        None => NodeType::from_default_container_name(container_name.trim_start_matches('/')),
+    };
+
     if node_type.is_none() {
         println!("No avs found for {}", image_name);
     }
+
     node_type
 }
 

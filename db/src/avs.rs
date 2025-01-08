@@ -127,8 +127,10 @@ impl Avs {
 
         let mut tx = pool.begin().await?;
 
-        // The CASE statement in the UPDATE clause ensures we only update avs_type
-        // when the new type is not Unknown
+        // The CASE statement in the UPDATE clause only updates avs_type
+        // when the existing type is 'unknown'
+        // If we get a bug where version hash doesn't match node_type, its because
+        // the user assigned the wrong node_type
         let result = sqlx::query!(
             "INSERT INTO avs (
                 avs_name, machine_id, avs_type, avs_version,
@@ -137,7 +139,7 @@ impl Avs {
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
             ON CONFLICT (machine_id, avs_name) DO UPDATE
             SET avs_type = CASE
-                    WHEN EXCLUDED.avs_type != 'unknown' THEN EXCLUDED.avs_type
+                    WHEN avs.avs_type = 'unknown' THEN EXCLUDED.avs_type
                     ELSE avs.avs_type
                 END,
                 updated_at = EXCLUDED.updated_at,
