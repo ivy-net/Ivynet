@@ -557,18 +557,7 @@ pub async fn set_node_type(
         )
     })?;
 
-    // Always parses to unknown if not valid
     let node_type = NodeType::from(node_type.as_str());
-
-    println!("NODE TYPE: {:#?}", node_type);
-
-    // So we need to tell the user that their input was invalid
-    if node_type == NodeType::Unknown {
-        return Err(BackendError::MalformedParameter(
-            "node_type".to_string(),
-            "Invalid node type".to_string(),
-        ));
-    }
 
     Avs::update_node_type(&state.pool, machine.machine_id, avs_name, &node_type).await?;
 
