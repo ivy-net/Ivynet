@@ -142,6 +142,7 @@ impl Avs {
             ON CONFLICT (machine_id, avs_name) DO UPDATE
             SET avs_type = CASE
                     WHEN avs.avs_type = 'unknown' THEN EXCLUDED.avs_type
+                    ELSE avs.avs_type
                 END,
                 updated_at = EXCLUDED.updated_at,
                 version_hash = EXCLUDED.version_hash",
