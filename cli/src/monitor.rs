@@ -13,7 +13,7 @@ use ivynet_core::{
     telemetry::{fetch_telemetry_from, listen, ConfiguredAvs},
 };
 use ivynet_docker::{dockerapi::DockerClient, RegistryType};
-use ivynet_node_type::NodeType;
+use ivynet_node_type::{AltlayerType, MachType, NodeType};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
@@ -394,6 +394,30 @@ fn get_type(
 ) -> Option<NodeType> {
     // First try the hash lookup
     if let Some(node_type) = hashes.as_ref().and_then(|h| h.get(hash).copied()) {
+        match node_type {
+            NodeType::Altlayer(_any) => {
+                println!("Grabbing Altlayer type: {}", container_name);
+
+                if let Some(node_type) =
+                    NodeType::from_default_container_name(container_name.trim_start_matches('/'))
+                {
+                    return Some(node_type);
+                } else {
+                    println!("No node type found for {}", container_name);
+                }
+            }
+            NodeType::AltlayerMach(_any) => {
+                println!("Grabbing AltlayerMach type: {}", container_name);
+                if let Some(node_type) =
+                    NodeType::from_default_container_name(container_name.trim_start_matches('/'))
+                {
+                    return Some(node_type);
+                } else {
+                    println!("No node type found for {}", container_name);
+                }
+            }
+            _ => (),
+        }
         return Some(node_type);
     }
 
@@ -402,9 +426,18 @@ fn get_type(
 
     let node_type = match from_image {
         Some(node_type) => match node_type {
-            NodeType::Unknown | NodeType::GenericAltlayerMach | NodeType::GenericAltlayer => {
+            NodeType::Altlayer(_any) => {
+                println!("container_name: {}", container_name);
+                println!(
+                    "ref: {:?}",
+                    NodeType::from_default_container_name(container_name.trim_start_matches('/'))
+                );
                 NodeType::from_default_container_name(container_name.trim_start_matches('/'))
-                    .or(Some(node_type))
+                    .or(Some(NodeType::Altlayer(AltlayerType::Unknown)))
+            }
+            NodeType::AltlayerMach(_any) => {
+                NodeType::from_default_container_name(container_name.trim_start_matches('/'))
+                    .or(Some(NodeType::AltlayerMach(MachType::Unknown)))
             }
             _ => Some(node_type),
         },

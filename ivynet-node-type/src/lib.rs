@@ -6,6 +6,21 @@ use tracing::{debug, error, warn};
 const EIGENDA_METRICS_ID: &str = "da-node";
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter)]
+pub enum MachType {
+    Xterio,
+    DodoChain,
+    Cyber,
+    Unknown,
+}
+
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter)]
+pub enum AltlayerType {
+    AltlayerMach,
+    GmNetworkMach,
+    Unknown,
+}
+
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum NodeType {
     AvaProtocol,
     EigenDA,
@@ -19,13 +34,8 @@ pub enum NodeType {
     Hyperlane,
     Brevis,
     WitnessChain,
-    GenericAltlayer,
-    GenericAltlayerMach,
-    AltlayerMach,  // Altlayer Mach AVS
-    XterioMach,    // Altlayer Mach AVS
-    DodoChainMach, // Altlayer Mach AVS
-    CyberMach,     // Altlayer Mach AVS
-    GMNetworkMach, // Altlayer Mach AVS
+    Altlayer(AltlayerType),
+    AltlayerMach(MachType),
     Omni,
     Automata,
     OpenLayerMainnet,
@@ -44,6 +54,50 @@ pub enum NodeType {
     PrimevMevCommit,
     AlignedLayer,
     Unknown,
+}
+
+impl IntoEnumIterator for NodeType {
+    type Iterator = std::vec::IntoIter<NodeType>;
+
+    fn iter() -> Self::Iterator {
+        vec![
+            // Simple variants
+            NodeType::AvaProtocol,
+            NodeType::EigenDA,
+            NodeType::LagrangeStateCommittee,
+            NodeType::LagrangeZkWorkerHolesky,
+            NodeType::LagrangeZkWorkerMainnet,
+            NodeType::K3LabsAvs,
+            NodeType::K3LabsAvsHolesky,
+            NodeType::EOracle,
+            NodeType::Predicate,
+            NodeType::Hyperlane,
+            NodeType::Brevis,
+            NodeType::WitnessChain,
+            NodeType::Omni,
+            NodeType::Automata,
+            NodeType::OpenLayerMainnet,
+            NodeType::OpenLayerHolesky,
+            NodeType::AethosHolesky,
+            NodeType::ArpaNetworkNodeClient,
+            NodeType::UnifiAVS,
+            NodeType::SkateChainBase,
+            NodeType::SkateChainMantle,
+            NodeType::ChainbaseNetworkV1,
+            NodeType::ChainbaseNetwork,
+            NodeType::GoPlusAVS,
+            NodeType::UngateInfiniRouteBase,
+            NodeType::UngateInfiniRoutePolygon,
+            NodeType::PrimevMevCommit,
+            NodeType::AlignedLayer,
+            NodeType::Unknown,
+        ]
+        .into_iter()
+        .chain(AltlayerType::iter().map(NodeType::Altlayer))
+        .chain(MachType::iter().map(NodeType::AltlayerMach))
+        .collect::<Vec<_>>()
+        .into_iter()
+    }
 }
 
 // Works with lower case and kebab case - kebab case is what is displayed
@@ -95,7 +149,7 @@ pub const CHAINBASE_NETWORK_V2_REPO: &str = "network/chainbase-node";
 /* ------- NODE CONTAINER NAMES ------- */
 /* ------------------------------------ */
 //Mainnet:
-pub const MACH_AVS_ETHEREUM: &str = "mach-avs-ethereum";
+pub const MACH_AVS_ETHEREUM: &str = "mach-avs-ethereum-generic-operator";
 pub const MACH_AVS_ETHEREUM_XTERIO: &str = "mach-avs-ethereum-xterio";
 pub const MACH_AVS_ETHEREUM_DODOCHAIN: &str = "mach-avs-ethereum-dodochain";
 pub const MACH_AVS_ETHEREUM_CYBER: &str = "mach-avs-ethereum-cyber";
@@ -115,7 +169,7 @@ pub const LAGRANGE_STATE_COMMITTEE_CONTAINER_NAME: &str = "lagrange-node";
 pub const HYPERLANE_AGENT_CONTAINER_NAME: &str = "ethereum-validator";
 
 //Holesky (Will only have a holesky container name if it isn't the same as mainnet):
-pub const MACH_AVS_HOLESKY: &str = "mach-avs-holesky";
+pub const MACH_AVS_HOLESKY: &str = "mach-avs-holesky-generic-operator";
 pub const MACH_AVS_HOLESKY_XTERIO_TESTNET: &str = "mach-avs-holesky-xterio-testnet";
 pub const MACH_AVS_HOLESKY_DODOCHAIN: &str = "mach-avs-holesky-dodochain";
 pub const MACH_AVS_HOLESKY_CYBER_TESTNET_OPERATOR_NODE: &str =
@@ -141,13 +195,8 @@ impl NodeType {
             Self::Predicate => PREDICATE_REPO,
             Self::Hyperlane => HYPERLANE_REPO,
             Self::WitnessChain => WITNESSCHAIN_REPO,
-            Self::AltlayerMach => ALTLAYER_GENERIC_REPO,
-            Self::GMNetworkMach => ALTLAYER_GENERIC_REPO,
-            Self::XterioMach => ALTLAYER_MACH_REPO,
-            Self::DodoChainMach => ALTLAYER_MACH_REPO,
-            Self::CyberMach => ALTLAYER_MACH_REPO,
-            Self::GenericAltlayer => ALTLAYER_GENERIC_REPO,
-            Self::GenericAltlayerMach => ALTLAYER_MACH_REPO,
+            Self::Altlayer(_altlayer_type) => ALTLAYER_GENERIC_REPO,
+            Self::AltlayerMach(_altlayer_mach_type) => ALTLAYER_MACH_REPO,
             Self::Omni => OMNI_REPO,
             Self::Automata => AUTOMATA_REPO,
             Self::OpenLayerMainnet => OPEN_LAYER_MAINNET_REPO,
@@ -186,11 +235,6 @@ impl NodeType {
         let res = match self {
             Self::EigenDA => EIGENDA_NATIVE_NODE,
             Self::EOracle => EORACLE_DATA_VALIDATOR,
-            Self::AltlayerMach => MACH_AVS_ETHEREUM,
-            Self::XterioMach => MACH_AVS_ETHEREUM_XTERIO,
-            Self::DodoChainMach => MACH_AVS_ETHEREUM_DODOCHAIN,
-            Self::CyberMach => MACH_AVS_ETHEREUM_CYBER,
-            Self::GMNetworkMach => MACH_AVS_ETHEREUM_GMNETWORK,
             Self::Automata => AUTOMATA_OPERATOR,
             Self::Omni => OMNI_HALOVISOR,
             Self::AvaProtocol => AVA_OPERATOR,
@@ -205,8 +249,21 @@ impl NodeType {
             Self::Brevis => {
                 return Err(NodeTypeError::SpecializedError("Brevis is executable only".to_string()))
             }
-            Self::GenericAltlayer => return Err(NodeTypeError::SpecializedError("GenericAltlayer isn't an actual container, its just the image. Assign a specific node type".to_string())),
-            Self::GenericAltlayerMach => return Err(NodeTypeError::SpecializedError("GenericAltlayerMach isn't an actual container, its just the image. Assign a specific node type".to_string())),
+            Self::Altlayer(altlayer_type) => {
+                match altlayer_type {
+                    AltlayerType::AltlayerMach => MACH_AVS_ETHEREUM,
+                    AltlayerType::GmNetworkMach => MACH_AVS_ETHEREUM_GMNETWORK,
+                    AltlayerType::Unknown => return Err(NodeTypeError::SpecializedError("This unknown altlayer type isn't an actual container, its just the image. Assign a specific altlayer type".to_string())),
+                }
+            },
+            Self::AltlayerMach(altlayer_mach_type) => {
+                match altlayer_mach_type {
+                    MachType::Xterio => MACH_AVS_ETHEREUM_XTERIO,
+                    MachType::DodoChain => MACH_AVS_ETHEREUM_DODOCHAIN,
+                    MachType::Cyber => MACH_AVS_ETHEREUM_CYBER,
+                    MachType::Unknown => return Err(NodeTypeError::SpecializedError("GenericAltlayer isn't an actual container, its just the image. Assign a specific altlayer type".to_string())),
+                }
+            },
             Self::K3LabsAvs => return Err(NodeTypeError::NoDefaultContainerName),
             Self::K3LabsAvsHolesky => return Err(NodeTypeError::NoDefaultContainerName),
             Self::AlignedLayer => return Err(NodeTypeError::InvalidNodeType),
@@ -239,18 +296,27 @@ impl NodeType {
         let res = match self {
             Self::EigenDA => EIGENDA_NATIVE_NODE,
             Self::EOracle => EORACLE_DATA_VALIDATOR,
-            Self::AltlayerMach => MACH_AVS_HOLESKY,
-            Self::XterioMach => MACH_AVS_HOLESKY_XTERIO_TESTNET,
-            Self::DodoChainMach => MACH_AVS_HOLESKY_DODOCHAIN,
-            Self::CyberMach => MACH_AVS_HOLESKY_CYBER_TESTNET_OPERATOR_NODE,
-            Self::GMNetworkMach => MACH_AVS_HOLESKY_GMNETWORK,
+            Self::Altlayer(altlayer_type) => {
+                match altlayer_type {
+                    AltlayerType::AltlayerMach => MACH_AVS_HOLESKY,
+                    AltlayerType::GmNetworkMach => MACH_AVS_HOLESKY_GMNETWORK,
+                    AltlayerType::Unknown => return Err(NodeTypeError::SpecializedError("This unknown altlayer type isn't an actual container, its just the image. Assign a specific altlayer type".to_string())),
+                }
+            },
+            Self::AltlayerMach(altlayer_mach_type) => {
+                match altlayer_mach_type {
+                    MachType::Xterio => MACH_AVS_HOLESKY_XTERIO_TESTNET,
+                    MachType::DodoChain => MACH_AVS_HOLESKY_DODOCHAIN,
+                    MachType::Cyber => MACH_AVS_HOLESKY_CYBER_TESTNET_OPERATOR_NODE,
+                    MachType::Unknown => return Err(NodeTypeError::SpecializedError("GenericAltlayer isn't an actual container, its just the image. Assign a specific altlayer type".to_string())),
+                }
+            },
             Self::Omni => OMNI_HALOVISOR,
             Self::Automata => AUTOMATA_OPERATOR_HOLESKY,
             Self::AvaProtocol => AVA_OPERATOR,
             Self::ChainbaseNetwork => CHAINBASE_NETWORK_V2_NODE,
             Self::LagrangeStateCommittee => LAGRANGE_STATE_COMMITTEE_CONTAINER_NAME,
             Self::LagrangeZkWorkerHolesky => LAGRANGE_WORKER_CONTAINER_NAME,
-
             Self::Hyperlane => HYPERLANE_AGENT_CONTAINER_NAME,
             Self::WitnessChain => WITNESSCHAIN_CONTAINER_NAME,
             Self::GoPlusAVS => GOPLUS_CONTAINER_NAME,
@@ -265,8 +331,6 @@ impl NodeType {
                         .to_string(),
                 ))
             }
-            Self::GenericAltlayer => return Err(NodeTypeError::SpecializedError("GenericAltlayer isn't an actual container, its just the image. Assign a specific node type".to_string())),
-            Self::GenericAltlayerMach => return Err(NodeTypeError::SpecializedError("GenericAltlayerMach isn't an actual container, its just the image. Assign a specific node type".to_string())),
             Self::K3LabsAvs => return Err(NodeTypeError::NoDefaultContainerName),
             Self::K3LabsAvsHolesky => return Err(NodeTypeError::NoDefaultContainerName),
             Self::AlignedLayer => return Err(NodeTypeError::InvalidNodeType),
@@ -306,8 +370,8 @@ impl NodeType {
             NodeType::ArpaNetworkNodeClient,
             NodeType::ChainbaseNetwork,
             //AWS rate limits currently
-            NodeType::GenericAltlayer,
-            NodeType::GenericAltlayerMach,
+            NodeType::Altlayer(AltlayerType::Unknown),
+            NodeType::AltlayerMach(MachType::Unknown),
         ]
     }
 
@@ -339,8 +403,8 @@ impl NodeType {
             PREDICATE_REPO => Some(Self::Predicate),
             HYPERLANE_REPO => Some(Self::Hyperlane),
             WITNESSCHAIN_REPO => Some(Self::WitnessChain),
-            ALTLAYER_GENERIC_REPO => Some(Self::GenericAltlayer),
-            ALTLAYER_MACH_REPO => Some(Self::GenericAltlayerMach),
+            ALTLAYER_GENERIC_REPO => Some(Self::Altlayer(AltlayerType::Unknown)),
+            ALTLAYER_MACH_REPO => Some(Self::AltlayerMach(MachType::Unknown)),
             AUTOMATA_REPO => Some(Self::Automata),
             OPEN_LAYER_MAINNET_REPO => Some(Self::OpenLayerMainnet),
             OPEN_LAYER_HOLESKY_REPO => Some(Self::OpenLayerHolesky),
@@ -360,16 +424,16 @@ impl NodeType {
         let node_type = match container_name {
             EIGENDA_NATIVE_NODE => Self::EigenDA,
             EORACLE_DATA_VALIDATOR => Self::EOracle,
-            MACH_AVS_ETHEREUM => Self::AltlayerMach,
-            MACH_AVS_ETHEREUM_XTERIO => Self::XterioMach,
-            MACH_AVS_ETHEREUM_DODOCHAIN => Self::DodoChainMach,
-            MACH_AVS_ETHEREUM_CYBER => Self::CyberMach,
-            MACH_AVS_ETHEREUM_GMNETWORK => Self::GMNetworkMach,
-            MACH_AVS_HOLESKY => Self::AltlayerMach,
-            MACH_AVS_HOLESKY_XTERIO_TESTNET => Self::XterioMach,
-            MACH_AVS_HOLESKY_DODOCHAIN => Self::DodoChainMach,
-            MACH_AVS_HOLESKY_CYBER_TESTNET_OPERATOR_NODE => Self::CyberMach,
-            MACH_AVS_HOLESKY_GMNETWORK => Self::GMNetworkMach,
+            MACH_AVS_ETHEREUM => Self::Altlayer(AltlayerType::AltlayerMach),
+            MACH_AVS_ETHEREUM_GMNETWORK => Self::Altlayer(AltlayerType::GmNetworkMach),
+            MACH_AVS_HOLESKY => Self::Altlayer(AltlayerType::AltlayerMach),
+            MACH_AVS_HOLESKY_GMNETWORK => Self::Altlayer(AltlayerType::GmNetworkMach),
+            MACH_AVS_ETHEREUM_XTERIO => Self::AltlayerMach(MachType::Xterio),
+            MACH_AVS_ETHEREUM_DODOCHAIN => Self::AltlayerMach(MachType::DodoChain),
+            MACH_AVS_ETHEREUM_CYBER => Self::AltlayerMach(MachType::Cyber),
+            MACH_AVS_HOLESKY_XTERIO_TESTNET => Self::AltlayerMach(MachType::Xterio),
+            MACH_AVS_HOLESKY_DODOCHAIN => Self::AltlayerMach(MachType::DodoChain),
+            MACH_AVS_HOLESKY_CYBER_TESTNET_OPERATOR_NODE => Self::AltlayerMach(MachType::Cyber),
             OMNI_HALOVISOR => Self::Omni,
             AUTOMATA_OPERATOR => Self::Automata,
             AUTOMATA_OPERATOR_HOLESKY => Self::Automata,

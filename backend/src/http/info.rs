@@ -84,5 +84,7 @@ pub async fn get_node_types(
     let _account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     let all_variants: Vec<NodeType> = NodeType::list_all_variants();
 
+    println!("all_variants: {:#?}", all_variants);
+
     Ok(Json(all_variants))
 }
