@@ -38,9 +38,7 @@ impl ImageRegistry for NodeType {
             Self::GoPlusAVS => Othentic,
             Self::SkateChainBase => Othentic,
             Self::SkateChainMantle => Othentic,
-            Self::Brevis => {
-                unreachable!("Brevis node type has no docker registry. This should be unenterable.")
-            }
+            Self::Brevis => return Err(NodeTypeError::NoRegistry),
             Self::AlignedLayer => return Err(NodeTypeError::NoRegistry),
             Self::PrimevMevCommit => return Err(NodeTypeError::NoRegistry),
             Self::UnifiAVS => return Err(NodeTypeError::InvalidNodeType),

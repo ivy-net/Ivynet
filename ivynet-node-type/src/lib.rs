@@ -151,7 +151,7 @@ impl NodeType {
             Self::ArpaNetworkNodeClient => ARPA_NETWORK_NODE_CLIENT_REPO,
             Self::ChainbaseNetwork => CHAINBASE_NETWORK_V2_REPO,
             Self::Brevis => {
-                unreachable!("Brevis node type has no repository. This should be unenterable.")
+                return Err(NodeTypeError::SpecializedError("Brevis is executable only".to_string()))
             }
             Self::AethosHolesky => {
                 return Err(NodeTypeError::SpecializedError(
@@ -198,9 +198,8 @@ impl NodeType {
             Self::GoPlusAVS => GOPLUS_CONTAINER_NAME,
             Self::UngateInfiniRouteBase => UNGATE_MAINNET,
             Self::UngateInfiniRoutePolygon => UNGATE_MAINNET,
-
             Self::Brevis => {
-                unreachable!("Brevis node type has no container. This should be unenterable.")
+                return Err(NodeTypeError::SpecializedError("Brevis is executable only".to_string()))
             }
             Self::K3LabsAvs => return Err(NodeTypeError::NoDefaultContainerName),
             Self::K3LabsAvsHolesky => return Err(NodeTypeError::NoDefaultContainerName),
@@ -252,7 +251,7 @@ impl NodeType {
             Self::UngateInfiniRouteBase => UNGATE_NAME_1,
             Self::UngateInfiniRoutePolygon => UNGATE_NAME_1,
             Self::Brevis => {
-                unreachable!("Brevis node type has no container. This should be unenterable.")
+                return Err(NodeTypeError::SpecializedError("Brevis is executable only".to_string()))
             }
             Self::ChainbaseNetworkV1 => {
                 return Err(NodeTypeError::SpecializedError(
