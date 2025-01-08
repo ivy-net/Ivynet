@@ -25,6 +25,8 @@ impl ImageRegistry for NodeType {
             Self::DodoChainMach => AWS,
             Self::CyberMach => AWS,
             Self::GMNetworkMach => AWS,
+            Self::GenericAltlayerMach => AWS,
+            Self::GenericAltlayer => AWS,
             Self::Omni => DockerHub,
             Self::Automata => Github,
             Self::OpenLayerMainnet => GoogleCloud,

@@ -33,6 +33,8 @@ impl From<&NodeType> for VersionType {
             NodeType::DodoChainMach => VersionType::SemVer,
             NodeType::CyberMach => VersionType::SemVer,
             NodeType::GMNetworkMach => VersionType::SemVer,
+            NodeType::GenericAltlayerMach => VersionType::SemVer,
+            NodeType::GenericAltlayer => VersionType::SemVer,
             NodeType::Omni => VersionType::FixedVer,
             NodeType::Automata => VersionType::SemVer,
             NodeType::OpenLayerHolesky => VersionType::FixedVer,

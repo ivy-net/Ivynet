@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "DELETE FROM avs_version_data WHERE node_type != ALL($1)",
+  "query": "DELETE FROM avs_version_hash WHERE avs_type = ANY($1)",
   "describe": {
     "columns": [],
     "parameters": {
@@ -10,5 +10,5 @@
     },
     "nullable": []
   },
-  "hash": "f07860f6832c152f9b265b58c23d33e2f3ab52611aee7b50a6df2f3696640119"
+  "hash": "c8e1bcea347a8b8b08f59fd35f73fd369bb9aca44dba9185a63624cb8503f12a"
 }
