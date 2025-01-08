@@ -306,11 +306,8 @@ impl NodeType {
             NodeType::ArpaNetworkNodeClient,
             NodeType::ChainbaseNetwork,
             //AWS rate limits currently
-            NodeType::AltlayerMach,
-            NodeType::XterioMach,
-            NodeType::DodoChainMach,
-            NodeType::CyberMach,
-            NodeType::GMNetworkMach,
+            NodeType::GenericAltlayer,
+            NodeType::GenericAltlayerMach,
         ]
     }
 
