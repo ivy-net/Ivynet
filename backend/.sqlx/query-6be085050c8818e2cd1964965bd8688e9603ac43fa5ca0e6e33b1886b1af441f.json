@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM avs_version_hash WHERE avs_type != ALL($1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6be085050c8818e2cd1964965bd8688e9603ac43fa5ca0e6e33b1886b1af441f"
+}

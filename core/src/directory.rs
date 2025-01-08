@@ -64,7 +64,7 @@ const ALL_HOLESKY_AVSES: [(NodeType, H160); 24] = [
     (NodeType::SkateChainBase, h160!(0x5d592a255a4369982aa7fb55c6cbc12c7103e5e4)),
     (NodeType::SkateChainMantle, h160!(0x32612e4ec0eec067be22bc0d21e26d2cd3322d84)),
     (NodeType::ChainbaseNetworkV1, h160!(0x5e78eff26480a75e06ccdabe88eb522d4d8e1c9d)),
-    (NodeType::ChainbaseNetworkV2, h160!(0x0fb6b02f8482a06cf1d99558576f111abc377932)),
+    (NodeType::ChainbaseNetwork, h160!(0x0fb6b02f8482a06cf1d99558576f111abc377932)),
     (NodeType::GoPlusAVS, h160!(0x6e0e0479e177c7f5111682c7025b4412613cd9de)),
     (NodeType::UngateInfiniRouteBase, h160!(0x1b8ad2ab0fa5585804ce9e9e2c6097f0328bb05c)),
     (NodeType::PrimevMevCommit, h160!(0xededb8ed37a43fd399108a44646b85b780d85dd4)),

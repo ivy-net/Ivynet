@@ -40,26 +40,34 @@ impl From<&NodeType> for VersionType {
             NodeType::OpenLayerHolesky => VersionType::FixedVer,
             NodeType::OpenLayerMainnet => VersionType::FixedVer,
             NodeType::ChainbaseNetworkV1 => VersionType::SemVer,
-            NodeType::ChainbaseNetworkV2 => VersionType::SemVer,
+            NodeType::ChainbaseNetwork => VersionType::SemVer,
             NodeType::UngateInfiniRouteBase => VersionType::FixedVer,
             NodeType::UngateInfiniRoutePolygon => VersionType::FixedVer,
             NodeType::AethosHolesky => VersionType::SemVer,
             NodeType::ArpaNetworkNodeClient => VersionType::FixedVer,
-            NodeType::Brevis => unreachable!("Brevis has no docker versioning, unenterable"),
+            NodeType::Brevis => {
+                unreachable!("Brevis has no docker versioning, fix in all_known_with_repo")
+            }
             NodeType::PrimevMevCommit => {
-                unreachable!("PrimevMevCommit has no docker versioning, unenterable")
+                unreachable!("PrimevMevCommit has no docker versioning, fix in all_known_with_repo")
             }
             NodeType::AlignedLayer => {
-                unreachable!("AlignedLayer has no docker versioning, unenterable")
+                unreachable!("AlignedLayer has no docker versioning, fix in all_known_with_repo")
             }
-            NodeType::GoPlusAVS => unreachable!("GoPlusAVS has no docker versioning, unenterable"),
+            NodeType::GoPlusAVS => {
+                unreachable!("GoPlusAVS has no docker versioning, fix in all_known_with_repo")
+            }
             NodeType::SkateChainBase => {
-                unreachable!("SkateChainBase has no docker versioning, unenterable")
+                unreachable!("SkateChainBase has no docker versioning, fix in all_known_with_repo")
             }
             NodeType::SkateChainMantle => {
-                unreachable!("SkateChainMantle has no docker versioning, unenterable")
+                unreachable!(
+                    "SkateChainMantle has no docker versioning, fix in all_known_with_repo"
+                )
             }
-            NodeType::UnifiAVS => unreachable!("UnifiAVS has no docker versioning, unenterable"),
+            NodeType::UnifiAVS => {
+                unreachable!("UnifiAVS has no docker versioning, fix in all_known_with_repo")
+            }
         }
     }
 }
