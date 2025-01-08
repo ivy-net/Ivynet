@@ -19,6 +19,8 @@ pub enum NodeType {
     Hyperlane,
     Brevis,
     WitnessChain,
+    GenericAltlayer,
+    GenericAltlayerMach,
     AltlayerMach,  // Altlayer Mach AVS
     XterioMach,    // Altlayer Mach AVS
     DodoChainMach, // Altlayer Mach AVS
@@ -144,6 +146,8 @@ impl NodeType {
             Self::XterioMach => ALTLAYER_MACH_REPO,
             Self::DodoChainMach => ALTLAYER_MACH_REPO,
             Self::CyberMach => ALTLAYER_MACH_REPO,
+            Self::GenericAltlayer => ALTLAYER_GENERIC_REPO,
+            Self::GenericAltlayerMach => ALTLAYER_MACH_REPO,
             Self::Omni => OMNI_REPO,
             Self::Automata => AUTOMATA_REPO,
             Self::OpenLayerMainnet => OPEN_LAYER_MAINNET_REPO,
@@ -164,8 +168,8 @@ impl NodeType {
                         .to_string(),
                 ))
             }
-            Self::UngateInfiniRouteBase => todo!(),
-            Self::UngateInfiniRoutePolygon => todo!(),
+            Self::UngateInfiniRouteBase => return Err(NodeTypeError::NoRepository),
+            Self::UngateInfiniRoutePolygon => return Err(NodeTypeError::NoRepository),
             Self::AlignedLayer => return Err(NodeTypeError::NoRepository),
             Self::PrimevMevCommit => return Err(NodeTypeError::NoRepository),
             Self::GoPlusAVS => return Err(NodeTypeError::NoRepository),
@@ -201,6 +205,8 @@ impl NodeType {
             Self::Brevis => {
                 return Err(NodeTypeError::SpecializedError("Brevis is executable only".to_string()))
             }
+            Self::GenericAltlayer => return Err(NodeTypeError::SpecializedError("GenericAltlayer isn't an actual container, its just the image. Assign a specific node type".to_string())),
+            Self::GenericAltlayerMach => return Err(NodeTypeError::SpecializedError("GenericAltlayerMach isn't an actual container, its just the image. Assign a specific node type".to_string())),
             Self::K3LabsAvs => return Err(NodeTypeError::NoDefaultContainerName),
             Self::K3LabsAvsHolesky => return Err(NodeTypeError::NoDefaultContainerName),
             Self::AlignedLayer => return Err(NodeTypeError::InvalidNodeType),
@@ -259,6 +265,8 @@ impl NodeType {
                         .to_string(),
                 ))
             }
+            Self::GenericAltlayer => return Err(NodeTypeError::SpecializedError("GenericAltlayer isn't an actual container, its just the image. Assign a specific node type".to_string())),
+            Self::GenericAltlayerMach => return Err(NodeTypeError::SpecializedError("GenericAltlayerMach isn't an actual container, its just the image. Assign a specific node type".to_string())),
             Self::K3LabsAvs => return Err(NodeTypeError::NoDefaultContainerName),
             Self::K3LabsAvsHolesky => return Err(NodeTypeError::NoDefaultContainerName),
             Self::AlignedLayer => return Err(NodeTypeError::InvalidNodeType),
@@ -320,6 +328,37 @@ impl NodeType {
         Self::from_repo(parts[1], parts[0])
     }
 
+    // Given a repo and tag, get the NodeType, since they have a 1:1 relationship
+    pub fn from_repo(repo: &str, tag: &str) -> Option<Self> {
+        debug!("repo: {}, tag: {}", repo, tag);
+        match repo {
+            // tag-agnostic nodes
+            AVAPROTOCOL_REPO => Some(Self::AvaProtocol),
+            EIGENDA_REPO => Some(Self::EigenDA),
+            LAGRANGE_STATECOMS_REPO => Some(Self::LagrangeStateCommittee),
+            K3LABS_REPO => Some(Self::K3LabsAvs),
+            K3LABS_HOLESKY_REPO => Some(Self::K3LabsAvsHolesky),
+            EORACLE_REPO => Some(Self::EOracle),
+            PREDICATE_REPO => Some(Self::Predicate),
+            HYPERLANE_REPO => Some(Self::Hyperlane),
+            WITNESSCHAIN_REPO => Some(Self::WitnessChain),
+            ALTLAYER_GENERIC_REPO => Some(Self::GenericAltlayer),
+            ALTLAYER_MACH_REPO => Some(Self::GenericAltlayerMach),
+            AUTOMATA_REPO => Some(Self::Automata),
+            OPEN_LAYER_MAINNET_REPO => Some(Self::OpenLayerMainnet),
+            OPEN_LAYER_HOLESKY_REPO => Some(Self::OpenLayerHolesky),
+            ARPA_NETWORK_NODE_CLIENT_REPO => Some(Self::ArpaNetworkNodeClient),
+            CHAINBASE_NETWORK_V2_REPO => Some(Self::ChainbaseNetwork),
+            // tag-specific nodes
+            LAGRANGE_WORKER_REPO => match tag {
+                "holesky" => Some(Self::LagrangeZkWorkerHolesky),
+                "mainnet" => Some(Self::LagrangeZkWorkerMainnet),
+                _ => None,
+            },
+            _ => None,
+        }
+    }
+
     pub fn from_default_container_name(container_name: &str) -> Option<Self> {
         let node_type = match container_name {
             EIGENDA_NATIVE_NODE => Self::EigenDA,
@@ -351,37 +390,6 @@ impl NodeType {
             _ => return None,
         };
         Some(node_type)
-    }
-
-    // Given a repo and tag, get the NodeType, since they have a 1:1 relationship
-    pub fn from_repo(repo: &str, tag: &str) -> Option<Self> {
-        debug!("repo: {}, tag: {}", repo, tag);
-        match repo {
-            // tag-agnostic nodes
-            AVAPROTOCOL_REPO => Some(Self::AvaProtocol),
-            EIGENDA_REPO => Some(Self::EigenDA),
-            LAGRANGE_STATECOMS_REPO => Some(Self::LagrangeStateCommittee),
-            K3LABS_REPO => Some(Self::K3LabsAvs),
-            K3LABS_HOLESKY_REPO => Some(Self::K3LabsAvsHolesky),
-            EORACLE_REPO => Some(Self::EOracle),
-            PREDICATE_REPO => Some(Self::Predicate),
-            HYPERLANE_REPO => Some(Self::Hyperlane),
-            WITNESSCHAIN_REPO => Some(Self::WitnessChain),
-            ALTLAYER_GENERIC_REPO => Some(Self::AltlayerMach),
-            ALTLAYER_MACH_REPO => Some(Self::AltlayerMach),
-            AUTOMATA_REPO => Some(Self::Automata),
-            OPEN_LAYER_MAINNET_REPO => Some(Self::OpenLayerMainnet),
-            OPEN_LAYER_HOLESKY_REPO => Some(Self::OpenLayerHolesky),
-            ARPA_NETWORK_NODE_CLIENT_REPO => Some(Self::ArpaNetworkNodeClient),
-            CHAINBASE_NETWORK_V2_REPO => Some(Self::ChainbaseNetwork),
-            // tag-specific nodes
-            LAGRANGE_WORKER_REPO => match tag {
-                "holesky" => Some(Self::LagrangeZkWorkerHolesky),
-                "mainnet" => Some(Self::LagrangeZkWorkerMainnet),
-                _ => None,
-            },
-            _ => None,
-        }
     }
 
     pub fn from_metrics_name(metrics_id: &str) -> Self {

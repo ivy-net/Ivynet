@@ -21,6 +21,8 @@ impl ImageRegistry for NodeType {
             Self::Hyperlane => GoogleCloud,
             Self::WitnessChain => DockerHub,
             Self::AltlayerMach => AWS,
+            Self::GenericAltlayerMach => AWS,
+            Self::GenericAltlayer => AWS,
             Self::XterioMach => AWS,
             Self::DodoChainMach => AWS,
             Self::CyberMach => AWS,

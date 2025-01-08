@@ -402,7 +402,7 @@ fn get_type(
 
     let node_type = match from_image {
         Some(node_type) => match node_type {
-            NodeType::Unknown | NodeType::AltlayerMach => {
+            NodeType::Unknown | NodeType::GenericAltlayerMach | NodeType::GenericAltlayer => {
                 NodeType::from_default_container_name(container_name.trim_start_matches('/'))
                     .or(Some(node_type))
             }
