@@ -25,8 +25,7 @@ pub enum NodeType {
     AvaProtocol,
     EigenDA,
     LagrangeStateCommittee,
-    LagrangeZkWorkerHolesky,
-    LagrangeZkWorkerMainnet,
+    LagrangeZkWorker,
     K3LabsAvs,
     K3LabsAvsHolesky,
     EOracle,
@@ -65,8 +64,7 @@ impl IntoEnumIterator for NodeType {
             NodeType::AvaProtocol,
             NodeType::EigenDA,
             NodeType::LagrangeStateCommittee,
-            NodeType::LagrangeZkWorkerHolesky,
-            NodeType::LagrangeZkWorkerMainnet,
+            NodeType::LagrangeZkWorker,
             NodeType::K3LabsAvs,
             NodeType::K3LabsAvsHolesky,
             NodeType::EOracle,
@@ -187,8 +185,7 @@ impl NodeType {
             Self::AvaProtocol => AVAPROTOCOL_REPO,
             Self::EigenDA => EIGENDA_REPO,
             Self::LagrangeStateCommittee => LAGRANGE_STATECOMS_REPO,
-            Self::LagrangeZkWorkerHolesky => LAGRANGE_WORKER_REPO,
-            Self::LagrangeZkWorkerMainnet => LAGRANGE_WORKER_REPO,
+            Self::LagrangeZkWorker => LAGRANGE_WORKER_REPO,
             Self::K3LabsAvs => K3LABS_REPO,
             Self::K3LabsAvsHolesky => K3LABS_HOLESKY_REPO,
             Self::EOracle => EORACLE_REPO,
@@ -240,7 +237,7 @@ impl NodeType {
             Self::AvaProtocol => AVA_OPERATOR,
             Self::ChainbaseNetwork => CHAINBASE_NETWORK_V2_NODE,
             Self::LagrangeStateCommittee => LAGRANGE_STATE_COMMITTEE_CONTAINER_NAME,
-            Self::LagrangeZkWorkerMainnet => LAGRANGE_WORKER_CONTAINER_NAME,
+            Self::LagrangeZkWorker => LAGRANGE_WORKER_CONTAINER_NAME,
             Self::Hyperlane => HYPERLANE_AGENT_CONTAINER_NAME,
             Self::WitnessChain => WITNESSCHAIN_CONTAINER_NAME,
             Self::GoPlusAVS => GOPLUS_CONTAINER_NAME,
@@ -279,7 +276,6 @@ impl NodeType {
                         .to_string(),
                 ))
             }
-            Self::LagrangeZkWorkerHolesky => return Err(NodeTypeError::InvalidNodeType),
             Self::OpenLayerHolesky => return Err(NodeTypeError::InvalidNodeType),
             Self::AethosHolesky => {
                 return Err(NodeTypeError::SpecializedError(
@@ -316,7 +312,7 @@ impl NodeType {
             Self::AvaProtocol => AVA_OPERATOR,
             Self::ChainbaseNetwork => CHAINBASE_NETWORK_V2_NODE,
             Self::LagrangeStateCommittee => LAGRANGE_STATE_COMMITTEE_CONTAINER_NAME,
-            Self::LagrangeZkWorkerHolesky => LAGRANGE_WORKER_CONTAINER_NAME,
+            Self::LagrangeZkWorker => LAGRANGE_WORKER_CONTAINER_NAME,
             Self::Hyperlane => HYPERLANE_AGENT_CONTAINER_NAME,
             Self::WitnessChain => WITNESSCHAIN_CONTAINER_NAME,
             Self::GoPlusAVS => GOPLUS_CONTAINER_NAME,
@@ -343,7 +339,6 @@ impl NodeType {
             Self::AethosHolesky => return Err(NodeTypeError::NoDefaultContainerName),
             Self::OpenLayerHolesky => return Err(NodeTypeError::NoDefaultContainerName),
             Self::OpenLayerMainnet => return Err(NodeTypeError::InvalidNodeType),
-            Self::LagrangeZkWorkerMainnet => return Err(NodeTypeError::InvalidNodeType),
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };
         Ok(res)
@@ -355,8 +350,7 @@ impl NodeType {
             NodeType::AvaProtocol,
             NodeType::EigenDA,
             NodeType::LagrangeStateCommittee,
-            NodeType::LagrangeZkWorkerHolesky,
-            NodeType::LagrangeZkWorkerMainnet,
+            NodeType::LagrangeZkWorker,
             NodeType::K3LabsAvs,
             NodeType::K3LabsAvsHolesky,
             NodeType::EOracle,
@@ -410,12 +404,7 @@ impl NodeType {
             OPEN_LAYER_HOLESKY_REPO => Some(Self::OpenLayerHolesky),
             ARPA_NETWORK_NODE_CLIENT_REPO => Some(Self::ArpaNetworkNodeClient),
             CHAINBASE_NETWORK_V2_REPO => Some(Self::ChainbaseNetwork),
-            // tag-specific nodes
-            LAGRANGE_WORKER_REPO => match tag {
-                "holesky" => Some(Self::LagrangeZkWorkerHolesky),
-                "mainnet" => Some(Self::LagrangeZkWorkerMainnet),
-                _ => None,
-            },
+            LAGRANGE_WORKER_REPO => Some(Self::LagrangeZkWorker),
             _ => None,
         }
     }
@@ -442,7 +431,7 @@ impl NodeType {
             GOPLUS_CONTAINER_NAME => Self::GoPlusAVS,
             UNGATE_MAINNET => Self::UngateInfiniRouteBase,
             WITNESSCHAIN_CONTAINER_NAME => Self::WitnessChain,
-            LAGRANGE_WORKER_CONTAINER_NAME => Self::LagrangeZkWorkerMainnet,
+            LAGRANGE_WORKER_CONTAINER_NAME => Self::LagrangeZkWorker,
             LAGRANGE_STATE_COMMITTEE_CONTAINER_NAME => Self::LagrangeStateCommittee,
             HYPERLANE_AGENT_CONTAINER_NAME => Self::Hyperlane,
             UNGATE_NAME_1 => Self::UngateInfiniRouteBase,
@@ -493,11 +482,11 @@ mod tests {
 
         let image_name_lagrange_holesky = "lagrangelabs/worker:holesky";
         let node_type_lagrange_holesky = NodeType::from_image(image_name_lagrange_holesky).unwrap();
-        assert_eq!(node_type_lagrange_holesky, NodeType::LagrangeZkWorkerHolesky);
+        assert_eq!(node_type_lagrange_holesky, NodeType::LagrangeZkWorker);
 
         let image_name_lagrange_mainnet = "lagrangelabs/worker:mainnet";
         let node_type_lagrange_mainnet = NodeType::from_image(image_name_lagrange_mainnet).unwrap();
-        assert_eq!(node_type_lagrange_mainnet, NodeType::LagrangeZkWorkerMainnet);
+        assert_eq!(node_type_lagrange_mainnet, NodeType::LagrangeZkWorker);
 
         let unknown_image_name = "unknown";
         let unknown_node_type = NodeType::from_image(unknown_image_name);
@@ -510,7 +499,7 @@ mod tests {
             ("eigen-da", NodeType::EigenDA),
             ("ava-protocol", NodeType::AvaProtocol),
             ("lagrange-state-committee", NodeType::LagrangeStateCommittee),
-            ("lagrange-zk-worker-holesky", NodeType::LagrangeZkWorkerHolesky),
+            ("lagrange-zk-worker-holesky", NodeType::LagrangeZkWorker),
             ("e-oracle", NodeType::EOracle),
             ("predicate", NodeType::Predicate),
             ("witness-chain", NodeType::WitnessChain),
@@ -527,7 +516,7 @@ mod tests {
             ("eigenda", NodeType::EigenDA),
             ("avaprotocol", NodeType::AvaProtocol),
             ("lagrangestatecommittee", NodeType::LagrangeStateCommittee),
-            ("lagrangezkworkermainnet", NodeType::LagrangeZkWorkerMainnet),
+            ("lagrangezkworkermainnet", NodeType::LagrangeZkWorker),
             ("eoracle", NodeType::EOracle),
             ("hyperlane", NodeType::Hyperlane),
         ];

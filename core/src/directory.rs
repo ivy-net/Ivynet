@@ -12,7 +12,7 @@ const ALL_DIRECTORIES: [(Chain, H160); 2] = [
 
 const ALL_MAINNET_AVSES: [(NodeType, H160); 28] = [
     (NodeType::EigenDA, h160!(0x870679E138bCdf293b7Ff14dD44b70FC97e12fc0)),
-    (NodeType::LagrangeZkWorkerMainnet, h160!(0x22CAc0e6A1465F043428e8AeF737b3cb09D0eEDa)),
+    (NodeType::LagrangeZkWorker, h160!(0x22CAc0e6A1465F043428e8AeF737b3cb09D0eEDa)),
     (NodeType::LagrangeStateCommittee, h160!(0x35F4f28A8d3Ff20EEd10e087e8F96Ea2641E6AA2)),
     (NodeType::EOracle, h160!(0x23221c5bB90C7c57ecc1E75513e2E4257673F0ef)),
     (NodeType::Hyperlane, h160!(0xe8E59c6C8B56F2c178f63BCFC4ce5e5e2359c8fc)),
@@ -54,7 +54,7 @@ const ALL_MAINNET_AVSES: [(NodeType, H160); 28] = [
 const ALL_HOLESKY_AVSES: [(NodeType, H160); 24] = [
     (NodeType::EigenDA, h160!(0xD4A7E1Bd8015057293f0D0A557088c286942e84b)),
     (NodeType::LagrangeStateCommittee, h160!(0x18A74E66cc90F0B1744Da27E72Df338cEa0A542b)),
-    (NodeType::LagrangeZkWorkerHolesky, h160!(0xf98d5de1014110c65c51b85ea55f73863215cc10)),
+    (NodeType::LagrangeZkWorker, h160!(0xf98d5de1014110c65c51b85ea55f73863215cc10)),
     (NodeType::EOracle, h160!(0x80FE337623Bc849F4b7379f4AB28aF2b470bEa98)),
     (NodeType::Hyperlane, h160!(0xc76E477437065093D353b7d56c81ff54D167B0Ab)),
     // K3 doesn't seem to have a testnet

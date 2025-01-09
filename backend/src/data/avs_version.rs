@@ -1,3 +1,4 @@
+use ivynet_core::ethers::types::Chain;
 use ivynet_node_type::NodeType;
 use tracing::info;
 
@@ -19,8 +20,7 @@ impl From<&NodeType> for VersionType {
     fn from(node_type: &NodeType) -> Self {
         match node_type {
             NodeType::EigenDA => VersionType::SemVer,
-            NodeType::LagrangeZkWorkerHolesky => VersionType::FixedVer,
-            NodeType::LagrangeZkWorkerMainnet => VersionType::FixedVer,
+            NodeType::LagrangeZkWorker => VersionType::FixedVer,
             NodeType::AvaProtocol => VersionType::SemVer,
             NodeType::EOracle => VersionType::HybridVer,
             NodeType::K3LabsAvs => VersionType::FixedVer,
@@ -70,17 +70,17 @@ impl From<&NodeType> for VersionType {
 }
 
 impl VersionType {
-    pub fn fixed_name(node_type: &NodeType) -> Option<&'static str> {
-        match node_type {
-            NodeType::LagrangeZkWorkerHolesky => Some("holesky"),
-            NodeType::LagrangeZkWorkerMainnet => Some("mainnet"),
-            NodeType::K3LabsAvs => Some("latest"),
-            NodeType::K3LabsAvsHolesky => Some("latest"),
-            NodeType::EOracle => Some("latest"),
-            NodeType::Omni => Some("latest"),
-            NodeType::OpenLayerMainnet => Some("latest"),
-            NodeType::OpenLayerHolesky => Some("latest"),
-            NodeType::ArpaNetworkNodeClient => Some("latest"),
+    pub fn fixed_name(node_type: &NodeType, chain: &Chain) -> Option<&'static str> {
+        match (node_type, chain) {
+            (NodeType::LagrangeZkWorker, Chain::Holesky) => Some("holesky"),
+            (NodeType::LagrangeZkWorker, Chain::Mainnet) => Some("mainnet"),
+            (NodeType::K3LabsAvs, _) => Some("latest"),
+            (NodeType::K3LabsAvsHolesky, _) => Some("latest"),
+            (NodeType::EOracle, _) => Some("latest"),
+            (NodeType::Omni, _) => Some("latest"),
+            (NodeType::OpenLayerMainnet, _) => Some("latest"),
+            (NodeType::OpenLayerHolesky, _) => Some("latest"),
+            (NodeType::ArpaNetworkNodeClient, _) => Some("latest"),
             _ => None,
         }
     }
@@ -91,12 +91,13 @@ impl VersionType {
 pub async fn find_latest_avs_version(
     pool: &sqlx::PgPool,
     node_type: &NodeType,
+    chain: &Chain,
 ) -> Result<(String, String), BackendError> {
     let avs_name = node_type.to_string();
 
     let (tag, digest) = match VersionType::from(node_type) {
         VersionType::FixedVer => {
-            let tag = VersionType::fixed_name(node_type)
+            let tag = VersionType::fixed_name(node_type, chain)
                 .expect("FixedVer should have a fixed name like latest")
                 .to_string();
             let digest = AvsVersionHash::get_digest_for_version(pool, &avs_name, &tag).await?;
@@ -131,7 +132,7 @@ pub async fn find_latest_avs_version(
             (latest.1.to_string(), latest.2.to_string())
         }
         VersionType::HybridVer => {
-            let tag = VersionType::fixed_name(node_type).unwrap().to_string();
+            let tag = VersionType::fixed_name(node_type, chain).unwrap().to_string();
             let digest = AvsVersionHash::get_digest_for_version(pool, &avs_name, &tag).await?;
             // Fetch tags and filter out non-semver tags, then sort to find max version of various
             // potential valid tags.
@@ -218,7 +219,7 @@ mod avs_version_tests {
         std::env::set_var("DATABASE_URL", "postgresql://ivy:secret_ivy@localhost:5432/ivynet");
         println!("{:#?}", pool.options());
         let node_registry_entry = NodeType::EigenDA;
-        let version = find_latest_avs_version(&pool, &node_registry_entry).await?;
+        let version = find_latest_avs_version(&pool, &node_registry_entry, &Chain::Mainnet).await?;
         println!("{:?}", version);
         Ok(())
     }
@@ -230,7 +231,7 @@ mod avs_version_tests {
     ) -> sqlx::Result<(), Box<dyn std::error::Error>> {
         std::env::set_var("DATABASE_URL", "postgresql://ivy:secret_ivy@localhost:5432/ivynet");
         let node_registry_entry = NodeType::AvaProtocol;
-        let version = find_latest_avs_version(&pool, &node_registry_entry).await?;
+        let version = find_latest_avs_version(&pool, &node_registry_entry, &Chain::Mainnet).await?;
         println!("{:?}", version);
         Ok(())
     }
@@ -242,7 +243,7 @@ mod avs_version_tests {
     ) -> sqlx::Result<(), Box<dyn std::error::Error>> {
         std::env::set_var("DATABASE_URL", "postgresql://ivy:secret_ivy@localhost:5432/ivynet");
         let node_registry_entry = NodeType::K3LabsAvs;
-        let version = find_latest_avs_version(&pool, &node_registry_entry).await?;
+        let version = find_latest_avs_version(&pool, &node_registry_entry, &Chain::Mainnet).await?;
         println!("{:?}", version);
         Ok(())
     }
@@ -253,8 +254,8 @@ mod avs_version_tests {
         pool: PgPool,
     ) -> sqlx::Result<(), Box<dyn std::error::Error>> {
         std::env::set_var("DATABASE_URL", "postgresql://ivy:secret_ivy@localhost:5432/ivynet");
-        let node_registry_entry = NodeType::LagrangeZkWorkerHolesky;
-        let version = find_latest_avs_version(&pool, &node_registry_entry).await?;
+        let node_registry_entry = NodeType::LagrangeZkWorker;
+        let version = find_latest_avs_version(&pool, &node_registry_entry, &Chain::Holesky).await?;
         println!("{:?}", version);
         Ok(())
     }
@@ -266,7 +267,7 @@ mod avs_version_tests {
     ) -> sqlx::Result<(), Box<dyn std::error::Error>> {
         std::env::set_var("DATABASE_URL", "postgresql://ivy:secret_ivy@localhost:5432/ivynet");
         let node_registry_entry = NodeType::EOracle;
-        let version = find_latest_avs_version(&pool, &node_registry_entry).await?;
+        let version = find_latest_avs_version(&pool, &node_registry_entry, &Chain::Mainnet).await?;
         println!("{:?}", version);
         Ok(())
     }
