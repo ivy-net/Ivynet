@@ -11,8 +11,10 @@ use db::{
 use ivynet_backend::{
     config::Config, error::BackendError, get_node_version_hashes, http, telemetry::start_tracing,
 };
+use strum::IntoEnumIterator;
+
 use ivynet_core::{ethers::types::Chain, utils::try_parse_chain};
-use ivynet_node_type::NodeType;
+use ivynet_node_type::{AltlayerType, MachType, NodeType};
 use sqlx::PgPool;
 use tracing::{debug, error, info, warn};
 
@@ -176,15 +178,52 @@ async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
 async fn update_node_data_versions(pool: &PgPool, chain: &Chain) -> Result<(), BackendError> {
     info!("Updating node data versions for {:?}", chain);
     let node_types = NodeType::all_known_with_repo();
-    for node in node_types {
-        if node == NodeType::LagrangeZkWorkerHolesky && chain == &Chain::Mainnet {
-            continue;
+    for node_type in node_types {
+        match (node_type, chain) {
+            (NodeType::LagrangeZkWorkerHolesky, Chain::Mainnet) => continue,
+            (NodeType::LagrangeZkWorkerMainnet, Chain::Holesky) => continue,
+            (NodeType::K3LabsAvsHolesky, Chain::Mainnet) => continue,
+            (NodeType::K3LabsAvs, Chain::Holesky) => continue,
+            (NodeType::OpenLayerHolesky, Chain::Mainnet) => continue,
+            (NodeType::OpenLayerMainnet, Chain::Holesky) => continue,
+            (NodeType::Altlayer(altlayer_type), _) => match altlayer_type {
+                AltlayerType::Unknown => {
+                    let (tag, digest) = find_latest_avs_version(pool, &node_type).await?;
+                    for altlayer_type in AltlayerType::iter() {
+                        db::DbAvsVersionData::set_avs_version(
+                            pool,
+                            &NodeType::Altlayer(altlayer_type),
+                            chain,
+                            &tag,
+                            &digest,
+                        )
+                        .await?;
+                    }
+                }
+                _ => continue,
+            },
+            (NodeType::AltlayerMach(mach_type), _) => match mach_type {
+                MachType::Unknown => {
+                    let (tag, digest) = find_latest_avs_version(pool, &node_type).await?;
+                    for mach_type in MachType::iter() {
+                        db::DbAvsVersionData::set_avs_version(
+                            pool,
+                            &NodeType::AltlayerMach(mach_type),
+                            chain,
+                            &tag,
+                            &digest,
+                        )
+                        .await?;
+                    }
+                }
+                _ => continue,
+            },
+            _ => {
+                let (tag, digest) = find_latest_avs_version(pool, &node_type).await?;
+                db::DbAvsVersionData::set_avs_version(pool, &node_type, chain, &tag, &digest)
+                    .await?;
+            }
         }
-        if node == NodeType::LagrangeZkWorkerMainnet && chain == &Chain::Holesky {
-            continue;
-        }
-        let (tag, digest) = find_latest_avs_version(pool, &node).await?;
-        db::DbAvsVersionData::set_avs_version(pool, &node, chain, &tag, &digest).await?;
     }
 
     let all_known_with_repo = NodeType::all_known_with_repo();
