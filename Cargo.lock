@@ -2809,6 +2809,7 @@ dependencies = [
  "serde",
  "serde_json",
  "sqlx",
+ "strum",
  "thiserror 2.0.6",
  "tokio",
  "tower-http",

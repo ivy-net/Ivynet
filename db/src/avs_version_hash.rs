@@ -156,4 +156,40 @@ impl AvsVersionHash {
 
         Ok(())
     }
+
+    pub async fn delete_avses_from_table(
+        pool: &sqlx::PgPool,
+        avs_types_to_keep: &[NodeType],
+    ) -> Result<(), DatabaseError> {
+        // First get all unique node types from DB
+        let all_types =
+            sqlx::query!("SELECT DISTINCT avs_type FROM avs_version_hash").fetch_all(pool).await?;
+
+        // Convert keep list to strings for comparison
+        let keep_set: Vec<String> = avs_types_to_keep.iter().map(|t| t.to_string()).collect();
+
+        // Find types to delete
+        let types_to_delete: Vec<String> = all_types
+            .into_iter()
+            .map(|row| row.avs_type)
+            .filter(|node_type| !keep_set.contains(node_type))
+            .collect();
+
+        // If we found types to delete, remove them
+        if !types_to_delete.is_empty() {
+            let result = sqlx::query!(
+                "DELETE FROM avs_version_hash WHERE avs_type = ANY($1)",
+                &types_to_delete
+            )
+            .execute(pool)
+            .await?;
+
+            println!(
+                "Deleted {} rows for node types: {:?}",
+                result.rows_affected(),
+                types_to_delete
+            );
+        }
+        Ok(())
+    }
 }
