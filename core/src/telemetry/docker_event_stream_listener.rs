@@ -2,7 +2,7 @@ use std::{collections::HashMap, time::Duration};
 
 use bollard::secret::{EventMessage, EventMessageTypeEnum};
 use ivynet_docker::{
-    dockerapi::{DockerClient, DockerStreamError},
+    dockerapi::{DockerApi, DockerClient, DockerStreamError},
     get_node_type,
 };
 use ivynet_node_type::NodeType;
@@ -22,14 +22,14 @@ use super::{
 };
 
 #[derive(Debug)]
-pub struct DockerStreamListener {
-    pub docker: DockerClient,
+pub struct DockerStreamListener<D: DockerApi> {
+    pub docker: D,
     pub metrics_listener_handle: MetricsListenerHandle,
     pub logs_listener_handle: LogsListenerManager,
     pub backend: BackendClient<Channel>,
 }
 
-impl DockerStreamListener {
+impl DockerStreamListener<DockerClient> {
     pub fn new(
         metrics_listener: MetricsListenerHandle,
         logs_listener: LogsListenerManager,
@@ -44,7 +44,7 @@ impl DockerStreamListener {
     }
 
     pub async fn run(mut self, known_nodes: Vec<ConfiguredAvs>) -> Result<(), DockerStreamError> {
-        let mut docker_stream = self.docker.stream_events();
+        let mut docker_stream = self.docker.stream_events().await;
         while let Some(Ok(event)) = docker_stream.next().await {
             debug!("Dockerstream Event | {:?}", event);
             if event.typ == Some(EventMessageTypeEnum::CONTAINER) {

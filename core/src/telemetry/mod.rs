@@ -5,7 +5,7 @@ use crate::{
 };
 use dispatch::{TelemetryDispatchError, TelemetryDispatchHandle};
 use docker_event_stream_listener::DockerStreamListener;
-use ivynet_docker::dockerapi::DockerClient;
+use ivynet_docker::dockerapi::{DockerApi, DockerClient};
 use ivynet_node_type::NodeType;
 use logs_listener::LogsListenerManager;
 use metrics_listener::MetricsListenerHandle;
@@ -110,8 +110,14 @@ pub async fn listen(
     }
 
     // Metrics Listener handles metrics from containers and sends them to the dispatcher
-    let metrics_listener_handle =
-        MetricsListenerHandle::new(machine_id, &identity_wallet, avses, &dispatch, error_tx);
+    let metrics_listener_handle = MetricsListenerHandle::new(
+        &docker,
+        machine_id,
+        &identity_wallet,
+        avses,
+        &dispatch,
+        error_tx,
+    );
 
     // Stream listener listens for docker events and sends them to the other listeners for
     // processing

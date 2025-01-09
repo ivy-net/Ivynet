@@ -1,11 +1,4 @@
 use anyhow::anyhow;
-use ivynet_docker::{dockerapi::DockerClient, get_node_type};
-use ivynet_node_type::NodeType;
-use std::{
-    collections::{HashMap, HashSet},
-    path::PathBuf,
-};
-
 use dialoguer::{Input, MultiSelect, Select};
 use ivynet_core::{
     config::{IvyConfig, DEFAULT_CONFIG_PATH},
@@ -19,8 +12,17 @@ use ivynet_core::{
     signature::sign_name_change,
     telemetry::{listen, metrics_listener::fetch_telemetry_from, ConfiguredAvs},
 };
+use ivynet_docker::{
+    dockerapi::{DockerApi, DockerClient},
+    RegistryType,
+};
+use ivynet_node_type::NodeType;
 use serde::{Deserialize, Serialize};
-use tracing::info;
+use std::{
+    collections::{HashMap, HashSet},
+    path::PathBuf,
+};
+use tracing::{debug, info};
 
 use crate::init::set_backend_connection;
 
@@ -229,13 +231,16 @@ async fn find_new_avses(
         .map(Response::into_inner)
         .ok();
 
-    let avs_types: HashMap<String, NodeType> = match node_types {
-        Some(types) => types
-            .node_types
-            .into_iter()
-            .map(|nt| (nt.digest, NodeType::from(nt.node_type.as_str())))
-            .collect::<HashMap<_, _>>(),
-        None => HashMap::new(),
+    let avs_types: Option<HashMap<String, NodeType>> = if let Some(node_types) = node_types {
+        Some(
+            node_types
+                .node_types
+                .into_iter()
+                .map(|nt| (nt.digest, NodeType::from(nt.node_type.as_str())))
+                .collect::<HashMap<_, _>>(),
+        )
+    } else {
+        None
     };
 
     let mut new_avses = Vec::new();
@@ -245,7 +250,7 @@ async fn find_new_avses(
         }
 
         if let Some(avs_type) =
-            get_node_type(&avs_types, &avs.image_hash, &avs.image_name, &avs.container_name)
+            get_type(&avs_types, &avs.image_hash, &avs.image_name, &avs.container_name)
         {
             // Try to get metrics port but don't fail if unavailable
             let metric_port = match get_metrics_port(&avs.ports).await {
@@ -325,10 +330,28 @@ fn update_monitor_config(
     Ok(())
 }
 
+fn get_type(
+    hashes: &Option<HashMap<String, NodeType>>,
+    hash: &str,
+    image_name: &str,
+    container_name: &str,
+) -> Option<NodeType> {
+    let node_type = hashes
+        .clone()
+        .and_then(|h| h.get(hash).copied())
+        .or_else(|| NodeType::from_image(&extract_image_name(image_name)))
+        .or_else(|| NodeType::from_default_container_name(container_name.trim_start_matches('/')));
+    if node_type.is_none() {
+        println!("No avs found for {}", image_name);
+    }
+    node_type
+}
+
 async fn grab_potential_avses() -> Vec<PotentialAvs> {
     let docker = DockerClient::default();
-    println!("Scanning containers...");
+    info!("Scanning for containers, use LOG_LEVEL=debug to see images");
     let images = docker.list_images().await;
+    debug!("images: {:#?}", images);
     let potential_avses = docker
         .list_containers()
         .await
@@ -350,6 +373,16 @@ async fn grab_potential_avses() -> Vec<PotentialAvs> {
                         image_hash: image_hash.to_string(),
                         ports,
                     });
+                } else if let Some(key) = images.keys().find(|key| key.contains(&image_name)) {
+                    debug!("SHOULD BE: No version tag image: {}", image_name);
+                    let image_hash = images.get(key).unwrap();
+                    debug!("key (should be with version tag, and its what we'll use for potential avs): {}", key);
+                    return Some(PotentialAvs {
+                        container_name: names.first().unwrap_or(&image_name).to_string(),
+                        image_name: key.clone(),
+                        image_hash: image_hash.to_string(),
+                        ports,
+                    });
                 }
             }
             None
@@ -357,4 +390,57 @@ async fn grab_potential_avses() -> Vec<PotentialAvs> {
         .collect::<Vec<_>>();
 
     potential_avses
+}
+
+fn extract_image_name(image_name: &str) -> String {
+    RegistryType::get_registry_hosts()
+        .into_iter()
+        .find_map(|registry| {
+            image_name.contains(registry).then(|| {
+                image_name
+                    .split(&registry)
+                    .last()
+                    .unwrap_or(image_name)
+                    .trim_start_matches('/')
+                    .to_string()
+            })
+        })
+        .unwrap_or_else(|| image_name.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extract_image_name() {
+        let test_cases = vec![
+            // Standard registry cases
+            ("docker.io/ubuntu:latest", "ubuntu:latest"),
+            ("gcr.io/project/image:v1", "project/image:v1"),
+            ("ghcr.io/owner/repo:tag", "owner/repo:tag"),
+            ("public.ecr.aws/image:1.0", "image:1.0"),
+            // Edge cases
+            ("ubuntu:latest", "ubuntu:latest"), // No registry
+            ("", ""),                           // Empty string
+            ("repository.chainbase.com/", ""),  // Just registry
+            // Multiple registry-like strings
+            ("gcr.io/docker.io/image", "image"), // Should match first registry
+            // With and without tags
+            ("docker.io/image", "image"),
+            ("docker.io/org/image:latest", "org/image:latest"),
+            // Special characters
+            ("docker.io/org/image@sha256:123", "org/image@sha256:123"),
+            ("docker.io/org/image_name", "org/image_name"),
+        ];
+
+        for (input, expected) in test_cases {
+            assert_eq!(
+                extract_image_name(input),
+                expected.to_string(),
+                "Failed on input: {}",
+                input
+            );
+        }
+    }
 }

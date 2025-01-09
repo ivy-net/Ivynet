@@ -19,8 +19,6 @@ pub mod telemetry;
 pub mod utils;
 pub mod wallet;
 
-use std::collections::HashMap;
-
 pub use blsful::{Bls12381G1Impl, PublicKey, SecretKey};
 pub use ethers;
 
@@ -28,9 +26,6 @@ use ethers::{
     middleware::{signer::SignerMiddlewareError, SignerMiddleware},
     providers::{Http, Provider},
 };
-use ivynet_docker::RegistryType;
-use ivynet_node_type::NodeType;
-use tracing::warn;
 use wallet::IvyWallet;
 
 pub type IvyProvider = SignerMiddleware<Provider<Http>, IvyWallet>;

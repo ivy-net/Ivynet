@@ -8,7 +8,7 @@ use bollard::{
     secret::{ContainerSummary, EventMessage},
     Docker,
 };
-use futures::StreamExt;
+use futures::future::join_all;
 use tokio_stream::Stream;
 
 use ivynet_node_type::NodeType;
@@ -32,86 +32,23 @@ impl Default for DockerClient {
         Self(connect_docker())
     }
 }
+
+// TODO: Implement lifetimes to allow passing as ref
 #[async_trait]
-pub trait DockerApi {
+pub trait DockerApi: Clone + Sync + Send + 'static {
     async fn list_containers(&self) -> Vec<ContainerSummary>;
-
-    async fn list_images(&self) -> HashMap<String, String>;
-
-    async fn inspect(&self, image_name: &str) -> Option<Container>;
-
-    async fn inspect_many(&self, image_names: &[&str]) -> Vec<Container>;
-
-    async fn find_container_by_name(&self, name: &str) -> Option<Container>;
-
-    async fn find_node_container(&self, node_type: &NodeType) -> Option<Container>;
-
-    async fn find_node_containers(&self, node_types: &[NodeType]) -> Vec<Container>;
-
-    async fn find_all_node_containers(&self) -> Vec<Container>;
 
     async fn stream_logs(
         &self,
-        container: &Container,
+        container: Container,
         since: i64,
-    ) -> Pin<Box<dyn Stream<Item = Result<LogOutput, Error>> + Send + Unpin>>;
-
-    async fn stream_logs_for_node(
-        &self,
-        node_type: &NodeType,
-        since: i64,
-    ) -> Option<Pin<Box<dyn Stream<Item = Result<LogOutput, Error>> + Send>>>;
-
-    async fn stream_logs_for_node_latest(
-        &self,
-        node_type: &NodeType,
-    ) -> Option<Pin<Box<dyn Stream<Item = Result<LogOutput, Error>> + Send>>>;
-
-    async fn stream_logs_for_all_nodes(
-        &self,
-        since: i64,
-    ) -> Pin<Box<dyn Stream<Item = Result<LogOutput, Error>> + Send + Unpin>>;
-
-    async fn stream_logs_for_all_nodes_latest(
-        &self,
     ) -> Pin<Box<dyn Stream<Item = Result<LogOutput, Error>> + Send + Unpin>>;
 
     async fn stream_events(
         &self,
     ) -> Pin<Box<dyn Stream<Item = Result<EventMessage, Error>> + Send + Unpin>>;
-}
+    async fn list_images(&self) -> HashMap<String, String>;
 
-#[async_trait]
-impl DockerApi for DockerClient {
-    async fn list_containers(&self) -> Vec<ContainerSummary> {
-        self.0.list_containers::<String>(None).await.expect("Cannot list containers")
-    }
-
-    async fn list_images(&self) -> HashMap<String, String> {
-        let mut map = HashMap::new();
-        for image in self
-            .0
-            .list_images(Some(ListImagesOptions::<String> {
-                all: true,
-                digests: true,
-                ..Default::default()
-            }))
-            .await
-            .expect("Cannot list images")
-        {
-            for digest in &image.repo_digests {
-                let elements = digest.split("@").collect::<Vec<_>>();
-                if elements.len() == 2 {
-                    for tag in &image.repo_tags {
-                        map.insert(tag.clone(), elements[1].to_string());
-                    }
-                }
-            }
-        }
-        map
-    }
-
-    /// Inspect a container by image name
     async fn inspect(&self, image_name: &str) -> Option<Container> {
         let containers = self.list_containers().await;
         for container in containers {
@@ -174,14 +111,12 @@ impl DockerApi for DockerClient {
         self.find_node_containers(&node_types).await
     }
 
-    async fn stream_logs(
+    async fn stream_logs_latest(
         &self,
-        container: &Container,
-        since: i64,
+        container: Container,
     ) -> Pin<Box<dyn Stream<Item = Result<LogOutput, Error>> + Send + Unpin>> {
-        let log_opts: LogsOptions<&str> =
-            LogsOptions { follow: true, stdout: true, stderr: true, since, ..Default::default() };
-        Box::pin(self.0.logs(container.id().unwrap(), Some(log_opts)))
+        let now = chrono::Utc::now().timestamp();
+        self.stream_logs(container, now).await
     }
 
     /// Stream logs for a given node type since a given timestamp
@@ -190,8 +125,8 @@ impl DockerApi for DockerClient {
         node_type: &NodeType,
         since: i64,
     ) -> Option<Pin<Box<dyn Stream<Item = Result<LogOutput, Error>> + Send>>> {
-        let container = self.find_node_container(node_type).await;
-        container.map(|container| container.stream_logs(self, since).boxed())
+        let container = self.find_node_container(node_type).await?;
+        Some(self.stream_logs(container, since).await)
     }
 
     /// Stream logs for a given node type since current time
@@ -199,8 +134,8 @@ impl DockerApi for DockerClient {
         &self,
         node_type: &NodeType,
     ) -> Option<Pin<Box<dyn Stream<Item = Result<LogOutput, Error>> + Send>>> {
-        let container = self.find_node_container(node_type).await;
-        container.map(|container| container.stream_logs_latest(self).boxed())
+        let container = self.find_node_container(node_type).await?;
+        Some(self.stream_logs_latest(container).await)
     }
 
     /// Stream logs for all nodes since a given timestamp. Returns a merged stream.
@@ -209,7 +144,9 @@ impl DockerApi for DockerClient {
         since: i64,
     ) -> Pin<Box<dyn Stream<Item = Result<LogOutput, Error>> + Send + Unpin>> {
         let containers = self.find_all_node_containers().await;
-        let streams = containers.into_iter().map(|container| container.stream_logs(self, since));
+        let stream_futures =
+            containers.into_iter().map(|container| self.stream_logs(container, since));
+        let streams = join_all(stream_futures).await;
         Box::pin(futures::stream::select_all(streams))
     }
 
@@ -218,14 +155,57 @@ impl DockerApi for DockerClient {
         &self,
     ) -> Pin<Box<dyn Stream<Item = Result<LogOutput, Error>> + Send + Unpin>> {
         let containers = self.find_all_node_containers().await;
-        let streams = containers.into_iter().map(|container| container.stream_logs_latest(self));
+        let stream_futures =
+            containers.into_iter().map(|container| self.stream_logs_latest(container));
+        let streams = join_all(stream_futures).await;
         Box::pin(futures::stream::select_all(streams))
+    }
+}
+
+#[async_trait]
+impl DockerApi for DockerClient {
+    async fn list_containers(&self) -> Vec<ContainerSummary> {
+        self.0.list_containers::<String>(None).await.expect("Cannot list containers")
+    }
+
+    async fn stream_logs(
+        &self,
+        container: Container,
+        since: i64,
+    ) -> Pin<Box<dyn Stream<Item = Result<LogOutput, Error>> + Send + Unpin>> {
+        let log_opts: LogsOptions<&str> =
+            LogsOptions { follow: true, stdout: true, stderr: true, since, ..Default::default() };
+        Box::pin(self.0.logs(container.id().unwrap(), Some(log_opts)))
     }
 
     async fn stream_events(
         &self,
     ) -> Pin<Box<dyn Stream<Item = Result<EventMessage, Error>> + Send + Unpin>> {
         Box::pin(self.0.events::<&str>(None))
+    }
+
+    async fn list_images(&self) -> HashMap<String, String> {
+        let mut map = HashMap::new();
+        for image in self
+            .0
+            .list_images(Some(ListImagesOptions::<String> {
+                all: true,
+                digests: true,
+                ..Default::default()
+            }))
+            .await
+            .expect("Cannot list images")
+        {
+            for digest in &image.repo_digests {
+                let elements = digest.split("@").collect::<Vec<_>>();
+                if elements.len() == 2 {
+                    for tag in &image.repo_tags {
+                        map.insert(tag.clone(), elements[1].to_string());
+                    }
+                }
+            }
+        }
+        map
     }
 }
 
@@ -239,16 +219,4 @@ pub enum DockerStreamError {
 
     #[error("Dockerstream image name mismatch: {0} != {1}")]
     ImageNameMismatch(String, String),
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_list_images() {
-        let client = super::DockerClient::default();
-        // let containers = client.list_images().await;
-        // println!("{:?}", containers);
-    }
 }

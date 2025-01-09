@@ -43,6 +43,7 @@ impl RegistryType {
             "othentic",
         ]
     }
+
     pub fn from_host(host: &str) -> Option<Self> {
         match host {
             "registry-1.docker.io" => Some(Self::DockerHub),

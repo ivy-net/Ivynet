@@ -1,6 +1,6 @@
 use std::{sync::Arc, time::Duration};
 
-use ivynet_docker::dockerapi::DockerClient;
+use ivynet_docker::dockerapi::DockerApi;
 use reqwest::Client;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info};
@@ -48,7 +48,7 @@ pub struct MetricsListenerHandle {
 
 impl MetricsListenerHandle {
     pub fn new(
-        docker: &DockerClient,
+        docker: &impl DockerApi,
         machine_id: Uuid,
         identity_wallet: &IvyWallet,
         avses: &[ConfiguredAvs],
@@ -57,7 +57,7 @@ impl MetricsListenerHandle {
     ) -> Self {
         let (tx, rx) = mpsc::channel(100);
         let listener = MetricsListener::new(
-            docker,
+            docker.clone(),
             machine_id,
             identity_wallet.clone(),
             avses.to_vec(),
@@ -108,8 +108,8 @@ pub enum MetricsListenerError {
 /// to the telemetry dispatch. It is also responsible for listening to changes in the AVS list and
 /// updating the AVS list accordingly. `avses` would probably be better represented by a set keyed
 /// to the container_name name, which is unique per docker sysem.
-pub struct MetricsListener {
-    docker: DockerClient,
+pub struct MetricsListener<D: DockerApi> {
+    docker: D,
     machine_id: Uuid,
     identity_wallet: IvyWallet,
     avses: Vec<ConfiguredAvs>,
@@ -118,9 +118,9 @@ pub struct MetricsListener {
     error_tx: ErrorChannelTx,
 }
 
-impl MetricsListener {
+impl<D: DockerApi> MetricsListener<D> {
     fn new(
-        docker: &DockerClient,
+        docker: D,
         machine_id: Uuid,
         identity_wallet: IvyWallet,
         avses: Vec<ConfiguredAvs>,
@@ -128,7 +128,7 @@ impl MetricsListener {
         rx: mpsc::Receiver<MetricsListenerAction>,
         error_tx: ErrorChannelTx,
     ) -> Self {
-        Self { docker: docker.clone(), machine_id, identity_wallet, avses, dispatch, rx, error_tx }
+        Self { docker, machine_id, identity_wallet, avses, dispatch, rx, error_tx }
     }
 
     pub async fn run(mut self) {
@@ -204,7 +204,7 @@ pub enum MetricsListenerAction {
 }
 
 pub async fn report_metrics(
-    docker: &DockerClient,
+    docker: &impl DockerApi,
     machine_id: Uuid,
     identity_wallet: &IvyWallet,
     avses: &[ConfiguredAvs],
