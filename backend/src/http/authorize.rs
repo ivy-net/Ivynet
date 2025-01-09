@@ -17,13 +17,11 @@ use sqlx::PgPool;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::{
-    db::{
-        machine::Machine,
-        verification::{Verification, VerificationType},
-        Account, Client,
-    },
-    error::BackendError,
+use crate::error::BackendError;
+use db::{
+    machine::Machine,
+    verification::{Verification, VerificationType},
+    Account, Client,
 };
 
 use super::HttpState;
@@ -180,7 +178,7 @@ pub async fn verify(
             Some(("Basic", contents)) => {
                 let (username, password) = decode(contents)?;
                 if let Some(pass) = password {
-                    Account::verify(pool, &username, &pass).await
+                    Ok(Account::verify(pool, &username, &pass).await?)
                 } else {
                     Err(BackendError::Unauthorized)
                 }
@@ -192,7 +190,7 @@ pub async fn verify(
 
         let user_id = cache.get(session)?.ok_or(BackendError::Unauthorized)?;
         cache.set(session, user_id, 15 * 60)?;
-        Account::get(pool, user_id).await
+        Ok(Account::get(pool, user_id).await?)
     }
 }
 

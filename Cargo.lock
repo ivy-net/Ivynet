@@ -391,6 +391,19 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d86b93f97252c47b41663388e6d155714a9d0c398b99f1005cbc5f978b29f445"
 
 [[package]]
+name = "bigdecimal"
+version = "0.4.7"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f31f3af01c5c65a07985c804d3366560e6fa7883d640a122819b14ec327482c"
+dependencies = [
+ "autocfg",
+ "libm",
+ "num-bigint",
+ "num-integer",
+ "num-traits",
+]
+
+[[package]]
 name = "bit-set"
 version = "0.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -722,7 +735,7 @@ checksum = "f46ad14479a25103f283c0f10005961cf086d8dc42205bb44c46ac563475dca6"
 
 [[package]]
 name = "cli"
-version = "0.4.9"
+version = "0.4.11"
 dependencies = [
  "anyhow",
  "clap",
@@ -1067,6 +1080,25 @@ name = "data-encoding"
 version = "2.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8566979429cf69b49a5c740c60791108e86440e8be149bbea4fe54d2c32d6e2"
+
+[[package]]
+name = "db"
+version = "0.4.0"
+dependencies = [
+ "chrono",
+ "ivynet-core",
+ "ivynet-docker",
+ "ivynet-node-type",
+ "regex",
+ "semver",
+ "serde",
+ "serde_json",
+ "sha256",
+ "sqlx",
+ "thiserror 2.0.9",
+ "utoipa",
+ "uuid 1.11.0",
+]
 
 [[package]]
 name = "deflate64"
@@ -2768,26 +2800,25 @@ checksum = "d75a2a4b1b190afb6f5425f10f6a8f959d2ea0b9c2b1d79553551850539e4674"
 
 [[package]]
 name = "ivynet-backend"
-version = "0.4.12"
+version = "0.4.16"
 dependencies = [
  "axum",
  "axum-extra",
  "base64 0.22.1",
  "chrono",
  "clap",
+ "db",
  "futures",
  "ivynet-core",
  "ivynet-docker",
  "ivynet-node-type",
  "memcache",
  "rayon",
- "regex",
- "semver",
  "sendgrid",
  "serde",
  "serde_json",
- "sha256",
  "sqlx",
+ "strum",
  "thiserror 2.0.9",
  "tokio",
  "tower-http",
@@ -2872,6 +2903,23 @@ dependencies = [
 ]
 
 [[package]]
+name = "ivynet-ingress"
+version = "0.4.0"
+dependencies = [
+ "clap",
+ "db",
+ "ivynet-core",
+ "ivynet-docker",
+ "ivynet-node-type",
+ "sqlx",
+ "thiserror 2.0.9",
+ "tokio",
+ "tracing",
+ "tracing-subscriber",
+ "uuid 1.11.0",
+]
+
+[[package]]
 name = "ivynet-macros"
 version = "0.4.0"
 dependencies = [
@@ -2880,7 +2928,7 @@ dependencies = [
 
 [[package]]
 name = "ivynet-node-type"
-version = "0.1.1"
+version = "0.1.2"
 dependencies = [
  "convert_case",
  "serde",
@@ -5080,6 +5128,7 @@ version = "0.8.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6a007b6936676aa9ab40207cde35daab0a04b823be8ae004368c0793b96a61e0"
 dependencies = [
+ "bigdecimal",
  "bytes",
  "chrono",
  "crc",
@@ -5159,6 +5208,7 @@ checksum = "4560278f0e00ce64938540546f59f590d60beee33fffbd3b9cd47851e5fff233"
 dependencies = [
  "atoi",
  "base64 0.22.1",
+ "bigdecimal",
  "bitflags 2.6.0",
  "byteorder",
  "bytes",
@@ -5203,6 +5253,7 @@ checksum = "c5b98a57f363ed6764d5b3a12bfedf62f07aa16e1856a7ddc2a0bb190a959613"
 dependencies = [
  "atoi",
  "base64 0.22.1",
+ "bigdecimal",
  "bitflags 2.6.0",
  "byteorder",
  "chrono",
@@ -5220,6 +5271,7 @@ dependencies = [
  "log",
  "md-5",
  "memchr",
+ "num-bigint",
  "once_cell",
  "rand",
  "serde",

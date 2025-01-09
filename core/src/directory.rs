@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::LazyLock};
 use ethers::types::{Chain, H160};
 use ivynet_macros::h160;
 
-use ivynet_node_type::NodeType;
+use ivynet_node_type::{AltlayerType, MachType, NodeType};
 
 const ALL_DIRECTORIES: [(Chain, H160); 2] = [
     (Chain::Mainnet, h160!(0x135DDa560e946695d6f155dACaFC6f1F25C1F5AF)),
@@ -22,15 +22,24 @@ const ALL_MAINNET_AVSES: [(NodeType, H160); 28] = [
     (NodeType::Predicate, h160!(0xaCB91045B8bBa06f9026e1A30855B6C4A1c5BaC6)),
     (NodeType::Brevis, h160!(0x9FC952BdCbB7Daca7d420fA55b942405B073A89d)),
     //New
-    (NodeType::AltlayerMach, h160!(0x71a77037870169d47aad6c2c9360861a4c0df2bf)),
-    (NodeType::XterioMach, h160!(0x6026b61bdd2252160691cb3f6005b6b72e0ec044)),
+    (
+        NodeType::Altlayer(AltlayerType::AltlayerMach),
+        h160!(0x71a77037870169d47aad6c2c9360861a4c0df2bf),
+    ),
+    (NodeType::AltlayerMach(MachType::Xterio), h160!(0x6026b61bdd2252160691cb3f6005b6b72e0ec044)),
     (NodeType::Omni, h160!(0xed2f4d90b073128ae6769a9a8d51547b1df766c8)),
     (NodeType::Automata, h160!(0xe5445838c475a2980e6a88054ff1514230b83aeb)),
-    (NodeType::DodoChainMach, h160!(0xd50e0931703302b080880c45148f5d83ea66ae2a)),
+    (
+        NodeType::AltlayerMach(MachType::DodoChain),
+        h160!(0xd50e0931703302b080880c45148f5d83ea66ae2a),
+    ),
     (NodeType::OpenLayerMainnet, h160!(0xf7fcff55d5fdaf2c3bbeb140be5e62a2c7d26db3)),
-    (NodeType::CyberMach, h160!(0x1f2c296448f692af840843d993ffc0546619dcdb)),
+    (NodeType::AltlayerMach(MachType::Cyber), h160!(0x1f2c296448f692af840843d993ffc0546619dcdb)),
     (NodeType::ArpaNetworkNodeClient, h160!(0x1de75eaab2df55d467494a172652579e6fa4540e)),
-    (NodeType::GMNetworkMach, h160!(0xb3acaf09a1b801e36655b786da4eaa6ae9f5dc37)),
+    (
+        NodeType::Altlayer(AltlayerType::GmNetworkMach),
+        h160!(0xb3acaf09a1b801e36655b786da4eaa6ae9f5dc37),
+    ),
     (NodeType::UnifiAVS, h160!(0x2d86e90ed40a034c753931ee31b1bd5e1970113d)),
     (NodeType::SkateChainBase, h160!(0xe008064df9f019d0bff0735fe6887d70b23825ca)),
     (NodeType::SkateChainMantle, h160!(0xfc569b3b74e15cf48aa684144e072e839fd89380)),
@@ -53,8 +62,11 @@ const ALL_HOLESKY_AVSES: [(NodeType, H160); 24] = [
     (NodeType::AvaProtocol, h160!(0xEA3E82F9Ae371A6a372A6DCffB1a9bD17e0608eF)),
     (NodeType::Predicate, h160!(0x4FC1132230fE16f67531D82ACbB9d78993B23825)),
     (NodeType::Brevis, h160!(0x7A46219950d8a9bf2186549552DA35Bf6fb85b1F)),
-    (NodeType::AltlayerMach, h160!(0xae9a4497dee2540daf489beddb0706128a99ec63)),
-    (NodeType::XterioMach, h160!(0x648e5012d7b30755963755f7dd7ff03e2f61bf8b)),
+    (
+        NodeType::Altlayer(AltlayerType::AltlayerMach),
+        h160!(0xae9a4497dee2540daf489beddb0706128a99ec63),
+    ),
+    (NodeType::AltlayerMach(MachType::Xterio), h160!(0x648e5012d7b30755963755f7dd7ff03e2f61bf8b)),
     (NodeType::Omni, h160!(0xa7b2e7830c51728832d33421670dbbe30299fd92)),
     (NodeType::Automata, h160!(0x4665af665df5703445645d243f0fd63ed3b9d132)),
     (NodeType::OpenLayerHolesky, h160!(0xf9b555d1d5be5c24ad9b11a87409d7107a8b6174)),
@@ -64,7 +76,7 @@ const ALL_HOLESKY_AVSES: [(NodeType, H160); 24] = [
     (NodeType::SkateChainBase, h160!(0x5d592a255a4369982aa7fb55c6cbc12c7103e5e4)),
     (NodeType::SkateChainMantle, h160!(0x32612e4ec0eec067be22bc0d21e26d2cd3322d84)),
     (NodeType::ChainbaseNetworkV1, h160!(0x5e78eff26480a75e06ccdabe88eb522d4d8e1c9d)),
-    (NodeType::ChainbaseNetworkV2, h160!(0x0fb6b02f8482a06cf1d99558576f111abc377932)),
+    (NodeType::ChainbaseNetwork, h160!(0x0fb6b02f8482a06cf1d99558576f111abc377932)),
     (NodeType::GoPlusAVS, h160!(0x6e0e0479e177c7f5111682c7025b4412613cd9de)),
     (NodeType::UngateInfiniRouteBase, h160!(0x1b8ad2ab0fa5585804ce9e9e2c6097f0328bb05c)),
     (NodeType::PrimevMevCommit, h160!(0xededb8ed37a43fd399108a44646b85b780d85dd4)),

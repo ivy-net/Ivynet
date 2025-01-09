@@ -20,30 +20,6 @@ pub struct Config {
     #[arg(long, env = "IVY_LOG_LEVEL", default_value_t = Level::INFO)]
     pub log_level: Level,
 
-    #[arg(long, env = "IVY_GRPC_TLS_CA")]
-    pub grpc_tls_ca: Option<String>,
-
-    #[arg(long, env = "IVY_GRPC_TLS_CERT")]
-    pub grpc_tls_cert: Option<String>,
-
-    #[arg(long, env = "IVY_GRPC_TLS_KEY")]
-    pub grpc_tls_key: Option<String>,
-
-    #[arg(long, env = "IVY_GRPC_PORT", default_value_t = 50050)]
-    pub grpc_port: u16,
-
-    #[arg(long, env = "IVY_EVENTS_TLS_CA")]
-    pub events_tls_ca: Option<String>,
-
-    #[arg(long, env = "IVY_EVENTS_TLS_CERT")]
-    pub events_tls_cert: Option<String>,
-
-    #[arg(long, env = "IVY_EVENTS_TLS_KEY")]
-    pub events_tls_key: Option<String>,
-
-    #[arg(long, env = "IVY_EVENTS_PORT", default_value_t = 50051)]
-    pub events_port: u16,
-
     #[arg(long, env = "IVY_ROOT_URL", value_parser = Uri::from_str, default_value = "http://localhost:8080")]
     pub root_url: Uri,
 

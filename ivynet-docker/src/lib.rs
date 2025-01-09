@@ -290,7 +290,7 @@ mod docker_registry_tests {
 
     #[tokio::test]
     async fn test_registry_entry_tags() -> Result<(), Box<dyn std::error::Error>> {
-        let all_entries = NodeType::all_known();
+        let all_entries = NodeType::all_known_with_repo();
         for entry in all_entries {
             let registry = entry.registry()?;
             let repo = entry.default_repository()?;

@@ -1,3 +1,4 @@
+use crate::error::BackendError;
 use axum::{
     extract::{Path, Query, State},
     http::HeaderMap,
@@ -5,22 +6,20 @@ use axum::{
 };
 use axum_extra::extract::CookieJar;
 use ivynet_core::ethers::types::{Address, Chain};
+use ivynet_node_type::NodeType;
 use std::{collections::HashMap, str::FromStr};
 use uuid::Uuid;
 
-use crate::{
+use db::{
+    avs::Avs,
     data::{
         machine_data::{
             build_machine_info, get_machine_health, MachineInfoReport, MachineStatusReport,
         },
         node_data::{self, build_avs_info, AvsInfo},
     },
-    db::{
-        avs::Avs,
-        log::{ContainerLog, LogLevel},
-        metric::Metric,
-    },
-    error::BackendError,
+    log::{ContainerLog, LogLevel},
+    metric::Metric,
 };
 
 use super::{authorize, HttpState};
@@ -513,6 +512,55 @@ pub async fn logs(
     .await?;
 
     Ok(Json(logs))
+}
+
+/**
+Set the node type for a specific node on a specific machine - if set incorrectly
+and Ivynet already knows the node_type, it will be overwritten
+*/
+#[utoipa::path(
+    put,
+    path = "/machine/:machine_id/node_type",
+    responses(
+        (status = 200, body = [NodeType]),
+        (status = 404)
+    ),
+    params(
+        ("avs_name" = String, Query, description = "The name of the AVS to set the node type for"),
+        ("node_type" = Option<String>, Query, description = "The node type to set for the AVS"),
+    )
+)]
+pub async fn set_node_type(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    Path(machine_id): Path<String>,
+    jar: CookieJar,
+    Query(params): Query<HashMap<String, String>>,
+) -> Result<(), BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let machine =
+        authorize::verify_machine_ownership(&account, State(state.clone()), machine_id).await?;
+
+    let avs_name = params.get("avs_name").ok_or_else(|| {
+        BackendError::MalformedParameter(
+            "avs_name".to_string(),
+            "AVS name cannot be empty".to_string(),
+        )
+    })?;
+
+    let node_type = params.get("node_type").ok_or_else(|| {
+        BackendError::MalformedParameter(
+            "node_type".to_string(),
+            "Node type cannot be empty".to_string(),
+        )
+    })?;
+
+    // Always parses to unknown if not valid
+    let node_type = NodeType::from(node_type.as_str());
+
+    Avs::update_node_type(&state.pool, machine.machine_id, avs_name, &node_type).await?;
+
+    Ok(())
 }
 
 /// Delete all data for a specific node on a specific machine

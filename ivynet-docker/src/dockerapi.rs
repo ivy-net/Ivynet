@@ -107,7 +107,7 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
 
     /// Find all active containers for all available node types
     async fn find_all_node_containers(&self) -> Vec<Container> {
-        let node_types = NodeType::all_known();
+        let node_types = NodeType::all_known_with_repo();
         self.find_node_containers(&node_types).await
     }
 

@@ -2,16 +2,19 @@ use std::sync::Arc;
 
 use chrono::DateTime;
 use clap::Parser as _;
-use ivynet_backend::{
-    config::Config,
+use db::{
+    self,
+    avs_version::DbAvsVersionData,
+    configure,
     data::avs_version::{find_latest_avs_version, VersionType},
-    db::{self, avs_version::DbAvsVersionData, configure},
-    error::BackendError,
-    get_node_version_hashes, grpc, http,
-    telemetry::start_tracing,
 };
+use ivynet_backend::{
+    config::Config, error::BackendError, get_node_version_hashes, http, telemetry::start_tracing,
+};
+use strum::IntoEnumIterator;
+
 use ivynet_core::{ethers::types::Chain, utils::try_parse_chain};
-use ivynet_node_type::NodeType;
+use ivynet_node_type::{AltlayerType, MachType, NodeType};
 use sqlx::PgPool;
 use tracing::{debug, error, info, warn};
 
@@ -39,7 +42,7 @@ async fn main() -> Result<(), BackendError> {
         return Ok(());
     } else {
         let cache = memcache::connect(config.cache_url.to_string())?;
-        let http_service = http::serve(
+        http::serve(
             pool.clone(),
             cache,
             config.root_url,
@@ -49,26 +52,8 @@ async fn main() -> Result<(), BackendError> {
             config.user_verification_template,
             config.pass_reset_template,
             config.http_port,
-        );
-        let grpc_service = grpc::backend_serve(
-            pool.clone(),
-            config.grpc_tls_cert,
-            config.grpc_tls_key,
-            config.grpc_port,
-        );
-
-        let events_service = grpc::events_serve(
-            pool,
-            config.events_tls_cert,
-            config.events_tls_key,
-            config.events_port,
-        );
-
-        tokio::select! {
-            e = http_service => error!("HTTP server stopped. Reason {e:?}"),
-            e = grpc_service => error!("Executor has stopped. Reason: {e:?}"),
-            e = events_service => error!("Events service has stopped. Reason: {e:?}"),
-        }
+        )
+        .await?;
 
         Ok(())
     }
@@ -155,38 +140,94 @@ async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
             VersionType::SemVer => {
                 info!("Adding SemVer version hashes for {}", name);
                 for (tag, digest) in tags {
-                    match db::AvsVersionHash::add_version(pool, &entry, &digest, &tag).await {
-                        Ok(_) => debug!("Added {}:{}:{}", name, tag, digest),
-                        Err(e) => warn!("Failed to add {}:{}:{} | {}", name, tag, digest, e),
-                    };
+                    if !tag.is_empty() && !digest.is_empty() {
+                        match db::AvsVersionHash::add_version(pool, &entry, &digest, &tag).await {
+                            Ok(_) => debug!("Added {}:{}:{}", name, tag, digest),
+                            Err(e) => warn!("Failed to add {}:{}:{} | {}", name, tag, digest, e),
+                        };
+                    } else {
+                        error!("Dropping adding an empty entry (tag '{tag}' digest '{digest}')");
+                    }
                 }
             }
             VersionType::FixedVer | VersionType::HybridVer => {
                 debug!("Updating fixed and hybrid version hashes for {}", name);
                 for (tag, digest) in tags {
-                    match db::AvsVersionHash::update_version(pool, &entry, &digest, &tag).await {
-                        Ok(_) => debug!("Updated {}:{}:{}", name, tag, digest),
-                        Err(e) => warn!("Failed to update {}:{}:{} | {}", name, tag, digest, e),
-                    };
+                    if !tag.is_empty() && !digest.is_empty() {
+                        match db::AvsVersionHash::update_version(pool, &entry, &digest, &tag).await
+                        {
+                            Ok(_) => debug!("Updated {}:{}:{}", name, tag, digest),
+                            Err(e) => warn!("Failed to update {}:{}:{} | {}", name, tag, digest, e),
+                        };
+                    } else {
+                        error!(
+                            "Dropping updating to an empty entry (tag '{tag}' digest '{digest}')"
+                        );
+                    }
                 }
             }
         }
     }
+
+    let all_known_with_repo = NodeType::all_known_with_repo();
+    db::AvsVersionHash::delete_avses_from_table(pool, &all_known_with_repo).await?;
+
     Ok(())
 }
 
 async fn update_node_data_versions(pool: &PgPool, chain: &Chain) -> Result<(), BackendError> {
     info!("Updating node data versions for {:?}", chain);
-    let node_types = NodeType::all_known();
-    for node in node_types {
-        if node == NodeType::LagrangeZkWorkerHolesky && chain == &Chain::Mainnet {
-            continue;
+    let node_types = NodeType::all_known_with_repo();
+    for node_type in node_types {
+        match (node_type, chain) {
+            (NodeType::LagrangeZkWorkerHolesky, Chain::Mainnet) => continue,
+            (NodeType::LagrangeZkWorkerMainnet, Chain::Holesky) => continue,
+            (NodeType::K3LabsAvsHolesky, Chain::Mainnet) => continue,
+            (NodeType::K3LabsAvs, Chain::Holesky) => continue,
+            (NodeType::OpenLayerHolesky, Chain::Mainnet) => continue,
+            (NodeType::OpenLayerMainnet, Chain::Holesky) => continue,
+            (NodeType::Altlayer(altlayer_type), _) => match altlayer_type {
+                AltlayerType::Unknown => {
+                    let (tag, digest) = find_latest_avs_version(pool, &node_type).await?;
+                    for altlayer_type in AltlayerType::iter() {
+                        db::DbAvsVersionData::set_avs_version(
+                            pool,
+                            &NodeType::Altlayer(altlayer_type),
+                            chain,
+                            &tag,
+                            &digest,
+                        )
+                        .await?;
+                    }
+                }
+                _ => continue,
+            },
+            (NodeType::AltlayerMach(mach_type), _) => match mach_type {
+                MachType::Unknown => {
+                    let (tag, digest) = find_latest_avs_version(pool, &node_type).await?;
+                    for mach_type in MachType::iter() {
+                        db::DbAvsVersionData::set_avs_version(
+                            pool,
+                            &NodeType::AltlayerMach(mach_type),
+                            chain,
+                            &tag,
+                            &digest,
+                        )
+                        .await?;
+                    }
+                }
+                _ => continue,
+            },
+            _ => {
+                let (tag, digest) = find_latest_avs_version(pool, &node_type).await?;
+                db::DbAvsVersionData::set_avs_version(pool, &node_type, chain, &tag, &digest)
+                    .await?;
+            }
         }
-        if node == NodeType::LagrangeZkWorkerMainnet && chain == &Chain::Holesky {
-            continue;
-        }
-        let (tag, digest) = find_latest_avs_version(pool, &node).await?;
-        db::DbAvsVersionData::set_avs_version(pool, &node, chain, &tag, &digest).await?;
     }
+
+    let all_known_with_repo = NodeType::all_known_with_repo();
+    db::AvsVersionHash::delete_avses_from_table(pool, &all_known_with_repo).await?;
+
     Ok(())
 }

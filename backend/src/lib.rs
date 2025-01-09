@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use data::avs_version::{extract_semver, VersionType};
+use db::data::avs_version::{extract_semver, VersionType};
 use error::BackendError;
 use futures::future::join_all;
 use ivynet_docker::DockerRegistry;
@@ -9,10 +9,7 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use tracing::{error, info, warn};
 
 pub mod config;
-pub mod data;
-pub mod db;
 pub mod error;
-pub mod grpc;
 pub mod http;
 pub mod telemetry;
 
@@ -20,7 +17,7 @@ pub async fn get_node_version_hashes(
 ) -> Result<HashMap<NodeType, Vec<(String, String)>>, BackendError> {
     let mut registry_tags = HashMap::new();
 
-    for entry in NodeType::all_known() {
+    for entry in NodeType::all_known_with_repo() {
         let client = DockerRegistry::from_node_type(&entry).await?;
         info!("Requesting tags for image {}", entry.default_repository()?);
 
