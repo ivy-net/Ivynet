@@ -13,11 +13,9 @@ pub mod compose_images;
 pub mod container;
 pub mod dockerapi;
 pub mod dockercmd;
-pub mod eventstream;
 pub mod logs;
 pub mod registry;
 
-#[cfg(test)]
 pub mod mocks;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter)]

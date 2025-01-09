@@ -18,7 +18,7 @@ pub struct MockDockerClient {
 }
 
 impl MockDockerClient {
-    fn new() -> Self {
+    pub fn new() -> Self {
         let records = vec![postgres_container(), memcached_container(), eigenda_container_1()];
         let events = vec![eigenda_stream_start(), eigenda_stream_down(), eigenda_stream_restart()]
             .into_iter()
@@ -26,6 +26,12 @@ impl MockDockerClient {
             .collect();
         let logs = mock_logs();
         Self { records, events, logs }
+    }
+}
+
+impl Default for MockDockerClient {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -104,6 +110,7 @@ fn mock_logs() -> Vec<LogOutput> {
     flattened
 }
 
+#[allow(dead_code)]
 fn mock_non_utf8_logs() -> Vec<LogOutput> {
     // build several byte arrays that are not valid utf8
     let msg1 = LogOutput::StdOut { message: vec![0x80, 0x81, 0x82, 0x83, 0x84, 0x85].into() };

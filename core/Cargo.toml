@@ -67,6 +67,8 @@ tonic-build = "0.12"
 [dev-dependencies]
 tempfile = "3.10.1"
 serial_test = "3.1.1"
+sqlx.workspace = true
+ivynet-docker.workspace = true
 
 [package.metadata.cargo-machete]
 ignored = ["prost", "prost-wkt", "prost-wkt-types"]
