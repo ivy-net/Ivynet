@@ -205,7 +205,7 @@ impl DbAvsVersionData {
         Ok(())
     }
 
-    pub async fn delete_avses_from_table(
+    pub async fn delete_avses_from_avs_version_data(
         pool: &sqlx::PgPool,
         avs_types_to_keep: &[NodeType],
     ) -> Result<(), DatabaseError> {
@@ -239,5 +239,73 @@ impl DbAvsVersionData {
             );
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_delete_avses_from_table() {
+        let distinct_types = [
+            "k-3-labs-avs",
+            "automata",
+            "k-3-labs-avs-holesky",
+            "altlayer(altlayer-mach)",
+            "aethos-holesky",
+            "lagrange-zk-worker-mainnet",
+            "altlayer(gm-network-mach)",
+            "hyperlane",
+            "lagrange-zk-worker-holesky",
+            "open-layer-mainnet",
+            "k3-labs-avs",
+            "cyber-mach",
+            "open-layer-holesky",
+            "chainbase-network",
+            "e-oracle",
+            "eigen-da",
+            "generic-altlayer-mach",
+            "arpa-network-node-client",
+            "gm-network-mach",
+            "lagrange-state-committee",
+            "predicate-operator",
+            "eigenda",
+            "dodo-chain-mach",
+            "chainbase-network-v-2",
+            "generic-altlayer",
+            "altlayer(unknown)",
+            "altlayer-mach(unknown)",
+            "witness-chain",
+            "eoracle",
+            "altlayer-mach(dodo-chain)",
+            "altlayer-mach",
+            "altlayer-mach(xterio)",
+            "chainbase-network-v-1",
+            "predicate",
+            "altlayer-mach(cyber)",
+            "ava-protocol",
+            "xterio-mach",
+            "omni",
+            "witnesschain",
+        ];
+
+        let node_types_to_keep: Vec<String> =
+            NodeType::all_known_with_repo().iter().map(|t| t.to_string()).collect();
+
+        let types_to_delete: Vec<&str> = distinct_types
+            .into_iter()
+            .filter(|node_type| !node_types_to_keep.iter().any(|keep| keep == node_type))
+            .collect();
+
+        let types_to_delete_contain: Vec<&str> = distinct_types
+            .into_iter()
+            .filter(|node_type| !node_types_to_keep.contains(&node_type.to_string()))
+            .collect();
+
+        println!("Types to delete: {:#?}", types_to_delete);
+        println!("Types to delete contain: {:#?}", types_to_delete_contain);
+
+        assert!(types_to_delete.len() == types_to_delete_contain.len());
     }
 }
