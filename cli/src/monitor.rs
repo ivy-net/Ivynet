@@ -13,7 +13,7 @@ use ivynet_core::{
     telemetry::{fetch_telemetry_from, listen, ConfiguredAvs},
 };
 use ivynet_docker::{dockerapi::DockerClient, RegistryType};
-use ivynet_node_type::NodeType;
+use ivynet_node_type::{AltlayerType, MachType, NodeType};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
@@ -249,7 +249,7 @@ async fn find_new_avses(
         }
 
         if let Some(avs_type) =
-            get_type(&avs_types, &avs.image_hash, &avs.image_name, &avs.container_name)
+            get_node_type(&avs_types, &avs.image_hash, &avs.image_name, &avs.container_name)
         {
             // Try to get metrics port but don't fail if unavailable
             let metric_port = match get_metrics_port(&avs.ports).await {
@@ -386,35 +386,40 @@ fn update_monitor_config(
     Ok(())
 }
 
-fn get_type(
+fn get_node_type(
     hashes: &Option<HashMap<String, NodeType>>,
     hash: &str,
     image_name: &str,
     container_name: &str,
 ) -> Option<NodeType> {
-    // First try the hash lookup
-    if let Some(node_type) = hashes.as_ref().and_then(|h| h.get(hash).copied()) {
-        return Some(node_type);
-    }
+    let cleaned_container_name = container_name.trim_start_matches('/');
 
-    // Try getting type from image
-    let from_image = NodeType::from_image(&extract_image_name(image_name));
-
-    let node_type = match from_image {
-        Some(node_type) => match node_type {
-            NodeType::Unknown | NodeType::GenericAltlayerMach | NodeType::GenericAltlayer => {
-                NodeType::from_default_container_name(container_name.trim_start_matches('/'))
-                    .or(Some(node_type))
+    fn handle_altlayer_unknown(nt: NodeType, container_name: &str) -> Option<NodeType> {
+        match nt {
+            NodeType::Altlayer(AltlayerType::Unknown) |
+            NodeType::AltlayerMach(MachType::Unknown) => {
+                NodeType::from_default_container_name(container_name)
             }
-            _ => Some(node_type),
-        },
-        None => NodeType::from_default_container_name(container_name.trim_start_matches('/')),
-    };
-
-    if node_type.is_none() {
-        println!("No avs found for {}", image_name);
+            _ => Some(nt),
+        }
     }
-    node_type
+
+    hashes
+        .as_ref()
+        .and_then(|h| h.get(hash))
+        .copied()
+        .and_then(|nt| handle_altlayer_unknown(nt, cleaned_container_name))
+        .or_else(|| {
+            NodeType::from_image(&extract_image_name(image_name))
+                .and_then(|nt| handle_altlayer_unknown(nt, cleaned_container_name))
+        })
+        .or_else(|| {
+            let result = NodeType::from_default_container_name(cleaned_container_name);
+            if result.is_none() {
+                println!("No avs found for {}", image_name);
+            }
+            result
+        })
 }
 
 async fn grab_potential_avses() -> Vec<PotentialAvs> {
