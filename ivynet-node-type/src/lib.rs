@@ -499,7 +499,7 @@ mod tests {
             ("eigen-da", NodeType::EigenDA),
             ("ava-protocol", NodeType::AvaProtocol),
             ("lagrange-state-committee", NodeType::LagrangeStateCommittee),
-            ("lagrange-zk-worker-holesky", NodeType::LagrangeZkWorker),
+            ("lagrange-zk-worker", NodeType::LagrangeZkWorker),
             ("e-oracle", NodeType::EOracle),
             ("predicate", NodeType::Predicate),
             ("witness-chain", NodeType::WitnessChain),
@@ -516,7 +516,7 @@ mod tests {
             ("eigenda", NodeType::EigenDA),
             ("avaprotocol", NodeType::AvaProtocol),
             ("lagrangestatecommittee", NodeType::LagrangeStateCommittee),
-            ("lagrangezkworkermainnet", NodeType::LagrangeZkWorker),
+            ("lagrangezkworker", NodeType::LagrangeZkWorker),
             ("eoracle", NodeType::EOracle),
             ("hyperlane", NodeType::Hyperlane),
         ];
