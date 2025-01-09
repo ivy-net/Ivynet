@@ -149,6 +149,8 @@ async fn set_breaking_change_version(
 }
 
 async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
+    let all_known_with_repo = NodeType::all_known_with_repo();
+    db::AvsVersionHash::delete_avses_from_avs_version_hash(pool, &all_known_with_repo).await?;
     let registry_tags = get_node_version_hashes().await?;
     info!("Adding {} total node version hashes", registry_tags.len());
     for (entry, tags) in registry_tags {
@@ -186,15 +188,13 @@ async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
         }
     }
 
-    let all_known_with_repo = NodeType::all_known_with_repo();
-    db::AvsVersionHash::delete_avses_from_table(pool, &all_known_with_repo).await?;
-
     Ok(())
 }
 
 async fn update_node_data_versions(pool: &PgPool, chain: &Chain) -> Result<(), BackendError> {
     info!("Updating node data versions for {:?}", chain);
     let node_types = NodeType::all_known_with_repo();
+    db::DbAvsVersionData::delete_avses_from_avs_version_data(pool, &node_types).await?;
     for node_type in node_types {
         match (node_type, chain) {
             (NodeType::LagrangeZkWorkerHolesky, Chain::Mainnet) => continue,
@@ -242,9 +242,6 @@ async fn update_node_data_versions(pool: &PgPool, chain: &Chain) -> Result<(), B
             }
         }
     }
-
-    let all_known_with_repo = NodeType::all_known_with_repo();
-    db::AvsVersionHash::delete_avses_from_table(pool, &all_known_with_repo).await?;
 
     Ok(())
 }

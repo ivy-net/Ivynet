@@ -157,7 +157,7 @@ impl AvsVersionHash {
         Ok(())
     }
 
-    pub async fn delete_avses_from_table(
+    pub async fn delete_avses_from_avs_version_hash(
         pool: &sqlx::PgPool,
         avs_types_to_keep: &[NodeType],
     ) -> Result<(), BackendError> {
