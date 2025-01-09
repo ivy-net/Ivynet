@@ -251,7 +251,7 @@ mod docker_registry_tests {
 
     #[tokio::test]
     async fn test_get_lagrage_zk_worker_holesky_digest() -> Result<(), Box<dyn std::error::Error>> {
-        let node_type = NodeType::LagrangeZkWorkerHolesky;
+        let node_type = NodeType::LagrangeZkWorker;
 
         let client = DockerRegistry::from_node_type(&node_type).await?;
         let tags = client.get_tags().await?;

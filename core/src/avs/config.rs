@@ -77,7 +77,7 @@ impl NodeConfig {
     pub fn node_type(&self) -> NodeType {
         match self {
             NodeConfig::EigenDA(_) => NodeType::EigenDA,
-            NodeConfig::LagrangeZkWorkerHolesky(_) => NodeType::LagrangeZkWorkerHolesky,
+            NodeConfig::LagrangeZkWorkerHolesky(_) => NodeType::LagrangeZkWorker,
             //TODO: THE USER NEEDS TO ENTER THE NODE TYPE STRING
             NodeConfig::Other(_) => NodeType::Unknown,
         }
@@ -140,10 +140,7 @@ impl NodeConfigBuilder {
             NodeType::EigenDA => dirs::home_dir()
                 .expect("Could not get a home directory")
                 .join(".eigenlayer/eigenda"),
-            NodeType::LagrangeZkWorkerHolesky => dirs::home_dir()
-                .expect("Could not get a home directory")
-                .join(".eigenlayer/lagrange"),
-            NodeType::LagrangeZkWorkerMainnet => dirs::home_dir()
+            NodeType::LagrangeZkWorker => dirs::home_dir()
                 .expect("Could not get a home directory")
                 .join(".eigenlayer/lagrange"),
             NodeType::Unknown => panic!("Unknown node type"),
