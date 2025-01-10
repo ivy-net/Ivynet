@@ -122,7 +122,7 @@ impl std::fmt::Display for NodeType {
 }
 
 /* ----------------------------------- */
-/* -------- NODE REPOSITORIES -------- */
+/* -------- NODE IMAGE NAMES -------- */
 /* ----------------------------------- */
 pub const AVAPROTOCOL_REPO: &str = "avaprotocol/ap-avs";
 pub const EIGENDA_REPO: &str = "layr-labs/eigenda/opr-node";
@@ -142,6 +142,7 @@ pub const OPEN_LAYER_MAINNET_REPO: &str = "openoracle-de73b/operator-js";
 pub const OPEN_LAYER_HOLESKY_REPO: &str = "openoracle-de73b/operator-js-holesky";
 pub const ARPA_NETWORK_NODE_CLIENT_REPO: &str = "arpa-network/node-client";
 pub const CHAINBASE_NETWORK_V2_REPO: &str = "network/chainbase-node";
+pub const BREVIS_REPO: &str = "brevis-avs";
 
 /* ------------------------------------ */
 /* ------- NODE CONTAINER NAMES ------- */
@@ -200,9 +201,7 @@ impl NodeType {
             Self::OpenLayerHolesky => OPEN_LAYER_HOLESKY_REPO,
             Self::ArpaNetworkNodeClient => ARPA_NETWORK_NODE_CLIENT_REPO,
             Self::ChainbaseNetwork => CHAINBASE_NETWORK_V2_REPO,
-            Self::Brevis => {
-                return Err(NodeTypeError::SpecializedError("Brevis is executable only".to_string()))
-            }
+            Self::Brevis => BREVIS_REPO,
             Self::AethosHolesky => {
                 return Err(NodeTypeError::SpecializedError(
                     "AethosHolesky is deprecated - now predicate".to_string(),
@@ -244,7 +243,7 @@ impl NodeType {
             Self::UngateInfiniRouteBase => UNGATE_MAINNET,
             Self::UngateInfiniRoutePolygon => UNGATE_MAINNET,
             Self::Brevis => {
-                return Err(NodeTypeError::SpecializedError("Brevis is executable only".to_string()))
+                return Err(NodeTypeError::NoDefaultContainerName)
             }
             Self::Altlayer(altlayer_type) => {
                 match altlayer_type {
@@ -405,6 +404,7 @@ impl NodeType {
             ARPA_NETWORK_NODE_CLIENT_REPO => Some(Self::ArpaNetworkNodeClient),
             CHAINBASE_NETWORK_V2_REPO => Some(Self::ChainbaseNetwork),
             LAGRANGE_WORKER_REPO => Some(Self::LagrangeZkWorker),
+            BREVIS_REPO => Some(Self::Brevis),
             _ => None,
         }
     }
