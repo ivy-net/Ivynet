@@ -30,3 +30,9 @@ tokio-stream.workspace = true
 tracing.workspace = true
 regex.workspace = true
 which.workspace = true
+
+
+
+[dev-dependencies]
+mockall = "0.13.1"
+async-trait = "0.1.85"

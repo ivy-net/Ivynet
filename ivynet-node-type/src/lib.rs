@@ -377,14 +377,14 @@ impl NodeType {
         let parts: Vec<&str> = image.rsplitn(2, ':').collect();
         if parts.len() != 2 {
             warn!("Unrecognized image format: {}", image);
-            return None;
+            return Self::from_repo(parts[0]);
         }
-        Self::from_repo(parts[1], parts[0])
+        Self::from_repo(parts[1])
     }
 
     // Given a repo and tag, get the NodeType, since they have a 1:1 relationship
-    pub fn from_repo(repo: &str, tag: &str) -> Option<Self> {
-        debug!("repo: {}, tag: {}", repo, tag);
+    pub fn from_repo(repo: &str) -> Option<Self> {
+        debug!("repo: {}", repo);
         match repo {
             // tag-agnostic nodes
             AVAPROTOCOL_REPO => Some(Self::AvaProtocol),
@@ -476,6 +476,10 @@ mod tests {
 
     #[test]
     fn test_from_docker_image_name() {
+        let no_tag_image_name = "layr-labs/eigenda/opr-node";
+        let no_tag_node_type = NodeType::from_image(no_tag_image_name).unwrap();
+        assert_eq!(no_tag_node_type, NodeType::EigenDA);
+
         let image_name = "layr-labs/eigenda/opr-node:0.8.4";
         let node_type = NodeType::from_image(image_name).unwrap();
         assert_eq!(node_type, NodeType::EigenDA);
