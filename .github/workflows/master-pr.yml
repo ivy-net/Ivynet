@@ -1,0 +1,35 @@
+---
+name: Build and Tag on Merge
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - master
+
+permissions:
+  id-token: write  # This is required for requesting the JWT
+  contents: write  # This is required for creating a release
+
+jobs:
+
+  build:
+    name: Build everything
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Refresh source list
+        run: |
+          sudo apt update
+      - name: Install dependencies
+        run: >
+          sudo apt install -y
+          protobuf-compiler
+          pkg-config
+          libssl-dev
+      - name: Build binaries
+        run: |
+          . "$HOME/.cargo/env"
+          cargo build --release
