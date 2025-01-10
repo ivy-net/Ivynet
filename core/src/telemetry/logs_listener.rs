@@ -2,16 +2,16 @@ use std::time::Duration;
 
 use bollard::container::LogOutput;
 use ivynet_docker::{container::Container, dockerapi::DockerClient};
+use ivynet_grpc::messages::SignedLog;
+use ivynet_signer::IvyWallet;
 use tokio::{task::JoinSet, time};
 use tokio_stream::StreamExt;
 use tracing::{error, info};
 use uuid::Uuid;
 
 use crate::{
-    grpc::messages::SignedLog,
     signature::sign_string,
     telemetry::{dispatch::TelemetryDispatchHandle, ConfiguredAvs},
-    wallet::IvyWallet,
 };
 
 type LogListenerResult = Result<ListenerData, LogListenerError>;

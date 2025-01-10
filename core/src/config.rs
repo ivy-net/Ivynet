@@ -1,4 +1,6 @@
 use ethers::types::Chain;
+use ivynet_io::{read_toml, write_toml, IoError};
+use ivynet_signer::{IvyWallet, IvyWalletError};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
@@ -7,17 +9,12 @@ use thiserror::Error as ThisError;
 use tonic::transport::Uri;
 use uuid::Uuid;
 
+use crate::{error::IvyError, metadata::Metadata};
+
 pub static DEFAULT_CONFIG_PATH: Lazy<PathBuf> = Lazy::new(|| {
     let path = dirs::home_dir().expect("Could not get a home directory");
     path.join(".ivynet")
 });
-
-use crate::{
-    error::IvyError,
-    io::{read_toml, write_toml, IoError},
-    metadata::Metadata,
-    wallet::{IvyWallet, IvyWalletError},
-};
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct BackendInfo {

@@ -8,17 +8,17 @@ use db::{
 };
 use ivynet_core::{
     ethers::types::{Address, Signature},
-    grpc::{
-        self,
-        backend::backend_server::{Backend, BackendServer},
-        client::{Request, Response},
-        messages::{
-            Digests, NodeData, NodeType as NodeTypeMessage, NodeTypes, RegistrationCredentials,
-            SignedLog, SignedMetrics, SignedNameChange, SignedNodeData,
-        },
-        server, Status,
-    },
     signature::{recover_from_string, recover_metrics, recover_name_change, recover_node_data},
+};
+use ivynet_grpc::{
+    self,
+    backend::backend_server::{Backend, BackendServer},
+    client::{Request, Response},
+    messages::{
+        Digests, NodeData, NodeType as NodeTypeMessage, NodeTypes, RegistrationCredentials,
+        SignedLog, SignedMetrics, SignedNameChange, SignedNodeData,
+    },
+    server, Status,
 };
 
 use ivynet_docker::logs::{find_log_level, find_or_create_log_timestamp, sanitize_log};
@@ -38,7 +38,7 @@ impl BackendService {
     }
 }
 
-#[grpc::async_trait]
+#[ivynet_grpc::async_trait]
 impl Backend for BackendService {
     async fn register(
         &self,

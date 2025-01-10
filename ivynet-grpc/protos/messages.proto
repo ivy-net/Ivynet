@@ -1,0 +1,70 @@
+syntax = "proto3";
+package messages;
+import "google/protobuf/timestamp.proto";
+import "google/protobuf/descriptor.proto";
+
+message RegistrationCredentials {
+    string email = 1;
+    string password = 2;
+    string hostname = 3;
+    bytes public_key = 4;
+    bytes machine_id = 5;
+}
+
+message SignedMetrics {
+    bytes signature = 1;
+    bytes machine_id = 2;
+    optional string avs_name = 3;
+    repeated Metrics metrics = 4;
+}
+
+message Metrics {
+    string name = 1;
+    double value = 2;
+    repeated MetricsAttribute attributes = 3;
+}
+
+message MetricsAttribute {
+    string name = 1;
+    string value = 2;
+}
+
+message SignedNodeData {
+    bytes signature = 1;
+    bytes machine_id = 2;
+    NodeData node_data = 4;
+}
+
+message NodeData {
+    string name = 1;
+    string node_type = 2;
+    string manifest = 3;
+    bool metrics_alive = 4;
+}
+
+message SignedLog {
+    bytes signature =  1;
+    bytes machine_id = 2;
+    string avs_name = 3;
+    string log = 4;
+}
+
+message NodeType {
+    string digest = 1;
+    string node_type = 2;
+}
+
+message NodeTypes {
+    repeated NodeType node_types = 1;
+}
+
+message Digests {
+    repeated string digests = 1;
+}
+
+message SignedNameChange {
+    bytes signature = 1;
+    bytes machine_id = 2;
+    string old_name = 3;
+    string new_name = 4;
+}

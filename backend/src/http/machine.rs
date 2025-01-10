@@ -5,7 +5,7 @@ use axum::{
     Json,
 };
 use axum_extra::extract::CookieJar;
-use ivynet_core::ethers::types::{Address, Chain};
+use ethers::types::{Address, Chain};
 use ivynet_node_type::NodeType;
 use std::{collections::HashMap, str::FromStr};
 use uuid::Uuid;

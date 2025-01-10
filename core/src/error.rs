@@ -6,11 +6,13 @@ use ethers::{
     utils::hex::FromHexError,
 };
 use ivynet_docker::dockercmd::DockerError;
+use ivynet_grpc::client::ClientError;
+use ivynet_signer::IvyWalletError;
 use thiserror::Error;
 use tonic::Status;
 use zip::result::ZipError;
 
-use crate::{eigen::quorum::QuorumError, grpc::client::ClientError, IvyProvider, IvyProviderError};
+use crate::{eigen::quorum::QuorumError, IvyProvider, IvyProviderError};
 
 #[derive(Debug, Error)]
 pub enum IvyError {
@@ -59,7 +61,7 @@ pub enum IvyError {
     SetupError(#[from] SetupError),
 
     #[error(transparent)]
-    IoError(#[from] crate::io::IoError),
+    IoError(#[from] ivynet_io::IoError),
 
     #[error(transparent)]
     ConfigError(#[from] crate::config::ConfigError),
@@ -139,7 +141,7 @@ pub enum IvyError {
     DockerError(#[from] DockerError),
 
     #[error(transparent)]
-    IvyWalletError(#[from] crate::wallet::IvyWalletError),
+    IvyWalletError(#[from] IvyWalletError),
 
     #[error(transparent)]
     NodeConfigError(#[from] crate::avs::config::NodeConfigError),

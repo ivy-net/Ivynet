@@ -3,11 +3,8 @@ use ethers::{
     types::{Address, Signature, H256, U256},
     utils::keccak256,
 };
-
-use crate::{
-    grpc::messages::{Metrics, NodeData},
-    wallet::IvyWallet,
-};
+use ivynet_grpc::messages::{Metrics, NodeData};
+use ivynet_signer::IvyWallet;
 
 // --- General Signing ---
 pub fn sign_string(string: &str, wallet: &IvyWallet) -> Result<Signature, IvySigningError> {

@@ -1,7 +1,8 @@
 use anyhow::{Error as AnyError, Result};
 use clap::{Parser, Subcommand};
 use cli::{avs, config, error::Error, init, key, monitor};
-use ivynet_core::{avs::commands::NodeCommands, config::IvyConfig, grpc::client::Uri};
+use ivynet_core::{avs::commands::NodeCommands, config::IvyConfig};
+use ivynet_grpc::client::Uri;
 use std::{fs, path::PathBuf, str::FromStr as _};
 use tracing::info;
 use tracing_subscriber::FmtSubscriber;

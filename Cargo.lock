@@ -741,10 +741,14 @@ dependencies = [
  "clap",
  "data-encoding",
  "dialoguer",
+ "ethers",
  "futures",
  "ivynet-core",
  "ivynet-docker",
+ "ivynet-grpc",
+ "ivynet-io",
  "ivynet-node-type",
+ "ivynet-signer",
  "linemux",
  "rustix",
  "serde",
@@ -1088,6 +1092,7 @@ dependencies = [
  "chrono",
  "ivynet-core",
  "ivynet-docker",
+ "ivynet-grpc",
  "ivynet-node-type",
  "regex",
  "semver",
@@ -2749,9 +2754,12 @@ dependencies = [
 
 [[package]]
 name = "inventory"
-version = "0.3.15"
+version = "0.3.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f958d3d68f4167080a18141e10381e7634563984a537f2a49a30fd8e53ac5767"
+checksum = "3b31349d02fe60f80bbbab1a9402364cad7460626d6030494b08ac4a2075bf81"
+dependencies = [
+ "rustversion",
+]
 
 [[package]]
 name = "ipnet"
@@ -2799,9 +2807,11 @@ dependencies = [
  "chrono",
  "clap",
  "db",
+ "ethers",
  "futures",
  "ivynet-core",
  "ivynet-docker",
+ "ivynet-grpc",
  "ivynet-node-type",
  "memcache",
  "rayon",
@@ -2824,7 +2834,6 @@ dependencies = [
 name = "ivynet-core"
 version = "0.4.6"
 dependencies = [
- "async-trait",
  "blsful",
  "bollard",
  "clap",
@@ -2838,14 +2847,14 @@ dependencies = [
  "indexmap 2.7.0",
  "indicatif",
  "ivynet-docker",
+ "ivynet-grpc",
+ "ivynet-io",
  "ivynet-macros",
  "ivynet-node-type",
+ "ivynet-signer",
  "once_cell",
- "prost",
  "prost-build",
- "prost-wkt",
  "prost-wkt-build",
- "prost-wkt-types",
  "rand",
  "regex",
  "reqwest 0.12.9",
@@ -2863,7 +2872,6 @@ dependencies = [
  "toml",
  "tonic",
  "tonic-build",
- "tonic-reflection",
  "tracing",
  "url",
  "uuid 1.11.0",
@@ -2891,6 +2899,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "ivynet-grpc"
+version = "0.1.0"
+dependencies = [
+ "prost",
+ "prost-build",
+ "prost-wkt",
+ "prost-wkt-build",
+ "prost-wkt-types",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.6",
+ "tokio",
+ "tokio-stream",
+ "tonic",
+ "tonic-build",
+ "tonic-reflection",
+ "tracing",
+]
+
+[[package]]
 name = "ivynet-ingress"
 version = "0.4.0"
 dependencies = [
@@ -2898,6 +2926,7 @@ dependencies = [
  "db",
  "ivynet-core",
  "ivynet-docker",
+ "ivynet-grpc",
  "ivynet-node-type",
  "sqlx",
  "thiserror 2.0.6",
@@ -2905,6 +2934,19 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid 1.11.0",
+]
+
+[[package]]
+name = "ivynet-io"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "tempfile",
+ "thiserror 2.0.6",
+ "toml",
+ "zip 2.2.1",
 ]
 
 [[package]]
@@ -2923,6 +2965,19 @@ dependencies = [
  "strum",
  "thiserror 2.0.6",
  "tracing",
+]
+
+[[package]]
+name = "ivynet-signer"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "ethers",
+ "ivynet-io",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.6",
 ]
 
 [[package]]
@@ -4506,7 +4561,7 @@ dependencies = [
  "openssl-probe",
  "rustls-pki-types",
  "schannel",
- "security-framework 3.0.1",
+ "security-framework 3.2.0",
 ]
 
 [[package]]
@@ -4653,6 +4708,7 @@ dependencies = [
  "ethers",
  "futures",
  "ivynet-core",
+ "ivynet-grpc",
  "serde_json",
  "thiserror 2.0.6",
  "tokio",
@@ -4717,9 +4773,9 @@ dependencies = [
 
 [[package]]
 name = "security-framework"
-version = "3.0.1"
+version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e1415a607e92bec364ea2cf9264646dcce0f91e6d65281bd6f2819cca3bf39c8"
+checksum = "271720403f46ca04f7ba6f55d438f8bd878d6b8ca0a1046e8228c4145bcbb316"
 dependencies = [
  "bitflags 2.6.0",
  "core-foundation 0.10.0",
@@ -4730,9 +4786,9 @@ dependencies = [
 
 [[package]]
 name = "security-framework-sys"
-version = "2.12.1"
+version = "2.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa39c7303dc58b5543c94d22c1766b0d31f2ee58306363ea622b10bbc075eaa2"
+checksum = "49db231d56a190491cb4aeda9527f1ad45345af50b0851622a7adb8c03b01c32"
 dependencies = [
  "core-foundation-sys",
  "libc",
@@ -6043,9 +6099,9 @@ checksum = "42ff0bf0c66b8238c6f3b578df37d0b7848e55df8577b3f74f92a69acceeb825"
 
 [[package]]
 name = "typetag"
-version = "0.2.18"
+version = "0.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "52ba3b6e86ffe0054b2c44f2d86407388b933b16cb0a70eea3929420db1d9bbe"
+checksum = "044fc3365ddd307c297fe0fe7b2e70588cdab4d0f62dc52055ca0d11b174cf0e"
 dependencies = [
  "erased-serde",
  "inventory",
@@ -6056,9 +6112,9 @@ dependencies = [
 
 [[package]]
 name = "typetag-impl"
-version = "0.2.18"
+version = "0.2.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70b20a22c42c8f1cd23ce5e34f165d4d37038f5b663ad20fb6adbdf029172483"
+checksum = "d9d30226ac9cbd2d1ff775f74e8febdab985dab14fb14aa2582c29a92d5555dc"
 dependencies = [
  "proc-macro2",
  "quote",

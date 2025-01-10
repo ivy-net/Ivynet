@@ -2,17 +2,18 @@ use anyhow::anyhow;
 use dialoguer::{Input, MultiSelect, Select};
 use ivynet_core::{
     config::{IvyConfig, DEFAULT_CONFIG_PATH},
-    grpc::{
-        self,
-        backend::backend_client::BackendClient,
-        messages::{Digests, NodeTypes, SignedNameChange},
-        tonic::{transport::Channel, Request, Response},
-    },
-    io::{read_toml, write_toml, IoError},
     signature::sign_name_change,
     telemetry::{fetch_telemetry_from, listen, ConfiguredAvs},
 };
 use ivynet_docker::{dockerapi::DockerClient, RegistryType};
+use ivynet_grpc::{
+    self,
+    backend::backend_client::BackendClient,
+    client::create_channel,
+    messages::{Digests, NodeTypes, SignedNameChange},
+    tonic::{transport::Channel, Request, Response},
+};
+use ivynet_io::{read_toml, write_toml, IoError};
 use ivynet_node_type::{AltlayerType, MachType, NodeType};
 use serde::{Deserialize, Serialize};
 use std::{
@@ -118,7 +119,7 @@ pub async fn rename_node(
     let backend_ca = if backend_ca.is_empty() { None } else { Some(backend_ca) };
 
     let mut backend_client = BackendClient::new(
-        grpc::client::create_channel(backend_url, backend_ca).await.expect("Cannot create channel"),
+        create_channel(backend_url, backend_ca).await.expect("Cannot create channel"),
     );
 
     let name_change_request = Request::new(SignedNameChange {
@@ -162,7 +163,7 @@ pub async fn start_monitor(mut config: IvyConfig) -> Result<(), anyhow::Error> {
     let backend_ca = if backend_ca.is_empty() { None } else { Some(backend_ca) };
 
     let backend_client = BackendClient::new(
-        grpc::client::create_channel(backend_url, backend_ca).await.expect("Cannot create channel"),
+        create_channel(backend_url, backend_ca).await.expect("Cannot create channel"),
     );
 
     info!("Starting monitor listener...");
@@ -178,7 +179,7 @@ pub async fn scan(force: bool, config: &IvyConfig) -> Result<(), anyhow::Error> 
     let backend_ca = if backend_ca.is_empty() { None } else { Some(backend_ca) };
 
     let backend = BackendClient::new(
-        grpc::client::create_channel(backend_url, backend_ca)
+        create_channel(backend_url, backend_ca)
             .await
             .map_err(|e| anyhow!("Failed to create backend channel: {}", e))?,
     );

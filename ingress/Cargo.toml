@@ -15,9 +15,17 @@ db = { path = "../db" }
 uuid = { version = "1.11", features = ["v4", "serde"] }
 tracing.workspace = true
 tracing-subscriber = "0.3"
-ivynet-node-type.workspace = true
 ivynet-docker.workspace = true
-sqlx = { version = "0.8.3", features = ["postgres", "chrono", "runtime-tokio", "tls-rustls", "uuid", "bigdecimal"] }
+ivynet-grpc.workspace = true
+ivynet-node-type.workspace = true
+sqlx = { version = "0.8.3", features = [
+	"postgres",
+	"chrono",
+	"runtime-tokio",
+	"tls-rustls",
+	"uuid",
+	"bigdecimal",
+] }
 
 [lints]
 workspace = true

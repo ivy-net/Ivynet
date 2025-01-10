@@ -6,7 +6,7 @@ use axum::{
 };
 use axum_extra::extract::CookieJar;
 use db::operator_keys::OperatorKey;
-use ivynet_core::ethers::types::Address;
+use ethers::types::Address;
 use std::collections::HashMap;
 
 use super::{authorize, HttpState};

@@ -10,7 +10,7 @@ use axum_extra::extract::{
     CookieJar,
 };
 use base64::Engine as _;
-use ivynet_core::ethers::types::Address;
+use ethers::types::Address;
 use sendgrid::v3::{Email, Message, Personalization};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;

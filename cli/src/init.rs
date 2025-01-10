@@ -1,13 +1,10 @@
 use dialoguer::{Input, Password};
-use ivynet_core::{
-    config::IvyConfig,
-    error::IvyError,
-    grpc::{
-        backend::backend_client::BackendClient, client::create_channel,
-        messages::RegistrationCredentials, tonic::Request,
-    },
-    wallet::IvyWallet,
+use ivynet_core::{config::IvyConfig, error::IvyError};
+use ivynet_grpc::{
+    backend::backend_client::BackendClient, client::create_channel,
+    messages::RegistrationCredentials, tonic::Request,
 };
+use ivynet_signer::IvyWallet;
 
 pub async fn register_node() -> Result<(), IvyError> {
     let config = IvyConfig::load_from_default_path()?;

@@ -1,0 +1,25 @@
+[package]
+name = "ivynet-signer"
+version = "0.1.0"
+edition = "2021"
+authors = ["Noah Foltz <noah@ivynet.dev>"]
+description = "Signer library for IvyNet"
+repository = "https://github.com/ivy-net/ivynet"
+license = "UNLICENSED"
+
+[lib]
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+ivynet-io.workspace = true
+async-trait.workspace = true
+ethers.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

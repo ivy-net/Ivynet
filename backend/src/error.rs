@@ -2,13 +2,13 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use ivynet_core::grpc::server::ServerError;
+use ivynet_grpc::server::ServerError;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum BackendError {
     #[error(transparent)]
-    Tonic(#[from] ivynet_core::grpc::Status),
+    Tonic(#[from] ivynet_grpc::Status),
 
     #[error(transparent)]
     DbError(#[from] db::error::DatabaseError),

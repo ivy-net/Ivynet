@@ -1,6 +1,6 @@
 use tonic::transport::{Channel, Uri};
 
-use crate::grpc::{
+use ivynet_grpc::{
     backend::backend_client::BackendClient,
     messages::{SignedLog, SignedMetrics, SignedNodeData},
 };
@@ -87,7 +87,7 @@ pub async fn create_telemetry_dispatch(
 ) -> TelemetryDispatchHandle {
     // TODO: Channel size is currently limited to 256. Consider unbounded channel.
     let backend_client = BackendClient::new(
-        crate::grpc::client::create_channel(backend_url, backend_ca)
+        ivynet_grpc::client::create_channel(backend_url, backend_ca)
             .await
             .expect("Cannot create channel"),
     );

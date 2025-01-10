@@ -1,8 +1,6 @@
-use crate::{
-    bls::{encode_address, Address as BlsAddress, BlsKey},
-    wallet::IvyWallet,
-};
+use crate::bls::{encode_address, Address as BlsAddress, BlsKey};
 use dialoguer::Select;
+use ivynet_signer::{IvyWallet, IvyWalletError};
 use serde_json::Value;
 use std::{fmt::Display, fs, path::PathBuf};
 
@@ -360,7 +358,7 @@ pub enum KeychainError {
     #[error(transparent)]
     IoError(#[from] std::io::Error),
     #[error(transparent)]
-    IvyWalletError(#[from] crate::wallet::IvyWalletError),
+    IvyWalletError(#[from] IvyWalletError),
     #[error(transparent)]
     BlsKeyError(#[from] crate::bls::BlsKeyError),
     #[error(transparent)]

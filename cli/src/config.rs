@@ -1,11 +1,10 @@
 use clap::Parser;
+use ethers::types::Chain;
 use ivynet_core::{
     config::{self, IvyConfig},
-    ethers::types::Chain,
-    grpc::client::Uri,
     metadata::Metadata,
-    utils::try_parse_chain,
 };
+use ivynet_grpc::client::Uri;
 
 use crate::error::Error;
 
@@ -81,7 +80,8 @@ fn parse_config_setter_commands(
 ) -> Result<(), Error> {
     match subsetter {
         ConfigSetCommands::Rpc { chain, rpc_url } => {
-            let chain = try_parse_chain(&chain)?;
+            let chain =
+                chain.parse::<Chain>().map_err(|e| Error::ChainParseError(e.to_string()))?;
             config.set_default_rpc_url(chain, &rpc_url)?;
             config.store()?;
         }

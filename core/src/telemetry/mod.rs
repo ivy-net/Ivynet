@@ -1,17 +1,19 @@
 use crate::{
     config::get_detailed_system_information,
     error::IvyError,
-    grpc::{
-        backend::backend_client::BackendClient,
-        messages::{Metrics, MetricsAttribute, NodeData, SignedMetrics, SignedNodeData},
-        tonic::transport::Channel,
-    },
     signature::{sign_metrics, sign_node_data},
-    wallet::IvyWallet,
 };
+
+use ivynet_grpc::{
+    backend::backend_client::BackendClient,
+    messages::{Metrics, MetricsAttribute, NodeData, SignedMetrics, SignedNodeData},
+    tonic::transport::Channel,
+};
+
 use dispatch::{TelemetryDispatchError, TelemetryDispatchHandle};
 use ivynet_docker::dockerapi::DockerClient;
 use ivynet_node_type::NodeType;
+use ivynet_signer::IvyWallet;
 use logs_listener::{ListenerData, LogsListenerManager};
 use reqwest::Client;
 use serde::{Deserialize, Serialize};

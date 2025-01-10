@@ -8,14 +8,14 @@ use db::{
     configure,
     data::avs_version::{find_latest_avs_version, VersionType},
 };
+use ethers::types::Chain;
 use ivynet_backend::{
     config::Config, error::BackendError, get_node_version_hashes, http, telemetry::start_tracing,
 };
-use strum::IntoEnumIterator;
-
-use ivynet_core::{ethers::types::Chain, utils::try_parse_chain};
+use ivynet_core::utils::try_parse_chain;
 use ivynet_node_type::{AltlayerType, MachType, NodeType};
 use sqlx::PgPool;
+use strum::IntoEnumIterator;
 use tracing::{debug, error, info, warn};
 
 #[tokio::main]
