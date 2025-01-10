@@ -241,5 +241,22 @@ async fn update_node_data_versions(pool: &PgPool, chain: &Chain) -> Result<(), B
         }
     }
 
+    db::DbAvsVersionData::set_avs_version(
+        pool,
+        &NodeType::Brevis,
+        &Chain::Holesky,
+        "Local",
+        "local_build_only",
+    )
+    .await?;
+    db::DbAvsVersionData::set_avs_version(
+        pool,
+        &NodeType::Brevis,
+        &Chain::Mainnet,
+        "Local",
+        "local_build_only",
+    )
+    .await?;
+
     Ok(())
 }

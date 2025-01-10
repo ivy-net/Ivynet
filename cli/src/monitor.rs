@@ -425,41 +425,50 @@ fn get_node_type(
 async fn grab_potential_avses() -> Vec<PotentialAvs> {
     let docker = DockerClient::default();
     info!("Scanning for containers, use LOG_LEVEL=debug to see images");
-    let images = docker.list_images().await;
+    let images: HashMap<String, String> = docker.list_images().await;
     debug!("images: {:#?}", images);
     let potential_avses = docker
         .list_containers()
         .await
         .into_iter()
         .filter_map(|c| {
-            if let (Some(names), Some(image_name)) = (c.names, c.image) {
-                let mut ports = if let Some(ports) = c.ports {
-                    ports.into_iter().filter_map(|p| p.public_port).collect::<Vec<_>>()
+            if let (Some(names), Some(image_name)) = (&c.names, &c.image) {
+                let mut ports = if let Some(ports) = &c.ports {
+                    ports.iter().filter_map(|p| p.public_port).collect::<Vec<_>>()
                 } else {
                     Vec::new()
                 };
 
                 ports.sort();
                 ports.dedup();
-                if let Some(image_hash) = images.get(&image_name) {
+
+                // If the image contains a version tag, use it
+                if let Some(image_hash) = images.get(image_name) {
                     return Some(PotentialAvs {
-                        container_name: names.first().unwrap_or(&image_name).to_string(),
+                        container_name: names.first().unwrap_or(image_name).to_string(),
                         image_name: image_name.clone(),
                         image_hash: image_hash.to_string(),
                         ports,
                     });
-                } else if let Some(key) = images.keys().find(|key| key.contains(&image_name)) {
-                    debug!("SHOULD BE: No version tag image: {}", image_name);
+
+                //Else we assume the first image that contains the image name from the list of images is correct
+                } else if let Some(key) = images.keys().find(|key| key.contains(image_name)) {
+                    debug!("No version tag image: {}", image_name);
                     let image_hash = images.get(key).unwrap();
-                    debug!("key (should be with version tag, and its what we'll use for potential avs): {}", key);
+                    debug!("key (SHOULD BE with version tag, and its what we'll use for potential avs): {}", key);
                     return Some(PotentialAvs {
-                        container_name: names.first().unwrap_or(&image_name).to_string(),
+                        container_name: names.first().unwrap_or(image_name).to_string(),
                         image_name: key.clone(),
                         image_hash: image_hash.to_string(),
                         ports,
                     });
                 }
             }
+            debug!("---- THIS CONTAINER IS BROKEN, GIVE TO IVYNET TEAM PLEASE! ----");
+            debug!("Container: {:#?}", c);
+            debug!("Image name: {:#?}", c.image);
+            debug!("Names: {:#?}", c.names);
+            debug!("--------------------------------");
             None
         })
         .collect::<Vec<_>>();
