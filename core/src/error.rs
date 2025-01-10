@@ -132,7 +132,7 @@ pub enum IvyError {
     LogParseError(String),
 
     #[error(transparent)]
-    BlsError(#[from] crate::bls::BlsKeyError),
+    BlsError(#[from] ivynet_signer::bls::BlsKeyError),
 
     #[error(transparent)]
     IvyYamlError(#[from] crate::ivy_yaml::IvyYamlError),
@@ -177,7 +177,7 @@ pub enum IvyError {
     NotFound,
 
     #[error("Signature error: {0}")]
-    IvySignatureError(#[from] crate::signature::IvySigningError),
+    IvySignatureError(#[from] ivynet_signer::sign_utils::IvySigningError),
 
     #[error("Node find error, could not find node for name {0}")]
     NodeFindError(String),

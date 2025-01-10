@@ -61,6 +61,7 @@ ivynet-grpc = { path = "ivynet-grpc" }
 ivynet-io = { path = "ivynet-io" }
 ivynet-node-type = { path = "ivynet-node-type" }
 ivynet-signer = { path = "ivynet-signer" }
+ivynet-types = { path = "ivynet-types" }
 
 #grpc
 prost = "0.13"
@@ -70,12 +71,14 @@ tonic = { version = "0.12", features = ["tls", "tls-roots"] }
 tonic-reflection = "0.12"
 
 async-trait = "0.1.80"
+blsful = "2.5.7"
 bollard = "0.18.0"
 convert_case = "0.6.0"
 chrono = "0.4.0"
 docker-registry = "0.7.0"
 ethers = "2.0"
 futures = "0.3.31"
+eth-keystore = "0.5.0"
 prost-build = "0.13"
 prost-wkt-build = "0.6"
 regex = "1.11.0"
@@ -90,5 +93,6 @@ tokio-stream = { version = "0.1.15", features = ["net"] }
 toml = "0.8.15"
 tonic-build = "0.12"
 tracing = "0.1.40"
+uuid = { version = "1.11.0", features = ["v4", "serde"] }
 which = "7.0"
 zip = "2.1.3"

@@ -1,8 +1,6 @@
 use clap::Subcommand;
 use std::fmt::Display;
 
-use ivynet_node_type::NodeType;
-
 #[derive(Subcommand, Debug)]
 pub enum RegisterCommands {
     #[command(
@@ -27,11 +25,6 @@ pub enum NodeCommands {
         name = "configure",
         about = "Configure a new node instance type for the node launcher."
     )]
-    Configure { node_type: NodeType },
-    #[command(
-        name = "start",
-        about = "Start running an AVS node in a docker container based on a configuration file."
-    )]
     Start {},
     #[command(name = "stop", about = "Stop running the active AVS docker container.")]
     Stop {},
@@ -52,9 +45,6 @@ impl Display for NodeCommands {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             NodeCommands::Info {} => write!(f, "get information about the currently running AVS"),
-            NodeCommands::Configure { node_type } => {
-                write!(f, "Configure a new {node_type} node instance")
-            }
             NodeCommands::Start { .. } => write!(f, "start"),
             NodeCommands::Stop {} => write!(f, "stop"),
             NodeCommands::Inspect { avs: _, chain: _ } => {

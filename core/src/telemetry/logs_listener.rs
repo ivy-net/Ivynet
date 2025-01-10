@@ -3,16 +3,13 @@ use std::time::Duration;
 use bollard::container::LogOutput;
 use ivynet_docker::{container::Container, dockerapi::DockerClient};
 use ivynet_grpc::messages::SignedLog;
-use ivynet_signer::IvyWallet;
+use ivynet_signer::{sign_utils::sign_string, IvyWallet};
 use tokio::{task::JoinSet, time};
 use tokio_stream::StreamExt;
 use tracing::{error, info};
 use uuid::Uuid;
 
-use crate::{
-    signature::sign_string,
-    telemetry::{dispatch::TelemetryDispatchHandle, ConfiguredAvs},
-};
+use crate::telemetry::{dispatch::TelemetryDispatchHandle, ConfiguredAvs};
 
 type LogListenerResult = Result<ListenerData, LogListenerError>;
 pub struct LogsListenerManager {
@@ -145,7 +142,7 @@ pub enum LogListenerError {
     #[error("LogListener error: {0}")]
     LogListenerError(String),
     #[error("Signature error: {0}")]
-    SignatureError(#[from] crate::signature::IvySigningError),
+    SignatureError(#[from] ivynet_signer::sign_utils::IvySigningError),
     #[error("Telemetry dispatch error: {0}")]
     TelemetryDispatchError(#[from] crate::telemetry::dispatch::TelemetryDispatchError),
     #[error("Unexpected error: {0}")]

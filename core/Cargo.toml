@@ -23,7 +23,6 @@ ivynet-node-type.workspace = true
 ivynet-signer.workspace = true
 
 bollard.workspace = true
-clap = { version = "4.5.7", features = ["derive"] }
 futures-util = "0.3"
 dialoguer = "0.11.0"
 dirs = "5.0.1"
@@ -45,8 +44,6 @@ tokio-stream.workspace = true
 zip.workspace = true
 url = { version = "2.5.1", features = ["serde"] }
 ivynet-macros = { path = "../macros" }
-blsful = "2.5.7"
-rand = "0.8"
 
 # prost.workspace = true
 # prost-wkt.workspace = true
@@ -56,8 +53,7 @@ tonic.workspace = true
 semver = "1.0.23"
 indexmap = "2.6.0"
 docker-compose-types = "0.15.0"
-eth-keystore = { version = "0.5.0" }
-uuid = { version = "1.11.0", features = ["v4", "serde"] }
+uuid.workspace = true
 rustc-hex = "2.1.0"
 
 [build-dependencies]

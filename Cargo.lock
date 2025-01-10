@@ -2834,14 +2834,11 @@ dependencies = [
 name = "ivynet-core"
 version = "0.4.6"
 dependencies = [
- "blsful",
  "bollard",
- "clap",
  "dialoguer",
  "dirs",
  "docker-compose-types",
  "dotenvy",
- "eth-keystore",
  "ethers",
  "futures-util",
  "indexmap 2.7.0",
@@ -2855,7 +2852,6 @@ dependencies = [
  "once_cell",
  "prost-build",
  "prost-wkt-build",
- "rand",
  "regex",
  "reqwest 0.12.9",
  "rustc-hex",
@@ -2928,6 +2924,7 @@ dependencies = [
  "ivynet-docker",
  "ivynet-grpc",
  "ivynet-node-type",
+ "ivynet-signer",
  "sqlx",
  "thiserror 2.0.6",
  "tokio",
@@ -2972,12 +2969,17 @@ name = "ivynet-signer"
 version = "0.1.0"
 dependencies = [
  "async-trait",
+ "blsful",
+ "eth-keystore",
  "ethers",
+ "ivynet-grpc",
  "ivynet-io",
  "serde",
  "serde_json",
  "tempfile",
  "thiserror 2.0.6",
+ "tonic",
+ "uuid 1.11.0",
 ]
 
 [[package]]

@@ -1,6 +1,8 @@
-use crate::bls::{encode_address, Address as BlsAddress, BlsKey};
 use dialoguer::Select;
-use ivynet_signer::{IvyWallet, IvyWalletError};
+use ivynet_signer::{
+    bls::{encode_address, Address as BlsAddress, BlsKey},
+    IvyWallet, IvyWalletError,
+};
 use serde_json::Value;
 use std::{fmt::Display, fs, path::PathBuf};
 
@@ -360,7 +362,7 @@ pub enum KeychainError {
     #[error(transparent)]
     IvyWalletError(#[from] IvyWalletError),
     #[error(transparent)]
-    BlsKeyError(#[from] crate::bls::BlsKeyError),
+    BlsKeyError(#[from] ivynet_signer::bls::BlsKeyError),
     #[error(transparent)]
     DialoguerError(#[from] dialoguer::Error),
     #[error("No address field found in keyfile")]

@@ -4,7 +4,8 @@ use ethers::{
     utils::keccak256,
 };
 use ivynet_grpc::messages::{Metrics, NodeData};
-use ivynet_signer::IvyWallet;
+
+use crate::IvyWallet;
 
 // --- General Signing ---
 pub fn sign_string(string: &str, wallet: &IvyWallet) -> Result<Signature, IvySigningError> {

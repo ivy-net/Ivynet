@@ -6,10 +6,8 @@ use db::{
     metric::Metric,
     Account, Avs, AvsVersionHash,
 };
-use ivynet_core::{
-    ethers::types::{Address, Signature},
-    signature::{recover_from_string, recover_metrics, recover_name_change, recover_node_data},
-};
+use ivynet_core::ethers::types::{Address, Signature};
+
 use ivynet_grpc::{
     self,
     backend::backend_server::{Backend, BackendServer},
@@ -23,6 +21,9 @@ use ivynet_grpc::{
 
 use ivynet_docker::logs::{find_log_level, find_or_create_log_timestamp, sanitize_log};
 use ivynet_node_type::NodeType;
+use ivynet_signer::sign_utils::{
+    recover_from_string, recover_metrics, recover_name_change, recover_node_data,
+};
 use sqlx::PgPool;
 use std::{str::FromStr, sync::Arc};
 use tracing::debug;

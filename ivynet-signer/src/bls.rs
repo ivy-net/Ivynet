@@ -1,8 +1,10 @@
 use blsful::{Bls12381G1Impl, PublicKey as BlsPublic, SecretKey as BlsSecret};
 use eth_keystore::{decrypt_key, encrypt_key, KeystoreError};
-use ethers::utils::hex::{decode, FromHexError};
+use ethers::{
+    core::rand::thread_rng,
+    utils::hex::{decode, FromHexError},
+};
 use ivynet_io::{read_json, write_json, IoError};
-use rand::thread_rng;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::{Path, PathBuf};

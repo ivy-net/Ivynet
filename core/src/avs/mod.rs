@@ -6,7 +6,6 @@ use dialoguer::Input;
 use ethers::types::{Chain, U256};
 use url::Url;
 
-pub mod commands;
 pub mod config;
 pub mod contracts;
 pub mod eigenda;

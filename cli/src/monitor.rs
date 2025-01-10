@@ -2,7 +2,6 @@ use anyhow::anyhow;
 use dialoguer::{Input, MultiSelect, Select};
 use ivynet_core::{
     config::{IvyConfig, DEFAULT_CONFIG_PATH},
-    signature::sign_name_change,
     telemetry::{fetch_telemetry_from, listen, ConfiguredAvs},
 };
 use ivynet_docker::{dockerapi::DockerClient, RegistryType};
@@ -15,6 +14,7 @@ use ivynet_grpc::{
 };
 use ivynet_io::{read_toml, write_toml, IoError};
 use ivynet_node_type::{AltlayerType, MachType, NodeType};
+use ivynet_signer::sign_utils::sign_name_change;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
