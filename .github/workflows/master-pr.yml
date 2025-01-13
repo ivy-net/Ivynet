@@ -75,6 +75,5 @@ jobs:
           ansible-playbook \
             -i gcp.yml \
             -u ${remote_user} \
-            -e "ivynet_backend_is_release=false" \
             --vault-password-file ~/.vault.txt \
-            backend.yml
+            backend_master.yml
