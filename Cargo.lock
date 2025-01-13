@@ -1294,7 +1294,7 @@ dependencies = [
  "mime",
  "pin-project",
  "regex-lite",
- "reqwest 0.12.9",
+ "reqwest 0.12.12",
  "serde",
  "serde_ignored",
  "serde_json",
@@ -2848,7 +2848,7 @@ dependencies = [
  "prost-wkt-types",
  "rand",
  "regex",
- "reqwest 0.12.9",
+ "reqwest 0.12.12",
  "rustc-hex",
  "semver",
  "serde",
@@ -4250,9 +4250,9 @@ dependencies = [
 
 [[package]]
 name = "reqwest"
-version = "0.12.9"
+version = "0.12.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a77c62af46e79de0a562e1a9849205ffcb7fc1238876e9bd743357570e04046f"
+checksum = "43e734407157c3c2034e0258f5e4473ddb361b1e85f95a66690d67264d7cd1da"
 dependencies = [
  "base64 0.22.1",
  "bytes",
@@ -4289,6 +4289,7 @@ dependencies = [
  "tokio-native-tls",
  "tokio-rustls 0.26.1",
  "tokio-util",
+ "tower 0.5.2",
  "tower-service",
  "url",
  "wasm-bindgen",
@@ -4766,7 +4767,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6c3c66709377c4d2bcbf46c298c5e07db62398793d20a69ca99b4ec6f9bfe5fd"
 dependencies = [
  "data-encoding",
- "reqwest 0.12.9",
+ "reqwest 0.12.12",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
@@ -6237,7 +6238,7 @@ dependencies = [
  "axum",
  "mime_guess",
  "regex",
- "reqwest 0.12.9",
+ "reqwest 0.12.12",
  "rust-embed",
  "serde",
  "serde_json",
