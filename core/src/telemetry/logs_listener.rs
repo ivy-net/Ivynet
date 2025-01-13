@@ -15,52 +15,60 @@ use crate::{
 };
 
 type LogListenerResult = Result<ListenerData, LogListenerError>;
+
+/// Manager for a set of LogsListeners. This will spawn and manage the underlying listeners as
+/// futures, and is made accessible via the `LogsListenerHandle`.
+#[derive(Debug)]
 pub struct LogsListenerManager {
-    listener_set: JoinSet<LogListenerResult>,
-    dispatcher: TelemetryDispatchHandle,
     docker: DockerClient,
+    signer: IvyWallet,
+    machine_id: Uuid,
+    dispatcher: TelemetryDispatchHandle,
+    listener_set: JoinSet<LogListenerResult>,
 }
+
 impl LogsListenerManager {
-    pub fn new(dispatcher: TelemetryDispatchHandle, docker: DockerClient) -> Self {
-        Self { listener_set: JoinSet::new(), dispatcher, docker }
+    pub fn new(
+        docker: &DockerClient,
+        signer: &IvyWallet,
+        machine_id: Uuid,
+        dispatcher: &TelemetryDispatchHandle,
+    ) -> Self {
+        Self {
+            docker: docker.clone(),
+            signer: signer.clone(),
+            machine_id,
+            dispatcher: dispatcher.clone(),
+            listener_set: JoinSet::new(),
+        }
     }
 
     /// Add a listener to the manager as a future. The listener will be spawned and run in the
     /// background. The future will resolve to the container that the listener is listening to once
     /// the stream is closed for further handling, restarts, etc.
-    pub async fn add_listener(&mut self, data: ListenerData) {
-        let listener = LogsListener::new(self.docker.clone(), self.dispatcher.clone(), data);
-        // Spawn the listener future
-        self.listener_set.spawn(async move { listener_fut(listener).await });
+    pub async fn add_listener(
+        &mut self,
+        container: &Container,
+        node_data: &ConfiguredAvs,
+    ) -> Result<(), LogListenerError> {
+        let listener_data = ListenerData {
+            container: container.clone(),
+            node_data: node_data.clone(),
+            machine_id: self.machine_id,
+            identity_wallet: self.signer.clone(),
+        };
+        self.add_listener_from_data(&listener_data).await
     }
 
-    pub async fn listen(mut self) -> Result<(), LogListenerError> {
-        while let Some(future) = self.listener_set.join_next().await {
-            match future {
-                Ok(result) => {
-                    match result {
-                        Ok(data) => {
-                            info!("Listener exited for container: {:?}", data.container.image());
-                            info!(
-                                "Attempting to restart listener for container: {:?}",
-                                data.container.image()
-                            );
-                            // wait a sec for the container to potentially restart
-                            time::sleep(Duration::from_secs(5)).await;
-                            self.add_listener(data).await;
-                        }
-                        Err(e) => {
-                            error!("Listener error: {}", e);
-                            return Err(e);
-                        }
-                    };
-                }
-                Err(e) => {
-                    error!("Unexpected listener error: {}, listener exiting...", e);
-                    return Err(e.into());
-                }
-            }
-        }
+    pub async fn add_listener_from_data(
+        &mut self,
+        data: &ListenerData,
+    ) -> Result<(), LogListenerError> {
+        // TODO: Have not rely on ConfiguredAvs
+        let listener =
+            LogsListener::new(self.docker.clone(), self.dispatcher.clone(), data.clone());
+        self.listener_set.spawn(async move { listener_fut(listener).await });
+        info!("Added log listener for container: {}", data.node_data.container_name);
         Ok(())
     }
 }
@@ -68,28 +76,21 @@ impl LogsListenerManager {
 // TODO: Not a huge fan of cloning machine_id and identity wallet to this struct via ListenerData
 // for singing, as there will be potentially lots of instances of this and it feels like a waste.
 // Cleaner pattern may be to have a signing service or actor that can be shared across listeners.
+
+/// An individual instance of a LogListener, which listens to the logs of a single container and
+/// sends them to the dispatcher.
 struct LogsListener {
     docker: DockerClient,
     dispatcher: TelemetryDispatchHandle,
     listener_data: ListenerData,
 }
 
+#[derive(Debug, Clone)]
 pub struct ListenerData {
-    container: Container,
-    node_data: ConfiguredAvs,
-    machine_id: Uuid,
-    identity_wallet: IvyWallet,
-}
-
-impl ListenerData {
-    pub fn new(
-        container: Container,
-        node_data: ConfiguredAvs,
-        machine_id: Uuid,
-        identity_wallet: IvyWallet,
-    ) -> Self {
-        Self { container, node_data, machine_id, identity_wallet }
-    }
+    pub container: Container,
+    pub node_data: ConfiguredAvs,
+    pub machine_id: Uuid,
+    pub identity_wallet: IvyWallet,
 }
 
 impl LogsListener {
@@ -111,10 +112,13 @@ impl LogsListener {
                     self.handle_log(log).await?;
                 }
                 Err(e) => {
+                    // error!("{}", format!("Log read error | {} | : {}", self.container.image(),
+                    // e));
                     return Err(LogListenerError::DockerError(e));
                 }
             }
         }
+        info!("Log stream closed for container: {}", self.listener_data.node_data.container_name);
         Ok(())
     }
 
@@ -146,8 +150,6 @@ pub enum LogListenerError {
     LogListenerError(String),
     #[error("Signature error: {0}")]
     SignatureError(#[from] crate::signature::IvySigningError),
-    #[error("Telemetry dispatch error: {0}")]
-    TelemetryDispatchError(#[from] crate::telemetry::dispatch::TelemetryDispatchError),
     #[error("Unexpected error: {0}")]
     JoinError(#[from] tokio::task::JoinError),
 }

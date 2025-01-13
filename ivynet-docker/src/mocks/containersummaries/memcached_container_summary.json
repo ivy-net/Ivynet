@@ -1,0 +1,57 @@
+{
+    "Id": "8fb2dd508d7a408393df907d3351c0e3e811a614a4fa9a5050e645dd61c32fbe",
+    "Names": [
+        "/memcached"
+    ],
+    "Image": "memcached:latest",
+    "ImageID": "sha256:1fadd7b05a9f38024861b686ccac4891e137fef721f59e3086eeafbc7e56daa0",
+    "Command": "docker-entrypoint.sh memcached",
+    "Created": 1735665554,
+    "Ports": [
+        {
+            "IP": "0.0.0.0",
+            "PrivatePort": 11211,
+            "PublicPort": 11211,
+            "Type": "tcp"
+        },
+        {
+            "IP": "::",
+            "PrivatePort": 11211,
+            "PublicPort": 11211,
+            "Type": "tcp"
+        }
+    ],
+    "Labels": {
+        "com.docker.compose.version": "2.29.7",
+        "com.docker.compose.service": "memcached",
+        "com.docker.compose.container-number": "1",
+        "com.docker.compose.project": "backend",
+        "com.docker.compose.project.config_files": "/home/user/ivynet/backend/backend-compose.yaml",
+        "com.docker.compose.config-hash": "f34e0a693e3be2a9226cc87b09fb6b96b0ed38c2fb64ceef49e3e059991a80b1",
+        "com.docker.compose.image": "sha256:1fadd7b05a9f38024861b686ccac4891e137fef721f59e3086eeafbc7e56daa0",
+        "com.docker.compose.depends_on": "",
+        "com.docker.compose.oneoff": "False",
+        "com.docker.compose.project.working_dir": "/home/user/ivynet/backend"
+    },
+    "State": "running",
+    "Status": "Up 6 days",
+    "HostConfig": {
+        "NetworkMode": "backend_default"
+    },
+    "NetworkSettings": {
+        "Networks": {
+            "backend_default": {
+                "MacAddress": "02:42:ac:12:00:02",
+                "NetworkID": "03b59f49379fac2ec90016f7d0d12df88a466b8c38e222932e64f8efe9f04ee9",
+                "EndpointID": "1312e32022aa2caababec6359a25e7199ccf3940ba468b3f868f5d9fda9d750d",
+                "Gateway": "172.18.0.1",
+                "IPAddress": "172.18.0.2",
+                "IPPrefixLen": 16,
+                "IPv6Gateway": "",
+                "GlobalIPv6Address": "",
+                "GlobalIPv6PrefixLen": 0
+            }
+        }
+    },
+    "Mounts": []
+}

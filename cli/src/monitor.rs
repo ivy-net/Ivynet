@@ -10,9 +10,12 @@ use ivynet_core::{
     },
     io::{read_toml, write_toml, IoError},
     signature::sign_name_change,
-    telemetry::{fetch_telemetry_from, listen, ConfiguredAvs},
+    telemetry::{listen, metrics_listener::fetch_telemetry_from, ConfiguredAvs},
 };
-use ivynet_docker::{dockerapi::DockerClient, RegistryType};
+use ivynet_docker::{
+    dockerapi::{DockerApi, DockerClient},
+    RegistryType,
+};
 use ivynet_node_type::{AltlayerType, MachType, NodeType};
 use serde::{Deserialize, Serialize};
 use std::{

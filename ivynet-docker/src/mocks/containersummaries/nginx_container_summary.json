@@ -1,0 +1,87 @@
+{
+    "Id": "dfc208613173bc16e2d35f0115b30deaabc6e8bb592f05891fe25da388649ff1",
+    "Names": [
+        "/holesky-reverse-proxy-1"
+    ],
+    "Image": "nginx:latest",
+    "ImageID": "sha256:66f8bdd3810c96dc5c28aec39583af731b34a2cd99471530f53c8794ed5b423e",
+    "Command": "/docker-entrypoint.sh nginx -g 'daemon off;'",
+    "Created": 1735572077,
+    "Ports": [
+        {
+            "IP": "0.0.0.0",
+            "PrivatePort": 32004,
+            "PublicPort": 32004,
+            "Type": "tcp"
+        },
+        {
+            "IP": "::",
+            "PrivatePort": 32004,
+            "PublicPort": 32004,
+            "Type": "tcp"
+        },
+        {
+            "IP": null,
+            "PrivatePort": 80,
+            "PublicPort": null,
+            "Type": "tcp"
+        },
+        {
+            "IP": "0.0.0.0",
+            "PrivatePort": 9091,
+            "PublicPort": 9091,
+            "Type": "tcp"
+        },
+        {
+            "IP": "::",
+            "PrivatePort": 9091,
+            "PublicPort": 9091,
+            "Type": "tcp"
+        }
+    ],
+    "Labels": {
+        "com.docker.compose.version": "2.29.7",
+        "com.docker.compose.depends_on": "da-node:service_started:false",
+        "com.docker.compose.project": "holesky",
+        "com.docker.compose.project.working_dir": "/home/user/.eigenlayer/eigenda/eigenda-operator-setup/holesky",
+        "com.docker.compose.container-number": "1",
+        "com.docker.compose.project.config_files": "/home/user/.eigenlayer/eigenda/eigenda-operator-setup/holesky/docker-compose.yml",
+        "com.docker.compose.image": "sha256:66f8bdd3810c96dc5c28aec39583af731b34a2cd99471530f53c8794ed5b423e",
+        "maintainer": "NGINX Docker Maintainers <docker-maint@nginx.com>",
+        "com.docker.compose.oneoff": "False",
+        "com.docker.compose.config-hash": "07a32687d7eaea1f8fb0e1636d223c546161d0bcf6c5fbff663dc78983d6efdc",
+        "com.docker.compose.service": "reverse-proxy"
+    },
+    "State": "running",
+    "Status": "Up About an hour",
+    "HostConfig": {
+        "NetworkMode": "eigenda-network"
+    },
+    "NetworkSettings": {
+        "Networks": {
+            "eigenda-network": {
+                "MacAddress": "02:42:ac:15:00:03",
+                "NetworkID": "990110c925b589fd0222c379f2a99b09801b8b991022aa52dcd542d866f02c4b",
+                "EndpointID": "4a83090aaa912937182ee806111e8982a4415080fdacd9e5df3a03c58a37d4da",
+                "Gateway": "172.21.0.1",
+                "IPAddress": "172.21.0.3",
+                "IPPrefixLen": 16,
+                "IPv6Gateway": "",
+                "GlobalIPv6Address": "",
+                "GlobalIPv6PrefixLen": 0
+            }
+        }
+    },
+    "Mounts": [
+        {
+            "Type": "bind",
+            "Name": null,
+            "Source": "/home/user/.eigenlayer/eigenda/eigenda-operator-setup/resources/rate-limit-nginx.conf",
+            "Destination": "/etc/nginx/templates/default.conf.template",
+            "Driver": null,
+            "Mode": "ro",
+            "RW": false,
+            "Propagation": "rprivate"
+        }
+    ]
+}

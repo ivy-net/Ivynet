@@ -1,0 +1,130 @@
+[
+	{
+		"Type": "container",
+		"Action": "attach",
+		"Actor": {
+			"ID": "a301eacd0a6779b207b3ad3f78ff72c65eb8b765feeb7f7b3c3e3bf67e70ca0a",
+			"Attributes": {
+				"com.docker.compose.project.working_dir": "/home/user/.eigenlayer/eigenda/eigenda-operator-setup/holesky",
+				"com.docker.compose.container-number": "1",
+				"com.docker.compose.depends_on": "",
+				"com.docker.compose.oneoff": "False",
+				"com.docker.compose.project.config_files": "/home/user/.eigenlayer/eigenda/eigenda-operator-setup/holesky/docker-compose.yml",
+				"name": "eigenda-native-node",
+				"com.docker.compose.service": "da-node",
+				"com.docker.compose.project": "holesky",
+				"image": "ghcr.io/layr-labs/eigenda/opr-node:0.8.4",
+				"com.docker.compose.config-hash": "0832cadf6911f10ea09fb310ef7a90cdda136dd06cd723b73fa24422754b0b07",
+				"com.docker.compose.image": "sha256:a7fb22249cdab73f728395d737798ba2aea7a567cab217c1577b618eb310edb2",
+				"com.docker.compose.version": "2.29.7"
+			}
+		},
+		"scope": "local",
+		"time": 1736347624,
+		"timeNano": 1736347624966188674
+	},
+	{
+		"Type": "container",
+		"Action": "attach",
+		"Actor": {
+			"ID": "dfc208613173bc16e2d35f0115b30deaabc6e8bb592f05891fe25da388649ff1",
+			"Attributes": {
+				"com.docker.compose.config-hash": "07a32687d7eaea1f8fb0e1636d223c546161d0bcf6c5fbff663dc78983d6efdc",
+				"com.docker.compose.service": "reverse-proxy",
+				"maintainer": "NGINX Docker Maintainers <docker-maint@nginx.com>",
+				"name": "holesky-reverse-proxy-1",
+				"com.docker.compose.project": "holesky",
+				"com.docker.compose.depends_on": "da-node:service_started:false",
+				"com.docker.compose.oneoff": "False",
+				"com.docker.compose.version": "2.29.7",
+				"image": "nginx:latest",
+				"com.docker.compose.container-number": "1",
+				"com.docker.compose.image": "sha256:66f8bdd3810c96dc5c28aec39583af731b34a2cd99471530f53c8794ed5b423e",
+				"com.docker.compose.project.config_files": "/home/user/.eigenlayer/eigenda/eigenda-operator-setup/holesky/docker-compose.yml",
+				"com.docker.compose.project.working_dir": "/home/user/.eigenlayer/eigenda/eigenda-operator-setup/holesky"
+			}
+		},
+		"scope": "local",
+		"time": 1736347624,
+		"timeNano": 1736347624966735874
+	},
+	{
+		"Type": "network",
+		"Action": "connect",
+		"Actor": {
+			"ID": "990110c925b589fd0222c379f2a99b09801b8b991022aa52dcd542d866f02c4b",
+			"Attributes": {
+				"type": "bridge",
+				"name": "eigenda-network",
+				"container": "a301eacd0a6779b207b3ad3f78ff72c65eb8b765feeb7f7b3c3e3bf67e70ca0a"
+			}
+		},
+		"scope": "local",
+		"time": 1736347625,
+		"timeNano": 1736347625009825297
+	},
+	{
+		"Type": "container",
+		"Action": "start",
+		"Actor": {
+			"ID": "a301eacd0a6779b207b3ad3f78ff72c65eb8b765feeb7f7b3c3e3bf67e70ca0a",
+			"Attributes": {
+				"com.docker.compose.project.config_files": "/home/user/.eigenlayer/eigenda/eigenda-operator-setup/holesky/docker-compose.yml",
+				"com.docker.compose.oneoff": "False",
+				"com.docker.compose.config-hash": "0832cadf6911f10ea09fb310ef7a90cdda136dd06cd723b73fa24422754b0b07",
+				"com.docker.compose.image": "sha256:a7fb22249cdab73f728395d737798ba2aea7a567cab217c1577b618eb310edb2",
+				"com.docker.compose.project": "holesky",
+				"com.docker.compose.container-number": "1",
+				"com.docker.compose.project.working_dir": "/home/user/.eigenlayer/eigenda/eigenda-operator-setup/holesky",
+				"com.docker.compose.depends_on": "",
+				"image": "ghcr.io/layr-labs/eigenda/opr-node:0.8.4",
+				"com.docker.compose.version": "2.29.7",
+				"com.docker.compose.service": "da-node",
+				"name": "eigenda-native-node"
+			}
+		},
+		"scope": "local",
+		"time": 1736347625,
+		"timeNano": 1736347625138829799
+	},
+	{
+		"Type": "network",
+		"Action": "connect",
+		"Actor": {
+			"ID": "990110c925b589fd0222c379f2a99b09801b8b991022aa52dcd542d866f02c4b",
+			"Attributes": {
+				"name": "eigenda-network",
+				"type": "bridge",
+				"container": "dfc208613173bc16e2d35f0115b30deaabc6e8bb592f05891fe25da388649ff1"
+			}
+		},
+		"scope": "local",
+		"time": 1736347625,
+		"timeNano": 1736347625180589762
+	},
+	{
+		"Type": "container",
+		"Action": "start",
+		"Actor": {
+			"ID": "dfc208613173bc16e2d35f0115b30deaabc6e8bb592f05891fe25da388649ff1",
+			"Attributes": {
+				"com.docker.compose.depends_on": "da-node:service_started:false",
+				"com.docker.compose.config-hash": "07a32687d7eaea1f8fb0e1636d223c546161d0bcf6c5fbff663dc78983d6efdc",
+				"com.docker.compose.container-number": "1",
+				"com.docker.compose.project": "holesky",
+				"image": "nginx:latest",
+				"com.docker.compose.project.working_dir": "/home/user/.eigenlayer/eigenda/eigenda-operator-setup/holesky",
+				"maintainer": "NGINX Docker Maintainers <docker-maint@nginx.com>",
+				"name": "holesky-reverse-proxy-1",
+				"com.docker.compose.project.config_files": "/home/user/.eigenlayer/eigenda/eigenda-operator-setup/holesky/docker-compose.yml",
+				"com.docker.compose.oneoff": "False",
+				"com.docker.compose.image": "sha256:66f8bdd3810c96dc5c28aec39583af731b34a2cd99471530f53c8794ed5b423e",
+				"com.docker.compose.service": "reverse-proxy",
+				"com.docker.compose.version": "2.29.7"
+			}
+		},
+		"scope": "local",
+		"time": 1736347625,
+		"timeNano": 1736347625293403566
+	}
+]

@@ -1,0 +1,130 @@
+{
+    "Id": "a301eacd0a6779b207b3ad3f78ff72c65eb8b765feeb7f7b3c3e3bf67e70ca0a",
+    "Names": [
+        "/eigenda-native-node"
+    ],
+    "Image": "ghcr.io/layr-labs/eigenda/opr-node:0.8.4",
+    "ImageID": "sha256:a7fb22249cdab73f728395d737798ba2aea7a567cab217c1577b618eb310edb2",
+    "Command": "node",
+    "Created": 1735572077,
+    "Ports": [
+        {
+            "IP": "0.0.0.0",
+            "PrivatePort": 32005,
+            "PublicPort": 32005,
+            "Type": "tcp"
+        },
+        {
+            "IP": "::",
+            "PrivatePort": 32005,
+            "PublicPort": 32005,
+            "Type": "tcp"
+        },
+        {
+            "IP": "0.0.0.0",
+            "PrivatePort": 9092,
+            "PublicPort": 9092,
+            "Type": "tcp"
+        },
+        {
+            "IP": "::",
+            "PrivatePort": 9092,
+            "PublicPort": 9092,
+            "Type": "tcp"
+        }
+    ],
+    "Labels": {
+        "com.docker.compose.version": "2.29.7",
+        "com.docker.compose.project.config_files": "/home/user/.eigenlayer/eigenda/eigenda-operator-setup/holesky/docker-compose.yml",
+        "com.docker.compose.container-number": "1",
+        "com.docker.compose.project": "holesky",
+        "com.docker.compose.oneoff": "False",
+        "com.docker.compose.service": "da-node",
+        "com.docker.compose.config-hash": "0832cadf6911f10ea09fb310ef7a90cdda136dd06cd723b73fa24422754b0b07",
+        "com.docker.compose.depends_on": "",
+        "com.docker.compose.image": "sha256:a7fb22249cdab73f728395d737798ba2aea7a567cab217c1577b618eb310edb2",
+        "com.docker.compose.project.working_dir": "/home/user/.eigenlayer/eigenda/eigenda-operator-setup/holesky"
+    },
+    "State": "running",
+    "Status": "Up About an hour",
+    "HostConfig": {
+        "NetworkMode": "eigenda-network"
+    },
+    "NetworkSettings": {
+        "Networks": {
+            "eigenda-network": {
+                "MacAddress": "02:42:ac:15:00:02",
+                "NetworkID": "990110c925b589fd0222c379f2a99b09801b8b991022aa52dcd542d866f02c4b",
+                "EndpointID": "d13554210feb30cb29d17b1873062365ea67df54079d64b042a9733150b23461",
+                "Gateway": "172.21.0.1",
+                "IPAddress": "172.21.0.2",
+                "IPPrefixLen": 16,
+                "IPv6Gateway": "",
+                "GlobalIPv6Address": "",
+                "GlobalIPv6PrefixLen": 0
+            }
+        }
+    },
+    "Mounts": [
+        {
+            "Type": "bind",
+            "Name": null,
+            "Source": "/home/mr-idiot/.eigenlayer/eigenda/resources/g2.point.powerOf2",
+            "Destination": "/app/g2.point.powerOf2",
+            "Driver": null,
+            "Mode": "rw",
+            "RW": true,
+            "Propagation": "rprivate"
+        },
+        {
+            "Type": "bind",
+            "Name": null,
+            "Source": "/home/mr-idiot/.eigenlayer/eigenda/holesky/logs",
+            "Destination": "/app/logs",
+            "Driver": null,
+            "Mode": "rw",
+            "RW": true,
+            "Propagation": "rprivate"
+        },
+        {
+            "Type": "bind",
+            "Name": null,
+            "Source": "/home/mr-idiot/.ivynet/test_key.bls.json",
+            "Destination": "/app/operator_keys/bls_key.json",
+            "Driver": null,
+            "Mode": "rw",
+            "RW": true,
+            "Propagation": "rprivate"
+        },
+        {
+            "Type": "bind",
+            "Name": null,
+            "Source": "/home/mr-idiot/.eigenlayer/eigenda/holesky/db",
+            "Destination": "/data/operator/db",
+            "Driver": null,
+            "Mode": "rw",
+            "RW": true,
+            "Propagation": "rprivate"
+        },
+        {
+            "Type": "bind",
+            "Name": null,
+            "Source": "/home/mr-idiot/.eigenlayer/eigenda/eigenda-operator-setup/resources/cache",
+            "Destination": "/app/cache",
+            "Driver": null,
+            "Mode": "rw",
+            "RW": true,
+            "Propagation": "rprivate"
+        },
+        {
+            "Type": "bind",
+            "Name": null,
+            "Source": "/home/mr-idiot/.eigenlayer/eigenda/resources/g1.point",
+            "Destination": "/app/g1.point",
+            "Driver": null,
+            "Mode": "rw",
+            "RW": true,
+            "Propagation": "rprivate"
+        }
+    ]
+}
