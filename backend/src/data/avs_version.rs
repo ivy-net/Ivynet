@@ -62,6 +62,7 @@ impl VersionType {
         match (node_type, chain) {
             (NodeType::LagrangeZkWorker, Chain::Holesky) => Some("holesky"),
             (NodeType::LagrangeZkWorker, Chain::Mainnet) => Some("mainnet"),
+            (NodeType::LagrangeZKProver, _) => Some("latest"),
             (NodeType::Gasp, _) => Some("latest"),
             (NodeType::K3LabsAvs, _) => Some("latest"),
             (NodeType::K3LabsAvsHolesky, _) => Some("latest"),

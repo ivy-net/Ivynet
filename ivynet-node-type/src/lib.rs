@@ -391,6 +391,7 @@ impl NodeType {
             NodeType::EigenDA,
             NodeType::LagrangeStateCommittee,
             NodeType::LagrangeZkWorker,
+            NodeType::LagrangeZKProver,
             NodeType::K3LabsAvs,
             NodeType::K3LabsAvsHolesky,
             NodeType::EOracle,
