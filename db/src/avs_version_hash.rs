@@ -1,7 +1,7 @@
 use chrono::NaiveDateTime;
 use ivynet_node_type::NodeType;
 
-use crate::error::DatabaseError;
+use crate::{data::avs_version::extract_semver, error::DatabaseError};
 
 #[derive(Clone, Debug)]
 pub struct AvsVersionHash {
@@ -33,15 +33,33 @@ impl From<DbAvsVersionHash> for AvsVersionHash {
 
 impl AvsVersionHash {
     pub async fn get_version(pool: &sqlx::PgPool, hash: &str) -> Result<String, DatabaseError> {
-        let avs_version: DbAvsVersionHash = sqlx::query_as!(
+        let avs_versions: Vec<DbAvsVersionHash> = sqlx::query_as!(
             DbAvsVersionHash,
             "SELECT * FROM avs_version_hash WHERE hash = $1",
             hash
         )
-        .fetch_one(pool)
+        .fetch_all(pool)
         .await?;
 
-        Ok(avs_version.version)
+        let semver_tags = avs_versions
+            .clone()
+            .into_iter()
+            .filter_map(|version| {
+                let semver_tag = extract_semver(&version.version)?;
+                Some((semver_tag, version))
+            })
+            .collect::<Vec<_>>();
+        let latest = semver_tags.iter().max_by_key(|(v, _)| v);
+
+        if let Some(latest) = latest {
+            return Ok(latest.1.version.clone());
+        }
+
+        if !avs_versions.is_empty() {
+            return Ok(avs_versions[0].version.clone());
+        }
+
+        Err(DatabaseError::NoVersionsFound)
     }
 
     pub async fn get_versions_from_digest(
@@ -157,7 +175,7 @@ impl AvsVersionHash {
         Ok(())
     }
 
-    pub async fn delete_avses_from_table(
+    pub async fn delete_avses_from_avs_version_hash(
         pool: &sqlx::PgPool,
         avs_types_to_keep: &[NodeType],
     ) -> Result<(), DatabaseError> {
