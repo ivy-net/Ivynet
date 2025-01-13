@@ -314,7 +314,7 @@ impl NodeType {
                         .to_string(),
                 ))
             }
-            
+
             Self::AethosHolesky => {
                 return Err(NodeTypeError::SpecializedError(
                     "AethosHolesky is deprecated - now Predicate".to_string(),

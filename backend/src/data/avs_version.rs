@@ -13,6 +13,8 @@ pub enum VersionType {
     /// when a node type has both fixed and semver versioning, and the most reliable way to report
     /// the latest version is to find the semver tag corresponding to the latest tag.
     HybridVer,
+    /// Node types that you only build locally
+    LocalOnly,
 }
 
 // TODO: This is really messy, should probably live in core but has a ToSchema dep
@@ -44,27 +46,13 @@ impl From<&NodeType> for VersionType {
             NodeType::UngateInfiniRoute(_any) => VersionType::FixedVer,
             NodeType::AethosHolesky => VersionType::SemVer,
             NodeType::ArpaNetworkNodeClient => VersionType::FixedVer,
-            NodeType::Brevis => {
-                unreachable!("Brevis has no docker versioning, fix in all_known_with_repo")
-            }
-            NodeType::PrimevMevCommit => {
-                unreachable!("PrimevMevCommit has no docker versioning, fix in all_known_with_repo")
-            }
-            NodeType::Nuffle => {
-                unreachable!("Nuffle has no docker versioning, fix in all_known_with_repo")
-            }
-            NodeType::AlignedLayer => {
-                unreachable!("AlignedLayer has no docker versioning, fix in all_known_with_repo")
-            }
-            NodeType::GoPlusAVS => {
-                unreachable!("GoPlusAVS has no docker versioning, fix in all_known_with_repo")
-            }
-            NodeType::SkateChain(_any) => {
-                unreachable!("SkateChain has no docker versioning, fix in all_known_with_repo")
-            }
-            NodeType::UnifiAVS => {
-                unreachable!("UnifiAVS has no docker versioning, fix in all_known_with_repo")
-            }
+            NodeType::Brevis => VersionType::LocalOnly,
+            NodeType::PrimevMevCommit => VersionType::LocalOnly,
+            NodeType::Nuffle => VersionType::LocalOnly,
+            NodeType::AlignedLayer => VersionType::LocalOnly,
+            NodeType::GoPlusAVS => VersionType::LocalOnly,
+            NodeType::SkateChain(_any) => VersionType::LocalOnly,
+            NodeType::UnifiAVS => VersionType::LocalOnly,
         }
     }
 }
@@ -152,6 +140,7 @@ pub async fn find_latest_avs_version(
                 None => (tag, digest),
             }
         }
+        VersionType::LocalOnly => return Err(BackendError::LocalOnlyNode),
     };
     Ok((tag, digest))
 }
