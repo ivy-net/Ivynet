@@ -54,18 +54,27 @@ useless_let_if_seq = "warn"
 ivynet-docker = { path = "ivynet-docker" }
 ivynet-node-type = { path = "ivynet-node-type" }
 
-bollard = "0.18.0"
+bollard = "0.18.1"
 convert_case = "0.6.0"
 chrono = "0.4.0"
 docker-registry = "0.7.0"
 futures = "0.3.31"
 regex = "1.11.0"
+reqwest = { version = "0.12", features = ["stream"] }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.117"
 serde_yaml = "0.9.33"
+sqlx = { version = "0.8", features = [
+	"postgres",
+	"chrono",
+	"runtime-tokio",
+	"tls-rustls",
+	"uuid",
+] }
 strum = { version = "0.26.3", features = ["derive"] }
 thiserror = "2.0.3"
 tokio = { version = "1.37.0", features = ["full"] }
 tokio-stream = { version = "0.1.15", features = ["net"] }
 tracing = "0.1.40"
 which = "7.0"
+async-trait = "0.1.80"

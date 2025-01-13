@@ -179,6 +179,9 @@ pub enum IvyError {
 
     #[error("Node find error, could not find node for name {0}")]
     NodeFindError(String),
+
+    #[error(transparent)]
+    DockerStreamError(#[from] ivynet_docker::dockerapi::DockerStreamError),
 }
 
 #[derive(Debug, Error)]

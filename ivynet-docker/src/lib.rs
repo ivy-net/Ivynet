@@ -1,6 +1,7 @@
+use core::fmt;
 use registry::ImageRegistry;
 use serde::{Deserialize, Serialize};
-use std::fmt;
+use std::collections::HashMap;
 use strum::EnumIter;
 use tokio::time::{sleep, Duration};
 use tokio_stream::StreamExt;
@@ -14,6 +15,8 @@ pub mod dockerapi;
 pub mod dockercmd;
 pub mod logs;
 pub mod registry;
+
+pub mod mocks;
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter)]
 pub enum RegistryType {
@@ -38,6 +41,7 @@ impl RegistryType {
             "othentic",
         ]
     }
+
     pub fn from_host(host: &str) -> Option<Self> {
         match host {
             "registry-1.docker.io" => Some(Self::DockerHub),
@@ -182,6 +186,76 @@ pub enum DockerRegistryError {
     NodeTypeError(#[from] NodeTypeError),
 }
 
+pub fn get_node_type(
+    hashes: &HashMap<String, NodeType>,
+    hash: &str,
+    image_name: &str,
+    container_name: &str,
+) -> Option<NodeType> {
+    let node_type = hashes
+        .get(hash)
+        .copied()
+        .or_else(|| NodeType::from_image(&extract_image_name(image_name)))
+        .or_else(|| NodeType::from_default_container_name(container_name.trim_start_matches('/')));
+    if node_type.is_none() {
+        warn!("No node type found for {}", image_name);
+    }
+    node_type
+}
+
+fn extract_image_name(image_name: &str) -> String {
+    RegistryType::get_registry_hosts()
+        .into_iter()
+        .find_map(|registry| {
+            image_name.contains(registry).then(|| {
+                image_name
+                    .split(&registry)
+                    .last()
+                    .unwrap_or(image_name)
+                    .trim_start_matches('/')
+                    .to_string()
+            })
+        })
+        .unwrap_or_else(|| image_name.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_extract_image_name() {
+        let test_cases = vec![
+            // Standard registry cases
+            ("docker.io/ubuntu:latest", "ubuntu:latest"),
+            ("gcr.io/project/image:v1", "project/image:v1"),
+            ("ghcr.io/owner/repo:tag", "owner/repo:tag"),
+            ("public.ecr.aws/image:1.0", "image:1.0"),
+            // Edge cases
+            ("ubuntu:latest", "ubuntu:latest"), // No registry
+            ("", ""),                           // Empty string
+            ("repository.chainbase.com/", ""),  // Just registry
+            // Multiple registry-like strings
+            ("gcr.io/docker.io/image", "image"), // Should match first registry
+            // With and without tags
+            ("docker.io/image", "image"),
+            ("docker.io/org/image:latest", "org/image:latest"),
+            // Special characters
+            ("docker.io/org/image@sha256:123", "org/image@sha256:123"),
+            ("docker.io/org/image_name", "org/image_name"),
+        ];
+
+        for (input, expected) in test_cases {
+            assert_eq!(
+                extract_image_name(input),
+                expected.to_string(),
+                "Failed on input: {}",
+                input
+            );
+        }
+    }
+}
+
 #[cfg(test)]
 mod docker_registry_tests {
 
@@ -267,25 +341,6 @@ mod docker_registry_tests {
         assert_eq!(tags.len(), digests.len());
         Ok(())
     }
-
-    // #[tokio::test]
-    // async fn test_get_lagrage_state_committee_digests() -> Result<(), Box<dyn std::error::Error>>
-    // {     let node_type = NodeType::LagrangeStateCommittee;
-
-    //     let client = DockerRegistry::from_node_type(&node_type).await?;
-    //     let tags = client.get_tags().await?;
-    //     assert!(!tags.is_empty());
-    //     let mut digests = Vec::new();
-
-    //     for tag in tags.iter() {
-    //         let digest = client.get_tag_digest(tag).await?;
-    //         if let Some(digest) = digest {
-    //             digests.push(digest);
-    //         }
-    //     }
-    //     assert_eq!(tags.len(), digests.len());
-    //     Ok(())
-    // }
 
     #[tokio::test]
     async fn test_get_hyperlane_digests() -> Result<(), Box<dyn std::error::Error>> {

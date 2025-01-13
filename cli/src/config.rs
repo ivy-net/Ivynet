@@ -1,10 +1,7 @@
 use clap::Parser;
 use ivynet_core::{
-    config::{self, IvyConfig},
-    ethers::types::Chain,
-    grpc::client::Uri,
-    metadata::Metadata,
-    utils::try_parse_chain,
+    config::IvyConfig, ethers::types::Chain, grpc::client::Uri, metadata::Metadata,
+    system::get_system_information, utils::try_parse_chain,
 };
 
 use crate::error::Error;
@@ -126,7 +123,7 @@ fn parse_config_getter_commands(
             println!("{metadata:#?}");
         }
         ConfigGetCommands::SysInfo {} => {
-            let (cpus, mem_info, disk_info) = config::get_system_information()?;
+            let (cpus, mem_info, disk_info) = get_system_information();
             println!(" --- System Information: --- ");
             println!("CPU Cores: {cpus}");
             println!("Memory Information:");

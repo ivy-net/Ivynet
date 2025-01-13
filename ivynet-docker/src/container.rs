@@ -1,4 +1,4 @@
-use std::str::FromStr;
+use std::{str::FromStr, time::Duration};
 
 use super::dockerapi::DockerClient;
 use bollard::{
@@ -66,6 +66,24 @@ impl Container {
         self.ports()
             .map(|ports| ports.iter().filter_map(|port| port.public_port).collect())
             .unwrap_or_default()
+    }
+
+    pub async fn metrics_port(&self) -> Option<u16> {
+        let mut ports = self.public_ports();
+        ports.sort();
+        ports.dedup();
+        for port in ports {
+            if (reqwest::Client::new()
+                .get(format!("http://localhost:{}/metrics", port))
+                .timeout(Duration::from_secs(5))
+                .send()
+                .await)
+                .is_ok()
+            {
+                return Some(port);
+            }
+        }
+        None
     }
 
     /// Stream logs for the container since a given timestamp. Returns a stream of log outputs, or

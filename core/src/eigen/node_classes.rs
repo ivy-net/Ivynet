@@ -1,4 +1,4 @@
-use crate::{config, error::IvyError};
+use crate::{error::IvyError, system::get_system_information};
 
 #[derive(PartialEq, PartialOrd, Ord)]
 pub enum NodeClass {
@@ -10,7 +10,7 @@ pub enum NodeClass {
 }
 
 pub fn get_node_class() -> Result<NodeClass, IvyError> {
-    let (cpus, mem_info, _) = config::get_system_information()?;
+    let (cpus, mem_info, _) = get_system_information();
     if cpus >= 16 && mem_info >= 64000000 {
         return Ok(NodeClass::FOURXL);
     } else if cpus >= 4 && mem_info >= 16000000 {
