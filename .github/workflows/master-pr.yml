@@ -51,3 +51,30 @@ jobs:
           path: target/release/master
           destination: ivynet-share-test
           parent: true
+      - name: Create a file with the vault password
+        run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
+        env:
+          ANSIBLE_VAULT: ${{ secrets.ANSIBLE_VAULT }}
+      - name: Run Ansible (after preparations)
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: false
+          ANSIBLE_PIPELINING: true
+        run: |
+          gcloud auth activate-service-account \
+           --key-file=${GOOGLE_GHA_CREDS_PATH}
+          export remote_user=$(gcloud compute os-login describe-profile \
+           --format "value(posixAccounts.username)")
+          cd devops/ansible
+          jq -r .private_key ${GOOGLE_GHA_CREDS_PATH} > sa.prv
+          chmod 600 sa.prv
+          cp ${GOOGLE_GHA_CREDS_PATH} sa.json
+          sed -i.bak 's/\~\/\.devops\-automation-key/sa/' gcp.yml
+          ssh-agent > ~/.ssh-env
+          source ~/.ssh-env
+          ssh-add sa.prv
+          ansible-playbook \
+            -i gcp.yml \
+            -u ${remote_user} \
+            -e "ivynet_backend_is_release=false" \
+            --vault-password-file ~/.vault.txt \
+            backend.yml
