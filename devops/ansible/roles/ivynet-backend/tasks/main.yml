@@ -63,7 +63,6 @@
   ansible.builtin.import_tasks:
     file: ssl.yml
 
-
 - name: Copy scanner script
   ansible.builtin.copy:
     src: ivynet-scanner.sh
