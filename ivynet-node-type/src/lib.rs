@@ -20,15 +20,31 @@ pub enum AltlayerType {
     Unknown,
 }
 
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter)]
+pub enum InfiniRouteType {
+    Base,
+    Polygon,
+    UnknownL2,
+}
+
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter)]
+pub enum SkateChainType {
+    Base,
+    Mantle,
+    UnknownL2,
+}
+
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum NodeType {
     AvaProtocol,
     EigenDA,
     LagrangeStateCommittee,
     LagrangeZkWorker,
+    LagrangeZKProver,
     K3LabsAvs,
     K3LabsAvsHolesky,
     EOracle,
+    Gasp,
     Predicate,
     Hyperlane,
     Brevis,
@@ -43,16 +59,16 @@ pub enum NodeType {
     ArpaNetworkNodeClient,
     // OpacityNetwork, //Doesn't really exist yet
     UnifiAVS, // I think this is on-chain only - https://docs.puffer.fi/unifi-avs-protocol
-    SkateChainBase, /* Othentic-cli - not sure whats going on here either https://github.com/Skate-Org/avs-X-othentic/blob/main/docker-compose.yml */
-    SkateChainMantle, /* Othentic-cli - not sure whats going on here either https://github.com/Skate-Org/avs-X-othentic/blob/main/docker-compose.yml */
     ChainbaseNetworkV1,
+    SkateChain(SkateChainType), /* Othentic-cli - not sure whats going on here either https://github.com/Skate-Org/avs-X-othentic/blob/main/docker-compose.yml */
     ChainbaseNetwork,
     GoPlusAVS,
-    UngateInfiniRouteBase,    //Built locally
-    UngateInfiniRoutePolygon, // Built locally
+    UngateInfiniRoute(InfiniRouteType), //Built locally
     PrimevMevCommit,
     AlignedLayer,
     Unknown,
+    DittoNetwork,
+    Nuffle,
 }
 
 impl IntoEnumIterator for NodeType {
@@ -79,20 +95,20 @@ impl IntoEnumIterator for NodeType {
             NodeType::AethosHolesky,
             NodeType::ArpaNetworkNodeClient,
             NodeType::UnifiAVS,
-            NodeType::SkateChainBase,
-            NodeType::SkateChainMantle,
-            NodeType::ChainbaseNetworkV1,
             NodeType::ChainbaseNetwork,
             NodeType::GoPlusAVS,
-            NodeType::UngateInfiniRouteBase,
-            NodeType::UngateInfiniRoutePolygon,
             NodeType::PrimevMevCommit,
             NodeType::AlignedLayer,
+            NodeType::DittoNetwork,
+            NodeType::Gasp,
+            NodeType::Nuffle,
             NodeType::Unknown,
         ]
         .into_iter()
         .chain(AltlayerType::iter().map(NodeType::Altlayer))
         .chain(MachType::iter().map(NodeType::AltlayerMach))
+        .chain(SkateChainType::iter().map(NodeType::SkateChain))
+        .chain(InfiniRouteType::iter().map(NodeType::UngateInfiniRoute))
         .collect::<Vec<_>>()
         .into_iter()
     }
@@ -127,6 +143,8 @@ impl std::fmt::Display for NodeType {
 pub const AVAPROTOCOL_REPO: &str = "avaprotocol/ap-avs";
 pub const EIGENDA_REPO: &str = "layr-labs/eigenda/opr-node";
 pub const LAGRANGE_STATECOMS_REPO: &str = "lagrangelabs/lagrange-node";
+pub const LAGRANGE_WORKER_REPO: &str = "lagrangelabs/worker";
+pub const LAGRANGE_ZKPROVER_REPO: &str = "lagrangelabs/lpn-zksync-prover";
 pub const K3LABS_REPO: &str = "k3official/k3-labs-avs-operator";
 pub const K3LABS_HOLESKY_REPO: &str = "k3official/k3-labs-avs-operator-dev";
 pub const EORACLE_REPO: &str = "eoracle/data-validator";
@@ -135,14 +153,17 @@ pub const HYPERLANE_REPO: &str = "abacus-labs-dev/hyperlane-agent";
 pub const WITNESSCHAIN_REPO: &str = "witnesschain/watchtower";
 pub const ALTLAYER_GENERIC_REPO: &str = "altlayer/alt-generic-operator";
 pub const ALTLAYER_MACH_REPO: &str = "altlayer/mach-operator";
-pub const LAGRANGE_WORKER_REPO: &str = "lagrangelabs/worker";
 pub const OMNI_REPO: &str = "omniops/halovisor"; //Holesky only
 pub const AUTOMATA_REPO: &str = "automata-network/multi-prover-avs/operator";
 pub const OPEN_LAYER_MAINNET_REPO: &str = "openoracle-de73b/operator-js";
 pub const OPEN_LAYER_HOLESKY_REPO: &str = "openoracle-de73b/operator-js-holesky";
 pub const ARPA_NETWORK_NODE_CLIENT_REPO: &str = "arpa-network/node-client";
 pub const CHAINBASE_NETWORK_V2_REPO: &str = "network/chainbase-node";
-pub const BREVIS_REPO: &str = "brevis-avs";
+pub const BREVIS_REPO: &str = "brevis-avs"; //Local only
+pub const GOPLUS_REPO: &str = "goplus_avs"; //Local only
+pub const NUFFLE_REPO: &str = "nffl-operator"; //Local only // Holesky Only
+pub const GASP_REPO: &str = "gaspxyz/gasp-avs"; //Holesky only
+pub const DITTO_NETWORK_REPO: &str = "dittonetwork/avs-operator"; //Holesky only
 
 /* ------------------------------------ */
 /* ------- NODE CONTAINER NAMES ------- */
@@ -162,10 +183,12 @@ pub const CHAINBASE_NETWORK_V1_NODE: &str = "manuscript_node";
 pub const CHAINBASE_NETWORK_V2_NODE: &str = "manuscript_node";
 pub const GOPLUS_CONTAINER_NAME: &str = "goplus-avs";
 pub const UNGATE_MAINNET: &str = "infini-route-attestators-public-mainnet-attester-1";
-pub const WITNESSCHAIN_CONTAINER_NAME: &str = "watchtower";
+pub const WITNESSCHAIN_CONTAINER_NAME: &str = "watchtower"; //Lagrange and witnesschain now both use watchtower
 pub const LAGRANGE_WORKER_CONTAINER_NAME: &str = "worker";
 pub const LAGRANGE_STATE_COMMITTEE_CONTAINER_NAME: &str = "lagrange-node";
 pub const HYPERLANE_AGENT_CONTAINER_NAME: &str = "ethereum-validator";
+pub const GASP_CONTAINER_NAME: &str = "gasp-avs";
+pub const DITTO_NETWORK_CONTAINER_NAME: &str = "ditto-operator";
 
 //Holesky (Will only have a holesky container name if it isn't the same as mainnet):
 pub const MACH_AVS_HOLESKY: &str = "mach-avs-holesky-generic-operator";
@@ -178,15 +201,19 @@ pub const AUTOMATA_OPERATOR_HOLESKY: &str = "multi-prover-operator";
 pub const UNGATE_NAME_1: &str = "infini-route-attestators-public-attester-1";
 pub const UNGATE_NAME_2: &str = "infini-route-attestators-public-attester";
 pub const UNGATE_NAME_3: &str = "infini-route-attestators-public-attester-webapi";
+pub const NUFFLE_CONTAINER_NAME: &str = "nffl-operator0";
+pub const NUFFLE_CONTAINER_NAME_2: &str = "nffl-operator1";
 
 // We may want to put these methods elsewhere.
 impl NodeType {
     pub fn default_repository(&self) -> Result<&'static str, NodeTypeError> {
         let res = match self {
+            Self::Gasp => GASP_REPO,
             Self::AvaProtocol => AVAPROTOCOL_REPO,
             Self::EigenDA => EIGENDA_REPO,
             Self::LagrangeStateCommittee => LAGRANGE_STATECOMS_REPO,
             Self::LagrangeZkWorker => LAGRANGE_WORKER_REPO,
+            Self::LagrangeZKProver => LAGRANGE_ZKPROVER_REPO,
             Self::K3LabsAvs => K3LABS_REPO,
             Self::K3LabsAvsHolesky => K3LABS_HOLESKY_REPO,
             Self::EOracle => EORACLE_REPO,
@@ -201,7 +228,16 @@ impl NodeType {
             Self::OpenLayerHolesky => OPEN_LAYER_HOLESKY_REPO,
             Self::ArpaNetworkNodeClient => ARPA_NETWORK_NODE_CLIENT_REPO,
             Self::ChainbaseNetwork => CHAINBASE_NETWORK_V2_REPO,
-            Self::Brevis => BREVIS_REPO,
+            Self::Brevis => return Err(NodeTypeError::NoRepository),
+            Self::GoPlusAVS => GOPLUS_REPO,
+            Self::DittoNetwork => DITTO_NETWORK_REPO,
+            Self::Nuffle => return Err(NodeTypeError::NoRepository),
+            Self::UngateInfiniRoute(_infini_route_type) => return Err(NodeTypeError::NoRepository),
+            Self::AlignedLayer => return Err(NodeTypeError::NoRepository),
+            Self::PrimevMevCommit => return Err(NodeTypeError::NoRepository),
+            Self::SkateChain(_skate_chain_type) => return Err(NodeTypeError::NoRepository),
+            Self::UnifiAVS => return Err(NodeTypeError::InvalidNodeType),
+            Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
             Self::AethosHolesky => {
                 return Err(NodeTypeError::SpecializedError(
                     "AethosHolesky is deprecated - now predicate".to_string(),
@@ -213,15 +249,6 @@ impl NodeType {
                         .to_string(),
                 ))
             }
-            Self::UngateInfiniRouteBase => return Err(NodeTypeError::NoRepository),
-            Self::UngateInfiniRoutePolygon => return Err(NodeTypeError::NoRepository),
-            Self::AlignedLayer => return Err(NodeTypeError::NoRepository),
-            Self::PrimevMevCommit => return Err(NodeTypeError::NoRepository),
-            Self::GoPlusAVS => return Err(NodeTypeError::NoRepository),
-            Self::SkateChainBase => return Err(NodeTypeError::NoRepository),
-            Self::SkateChainMantle => return Err(NodeTypeError::NoRepository),
-            Self::UnifiAVS => return Err(NodeTypeError::InvalidNodeType),
-            Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };
         Ok(res)
     }
@@ -229,6 +256,7 @@ impl NodeType {
     // TODO: Find real default names of nodes marked with `temp_`
     pub fn default_container_name_mainnet(&self) -> Result<&'static str, NodeTypeError> {
         let res = match self {
+            Self::Gasp => GASP_CONTAINER_NAME,
             Self::EigenDA => EIGENDA_NATIVE_NODE,
             Self::EOracle => EORACLE_DATA_VALIDATOR,
             Self::Automata => AUTOMATA_OPERATOR,
@@ -237,14 +265,16 @@ impl NodeType {
             Self::ChainbaseNetwork => CHAINBASE_NETWORK_V2_NODE,
             Self::LagrangeStateCommittee => LAGRANGE_STATE_COMMITTEE_CONTAINER_NAME,
             Self::LagrangeZkWorker => LAGRANGE_WORKER_CONTAINER_NAME,
+            Self::LagrangeZKProver => {
+                return Err(NodeTypeError::SpecializedError(
+                    "TODO:".to_string(),
+                ))
+            }
             Self::Hyperlane => HYPERLANE_AGENT_CONTAINER_NAME,
             Self::WitnessChain => WITNESSCHAIN_CONTAINER_NAME,
             Self::GoPlusAVS => GOPLUS_CONTAINER_NAME,
-            Self::UngateInfiniRouteBase => UNGATE_MAINNET,
-            Self::UngateInfiniRoutePolygon => UNGATE_MAINNET,
-            Self::Brevis => {
-                return Err(NodeTypeError::NoDefaultContainerName)
-            }
+            Self::UngateInfiniRoute(_infini_route_type) => UNGATE_MAINNET,
+            Self::DittoNetwork => DITTO_NETWORK_CONTAINER_NAME,
             Self::Altlayer(altlayer_type) => {
                 match altlayer_type {
                     AltlayerType::AltlayerMach => MACH_AVS_ETHEREUM,
@@ -260,37 +290,62 @@ impl NodeType {
                     MachType::Unknown => return Err(NodeTypeError::SpecializedError("GenericAltlayer isn't an actual container, its just the image. Assign a specific altlayer type".to_string())),
                 }
             },
+            Self::Brevis => return Err(NodeTypeError::NoDefaultContainerName),
             Self::K3LabsAvs => return Err(NodeTypeError::NoDefaultContainerName),
             Self::K3LabsAvsHolesky => return Err(NodeTypeError::NoDefaultContainerName),
             Self::AlignedLayer => return Err(NodeTypeError::InvalidNodeType),
             Self::PrimevMevCommit => return Err(NodeTypeError::InvalidNodeType),
-            Self::SkateChainBase => return Err(NodeTypeError::InvalidNodeType),
-            Self::SkateChainMantle => return Err(NodeTypeError::InvalidNodeType),
+            Self::SkateChain(_skate_chain_type) => return Err(NodeTypeError::NoDefaultContainerName),
             Self::UnifiAVS => return Err(NodeTypeError::InvalidNodeType),
             Self::ArpaNetworkNodeClient => return Err(NodeTypeError::NoDefaultContainerName),
             Self::Predicate => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::OpenLayerMainnet => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::OpenLayerHolesky => return Err(NodeTypeError::InvalidNodeType),
+            Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
+            Self::Nuffle => {
+                return Err(NodeTypeError::SpecializedError(
+                    "Not on mainnet"
+                        .to_string(),
+                ))
+            }
             Self::ChainbaseNetworkV1 => {
                 return Err(NodeTypeError::SpecializedError(
                     "ChainbaseNetworkV1 is deprecated - update to V2 - ChainbaseNetwork"
                         .to_string(),
                 ))
             }
-            Self::OpenLayerHolesky => return Err(NodeTypeError::InvalidNodeType),
+
             Self::AethosHolesky => {
                 return Err(NodeTypeError::SpecializedError(
                     "AethosHolesky is deprecated - now Predicate".to_string(),
                 ))
             }
-            Self::OpenLayerMainnet => return Err(NodeTypeError::NoDefaultContainerName),
-            Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };
         Ok(res)
     }
 
     pub fn default_container_name_holesky(&self) -> Result<&'static str, NodeTypeError> {
         let res = match self {
+            Self::Gasp => GASP_CONTAINER_NAME,
             Self::EigenDA => EIGENDA_NATIVE_NODE,
             Self::EOracle => EORACLE_DATA_VALIDATOR,
+            Self::DittoNetwork => DITTO_NETWORK_CONTAINER_NAME,
+            Self::Omni => OMNI_HALOVISOR,
+            Self::Automata => AUTOMATA_OPERATOR_HOLESKY,
+            Self::AvaProtocol => AVA_OPERATOR,
+            Self::ChainbaseNetwork => CHAINBASE_NETWORK_V2_NODE,
+            Self::LagrangeStateCommittee => LAGRANGE_STATE_COMMITTEE_CONTAINER_NAME,
+            Self::LagrangeZkWorker => LAGRANGE_WORKER_CONTAINER_NAME,
+            Self::Nuffle => NUFFLE_CONTAINER_NAME,
+            Self::LagrangeZKProver => {
+                return Err(NodeTypeError::SpecializedError(
+                    "TODO".to_string(),
+                ))
+            }
+            Self::Hyperlane => HYPERLANE_AGENT_CONTAINER_NAME,
+            Self::WitnessChain => WITNESSCHAIN_CONTAINER_NAME,
+            Self::GoPlusAVS => GOPLUS_CONTAINER_NAME,
+            Self::UngateInfiniRoute(_infini_route_type) => UNGATE_NAME_1,
             Self::Altlayer(altlayer_type) => {
                 match altlayer_type {
                     AltlayerType::AltlayerMach => MACH_AVS_HOLESKY,
@@ -306,32 +361,12 @@ impl NodeType {
                     MachType::Unknown => return Err(NodeTypeError::SpecializedError("GenericAltlayer isn't an actual container, its just the image. Assign a specific altlayer type".to_string())),
                 }
             },
-            Self::Omni => OMNI_HALOVISOR,
-            Self::Automata => AUTOMATA_OPERATOR_HOLESKY,
-            Self::AvaProtocol => AVA_OPERATOR,
-            Self::ChainbaseNetwork => CHAINBASE_NETWORK_V2_NODE,
-            Self::LagrangeStateCommittee => LAGRANGE_STATE_COMMITTEE_CONTAINER_NAME,
-            Self::LagrangeZkWorker => LAGRANGE_WORKER_CONTAINER_NAME,
-            Self::Hyperlane => HYPERLANE_AGENT_CONTAINER_NAME,
-            Self::WitnessChain => WITNESSCHAIN_CONTAINER_NAME,
-            Self::GoPlusAVS => GOPLUS_CONTAINER_NAME,
-            Self::UngateInfiniRouteBase => UNGATE_NAME_1,
-            Self::UngateInfiniRoutePolygon => UNGATE_NAME_1,
-            Self::Brevis => {
-                return Err(NodeTypeError::SpecializedError("Brevis is executable only".to_string()))
-            }
-            Self::ChainbaseNetworkV1 => {
-                return Err(NodeTypeError::SpecializedError(
-                    "ChainbaseNetworkV1 is deprecated - update to V2 - ChainbaseNetwork"
-                        .to_string(),
-                ))
-            }
+            Self::Brevis => return Err(NodeTypeError::NoDefaultContainerName),
             Self::K3LabsAvs => return Err(NodeTypeError::NoDefaultContainerName),
             Self::K3LabsAvsHolesky => return Err(NodeTypeError::NoDefaultContainerName),
             Self::AlignedLayer => return Err(NodeTypeError::InvalidNodeType),
             Self::PrimevMevCommit => return Err(NodeTypeError::InvalidNodeType),
-            Self::SkateChainBase => return Err(NodeTypeError::InvalidNodeType),
-            Self::SkateChainMantle => return Err(NodeTypeError::InvalidNodeType),
+            Self::SkateChain(_skate_chain_type) => return Err(NodeTypeError::NoDefaultContainerName),
             Self::UnifiAVS => return Err(NodeTypeError::InvalidNodeType),
             Self::ArpaNetworkNodeClient => return Err(NodeTypeError::NoDefaultContainerName),
             Self::Predicate => return Err(NodeTypeError::NoDefaultContainerName),
@@ -339,6 +374,12 @@ impl NodeType {
             Self::OpenLayerHolesky => return Err(NodeTypeError::NoDefaultContainerName),
             Self::OpenLayerMainnet => return Err(NodeTypeError::InvalidNodeType),
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
+            Self::ChainbaseNetworkV1 => {
+                return Err(NodeTypeError::SpecializedError(
+                    "ChainbaseNetworkV1 is deprecated - update to V2 - ChainbaseNetwork"
+                        .to_string(),
+                ))
+            }
         };
         Ok(res)
     }
@@ -350,6 +391,7 @@ impl NodeType {
             NodeType::EigenDA,
             NodeType::LagrangeStateCommittee,
             NodeType::LagrangeZkWorker,
+            NodeType::LagrangeZKProver,
             NodeType::K3LabsAvs,
             NodeType::K3LabsAvsHolesky,
             NodeType::EOracle,
@@ -362,6 +404,8 @@ impl NodeType {
             NodeType::OpenLayerHolesky,
             NodeType::ArpaNetworkNodeClient,
             NodeType::ChainbaseNetwork,
+            NodeType::Gasp,
+            NodeType::DittoNetwork,
             //AWS rate limits currently
             NodeType::Altlayer(AltlayerType::Unknown),
             NodeType::AltlayerMach(MachType::Unknown),
@@ -405,6 +449,9 @@ impl NodeType {
             CHAINBASE_NETWORK_V2_REPO => Some(Self::ChainbaseNetwork),
             LAGRANGE_WORKER_REPO => Some(Self::LagrangeZkWorker),
             BREVIS_REPO => Some(Self::Brevis),
+            GASP_REPO => Some(Self::Gasp),
+            DITTO_NETWORK_REPO => Some(Self::DittoNetwork),
+            NUFFLE_REPO => Some(Self::Nuffle),
             _ => None,
         }
     }
@@ -429,14 +476,17 @@ impl NodeType {
             AVA_OPERATOR => Self::AvaProtocol,
             CHAINBASE_NETWORK_V1_NODE => Self::ChainbaseNetworkV1,
             GOPLUS_CONTAINER_NAME => Self::GoPlusAVS,
-            UNGATE_MAINNET => Self::UngateInfiniRouteBase,
-            WITNESSCHAIN_CONTAINER_NAME => Self::WitnessChain,
             LAGRANGE_WORKER_CONTAINER_NAME => Self::LagrangeZkWorker,
             LAGRANGE_STATE_COMMITTEE_CONTAINER_NAME => Self::LagrangeStateCommittee,
             HYPERLANE_AGENT_CONTAINER_NAME => Self::Hyperlane,
-            UNGATE_NAME_1 => Self::UngateInfiniRouteBase,
-            UNGATE_NAME_2 => Self::UngateInfiniRouteBase,
-            UNGATE_NAME_3 => Self::UngateInfiniRouteBase,
+            UNGATE_MAINNET => Self::UngateInfiniRoute(InfiniRouteType::UnknownL2),
+            UNGATE_NAME_1 => Self::UngateInfiniRoute(InfiniRouteType::UnknownL2),
+            UNGATE_NAME_2 => Self::UngateInfiniRoute(InfiniRouteType::UnknownL2),
+            UNGATE_NAME_3 => Self::UngateInfiniRoute(InfiniRouteType::UnknownL2),
+            GASP_CONTAINER_NAME => Self::Gasp,
+            DITTO_NETWORK_CONTAINER_NAME => Self::DittoNetwork,
+            NUFFLE_CONTAINER_NAME => Self::Nuffle,
+            NUFFLE_CONTAINER_NAME_2 => Self::Nuffle,
             _ => return None,
         };
         Some(node_type)
@@ -462,9 +512,9 @@ pub enum NodeTypeError {
     NodeMatchError(String),
     #[error("This node type does not have a default container name")]
     NoDefaultContainerName,
-    #[error("This node type does not have a repository")]
+    #[error("This node type does not have a repository - report to Ivynet team if you believe this is incorrect!")]
     NoRepository,
-    #[error("This node type does not have a registry")]
+    #[error("This node type does not have a registry - report to Ivynet team if you believe this is incorrect!")]
     NoRegistry,
     #[error("AVS Specific Error: {0}")]
     SpecializedError(String),

@@ -11,14 +11,19 @@ pub enum VersionType {
     /// when a node type has both fixed and semver versioning, and the most reliable way to report
     /// the latest version is to find the semver tag corresponding to the latest tag.
     HybridVer,
+    /// Node types that you only build locally
+    LocalOnly,
 }
 
 // TODO: This is really messy, should probably live in core but has a ToSchema dep
 impl From<&NodeType> for VersionType {
     fn from(node_type: &NodeType) -> Self {
         match node_type {
+            NodeType::DittoNetwork => VersionType::SemVer,
+            NodeType::Gasp => VersionType::FixedVer,
             NodeType::EigenDA => VersionType::SemVer,
             NodeType::LagrangeZkWorker => VersionType::FixedVer,
+            NodeType::LagrangeZKProver => VersionType::FixedVer,
             NodeType::AvaProtocol => VersionType::SemVer,
             NodeType::EOracle => VersionType::HybridVer,
             NodeType::K3LabsAvs => VersionType::FixedVer,
@@ -36,33 +41,16 @@ impl From<&NodeType> for VersionType {
             NodeType::OpenLayerMainnet => VersionType::FixedVer,
             NodeType::ChainbaseNetworkV1 => VersionType::SemVer,
             NodeType::ChainbaseNetwork => VersionType::SemVer,
-            NodeType::UngateInfiniRouteBase => VersionType::FixedVer,
-            NodeType::UngateInfiniRoutePolygon => VersionType::FixedVer,
+            NodeType::UngateInfiniRoute(_any) => VersionType::FixedVer,
             NodeType::AethosHolesky => VersionType::SemVer,
             NodeType::ArpaNetworkNodeClient => VersionType::FixedVer,
-            NodeType::Brevis => {
-                unreachable!("Brevis has no docker versioning, fix in all_known_with_repo")
-            }
-            NodeType::PrimevMevCommit => {
-                unreachable!("PrimevMevCommit has no docker versioning, fix in all_known_with_repo")
-            }
-            NodeType::AlignedLayer => {
-                unreachable!("AlignedLayer has no docker versioning, fix in all_known_with_repo")
-            }
-            NodeType::GoPlusAVS => {
-                unreachable!("GoPlusAVS has no docker versioning, fix in all_known_with_repo")
-            }
-            NodeType::SkateChainBase => {
-                unreachable!("SkateChainBase has no docker versioning, fix in all_known_with_repo")
-            }
-            NodeType::SkateChainMantle => {
-                unreachable!(
-                    "SkateChainMantle has no docker versioning, fix in all_known_with_repo"
-                )
-            }
-            NodeType::UnifiAVS => {
-                unreachable!("UnifiAVS has no docker versioning, fix in all_known_with_repo")
-            }
+            NodeType::Brevis => VersionType::LocalOnly,
+            NodeType::PrimevMevCommit => VersionType::LocalOnly,
+            NodeType::Nuffle => VersionType::LocalOnly,
+            NodeType::AlignedLayer => VersionType::LocalOnly,
+            NodeType::GoPlusAVS => VersionType::LocalOnly,
+            NodeType::SkateChain(_any) => VersionType::LocalOnly,
+            NodeType::UnifiAVS => VersionType::LocalOnly,
         }
     }
 }
@@ -72,6 +60,8 @@ impl VersionType {
         match (node_type, chain) {
             (NodeType::LagrangeZkWorker, Chain::Holesky) => Some("holesky"),
             (NodeType::LagrangeZkWorker, Chain::Mainnet) => Some("mainnet"),
+            (NodeType::LagrangeZKProver, _) => Some("latest"),
+            (NodeType::Gasp, _) => Some("latest"),
             (NodeType::K3LabsAvs, _) => Some("latest"),
             (NodeType::K3LabsAvsHolesky, _) => Some("latest"),
             (NodeType::EOracle, _) => Some("latest"),
@@ -148,6 +138,7 @@ pub async fn find_latest_avs_version(
                 None => (tag, digest),
             }
         }
+        VersionType::LocalOnly => return Err(BackendError::LocalOnlyNode),
     };
     Ok((tag, digest))
 }

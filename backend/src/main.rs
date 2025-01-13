@@ -132,9 +132,9 @@ async fn set_breaking_change_version(
 }
 
 async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
-    let registry_tags = get_node_version_hashes().await?;
     let all_known_with_repo = NodeType::all_known_with_repo();
     db::AvsVersionHash::delete_avses_from_avs_version_hash(pool, &all_known_with_repo).await?;
+    let registry_tags = get_node_version_hashes().await?;
     info!("Adding {} total node version hashes", registry_tags.len());
     for (entry, tags) in registry_tags {
         let name = entry.to_string();
@@ -168,6 +168,10 @@ async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
                     }
                 }
             }
+            VersionType::LocalOnly => {
+                info!("Skipping local only node type {}", name);
+                continue;
+            }
         }
     }
 
@@ -180,6 +184,7 @@ async fn update_node_data_versions(pool: &PgPool, chain: &Chain) -> Result<(), B
     db::DbAvsVersionData::delete_avses_from_avs_version_data(pool, &node_types).await?;
     for node_type in node_types {
         match (node_type, chain) {
+            (NodeType::Gasp, _) => continue,
             (NodeType::K3LabsAvsHolesky, Chain::Mainnet) => continue,
             (NodeType::K3LabsAvs, Chain::Holesky) => continue,
             (NodeType::OpenLayerHolesky, Chain::Mainnet) => continue,

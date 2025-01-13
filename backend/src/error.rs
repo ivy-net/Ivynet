@@ -79,6 +79,9 @@ pub enum BackendError {
     #[error("No valid node versions found")]
     NoVersionsFound,
 
+    #[error("Local build only node type")]
+    LocalOnlyNode,
+
     #[error(transparent)]
     NodeTypeError(#[from] ivynet_node_type::NodeTypeError),
 

@@ -197,6 +197,7 @@ pub fn get_update_status(
             }
             UpdateStatus::Updateable
         }
+        VersionType::LocalOnly => return UpdateStatus::Unknown,
     }
 }
 
