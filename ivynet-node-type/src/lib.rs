@@ -153,7 +153,6 @@ pub const HYPERLANE_REPO: &str = "abacus-labs-dev/hyperlane-agent";
 pub const WITNESSCHAIN_REPO: &str = "witnesschain/watchtower";
 pub const ALTLAYER_GENERIC_REPO: &str = "altlayer/alt-generic-operator";
 pub const ALTLAYER_MACH_REPO: &str = "altlayer/mach-operator";
-pub const OMNI_REPO: &str = "omniops/halovisor"; //Holesky only
 pub const AUTOMATA_REPO: &str = "automata-network/multi-prover-avs/operator";
 pub const OPEN_LAYER_MAINNET_REPO: &str = "openoracle-de73b/operator-js";
 pub const OPEN_LAYER_HOLESKY_REPO: &str = "openoracle-de73b/operator-js-holesky";
@@ -164,6 +163,9 @@ pub const GOPLUS_REPO: &str = "goplus_avs"; //Local only
 pub const NUFFLE_REPO: &str = "nffl-operator"; //Local only // Holesky Only
 pub const GASP_REPO: &str = "gaspxyz/gasp-avs"; //Holesky only
 pub const DITTO_NETWORK_REPO: &str = "dittonetwork/avs-operator"; //Holesky only
+pub const PRIMEV_LOCAL_REPO: &str = "bidder_node_docker-mev-commit-bidderr"; //Local only
+pub const PRIMEV_IMAGE_REPO: &str = "primevprotocol/mev-commit"; //Remote only //I think its out of date?
+pub const OMNI_REPO: &str = "omniops/halovisor"; //Holesky only
 
 /* ------------------------------------ */
 /* ------- NODE CONTAINER NAMES ------- */
@@ -189,6 +191,7 @@ pub const LAGRANGE_STATE_COMMITTEE_CONTAINER_NAME: &str = "lagrange-node";
 pub const HYPERLANE_AGENT_CONTAINER_NAME: &str = "ethereum-validator";
 pub const GASP_CONTAINER_NAME: &str = "gasp-avs";
 pub const DITTO_NETWORK_CONTAINER_NAME: &str = "ditto-operator";
+pub const PRIMEV_MEV_COMMIT_CONTAINER_NAME: &str = "mev-commit-bidder-1";
 
 //Holesky (Will only have a holesky container name if it isn't the same as mainnet):
 pub const MACH_AVS_HOLESKY: &str = "mach-avs-holesky-generic-operator";
@@ -228,13 +231,13 @@ impl NodeType {
             Self::OpenLayerHolesky => OPEN_LAYER_HOLESKY_REPO,
             Self::ArpaNetworkNodeClient => ARPA_NETWORK_NODE_CLIENT_REPO,
             Self::ChainbaseNetwork => CHAINBASE_NETWORK_V2_REPO,
+            Self::PrimevMevCommit => PRIMEV_LOCAL_REPO,
             Self::Brevis => return Err(NodeTypeError::NoRepository),
             Self::GoPlusAVS => GOPLUS_REPO,
             Self::DittoNetwork => DITTO_NETWORK_REPO,
             Self::Nuffle => return Err(NodeTypeError::NoRepository),
             Self::UngateInfiniRoute(_infini_route_type) => return Err(NodeTypeError::NoRepository),
             Self::AlignedLayer => return Err(NodeTypeError::NoRepository),
-            Self::PrimevMevCommit => return Err(NodeTypeError::NoRepository),
             Self::SkateChain(_skate_chain_type) => return Err(NodeTypeError::NoRepository),
             Self::UnifiAVS => return Err(NodeTypeError::InvalidNodeType),
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
@@ -275,6 +278,7 @@ impl NodeType {
             Self::GoPlusAVS => GOPLUS_CONTAINER_NAME,
             Self::UngateInfiniRoute(_infini_route_type) => UNGATE_MAINNET,
             Self::DittoNetwork => DITTO_NETWORK_CONTAINER_NAME,
+            Self::PrimevMevCommit => PRIMEV_MEV_COMMIT_CONTAINER_NAME,
             Self::Altlayer(altlayer_type) => {
                 match altlayer_type {
                     AltlayerType::AltlayerMach => MACH_AVS_ETHEREUM,
@@ -294,7 +298,6 @@ impl NodeType {
             Self::K3LabsAvs => return Err(NodeTypeError::NoDefaultContainerName),
             Self::K3LabsAvsHolesky => return Err(NodeTypeError::NoDefaultContainerName),
             Self::AlignedLayer => return Err(NodeTypeError::InvalidNodeType),
-            Self::PrimevMevCommit => return Err(NodeTypeError::InvalidNodeType),
             Self::SkateChain(_skate_chain_type) => return Err(NodeTypeError::NoDefaultContainerName),
             Self::UnifiAVS => return Err(NodeTypeError::InvalidNodeType),
             Self::ArpaNetworkNodeClient => return Err(NodeTypeError::NoDefaultContainerName),
@@ -337,6 +340,7 @@ impl NodeType {
             Self::LagrangeStateCommittee => LAGRANGE_STATE_COMMITTEE_CONTAINER_NAME,
             Self::LagrangeZkWorker => LAGRANGE_WORKER_CONTAINER_NAME,
             Self::Nuffle => NUFFLE_CONTAINER_NAME,
+            Self::PrimevMevCommit => PRIMEV_MEV_COMMIT_CONTAINER_NAME,
             Self::LagrangeZKProver => {
                 return Err(NodeTypeError::SpecializedError(
                     "TODO".to_string(),
@@ -365,7 +369,6 @@ impl NodeType {
             Self::K3LabsAvs => return Err(NodeTypeError::NoDefaultContainerName),
             Self::K3LabsAvsHolesky => return Err(NodeTypeError::NoDefaultContainerName),
             Self::AlignedLayer => return Err(NodeTypeError::InvalidNodeType),
-            Self::PrimevMevCommit => return Err(NodeTypeError::InvalidNodeType),
             Self::SkateChain(_skate_chain_type) => return Err(NodeTypeError::NoDefaultContainerName),
             Self::UnifiAVS => return Err(NodeTypeError::InvalidNodeType),
             Self::ArpaNetworkNodeClient => return Err(NodeTypeError::NoDefaultContainerName),
@@ -452,6 +455,8 @@ impl NodeType {
             GASP_REPO => Some(Self::Gasp),
             DITTO_NETWORK_REPO => Some(Self::DittoNetwork),
             NUFFLE_REPO => Some(Self::Nuffle),
+            PRIMEV_LOCAL_REPO => Some(Self::PrimevMevCommit),
+            PRIMEV_IMAGE_REPO => Some(Self::PrimevMevCommit),
             _ => None,
         }
     }
@@ -487,6 +492,7 @@ impl NodeType {
             DITTO_NETWORK_CONTAINER_NAME => Self::DittoNetwork,
             NUFFLE_CONTAINER_NAME => Self::Nuffle,
             NUFFLE_CONTAINER_NAME_2 => Self::Nuffle,
+            PRIMEV_MEV_COMMIT_CONTAINER_NAME => Self::PrimevMevCommit,
             _ => return None,
         };
         Some(node_type)
