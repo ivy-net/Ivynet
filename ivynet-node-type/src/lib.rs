@@ -204,7 +204,9 @@ impl NodeType {
             Self::ArpaNetworkNodeClient => ARPA_NETWORK_NODE_CLIENT_REPO,
             Self::ChainbaseNetwork => CHAINBASE_NETWORK_V2_REPO,
             Self::Brevis => {
-                return Err(NodeTypeError::SpecializedError("Brevis is executable only".to_string()))
+                return Err(NodeTypeError::SpecializedError(
+                    "Brevis is executable only".to_string(),
+                ))
             }
             Self::AethosHolesky => {
                 return Err(NodeTypeError::SpecializedError(

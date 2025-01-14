@@ -49,8 +49,18 @@ message SignedLog {
     string log = 4;
 }
 
+message NodeTypeQuery{
+    string image_name = 1;
+    string image_digest = 2;
+    string container_name = 3;
+}
+
+message NodeTypeQueries {
+    repeated NodeTypeQuery node_types = 1;
+}
+
 message NodeType {
-    string digest = 1;
+    string container_name = 1;
     string node_type = 2;
 }
 

@@ -9,7 +9,7 @@ use ivynet_grpc::{
     self,
     backend::backend_client::BackendClient,
     client::create_channel,
-    messages::{Digests, NodeTypes, SignedNameChange},
+    messages::{Digests, NodeTypeQueries, NodeTypeQuery, NodeTypes, SignedNameChange},
     tonic::{transport::Channel, Request, Response},
 };
 use ivynet_io::{read_toml, write_toml, IoError};
@@ -214,61 +214,58 @@ async fn find_new_avses(
     mut backend: BackendClient<Channel>,
     configured_names: &HashSet<String>,
 ) -> Result<(Vec<ConfiguredAvs>, Vec<PotentialAvs>), anyhow::Error> {
-    let digests: Vec<_> = potential_avses
+    let node_type_queries = potential_avses
         .iter()
-        .filter(|a| !configured_names.contains(&a.container_name))
-        .map(|a| a.image_hash.clone())
+        .map(|avs| NodeTypeQuery {
+            image_name: avs.image_name.clone(),
+            image_digest: avs.image_hash.clone(),
+            container_name: avs.container_name.clone(),
+        })
+        .collect::<Vec<_>>();
+
+    let resp = backend
+        .node_type_queries(Request::new(NodeTypeQueries { node_types: node_type_queries }))
+        .await?;
+
+    // Map of container name to node type
+    let container_node_types: HashMap<String, String> = resp
+        .into_inner()
+        .node_types
+        .into_iter()
+        .map(|nt| (nt.container_name, nt.node_type))
         .collect();
 
-    if digests.is_empty() {
-        return Ok((Vec::new(), potential_avses.to_vec()));
-    }
+    let new_potential_avses = Vec::new();
+    let new_configured_avses = Vec::new();
 
-    let node_types: Option<NodeTypes> = backend
-        .node_types(Request::new(Digests { digests: digests.clone() }))
-        .await
-        .map(Response::into_inner)
-        .ok();
-
-    let avs_types: Option<HashMap<String, NodeType>> = if let Some(node_types) = node_types {
-        Some(
-            node_types
-                .node_types
-                .into_iter()
-                .map(|nt| (nt.digest, NodeType::from(nt.node_type.as_str())))
-                .collect::<HashMap<_, _>>(),
-        )
-    } else {
-        None
-    };
-
-    let mut new_configured_avses = Vec::new();
-    let mut new_potential_avses = Vec::new();
     for avs in potential_avses {
-        if configured_names.contains(&avs.container_name) {
-            continue;
-        }
+        let node_type = container_node_types.get(&avs.container_name).cloned();
 
-        if let Some(avs_type) =
-            get_node_type(&avs_types, &avs.image_hash, &avs.image_name, &avs.container_name)
-        {
-            // Try to get metrics port but don't fail if unavailable
-            let metric_port = match get_metrics_port(&avs.ports).await {
-                Ok(port) => port,
-                Err(e) => {
-                    info!("Metrics unavailable for {}: {}", avs.container_name, e);
-                    None
-                }
-            };
-
-            new_configured_avses.push(ConfiguredAvs {
-                assigned_name: String::new(),
-                container_name: avs.container_name.clone(),
-                avs_type,
-                metric_port,
-            });
-        } else {
+        let node_type = if node_type.is_none() || Some("unknown") == node_type.as_deref() {
             new_potential_avses.push(avs.clone());
+            continue;
+        } else {
+            node_type.ok_or(anyhow!("Unexpected error when fetching node type: {:?}", avs))?
+        };
+
+        let metric_port = get_metrics_port(&avs.ports).await?;
+
+        let new_avs = ConfiguredAvs {
+            assigned_name: String::new(),
+            container_name: avs.container_name.clone(),
+            avs_type: node_type,
+            metric_port,
+        };
+
+        if configured_names.contains(&avs.container_name) {
+            new_configured_avses.push(new_avs);
+        } else {
+            new_potential_avses.push(PotentialAvs {
+                container_name: avs.container_name.clone(),
+                image_name: avs.image_name.clone(),
+                image_hash: avs.image_hash.clone(),
+                ports: avs.ports.clone(),
+            });
         }
     }
 
@@ -350,7 +347,7 @@ fn select_manual_avses(
         .map(|idx| ConfiguredAvs {
             assigned_name: String::new(),
             container_name: potential_avses[idx].container_name.to_string(),
-            avs_type: NodeType::Unknown,
+            avs_type: "unknown".to_string(),
             metric_port: None,
         })
         .collect())
@@ -385,42 +382,6 @@ fn update_monitor_config(
     config.store().map_err(|e| anyhow!("Failed to store config: {}", e))?;
 
     Ok(())
-}
-
-fn get_node_type(
-    hashes: &Option<HashMap<String, NodeType>>,
-    hash: &str,
-    image_name: &str,
-    container_name: &str,
-) -> Option<NodeType> {
-    let cleaned_container_name = container_name.trim_start_matches('/');
-
-    fn handle_altlayer_unknown(nt: NodeType, container_name: &str) -> Option<NodeType> {
-        match nt {
-            NodeType::Altlayer(AltlayerType::Unknown) |
-            NodeType::AltlayerMach(MachType::Unknown) => {
-                NodeType::from_default_container_name(container_name)
-            }
-            _ => Some(nt),
-        }
-    }
-
-    hashes
-        .as_ref()
-        .and_then(|h| h.get(hash))
-        .copied()
-        .and_then(|nt| handle_altlayer_unknown(nt, cleaned_container_name))
-        .or_else(|| {
-            NodeType::from_image(&extract_image_name(image_name))
-                .and_then(|nt| handle_altlayer_unknown(nt, cleaned_container_name))
-        })
-        .or_else(|| {
-            let result = NodeType::from_default_container_name(cleaned_container_name);
-            if result.is_none() {
-                println!("No avs found for {}", image_name);
-            }
-            result
-        })
 }
 
 async fn grab_potential_avses() -> Vec<PotentialAvs> {

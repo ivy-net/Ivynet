@@ -8,7 +8,6 @@ use ivynet_grpc::{
 
 use dispatch::{TelemetryDispatchError, TelemetryDispatchHandle};
 use ivynet_docker::dockerapi::DockerClient;
-use ivynet_node_type::NodeType;
 use ivynet_signer::{
     sign_utils::{sign_metrics, sign_node_data},
     IvyWallet,
@@ -32,7 +31,7 @@ const TELEMETRY_INTERVAL_IN_MINUTES: u64 = 1;
 pub struct ConfiguredAvs {
     pub assigned_name: String,
     pub container_name: String,
-    pub avs_type: NodeType,
+    pub avs_type: String,
     pub metric_port: Option<u16>,
 }
 
