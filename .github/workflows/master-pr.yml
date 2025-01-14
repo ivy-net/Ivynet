@@ -76,4 +76,4 @@ jobs:
             -i gcp.yml \
             -u ${remote_user} \
             --vault-password-file ~/.vault.txt \
-            backend_master.yml
+            backend-master.yml
