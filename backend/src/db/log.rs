@@ -310,6 +310,7 @@ where
 }
 
 #[cfg(test)]
+#[cfg(feature = "db_tests")]
 mod logs_db_tests {
     use ivynet_docker::logs::{find_log_level, find_or_create_log_timestamp, sanitize_log};
     use ivynet_node_type::NodeType;
