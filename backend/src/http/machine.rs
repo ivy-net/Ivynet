@@ -30,6 +30,9 @@ use crate::{
 
 use super::{authorize, HttpState};
 
+pub const DEFAULT_LOG_TIME_RANGE: i64 = 60 * 60 * 8; // 8 hours
+pub const MAX_LOG_TIME_RANGE: i64 = 60 * 60 * 24; // 1 Day pagination
+
 /// Grab information for every machine in the organization
 #[utoipa::path(
     get,
@@ -508,6 +511,12 @@ pub async fn logs(
     }
 
     if let (Some(from), Some(to)) = (from, to) {
+        if from - to > MAX_LOG_TIME_RANGE {
+            return Err(BackendError::MalformedParameter(
+                "from/to".to_string(),
+                "Log time range too large - 24 hour max".to_string(),
+            ));
+        }
         let logs = ContainerLog::get_all_for_avs(
             &state.pool,
             machine.machine_id,
@@ -525,12 +534,8 @@ pub async fn logs(
             &state.pool,
             machine.machine_id,
             avs_name,
-            /* This will only fail to unwrap
-             * thousands (maybe millions?) of
-             * years in the
-             * future */
-            Some((now - 60 * 60 * 24).try_into().unwrap()),
-            Some(now.try_into().unwrap()),
+            Some(i64::try_from(now).expect("Conversion to i64 failed") - DEFAULT_LOG_TIME_RANGE),
+            Some(i64::try_from(now).expect("Conversion to i64 failed")),
             log_level,
         )
         .await?;

@@ -131,6 +131,8 @@ pub async fn build_avs_info(
 
     if avs.avs_type.registry() == Ok(RegistryType::Othentic) {
         avs.avs_version = "Othentic".to_string();
+    } else if avs.avs_type.registry() == Ok(RegistryType::Local) {
+        avs.avs_version = "Local".to_string();
     }
 
     Ok(AvsInfo {
