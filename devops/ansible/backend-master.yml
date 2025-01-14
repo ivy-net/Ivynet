@@ -5,4 +5,5 @@
       ivynet_backend_is_release: false
       become: true
     - role: ivynet-scraper
+      ivynet_scraper_is_release: false
       become: true
