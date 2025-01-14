@@ -6,7 +6,11 @@ use axum::{
 use axum_extra::extract::CookieJar;
 use ivynet_core::ethers::types::{Address, Chain};
 use ivynet_node_type::NodeType;
-use std::{collections::HashMap, str::FromStr};
+use std::{
+    collections::HashMap,
+    str::FromStr,
+    time::{SystemTime, UNIX_EPOCH},
+};
 use uuid::Uuid;
 
 use crate::{
@@ -503,17 +507,35 @@ pub async fn logs(
         ));
     }
 
-    let logs = ContainerLog::get_all_for_avs(
-        &state.pool,
-        machine.machine_id,
-        avs_name,
-        from,
-        to,
-        log_level,
-    )
-    .await?;
-
-    Ok(Json(logs))
+    if let (Some(from), Some(to)) = (from, to) {
+        let logs = ContainerLog::get_all_for_avs(
+            &state.pool,
+            machine.machine_id,
+            avs_name,
+            Some(from),
+            Some(to),
+            log_level,
+        )
+        .await?;
+        Ok(Json(logs))
+    } else {
+        let now =
+            SystemTime::now().duration_since(UNIX_EPOCH).expect("Time went backwards").as_secs();
+        let logs = ContainerLog::get_all_for_avs(
+            &state.pool,
+            machine.machine_id,
+            avs_name,
+            /* This will only fail to unwrap
+             * thousands (maybe millions?) of
+             * years in the
+             * future */
+            Some((now - 60 * 60 * 24).try_into().unwrap()),
+            Some(now.try_into().unwrap()),
+            log_level,
+        )
+        .await?;
+        Ok(Json(logs))
+    }
 }
 
 /**
