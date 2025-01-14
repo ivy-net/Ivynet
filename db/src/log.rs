@@ -154,7 +154,8 @@ impl ContainerLog {
                              AND avs_name = $2
                              AND created_at >= $3
                              AND created_at <= $4
-                             AND log_level = $5"#,
+                             AND log_level = $5
+                           ORDER BY created_at"#,
                         machine_id,
                         avs_name,
                         DateTime::from_timestamp(from, 0).expect("Invalid timestamp").naive_utc(),
@@ -172,7 +173,8 @@ impl ContainerLog {
                              machine_id = $1
                              AND avs_name = $2
                              AND created_at >= $3
-                             AND created_at <= $4"#,
+                             AND created_at <= $4
+                           ORDER BY created_at"#,
                         machine_id,
                         avs_name,
                         DateTime::from_timestamp(from, 0).expect("Invalid timestamp").naive_utc(),
@@ -189,7 +191,8 @@ impl ContainerLog {
                              machine_id = $1
                              AND avs_name = $2
                              AND created_at >= $3
-                             AND log_level = $4"#,
+                             AND log_level = $4
+                           ORDER BY created_at"#,
                         machine_id,
                         avs_name,
                         DateTime::from_timestamp(from, 0).expect("Invalid timestamp").naive_utc(),
@@ -205,7 +208,8 @@ impl ContainerLog {
                            WHERE
                              machine_id = $1
                              AND avs_name = $2
-                             AND created_at >= $3"#,
+                             AND created_at >= $3
+                           ORDER BY created_at"#,
                         machine_id,
                         avs_name,
                         DateTime::from_timestamp(from, 0).expect("Invalid timestamp").naive_utc(),
@@ -220,7 +224,8 @@ impl ContainerLog {
                            WHERE
                              machine_id = $1
                              AND avs_name = $2
-                             AND created_at <= $3"#,
+                             AND created_at <= $3
+                           ORDER BY created_at"#,
                         machine_id,
                         avs_name,
                         DateTime::from_timestamp(to, 0).expect("Invalid timestamp").naive_utc(),
