@@ -1,6 +1,7 @@
 use std::str::FromStr;
 
 use super::dockerapi::DockerClient;
+
 use bollard::{
     container::{LogOutput, LogsOptions},
     secret::ContainerSummary,

@@ -1,5 +1,3 @@
-use ivynet_docker::dockercmd::DockerError;
-
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
@@ -40,9 +38,6 @@ pub enum Error {
 
     #[error("No BLS key found in your keychain")]
     NoBLSKey,
-
-    #[error(transparent)]
-    DockerError(#[from] DockerError),
 
     #[error("Chain parse error: {0}")]
     ChainParseError(String),

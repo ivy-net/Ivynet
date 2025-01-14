@@ -1,9 +1,8 @@
 use std::collections::HashMap;
 
 use bollard::{container::LogOutput, image::ListImagesOptions, secret::ContainerSummary, Docker};
-use tokio_stream::Stream;
-
 use ivynet_node_type::NodeType;
+use tokio_stream::Stream;
 
 use super::container::Container;
 

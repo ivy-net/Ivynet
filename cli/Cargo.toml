@@ -15,11 +15,9 @@ path = "src/main.rs"
 
 [dependencies]
 #locals
-ivynet-core = { path = "../core" }
 ivynet-docker.workspace = true
 ivynet-grpc.workspace = true
 ivynet-io.workspace = true
-ivynet-node-type.workspace = true
 ivynet-signer.workspace = true
 
 clap = { version = "4.5.7", features = ["derive", "env"] }

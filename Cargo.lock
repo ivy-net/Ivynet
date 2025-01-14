@@ -743,11 +743,9 @@ dependencies = [
  "dialoguer",
  "ethers",
  "futures",
- "ivynet-core",
  "ivynet-docker",
  "ivynet-grpc",
  "ivynet-io",
- "ivynet-node-type",
  "ivynet-signer",
  "linemux",
  "rustix",
@@ -2880,9 +2878,7 @@ version = "0.1.0"
 dependencies = [
  "bollard",
  "chrono",
- "docker-registry",
  "futures",
- "ivynet-node-type",
  "regex",
  "serde",
  "serde_json",
@@ -2892,6 +2888,21 @@ dependencies = [
  "tokio-stream",
  "tracing",
  "which",
+]
+
+[[package]]
+name = "ivynet-docker-registry"
+version = "0.1.0"
+dependencies = [
+ "docker-registry",
+ "ivynet-node-type",
+ "serde",
+ "serde_json",
+ "strum",
+ "thiserror 2.0.6",
+ "tokio",
+ "tokio-stream",
+ "tracing",
 ]
 
 [[package]]
@@ -6930,9 +6941,9 @@ dependencies = [
 
 [[package]]
 name = "xattr"
-version = "1.3.1"
+version = "1.4.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8da84f1a25939b27f6820d92aed108f83ff920fdf11a7b19366c27c4cda81d4f"
+checksum = "e105d177a3871454f754b33bb0ee637ecaaac997446375fd3e5d43a2ed00c909"
 dependencies = [
  "libc",
  "linux-raw-sys",

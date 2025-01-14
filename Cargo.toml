@@ -6,6 +6,7 @@ members = [
 	"backend",
 	"scraper",
 	"ivynet-docker",
+	"ivynet-docker-registry",
 	"ivynet-grpc",
 	"ivynet-io",
 	"ivynet-node-type",

@@ -1,5 +1,5 @@
 [package]
-name = "ivynet-docker"
+name = "ivynet-docker-registry"
 version = "0.1.0"
 edition = "2021"
 authors = ["Noah Foltz <noah@ivynet.dev>"]
@@ -15,9 +15,9 @@ workspace = true
 
 [dependencies]
 #locals
-bollard.workspace = true
-chrono.workspace = true
-futures.workspace = true
+ivynet-node-type.workspace = true
+
+docker-registry.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 strum.workspace = true
@@ -25,5 +25,3 @@ thiserror.workspace = true
 tokio.workspace = true
 tokio-stream.workspace = true
 tracing.workspace = true
-regex.workspace = true
-which.workspace = true

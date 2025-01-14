@@ -11,7 +11,6 @@ pub mod keychain;
 pub mod keys;
 pub mod metadata;
 pub mod system;
-pub mod telemetry;
 pub mod utils;
 
 pub use ethers;
