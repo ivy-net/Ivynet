@@ -457,6 +457,8 @@ impl NodeType {
             NUFFLE_REPO => Some(Self::Nuffle),
             PRIMEV_LOCAL_REPO => Some(Self::PrimevMevCommit),
             PRIMEV_IMAGE_REPO => Some(Self::PrimevMevCommit),
+            GOPLUS_REPO => Some(Self::GoPlusAVS),
+            OMNI_REPO => Some(Self::Omni),
             _ => None,
         }
     }
@@ -479,7 +481,7 @@ impl NodeType {
             AUTOMATA_OPERATOR => Self::Automata,
             AUTOMATA_OPERATOR_HOLESKY => Self::Automata,
             AVA_OPERATOR => Self::AvaProtocol,
-            CHAINBASE_NETWORK_V1_NODE => Self::ChainbaseNetworkV1,
+            CHAINBASE_NETWORK_V1_NODE => Self::ChainbaseNetwork,
             GOPLUS_CONTAINER_NAME => Self::GoPlusAVS,
             LAGRANGE_WORKER_CONTAINER_NAME => Self::LagrangeZkWorker,
             LAGRANGE_STATE_COMMITTEE_CONTAINER_NAME => Self::LagrangeStateCommittee,
