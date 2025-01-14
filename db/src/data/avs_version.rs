@@ -138,7 +138,7 @@ pub async fn find_latest_avs_version(
                 None => (tag, digest),
             }
         }
-        VersionType::LocalOnly => return Err(DatabaseError::LocalOnlyNode),
+        VersionType::LocalOnly => ("Local".to_string(), "Local_Builds_Only".to_string()),
     };
     Ok((tag, digest))
 }
