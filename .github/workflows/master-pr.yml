@@ -1,5 +1,5 @@
 ---
-name: Build and Tag on Merge
+name: Build and Deploy for Master merge
 
 on:
   pull_request:
@@ -38,9 +38,9 @@ jobs:
           cd target/release
           mkdir master
           cd master
-          cp ../ivynet-backend
-          cp ../ivynet-ingress
-          cp ../scraper
+          cp ../ivynet-backend .
+          cp ../ivynet-ingress .
+          cp ../scraper .
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
