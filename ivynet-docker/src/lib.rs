@@ -24,6 +24,7 @@ pub enum RegistryType {
     AWS,
     Chainbase,
     Othentic,
+    Local,
 }
 
 impl RegistryType {
@@ -35,7 +36,6 @@ impl RegistryType {
             "gcr.io",
             "public.ecr.aws",
             "repository.chainbase.com",
-            "othentic",
         ]
     }
     pub fn from_host(host: &str) -> Option<Self> {
@@ -47,6 +47,7 @@ impl RegistryType {
             "public.ecr.aws" => Some(Self::AWS),
             "repository.chainbase.com" => Some(Self::Chainbase),
             "othentic" => Some(Self::Othentic),
+            "local" => Some(Self::Local),
             _ => None,
         }
     }
@@ -83,6 +84,7 @@ impl fmt::Display for RegistryType {
             Self::AWS => "public.ecr.aws",
             Self::Chainbase => "repository.chainbase.com",
             Self::Othentic => "Othentic has no registry",
+            Self::Local => "Local build only",
         };
         write!(f, "{}", registry)
     }
