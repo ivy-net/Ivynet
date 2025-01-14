@@ -28,4 +28,7 @@ pub enum DatabaseError {
 
     #[error("Data integrity error")]
     DataIntegrityError(String),
+
+    #[error("Local build only node type")]
+    LocalOnlyNode,
 }
