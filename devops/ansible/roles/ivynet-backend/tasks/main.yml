@@ -28,9 +28,17 @@
   ansible.builtin.import_tasks:
     file: third_party.yml
 
-- name: Download ivynet-backend
+- name: Download ivynet-backend for master
+  ansible.builtin.import_tasks:
+    file: get_backend_master.yml
+  when:
+    - not ivynet_backend_is_release
+
+- name: Download ivynet-backend for release
   ansible.builtin.import_tasks:
     file: get_backend.yml
+  when:
+    - ivynet_backend_is_release
 
 - name: Copy Env file
   ansible.builtin.template:
@@ -55,7 +63,6 @@
   ansible.builtin.import_tasks:
     file: ssl.yml
 
-
 - name: Copy scanner script
   ansible.builtin.copy:
     src: ivynet-scanner.sh
@@ -74,7 +81,7 @@
     name: "Run image version scanner"
     minute: 7
     hour: "0,12"
-    # yamllint disable-line rule:line-length
+# yamllint disable-line rule:line-length
     job: "{{ ivynet_backend_path_install }}/bin/ivynet-scanner.sh 2>&1 |logger -t scanner"
   tags:
     - ivynet_backend
