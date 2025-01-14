@@ -7,6 +7,7 @@
   loop:
     - github3.py
     - psycopg2-binary
+    - google-cloud-storage
   tags:
     - ivynet_scraper
     - general

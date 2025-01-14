@@ -7,7 +7,7 @@
       ansible.builtin.set_fact:
         # yamllint disable-line rule:line-length
         ivynet_migrations_assets_id: "{{ ivynet_backend_assets_output | community.general.json_query(json_output_query) }}"
-      cacheable: true
+        cacheable: true
       vars:
         json_output_query: "json.assets[?name=='migrations.tar.gz'].id"
       tags:
@@ -26,12 +26,13 @@
           Accept: "application/octet-stream"
         follow_redirects: all
         status_code: [200, 304]
-          # yamllint disable-line rule:line-length
+        # yamllint disable-line rule:line-length
         dest: "{{ ivynet_backend_path_install }}/resources/migrations-{{ ivynet_backend_release }}.tar.gz"
         owner: root
         group: root
         mode: "0755"
       tags:
+        - ivynet_backend
         - ivynet
         - github
         - db-config
@@ -56,7 +57,7 @@
       tags:
         - ivynet_backend
         - ivynet
-        - github
+        - db-config
 
 
 - name: Unpack migrations
