@@ -3,6 +3,9 @@ name: DevOps test
 
 on:
   push:
+    branches:
+      - devops/*
+      - test/*
     branches-ignore:
       - dev
       - master
@@ -27,25 +30,17 @@ jobs:
           tag=$(git tag | awk -F- '/backend/ {print $2}'| tail -1)
           echo "TAG_BACKEND_GIT=${tag}" >> "$GITHUB_OUTPUT"
           echo "Tag: ${tag}"
-#      - name: Install TOML cli
-#        run: |
-#          . "$HOME/.cargo/env"
-#          cargo install toml-cli
-#      - name: Inject packages
-#        run: >
-#          pipx inject ansible-core
-#          jmespath
-#          google-auth
-#          requests
-#      - name: List packages
-#        run: |
-#          pipx list --include-injected
-#      - name: List collections
-#        run: |
-#          ansible-galaxy collection list
-#      - name: Version backend
-#        id: version-backend
-#        run: |
-#          version=$(toml get backend/Cargo.toml package.version | tr -d \")
-#          echo "TAG_BACKEND_TOML=${version}" >> "$GITHUB_OUTPUT"
-#          echo "Version: ${version}"
+      - name: Debug
+        run: |
+          echo "${PATH}"
+      - name: Install TOML cli
+        run: |
+          cd /usr/local/bin
+          wget https://storage.googleapis.com/ivynet-share/toml
+          chmod 0755 toml
+      - name: Version backend
+        id: version-backend
+        run: |
+          version=$(toml get backend/Cargo.toml package.version | tr -d \")
+          echo "TAG_BACKEND_TOML=${version}" >> "$GITHUB_OUTPUT"
+          echo "Version: ${version}"
