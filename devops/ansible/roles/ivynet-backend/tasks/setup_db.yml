@@ -1,36 +1,63 @@
 ---
-- name: Prepare variable with migrations assets id
-  ansible.builtin.set_fact:
-    # yamllint disable-line rule:line-length
-    ivynet_migrations_assets_id: "{{ ivynet_backend_assets_output | community.general.json_query(json_output_query) }}"
-    cacheable: true
-  vars:
-    json_output_query: "json.assets[?name=='migrations.tar.gz'].id"
-  tags:
-    - ivynet_backend
-    - ivynet
-    - github
-    - db-config
+- name: Download migrations for the release
+  when:
+    - ivynet_backend_is_release
+  block:
+    - name: Prepare variable with migrations assets id
+      ansible.builtin.set_fact:
+        # yamllint disable-line rule:line-length
+        ivynet_migrations_assets_id: "{{ ivynet_backend_assets_output | community.general.json_query(json_output_query) }}"
+      cacheable: true
+      vars:
+        json_output_query: "json.assets[?name=='migrations.tar.gz'].id"
+      tags:
+        - ivynet_backend
+        - ivynet
+        - github
+        - db-config
 
-- name: Get migrations
-  ansible.builtin.uri:
-    # yamllint disable-line rule:line-length
-    url: "https://api.github.com/repos/ivy-net/ivynet/releases/assets/{{ ivynet_migrations_assets_id[0] }}"
-    method: GET
-    headers:
-      Authorization: "token {{ ivynet_backend_github_token }}"
-      Accept: "application/octet-stream"
-    follow_redirects: all
-    status_code: [200, 304]
-    # yamllint disable-line rule:line-length
-    dest: "{{ ivynet_backend_path_install }}/resources/migrations-{{ ivynet_backend_release }}.tar.gz"
-    owner: root
-    group: root
-    mode: "0755"
-  tags:
-    - ivynet
-    - github
-    - db-config
+    - name: Get migrations
+      ansible.builtin.uri:
+        # yamllint disable-line rule:line-length
+        url: "https://api.github.com/repos/ivy-net/ivynet/releases/assets/{{ ivynet_migrations_assets_id[0] }}"
+        method: GET
+        headers:
+          Authorization: "token {{ ivynet_backend_github_token }}"
+          Accept: "application/octet-stream"
+        follow_redirects: all
+        status_code: [200, 304]
+          # yamllint disable-line rule:line-length
+        dest: "{{ ivynet_backend_path_install }}/resources/migrations-{{ ivynet_backend_release }}.tar.gz"
+        owner: root
+        group: root
+        mode: "0755"
+      tags:
+        - ivynet
+        - github
+        - db-config
+
+- name: Download migrations for the master
+  when:
+    - not ivynet_backend_is_release
+  block:
+    - name: Download migrations
+      gcp_storage_object:
+        bucket: "{{ ivynet_backend_gcp_bucket }}"
+        object: "master/{{ item }}"
+        dest: "{{ ivynet_backend_path_install }}/bin/{{ item }}"
+        action: download
+        credentials_file: "{{ ivynet_backend_gcp_cred }}"
+        project: "{{ ivynet_backend_gcp_project }}"
+        owner: root
+        group: root
+        mode: "0755"
+      loop:
+        - migrations.tar.gz
+      tags:
+        - ivynet_backend
+        - ivynet
+        - github
+
 
 - name: Unpack migrations
   ansible.builtin.unarchive:
@@ -78,7 +105,7 @@
 - name: Add privilges to the user
   community.postgresql.postgresql_privs:
     database: "{{ ivynet_backend_postgres_db }}"
-# yamllint disable-line rule:line-length
+    # yamllint disable-line rule:line-length
     login_host: "{{ '' if ivynet_backend_postgres_host == 'localhost' else ivynet_backend_postgres_host }}"
     login_password: "{{ ivynet_backend_postgres_pass }}"
     objs: public
