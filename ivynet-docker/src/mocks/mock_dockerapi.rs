@@ -1,20 +1,24 @@
-use std::{collections::HashMap, pin::Pin};
+use std::{collections::HashMap, pin::Pin, sync::Arc};
 
 use async_trait::async_trait;
 use bollard::{
     container::LogOutput,
     errors::Error,
-    secret::{ContainerSummary, EventMessage},
+    secret::{ContainerSummary, EventMessage, ImageSummary},
 };
 use futures::{stream, Stream};
 
-use crate::{container::Container, dockerapi::DockerApi};
+use crate::{
+    container::Container,
+    dockerapi::{DockerApi, DockerClient},
+};
 
 #[derive(Clone)]
 pub struct MockDockerClient {
     pub records: Vec<ContainerRecord>,
     pub events: Vec<EventMessage>,
     pub logs: Vec<LogOutput>,
+    pub images: Arc<Vec<ImageSummary>>,
 }
 
 impl MockDockerClient {
@@ -25,7 +29,11 @@ impl MockDockerClient {
             .flatten()
             .collect();
         let logs = mock_logs();
-        Self { records, events, logs }
+        Self { records, events, logs, images: Arc::new(vec![]) }
+    }
+
+    pub fn images_only(&self, images: Vec<ImageSummary>) -> MockDockerClient {
+        MockDockerClient { images: Arc::new(images), records: vec![], events: vec![], logs: vec![] }
     }
 }
 
@@ -42,7 +50,7 @@ impl DockerApi for MockDockerClient {
     }
 
     async fn list_images(&self) -> HashMap<String, String> {
-        self.records.iter().map(|r| (r.image_name.clone(), r.image_digest.clone())).collect()
+        DockerClient::process_images(self.images.to_vec())
     }
 
     async fn stream_logs(
@@ -57,6 +65,14 @@ impl DockerApi for MockDockerClient {
         &self,
     ) -> Pin<Box<dyn Stream<Item = Result<EventMessage, Error>> + Send + Unpin>> {
         Box::pin(stream::iter(self.events.clone().into_iter().map(Ok)))
+    }
+
+    fn process_images(images: Vec<ImageSummary>) -> HashMap<String, String> {
+        DockerClient::process_images(images) // Reuse the actual implementation
+    }
+
+    fn use_repo_tags(image: &ImageSummary, map: &mut HashMap<String, String>) {
+        DockerClient::use_repo_tags(image, map) // Reuse the actual implementation
     }
 }
 
@@ -78,8 +94,8 @@ impl MockDockerClient {
 
 #[derive(Debug, Clone)]
 pub struct ContainerRecord {
-    image_name: String,
-    image_digest: String,
+    _image_name: String,
+    _image_digest: String,
     container_summary: ContainerSummary,
 }
 
@@ -122,8 +138,8 @@ fn mock_non_utf8_logs() -> Vec<LogOutput> {
 
 fn postgres_container() -> ContainerRecord {
     ContainerRecord {
-        image_name: "postgres:latest".to_string(),
-        image_digest: "sha256:994cc3113ce004ae73df11f0dbc5088cbe6bb0da1691dd7e6f55474202a4f211"
+        _image_name: "postgres:latest".to_string(),
+        _image_digest: "sha256:994cc3113ce004ae73df11f0dbc5088cbe6bb0da1691dd7e6f55474202a4f211"
             .to_string(),
         container_summary: serde_json::from_str(include_str!(
             "./containersummaries/postgres_container_summary.json"
@@ -134,8 +150,8 @@ fn postgres_container() -> ContainerRecord {
 
 fn memcached_container() -> ContainerRecord {
     ContainerRecord {
-        image_name: "memcached:latest".to_string(),
-        image_digest: "sha256:706d1761d9646b9f827f049a71fdab99457f90b920c1cca9fc295821b6df1753"
+        _image_name: "memcached:latest".to_string(),
+        _image_digest: "sha256:706d1761d9646b9f827f049a71fdab99457f90b920c1cca9fc295821b6df1753"
             .to_string(),
         container_summary: serde_json::from_str(include_str!(
             "./containersummaries/memcached_container_summary.json"
@@ -146,8 +162,8 @@ fn memcached_container() -> ContainerRecord {
 
 fn eigenda_container_1() -> ContainerRecord {
     ContainerRecord {
-        image_name: "ghcr.io/layr-labs/eigenda/opr-node:0.8.4".to_string(),
-        image_digest: "sha256:6650119a385f2447ca60f03080f381cf4f10ad7f920a2ce27fe0d973ac43e993"
+        _image_name: "ghcr.io/layr-labs/eigenda/opr-node:0.8.4".to_string(),
+        _image_digest: "sha256:6650119a385f2447ca60f03080f381cf4f10ad7f920a2ce27fe0d973ac43e993"
             .to_string(),
         container_summary: serde_json::from_str(include_str!(
             "./containersummaries/eigenda_container_summary_1.json"
@@ -173,4 +189,102 @@ fn eigenda_stream_restart() -> Vec<EventMessage> {
 fn test_load_summaries() {
     postgres_container();
     memcached_container();
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // --- List Image Tests ---
+    #[tokio::test]
+    async fn test_list_images_normal_case() {
+        let mock = MockDockerClient::new();
+        let mock = mock.images_only(vec![ImageSummary {
+            id: "sha256:digest1".to_string(),
+            repo_tags: vec!["image:latest".to_string()],
+            repo_digests: vec!["image@sha256:digest1".to_string()],
+            ..Default::default()
+        }]);
+
+        let result = mock.list_images().await;
+
+        assert_eq!(result.get("image:latest").unwrap(), "sha256:digest1");
+        assert_eq!(result.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_list_images_empty_repo_tags() {
+        let mock = MockDockerClient::new();
+        let mock = mock.images_only(vec![ImageSummary {
+            id: "sha256:digest1".to_string(),
+            repo_tags: vec![],
+            repo_digests: vec!["image1@sha256:digest1".to_string()],
+            ..Default::default()
+        }]);
+
+        let result = mock.list_images().await;
+
+        assert_eq!(result.get("image1").unwrap(), "sha256:digest1");
+        assert_eq!(result.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_list_images_empty_repo_digests() {
+        let mock = MockDockerClient::new();
+        let mock = mock.images_only(vec![ImageSummary {
+            id: "sha256:digest1".to_string(),
+            repo_tags: vec!["image:latest".to_string()],
+            repo_digests: vec![],
+            ..Default::default()
+        }]);
+
+        let result = mock.list_images().await;
+
+        assert_eq!(result.get("image:latest").unwrap(), "sha256:digest1");
+        assert_eq!(result.len(), 1);
+    }
+
+    #[tokio::test]
+    async fn test_list_images_multiple_tags() {
+        let mock = MockDockerClient::new();
+        let mock = mock.images_only(vec![ImageSummary {
+            id: "sha256:digest4".to_string(),
+            repo_tags: vec!["image:latest".to_string(), "image:v1".to_string()],
+            repo_digests: vec!["image@sha256:digest4".to_string()],
+            ..Default::default()
+        }]);
+
+        let result = mock.list_images().await;
+
+        assert_eq!(result.get("image:latest").unwrap(), "sha256:digest4");
+        assert_eq!(result.get("image:v1").unwrap(), "sha256:digest4");
+        assert_eq!(result.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_images_broken_empty_list() {
+        let mock = MockDockerClient::new();
+        let mock = mock.images_only(vec![
+            ImageSummary { id: "sha256:digest4".to_string(), ..Default::default() },
+            ImageSummary { id: "sha256:digest3".to_string(), ..Default::default() },
+        ]);
+        let result = mock.list_images().await;
+        assert_eq!(result.len(), 0);
+    }
+
+    // --- Container Tests ---
+    #[tokio::test]
+    async fn test_list_containers_normal_case() {
+        let mock = MockDockerClient::new();
+        let result = mock.list_containers().await;
+        assert_eq!(result.len(), 3);
+    }
+
+    #[tokio::test]
+    async fn test_list_containers_empty_list() {
+        let mock = MockDockerClient::new();
+        let mock = mock.images_only(vec![]);
+        let result = mock.list_containers().await;
+        assert_eq!(result.len(), 0);
+    }
 }
