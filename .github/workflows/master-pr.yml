@@ -1,0 +1,79 @@
+---
+name: Build and Deploy for Master merge
+
+on:
+  pull_request:
+    types:
+      - closed
+    branches:
+      - master
+
+permissions:
+  id-token: write  # This is required for requesting the JWT
+  contents: write  # This is required for creating a release
+
+jobs:
+
+  build:
+    name: Build everything
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Refresh source list
+        run: |
+          sudo apt update
+      - name: Install dependencies
+        run: >
+          sudo apt install -y
+          protobuf-compiler
+          pkg-config
+          libssl-dev
+      - name: Build binaries
+        run: |
+          . "$HOME/.cargo/env"
+          cargo build --release
+      - name: Create dev binaries
+        run: |
+          cd target/release
+          mkdir master
+          cd master
+          cp ../ivynet-backend .
+          cp ../ivynet-ingress .
+          cp ../scraper .
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
+      - name: Upload file to the bucket
+        uses: google-github-actions/upload-cloud-storage@v2
+        with:
+          path: target/release/master
+          destination: ivynet-share-test
+          parent: true
+      - name: Create a file with the vault password
+        run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
+        env:
+          ANSIBLE_VAULT: ${{ secrets.ANSIBLE_VAULT }}
+      - name: Run Ansible (after preparations)
+        env:
+          ANSIBLE_HOST_KEY_CHECKING: false
+          ANSIBLE_PIPELINING: true
+        run: |
+          gcloud auth activate-service-account \
+           --key-file=${GOOGLE_GHA_CREDS_PATH}
+          export remote_user=$(gcloud compute os-login describe-profile \
+           --format "value(posixAccounts.username)")
+          cd devops/ansible
+          jq -r .private_key ${GOOGLE_GHA_CREDS_PATH} > sa.prv
+          chmod 600 sa.prv
+          cp ${GOOGLE_GHA_CREDS_PATH} sa.json
+          sed -i.bak 's/\~\/\.devops\-automation-key/sa/' gcp.yml
+          ssh-agent > ~/.ssh-env
+          source ~/.ssh-env
+          ssh-add sa.prv
+          ansible-playbook \
+            -i gcp.yml \
+            -u ${remote_user} \
+            --vault-password-file ~/.vault.txt \
+            backend_master.yml

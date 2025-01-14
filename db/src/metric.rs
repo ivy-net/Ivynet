@@ -221,4 +221,21 @@ impl Metric {
 
         value.replace('\\', "\\\\").replace('\t', "\\t").replace('\n', "\\n").replace('\r', "\\r")
     }
+
+    pub async fn update_name_on_metrics(
+        pool: &PgPool,
+        machine_id: Uuid,
+        old_name: &str,
+        new_name: &str,
+    ) -> Result<(), DatabaseError> {
+        sqlx::query!(
+            "UPDATE metric SET avs_name = $1 WHERE machine_id = $2 AND avs_name = $3",
+            new_name,
+            machine_id,
+            old_name
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
 }

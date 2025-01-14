@@ -4,7 +4,6 @@ use ivynet_signer::{IvyWallet, IvyWalletError};
 use once_cell::sync::Lazy;
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
-use sysinfo::{Disks, System};
 use thiserror::Error as ThisError;
 use tonic::transport::Uri;
 use uuid::Uuid;
@@ -154,41 +153,6 @@ impl IvyConfig {
     pub fn uds_dir(&self) -> String {
         format!("{}/ivynet.ipc", self.path.display())
     }
-}
-
-pub fn get_system_information() -> Result<(u64, u64, u64), IvyError> {
-    let mut sys = System::new();
-    sys.refresh_all();
-
-    let disks = Disks::new_with_refreshed_list();
-
-    let cpu_cores = sys.cpus().len() as u64;
-    let total_memory = sys.total_memory();
-    let free_disk = disks[0].available_space();
-    Ok((cpu_cores, total_memory, free_disk))
-}
-
-#[allow(clippy::type_complexity)]
-pub fn get_detailed_system_information() -> Result<(u64, f64, u64, u64, u64, u64, u64), IvyError> {
-    let mut sys = System::new();
-    sys.refresh_all();
-
-    let memory_usage = sys.used_memory();
-    let memory_free = sys.free_memory();
-
-    let cores = sys.cpus().len() as u64;
-    let mut cpu_usage = 0.0;
-    for cpu in sys.cpus() {
-        cpu_usage += cpu.cpu_usage() as f64;
-    }
-    let mut disk_usage = 0;
-    let mut free_disk = 0;
-    for disk in &Disks::new_with_refreshed_list() {
-        disk_usage += disk.total_space() - disk.available_space();
-        free_disk += disk.available_space();
-    }
-    let uptime = System::uptime();
-    Ok((cores, cpu_usage, memory_usage, memory_free, disk_usage, free_disk, uptime))
 }
 
 #[derive(ThisError, Debug)]

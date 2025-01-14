@@ -167,9 +167,6 @@ pub enum IvyError {
     #[error("Docker Image Error")]
     DockerImageError,
 
-    #[error(transparent)]
-    TelemetryDispatchError(#[from] crate::telemetry::dispatch::TelemetryDispatchError),
-
     #[error("{0}")]
     CustomError(String),
 
@@ -181,6 +178,9 @@ pub enum IvyError {
 
     #[error("Node find error, could not find node for name {0}")]
     NodeFindError(String),
+
+    #[error(transparent)]
+    DockerStreamError(#[from] ivynet_docker::dockerapi::DockerStreamError),
 }
 
 #[derive(Debug, Error)]

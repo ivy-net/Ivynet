@@ -1,9 +1,11 @@
-use tonic::transport::{Channel, Uri};
-
 use ivynet_grpc::{
     backend::backend_client::BackendClient,
+    client::Uri,
     messages::{SignedLog, SignedMetrics, SignedNodeData},
+    tonic::{self, transport::Channel},
 };
+
+use super::ErrorChannelTx;
 
 #[derive(Debug, Clone)]
 pub enum TelemetryMsg {
@@ -14,14 +16,15 @@ pub enum TelemetryMsg {
 
 struct TelemetryDispatcher {
     rx: tokio::sync::mpsc::Receiver<TelemetryMsg>,
-    error_tx: tokio::sync::broadcast::Sender<TelemetryDispatchError>,
+    error_tx: ErrorChannelTx,
     backend_client: BackendClient<Channel>,
 }
 
-// TODO: We don't currently await the joinhandle from this task anywhere in the parent thread.
-// Consider an initialization method which returns both the handle to the dispatcher and the
-// task joinhandle to the parent thread.
 impl TelemetryDispatcher {
+    /// Run the telemetry dispatcher. This will listen for incoming telemetry messages and send
+    /// them to the backend. If the backend is unreachable for any endpoint, it will send an error
+    /// to the parent task error receiver. If the parent task reciever is closed, it will return an
+    /// error back to the parent task.
     pub async fn run(&mut self) -> Result<(), TelemetryDispatchError> {
         while let Some(node_data) = self.rx.recv().await {
             let send_res = match node_data {
@@ -31,7 +34,9 @@ impl TelemetryDispatcher {
             };
             if let Err(e) = send_res {
                 let err = TelemetryDispatchError::TransportError(e);
-                self.error_tx.send(err).map_err(|_| TelemetryDispatchError::ErrorSendFailed)?;
+                self.error_tx
+                    .send(err.into())
+                    .map_err(|_| TelemetryDispatchError::ErrorSendFailed)?;
             }
         }
         Ok(())
@@ -41,29 +46,29 @@ impl TelemetryDispatcher {
 #[derive(Debug)]
 pub struct TelemetryDispatchHandle {
     tx: tokio::sync::mpsc::Sender<TelemetryMsg>,
-    pub error_rx: tokio::sync::broadcast::Receiver<TelemetryDispatchError>,
 }
 
 impl Clone for TelemetryDispatchHandle {
     fn clone(&self) -> Self {
-        Self { tx: self.tx.clone(), error_rx: self.error_rx.resubscribe() }
+        Self { tx: self.tx.clone() }
     }
 }
 
 impl TelemetryDispatchHandle {
-    pub async fn send(&self, msg: TelemetryMsg) -> Result<(), TelemetryDispatchError> {
-        self.tx.send(msg).await.map_err(|e| Box::new(e).into())
-    }
-    pub async fn from_client(client: BackendClient<Channel>) -> Self {
+    pub async fn new(client: BackendClient<Channel>, error_tx: &ErrorChannelTx) -> Self {
         let (tx, rx) = tokio::sync::mpsc::channel(256);
-        let (error_tx, error_rx) = tokio::sync::broadcast::channel(16);
+        let error_tx = error_tx.clone();
 
         tokio::spawn(async move {
             let mut dispatcher = TelemetryDispatcher { rx, error_tx, backend_client: client };
             dispatcher.run().await
         });
 
-        TelemetryDispatchHandle { tx, error_rx }
+        TelemetryDispatchHandle { tx }
+    }
+
+    pub async fn send(&self, msg: TelemetryMsg) -> Result<(), TelemetryDispatchError> {
+        self.tx.send(msg).await.map_err(TelemetryDispatchError::DispatchError)
     }
     pub async fn send_metrics(&self, metrics: SignedMetrics) -> Result<(), TelemetryDispatchError> {
         self.send(TelemetryMsg::Metrics(metrics)).await
@@ -79,21 +84,6 @@ impl TelemetryDispatchHandle {
     }
 }
 
-/// Creates a handle to telemetry dispatch actor. Actor sends telemetry messages to the backend in
-/// its own task.
-pub async fn create_telemetry_dispatch(
-    backend_url: Uri,
-    backend_ca: Option<String>,
-) -> TelemetryDispatchHandle {
-    // TODO: Channel size is currently limited to 256. Consider unbounded channel.
-    let backend_client = BackendClient::new(
-        ivynet_grpc::client::create_channel(backend_url, backend_ca)
-            .await
-            .expect("Cannot create channel"),
-    );
-    TelemetryDispatchHandle::from_client(backend_client).await
-}
-
 #[derive(Debug, thiserror::Error, Clone)]
 pub enum TelemetryDispatchError {
     #[error("Failed to get telemetry error. The channel has been previously closed.")]
@@ -105,5 +95,5 @@ pub enum TelemetryDispatchError {
     #[error("Failed to send error to the parent task.")]
     ErrorSendFailed,
     #[error("Telemetry send error: {0}")]
-    TelemetrySendError(#[from] Box<tokio::sync::mpsc::error::SendError<TelemetryMsg>>),
+    TelemetrySendError(#[from] tokio::sync::mpsc::error::SendError<TelemetryMsg>),
 }

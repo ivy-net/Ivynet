@@ -57,17 +57,17 @@ pub async fn recover_node_data(
 
 // --- Metrics ---
 pub fn sign_metrics(metrics: &[Metrics], wallet: &IvyWallet) -> Result<Signature, IvySigningError> {
-    sign_hash(build_metrics_message(metrics)?, wallet)
+    sign_hash(build_metrics_message(metrics), wallet)
 }
 
 pub async fn recover_metrics(
     metrics: &[Metrics],
     signature: &Signature,
 ) -> Result<Address, IvySigningError> {
-    recover_from_hash(build_metrics_message(metrics)?, signature)
+    recover_from_hash(build_metrics_message(metrics), signature)
 }
 
-fn build_metrics_message(metrics: &[Metrics]) -> Result<H256, IvySigningError> {
+fn build_metrics_message(metrics: &[Metrics]) -> H256 {
     let mut tokens = Vec::new();
     let mut metrics_vector = metrics.to_vec();
     metrics_vector.sort_by(|a, b| b.name.cmp(&a.name));
@@ -81,7 +81,7 @@ fn build_metrics_message(metrics: &[Metrics]) -> Result<H256, IvySigningError> {
             tokens.push(Token::String(attribute.value.clone()));
         }
     }
-    Ok(H256::from(&keccak256(encode(&tokens))))
+    H256::from(&keccak256(encode(&tokens)))
 }
 
 // --- NameChange ---

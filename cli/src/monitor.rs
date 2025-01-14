@@ -13,6 +13,11 @@ use ivynet_grpc::{
 };
 use ivynet_io::{read_toml, write_toml, IoError};
 use ivynet_signer::sign_utils::sign_name_change;
+use ivynet_docker::{
+    dockerapi::{DockerApi, DockerClient},
+    RegistryType,
+};
+use ivynet_node_type::{AltlayerType, MachType, NodeType};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},

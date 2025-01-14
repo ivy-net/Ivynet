@@ -274,6 +274,12 @@ impl Backend for BackendService {
             .await
             .map_err(|e| Status::internal(format!("Failed while updating machine name: {e}")))?;
 
+        Metric::update_name_on_metrics(&self.pool, machine_id, &req.old_name, &req.new_name)
+            .await
+            .map_err(|e| {
+                Status::internal(format!("Failed while updating machine name on metrics: {e}"))
+            })?;
+
         Ok(Response::new(()))
     }
 }

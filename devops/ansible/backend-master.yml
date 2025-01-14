@@ -1,0 +1,8 @@
+---
+- hosts: gcp_area_backend:&gcp_env_dev
+  roles:
+    - role: ivynet-backend
+      ivynet_backend_is_release: false
+      become: true
+    - role: ivynet-scraper
+      become: true

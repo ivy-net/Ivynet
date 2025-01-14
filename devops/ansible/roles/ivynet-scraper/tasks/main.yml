@@ -17,18 +17,17 @@
   ansible.builtin.import_tasks:
     file: third_party.yml
 
-- name: Install and configure 3rd party tools
+- name: Download scraper for master
+  ansible.builtin.import_tasks:
+    file: get_scraper_master.yml
+  when:
+    - not ivynet_scraper_is_release
+
+- name: Download scraper for release
   ansible.builtin.import_tasks:
     file: get_scraper.yml
-
-- name: Help
-  ansible.builtin.debug:
-    msg: "{{ network }}"
-  vars:
-    network: "{{ item }}"
-  loop:
-    - mainnet
-    - holesky
+  when:
+    - ivynet_scraper_is_release
 
 - name: Copy Scraper Service files
   ansible.builtin.template:
