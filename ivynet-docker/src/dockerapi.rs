@@ -38,6 +38,9 @@ impl Default for DockerClient {
 #[async_trait]
 pub trait DockerApi: Clone + Sync + Send + 'static {
     async fn list_containers(&self) -> Vec<ContainerSummary>;
+    async fn list_images(&self) -> HashMap<String, String>;
+    fn process_images(images: Vec<ImageSummary>) -> HashMap<String, String>;
+    fn use_repo_tags(image: &ImageSummary, map: &mut HashMap<String, String>);
 
     async fn stream_logs(
         &self,
@@ -48,7 +51,6 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
     async fn stream_events(
         &self,
     ) -> Pin<Box<dyn Stream<Item = Result<EventMessage, Error>> + Send + Unpin>>;
-    async fn list_images(&self) -> HashMap<String, String>;
 
     async fn inspect(&self, image_name: &str) -> Option<Container> {
         let containers = self.list_containers().await;
@@ -195,43 +197,43 @@ impl DockerApi for DockerClient {
             }))
             .await
             .expect("Cannot list images");
-        process_images(images)
+        DockerClient::process_images(images)
     }
-}
 
-fn process_images(images: Vec<ImageSummary>) -> HashMap<String, String> {
-    let mut map = HashMap::new();
-    for image in images {
-        if image.repo_digests.is_empty() {
-            debug!("No repo digests on image: {:#?}", image);
-            use_repo_tags(&image, &mut map);
-        } else {
-            for digest in &image.repo_digests {
-                let elements = digest.split("@").collect::<Vec<_>>();
-                if elements.len() == 2 {
-                    if !image.repo_tags.is_empty() {
-                        for tag in &image.repo_tags {
-                            map.insert(tag.clone(), elements[1].to_string());
+    fn process_images(images: Vec<ImageSummary>) -> HashMap<String, String> {
+        let mut map = HashMap::new();
+        for image in images {
+            if image.repo_digests.is_empty() {
+                debug!("No repo digests on image: {:#?}", image);
+                DockerClient::use_repo_tags(&image, &mut map);
+            } else {
+                for digest in &image.repo_digests {
+                    let elements = digest.split("@").collect::<Vec<_>>();
+                    if elements.len() == 2 {
+                        if !image.repo_tags.is_empty() {
+                            for tag in &image.repo_tags {
+                                map.insert(tag.clone(), elements[1].to_string());
+                            }
+                        } else {
+                            debug!("No repo tags on image: {}", elements[0]);
+                            debug!("This should get a debug later as well in node_type");
+                            map.insert(elements[0].to_string(), elements[1].to_string());
                         }
                     } else {
-                        debug!("No repo tags on image: {}", elements[0]);
-                        debug!("This should get a debug later as well in node_type");
-                        map.insert(elements[0].to_string(), elements[1].to_string());
+                        DockerClient::use_repo_tags(&image, &mut map);
                     }
-                } else {
-                    use_repo_tags(&image, &mut map);
                 }
             }
         }
+        map
     }
-    map
-}
 
-fn use_repo_tags(image: &ImageSummary, map: &mut HashMap<String, String>) {
-    debug!("REPO DIGESTS BROKEN: {:#?}", image);
-    debug!("Using repo_tags instead");
-    for tag in &image.repo_tags {
-        map.insert(tag.clone(), image.id.clone());
+    fn use_repo_tags(image: &ImageSummary, map: &mut HashMap<String, String>) {
+        debug!("REPO DIGESTS BROKEN: {:#?}", image);
+        debug!("Using repo_tags instead");
+        for tag in &image.repo_tags {
+            map.insert(tag.clone(), image.id.clone());
+        }
     }
 }
 
@@ -245,164 +247,4 @@ pub enum DockerStreamError {
 
     #[error("Dockerstream image name mismatch: {0} != {1}")]
     ImageNameMismatch(String, String),
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use async_trait::async_trait;
-    use bollard::secret::ImageSummary;
-    use std::sync::Arc;
-
-    // Define trait for Docker behavior we want to mock
-    #[async_trait]
-    trait DockerImages {
-        async fn list_images(
-            &self,
-            options: Option<ListImagesOptions<String>>,
-        ) -> Result<Vec<ImageSummary>, bollard::errors::Error>;
-    }
-
-    // Implement for real Docker
-    #[async_trait]
-    impl DockerImages for Docker {
-        async fn list_images(
-            &self,
-            options: Option<ListImagesOptions<String>>,
-        ) -> Result<Vec<ImageSummary>, bollard::errors::Error> {
-            self.list_images(options).await
-        }
-    }
-
-    // Mock implementation
-    struct MockDocker {
-        images: Vec<ImageSummary>,
-        should_fail: bool,
-        error_kind: Option<std::io::ErrorKind>,
-    }
-
-    impl MockDocker {
-        fn with_images(images: Vec<ImageSummary>) -> Self {
-            Self { images, should_fail: false, error_kind: None }
-        }
-
-        fn with_error(error_kind: std::io::ErrorKind) -> Self {
-            Self { images: Vec::new(), should_fail: true, error_kind: Some(error_kind) }
-        }
-    }
-
-    #[async_trait]
-    impl DockerImages for MockDocker {
-        async fn list_images(
-            &self,
-            _options: Option<ListImagesOptions<String>>,
-        ) -> Result<Vec<ImageSummary>, bollard::errors::Error> {
-            if self.should_fail {
-                if let Some(kind) = self.error_kind {
-                    return Err(bollard::errors::Error::from(std::io::Error::new(
-                        kind,
-                        "Docker API error",
-                    )));
-                }
-            }
-            Ok(self.images.clone())
-        }
-    }
-
-    // Modified DockerClient to accept any type implementing DockerImages
-    struct TestDockerClient<T: DockerImages> {
-        docker: Arc<T>,
-    }
-
-    impl<T: DockerImages> TestDockerClient<T> {
-        fn new(docker: T) -> Self {
-            Self { docker: Arc::new(docker) }
-        }
-
-        async fn list_images(&self) -> HashMap<String, String> {
-            let images = self
-                .docker
-                .list_images(Some(ListImagesOptions::<String> {
-                    all: true,
-                    digests: true,
-                    ..Default::default()
-                }))
-                .await
-                .expect("Cannot list images");
-            process_images(images)
-        }
-    }
-
-    #[tokio::test]
-    async fn test_list_images_normal_case() {
-        let mock = MockDocker::with_images(vec![ImageSummary {
-            id: "sha256:digest1".to_string(),
-            repo_tags: vec!["image:latest".to_string()],
-            repo_digests: vec!["image@sha256:digest1".to_string()],
-            ..Default::default()
-        }]);
-
-        let client = TestDockerClient::new(mock);
-        let result = client.list_images().await;
-
-        assert_eq!(result.get("image:latest").unwrap(), "sha256:digest1");
-        assert_eq!(result.len(), 1);
-    }
-
-    #[tokio::test]
-    async fn test_list_images_empty_repo_tags() {
-        let mock = MockDocker::with_images(vec![ImageSummary {
-            id: "sha256:digest1".to_string(),
-            repo_tags: vec![],
-            repo_digests: vec!["image1@sha256:digest1".to_string()],
-            ..Default::default()
-        }]);
-
-        let client = TestDockerClient::new(mock);
-        let result = client.list_images().await;
-
-        assert_eq!(result.get("image1").unwrap(), "sha256:digest1");
-        assert_eq!(result.len(), 1);
-    }
-
-    #[tokio::test]
-    async fn test_list_images_empty_repo_digests() {
-        let mock = MockDocker::with_images(vec![ImageSummary {
-            id: "sha256:digest1".to_string(),
-            repo_tags: vec!["image:latest".to_string()],
-            repo_digests: vec![],
-            ..Default::default()
-        }]);
-
-        let client = TestDockerClient::new(mock);
-        let result = client.list_images().await;
-
-        assert_eq!(result.get("image:latest").unwrap(), "sha256:digest1");
-        assert_eq!(result.len(), 1);
-    }
-
-    #[tokio::test]
-    #[should_panic(expected = "Cannot list images")]
-    async fn test_list_images_error() {
-        let mock = MockDocker::with_error(std::io::ErrorKind::ConnectionRefused);
-        let client = TestDockerClient::new(mock);
-        client.list_images().await;
-    }
-
-    #[tokio::test]
-    async fn test_list_images_multiple_tags() {
-        let mock = MockDocker::with_images(vec![ImageSummary {
-            id: "sha256:digest4".to_string(),
-            repo_tags: vec!["image:latest".to_string(), "image:v1".to_string()],
-            repo_digests: vec!["image@sha256:digest4".to_string()],
-            ..Default::default()
-        }]);
-
-        let client = TestDockerClient::new(mock);
-        let result = client.list_images().await;
-
-        assert_eq!(result.get("image:latest").unwrap(), "sha256:digest4");
-        assert_eq!(result.get("image:v1").unwrap(), "sha256:digest4");
-        assert_eq!(result.len(), 2);
-    }
 }

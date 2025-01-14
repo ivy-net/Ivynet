@@ -79,7 +79,6 @@ pub struct ConfiguredAvs {
  *    handle and is spawned as a future in the listen function.
  *
  */
-
 pub async fn listen(
     backend_client: BackendClient<Channel>,
     machine_id: Uuid,
