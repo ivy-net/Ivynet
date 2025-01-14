@@ -4,12 +4,9 @@ use std::{
     collections::HashMap,
     ops::{Deref, DerefMut},
     path::{Path, PathBuf},
-    pin::Pin,
     process::Command as BlockingCommand,
-    task::{Context, Poll},
 };
-use tokio::{process::Command, sync::mpsc};
-use tokio_stream::Stream;
+use tokio::process::Command;
 use tracing::{error, info};
 
 /// Module for interacting with Docker and Docker Compose.
@@ -200,17 +197,6 @@ impl DockerChild {
     /// Set whether the container should be brought down when the struct is dropped.
     pub fn down_on_drop(&mut self, down_on_drop: bool) {
         self.down_on_drop = down_on_drop;
-    }
-}
-
-pub struct DockerStream(mpsc::UnboundedReceiver<(String, bool)>);
-
-impl Stream for DockerStream {
-    type Item = (String, bool);
-
-    fn poll_next(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Option<Self::Item>> {
-        let inner = self.get_mut();
-        inner.0.poll_recv(cx)
     }
 }
 

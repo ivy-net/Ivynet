@@ -14,13 +14,7 @@ ivynet-docker.workspace = true
 db = { path = "../db" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
-sqlx = { version = "0.8", features = [
-	"postgres",
-	"chrono",
-	"runtime-tokio",
-	"tls-rustls",
-	"uuid",
-] }
+sqlx.workspace = true
 thiserror = "2.0"
 tokio = { version = "1.38", features = [
 	"full",

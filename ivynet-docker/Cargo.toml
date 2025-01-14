@@ -17,10 +17,12 @@ workspace = true
 #locals
 ivynet-node-type.workspace = true
 
+async-trait.workspace = true
 bollard.workspace = true
 chrono.workspace = true
 docker-registry.workspace = true
 futures.workspace = true
+reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 strum.workspace = true
@@ -30,3 +32,6 @@ tokio-stream.workspace = true
 tracing.workspace = true
 regex.workspace = true
 which.workspace = true
+
+[dev-dependencies]
+mockall = "0.13.1"
