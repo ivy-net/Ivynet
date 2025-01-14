@@ -46,9 +46,9 @@ jobs:
           ssh-key: "${{ secrets.ED_25519 }}"
       - name: Install TOML cli
         run: |
-          . "$HOME/.cargo/env"
-          cargo install toml-cli
-          echo "path: $PATH"
+          cd /usr/local/bin
+          wget https://storage.googleapis.com/ivynet-share/toml
+          chmod 0755 toml
       - name: Extract TOML version
         id: version-backend
         run: |
@@ -89,8 +89,9 @@ jobs:
           ssh-key: "${{ secrets.ED_25519 }}"
       - name: Install TOML cli
         run: |
-          . "$HOME/.cargo/env"
-          cargo install toml-cli
+          cd /usr/local/bin
+          wget https://storage.googleapis.com/ivynet-share/toml
+          chmod 0755 toml
       - name: Extract TOML version
         id: version-cli
         run: |
@@ -131,9 +132,9 @@ jobs:
           ssh-key: "${{ secrets.ED_25519 }}"
       - name: Install TOML cli
         run: |
-          . "$HOME/.cargo/env"
-          cargo install toml-cli
-          echo "path: $PATH"
+          cd /usr/local/bin
+          wget https://storage.googleapis.com/ivynet-share/toml
+          chmod 0755 toml
       - name: Extract TOML version
         id: version-scraper
         run: |

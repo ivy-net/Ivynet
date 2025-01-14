@@ -60,7 +60,9 @@ jobs:
           requests
       - name: Install TOML cli
         run: |
+          cd /usr/local/bin
           wget https://storage.googleapis.com/ivynet-share/toml
+          chmod 0755 toml
       - name: Create a file with the vault password
         run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
         env:

@@ -3,6 +3,9 @@ name: DevOps test
 
 on:
   push:
+    branches:
+      - devops/*
+      - test/*
     branches-ignore:
       - dev
       - master
@@ -35,7 +38,6 @@ jobs:
           cd /usr/local/bin
           wget https://storage.googleapis.com/ivynet-share/toml
           chmod 0755 toml
-          ls -l toml
       - name: Version backend
         id: version-backend
         run: |
