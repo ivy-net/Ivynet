@@ -4,10 +4,12 @@
     auth_kind: serviceaccount
     bucket: "{{ ivynet_scraper_gcp_bucket }}"
     src: "master/{{ item }}"
-    dest: "{{ ivynet_scraper_path_install }}/bin/{{ item }}"
+    dest: "/tmp/{{ item }}"
     action: download
     service_account_file: "{{ ivynet_scraper_gcp_cred }}"
     project: "{{ ivynet_scraper_gcp_project }}"
+  delegate_to: localhost
+  become: false
   loop:
     - scraper
   tags:
@@ -17,9 +19,9 @@
     - gcp
 
 - name: Set right access
-  ansible.builtin.file:
-    state: file
-    path: "{{ ivynet_scraper_path_install }}/bin/{{ item }}"
+  ansible.builtin.copy:
+    src: "/tmp/{{ item }}"
+    dest: "{{ ivynet_scraper_path_install }}/bin/{{ item }}"
     owner: root
     group: root
     mode: "0755"

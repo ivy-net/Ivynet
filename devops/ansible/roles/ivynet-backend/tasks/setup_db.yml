@@ -37,18 +37,47 @@
         - github
         - db-config
 
+    - name: Unpack migrations
+      ansible.builtin.unarchive:
+        # yamllint disable-line rule:line-length
+        src: "{{ ivynet_backend_path_resources }}/migrations-{{ ivynet_backend_release }}.tar.gz"
+        dest: "{{ ivynet_backend_path_resources }}"
+        remote_src: true
+        owner: root
+        group: root
+      tags:
+        - ivynet
+        - github
+        - db-config
+
+
 - name: Download migrations for the master
   when:
     - not ivynet_backend_is_release
   block:
-    - name: Download migrations
-      gcp_storage_object:
+    - name: Get migrations from GCP
+      google.cloud.gcp_storage_object:
+        auth_kind: serviceaccount
         bucket: "{{ ivynet_backend_gcp_bucket }}"
-        object: "master/{{ item }}"
-        dest: "{{ ivynet_backend_path_install }}/bin/{{ item }}"
+        src: "master/{{ item }}"
+        dest: "/tmp/{{ item }}"
         action: download
-        credentials_file: "{{ ivynet_backend_gcp_cred }}"
+        service_account_file: "{{ ivynet_backend_gcp_cred }}"
         project: "{{ ivynet_backend_gcp_project }}"
+      delegate_to: localhost
+      become: false
+      loop:
+        - migrations.tar.gz
+      tags:
+        - ivynet_backend
+        - ivynet
+        - download
+        - gcp
+
+    - name: Upload migrations
+      ansible.builtin.copy:
+        src: "/tmp/{{ item }}"
+        dest: "{{ ivynet_backend_path_install }}/resources/{{ item }}"
         owner: root
         group: root
         mode: "0755"
@@ -57,21 +86,20 @@
       tags:
         - ivynet_backend
         - ivynet
+        - download
+        - gcp
+
+    - name: Unpack migrations
+      ansible.builtin.unarchive:
+        src: "{{ ivynet_backend_path_resources }}/migrations.tar.gz"
+        dest: "{{ ivynet_backend_path_resources }}"
+        remote_src: true
+        owner: root
+        group: root
+      tags:
+        - ivynet
+        - github
         - db-config
-
-
-- name: Unpack migrations
-  ansible.builtin.unarchive:
-    # yamllint disable-line rule:line-length
-    src: "{{ ivynet_backend_path_resources }}/migrations-{{ ivynet_backend_release }}.tar.gz"
-    dest: "{{ ivynet_backend_path_resources }}"
-    remote_src: true
-    owner: root
-    group: root
-  tags:
-    - ivynet
-    - github
-    - db-config
 
 - name: Configure postgres DB for ivynet
   community.postgresql.postgresql_db:

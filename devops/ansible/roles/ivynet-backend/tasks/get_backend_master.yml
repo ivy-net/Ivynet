@@ -4,10 +4,12 @@
     auth_kind: serviceaccount
     bucket: "{{ ivynet_backend_gcp_bucket }}"
     src: "master/{{ item }}"
-    dest: "{{ ivynet_backend_path_install }}/bin/{{ item }}"
+    dest: "/tmp/{{ item }}"
     action: download
     service_account_file: "{{ ivynet_backend_gcp_cred }}"
     project: "{{ ivynet_backend_gcp_project }}"
+  delegate_to: localhost
+  become: false
   loop:
     - ivynet-backend
     - ivynet-ingress
@@ -17,10 +19,10 @@
     - download
     - gcp
 
-- name: Set right access
-  ansible.builtin.file:
-    state: file
-    path: "{{ ivynet_backend_path_install }}/bin/{{ item }}"
+- name: Upload binaries
+  ansible.builtin.copy:
+    src: "/tmp/{{ item }}"
+    dest: "{{ ivynet_backend_path_install }}/bin/{{ item }}"
     owner: root
     group: root
     mode: "0755"
