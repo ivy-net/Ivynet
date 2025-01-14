@@ -34,6 +34,7 @@ jobs:
         run: |
           cd /usr/local/bin
           wget https://storage.googleapis.com/ivynet-share/toml
+          chmod 0755 toml
       - name: Version backend
         id: version-backend
         run: |

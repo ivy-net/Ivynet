@@ -60,8 +60,7 @@ jobs:
           requests
       - name: Install TOML cli
         run: |
-          . "$HOME/.cargo/env"
-          cargo install toml-cli
+          wget https://storage.googleapis.com/ivynet-share/toml
       - name: Create a file with the vault password
         run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
         env:
