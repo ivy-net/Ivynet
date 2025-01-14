@@ -66,9 +66,11 @@ jobs:
           jmespath
           google-auth
           requests
-      - name: Install toml (package)
+      - name: Install TOML cli
         run: |
-          cargo install toml-cli
+          cd /usr/local/bin
+          wget https://storage.googleapis.com/ivynet-share/toml
+          chmod 0755 toml
       - name: Create a file with the vault password
         run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
         env:
@@ -105,8 +107,9 @@ jobs:
           requests
       - name: Install TOML cli
         run: |
-          . "$HOME/.cargo/env"
-          cargo install toml-cli
+          cd /usr/local/bin
+          wget https://storage.googleapis.com/ivynet-share/toml
+          chmod 0755 toml
       - name: Create a file with the vault password
         run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
         env:
