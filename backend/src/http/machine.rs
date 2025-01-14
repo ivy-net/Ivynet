@@ -24,6 +24,9 @@ use db::{
 
 use super::{authorize, HttpState};
 
+pub const DEFAULT_LOG_TIME_RANGE: i64 = 60 * 60 * 8; // 8 hours
+pub const MAX_LOG_TIME_RANGE: i64 = 60 * 60 * 24; // 1 Day pagination
+
 /// Grab information for every machine in the organization
 #[utoipa::path(
     get,
@@ -501,17 +504,37 @@ pub async fn logs(
         ));
     }
 
-    let logs = ContainerLog::get_all_for_avs(
-        &state.pool,
-        machine.machine_id,
-        avs_name,
-        from,
-        to,
-        log_level,
-    )
-    .await?;
-
-    Ok(Json(logs))
+    if let (Some(from), Some(to)) = (from, to) {
+        if from - to > MAX_LOG_TIME_RANGE {
+            return Err(BackendError::MalformedParameter(
+                "from/to".to_string(),
+                "Log time range too large - 24 hour max".to_string(),
+            ));
+        }
+        let logs = ContainerLog::get_all_for_avs(
+            &state.pool,
+            machine.machine_id,
+            avs_name,
+            Some(from),
+            Some(to),
+            log_level,
+        )
+        .await?;
+        Ok(Json(logs))
+    } else {
+        let now =
+            SystemTime::now().duration_since(UNIX_EPOCH).expect("Time went backwards").as_secs();
+        let logs = ContainerLog::get_all_for_avs(
+            &state.pool,
+            machine.machine_id,
+            avs_name,
+            Some(i64::try_from(now).expect("Conversion to i64 failed") - DEFAULT_LOG_TIME_RANGE),
+            Some(i64::try_from(now).expect("Conversion to i64 failed")),
+            log_level,
+        )
+        .await?;
+        Ok(Json(logs))
+    }
 }
 
 /**
