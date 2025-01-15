@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM log\n            WHERE ctid IN (\n                SELECT ctid\n                FROM log\n                WHERE created_at < $1\n                ORDER BY created_at\n                LIMIT $2\n                FOR UPDATE SKIP LOCKED\n            )\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamp",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "54de423c94e97a8a37770b0600888a2acf51b9d8ea347a8a1b888578ae46ac41"
+}
