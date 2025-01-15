@@ -92,4 +92,7 @@ pub struct Config {
 
     #[arg(long)]
     pub update_node_data_versions: bool,
+
+    #[arg(long)]
+    pub delete_old_logs: bool,
 }
