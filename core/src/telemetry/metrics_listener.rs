@@ -218,6 +218,13 @@ pub async fn report_metrics(
             if let Some(image_name) = inspect_data.image() {
                 if let Some(hash) = images.get(image_name) {
                     version_hash = hash.clone();
+                } else if let Some(key) = images.keys().find(|key| key.contains(image_name)) {
+                    info!("Found hash from key.contains(image_name): {:#?}", key);
+                    if let Some(hash) = images.get(key) {
+                        version_hash = hash.clone();
+                    } else {
+                        error!("Failed to find hash for image: {}", image_name);
+                    }
                 }
             }
         }
@@ -243,7 +250,10 @@ pub async fn report_metrics(
 
         // Send node data
 
-        info!("Sending node data with version hash: {:#?}", version_hash);
+        info!(
+            "Sending node data with version hash: {:#?} for avs: {}",
+            version_hash, avs.assigned_name
+        );
 
         let node_data = NodeData {
             name: avs.assigned_name.to_owned(),
