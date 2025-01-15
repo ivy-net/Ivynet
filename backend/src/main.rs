@@ -40,6 +40,8 @@ async fn main() -> Result<(), BackendError> {
         update_node_data_versions(&pool, &Chain::Mainnet).await?;
         update_node_data_versions(&pool, &Chain::Holesky).await?;
         return Ok(());
+    } else if config.delete_old_logs {
+        Ok(db::log::ContainerLog::delete_old_logs(&pool).await?)
     } else {
         let cache = memcache::connect(config.cache_url.to_string())?;
         http::serve(
