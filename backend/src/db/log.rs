@@ -287,25 +287,24 @@ impl ContainerLog {
     pub async fn delete_old_logs(pool: &PgPool) -> Result<(), BackendError> {
         const BATCH_SIZE: i64 = 100;
 
-        let days_ago = Utc::now().timestamp() - (DAYS_TO_KEEP_LOGS); //* 24 * 60 * 60
+        let days_ago = Utc::now().timestamp() - (DAYS_TO_KEEP_LOGS * 24 * 60 * 60);
         let cutoff_date =
             DateTime::from_timestamp(days_ago, 0).expect("Invalid timestamp").naive_utc();
 
         let mut total_deleted = 0;
 
         loop {
-            let deleted_count = query!(
+            let deleted_count = sqlx::query!(
                 r#"
-            DELETE FROM log
-            WHERE ctid IN (
-                SELECT ctid
-                FROM log
+                DELETE FROM log
                 WHERE created_at < $1
-                ORDER BY created_at
-                LIMIT $2
-                FOR UPDATE SKIP LOCKED
-            )
-            "#,
+                AND ctid = ANY (
+                    SELECT ctid
+                    FROM log
+                    WHERE created_at < $1
+                    LIMIT $2
+                )
+                "#,
                 cutoff_date,
                 BATCH_SIZE
             )
