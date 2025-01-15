@@ -1,5 +1,3 @@
-use std::time::Duration;
-
 use crate::{
     error::IvyError,
     grpc::{backend::backend_client::BackendClient, tonic::transport::Channel},
@@ -12,7 +10,7 @@ use ivynet_node_type::NodeType;
 use logs_listener::LogsListenerManager;
 use metrics_listener::MetricsListenerHandle;
 use serde::{Deserialize, Serialize};
-use tokio::{sync::broadcast, time::sleep};
+use tokio::sync::broadcast;
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
@@ -135,7 +133,6 @@ pub async fn listen(
 async fn handle_telemetry_errors(mut error_rx: ErrorChannelRx) -> Result<(), IvyError> {
     while let Ok(error) = error_rx.recv().await {
         error!("Received telemetry error: {}", error);
-        sleep(Duration::from_secs(30)).await;
     }
     Ok(())
 }

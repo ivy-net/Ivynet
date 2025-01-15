@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc, time::Duration};
 use ivynet_docker::dockerapi::DockerApi;
 use reqwest::Client;
 use tokio::sync::mpsc;
-use tracing::{error, info};
+use tracing::{debug, error, info};
 use uuid::Uuid;
 
 use crate::{
@@ -219,6 +219,7 @@ pub async fn report_metrics(
 ) -> Result<(), MetricsListenerError> {
     let images = docker.list_images().await;
 
+    debug!("Got images {images:#?}");
     for avs in avses {
         let mut version_hash = "".to_string();
         if let Some(inspect_data) = docker.find_container_by_name(&avs.container_name).await {
