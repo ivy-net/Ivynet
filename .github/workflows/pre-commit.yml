@@ -10,7 +10,7 @@ jobs:
     name: pre-commit checks
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
       - name: Refresh source list
         run: |
