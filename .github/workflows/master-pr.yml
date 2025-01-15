@@ -57,8 +57,8 @@ jobs:
       - name: Upload file to the bucket
         uses: google-github-actions/upload-cloud-storage@v2
         with:
-          path: /tmp/ivy-master
-          destination: ivynet-share-test
+          path: '/tmp/ivy-master'
+          destination: 'ivynet-share-test'
           parent: true
 
   update-dev:
@@ -105,4 +105,5 @@ jobs:
             -i gcp.yml \
             -u ${remote_user} \
             --vault-password-file ~/.vault.txt \
+            -e "ivynet_backend_gcp_cred=sa.json ivynet_scraper_gcp_cred=sa.json"
             backend-master.yml
