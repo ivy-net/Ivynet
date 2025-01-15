@@ -133,24 +133,39 @@ impl Backend for BackendService {
             return Err(Status::not_found("Machine not registered for given client".to_string()));
         }
 
-        let NodeData { name, node_type, manifest, metrics_alive } = node_data;
+        let NodeData { name, node_type, manifest, metrics_alive, node_running } = node_data;
 
-        let nt = match NodeType::from(node_type.as_str()) {
-            NodeType::Unknown => AvsVersionHash::get_avs_type_from_hash(&self.pool, &manifest)
-                .await
-                .unwrap_or(NodeType::Unknown),
-            node_type => node_type,
-        };
+        match (node_type, manifest) {
+            (Some(node_type), Some(manifest)) => {
+                let nt = match NodeType::from(node_type.as_str()) {
+                    NodeType::Unknown => {
+                        AvsVersionHash::get_avs_type_from_hash(&self.pool, &manifest)
+                            .await
+                            .unwrap_or(NodeType::Unknown)
+                    }
+                    node_type => node_type,
+                };
+                Avs::record_avs_data_from_client(&self.pool, machine_id, &name, &nt, &manifest)
+                    .await
+                    .map_err(|e| Status::internal(format!("Failed while saving node_data: {e}")))?;
+            }
+            (None, Some(manifest)) => {
+                _ = update_avs_version(&self.pool, machine_id, &name, &manifest).await;
+            }
+            _ => {}
+        }
 
-        Avs::record_avs_data_from_client(&self.pool, machine_id, &name, &nt, &manifest)
-            .await
-            .map_err(|e| Status::internal(format!("Failed while saving node_data: {e}")))?;
+        if let Some(metrics_alive) = metrics_alive {
+            Avs::update_metrics_alive(&self.pool, machine_id, &name, metrics_alive).await.map_err(
+                |e| Status::internal(format!("Failed while setting metrics available flag: {e}")),
+            )?;
+        }
 
-        Avs::update_metrics_alive(&self.pool, machine_id, &name, metrics_alive).await.map_err(
-            |e| Status::internal(format!("Failed while setting metrics available flag: {e}")),
-        )?;
-
-        _ = update_avs_version(&self.pool, machine_id, &name, &manifest).await;
+        if let Some(node_running) = node_running {
+            Avs::update_node_running(&self.pool, machine_id, &name, node_running).await.map_err(
+                |e| Status::internal(format!("Failed while setting metrics available flag: {e}")),
+            )?;
+        }
         _ = update_avs_active_set(&self.pool, machine_id, &name).await;
 
         Ok(Response::new(()))
