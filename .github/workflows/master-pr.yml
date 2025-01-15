@@ -12,13 +12,15 @@ permissions:
   id-token: write  # This is required for requesting the JWT
   contents: write  # This is required for creating a release
 
-jobs:
+env:
+  CARGO_TERM_COLOR: always
 
+jobs:
   build:
-    name: Build everything
+    name: Build and push backend binaries to GCP bucket
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
       - name: Refresh source list
         run: |
@@ -41,6 +43,12 @@ jobs:
           cp ../ivynet-backend .
           cp ../ivynet-ingress .
           cp ../scraper .
+      - name: Pack migrations
+        run: |
+          cd backend
+          tar -czf migrations.tar.gz migrations
+          cp migrations.tar.gz ../master
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:
@@ -51,10 +59,30 @@ jobs:
           path: target/release/master
           destination: ivynet-share-test
           parent: true
+
+
+  update-dev:
+    name: Ansible Update dev server
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Inject packages
+        run: >
+          pipx inject ansible-core
+          jmespath
+          google-auth
+          requests
       - name: Create a file with the vault password
         run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
         env:
           ANSIBLE_VAULT: ${{ secrets.ANSIBLE_VAULT }}
+      - name: Authenticate to Google Cloud
+        id: google-creds
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
       - name: Run Ansible (after preparations)
         env:
           ANSIBLE_HOST_KEY_CHECKING: false
