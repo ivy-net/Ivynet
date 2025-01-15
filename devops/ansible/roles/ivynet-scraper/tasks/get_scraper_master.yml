@@ -3,7 +3,7 @@
   google.cloud.gcp_storage_object:
     auth_kind: serviceaccount
     bucket: "{{ ivynet_scraper_gcp_bucket }}"
-    src: "master/{{ item }}"
+    src: "ivy-master/{{ item }}"
     dest: "/tmp/{{ item }}"
     action: download
     service_account_file: "{{ ivynet_scraper_gcp_cred }}"
@@ -18,7 +18,7 @@
     - download
     - gcp
 
-- name: Set right access
+- name: Upload binaries
   ansible.builtin.copy:
     src: "/tmp/{{ item }}"
     dest: "{{ ivynet_scraper_path_install }}/bin/{{ item }}"

@@ -217,6 +217,9 @@ impl DockerApi for DockerClient {
             if image.repo_digests.is_empty() {
                 debug!("No repo digests on image: {:#?}", image);
                 DockerClient::use_repo_tags(&image, &mut map);
+            } else if image.repo_tags.is_empty() && image.repo_digests.is_empty() {
+                debug!("No repo tags or digests on image: {:#?}", image);
+                map.insert("local".to_string(), image.id.clone());
             } else {
                 for digest in &image.repo_digests {
                     let elements = digest.split("@").collect::<Vec<_>>();
