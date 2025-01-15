@@ -60,7 +60,6 @@ jobs:
           destination: ivynet-share-test
           parent: true
 
-
   update-dev:
     name: Ansible Update dev server
     runs-on: ubuntu-latest
@@ -73,6 +72,7 @@ jobs:
           pipx inject ansible-core
           jmespath
           google-auth
+          google-cloud-storage
           requests
       - name: Create a file with the vault password
         run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
