@@ -1,6 +1,6 @@
 ---
 # Name of the GCP bucket
-ivynet_backend_gcp_bucket: ivynet_shared_test
+ivynet_backend_gcp_bucket: ivynet-share-test
 
 # File with GCP credentials
 ivynet_backend_gcp_cred: ~/.devops-automation-key.json
@@ -19,7 +19,7 @@ ivynet_backend_github_token: !vault |
           3866393766616537613266336166323234616535343537663537
 
 # Source of binaries (true for release, false for master)
-ivynet_backend_if_release: true
+ivynet_backend_is_release: true
 
 # Logs level for IvyNet internals
 ivynet_backend_logs_lowlevel: ""

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT machine_id, avs_name, log,\n                             log_level AS \"log_level!: LogLevel\", created_at,\n                             other_fields as \"other_fields: sqlx::types::Json<HashMap<String,String>>\"\n                           FROM\n                             log\n                           WHERE\n                             machine_id = $1\n                             AND avs_name = $2\n                             AND created_at >= $3\n                             AND created_at <= $4",
+  "query": "SELECT machine_id, avs_name, log,\n                             log_level AS \"log_level!: LogLevel\", created_at,\n                             other_fields as \"other_fields: sqlx::types::Json<HashMap<String,String>>\"\n                           FROM\n                             log\n                           WHERE\n                             machine_id = $1\n                             AND avs_name = $2\n                             AND created_at >= $3\n                             AND created_at <= $4\n                           ORDER BY created_at",
   "describe": {
     "columns": [
       {
@@ -64,5 +64,5 @@
       true
     ]
   },
-  "hash": "f5e3198a984c9749e7f1df12346fd2c68068b27ad50a9e3dee3c785936b07022"
+  "hash": "4f5dedc099effb9cbff183c698da4d8d8ce4aa44e9cfd612385c84aa7c24d486"
 }

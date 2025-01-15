@@ -1,12 +1,28 @@
 ---
 - name: Get binaries from GCP
-  gcp_storage_object:
+  google.cloud.gcp_storage_object:
+    auth_kind: serviceaccount
     bucket: "{{ ivynet_backend_gcp_bucket }}"
-    object: "master/{{ item }}"
-    dest: "{{ ivynet_backend_path_install }}/bin/{{ item }}"
+    src: "ivy-master/{{ item }}"
+    dest: "/tmp/{{ item }}"
     action: download
-    credentials_file: "{{ ivynet_backend_gcp_cred }}"
+    service_account_file: "{{ ivynet_backend_gcp_cred }}"
     project: "{{ ivynet_backend_gcp_project }}"
+  delegate_to: localhost
+  become: false
+  loop:
+    - ivynet-backend
+    - ivynet-ingress
+  tags:
+    - ivynet_backend
+    - ivynet
+    - download
+    - gcp
+
+- name: Upload binaries
+  ansible.builtin.copy:
+    src: "/tmp/{{ item }}"
+    dest: "{{ ivynet_backend_path_install }}/bin/{{ item }}"
     owner: root
     group: root
     mode: "0755"
@@ -16,7 +32,8 @@
   tags:
     - ivynet_backend
     - ivynet
-    - github
+    - download
+    - gcp
 
 - name: Add another bin dir to system-wide $PATH.
   ansible.builtin.copy:

@@ -15,7 +15,7 @@ jobs:
     name: Various tests
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           ssh-key: "${{ secrets.ED_25519 }}"

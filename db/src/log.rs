@@ -7,6 +7,8 @@ use std::{collections::HashMap, fmt::Display, str::FromStr};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
+pub const DAYS_TO_KEEP_LOGS: i64 = 2;
+
 #[derive(
     Copy, Clone, Debug, PartialEq, Eq, PartialOrd, sqlx::Type, Deserialize, Serialize, ToSchema,
 )]
@@ -154,7 +156,8 @@ impl ContainerLog {
                              AND avs_name = $2
                              AND created_at >= $3
                              AND created_at <= $4
-                             AND log_level = $5"#,
+                             AND log_level = $5
+                           ORDER BY created_at"#,
                         machine_id,
                         avs_name,
                         DateTime::from_timestamp(from, 0).expect("Invalid timestamp").naive_utc(),
@@ -172,7 +175,9 @@ impl ContainerLog {
                              machine_id = $1
                              AND avs_name = $2
                              AND created_at >= $3
-                             AND created_at <= $4"#,
+                             AND created_at <= $4
+                           ORDER BY created_at"#,
+
                         machine_id,
                         avs_name,
                         DateTime::from_timestamp(from, 0).expect("Invalid timestamp").naive_utc(),
@@ -189,7 +194,8 @@ impl ContainerLog {
                              machine_id = $1
                              AND avs_name = $2
                              AND created_at >= $3
-                             AND log_level = $4"#,
+                             AND log_level = $4
+                           ORDER BY created_at"#,
                         machine_id,
                         avs_name,
                         DateTime::from_timestamp(from, 0).expect("Invalid timestamp").naive_utc(),
@@ -205,7 +211,8 @@ impl ContainerLog {
                            WHERE
                              machine_id = $1
                              AND avs_name = $2
-                             AND created_at >= $3"#,
+                             AND created_at >= $3
+                           ORDER BY created_at"#,
                         machine_id,
                         avs_name,
                         DateTime::from_timestamp(from, 0).expect("Invalid timestamp").naive_utc(),
@@ -220,7 +227,8 @@ impl ContainerLog {
                            WHERE
                              machine_id = $1
                              AND avs_name = $2
-                             AND created_at <= $3"#,
+                             AND created_at <= $3
+                           ORDER BY created_at"#,
                         machine_id,
                         avs_name,
                         DateTime::from_timestamp(to, 0).expect("Invalid timestamp").naive_utc(),
@@ -275,6 +283,18 @@ impl ContainerLog {
         let logs = db_logs.into_iter().map(ContainerLog::from).collect::<Vec<_>>();
         Ok(logs)
     }
+
+    pub async fn delete_old_logs(pool: &PgPool) -> Result<(), DatabaseError> {
+        let days_ago = Utc::now().timestamp() - (DAYS_TO_KEEP_LOGS * 24 * 60 * 60);
+        let cutoff_date =
+            DateTime::from_timestamp(days_ago, 0).expect("Invalid timestamp").naive_utc();
+
+        let deleted_count =
+            query!("DELETE FROM log WHERE created_at < $1", cutoff_date).execute(pool).await?;
+
+        println!("Deleted {} logs", deleted_count.rows_affected());
+        Ok(())
+    }
 }
 
 // Deserialize other fields as a HashMap, any nested fields will be serialized as strings
@@ -306,11 +326,10 @@ where
 #[cfg(feature = "db_tests")]
 #[cfg(test)]
 mod logs_db_tests {
-    use ivynet_core::{
-        docker::logs::{find_log_level, find_or_create_log_timestamp, sanitize_log},
-        ethers::types::Address,
-        node_type::NodeType,
-    };
+    use ivynet_docker::logs::{find_log_level, find_or_create_log_timestamp, sanitize_log};
+    use ivynet_node_type::NodeType;
+
+    use ivynet_core::ethers::types::Address;
 
     use crate::db::{Account, Avs, Client, Machine, Organization, Role};
 
