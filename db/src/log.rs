@@ -156,7 +156,8 @@ impl ContainerLog {
                              AND avs_name = $2
                              AND created_at >= $3
                              AND created_at <= $4
-                             AND log_level = $5"#,
+                             AND log_level = $5
+                           ORDER BY created_at"#,
                         machine_id,
                         avs_name,
                         DateTime::from_timestamp(from, 0).expect("Invalid timestamp").naive_utc(),
@@ -174,7 +175,9 @@ impl ContainerLog {
                              machine_id = $1
                              AND avs_name = $2
                              AND created_at >= $3
-                             AND created_at <= $4"#,
+                             AND created_at <= $4
+                           ORDER BY created_at"#,
+
                         machine_id,
                         avs_name,
                         DateTime::from_timestamp(from, 0).expect("Invalid timestamp").naive_utc(),
@@ -191,7 +194,8 @@ impl ContainerLog {
                              machine_id = $1
                              AND avs_name = $2
                              AND created_at >= $3
-                             AND log_level = $4"#,
+                             AND log_level = $4
+                           ORDER BY created_at"#,
                         machine_id,
                         avs_name,
                         DateTime::from_timestamp(from, 0).expect("Invalid timestamp").naive_utc(),
@@ -207,7 +211,8 @@ impl ContainerLog {
                            WHERE
                              machine_id = $1
                              AND avs_name = $2
-                             AND created_at >= $3"#,
+                             AND created_at >= $3
+                           ORDER BY created_at"#,
                         machine_id,
                         avs_name,
                         DateTime::from_timestamp(from, 0).expect("Invalid timestamp").naive_utc(),
@@ -222,7 +227,8 @@ impl ContainerLog {
                            WHERE
                              machine_id = $1
                              AND avs_name = $2
-                             AND created_at <= $3"#,
+                             AND created_at <= $3
+                           ORDER BY created_at"#,
                         machine_id,
                         avs_name,
                         DateTime::from_timestamp(to, 0).expect("Invalid timestamp").naive_utc(),
@@ -320,11 +326,10 @@ where
 #[cfg(feature = "db_tests")]
 #[cfg(test)]
 mod logs_db_tests {
-    use ivynet_core::{
-        docker::logs::{find_log_level, find_or_create_log_timestamp, sanitize_log},
-        ethers::types::Address,
-        node_type::NodeType,
-    };
+    use ivynet_docker::logs::{find_log_level, find_or_create_log_timestamp, sanitize_log};
+    use ivynet_node_type::NodeType;
+
+    use ivynet_core::ethers::types::Address;
 
     use crate::db::{Account, Avs, Client, Machine, Organization, Role};
 
