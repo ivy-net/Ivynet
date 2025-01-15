@@ -1,6 +1,6 @@
 use ivynet_node_type::{NodeType, NodeTypeError};
 
-use crate::RegistryType::{self, Chainbase, DockerHub, Github, GoogleCloud, Othentic, AWS};
+use crate::RegistryType::{self, Chainbase, DockerHub, Github, GoogleCloud, Local, Othentic, AWS};
 
 pub trait ImageRegistry {
     fn registry(&self) -> Result<RegistryType, NodeTypeError>;
@@ -33,12 +33,12 @@ impl ImageRegistry for NodeType {
             Self::ChainbaseNetworkV1 => Chainbase,
             Self::ChainbaseNetwork => Chainbase,
             Self::UngateInfiniRoute(_any) => Othentic,
-            Self::GoPlusAVS => Othentic,
+            Self::GoPlusAVS => Local,
             Self::SkateChain(_any) => Othentic,
-            Self::Brevis => return Err(NodeTypeError::NoRegistry),
-            Self::Nuffle => return Err(NodeTypeError::NoRegistry),
-            Self::AlignedLayer => return Err(NodeTypeError::NoRegistry),
-            Self::PrimevMevCommit => return Err(NodeTypeError::NoRegistry),
+            Self::Brevis => Local,
+            Self::Nuffle => Local,
+            Self::AlignedLayer => Local,
+            Self::PrimevMevCommit => Local,
             Self::UnifiAVS => return Err(NodeTypeError::InvalidNodeType),
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };

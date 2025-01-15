@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT machine_id, avs_name, log,\n                             log_level AS \"log_level!: LogLevel\", created_at,\n                             other_fields as \"other_fields: sqlx::types::Json<HashMap<String,String>>\"\n                           FROM\n                             log\n                           WHERE\n                             machine_id = $1\n                             AND avs_name = $2\n                             AND created_at >= $3",
+  "query": "SELECT machine_id, avs_name, log,\n                             log_level AS \"log_level!: LogLevel\", created_at,\n                             other_fields as \"other_fields: sqlx::types::Json<HashMap<String,String>>\"\n                           FROM\n                             log\n                           WHERE\n                             machine_id = $1\n                             AND avs_name = $2\n                             AND created_at >= $3\n                             AND created_at <= $4\n                             AND log_level = $5\n                           ORDER BY created_at",
   "describe": {
     "columns": [
       {
@@ -51,7 +51,22 @@
       "Left": [
         "Uuid",
         "Text",
-        "Timestamp"
+        "Timestamp",
+        "Timestamp",
+        {
+          "Custom": {
+            "name": "log_level",
+            "kind": {
+              "Enum": [
+                "debug",
+                "info",
+                "warning",
+                "error",
+                "unknown"
+              ]
+            }
+          }
+        }
       ]
     },
     "nullable": [
@@ -63,5 +78,5 @@
       true
     ]
   },
-  "hash": "8e42cee961fade69b14067d451726832d79015b423e74c96a966e150b5381b66"
+  "hash": "3066e2bc3e5517bcd7f88a977486a11f40122982f55eccc067dfe955b1ab6f52"
 }
