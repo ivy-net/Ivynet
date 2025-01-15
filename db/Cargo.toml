@@ -12,7 +12,7 @@ ivynet-core = { path = "../core" }
 chrono.workspace = true
 serde.workspace = true
 uuid = { version = "1.11.0", features = ["v4", "serde"] }
-utoipa = { version = "4.2.3", features = ["axum_extras"] }
+utoipa = { version = "5.3.1", features = ["axum_extras"] }
 sha256 = "1.5.0"
 thiserror.workspace = true
 ivynet-node-type.workspace = true
