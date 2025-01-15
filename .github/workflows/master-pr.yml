@@ -60,6 +60,7 @@ jobs:
           path: '/tmp/ivy-master'
           destination: 'ivynet-share-test'
           parent: true
+          process_gcloudignore: false
 
   update-dev:
     name: Ansible Update dev server
@@ -105,5 +106,5 @@ jobs:
             -i gcp.yml \
             -u ${remote_user} \
             --vault-password-file ~/.vault.txt \
-            -e "ivynet_backend_gcp_cred=sa.json ivynet_scraper_gcp_cred=sa.json"
+            -e "ivynet_backend_gcp_cred=sa.json ivynet_scraper_gcp_cred=sa.json" \
             backend-master.yml
