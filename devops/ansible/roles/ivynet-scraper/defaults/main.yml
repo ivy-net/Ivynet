@@ -1,6 +1,6 @@
 ---
 # Name of the GCP bucket
-ivynet_scraper_gcp_bucket: ivynet-shared-test
+ivynet_scraper_gcp_bucket: ivynet-share-test
 
 # File with GCP credentials
 ivynet_scraper_gcp_cred: ~/.devops-automation-key.json

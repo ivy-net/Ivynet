@@ -18,7 +18,7 @@
     - download
     - gcp
 
-- name: Set right access
+- name: Upload binaries
   ansible.builtin.copy:
     src: "/tmp/{{ item }}"
     dest: "{{ ivynet_scraper_path_install }}/bin/{{ item }}"
