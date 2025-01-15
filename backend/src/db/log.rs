@@ -7,6 +7,8 @@ use std::{collections::HashMap, fmt::Display, str::FromStr};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
+pub const DAYS_TO_KEEP_LOGS: i64 = 2;
+
 #[derive(
     Copy, Clone, Debug, PartialEq, PartialOrd, sqlx::Type, Deserialize, Serialize, ToSchema,
 )]
@@ -280,6 +282,18 @@ impl ContainerLog {
 
         let logs = db_logs.into_iter().map(ContainerLog::from).collect::<Vec<_>>();
         Ok(logs)
+    }
+
+    pub async fn delete_old_logs(pool: &PgPool) -> Result<(), BackendError> {
+        let days_ago = Utc::now().timestamp() - (DAYS_TO_KEEP_LOGS * 24 * 60 * 60);
+        let cutoff_date =
+            DateTime::from_timestamp(days_ago, 0).expect("Invalid timestamp").naive_utc();
+
+        let deleted_count =
+            query!("DELETE FROM log WHERE created_at < $1", cutoff_date).execute(pool).await?;
+
+        println!("Deleted {} logs", deleted_count.rows_affected());
+        Ok(())
     }
 }
 
