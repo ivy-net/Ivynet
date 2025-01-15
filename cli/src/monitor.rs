@@ -1,9 +1,6 @@
 use anyhow::anyhow;
 use dialoguer::{Input, MultiSelect, Select};
-use ivynet_core::{
-    config::{IvyConfig, DEFAULT_CONFIG_PATH},
-    telemetry::{fetch_telemetry_from, listen, ConfiguredAvs},
-};
+use ivynet_docker::dockerapi::{DockerApi, DockerClient};
 use ivynet_grpc::{
     self,
     backend::backend_client::BackendClient,
@@ -13,11 +10,6 @@ use ivynet_grpc::{
 };
 use ivynet_io::{read_toml, write_toml, IoError};
 use ivynet_signer::sign_utils::sign_name_change;
-use ivynet_docker::{
-    dockerapi::{DockerApi, DockerClient},
-    RegistryType,
-};
-use ivynet_node_type::{AltlayerType, MachType, NodeType};
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
@@ -25,7 +17,11 @@ use std::{
 };
 use tracing::{debug, info};
 
-use crate::init::set_backend_connection;
+use crate::{
+    config::{IvyConfig, DEFAULT_CONFIG_PATH},
+    init::set_backend_connection,
+    telemetry::{listen, metrics_listener::fetch_telemetry_from, ConfiguredAvs},
+};
 
 const MONITOR_CONFIG_FILE: &str = "monitor-config.toml";
 

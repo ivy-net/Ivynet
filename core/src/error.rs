@@ -63,9 +63,6 @@ pub enum IvyError {
     #[error(transparent)]
     IoError(#[from] ivynet_io::IoError),
 
-    #[error(transparent)]
-    ConfigError(#[from] crate::config::ConfigError),
-
     #[error("Config type mismatch: expected {0}, found {1}")]
     ConfigMatchError(String, String),
 
@@ -147,7 +144,7 @@ pub enum IvyError {
     NodeConfigError(#[from] crate::avs::config::NodeConfigError),
 
     #[error(transparent)]
-    KeychainError(#[from] crate::keychain::KeychainError),
+    KeychainError(#[from] ivynet_signer::keychain::KeychainError),
 
     #[error(transparent)]
     EnvLineError(#[from] crate::env_parser::EnvLineError),

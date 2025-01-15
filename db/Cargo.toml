@@ -23,7 +23,7 @@ utoipa = { version = "4.2.3", features = ["axum_extras"] }
 sha256 = "1.5.0"
 thiserror.workspace = true
 ivynet-node-type.workspace = true
-ivynet-docker.workspace = true
+ivynet-docker-registry.workspace = true
 ivynet-grpc.workspace = true
 semver = "1.0.24"
 serde_json.workspace = true

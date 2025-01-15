@@ -1,6 +1,5 @@
 use ivynet_grpc::{
     backend::backend_client::BackendClient,
-    client::Uri,
     messages::{SignedLog, SignedMetrics, SignedNodeData},
     tonic::{self, transport::Channel},
 };

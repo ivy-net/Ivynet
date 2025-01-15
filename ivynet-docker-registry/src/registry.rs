@@ -161,18 +161,6 @@ mod docker_registry_tests {
 
     use super::*;
 
-    #[tokio::test]
-    async fn test_get_manifest() {
-        let registry = "ghcr.io";
-        let image = "quay.io/coreos/etcd";
-        let tag = "0.8.4";
-        let client = DockerRegistry::from_host_and_repo(registry, image).await.unwrap();
-        let manifest = client.get_manfiest(tag).await.unwrap();
-        let layers_digest = manifest.layers_digests(None).unwrap();
-        let blob = client.get_blob(&layers_digest[0]).await.unwrap();
-        println!("blob: {:#?}", blob);
-    }
-
     #[test]
     fn test_registry_from_host() {
         assert_eq!(RegistryType::from_host("ghcr.io"), Some(RegistryType::Github));
@@ -237,7 +225,7 @@ mod docker_registry_tests {
 
     #[tokio::test]
     async fn test_get_lagrage_zk_worker_holesky_digest() -> Result<(), Box<dyn std::error::Error>> {
-        let node_type = NodeType::LagrangeZkWorkerHolesky;
+        let node_type = NodeType::LagrangeZkWorker;
 
         let client = DockerRegistry::from_node_type(&node_type).await?;
         let tags = client.get_tags().await?;

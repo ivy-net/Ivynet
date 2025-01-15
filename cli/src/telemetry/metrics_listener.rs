@@ -1,6 +1,5 @@
 use std::{sync::Arc, time::Duration};
 
-use ivynet_core::system::get_detailed_system_information;
 use ivynet_docker::dockerapi::DockerApi;
 use ivynet_grpc::messages::{Metrics, NodeData, SignedMetrics, SignedNodeData};
 use ivynet_signer::{
@@ -11,6 +10,8 @@ use reqwest::Client;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info};
 use uuid::Uuid;
+
+use crate::system::get_detailed_system_information;
 
 use super::{
     dispatch::{TelemetryDispatchError, TelemetryDispatchHandle},

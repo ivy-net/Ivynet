@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use ivynet_docker::RegistryType;
+use ivynet_docker_registry::registry_type::RegistryType;
 use ivynet_node_type::{AltlayerType, MachType, NodeType};
 
 pub fn get_node_type(

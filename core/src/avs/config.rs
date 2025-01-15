@@ -111,7 +111,7 @@ pub enum NodeConfigError {
     #[error(transparent)]
     EnvLineError(#[from] EnvLineError),
     #[error(transparent)]
-    KeychainError(#[from] crate::keychain::KeychainError),
+    KeychainError(#[from] ivynet_signer::keychain::KeychainError),
     #[error(transparent)]
     DownloadError(#[from] crate::download::DownloadError),
     #[error(transparent)]

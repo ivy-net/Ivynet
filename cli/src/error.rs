@@ -1,12 +1,6 @@
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
-    ConfigError(#[from] ivynet_core::config::ConfigError),
-
-    #[error(transparent)]
-    IvyError(#[from] ivynet_core::error::IvyError),
-
-    #[error(transparent)]
     ServerError(#[from] ivynet_grpc::server::ServerError),
 
     #[error(transparent)]
@@ -41,4 +35,19 @@ pub enum Error {
 
     #[error("Chain parse error: {0}")]
     ChainParseError(String),
+
+    #[error(transparent)]
+    ConfigError(#[from] crate::config::ConfigError),
+
+    #[error(transparent)]
+    SignerError(#[from] ivynet_signer::IvyWalletError),
+
+    #[error(transparent)]
+    KeychainError(#[from] ivynet_signer::keychain::KeychainError),
+
+    #[error("Chain Unimplemented: {0}")]
+    ChainUnimplemented(String),
+
+    #[error("Invalid server URI")]
+    InvalidUri,
 }

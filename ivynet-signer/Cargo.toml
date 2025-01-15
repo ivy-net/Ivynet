@@ -18,6 +18,8 @@ ivynet-io.workspace = true
 ivynet-grpc.workspace = true
 async-trait.workspace = true
 blsful.workspace = true
+dialoguer.workspace = true
+dirs.workspace = true
 ethers.workspace = true
 eth-keystore.workspace = true
 serde.workspace = true
@@ -28,3 +30,4 @@ uuid.workspace = true
 
 [dev-dependencies]
 tempfile.workspace = true
+tokio.workspace = true

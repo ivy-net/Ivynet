@@ -22,7 +22,6 @@ ivynet-io.workspace = true
 ivynet-node-type.workspace = true
 ivynet-signer.workspace = true
 
-bollard.workspace = true
 futures-util = "0.3"
 dialoguer = "0.11.0"
 dirs = "5.0.1"
@@ -35,12 +34,10 @@ reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_yaml.workspace = true
-sysinfo = "0.33"
 thiserror.workspace = true
 tokio.workspace = true
 toml.workspace = true
 tracing.workspace = true
-tokio-stream.workspace = true
 zip.workspace = true
 url = { version = "2.5.1", features = ["serde"] }
 ivynet-macros = { path = "../macros" }
@@ -53,7 +50,6 @@ tonic.workspace = true
 semver = "1.0.23"
 indexmap = "2.6.0"
 docker-compose-types = "0.15.0"
-uuid.workspace = true
 rustc-hex = "2.1.0"
 
 [build-dependencies]
@@ -66,9 +62,6 @@ tempfile.workspace = true
 serial_test = "3.1.1"
 sqlx.workspace = true
 ivynet-docker.workspace = true
-
-[package.metadata.cargo-machete]
-ignored = ["prost", "prost-wkt", "prost-wkt-types"]
 
 [features]
 docker_tests = []

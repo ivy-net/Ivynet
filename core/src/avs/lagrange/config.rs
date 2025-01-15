@@ -2,6 +2,7 @@ use dialoguer::Input;
 use ethers::types::Address;
 use ivynet_docker::dockercmd::DockerCmd;
 use ivynet_io::{read_toml, unzip_to, write_toml, IoError};
+use ivynet_signer::keychain::{KeyType, Keychain};
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{self, File},
@@ -13,7 +14,6 @@ use url::Url;
 use crate::{
     avs::config::{default_config_dir, NodeConfigError},
     env_parser::EnvLines,
-    keychain::{KeyType, Keychain},
 };
 
 const LAGRANGE_WORKER_SETUP_REPO: &str =

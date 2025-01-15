@@ -1,5 +1,5 @@
 use ivynet_core::directory::avs_contract;
-use ivynet_docker::{registry::ImageRegistry, RegistryType};
+use ivynet_docker_registry::{registry::ImageRegistry, registry_type::RegistryType};
 use ivynet_node_type::NodeType;
 use serde::Serialize;
 use utoipa::ToSchema;

@@ -16,6 +16,7 @@ uuid = { version = "1.11", features = ["v4", "serde"] }
 tracing.workspace = true
 tracing-subscriber = "0.3"
 ivynet-docker.workspace = true
+ivynet-docker-registry.workspace = true
 ivynet-grpc.workspace = true
 ivynet-node-type.workspace = true
 ivynet-signer.workspace = true

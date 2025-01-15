@@ -2,6 +2,7 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
+use ivynet_docker_registry::registry::RegistryError;
 use ivynet_grpc::server::ServerError;
 use thiserror::Error;
 
@@ -74,7 +75,7 @@ pub enum BackendError {
     InvalidVersion,
 
     #[error(transparent)]
-    RegistryError(#[from] ivynet_docker::RegistryError),
+    RegistryError(#[from] RegistryError),
 
     #[error("No valid node versions found")]
     NoVersionsFound,

@@ -5,5 +5,7 @@ pub mod error;
 pub mod init;
 pub mod inspect;
 pub mod key;
+pub mod metadata;
 pub mod monitor;
+pub mod system;
 pub mod telemetry;

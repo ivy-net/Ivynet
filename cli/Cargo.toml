@@ -15,7 +15,6 @@ path = "src/main.rs"
 
 [dependencies]
 #locals
-ivynet-core.workspace = true
 ivynet-docker.workspace = true
 ivynet-grpc.workspace = true
 ivynet-io.workspace = true
@@ -23,13 +22,15 @@ ivynet-signer.workspace = true
 
 bollard.workspace = true
 clap = { version = "4.5.7", features = ["derive", "env"] }
+dirs.workspace = true
 ethers.workspace = true
+once_cell.workspace = true
 tokio.workspace = true
 tokio-stream.workspace = true
 tracing.workspace = true
 tracing-subscriber.workspace = true
 thiserror.workspace = true
-dialoguer = "0.11.0"
+dialoguer.workspace = true
 anyhow.workspace = true
 linemux = "=0.3.0"
 reqwest.workspace = true
@@ -37,6 +38,7 @@ rustix = { version = "0.38", default-features = false, features = ["system"] }
 data-encoding = "2.6.0"
 futures.workspace = true
 serde.workspace = true
+sysinfo = "0.33"
 uuid.workspace = true
 
 [features]

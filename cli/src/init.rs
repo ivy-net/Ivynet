@@ -1,12 +1,13 @@
 use dialoguer::{Input, Password};
-use ivynet_core::{config::IvyConfig, error::IvyError};
 use ivynet_grpc::{
     backend::backend_client::BackendClient, client::create_channel,
     messages::RegistrationCredentials, tonic::Request,
 };
 use ivynet_signer::IvyWallet;
 
-pub async fn register_node() -> Result<(), IvyError> {
+use crate::{config::IvyConfig, error::Error};
+
+pub async fn register_node() -> Result<(), Error> {
     let config = IvyConfig::load_from_default_path()?;
     let wallet = config.identity_wallet()?;
     let client_key = wallet.address();
@@ -48,7 +49,7 @@ pub async fn register_node() -> Result<(), IvyError> {
     Ok(())
 }
 
-pub async fn set_backend_connection(config: &mut IvyConfig) -> Result<(), IvyError> {
+pub async fn set_backend_connection(config: &mut IvyConfig) -> Result<(), Error> {
     let (identity_key, client_key) = match config.identity_wallet() {
         Ok(key) => (key.to_private_key(), key.address()),
         _ => {

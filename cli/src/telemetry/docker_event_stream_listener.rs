@@ -1,10 +1,10 @@
-use std::{collections::HashMap, time::Duration};
+use std::time::Duration;
 
 use bollard::secret::{EventMessage, EventMessageTypeEnum};
 use ivynet_docker::dockerapi::{DockerApi, DockerClient, DockerStreamError};
 use ivynet_grpc::{
     backend::backend_client::BackendClient,
-    messages::{Digests, NodeTypes},
+    messages::NodeTypeQuery,
     tonic::{transport::Channel, Request, Response},
 };
 use tokio::time::sleep;
@@ -66,70 +66,62 @@ impl DockerStreamListener<DockerClient> {
     ) -> Result<(), DockerStreamError> {
         let actor = event.actor.ok_or(DockerStreamError::MissingActor)?;
         let attributes = actor.attributes.ok_or(DockerStreamError::MissingAttributes)?;
-        let container_name = attributes.get("name").ok_or(DockerStreamError::MissingAttributes)?;
+        let inc_container_name =
+            attributes.get("name").ok_or(DockerStreamError::MissingAttributes)?;
 
-        let container = match self.docker.find_container_by_name(container_name).await {
+        let inc_container = match self.docker.find_container_by_name(inc_container_name).await {
             Some(container) => container,
             None => {
                 return Ok(());
             }
         };
 
-        let image_name = container.image().unwrap_or_default().to_string();
-        let container_digest = container.image_id().unwrap_or_default().to_string();
+        let inc_image_name = inc_container.image().unwrap_or_default().to_string();
+        let inc_container_digest = inc_container.image_id().unwrap_or_default().to_string();
 
-        let metrics_port = match container.metrics_port().await {
+        let metrics_port = match inc_container.metrics_port().await {
             Some(port) => Some(port),
             None => {
                 // wait for metrics port to potentially come up
                 sleep(Duration::from_secs(10)).await;
-                container.metrics_port().await
+                inc_container.metrics_port().await
             }
         };
 
-        let configured = match avses.iter().find(|avs| avs.container_name == *container_name) {
+        let configured = match avses.iter().find(|avs| avs.container_name == *inc_container_name) {
             Some(avs) => Some(avs.clone()),
             None => {
-                // get node type
-                // This is mostly copy-pasted from `src/monitor.rs:143`, should abstract to a
-                // common method
+                let node_type_query = NodeTypeQuery {
+                    container_name: inc_container_name.clone(),
+                    image_name: inc_image_name.clone(),
+                    image_digest: inc_container_digest.clone(),
+                };
 
-                // TODO: GRPC method for fetching a single node type from a digest instead of this.
-
-                let node_types: Option<NodeTypes> = self
+                let node_type = self
                     .backend
-                    .node_types(Request::new(Digests { digests: vec![container_digest.clone()] }))
+                    .node_type_query(Request::new(node_type_query))
                     .await
                     .map(Response::into_inner)
                     .ok();
 
-                let hashes: HashMap<String, NodeType> = match node_types {
-                    Some(types) => types
-                        .node_types
-                        .into_iter()
-                        .map(|nt| (nt.digest, NodeType::from(nt.node_type.as_str())))
-                        .collect::<HashMap<_, _>>(),
-                    None => HashMap::new(),
-                };
-
-                let node_type =
-                    get_node_type(&hashes, &container_digest, &image_name, container_name);
                 node_type.map(|node_type| ConfiguredAvs {
-                    assigned_name: format!("{}-{}", container_name, Uuid::new_v4()),
-                    container_name: container_name.clone(),
-                    avs_type: node_type,
+                    assigned_name: format!("{}-{}", inc_container_name, Uuid::new_v4()),
+                    container_name: inc_container_name.clone(),
+                    avs_type: node_type.node_type,
                     metric_port: metrics_port,
                 })
             }
         };
 
         if let Some(configured) = configured {
-            debug!("Found container: {}", container_name);
+            debug!("Found container: {}", inc_container_name);
 
             if let Err(e) = self.metrics_listener_handle.add_node(&configured).await {
                 error!("Error adding node: {:?}", e);
             }
-            if let Err(e) = self.logs_listener_handle.add_listener(&container, &configured).await {
+            if let Err(e) =
+                self.logs_listener_handle.add_listener(&inc_container, &configured).await
+            {
                 error!("Error adding listener: {:?}", e);
             }
         }
@@ -150,4 +142,8 @@ impl DockerStreamListener<DockerClient> {
 
         Ok(())
     }
+}
+
+pub trait ToConfiguredAvs {
+    fn to_configured_avs(&self) -> Option<ConfiguredAvs>;
 }
