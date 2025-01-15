@@ -1,12 +1,27 @@
 ---
 - name: Get binaries from GCP
-  gcp_storage_object:
-    bucket: "{{ ivynet_backend_gcp_bucket }}"
-    object: "master/{{ item }}"
-    dest: "{{ ivynet_backend_path_install }}/bin/{{ item }}"
+  google.cloud.gcp_storage_object:
+    auth_kind: serviceaccount
+    bucket: "{{ ivynet_scraper_gcp_bucket }}"
+    src: "master/{{ item }}"
+    dest: "/tmp/{{ item }}"
     action: download
-    credentials_file: "{{ ivynet_backend_gcp_cred }}"
-    project: "{{ ivynet_backend_gcp_project }}"
+    service_account_file: "{{ ivynet_scraper_gcp_cred }}"
+    project: "{{ ivynet_scraper_gcp_project }}"
+  delegate_to: localhost
+  become: false
+  loop:
+    - scraper
+  tags:
+    - ivynet_scraper
+    - ivynet
+    - download
+    - gcp
+
+- name: Set right access
+  ansible.builtin.copy:
+    src: "/tmp/{{ item }}"
+    dest: "{{ ivynet_scraper_path_install }}/bin/{{ item }}"
     owner: root
     group: root
     mode: "0755"
@@ -15,12 +30,13 @@
   tags:
     - ivynet_scraper
     - ivynet
-    - github
+    - download
+    - gcp
 
 - name: Add another bin dir to system-wide $PATH.
   ansible.builtin.copy:
     dest: /etc/profile.d/ivy-path.sh
-    content: 'PATH=$PATH:{{ ivynet_backend_path_install }}/bin'
+    content: 'PATH=$PATH:{{ ivynet_scraper_path_install }}/bin'
     owner: root
     group: root
     mode: "0644"
