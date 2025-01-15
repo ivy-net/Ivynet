@@ -103,6 +103,10 @@ pub async fn build_avs_info(
         errors.push(NodeError::NoMetrics);
     }
 
+    if !avs.node_running {
+        errors.push(NodeError::CrashedNode);
+    }
+
     let mut update_status = UpdateStatus::Unknown;
     if avs.chain.is_none() {
         errors.push(NodeError::NoChainInfo);

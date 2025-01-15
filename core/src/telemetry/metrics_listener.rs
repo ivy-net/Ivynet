@@ -1,9 +1,9 @@
-use std::{sync::Arc, time::Duration};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use ivynet_docker::dockerapi::DockerApi;
 use reqwest::Client;
 use tokio::sync::mpsc;
-use tracing::{debug, error, info};
+use tracing::{error, info};
 use uuid::Uuid;
 
 use crate::{
@@ -211,7 +211,15 @@ pub async fn report_metrics(
     dispatch: &TelemetryDispatchHandle,
 ) -> Result<(), MetricsListenerError> {
     let images = docker.list_images().await;
-    debug!("Got images {images:#?}");
+    let mut node_types = HashMap::new();
+    let mut prev_version_hashes = HashMap::new();
+    let mut are_running = HashMap::new();
+
+    for avs in avses {
+        node_types.insert(avs, Some(avs.avs_type.to_string()));
+        prev_version_hashes.insert(avs, "".to_string());
+        are_running.insert(avs, false);
+    }
     for avs in avses {
         let mut version_hash = "".to_string();
         if let Some(inspect_data) = docker.find_container_by_name(&avs.container_name).await {
@@ -245,11 +253,19 @@ pub async fn report_metrics(
 
         info!("Sending node data with version hash: {:#?}", version_hash);
 
+        let is_running = docker.is_running(&avs.container_name).await;
+
+        // Send node data
         let node_data = NodeData {
-            name: avs.assigned_name.to_owned(),
-            node_type: avs.avs_type.to_string(),
-            manifest: version_hash,
-            metrics_alive: !metrics.is_empty(),
+            name: avs.assigned_name.to_string(),
+            node_type: node_types[avs].clone(),
+            manifest: if prev_version_hashes[avs] == version_hash {
+                None
+            } else {
+                Some(version_hash.clone())
+            },
+            metrics_alive: Some(!metrics.is_empty()),
+            node_running: if is_running != are_running[avs] { Some(true) } else { None },
         };
 
         let node_data_signature = sign_node_data(&node_data, identity_wallet).map_err(Arc::new)?;
@@ -260,6 +276,9 @@ pub async fn report_metrics(
         };
 
         dispatch.send_node_data(signed_node_data).await?;
+        node_types.insert(avs, None);
+        prev_version_hashes.insert(avs, version_hash);
+        are_running.insert(avs, is_running);
     }
     // Last but not least - send system metrics
     let system_metrics = fetch_system_telemetry();

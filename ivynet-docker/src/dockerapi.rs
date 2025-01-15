@@ -65,6 +65,17 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
         None
     }
 
+    /// Checks if a container is running by container name
+    async fn is_running(&self, container_name: &str) -> bool {
+        if let Some(container) = self.find_container_by_name(container_name).await {
+            if let Some(state) = container.state() {
+                return state.to_lowercase() == "running";
+            }
+        }
+
+        false
+    }
+
     /// Inspect multiple containers by image name. Returns a vector of found containers.
     async fn inspect_many(&self, image_names: &[&str]) -> Vec<Container> {
         let containers = self.list_containers().await;
