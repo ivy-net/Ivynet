@@ -287,42 +287,52 @@ impl ContainerLog {
     pub async fn delete_old_logs(pool: &PgPool) -> Result<(), BackendError> {
         const BATCH_SIZE: i64 = 100;
 
-        let days_ago = Utc::now().timestamp() - (DAYS_TO_KEEP_LOGS); //* 24 * 60 * 60
+        let days_ago = Utc::now().timestamp() - (DAYS_TO_KEEP_LOGS * 24 * 60 * 60);
         let cutoff_date =
             DateTime::from_timestamp(days_ago, 0).expect("Invalid timestamp").naive_utc();
 
         let mut total_deleted = 0;
 
+        // Create a single transaction for all batches
+        let mut tx = pool.begin().await?;
+
         loop {
-            let deleted_count = query!(
+            let deleted_count = sqlx::query!(
                 r#"
-            DELETE FROM log
-            WHERE ctid IN (
-                SELECT ctid
-                FROM log
-                WHERE created_at < $1
-                ORDER BY created_at
-                LIMIT $2
-                FOR UPDATE SKIP LOCKED
-            )
-            "#,
+                DELETE FROM log
+                WHERE ctid IN (
+                    SELECT ctid
+                    FROM log
+                    WHERE created_at < $1
+                    ORDER BY created_at
+                    LIMIT $2
+                    FOR UPDATE SKIP LOCKED
+                )
+                "#,
                 cutoff_date,
                 BATCH_SIZE
             )
-            .execute(pool)
+            .execute(&mut *tx)
             .await?;
 
             let affected = deleted_count.rows_affected();
             total_deleted += affected;
 
-            println!("Deleted batch of {} logs", affected);
-
             if affected == 0 || affected < BATCH_SIZE as u64 {
                 break;
             }
 
+            // Commit the current transaction and start a new one to prevent bloat
+            tx.commit().await?;
+            tx = pool.begin().await?;
+
+            println!("Deleted batch of {} logs", affected);
+
             tokio::task::yield_now().await;
         }
+
+        // Commit final transaction
+        tx.commit().await?;
 
         println!("Total deleted logs: {}", total_deleted);
         Ok(())
