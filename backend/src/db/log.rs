@@ -293,46 +293,35 @@ impl ContainerLog {
 
         let mut total_deleted = 0;
 
-        // Create a single transaction for all batches
-        let mut tx = pool.begin().await?;
-
         loop {
             let deleted_count = sqlx::query!(
                 r#"
                 DELETE FROM log
-                WHERE ctid IN (
+                WHERE created_at < $1
+                AND ctid = ANY (
                     SELECT ctid
                     FROM log
                     WHERE created_at < $1
-                    ORDER BY created_at
                     LIMIT $2
-                    FOR UPDATE SKIP LOCKED
                 )
                 "#,
                 cutoff_date,
                 BATCH_SIZE
             )
-            .execute(&mut *tx)
+            .execute(pool)
             .await?;
 
             let affected = deleted_count.rows_affected();
             total_deleted += affected;
 
+            println!("Deleted batch of {} logs", affected);
+
             if affected == 0 || affected < BATCH_SIZE as u64 {
                 break;
             }
 
-            // Commit the current transaction and start a new one to prevent bloat
-            tx.commit().await?;
-            tx = pool.begin().await?;
-
-            println!("Deleted batch of {} logs", affected);
-
             tokio::task::yield_now().await;
         }
-
-        // Commit final transaction
-        tx.commit().await?;
 
         println!("Total deleted logs: {}", total_deleted);
         Ok(())
