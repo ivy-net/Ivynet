@@ -60,6 +60,7 @@ jobs:
           path: '/tmp/ivy-master'
           destination: 'ivynet-share-test'
           parent: true
+          gzip: false
           process_gcloudignore: false
 
   update-dev:
