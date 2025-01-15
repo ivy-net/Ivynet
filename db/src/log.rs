@@ -284,7 +284,7 @@ impl ContainerLog {
         Ok(logs)
     }
 
-    pub async fn delete_old_logs(pool: &PgPool) -> Result<(), BackendError> {
+    pub async fn delete_old_logs(pool: &PgPool) -> Result<(), DatabaseError> {
         let days_ago = Utc::now().timestamp() - (DAYS_TO_KEEP_LOGS * 24 * 60 * 60);
         let cutoff_date =
             DateTime::from_timestamp(days_ago, 0).expect("Invalid timestamp").naive_utc();
