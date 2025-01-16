@@ -18,6 +18,7 @@ pub struct Avs {
     pub operator_address: Option<Address>,
     pub active_set: bool,
     pub metrics_alive: bool,
+    pub node_running: bool,
     pub created_at: Option<NaiveDateTime>,
     pub updated_at: Option<NaiveDateTime>,
 }
@@ -32,6 +33,7 @@ struct DbAvs {
     pub operator_address: Option<Vec<u8>>,
     pub active_set: bool,
     pub metrics_alive: bool,
+    pub node_running: bool,
     pub version_hash: String,
     pub created_at: Option<NaiveDateTime>,
     pub updated_at: Option<NaiveDateTime>,
@@ -60,6 +62,7 @@ impl TryFrom<DbAvs> for Avs {
             operator_address: db_avs.operator_address.map(|a| Address::from_slice(&a)),
             active_set: db_avs.active_set,
             metrics_alive: db_avs.metrics_alive,
+            node_running: db_avs.node_running,
             version_hash: db_avs.version_hash,
             created_at: db_avs.created_at,
             updated_at: db_avs.updated_at,
@@ -75,7 +78,7 @@ impl Avs {
     ) -> Result<Vec<Avs>, DatabaseError> {
         let avses: Vec<DbAvs> = sqlx::query_as!(
             DbAvs,
-            "SELECT machine_id, avs_name, avs_type, chain, avs_version, operator_address, version_hash, active_set, metrics_alive, created_at, updated_at FROM avs WHERE machine_id = $1",
+            "SELECT machine_id, avs_name, avs_type, chain, avs_version, operator_address, version_hash, active_set, metrics_alive, node_running, created_at, updated_at FROM avs WHERE machine_id = $1",
             Some(machine_id)
         )
         .fetch_all(pool)
@@ -91,7 +94,7 @@ impl Avs {
     ) -> Result<Option<Avs>, DatabaseError> {
         let avs: Option<DbAvs> = sqlx::query_as!(
             DbAvs,
-            "SELECT machine_id, avs_name, avs_type, chain, avs_version, operator_address, active_set, metrics_alive, version_hash, created_at, updated_at FROM avs WHERE machine_id = $1 AND avs_name = $2",
+            "SELECT machine_id, avs_name, avs_type, chain, avs_version, operator_address, active_set, metrics_alive, node_running, version_hash, created_at, updated_at FROM avs WHERE machine_id = $1 AND avs_name = $2",
             Some(machine_id),
             avs_name
         )
@@ -107,7 +110,7 @@ impl Avs {
     ) -> Result<Vec<Avs>, DatabaseError> {
         let avses: Vec<DbAvs> = sqlx::query_as!(
             DbAvs,
-            "SELECT machine_id, avs_name, avs_type, chain, avs_version, operator_address, active_set, metrics_alive, version_hash, created_at, updated_at FROM avs WHERE operator_address = $1",
+            "SELECT machine_id, avs_name, avs_type, chain, avs_version, operator_address, active_set, metrics_alive, node_running, version_hash, created_at, updated_at FROM avs WHERE operator_address = $1",
             operator_id.as_bytes()
         )
         .fetch_all(pool)
@@ -303,6 +306,23 @@ impl Avs {
         sqlx::query!(
             "UPDATE avs SET metrics_alive = $1 WHERE machine_id = $2 AND avs_name = $3",
             metrics_alive,
+            machine_id,
+            avs_name
+        )
+        .execute(pool)
+        .await?;
+        Ok(())
+    }
+
+    pub async fn update_node_running(
+        pool: &sqlx::PgPool,
+        machine_id: Uuid,
+        avs_name: &str,
+        running: bool,
+    ) -> Result<(), DatabaseError> {
+        sqlx::query!(
+            "UPDATE avs SET node_running = $1 WHERE machine_id = $2 AND avs_name = $3",
+            running,
             machine_id,
             avs_name
         )
