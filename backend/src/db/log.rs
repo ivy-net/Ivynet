@@ -104,7 +104,9 @@ impl ContainerLog {
             DateTime::from_timestamp(log.created_at.unwrap_or_else(|| Utc::now().timestamp()), 0)
                 .expect("Could not construct datetime")
                 .naive_utc();
-        query!(
+
+        // Try insert first
+        let result = query!(
             "INSERT INTO log (machine_id, avs_name, log, log_level, created_at, other_fields) VALUES ($1, $2, $3, $4, $5, $6)",
             log.machine_id,
             log.avs_name,
@@ -114,7 +116,39 @@ impl ContainerLog {
             log.other_fields.as_ref().map(|v| json!(v)),
         )
         .execute(pool)
-        .await?;
+        .await;
+
+        match result {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                // Check if error is partition-related (you'll need to identify the specific error)
+                if e.as_database_error()
+                    .map(|dbe| dbe.message().contains("no partition"))
+                    .unwrap_or(false)
+                {
+                    // Create partition and retry
+                    Self::ensure_partition_exists(pool, log.machine_id).await?;
+                    query!(
+                        "INSERT INTO log (machine_id, avs_name, log, log_level, created_at, other_fields) VALUES ($1, $2, $3, $4, $5, $6)",
+                        log.machine_id,
+                        log.avs_name,
+                        log.log,
+                        log.log_level as LogLevel,
+                        created_at,
+                        log.other_fields.as_ref().map(|v| json!(v)),
+                    )
+                    .execute(pool)
+                    .await?;
+                    Ok(())
+                } else {
+                    Err(e.into())
+                }
+            }
+        }
+    }
+
+    async fn ensure_partition_exists(pool: &PgPool, machine_id: Uuid) -> Result<(), BackendError> {
+        sqlx::query!("SELECT create_log_partition($1)", machine_id).execute(pool).await?;
         Ok(())
     }
 
