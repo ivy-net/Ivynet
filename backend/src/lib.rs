@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use db::data::avs_version::{extract_semver, VersionType};
 use error::BackendError;
 use futures::future::join_all;
-use ivynet_docker::DockerRegistry;
+use ivynet_docker_registry::registry::DockerRegistry;
 use ivynet_node_type::NodeType;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use tracing::{error, info, warn};

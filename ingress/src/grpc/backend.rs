@@ -6,23 +6,25 @@ use db::{
     metric::Metric,
     Account, Avs, AvsVersionHash,
 };
-use ivynet_core::{
-    ethers::types::{Address, Signature},
-    grpc::{
-        self,
-        backend::backend_server::{Backend, BackendServer},
-        client::{Request, Response},
-        messages::{
-            Digests, NodeData, NodeType as NodeTypeMessage, NodeTypes, RegistrationCredentials,
-            SignedLog, SignedMetrics, SignedNameChange, SignedNodeData,
-        },
-        server, Status,
+use ivynet_core::ethers::types::{Address, Signature};
+
+use ivynet_docker_registry::node_types::get_node_type;
+use ivynet_grpc::{
+    self,
+    backend::backend_server::{Backend, BackendServer},
+    client::{Request, Response},
+    messages::{
+        NodeData, NodeType as NodeTypeMessage, NodeTypeQueries, NodeTypes, RegistrationCredentials,
+        SignedLog, SignedMetrics, SignedNameChange, SignedNodeData,
     },
-    signature::{recover_from_string, recover_metrics, recover_name_change, recover_node_data},
+    server, Status,
 };
 
 use ivynet_docker::logs::{find_log_level, find_or_create_log_timestamp, sanitize_log};
 use ivynet_node_type::NodeType;
+use ivynet_signer::sign_utils::{
+    recover_from_string, recover_metrics, recover_name_change, recover_node_data,
+};
 use sqlx::PgPool;
 use std::{str::FromStr, sync::Arc};
 use tracing::debug;
@@ -38,7 +40,7 @@ impl BackendService {
     }
 }
 
-#[grpc::async_trait]
+#[ivynet_grpc::async_trait]
 impl Backend for BackendService {
     async fn register(
         &self,
@@ -201,17 +203,37 @@ impl Backend for BackendService {
         Ok(Response::new(()))
     }
 
-    async fn node_types(&self, request: Request<Digests>) -> Result<Response<NodeTypes>, Status> {
+    async fn node_type_queries(
+        &self,
+        request: Request<NodeTypeQueries>,
+    ) -> Result<Response<NodeTypes>, Status> {
         let req = request.into_inner();
-        let types = AvsVersionHash::get_versions_from_digests(&self.pool, &req.digests)
+        let queries = req.node_types;
+        let digests: Vec<String> = queries.iter().map(|q| q.image_digest.clone()).collect();
+
+        let potential_hashes = AvsVersionHash::get_versions_from_digests(&self.pool, &digests)
             .await
-            .map_err(|e| Status::internal(format!("Failed on database fetch {e}")))?;
-        Ok(Response::new(NodeTypes {
-            node_types: types
-                .into_iter()
-                .map(|nt| (NodeTypeMessage { digest: nt.0, node_type: nt.1 }))
-                .collect::<Vec<_>>(),
-        }))
+            .map_err(|e| Status::internal(format!("Failed on database fetch {e}")))?
+            .into_iter()
+            .map(|(digest, avs_type)| (digest, NodeType::from(avs_type.as_str())))
+            .collect();
+        let potential_hashes = Some(potential_hashes);
+
+        let node_types = queries
+            .into_iter()
+            .map(|query| {
+                let node_type = get_node_type(
+                    &potential_hashes,
+                    &query.image_digest,
+                    &query.image_name,
+                    &query.container_name,
+                )
+                .unwrap_or(NodeType::Unknown)
+                .to_string();
+                NodeTypeMessage { container_name: query.container_name, node_type }
+            })
+            .collect();
+        Ok(Response::new(NodeTypes { node_types }))
     }
 
     async fn name_change(

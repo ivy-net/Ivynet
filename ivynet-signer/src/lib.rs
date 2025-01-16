@@ -13,13 +13,13 @@ use ethers::{
         Address,
     },
 };
+use ivynet_io::{read_json, write_json, IoError};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::{
-    error::IvyError,
-    io::{read_json, write_json},
-};
+pub mod bls;
+pub mod keychain;
+pub mod sign_utils;
 
 // TODO: Make this a newtype strict and impl deref + derefmut to get signer stuff for free
 #[derive(Clone, Debug, PartialEq)]
@@ -31,6 +31,8 @@ pub struct IvyWallet {
 pub enum IvyWalletError {
     #[error(transparent)]
     WalletError(#[from] WalletError),
+    #[error(transparent)]
+    IoError(#[from] IoError),
 }
 
 impl IvyWallet {
@@ -54,7 +56,7 @@ impl IvyWallet {
         path: &Path,
         name: String,
         password: String,
-    ) -> Result<PathBuf, IvyError> {
+    ) -> Result<PathBuf, IvyWalletError> {
         _ = LocalWallet::encrypt_keystore(
             path,
             &mut thread_rng(),

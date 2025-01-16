@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use crate::error::DatabaseError;
 
 use chrono::{NaiveDateTime, Utc};
-use ivynet_core::grpc::messages::Metrics;
+use ivynet_grpc::messages::Metrics;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use utoipa::ToSchema;

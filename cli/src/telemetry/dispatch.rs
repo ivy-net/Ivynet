@@ -1,8 +1,7 @@
-use tonic::transport::Channel;
-
-use crate::grpc::{
+use ivynet_grpc::{
     backend::backend_client::BackendClient,
     messages::{SignedLog, SignedMetrics, SignedNodeData},
+    tonic::{self, transport::Channel},
 };
 
 use super::ErrorChannelTx;

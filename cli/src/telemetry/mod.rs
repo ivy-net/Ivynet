@@ -1,18 +1,16 @@
-use crate::{
-    error::IvyError,
-    grpc::{backend::backend_client::BackendClient, tonic::transport::Channel},
-    wallet::IvyWallet,
-};
 use dispatch::{TelemetryDispatchError, TelemetryDispatchHandle};
 use docker_event_stream_listener::DockerStreamListener;
 use ivynet_docker::dockerapi::{DockerApi, DockerClient};
-use ivynet_node_type::NodeType;
+use ivynet_grpc::{backend::backend_client::BackendClient, tonic::transport::Channel};
+use ivynet_signer::IvyWallet;
 use logs_listener::LogsListenerManager;
 use metrics_listener::MetricsListenerHandle;
 use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
 use tracing::{error, info, warn};
 use uuid::Uuid;
+
+use crate::error::Error;
 
 pub mod dispatch;
 pub mod docker_event_stream_listener;
@@ -42,7 +40,7 @@ pub enum TelemetryError {
 pub struct ConfiguredAvs {
     pub assigned_name: String,
     pub container_name: String,
-    pub avs_type: NodeType,
+    pub avs_type: String,
     pub metric_port: Option<u16>,
 }
 
@@ -84,7 +82,7 @@ pub async fn listen(
     machine_id: Uuid,
     identity_wallet: IvyWallet,
     avses: &[ConfiguredAvs],
-) -> Result<(), IvyError> {
+) -> Result<(), Error> {
     let docker = DockerClient::default();
 
     let (error_tx, error_rx) = tokio::sync::broadcast::channel(64);
@@ -130,7 +128,7 @@ pub async fn listen(
     Ok(())
 }
 
-async fn handle_telemetry_errors(mut error_rx: ErrorChannelRx) -> Result<(), IvyError> {
+async fn handle_telemetry_errors(mut error_rx: ErrorChannelRx) -> Result<(), Error> {
     while let Ok(error) = error_rx.recv().await {
         error!("Received telemetry error: {}", error);
     }

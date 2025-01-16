@@ -1,35 +1,33 @@
 use anyhow::anyhow;
 use dialoguer::{Input, MultiSelect, Select};
-use ivynet_core::{
-    config::{IvyConfig, DEFAULT_CONFIG_PATH},
-    grpc::{
-        self,
-        backend::backend_client::BackendClient,
-        messages::{Digests, NodeTypes, SignedNameChange},
-        tonic::{transport::Channel, Request, Response},
-    },
-    io::{read_toml, write_toml, IoError},
-    signature::sign_name_change,
-    telemetry::{listen, metrics_listener::fetch_telemetry_from, ConfiguredAvs},
+use ivynet_docker::dockerapi::DockerClient;
+use ivynet_grpc::{
+    self,
+    backend::backend_client::BackendClient,
+    client::create_channel,
+    messages::{NodeTypeQueries, NodeTypeQuery, SignedNameChange},
+    tonic::{transport::Channel, Request},
 };
-use ivynet_docker::{
-    dockerapi::{DockerApi, DockerClient},
-    RegistryType,
-};
-use ivynet_node_type::{AltlayerType, MachType, NodeType};
+use ivynet_io::{read_toml, write_toml, IoError};
+use ivynet_signer::sign_utils::sign_name_change;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
 };
-use tracing::{debug, info};
+use tracing::info;
 
-use crate::init::set_backend_connection;
+use crate::{
+    config::{IvyConfig, DEFAULT_CONFIG_PATH},
+    init::set_backend_connection,
+    node_source::NodeSource,
+    telemetry::{listen, metrics_listener::fetch_telemetry_from, ConfiguredAvs},
+};
 
 const MONITOR_CONFIG_FILE: &str = "monitor-config.toml";
 
 #[derive(Clone, Debug)]
-struct PotentialAvs {
+pub struct PotentialAvs {
     pub container_name: String,
     pub image_name: String,
     pub image_hash: String,
@@ -121,7 +119,7 @@ pub async fn rename_node(
     let backend_ca = if backend_ca.is_empty() { None } else { Some(backend_ca) };
 
     let mut backend_client = BackendClient::new(
-        grpc::client::create_channel(backend_url, backend_ca).await.expect("Cannot create channel"),
+        create_channel(backend_url, backend_ca).await.expect("Cannot create channel"),
     );
 
     let name_change_request = Request::new(SignedNameChange {
@@ -165,7 +163,7 @@ pub async fn start_monitor(mut config: IvyConfig) -> Result<(), anyhow::Error> {
     let backend_ca = if backend_ca.is_empty() { None } else { Some(backend_ca) };
 
     let backend_client = BackendClient::new(
-        grpc::client::create_channel(backend_url, backend_ca).await.expect("Cannot create channel"),
+        create_channel(backend_url, backend_ca).await.expect("Cannot create channel"),
     );
 
     info!("Starting monitor listener...");
@@ -180,101 +178,96 @@ pub async fn scan(force: bool, config: &IvyConfig) -> Result<(), anyhow::Error> 
     let backend_ca = config.get_server_ca();
     let backend_ca = if backend_ca.is_empty() { None } else { Some(backend_ca) };
 
-    let backend = BackendClient::new(
-        grpc::client::create_channel(backend_url, backend_ca)
+    let mut backend = BackendClient::new(
+        create_channel(backend_url, backend_ca)
             .await
             .map_err(|e| anyhow!("Failed to create backend channel: {}", e))?,
     );
 
     let mut monitor_config = MonitorConfig::load_from_default_path().unwrap_or_default();
-    let configured_avs_names: HashSet<_> =
-        monitor_config.configured_avses.iter().map(|a| a.container_name.clone()).collect();
 
-    let potential_avses = grab_potential_avses().await;
-    let (new_avses, leftover_potential_avses) =
-        find_new_avses(&potential_avses, backend, &configured_avs_names).await?;
+    let docker_client = DockerClient::default();
+    let potential_docker_nodes = docker_client.potential_nodes().await;
 
-    if !force && new_avses.is_empty() {
+    info!("POTENTIAL: {:#?}", potential_docker_nodes);
+    let (_existing_nodes, new_configured_nodes, leftover_potential_nodes) =
+        find_new_avses(&mut backend, &monitor_config.configured_avses, &potential_docker_nodes)
+            .await?;
+
+    if !force && new_configured_nodes.is_empty() {
         println!("No potential new AVSes found");
-        return Ok(());
     }
 
-    let selected_avses = select_avses(&new_avses, &leftover_potential_avses)?;
+    let selected_avses = select_avses(&new_configured_nodes, &leftover_potential_nodes)?;
     if selected_avses.is_empty() {
         println!("No AVSes selected");
         return Ok(());
     }
 
     update_monitor_config(&mut monitor_config, selected_avses)?;
-    println!("New setup stored with {} AVSes configured", monitor_config.configured_avses.len());
+    info!("New setup stored with {} AVSes configured", monitor_config.configured_avses.len());
 
     Ok(())
 }
 
+/// Compares a list of configured nodes to a list of potential nodes. Updates the configured nodes
+/// if a potential node is found with the same container name. If a potential node is found with a
+/// different container name, and a valid node type, it is added to a list of new configured nodes.
+/// Otherwise, the potential node is added to a list of leftover potential nodes.
+///
+/// Returns a tuple of (updated_existing_nodes, new_valid_nodes, leftover_potential_nodes)
 async fn find_new_avses(
+    backend: &mut BackendClient<Channel>,
+    configured_avses: &[ConfiguredAvs],
     potential_avses: &[PotentialAvs],
-    mut backend: BackendClient<Channel>,
-    configured_names: &HashSet<String>,
-) -> Result<(Vec<ConfiguredAvs>, Vec<PotentialAvs>), anyhow::Error> {
-    let digests: Vec<_> = potential_avses
+) -> Result<(Vec<ConfiguredAvs>, Vec<ConfiguredAvs>, Vec<ConfiguredAvs>), anyhow::Error> {
+    let mut configured_nodes = configured_avses.to_vec();
+    let mut new_configured_nodes = Vec::new();
+    let mut leftover_potential_nodes = Vec::new();
+
+    let node_type_queries = potential_avses
         .iter()
-        .filter(|a| !configured_names.contains(&a.container_name))
-        .map(|a| a.image_hash.clone())
-        .collect();
+        .map(|avs| NodeTypeQuery {
+            image_name: avs.image_name.clone(),
+            image_digest: avs.image_hash.clone(),
+            container_name: avs.container_name.clone(),
+        })
+        .collect::<Vec<_>>();
 
-    if digests.is_empty() {
-        return Ok((Vec::new(), potential_avses.to_vec()));
-    }
+    let resp = backend
+        .node_type_queries(Request::new(NodeTypeQueries { node_types: node_type_queries }))
+        .await?
+        .into_inner();
 
-    let node_types: Option<NodeTypes> = backend
-        .node_types(Request::new(Digests { digests: digests.clone() }))
-        .await
-        .map(Response::into_inner)
-        .ok();
+    // Map of container name to node type
+    let container_node_types: HashMap<String, String> =
+        resp.node_types.into_iter().map(|nt| (nt.container_name, nt.node_type)).collect();
 
-    let avs_types: Option<HashMap<String, NodeType>> = if let Some(node_types) = node_types {
-        Some(
-            node_types
-                .node_types
-                .into_iter()
-                .map(|nt| (nt.digest, NodeType::from(nt.node_type.as_str())))
-                .collect::<HashMap<_, _>>(),
-        )
-    } else {
-        None
-    };
-
-    let mut new_configured_avses = Vec::new();
-    let mut new_potential_avses = Vec::new();
     for avs in potential_avses {
-        if configured_names.contains(&avs.container_name) {
-            continue;
-        }
+        let node_type =
+            container_node_types.get(&avs.container_name).cloned().unwrap_or("unknown".to_string());
+        let metric_port = get_metrics_port(&avs.ports).await?;
+        let new_avs = ConfiguredAvs {
+            assigned_name: avs.image_name.clone(),
+            container_name: avs.container_name.clone(),
+            avs_type: node_type,
+            metric_port,
+        };
 
-        if let Some(avs_type) =
-            get_node_type(&avs_types, &avs.image_hash, &avs.image_name, &avs.container_name)
+        // update the existing configured AVS if it exists, otherwise push to new vec
+        if let Some(node) =
+            configured_nodes.iter_mut().find(|a| a.container_name == new_avs.container_name)
         {
-            // Try to get metrics port but don't fail if unavailable
-            let metric_port = match get_metrics_port(&avs.ports).await {
-                Ok(port) => port,
-                Err(e) => {
-                    info!("Metrics unavailable for {}: {}", avs.container_name, e);
-                    None
-                }
-            };
-
-            new_configured_avses.push(ConfiguredAvs {
-                assigned_name: String::new(),
-                container_name: avs.container_name.clone(),
-                avs_type,
-                metric_port,
-            });
+            node.avs_type = new_avs.avs_type;
+            node.metric_port = new_avs.metric_port;
+        } else if new_avs.avs_type != "unknown" {
+            new_configured_nodes.push(new_avs);
         } else {
-            new_potential_avses.push(avs.clone());
+            leftover_potential_nodes.push(new_avs);
         }
     }
 
-    Ok((new_configured_avses, new_potential_avses))
+    Ok((configured_nodes, new_configured_nodes, leftover_potential_nodes))
 }
 
 async fn get_metrics_port(ports: &[u16]) -> Result<Option<u16>, anyhow::Error> {
@@ -290,7 +283,7 @@ async fn get_metrics_port(ports: &[u16]) -> Result<Option<u16>, anyhow::Error> {
 
 fn select_avses(
     avses: &[ConfiguredAvs],
-    leftover_potential_avses: &[PotentialAvs],
+    leftover_potential_avses: &[ConfiguredAvs],
 ) -> Result<Vec<ConfiguredAvs>, anyhow::Error> {
     let mut selected_avses =
         if avses.is_empty() { Vec::new() } else { select_detected_avses(avses)? };
@@ -332,13 +325,13 @@ fn should_add_manual_avses() -> Result<bool, anyhow::Error> {
 }
 
 fn select_manual_avses(
-    potential_avses: &[PotentialAvs],
+    potential_avses: &[ConfiguredAvs],
 ) -> Result<Vec<ConfiguredAvs>, anyhow::Error> {
     debug_assert!(!potential_avses.is_empty(), "potential_avses must not be empty");
 
     let items: Vec<String> = potential_avses
         .iter()
-        .map(|a| format!("{} under container {}", a.image_name, a.container_name))
+        .map(|a| format!("{} under container {}", a.assigned_name, a.container_name))
         .collect();
 
     let selected = MultiSelect::new()
@@ -352,7 +345,7 @@ fn select_manual_avses(
         .map(|idx| ConfiguredAvs {
             assigned_name: String::new(),
             container_name: potential_avses[idx].container_name.to_string(),
-            avs_type: NodeType::Unknown,
+            avs_type: "unknown".to_string(),
             metric_port: None,
         })
         .collect())
@@ -387,138 +380,4 @@ fn update_monitor_config(
     config.store().map_err(|e| anyhow!("Failed to store config: {}", e))?;
 
     Ok(())
-}
-
-fn get_node_type(
-    hashes: &Option<HashMap<String, NodeType>>,
-    hash: &str,
-    image_name: &str,
-    container_name: &str,
-) -> Option<NodeType> {
-    let cleaned_container_name = container_name.trim_start_matches('/');
-
-    fn handle_altlayer_unknown(nt: NodeType, container_name: &str) -> Option<NodeType> {
-        match nt {
-            NodeType::Altlayer(AltlayerType::Unknown) |
-            NodeType::AltlayerMach(MachType::Unknown) => {
-                NodeType::from_default_container_name(container_name)
-            }
-            _ => Some(nt),
-        }
-    }
-
-    hashes
-        .as_ref()
-        .and_then(|h| h.get(hash))
-        .copied()
-        .and_then(|nt| handle_altlayer_unknown(nt, cleaned_container_name))
-        .or_else(|| {
-            NodeType::from_image(&extract_image_name(image_name))
-                .and_then(|nt| handle_altlayer_unknown(nt, cleaned_container_name))
-        })
-        .or_else(|| {
-            let result = NodeType::from_default_container_name(cleaned_container_name);
-            if result.is_none() {
-                println!("No avs found for {}", image_name);
-            }
-            result
-        })
-}
-
-async fn grab_potential_avses() -> Vec<PotentialAvs> {
-    let docker = DockerClient::default();
-    info!("Scanning for containers, use LOG_LEVEL=debug to see images");
-    let images = docker.list_images().await;
-    debug!("images: {:#?}", images);
-    let potential_avses = docker
-        .list_containers()
-        .await
-        .into_iter()
-        .filter_map(|c| {
-            if let (Some(names), Some(image_name)) = (c.names, c.image) {
-                let mut ports = if let Some(ports) = c.ports {
-                    ports.into_iter().filter_map(|p| p.public_port).collect::<Vec<_>>()
-                } else {
-                    Vec::new()
-                };
-
-                ports.sort();
-                ports.dedup();
-                if let Some(image_hash) = images.get(&image_name) {
-                    return Some(PotentialAvs {
-                        container_name: names.first().unwrap_or(&image_name).to_string(),
-                        image_name: image_name.clone(),
-                        image_hash: image_hash.to_string(),
-                        ports,
-                    });
-                } else if let Some(key) = images.keys().find(|key| key.contains(&image_name)) {
-                    debug!("SHOULD BE: No version tag image: {}", image_name);
-                    let image_hash = images.get(key).unwrap();
-                    debug!("key (should be with version tag, and its what we'll use for potential avs): {}", key);
-                    return Some(PotentialAvs {
-                        container_name: names.first().unwrap_or(&image_name).to_string(),
-                        image_name: key.clone(),
-                        image_hash: image_hash.to_string(),
-                        ports,
-                    });
-                }
-            }
-            None
-        })
-        .collect::<Vec<_>>();
-
-    potential_avses
-}
-
-fn extract_image_name(image_name: &str) -> String {
-    RegistryType::get_registry_hosts()
-        .into_iter()
-        .find_map(|registry| {
-            image_name.contains(registry).then(|| {
-                image_name
-                    .split(&registry)
-                    .last()
-                    .unwrap_or(image_name)
-                    .trim_start_matches('/')
-                    .to_string()
-            })
-        })
-        .unwrap_or_else(|| image_name.to_string())
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_extract_image_name() {
-        let test_cases = vec![
-            // Standard registry cases
-            ("docker.io/ubuntu:latest", "ubuntu:latest"),
-            ("gcr.io/project/image:v1", "project/image:v1"),
-            ("ghcr.io/owner/repo:tag", "owner/repo:tag"),
-            ("public.ecr.aws/image:1.0", "image:1.0"),
-            // Edge cases
-            ("ubuntu:latest", "ubuntu:latest"), // No registry
-            ("", ""),                           // Empty string
-            ("repository.chainbase.com/", ""),  // Just registry
-            // Multiple registry-like strings
-            ("gcr.io/docker.io/image", "image"), // Should match first registry
-            // With and without tags
-            ("docker.io/image", "image"),
-            ("docker.io/org/image:latest", "org/image:latest"),
-            // Special characters
-            ("docker.io/org/image@sha256:123", "org/image@sha256:123"),
-            ("docker.io/org/image_name", "org/image_name"),
-        ];
-
-        for (input, expected) in test_cases {
-            assert_eq!(
-                extract_image_name(input),
-                expected.to_string(),
-                "Failed on input: {}",
-                input
-            );
-        }
-    }
 }

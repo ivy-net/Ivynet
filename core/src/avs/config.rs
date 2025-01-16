@@ -1,13 +1,11 @@
 use std::{collections::HashMap, path::PathBuf};
 
+use ivynet_io::{read_toml, write_toml, IoError};
 use ivynet_node_type::NodeType;
 use serde::{Deserialize, Serialize};
 use thiserror::Error as ThisError;
 
-use crate::{
-    env_parser::EnvLineError,
-    io::{read_toml, write_toml, IoError},
-};
+use crate::env_parser::EnvLineError;
 
 use super::{eigenda::EigenDAConfig, lagrange::config::LagrangeConfig};
 
@@ -113,7 +111,7 @@ pub enum NodeConfigError {
     #[error(transparent)]
     EnvLineError(#[from] EnvLineError),
     #[error(transparent)]
-    KeychainError(#[from] crate::keychain::KeychainError),
+    KeychainError(#[from] ivynet_signer::keychain::KeychainError),
     #[error(transparent)]
     DownloadError(#[from] crate::download::DownloadError),
     #[error(transparent)]
