@@ -4,7 +4,7 @@ use bollard::secret::{EventMessage, EventMessageTypeEnum};
 use ivynet_docker::dockerapi::{DockerApi, DockerClient, DockerStreamError};
 use ivynet_grpc::{
     backend::backend_client::BackendClient,
-    messages::NodeTypeQuery,
+    messages::{NodeTypeQueries, NodeTypeQuery},
     tonic::{transport::Channel, Request, Response},
 };
 use tokio::time::sleep;
@@ -96,18 +96,22 @@ impl DockerStreamListener<DockerClient> {
                     image_name: inc_image_name.clone(),
                     image_digest: inc_container_digest.clone(),
                 };
+                let query = Request::new(NodeTypeQueries { node_types: vec![node_type_query] });
 
-                let node_type = self
-                    .backend
-                    .node_type_query(Request::new(node_type_query))
-                    .await
-                    .map(Response::into_inner)
-                    .ok();
+                let node_type =
+                    self.backend.node_type_queries(query).await.map(Response::into_inner).ok();
 
-                node_type.map(|node_type| ConfiguredAvs {
+                let found_type = if let Some(node_type) = node_type {
+                    node_type.node_types.first().map(|t| t.node_type.clone())
+                } else {
+                    None
+                }
+                .unwrap_or("unknown".to_string());
+
+                Some(ConfiguredAvs {
                     assigned_name: format!("{}-{}", inc_container_name, Uuid::new_v4()),
                     container_name: inc_container_name.clone(),
-                    avs_type: node_type.node_type,
+                    avs_type: found_type,
                     metric_port: metrics_port,
                 })
             }

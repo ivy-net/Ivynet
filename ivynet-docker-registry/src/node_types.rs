@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
-use ivynet_docker_registry::registry_type::RegistryType;
 use ivynet_node_type::{AltlayerType, MachType, NodeType};
+
+use crate::registry_type::RegistryType;
 
 pub fn get_node_type(
     hashes: &Option<HashMap<String, NodeType>>,

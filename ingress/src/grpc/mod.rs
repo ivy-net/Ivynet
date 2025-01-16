@@ -1,6 +1,5 @@
 pub mod backend;
 pub mod events;
-pub mod node_types;
 
 pub use backend::BackendService;
 pub use events::EventsService;

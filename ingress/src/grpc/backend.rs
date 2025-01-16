@@ -8,13 +8,14 @@ use db::{
 };
 use ivynet_core::ethers::types::{Address, Signature};
 
+use ivynet_docker_registry::node_types::get_node_type;
 use ivynet_grpc::{
     self,
     backend::backend_server::{Backend, BackendServer},
     client::{Request, Response},
     messages::{
-        NodeData, NodeType as NodeTypeMessage, NodeTypeQueries, NodeTypeQuery, NodeTypes,
-        RegistrationCredentials, SignedLog, SignedMetrics, SignedNameChange, SignedNodeData,
+        NodeData, NodeType as NodeTypeMessage, NodeTypeQueries, NodeTypes, RegistrationCredentials,
+        SignedLog, SignedMetrics, SignedNameChange, SignedNodeData,
     },
     server, Status,
 };
@@ -28,8 +29,6 @@ use sqlx::PgPool;
 use std::{str::FromStr, sync::Arc};
 use tracing::debug;
 use uuid::Uuid;
-
-use super::node_types::get_node_type;
 
 pub struct BackendService {
     pool: Arc<PgPool>,
@@ -202,32 +201,6 @@ impl Backend for BackendService {
         .map_err(|e| Status::internal(format!("Failed while saving metrics: {e:?}")))?;
 
         Ok(Response::new(()))
-    }
-
-    async fn node_type_query(
-        &self,
-        request: Request<NodeTypeQuery>,
-    ) -> Result<Response<NodeTypeMessage>, Status> {
-        let req = request.into_inner();
-        let potential_hashes =
-            AvsVersionHash::get_versions_from_digests(&self.pool, &[req.image_digest.clone()])
-                .await
-                .map_err(|e| Status::internal(format!("Failed on database fetch {e}")))?
-                .into_iter()
-                .map(|(digest, avs_type)| (digest, NodeType::from(avs_type.as_str())))
-                .collect();
-        let potential_hashes = Some(potential_hashes);
-
-        let node_type = get_node_type(
-            &potential_hashes,
-            &req.image_digest,
-            &req.image_name,
-            &req.container_name,
-        )
-        .unwrap_or(NodeType::Unknown)
-        .to_string();
-
-        Ok(Response::new(NodeTypeMessage { container_name: req.container_name, node_type }))
     }
 
     async fn node_type_queries(

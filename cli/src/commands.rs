@@ -18,43 +18,6 @@ pub enum RegisterCommands {
 }
 
 #[derive(Subcommand, Debug)]
-pub enum NodeCommands {
-    #[command(name = "info", about = "Get information about the currently running AVS")]
-    Info {},
-    #[command(
-        name = "configure",
-        about = "Configure a new node instance type for the node launcher."
-    )]
-    Start {},
-    #[command(name = "stop", about = "Stop running the active AVS docker container.")]
-    Stop {},
-    #[command(name = "attach", about = "Attach a running AVS node to a docker container.")]
-    #[command(
-        name = "inspect",
-        about = "Inspect logs from a given AVS. Defaults to currently selected AVS and chain if not provided."
-    )]
-    Inspect {
-        #[clap(required(false), long, requires("chain"))]
-        avs: Option<String>,
-        #[clap(required(false), long, requires("avs"))]
-        chain: Option<String>,
-    },
-}
-
-impl Display for NodeCommands {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            NodeCommands::Info {} => write!(f, "get information about the currently running AVS"),
-            NodeCommands::Start { .. } => write!(f, "start"),
-            NodeCommands::Stop {} => write!(f, "stop"),
-            NodeCommands::Inspect { avs: _, chain: _ } => {
-                write!(f, "inspect logs")
-            }
-        }
-    }
-}
-
-#[derive(Subcommand, Debug)]
 pub enum LogCommands {
     #[command(name = "stdout", about = "get all stdout logs")]
     STDOUT,

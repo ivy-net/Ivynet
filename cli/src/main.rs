@@ -1,8 +1,6 @@
 use anyhow::{Error as AnyError, Result};
 use clap::{Parser, Subcommand};
 use cli::{
-    avs,
-    commands::NodeCommands,
     config::{self, IvyConfig},
     error::Error,
     init, key, monitor,
@@ -48,11 +46,6 @@ struct Args {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    #[command(name = "node", about = "Request information about or boot a node")]
-    Node {
-        #[command(subcommand)]
-        subcmd: NodeCommands,
-    },
     #[command(name = "config", about = "Manage rpc and config information")]
     Config {
         #[command(subcommand)]
@@ -119,7 +112,7 @@ async fn main() -> Result<(), AnyError> {
             config::parse_config_subcommands(subcmd, config).await?;
         }
         Commands::Key { subcmd } => key::parse_key_subcommands(subcmd).await?,
-        Commands::Node { subcmd } => avs::parse_avs_subcommands(subcmd).await?,
+        // Commands::Node { subcmd } => avs::parse_avs_subcommands(subcmd).await?,
         Commands::Monitor => monitor::start_monitor(config).await?,
         Commands::Scan { force } => monitor::scan(force, &config).await?,
         Commands::RegisterNode => init::register_node().await?,
