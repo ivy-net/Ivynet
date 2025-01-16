@@ -285,14 +285,45 @@ impl ContainerLog {
     }
 
     pub async fn delete_old_logs(pool: &PgPool) -> Result<(), DatabaseError> {
+        const BATCH_SIZE: i64 = 100;
+
         let days_ago = Utc::now().timestamp() - (DAYS_TO_KEEP_LOGS * 24 * 60 * 60);
         let cutoff_date =
             DateTime::from_timestamp(days_ago, 0).expect("Invalid timestamp").naive_utc();
 
-        let deleted_count =
-            query!("DELETE FROM log WHERE created_at < $1", cutoff_date).execute(pool).await?;
+        let mut total_deleted = 0;
 
-        println!("Deleted {} logs", deleted_count.rows_affected());
+        loop {
+            let deleted_count = sqlx::query!(
+                r#"
+                DELETE FROM log
+                WHERE created_at < $1
+                AND ctid = ANY (
+                    SELECT ctid
+                    FROM log
+                    WHERE created_at < $1
+                    LIMIT $2
+                )
+                "#,
+                cutoff_date,
+                BATCH_SIZE
+            )
+            .execute(pool)
+            .await?;
+
+            let affected = deleted_count.rows_affected();
+            total_deleted += affected;
+
+            println!("Deleted batch of {} logs", affected);
+
+            if affected == 0 || affected < BATCH_SIZE as u64 {
+                break;
+            }
+
+            tokio::task::yield_now().await;
+        }
+
+        println!("Total deleted logs: {}", total_deleted);
         Ok(())
     }
 }

@@ -1106,6 +1106,7 @@ dependencies = [
  "sha256",
  "sqlx",
  "thiserror 2.0.9",
+ "tokio",
  "utoipa",
  "uuid 1.11.0",
 ]

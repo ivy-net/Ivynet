@@ -28,6 +28,7 @@ ivynet-grpc.workspace = true
 semver = "1.0.24"
 serde_json.workspace = true
 regex.workspace = true
+tokio.workspace = true
 
 [lints]
 workspace = true
