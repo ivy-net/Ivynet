@@ -1,17 +1,17 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use ivynet_docker::dockerapi::DockerApi;
+use ivynet_grpc::messages::{Metrics, NodeData, SignedMetrics, SignedNodeData};
+use ivynet_signer::{
+    sign_utils::{sign_metrics, sign_node_data, IvySigningError},
+    IvyWallet,
+};
 use reqwest::Client;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info};
 use uuid::Uuid;
 
-use crate::{
-    grpc::messages::{Metrics, NodeData, SignedMetrics, SignedNodeData},
-    signature::{sign_metrics, sign_node_data, IvySigningError},
-    system::get_detailed_system_information,
-    wallet::IvyWallet,
-};
+use crate::system::get_detailed_system_information;
 
 use super::{
     dispatch::{TelemetryDispatchError, TelemetryDispatchHandle},

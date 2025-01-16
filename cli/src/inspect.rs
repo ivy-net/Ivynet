@@ -1,10 +1,11 @@
 use futures::future::BoxFuture;
-use ivynet_core::error::IvyError;
 use linemux::MuxedLines;
 use std::path::PathBuf;
 
+use crate::error::Error;
+
 /// Tail logs of the loaded AVS
-pub async fn tail_logs(path: PathBuf, _num_lines: u32) -> Result<(), IvyError> {
+pub async fn tail_logs(path: PathBuf, _num_lines: u32) -> Result<(), Error> {
     println!("{:#?}", path);
     let mut lines = MuxedLines::new()?;
     lines.add_file_from_start(path).await?;
@@ -14,10 +15,7 @@ pub async fn tail_logs(path: PathBuf, _num_lines: u32) -> Result<(), IvyError> {
     Ok(())
 }
 
-pub fn select_logfile(
-    path: PathBuf,
-    mut depth: u8,
-) -> BoxFuture<'static, Result<PathBuf, IvyError>> {
+pub fn select_logfile(path: PathBuf, mut depth: u8) -> BoxFuture<'static, Result<PathBuf, Error>> {
     Box::pin(async move {
         let mut available_paths = Vec::new();
         let mut files = tokio::fs::read_dir(&path).await?;

@@ -2,7 +2,7 @@ use std::str::FromStr as _;
 
 use clap::Parser;
 use ethers::types::Address;
-use ivynet_core::grpc::{
+use ivynet_grpc::{
     backend_events::backend_events_client::BackendEventsClient,
     client::{create_channel, Uri},
 };

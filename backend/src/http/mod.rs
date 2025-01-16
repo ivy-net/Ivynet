@@ -17,7 +17,7 @@ use axum::{
     routing::{delete, get, post, put},
     Router,
 };
-use ivynet_core::grpc::client::Uri;
+use ivynet_grpc::client::Uri;
 use sendgrid::v3::Sender;
 use serde_json::{json, Value};
 use sqlx::PgPool;

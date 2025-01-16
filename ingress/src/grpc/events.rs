@@ -1,6 +1,6 @@
 use crate::error::IngressError;
 use db::AvsActiveSet;
-use ivynet_core::grpc::{
+use ivynet_grpc::{
     self,
     backend_events::{
         backend_events_server::{BackendEvents, BackendEventsServer},
@@ -22,7 +22,7 @@ impl EventsService {
     }
 }
 
-#[grpc::async_trait]
+#[ivynet_grpc::async_trait]
 impl BackendEvents for EventsService {
     async fn get_latest_block(
         &self,
