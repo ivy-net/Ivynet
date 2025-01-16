@@ -1,6 +1,6 @@
 use crate::{
     bls::{encode_address, Address as BlsAddress, BlsKey},
-    wallet::IvyWallet,
+    IvyWallet, IvyWalletError,
 };
 use dialoguer::Select;
 use serde_json::Value;
@@ -360,7 +360,7 @@ pub enum KeychainError {
     #[error(transparent)]
     IoError(#[from] std::io::Error),
     #[error(transparent)]
-    IvyWalletError(#[from] crate::wallet::IvyWalletError),
+    IvyWalletError(#[from] IvyWalletError),
     #[error(transparent)]
     BlsKeyError(#[from] crate::bls::BlsKeyError),
     #[error(transparent)]
@@ -378,7 +378,7 @@ pub mod test {
 
     use super::*;
     use ethers::utils::hex::encode;
-    use tokio::fs;
+    use std::fs;
 
     pub async fn build_test_dir<F, Fut, T>(test_dir: &str, test_logic: F) -> T
     where
@@ -387,10 +387,10 @@ pub mod test {
     {
         let test_path = std::env::temp_dir().join(format!("testing_{}", test_dir));
         // Folder might have existed before
-        _ = fs::remove_dir_all(test_path.clone()).await;
-        fs::create_dir_all(&test_path).await.expect("Failed to create testing_temp directory");
+        _ = fs::remove_dir_all(test_path.clone());
+        fs::create_dir_all(&test_path).expect("Failed to create testing_temp directory");
         let result = test_logic(test_path.clone()).await;
-        fs::remove_dir_all(test_path).await.expect("Failed to delete testing_temp directory");
+        fs::remove_dir_all(test_path).expect("Failed to delete testing_temp directory");
 
         result
     }

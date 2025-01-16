@@ -1,0 +1,25 @@
+[package]
+name = "ivynet-io"
+version = "0.1.0"
+edition = "2021"
+authors = ["Noah Foltz <noah@ivynet.dev>"]
+description = "File io library for ivynet"
+repository = "https://github.com/ivy-net/ivynet"
+license = "UNLICENSED"
+
+[lib]
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+serde_yaml.workspace = true
+thiserror.workspace = true
+toml.workspace = true
+zip.workspace = true
+
+[dev-dependencies]
+tempfile.workspace = true

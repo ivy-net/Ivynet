@@ -1,13 +1,14 @@
 use blsful::{Bls12381G1Impl, PublicKey as BlsPublic, SecretKey as BlsSecret};
 use eth_keystore::{decrypt_key, encrypt_key, KeystoreError};
-use ethers::utils::hex::{decode, FromHexError};
-use rand::thread_rng;
+use ethers::{
+    core::rand::thread_rng,
+    utils::hex::{decode, FromHexError},
+};
+use ivynet_io::{read_json, write_json, IoError};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::path::{Path, PathBuf};
 use uuid::Uuid;
-
-use crate::io::{read_json, write_json};
 
 pub type Address = BlsPublic<Bls12381G1Impl>;
 
@@ -35,7 +36,7 @@ pub enum BlsKeyError {
     HexError(#[from] FromHexError),
 
     #[error(transparent)]
-    LocalIoError(#[from] crate::io::IoError),
+    LocalIoError(#[from] IoError),
 
     #[error(transparent)]
     KeystoreError(#[from] KeystoreError),

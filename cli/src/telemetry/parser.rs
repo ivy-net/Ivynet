@@ -1,4 +1,4 @@
-use crate::grpc::messages::{Metrics, MetricsAttribute};
+use ivynet_grpc::messages::{Metrics, MetricsAttribute};
 
 #[derive(PartialEq, Debug)]
 enum TelemetryToken {

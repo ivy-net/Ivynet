@@ -3,11 +3,8 @@ use std::path::Path;
 use crate::error::Error;
 use clap::Parser;
 use dialoguer::{Input, MultiSelect, Password, Select};
-use ivynet_core::{
-    error::IvyError,
-    ethers::signers::{coins_bip39::English, MnemonicBuilder},
-    keychain::{Key, KeyName, KeyType, Keychain},
-};
+use ethers::signers::{coins_bip39::English, MnemonicBuilder};
+use ivynet_signer::keychain::{Key, KeyName, KeyType, Keychain};
 use rustix::path::Arg;
 
 #[derive(Parser, Debug, Clone)]
@@ -263,7 +260,7 @@ pub async fn create_key_of_type(key_type: KeyType) -> Result<Key, Error> {
 pub async fn get_key() -> Result<(), Error> {
     let keychain = Keychain::default();
 
-    let key_list = keychain.list().map_err(IvyError::from)?;
+    let key_list = keychain.list().map_err(Error::from)?;
 
     if key_list.is_empty() {
         println!("You have no keys to inspect");
@@ -289,7 +286,7 @@ pub async fn get_key() -> Result<(), Error> {
             .expect("Invalid password provided");
 
         let key_name = key_list[key_index].clone();
-        let key = keychain.load(key_name.clone(), &key_password).map_err(IvyError::from)?;
+        let key = keychain.load(key_name.clone(), &key_password).map_err(Error::from)?;
 
         println!("Key name: {}", &key_name);
         println!("Path to key: {}", keychain.get_path(&key_name).to_str().unwrap());

@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use clap::Parser;
-use ivynet_core::grpc::client::Uri;
+use ivynet_grpc::client::Uri;
 use tracing::Level;
 
 mod version_hash {

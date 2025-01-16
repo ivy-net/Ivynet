@@ -738,21 +738,30 @@ name = "cli"
 version = "0.5.0"
 dependencies = [
  "anyhow",
+ "bollard",
  "clap",
  "data-encoding",
  "dialoguer",
+ "dirs",
+ "ethers",
  "futures",
- "ivynet-core",
  "ivynet-docker",
- "ivynet-node-type",
+ "ivynet-grpc",
+ "ivynet-io",
+ "ivynet-signer",
  "linemux",
+ "once_cell",
+ "reqwest 0.12.12",
  "rustix",
  "serde",
  "serial_test",
+ "sysinfo",
  "thiserror 2.0.9",
  "tokio",
+ "tokio-stream",
  "tracing",
  "tracing-subscriber",
+ "uuid 1.11.0",
 ]
 
 [[package]]
@@ -1087,7 +1096,8 @@ version = "0.5.0"
 dependencies = [
  "chrono",
  "ivynet-core",
- "ivynet-docker",
+ "ivynet-docker-registry",
+ "ivynet-grpc",
  "ivynet-node-type",
  "regex",
  "semver",
@@ -2767,9 +2777,9 @@ dependencies = [
 
 [[package]]
 name = "inventory"
-version = "0.3.16"
+version = "0.3.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e5d80fade88dd420ce0d9ab6f7c58ef2272dde38db874657950f827d4982c817"
+checksum = "3b31349d02fe60f80bbbab1a9402364cad7460626d6030494b08ac4a2075bf81"
 dependencies = [
  "rustversion",
 ]
@@ -2820,9 +2830,11 @@ dependencies = [
  "chrono",
  "clap",
  "db",
+ "ethers",
  "futures",
  "ivynet-core",
- "ivynet-docker",
+ "ivynet-docker-registry",
+ "ivynet-grpc",
  "ivynet-node-type",
  "memcache",
  "rayon",
@@ -2845,29 +2857,23 @@ dependencies = [
 name = "ivynet-core"
 version = "0.5.0"
 dependencies = [
- "async-trait",
- "blsful",
- "bollard",
- "clap",
  "dialoguer",
  "dirs",
  "docker-compose-types",
  "dotenvy",
- "eth-keystore",
  "ethers",
  "futures-util",
  "indexmap 2.7.0",
  "indicatif",
  "ivynet-docker",
+ "ivynet-grpc",
+ "ivynet-io",
  "ivynet-macros",
  "ivynet-node-type",
+ "ivynet-signer",
  "once_cell",
- "prost",
  "prost-build",
- "prost-wkt",
  "prost-wkt-build",
- "prost-wkt-types",
- "rand",
  "regex",
  "reqwest 0.12.12",
  "rustc-hex",
@@ -2877,18 +2883,14 @@ dependencies = [
  "serde_yaml",
  "serial_test",
  "sqlx",
- "sysinfo",
  "tempfile",
  "thiserror 2.0.9",
  "tokio",
- "tokio-stream",
  "toml",
  "tonic",
  "tonic-build",
- "tonic-reflection",
  "tracing",
  "url",
- "uuid 1.11.0",
  "zip 2.2.2",
 ]
 
@@ -2899,7 +2901,6 @@ dependencies = [
  "async-trait",
  "bollard",
  "chrono",
- "docker-registry",
  "futures",
  "ivynet-node-type",
  "mockall",
@@ -2907,12 +2908,45 @@ dependencies = [
  "reqwest 0.12.12",
  "serde",
  "serde_json",
- "strum",
  "thiserror 2.0.9",
  "tokio",
  "tokio-stream",
  "tracing",
  "which",
+]
+
+[[package]]
+name = "ivynet-docker-registry"
+version = "0.1.0"
+dependencies = [
+ "docker-registry",
+ "ivynet-node-type",
+ "serde",
+ "strum",
+ "thiserror 2.0.9",
+ "tokio",
+ "tokio-stream",
+ "tracing",
+]
+
+[[package]]
+name = "ivynet-grpc"
+version = "0.1.0"
+dependencies = [
+ "prost",
+ "prost-build",
+ "prost-wkt",
+ "prost-wkt-build",
+ "prost-wkt-types",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.9",
+ "tokio",
+ "tokio-stream",
+ "tonic",
+ "tonic-build",
+ "tonic-reflection",
+ "tracing",
 ]
 
 [[package]]
@@ -2923,13 +2957,29 @@ dependencies = [
  "db",
  "ivynet-core",
  "ivynet-docker",
+ "ivynet-docker-registry",
+ "ivynet-grpc",
  "ivynet-node-type",
+ "ivynet-signer",
  "sqlx",
  "thiserror 2.0.9",
  "tokio",
  "tracing",
  "tracing-subscriber",
  "uuid 1.11.0",
+]
+
+[[package]]
+name = "ivynet-io"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "tempfile",
+ "thiserror 2.0.9",
+ "toml",
+ "zip 2.2.2",
 ]
 
 [[package]]
@@ -2948,6 +2998,27 @@ dependencies = [
  "strum",
  "thiserror 2.0.9",
  "tracing",
+]
+
+[[package]]
+name = "ivynet-signer"
+version = "0.1.0"
+dependencies = [
+ "async-trait",
+ "blsful",
+ "dialoguer",
+ "dirs",
+ "eth-keystore",
+ "ethers",
+ "ivynet-grpc",
+ "ivynet-io",
+ "serde",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.9",
+ "tokio",
+ "tonic",
+ "uuid 1.11.0",
 ]
 
 [[package]]
@@ -3039,7 +3110,7 @@ dependencies = [
  "lalrpop-util",
  "petgraph",
  "regex",
- "regex-syntax 0.8.5",
+ "regex-syntax",
  "string_cache",
  "term",
  "tiny-keccak",
@@ -3053,7 +3124,7 @@ version = "0.20.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "507460a910eb7b32ee961886ff48539633b788a36b65692b95f225b844c82553"
 dependencies = [
- "regex-automata 0.4.9",
+ "regex-automata",
 ]
 
 [[package]]
@@ -3176,15 +3247,6 @@ checksum = "297e814c836ae64db86b36cf2a557ba54368d03f6afcd7d947c266692f71115e"
 dependencies = [
  "byteorder",
  "crc",
-]
-
-[[package]]
-name = "matchers"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "8263075bb86c5a1b1427b5ae862e8889656f126e9f77c484496e8b47cf5c5558"
-dependencies = [
- "regex-automata 0.1.10",
 ]
 
 [[package]]
@@ -3975,7 +4037,7 @@ dependencies = [
  "rand",
  "rand_chacha",
  "rand_xorshift",
- "regex-syntax 0.8.5",
+ "regex-syntax",
  "unarray",
 ]
 
@@ -4242,17 +4304,8 @@ checksum = "b544ef1b4eac5dc2db33ea63606ae9ffcfac26c1416a2806ae0bf5f56b201191"
 dependencies = [
  "aho-corasick",
  "memchr",
- "regex-automata 0.4.9",
- "regex-syntax 0.8.5",
-]
-
-[[package]]
-name = "regex-automata"
-version = "0.1.10"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c230d73fb8d8c1b9c0b3135c5142a8acee3a0558fb8db5cf1cb65f8d7862132"
-dependencies = [
- "regex-syntax 0.6.29",
+ "regex-automata",
+ "regex-syntax",
 ]
 
 [[package]]
@@ -4263,7 +4316,7 @@ checksum = "809e8dc61f6de73b46c85f4c96486310fe304c434cfa43669d7b40f711150908"
 dependencies = [
  "aho-corasick",
  "memchr",
- "regex-syntax 0.8.5",
+ "regex-syntax",
 ]
 
 [[package]]
@@ -4271,12 +4324,6 @@ name = "regex-lite"
 version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "53a49587ad06b26609c52e423de037e7f57f20d53535d66e08c695f347df952a"
-
-[[package]]
-name = "regex-syntax"
-version = "0.6.29"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f162c6dd7b008981e4d40210aca20b4bd0f9b60ca9271061b07f78537722f2e1"
 
 [[package]]
 name = "regex-syntax"
@@ -4584,7 +4631,7 @@ dependencies = [
  "openssl-probe",
  "rustls-pki-types",
  "schannel",
- "security-framework 3.1.0",
+ "security-framework 3.2.0",
 ]
 
 [[package]]
@@ -4731,6 +4778,7 @@ dependencies = [
  "ethers",
  "futures",
  "ivynet-core",
+ "ivynet-grpc",
  "serde_json",
  "thiserror 2.0.9",
  "tokio",
@@ -4795,9 +4843,9 @@ dependencies = [
 
 [[package]]
 name = "security-framework"
-version = "3.1.0"
+version = "3.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "81d3f8c9bfcc3cbb6b0179eb57042d75b1582bdc65c3cb95f3fa999509c03cbc"
+checksum = "271720403f46ca04f7ba6f55d438f8bd878d6b8ca0a1046e8228c4145bcbb316"
 dependencies = [
  "bitflags 2.6.0",
  "core-foundation 0.10.0",
@@ -4808,9 +4856,9 @@ dependencies = [
 
 [[package]]
 name = "security-framework-sys"
-version = "2.13.0"
+version = "2.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1863fd3768cd83c56a7f60faa4dc0d403f1b6df0a38c3c25f44b7894e45370d5"
+checksum = "49db231d56a190491cb4aeda9527f1ad45345af50b0851622a7adb8c03b01c32"
 dependencies = [
  "core-foundation-sys",
  "libc",
@@ -6076,14 +6124,10 @@ version = "0.3.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e8189decb5ac0fa7bc8b96b7cb9b2701d60d48805aca84a238004d665fcc4008"
 dependencies = [
- "matchers",
  "nu-ansi-term",
- "once_cell",
- "regex",
  "sharded-slab",
  "smallvec",
  "thread_local",
- "tracing",
  "tracing-core",
  "tracing-log",
 ]

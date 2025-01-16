@@ -9,9 +9,8 @@ use bollard::{
     Docker,
 };
 use futures::future::join_all;
-use tokio_stream::Stream;
-
 use ivynet_node_type::NodeType;
+use tokio_stream::Stream;
 use tracing::debug;
 
 use super::container::Container;
@@ -39,8 +38,6 @@ impl Default for DockerClient {
 pub trait DockerApi: Clone + Sync + Send + 'static {
     async fn list_containers(&self) -> Vec<ContainerSummary>;
     async fn list_images(&self) -> HashMap<String, String>;
-    fn process_images(images: Vec<ImageSummary>) -> HashMap<String, String>;
-    fn use_repo_tags(image: &ImageSummary, map: &mut HashMap<String, String>);
 
     async fn stream_logs(
         &self,
@@ -174,42 +171,6 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
         let streams = join_all(stream_futures).await;
         Box::pin(futures::stream::select_all(streams))
     }
-}
-
-#[async_trait]
-impl DockerApi for DockerClient {
-    async fn list_containers(&self) -> Vec<ContainerSummary> {
-        self.0.list_containers::<String>(None).await.expect("Cannot list containers")
-    }
-
-    async fn stream_logs(
-        &self,
-        container: Container,
-        since: i64,
-    ) -> Pin<Box<dyn Stream<Item = Result<LogOutput, Error>> + Send + Unpin>> {
-        let log_opts: LogsOptions<&str> =
-            LogsOptions { follow: true, stdout: true, stderr: true, since, ..Default::default() };
-        Box::pin(self.0.logs(container.id().unwrap(), Some(log_opts)))
-    }
-
-    async fn stream_events(
-        &self,
-    ) -> Pin<Box<dyn Stream<Item = Result<EventMessage, Error>> + Send + Unpin>> {
-        Box::pin(self.0.events::<&str>(None))
-    }
-
-    async fn list_images(&self) -> HashMap<String, String> {
-        let images = self
-            .0
-            .list_images(Some(ListImagesOptions::<String> {
-                all: true,
-                digests: true,
-                ..Default::default()
-            }))
-            .await
-            .expect("Cannot list images");
-        DockerClient::process_images(images)
-    }
 
     fn process_images(images: Vec<ImageSummary>) -> HashMap<String, String> {
         let mut map = HashMap::new();
@@ -248,6 +209,42 @@ impl DockerApi for DockerClient {
         for tag in &image.repo_tags {
             map.insert(tag.clone(), image.id.clone());
         }
+    }
+}
+
+#[async_trait]
+impl DockerApi for DockerClient {
+    async fn list_containers(&self) -> Vec<ContainerSummary> {
+        self.0.list_containers::<String>(None).await.expect("Cannot list containers")
+    }
+
+    async fn stream_logs(
+        &self,
+        container: Container,
+        since: i64,
+    ) -> Pin<Box<dyn Stream<Item = Result<LogOutput, Error>> + Send + Unpin>> {
+        let log_opts: LogsOptions<&str> =
+            LogsOptions { follow: true, stdout: true, stderr: true, since, ..Default::default() };
+        Box::pin(self.0.logs(container.id().unwrap(), Some(log_opts)))
+    }
+
+    async fn stream_events(
+        &self,
+    ) -> Pin<Box<dyn Stream<Item = Result<EventMessage, Error>> + Send + Unpin>> {
+        Box::pin(self.0.events::<&str>(None))
+    }
+
+    async fn list_images(&self) -> HashMap<String, String> {
+        let images = self
+            .0
+            .list_images(Some(ListImagesOptions::<String> {
+                all: true,
+                digests: true,
+                ..Default::default()
+            }))
+            .await
+            .expect("Cannot list images");
+        DockerClient::process_images(images)
     }
 }
 
