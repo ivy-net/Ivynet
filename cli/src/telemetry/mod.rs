@@ -36,7 +36,7 @@ pub enum TelemetryError {
     MetricsListenerError(#[from] metrics_listener::MetricsListenerError),
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, Hash, Eq, PartialEq)]
 pub struct ConfiguredAvs {
     pub assigned_name: String,
     pub container_name: String,

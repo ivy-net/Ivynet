@@ -38,8 +38,6 @@ impl Default for DockerClient {
 pub trait DockerApi: Clone + Sync + Send + 'static {
     async fn list_containers(&self) -> Vec<ContainerSummary>;
     async fn list_images(&self) -> HashMap<String, String>;
-    fn process_images(images: Vec<ImageSummary>) -> HashMap<String, String>;
-    fn use_repo_tags(image: &ImageSummary, map: &mut HashMap<String, String>);
 
     async fn stream_logs(
         &self,
@@ -62,6 +60,17 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
             }
         }
         None
+    }
+
+    /// Checks if a container is running by container name
+    async fn is_running(&self, container_name: &str) -> bool {
+        if let Some(container) = self.find_container_by_name(container_name).await {
+            if let Some(state) = container.state() {
+                return state.to_lowercase() == "running";
+            }
+        }
+
+        false
     }
 
     /// Inspect multiple containers by image name. Returns a vector of found containers.
@@ -162,6 +171,45 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
         let streams = join_all(stream_futures).await;
         Box::pin(futures::stream::select_all(streams))
     }
+
+    fn process_images(images: Vec<ImageSummary>) -> HashMap<String, String> {
+        let mut map = HashMap::new();
+        for image in images {
+            if image.repo_digests.is_empty() {
+                debug!("No repo digests on image: {:#?}", image);
+                DockerClient::use_repo_tags(&image, &mut map);
+            } else if image.repo_tags.is_empty() && image.repo_digests.is_empty() {
+                debug!("No repo tags or digests on image: {:#?}", image);
+                map.insert("local".to_string(), image.id.clone());
+            } else {
+                for digest in &image.repo_digests {
+                    let elements = digest.split("@").collect::<Vec<_>>();
+                    if elements.len() == 2 {
+                        if !image.repo_tags.is_empty() {
+                            for tag in &image.repo_tags {
+                                map.insert(tag.clone(), elements[1].to_string());
+                            }
+                        } else {
+                            debug!("No repo tags on image: {}", elements[0]);
+                            debug!("This should get a debug later as well in node_type");
+                            map.insert(elements[0].to_string(), elements[1].to_string());
+                        }
+                    } else {
+                        DockerClient::use_repo_tags(&image, &mut map);
+                    }
+                }
+            }
+        }
+        map
+    }
+
+    fn use_repo_tags(image: &ImageSummary, map: &mut HashMap<String, String>) {
+        debug!("REPO DIGESTS BROKEN: {:#?}", image);
+        debug!("Using repo_tags instead");
+        for tag in &image.repo_tags {
+            map.insert(tag.clone(), image.id.clone());
+        }
+    }
 }
 
 #[async_trait]
@@ -197,42 +245,6 @@ impl DockerApi for DockerClient {
             .await
             .expect("Cannot list images");
         DockerClient::process_images(images)
-    }
-
-    fn process_images(images: Vec<ImageSummary>) -> HashMap<String, String> {
-        let mut map = HashMap::new();
-        for image in images {
-            if image.repo_digests.is_empty() {
-                debug!("No repo digests on image: {:#?}", image);
-                DockerClient::use_repo_tags(&image, &mut map);
-            } else {
-                for digest in &image.repo_digests {
-                    let elements = digest.split("@").collect::<Vec<_>>();
-                    if elements.len() == 2 {
-                        if !image.repo_tags.is_empty() {
-                            for tag in &image.repo_tags {
-                                map.insert(tag.clone(), elements[1].to_string());
-                            }
-                        } else {
-                            debug!("No repo tags on image: {}", elements[0]);
-                            debug!("This should get a debug later as well in node_type");
-                            map.insert(elements[0].to_string(), elements[1].to_string());
-                        }
-                    } else {
-                        DockerClient::use_repo_tags(&image, &mut map);
-                    }
-                }
-            }
-        }
-        map
-    }
-
-    fn use_repo_tags(image: &ImageSummary, map: &mut HashMap<String, String>) {
-        debug!("REPO DIGESTS BROKEN: {:#?}", image);
-        debug!("Using repo_tags instead");
-        for tag in &image.repo_tags {
-            map.insert(tag.clone(), image.id.clone());
-        }
     }
 }
 

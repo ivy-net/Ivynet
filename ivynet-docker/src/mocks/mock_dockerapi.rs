@@ -66,14 +66,6 @@ impl DockerApi for MockDockerClient {
     ) -> Pin<Box<dyn Stream<Item = Result<EventMessage, Error>> + Send + Unpin>> {
         Box::pin(stream::iter(self.events.clone().into_iter().map(Ok)))
     }
-
-    fn process_images(images: Vec<ImageSummary>) -> HashMap<String, String> {
-        DockerClient::process_images(images) // Reuse the actual implementation
-    }
-
-    fn use_repo_tags(image: &ImageSummary, map: &mut HashMap<String, String>) {
-        DockerClient::use_repo_tags(image, map) // Reuse the actual implementation
-    }
 }
 
 // Extra scenarios for testing

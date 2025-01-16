@@ -42,9 +42,10 @@ fn hash_node_data(node_data: &NodeData) -> Result<H256, IvySigningError> {
     let mut tokens = Vec::new();
     let node_data = node_data.clone();
     tokens.push(Token::String(node_data.name));
-    tokens.push(Token::String(node_data.node_type));
-    tokens.push(Token::String(node_data.manifest));
-    tokens.push(Token::Bool(node_data.metrics_alive));
+    tokens.push(Token::String(node_data.node_type.unwrap_or_default()));
+    tokens.push(Token::String(node_data.manifest.unwrap_or_default()));
+    tokens.push(Token::Bool(node_data.metrics_alive.unwrap_or(false)));
+    tokens.push(Token::Bool(node_data.node_running.unwrap_or(false)));
     Ok(H256::from(&keccak256(encode(&tokens))))
 }
 

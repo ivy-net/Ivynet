@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT machine_id, avs_name, avs_type, chain, avs_version, operator_address, active_set, metrics_alive, version_hash, created_at, updated_at FROM avs WHERE operator_address = $1",
+  "query": "SELECT machine_id, avs_name, avs_type, chain, avs_version, operator_address, active_set, metrics_alive, node_running, version_hash, created_at, updated_at FROM avs WHERE operator_address = $1",
   "describe": {
     "columns": [
       {
@@ -45,16 +45,21 @@
       },
       {
         "ordinal": 8,
+        "name": "node_running",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 9,
         "name": "version_hash",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "created_at",
         "type_info": "Timestamp"
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "updated_at",
         "type_info": "Timestamp"
       }
@@ -75,8 +80,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "21eb1d9c1c5082bdcf8d1d820ebfb939f1b097b05cb754902c3000c14053e878"
+  "hash": "daaa14705979551020a78078851d99c8ab85739978f99026c32c2d8b2be9b362"
 }

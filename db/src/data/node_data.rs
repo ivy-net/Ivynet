@@ -38,6 +38,7 @@ pub enum NodeError {
     CrashedNode,
     NoChainInfo,
     NoMetrics,
+    NodeNotRunning,
 }
 
 #[derive(Serialize, ToSchema, Clone, Debug, Default)]
@@ -51,6 +52,7 @@ pub struct NodeStatusReport {
 pub struct AvsInfo {
     #[serde(flatten)]
     pub avs: Avs,
+    pub is_running: bool,
     pub uptime: f64,
     pub performance_score: f64,
     pub update_status: UpdateStatus,
@@ -103,6 +105,11 @@ pub async fn build_avs_info(
         errors.push(NodeError::NoMetrics);
     }
 
+    let is_running = avs.node_running;
+    if !is_running {
+        errors.push(NodeError::NodeNotRunning);
+    }
+
     let mut update_status = UpdateStatus::Unknown;
     if avs.chain.is_none() {
         errors.push(NodeError::NoChainInfo);
@@ -134,6 +141,7 @@ pub async fn build_avs_info(
 
     Ok(AvsInfo {
         avs,
+        is_running,
         uptime: metrics.get(UPTIME_METRIC).map_or(0.0, |m| m.value),
         performance_score: metrics.get(EIGEN_PERFORMANCE_METRIC).map_or(0.0, |m| m.value),
         update_status,

@@ -1,4 +1,4 @@
-use std::{sync::Arc, time::Duration};
+use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use ivynet_docker::dockerapi::DockerApi;
 use ivynet_grpc::messages::{Metrics, NodeData, SignedMetrics, SignedNodeData};
@@ -113,6 +113,7 @@ pub struct MetricsListener<D: DockerApi> {
     machine_id: Uuid,
     identity_wallet: IvyWallet,
     avses: Vec<ConfiguredAvs>,
+    avs_cache: HashMap<ConfiguredAvs, (Option<String>, String, bool)>,
     dispatch: TelemetryDispatchHandle,
     rx: mpsc::Receiver<MetricsListenerAction>,
     error_tx: ErrorChannelTx,
@@ -128,7 +129,11 @@ impl<D: DockerApi> MetricsListener<D> {
         rx: mpsc::Receiver<MetricsListenerAction>,
         error_tx: ErrorChannelTx,
     ) -> Self {
-        Self { docker, machine_id, identity_wallet, avses, dispatch, rx, error_tx }
+        let mut avs_cache = HashMap::new();
+        for avs in &avses {
+            avs_cache.insert(avs.clone(), (Some(avs.avs_type.to_string()), "".to_string(), false));
+        }
+        Self { docker, machine_id, identity_wallet, avses, avs_cache, dispatch, rx, error_tx }
     }
 
     pub async fn run(mut self) {
@@ -152,13 +157,14 @@ impl<D: DockerApi> MetricsListener<D> {
         }
     }
 
-    async fn broadcast_metrics(&self) -> Result<(), MetricsListenerError> {
+    async fn broadcast_metrics(&mut self) -> Result<(), MetricsListenerError> {
         report_metrics(
             &self.docker,
             self.machine_id,
             &self.identity_wallet,
             self.avses.as_slice(),
             &self.dispatch,
+            &mut self.avs_cache,
         )
         .await
     }
@@ -209,8 +215,10 @@ pub async fn report_metrics(
     identity_wallet: &IvyWallet,
     avses: &[ConfiguredAvs],
     dispatch: &TelemetryDispatchHandle,
+    avs_cache: &mut HashMap<ConfiguredAvs, (Option<String>, String, bool)>,
 ) -> Result<(), MetricsListenerError> {
     let images = docker.list_images().await;
+
     debug!("Got images {images:#?}");
     for avs in avses {
         let mut version_hash = "".to_string();
@@ -218,6 +226,13 @@ pub async fn report_metrics(
             if let Some(image_name) = inspect_data.image() {
                 if let Some(hash) = images.get(image_name) {
                     version_hash = hash.clone();
+                } else if let Some(key) = images.keys().find(|key| key.contains(image_name)) {
+                    info!("Found hash from key.contains(image_name): {:#?}", key);
+                    if let Some(hash) = images.get(key) {
+                        version_hash = hash.clone();
+                    } else {
+                        error!("Failed to find hash for image: {}", image_name);
+                    }
                 }
             }
         }
@@ -243,13 +258,25 @@ pub async fn report_metrics(
 
         // Send node data
 
-        info!("Sending node data with version hash: {:#?}", version_hash);
+        info!(
+            "Sending node data with version hash: {:#?} for avs: {}",
+            version_hash, avs.assigned_name
+        );
 
+        let is_running = docker.is_running(&avs.container_name).await;
+
+        let (node_type, prev_version_hash, was_running) = &avs_cache[avs];
+        // Send node data
         let node_data = NodeData {
-            name: avs.assigned_name.to_owned(),
-            node_type: avs.avs_type.to_string(),
-            manifest: version_hash,
-            metrics_alive: !metrics.is_empty(),
+            name: avs.assigned_name.to_string(),
+            node_type: node_type.clone(),
+            manifest: if *prev_version_hash == version_hash {
+                None
+            } else {
+                Some(version_hash.clone())
+            },
+            metrics_alive: Some(!metrics.is_empty()),
+            node_running: if is_running != *was_running { Some(true) } else { None },
         };
 
         let node_data_signature = sign_node_data(&node_data, identity_wallet).map_err(Arc::new)?;
@@ -260,6 +287,7 @@ pub async fn report_metrics(
         };
 
         dispatch.send_node_data(signed_node_data).await?;
+        avs_cache.insert(avs.clone(), (None, version_hash, is_running));
     }
     // Last but not least - send system metrics
     let system_metrics = fetch_system_telemetry();

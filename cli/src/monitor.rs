@@ -214,6 +214,8 @@ pub async fn scan(force: bool, config: &IvyConfig) -> Result<(), anyhow::Error> 
 /// if a potential node is found with the same container name. If a potential node is found with a
 /// different container name, and a valid node type, it is added to a list of new configured nodes.
 /// Otherwise, the potential node is added to a list of leftover potential nodes.
+///
+/// Returns a tuple of (updated_existing_nodes, new_valid_nodes, leftover_potential_nodes)
 async fn find_new_avses(
     backend: &mut BackendClient<Channel>,
     configured_avses: &[ConfiguredAvs],
@@ -251,8 +253,6 @@ async fn find_new_avses(
             avs_type: node_type,
             metric_port,
         };
-
-        println!("New AVS: {:#?}", new_avs);
 
         // update the existing configured AVS if it exists, otherwise push to new vec
         if let Some(node) =

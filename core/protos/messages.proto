@@ -37,9 +37,10 @@ message SignedNodeData {
 
 message NodeData {
     string name = 1;
-    string node_type = 2;
-    string manifest = 3;
-    bool metrics_alive = 4;
+    optional string node_type = 2;
+    optional string manifest = 3;
+    optional bool metrics_alive = 4;
+    optional bool node_running = 5;
 }
 
 message SignedLog {

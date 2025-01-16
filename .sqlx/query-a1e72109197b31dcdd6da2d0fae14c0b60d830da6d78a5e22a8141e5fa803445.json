@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT machine_id, avs_name, avs_type, chain, avs_version, operator_address, active_set, metrics_alive, version_hash, created_at, updated_at FROM avs WHERE machine_id = $1 AND avs_name = $2",
+  "query": "SELECT machine_id, avs_name, avs_type, chain, avs_version, operator_address, version_hash, active_set, metrics_alive, node_running, created_at, updated_at FROM avs WHERE machine_id = $1",
   "describe": {
     "columns": [
       {
@@ -35,34 +35,38 @@
       },
       {
         "ordinal": 6,
-        "name": "active_set",
-        "type_info": "Bool"
-      },
-      {
-        "ordinal": 7,
-        "name": "metrics_alive",
-        "type_info": "Bool"
-      },
-      {
-        "ordinal": 8,
         "name": "version_hash",
         "type_info": "Varchar"
       },
       {
+        "ordinal": 7,
+        "name": "active_set",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "metrics_alive",
+        "type_info": "Bool"
+      },
+      {
         "ordinal": 9,
+        "name": "node_running",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 10,
         "name": "created_at",
         "type_info": "Timestamp"
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "updated_at",
         "type_info": "Timestamp"
       }
     ],
     "parameters": {
       "Left": [
-        "Uuid",
-        "Text"
+        "Uuid"
       ]
     },
     "nullable": [
@@ -76,8 +80,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "ef03e15bf1add0740ff1913b1a46c8dac6bf6091193899163f897caf477aa3b2"
+  "hash": "a1e72109197b31dcdd6da2d0fae14c0b60d830da6d78a5e22a8141e5fa803445"
 }
