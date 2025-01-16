@@ -7,5 +7,6 @@ pub mod inspect;
 pub mod key;
 pub mod metadata;
 pub mod monitor;
+pub mod node_source;
 pub mod system;
 pub mod telemetry;
