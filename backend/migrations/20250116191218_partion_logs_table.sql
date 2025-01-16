@@ -49,7 +49,7 @@ DECLARE
 BEGIN
     -- Convert UUID to valid PostgreSQL identifier
     partition_name := 'log_p_' || replace(partition_machine_id::text, '-', '_');
-    
+
     -- Create partition using dynamic SQL
     -- Note: format() handles proper escaping of identifiers and literals
     EXECUTE format(

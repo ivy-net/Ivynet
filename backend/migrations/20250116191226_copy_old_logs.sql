@@ -7,11 +7,11 @@ BEGIN
     LOOP
         -- Create partition for this machine
         PERFORM create_log_partition(r.machine_id);
-        
+
         -- Copy data for this machine
         EXECUTE format(
-            'INSERT INTO log_partitioned 
-             SELECT * FROM log 
+            'INSERT INTO log_partitioned
+             SELECT * FROM log
              WHERE machine_id = %L',
             r.machine_id
         );

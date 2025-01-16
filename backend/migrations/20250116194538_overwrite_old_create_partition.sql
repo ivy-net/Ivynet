@@ -6,7 +6,7 @@ DECLARE
     partition_name text;
 BEGIN
     partition_name := 'log_p_' || replace(partition_machine_id::text, '-', '_');
-    
+
     EXECUTE format(
         'CREATE TABLE IF NOT EXISTS %I PARTITION OF log FOR VALUES IN (%L)',
         partition_name,
