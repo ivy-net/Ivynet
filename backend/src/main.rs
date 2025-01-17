@@ -36,6 +36,8 @@ async fn main() -> Result<(), BackendError> {
     } else if config.add_node_version_hashes {
         Ok(add_node_version_hashes(&pool).await?)
     } else if config.update_node_data_versions {
+        let node_types = NodeType::all_known_with_repo();
+        db::DbAvsVersionData::delete_avses_from_avs_version_data(&pool, &node_types).await?;
         update_node_data_versions(&pool, &Chain::Mainnet).await?;
         update_node_data_versions(&pool, &Chain::Holesky).await?;
         return Ok(());
@@ -199,9 +201,7 @@ async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
 
 async fn update_node_data_versions(pool: &PgPool, chain: &Chain) -> Result<(), BackendError> {
     info!("Updating node data versions for {:?}", chain);
-    let node_types = NodeType::all_known_with_repo();
-    db::DbAvsVersionData::delete_avses_from_avs_version_data(pool, &node_types).await?;
-    for node_type in node_types {
+    for node_type in NodeType::all_known_with_repo() {
         match (node_type, chain) {
             (NodeType::Gasp, _) => continue,
             (NodeType::K3LabsAvsHolesky, Chain::Mainnet) => continue,
