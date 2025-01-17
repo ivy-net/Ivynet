@@ -84,12 +84,6 @@ pub async fn build_avs_info(
         errors.push(NodeError::UnregisteredFromActiveSet);
     }
 
-    if let Some(perf) = metrics.get(EIGEN_PERFORMANCE_METRIC) {
-        if perf.value < EIGEN_PERFORMANCE_HEALTHY_THRESHOLD {
-            errors.push(NodeError::LowPerformanceScore);
-        }
-    }
-
     if let Some(datetime) = avs.updated_at {
         let now = chrono::Utc::now().naive_utc();
         if now.signed_duration_since(datetime).num_minutes() > IDLE_MINUTES_THRESHOLD {
