@@ -184,7 +184,7 @@ async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
 
 async fn update_node_data_versions(pool: &PgPool, chain: &Chain) -> Result<(), BackendError> {
     info!("Updating node data versions for {:?}", chain);
-    for node_type in node_types {
+    for node_type in NodeType::all_known_with_repo() {
         match (node_type, chain) {
             (NodeType::Gasp, _) => continue,
             (NodeType::K3LabsAvsHolesky, Chain::Mainnet) => continue,
