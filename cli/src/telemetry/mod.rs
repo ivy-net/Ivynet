@@ -118,8 +118,14 @@ pub async fn listen(
 
     // Stream listener listens for docker events and sends them to the other listeners for
     // processing
-    let docker_listener =
-        DockerStreamListener::new(metrics_listener_handle, logs_listener_handle, backend_client);
+    let docker_listener = DockerStreamListener::new(
+        metrics_listener_handle,
+        logs_listener_handle,
+        dispatch.clone(),
+        identity_wallet,
+        machine_id,
+        backend_client,
+    );
     tokio::spawn(docker_listener.run(avses.to_vec()));
 
     // This should never return unless the error channel is closed

@@ -8,7 +8,7 @@ use ivynet_signer::{
 };
 use reqwest::Client;
 use tokio::sync::mpsc;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
 use crate::system::get_detailed_system_information;
@@ -143,11 +143,9 @@ impl<D: DockerApi> MetricsListener<D> {
         loop {
             let res = tokio::select! {
                 _ = interval.tick() => {
-                    info!("Interval tick");
                     self.broadcast_metrics().await
                 }
                 Some(action) = self.rx.recv() => {
-                    info!("Action received: {:#?}", action);
                     self.handle_action(action).await
                 }
             };
@@ -175,6 +173,8 @@ impl<D: DockerApi> MetricsListener<D> {
     ) -> Result<(), MetricsListenerError> {
         match action {
             MetricsListenerAction::AddNode(avs) => {
+                self.avs_cache
+                    .insert(avs.clone(), (Some(avs.avs_type.to_string()), "".to_string(), false));
                 // if container with name already exists, replace avs_type and metric_port
                 if let Some(existing) =
                     self.avses.iter_mut().find(|x| x.container_name == avs.container_name)
@@ -187,10 +187,12 @@ impl<D: DockerApi> MetricsListener<D> {
                 }
             }
             MetricsListenerAction::RemoveNode(avs) => {
+                self.avs_cache.remove(&avs);
                 self.avses.retain(|x| x.container_name != avs.container_name);
             }
             MetricsListenerAction::RemoveNodeByName(container_name) => {
                 let avs_num = self.avses.len();
+                self.avs_cache.retain(|x, _| x.container_name != container_name);
                 self.avses.retain(|x| x.container_name != container_name);
                 if avs_num != self.avses.len() {
                     info!("Detected container stop: {}", container_name);
@@ -218,24 +220,44 @@ pub async fn report_metrics(
     avs_cache: &mut HashMap<ConfiguredAvs, (Option<String>, String, bool)>,
 ) -> Result<(), MetricsListenerError> {
     let images = docker.list_images().await;
+    debug!("System Docker images: {:#?}", images);
 
-    debug!("Got images {images:#?}");
     for avs in avses {
-        let mut version_hash = "".to_string();
-        if let Some(inspect_data) = docker.find_container_by_name(&avs.container_name).await {
-            if let Some(image_name) = inspect_data.image() {
-                if let Some(hash) = images.get(image_name) {
-                    version_hash = hash.clone();
-                } else if let Some(key) = images.keys().find(|key| key.contains(image_name)) {
-                    info!("Found hash from key.contains(image_name): {:#?}", key);
-                    if let Some(hash) = images.get(key) {
-                        version_hash = hash.clone();
-                    } else {
-                        error!("Failed to find hash for image: {}", image_name);
-                    }
-                }
+        let version_hash = match docker.find_container_by_name(&avs.container_name).await {
+            None => {
+                warn!(
+                    "Container {} is configured but does not appear to be running. Skipping telemetry.",
+                    avs.container_name
+                );
+                continue;
             }
-        }
+            Some(container) => match container.image() {
+                None => {
+                    error!(
+                        "Container {} is running but has no image. This should be unenterable.",
+                        avs.container_name
+                    );
+                    continue;
+                }
+                Some(image_name) => images
+                    .get(image_name)
+                    .or_else(|| {
+                        images
+                            .keys()
+                            .find(|key| key.contains(image_name))
+                            .and_then(|key| images.get(key))
+                    })
+                    .cloned(),
+            },
+        };
+
+        let Some(version_hash) = version_hash else {
+            warn!(
+                "Container {} is running but we could not locate a digest. Continuing.",
+                avs.container_name
+            );
+            continue;
+        };
 
         let metrics = if let Some(port) = avs.metric_port {
             let metrics: Vec<Metrics> = fetch_telemetry_from(port).await.unwrap_or_default();
