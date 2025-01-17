@@ -34,7 +34,7 @@ pub enum SkateChainType {
     UnknownL2,
 }
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum NodeType {
     AvaProtocol,
     EigenDA,
@@ -134,6 +134,102 @@ impl std::fmt::Display for NodeType {
         // Convert enum variant name to kebab case
         let name = format!("{:?}", self).to_case(Case::Kebab);
         write!(f, "{}", name)
+    }
+}
+
+impl Serialize for NodeType {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        use convert_case::{Case, Casing};
+
+        match self {
+            // Compound types - need special formatting
+            NodeType::Altlayer(inner) => {
+                let outer = "altlayer".to_string();
+                let inner_str = serde_json::to_string(inner)
+                    .map_err(serde::ser::Error::custom)?
+                    .trim_matches('"')
+                    .to_case(Case::Kebab);
+                serializer.serialize_str(&format!("{}({})", outer, inner_str))
+            }
+            NodeType::AltlayerMach(inner) => {
+                let outer = "altlayer-mach".to_string();
+                let inner_str = serde_json::to_string(inner)
+                    .map_err(serde::ser::Error::custom)?
+                    .trim_matches('"')
+                    .to_case(Case::Kebab);
+                serializer.serialize_str(&format!("{}({})", outer, inner_str))
+            }
+            NodeType::SkateChain(inner) => {
+                let outer = "skate-chain".to_string();
+                let inner_str = serde_json::to_string(inner)
+                    .map_err(serde::ser::Error::custom)?
+                    .trim_matches('"')
+                    .to_case(Case::Kebab);
+                serializer.serialize_str(&format!("{}({})", outer, inner_str))
+            }
+            NodeType::UngateInfiniRoute(inner) => {
+                let outer = "ungate-infini-route".to_string();
+                let inner_str = serde_json::to_string(inner)
+                    .map_err(serde::ser::Error::custom)?
+                    .trim_matches('"')
+                    .to_case(Case::Kebab);
+                serializer.serialize_str(&format!("{}({})", outer, inner_str))
+            }
+            // Simple types - use Display implementation
+            _ => serializer.serialize_str(&self.to_string()),
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for NodeType {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        use serde::de::Error;
+
+        let s = String::deserialize(deserializer)?;
+
+        if let Some(outer_inner) = s.split_once('(') {
+            let outer = outer_inner.0;
+            let inner = outer_inner.1.trim_end_matches(')');
+
+            // Convert to normalized form (lowercase, no hyphens)
+            let normalized_outer = outer.replace(['-', '_', ' '], "").to_lowercase();
+
+            // Match on outer type and deserialize inner using derived implementation
+            match normalized_outer.as_str() {
+                "altlayer" => {
+                    let inner_type: AltlayerType = serde_json::from_str(&format!("\"{}\"", inner))
+                        .map_err(D::Error::custom)?;
+                    Ok(NodeType::Altlayer(inner_type))
+                }
+                "altlayermach" => {
+                    let inner_type: MachType = serde_json::from_str(&format!("\"{}\"", inner))
+                        .map_err(D::Error::custom)?;
+                    Ok(NodeType::AltlayerMach(inner_type))
+                }
+                "skatechain" => {
+                    let inner_type: SkateChainType =
+                        serde_json::from_str(&format!("\"{}\"", inner))
+                            .map_err(D::Error::custom)?;
+                    Ok(NodeType::SkateChain(inner_type))
+                }
+                "ungateinfiniroute" => {
+                    let inner_type: InfiniRouteType =
+                        serde_json::from_str(&format!("\"{}\"", inner))
+                            .map_err(D::Error::custom)?;
+                    Ok(NodeType::UngateInfiniRoute(inner_type))
+                }
+                _ => Err(D::Error::custom("Invalid compound NodeType")),
+            }
+        } else {
+            // Fall back to existing From<&str> implementation for simple types
+            Ok(NodeType::from(s.as_str()))
+        }
     }
 }
 
