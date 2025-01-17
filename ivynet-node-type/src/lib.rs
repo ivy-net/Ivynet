@@ -529,7 +529,7 @@ pub enum NodeTypeError {
 }
 
 #[cfg(test)]
-mod tests {
+mod node_type_tests {
     use super::*;
 
     #[test]
@@ -565,6 +565,18 @@ mod tests {
             ("e-oracle", NodeType::EOracle),
             ("predicate", NodeType::Predicate),
             ("witness-chain", NodeType::WitnessChain),
+            ("altlayer(altlayermach)", NodeType::Altlayer(AltlayerType::AltlayerMach)),
+            ("altlayer(gm-network-mach)", NodeType::Altlayer(AltlayerType::GmNetworkMach)),
+            ("altlayer-mach(xterio)", NodeType::AltlayerMach(MachType::Xterio)),
+            ("altlayer-mach(dodo-chain)", NodeType::AltlayerMach(MachType::DodoChain)),
+            ("altlayer-mach(cyber)", NodeType::AltlayerMach(MachType::Cyber)),
+            (
+                "ungate-infini-route(unknown-l2)",
+                NodeType::UngateInfiniRoute(InfiniRouteType::UnknownL2),
+            ),
+            ("skate-chain(base)", NodeType::SkateChain(SkateChainType::Base)),
+            ("skate-chain(mantle)", NodeType::SkateChain(SkateChainType::Mantle)),
+            ("skate-chain(unknown-l2)", NodeType::SkateChain(SkateChainType::UnknownL2)),
         ];
 
         for (input, expected) in test_cases {
@@ -581,6 +593,18 @@ mod tests {
             ("lagrangezkworker", NodeType::LagrangeZkWorker),
             ("eoracle", NodeType::EOracle),
             ("hyperlane", NodeType::Hyperlane),
+            ("altlayer(altlayermach)", NodeType::Altlayer(AltlayerType::AltlayerMach)),
+            ("altlayer(gmnetworkmach)", NodeType::Altlayer(AltlayerType::GmNetworkMach)),
+            ("altlayermach(xterio)", NodeType::AltlayerMach(MachType::Xterio)),
+            ("altlayermach(dodochain)", NodeType::AltlayerMach(MachType::DodoChain)),
+            ("altlayermach(cyber)", NodeType::AltlayerMach(MachType::Cyber)),
+            (
+                "ungate-infini-route(unknownl2)",
+                NodeType::UngateInfiniRoute(InfiniRouteType::UnknownL2),
+            ),
+            ("skate-chain(base)", NodeType::SkateChain(SkateChainType::Base)),
+            ("skate-chain(mantle)", NodeType::SkateChain(SkateChainType::Mantle)),
+            ("skate-chain(unknownl2)", NodeType::SkateChain(SkateChainType::UnknownL2)),
         ];
 
         for (input, expected) in test_cases {
