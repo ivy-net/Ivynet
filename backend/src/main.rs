@@ -195,12 +195,7 @@ async fn update_node_data_versions(pool: &PgPool) -> Result<(), BackendError> {
                 (NodeType::Altlayer(altlayer_type), _) => match altlayer_type {
                     AltlayerType::Unknown => {
                         let (tag, digest) = find_latest_avs_version(pool, node_type, chain).await?;
-
                         for altlayer_type in AltlayerType::iter() {
-                            println!(
-                                "Setting {:?} to {:?} {:?} on {:?}",
-                                altlayer_type, tag, digest, chain
-                            );
                             db::DbAvsVersionData::set_avs_version(
                                 pool,
                                 &NodeType::Altlayer(altlayer_type),
@@ -217,10 +212,6 @@ async fn update_node_data_versions(pool: &PgPool) -> Result<(), BackendError> {
                     MachType::Unknown => {
                         let (tag, digest) = find_latest_avs_version(pool, node_type, chain).await?;
                         for mach_type in MachType::iter() {
-                            println!(
-                                "Setting {:?} to {:?} {:?} on {:?}",
-                                mach_type, tag, digest, chain
-                            );
                             db::DbAvsVersionData::set_avs_version(
                                 pool,
                                 &NodeType::AltlayerMach(mach_type),
