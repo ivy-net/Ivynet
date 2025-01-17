@@ -5,4 +5,3 @@ CREATE TABLE IF NOT EXISTS client (
     created_at         TIMESTAMP NOT NULL,
     updated_at         TIMESTAMP NOT NULL
 );
-
