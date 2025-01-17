@@ -83,64 +83,71 @@ pub async fn find_latest_avs_version(
 ) -> Result<(String, String), DatabaseError> {
     let avs_name = node_type.to_string();
 
-    let (tag, digest) = match VersionType::from(node_type) {
-        VersionType::FixedVer => {
-            let tag = VersionType::fixed_name(node_type, chain)
-                .expect("FixedVer should have a fixed name like latest")
-                .to_string();
-            let digest = AvsVersionHash::get_digest_for_version(pool, &avs_name, &tag).await?;
-            (tag, digest)
-        }
-        VersionType::SemVer => {
-            // get all tags from db
-            let version_list = AvsVersionHash::get_all_for_type(pool, &avs_name).await?;
+    if matches!(node_type, NodeType::Altlayer(_) | NodeType::AltlayerMach(_)) {
+        let (tag, digest) = match VersionType::from(node_type) {
+            VersionType::FixedVer => {
+                let tag = VersionType::fixed_name(node_type, chain)
+                    .expect("FixedVer should have a fixed name like latest")
+                    .to_string();
+                let digest = AvsVersionHash::get_digest_for_version(pool, &avs_name, &tag).await?;
+                (tag, digest)
+            }
+            VersionType::SemVer => {
+                // get all tags from db
+                let version_list = AvsVersionHash::get_all_for_type(pool, &avs_name).await?;
 
-            // If a version type is semver, we sanitize the list, discarding the other
-            // elements.
-            let version_vec = version_list
-                .iter()
-                .filter_map(|version_data| {
-                    let raw_tag = version_data.version.clone();
-                    let digest = version_data.hash.clone();
-                    // sanitize the tag via regex
-                    let semver_tag = extract_semver(&raw_tag)?;
-                    Some((semver_tag, raw_tag, digest))
-                })
-                .collect::<Vec<_>>();
-
-            // filter prerelease versions
-            let version_vec =
-                version_vec.into_iter().filter(|(v, _, _)| v.pre.is_empty()).collect::<Vec<_>>();
-
-            let latest = version_vec
-                .iter()
-                .max_by_key(|(v, _, _)| v)
-                .ok_or(DatabaseError::NoVersionsFound)?;
-            (latest.1.to_string(), latest.2.to_string())
-        }
-        VersionType::HybridVer => {
-            let tag = VersionType::fixed_name(node_type, chain).unwrap().to_string();
-            let digest = AvsVersionHash::get_digest_for_version(pool, &avs_name, &tag).await?;
-            // Fetch tags and filter out non-semver tags, then sort to find max version of various
-            // potential valid tags.
-            let vaild_semver_tags =
-                AvsVersionHash::get_versions_from_digest(pool, &avs_name, &digest)
-                    .await?
-                    .into_iter()
-                    .filter_map(|version| {
-                        let semver_tag = extract_semver(&version)?;
-                        Some((semver_tag, version))
+                // If a version type is semver, we sanitize the list, discarding the other
+                // elements.
+                let mut version_vec = version_list
+                    .iter()
+                    .filter_map(|version_data| {
+                        let raw_tag = version_data.version.clone();
+                        let digest = version_data.hash.clone();
+                        // sanitize the tag via regex
+                        let semver_tag = extract_semver(&raw_tag)?;
+                        Some((semver_tag, raw_tag, digest))
                     })
                     .collect::<Vec<_>>();
-            let latest = vaild_semver_tags.iter().max_by_key(|(v, _)| v);
-            match latest {
-                Some(latest) => (latest.1.clone(), digest),
-                None => (tag, digest),
+
+                if *chain == Chain::Mainnet {
+                    // filter prerelease versions
+                    version_vec = version_vec
+                        .into_iter()
+                        .filter(|(v, _, _)| v.pre.is_empty())
+                        .collect::<Vec<_>>();
+                }
+
+                let latest = version_vec
+                    .iter()
+                    .max_by_key(|(v, _, _)| v)
+                    .ok_or(DatabaseError::NoVersionsFound)?;
+                (latest.1.to_string(), latest.2.to_string())
             }
-        }
-        VersionType::LocalOnly => ("Local".to_string(), "Local_Builds_Only".to_string()),
-    };
-    Ok((tag, digest))
+            VersionType::HybridVer => {
+                let tag = VersionType::fixed_name(node_type, chain).unwrap().to_string();
+                let digest = AvsVersionHash::get_digest_for_version(pool, &avs_name, &tag).await?;
+                // Fetch tags and filter out non-semver tags, then sort to find max version of
+                // various potential valid tags.
+                let vaild_semver_tags =
+                    AvsVersionHash::get_versions_from_digest(pool, &avs_name, &digest)
+                        .await?
+                        .into_iter()
+                        .filter_map(|version| {
+                            let semver_tag = extract_semver(&version)?;
+                            Some((semver_tag, version))
+                        })
+                        .collect::<Vec<_>>();
+                let latest = vaild_semver_tags.iter().max_by_key(|(v, _)| v);
+                match latest {
+                    Some(latest) => (latest.1.clone(), digest),
+                    None => (tag, digest),
+                }
+            }
+            VersionType::LocalOnly => ("Local".to_string(), "Local_Builds_Only".to_string()),
+        };
+        return Ok((tag, digest));
+    }
+    Ok(("".to_string(), "".to_string()))
 }
 
 pub fn extract_semver(tag: &str) -> Option<semver::Version> {
