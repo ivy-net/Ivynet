@@ -1,4 +1,4 @@
-	-- Add migration script here
+-- Add migration script here
 
 BEGIN;
 

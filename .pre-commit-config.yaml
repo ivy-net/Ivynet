@@ -13,6 +13,7 @@ repos:
         exclude: |
           (?x)^(
           backend/migrations|
+          migrations|
           avss/.+\.json
           )
       - id: mixed-line-ending

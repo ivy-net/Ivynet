@@ -66,6 +66,9 @@ main() {
     log "Checking PostgreSQL readiness..."
     wait_for_postgres || exit 1
 
+    # Going to proper directory
+    cd ..
+
     log "Running database migrations..."
     if ! sqlx migrate run; then
         log "Error: Migration failed"
@@ -80,13 +83,14 @@ main() {
         fi
     fi
 
+    # Going back to backend directory
+    cd backend
+
     log "Adding organization..."
     if ! cargo run -- --add-organization testuser@ivynet.dev:test1234/testorg; then
         log "Error: Failed to add organization"
         exit 1
     fi
-
-
 
     # Fetch node version hashes for valid docker images
     echo "Fetching node version hashes..."
