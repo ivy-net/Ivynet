@@ -1,3 +1,6 @@
+use std::collections::HashMap;
+
+use convert_case::{Case, Casing};
 use dispatch::{TelemetryDispatchError, TelemetryDispatchHandle};
 use docker_event_stream_listener::DockerStreamListener;
 use ivynet_docker::dockerapi::{DockerApi, DockerClient};
@@ -36,12 +39,62 @@ pub enum TelemetryError {
     MetricsListenerError(#[from] metrics_listener::MetricsListenerError),
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, Hash, Eq, PartialEq)]
+#[derive(Clone, Debug, Serialize, Hash, Eq, PartialEq)]
 pub struct ConfiguredAvs {
     pub assigned_name: String,
     pub container_name: String,
     pub avs_type: String,
     pub metric_port: Option<u16>,
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum AvsTypeField {
+    Simple(String),
+    Compound(HashMap<String, String>),
+}
+
+impl<'de> Deserialize<'de> for ConfiguredAvs {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        #[derive(Deserialize)]
+        struct Helper {
+            assigned_name: String,
+            container_name: String,
+            #[serde(default)]
+            metric_port: Option<u16>,
+            avs_type: AvsTypeField,
+        }
+
+        let helper = Helper::deserialize(deserializer)?;
+
+        let avs_type = match helper.avs_type {
+            AvsTypeField::Simple(s) => s,
+            AvsTypeField::Compound(map) => {
+                let (key, value) = map
+                    .into_iter()
+                    .next()
+                    .ok_or_else(|| serde::de::Error::custom("Empty compound type"))?;
+
+                // Convert outer to lowercase (consistent with NodeType)
+                let outer = key.to_case(Case::Kebab);
+
+                // Convert inner directly to kebab case (matching NodeType behavior)
+                let inner = value.to_case(Case::Kebab);
+
+                format!("{}({})", outer, inner)
+            }
+        };
+
+        Ok(ConfiguredAvs {
+            assigned_name: helper.assigned_name,
+            container_name: helper.container_name,
+            avs_type,
+            metric_port: helper.metric_port,
+        })
+    }
 }
 
 /**
@@ -133,4 +186,182 @@ async fn handle_telemetry_errors(mut error_rx: ErrorChannelRx) -> Result<(), Err
         error!("Received telemetry error: {}", error);
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::monitor::MonitorConfig;
+
+    use super::*;
+    use serde_json::json;
+    use toml;
+
+    #[test]
+    fn test_simple_string_format() {
+        let json = json!({
+            "assigned_name": "test",
+            "container_name": "/test",
+            "avs_type": "EigenDA",
+            "metric_port": 9092
+        });
+
+        let avs: ConfiguredAvs = serde_json::from_value(json).unwrap();
+        assert_eq!(avs.assigned_name, "test");
+        assert_eq!(avs.avs_type, "EigenDA");
+        assert_eq!(avs.metric_port, Some(9092));
+    }
+
+    #[test]
+    fn test_compound_table_format() {
+        let json = json!({
+            "assigned_name": "test",
+            "container_name": "/test",
+            "avs_type": {
+                "Altlayer": "AltlayerMach"
+            }
+        });
+
+        let avs: ConfiguredAvs = serde_json::from_value(json).unwrap();
+        assert_eq!(avs.avs_type, "altlayer(altlayer-mach)");
+    }
+
+    #[test]
+    fn test_toml_compatibility() {
+        let toml_str = r#"
+            [[configured_avses]]
+            assigned_name = "eigenda"
+            container_name = "/eigenda-native-node"
+            avs_type = "EigenDA"
+            metric_port = 9092
+
+            [[configured_avses]]
+            assigned_name = "altlayer"
+            container_name = "/mach-avs"
+            [configured_avses.avs_type]
+            Altlayer = "AltlayerMach"
+        "#;
+
+        let config: MonitorConfig = toml::from_str(toml_str).unwrap();
+        assert_eq!(config.configured_avses.len(), 2);
+        assert_eq!(config.configured_avses[0].avs_type, "EigenDA");
+        assert_eq!(config.configured_avses[1].avs_type, "altlayer(altlayer-mach)");
+    }
+
+    #[test]
+    fn test_case_insensitivity() {
+        let json = json!({
+            "assigned_name": "test",
+            "container_name": "/test",
+            "avs_type": {
+                "ALTLAYER": "altlayermach"
+            }
+        });
+
+        let avs: ConfiguredAvs = serde_json::from_value(json).unwrap();
+        assert_eq!(avs.avs_type, "altlayer(altlayermach)");
+    }
+
+    #[test]
+    fn test_optional_metric_port() {
+        let json = json!({
+            "assigned_name": "test",
+            "container_name": "/test",
+            "avs_type": "EigenDA"
+        });
+
+        let avs: ConfiguredAvs = serde_json::from_value(json).unwrap();
+        assert_eq!(avs.metric_port, None);
+    }
+
+    #[test]
+    fn test_error_cases() {
+        // Empty compound type
+        let json = json!({
+            "assigned_name": "test",
+            "container_name": "/test",
+            "avs_type": {}
+        });
+        assert!(serde_json::from_value::<ConfiguredAvs>(json).is_err());
+
+        // Missing required fields
+        let json = json!({
+            "assigned_name": "test",
+            "avs_type": "EigenDA"
+        });
+        assert!(serde_json::from_value::<ConfiguredAvs>(json).is_err());
+    }
+
+    #[test]
+    fn test_mixed_format_config() {
+        let toml_str = r#"
+            [[configured_avses]]
+            assigned_name = "eigenda"
+            container_name = "/eigenda"
+            avs_type = "eigenda(native-node)"
+
+            [[configured_avses]]
+            assigned_name = "altlayer"
+            container_name = "/altlayer"
+            [configured_avses.avs_type]
+            Altlayer = "AltlayerMach"
+
+            [[configured_avses]]
+            assigned_name = "simple"
+            container_name = "/simple"
+            avs_type = "EigenDA"
+        "#;
+
+        let config: MonitorConfig = toml::from_str(toml_str).unwrap();
+        assert_eq!(config.configured_avses.len(), 3);
+        assert_eq!(config.configured_avses[0].avs_type, "eigenda(native-node)");
+        assert_eq!(config.configured_avses[1].avs_type, "altlayer(altlayer-mach)");
+        assert_eq!(config.configured_avses[2].avs_type, "EigenDA");
+    }
+
+    #[test]
+    fn test_unknown_node_type() {
+        let json = json!({
+            "assigned_name": "test",
+            "container_name": "/test",
+            "avs_type": "UnknownType"
+        });
+
+        let avs: ConfiguredAvs = serde_json::from_value(json).unwrap();
+        assert_eq!(avs.avs_type, "UnknownType");
+    }
+
+    #[test]
+    fn test_compound_format_variations() {
+        let variations = vec![
+            (
+                json!({
+                    "Altlayer": "altlayer-mach"
+                }),
+                "altlayer(altlayer-mach)",
+            ),
+            (
+                json!({
+                    "UngateInfiniRoute": "UnknownL2"
+                }),
+                "ungate-infini-route(unknown-l-2)",
+            ),
+            (
+                json!({
+                    "SkateChain": "Base"
+                }),
+                "skate-chain(base)",
+            ),
+        ];
+
+        for (input, expected) in variations {
+            let json = json!({
+                "assigned_name": "test",
+                "container_name": "/test",
+                "avs_type": input
+            });
+
+            let avs: ConfiguredAvs = serde_json::from_value(json).unwrap();
+            assert_eq!(avs.avs_type, expected);
+        }
+    }
 }
