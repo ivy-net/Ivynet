@@ -97,7 +97,7 @@ pub async fn find_latest_avs_version(
 
             // If a version type is semver, we sanitize the list, discarding the other
             // elements.
-            let version_vec = version_list
+            let mut version_vec = version_list
                 .iter()
                 .filter_map(|version_data| {
                     let raw_tag = version_data.version.clone();
@@ -108,9 +108,13 @@ pub async fn find_latest_avs_version(
                 })
                 .collect::<Vec<_>>();
 
-            // filter prerelease versions
-            let version_vec =
-                version_vec.into_iter().filter(|(v, _, _)| v.pre.is_empty()).collect::<Vec<_>>();
+            if *chain == Chain::Mainnet {
+                // filter prerelease versions
+                version_vec = version_vec
+                    .into_iter()
+                    .filter(|(v, _, _)| v.pre.is_empty())
+                    .collect::<Vec<_>>();
+            }
 
             let latest = version_vec
                 .iter()
