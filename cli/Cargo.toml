@@ -40,9 +40,12 @@ futures.workspace = true
 serde.workspace = true
 sysinfo = "0.33"
 uuid.workspace = true
+serde_json.workspace = true
+convert_case.workspace = true
 
 [features]
 docker_tests = []
 
 [dev-dependencies]
 serial_test = "3.1.1"
+toml = "0.8"
