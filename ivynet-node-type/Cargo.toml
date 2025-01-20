@@ -1,6 +1,6 @@
 [package]
 name = "ivynet-node-type"
-version = "0.1.9"
+version = "0.1.10"
 edition = "2021"
 authors = ["Noah Foltz <noah@ivynet.dev>"]
 description = "Library for supported node types"

@@ -36,6 +36,7 @@ pub enum SkateChainType {
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum NodeType {
+    Unknown,
     AvaProtocol,
     EigenDA,
     LagrangeStateCommittee,
@@ -47,7 +48,6 @@ pub enum NodeType {
     Gasp,
     Predicate,
     Hyperlane,
-    Brevis,
     WitnessChain,
     Altlayer(AltlayerType),
     AltlayerMach(MachType),
@@ -62,13 +62,20 @@ pub enum NodeType {
     ChainbaseNetworkV1,
     SkateChain(SkateChainType), /* Othentic-cli - not sure whats going on here either https://github.com/Skate-Org/avs-X-othentic/blob/main/docker-compose.yml */
     ChainbaseNetwork,
-    GoPlusAVS,
+    DittoNetwork,                       //Testnet only
+    Primus,                             //Testnet only  - Unverified registry
+    GoPlusAVS,                          //Built locally
     UngateInfiniRoute(InfiniRouteType), //Built locally
-    PrimevMevCommit,
-    AlignedLayer,
-    Unknown,
-    DittoNetwork,
-    Nuffle,
+    PrimevMevCommit,                    //Built locally
+    AlignedLayer,                       //Built locally
+    Brevis,                             //Built locally
+    Nuffle,                             //Built locally - Testnet only
+    Blockless,                          //Built Locally - Testnet only - Unverified registry
+    AtlasNetwork,                       //Testnet only
+    Zellular,                           //Testnet only
+    Bolt,                               //Testnet only
+    Redstone,                           //Testnet only
+    MishtiNetwork,                      //Testnet only
 }
 
 impl IntoEnumIterator for NodeType {
@@ -77,6 +84,7 @@ impl IntoEnumIterator for NodeType {
     fn iter() -> Self::Iterator {
         vec![
             // Simple variants
+            NodeType::Unknown,
             NodeType::AvaProtocol,
             NodeType::EigenDA,
             NodeType::LagrangeStateCommittee,
@@ -102,7 +110,13 @@ impl IntoEnumIterator for NodeType {
             NodeType::DittoNetwork,
             NodeType::Gasp,
             NodeType::Nuffle,
-            NodeType::Unknown,
+            NodeType::Blockless,
+            NodeType::Primus,
+            NodeType::AtlasNetwork,
+            NodeType::Zellular,
+            NodeType::Bolt,
+            NodeType::Redstone,
+            NodeType::MishtiNetwork,
         ]
         .into_iter()
         .chain(AltlayerType::iter().map(NodeType::Altlayer))
@@ -166,6 +180,10 @@ pub const DITTO_NETWORK_REPO: &str = "dittonetwork/avs-operator"; //Holesky only
 pub const PRIMEV_LOCAL_REPO: &str = "bidder_node_docker-mev-commit-bidderr"; //Local only
 pub const PRIMEV_IMAGE_REPO: &str = "primevprotocol/mev-commit"; //Remote only //I think its out of date?
 pub const OMNI_REPO: &str = "omniops/halovisor"; //Holesky only
+pub const PRIMUS_REPO: &str = "padolabs/pado-network"; //Testnet only - Unverified registry
+pub const ATLAS_NETWORK_REPO: &str = "nodeops/atlas-operator"; //Testnet only
+pub const ZELLULAR_REPO: &str = "zellular/zsequencer"; //Testnet only
+pub const BOLT_REPO: &str = "chainbound/bolt-sidecar"; //Testnet only
 
 /* ------------------------------------ */
 /* ------- NODE CONTAINER NAMES ------- */
@@ -206,11 +224,17 @@ pub const UNGATE_NAME_2: &str = "infini-route-attestators-public-attester";
 pub const UNGATE_NAME_3: &str = "infini-route-attestators-public-attester-webapi";
 pub const NUFFLE_CONTAINER_NAME: &str = "nffl-operator0";
 pub const NUFFLE_CONTAINER_NAME_2: &str = "nffl-operator1";
+pub const PRIMUS_CONTAINER_NAME: &str = "pado-network";
+pub const ATLAS_NETWORK_CONTAINER_NAME: &str = "atlas-avs-eigenlayer-testnet-operator";
+pub const ZELLULAR_CONTAINER_NAME: &str = "zsequencer-node";
+pub const BOLT_CONTAINER_NAME: &str = "bolt-sidecar-holesky";
 
 // We may want to put these methods elsewhere.
 impl NodeType {
     pub fn default_repository(&self) -> Result<&'static str, NodeTypeError> {
         let res = match self {
+            Self::Zellular => ZELLULAR_REPO,
+            Self::Primus => PRIMUS_REPO,
             Self::Gasp => GASP_REPO,
             Self::AvaProtocol => AVAPROTOCOL_REPO,
             Self::EigenDA => EIGENDA_REPO,
@@ -232,13 +256,18 @@ impl NodeType {
             Self::ArpaNetworkNodeClient => ARPA_NETWORK_NODE_CLIENT_REPO,
             Self::ChainbaseNetwork => CHAINBASE_NETWORK_V2_REPO,
             Self::PrimevMevCommit => PRIMEV_LOCAL_REPO,
-            Self::Brevis => return Err(NodeTypeError::NoRepository),
             Self::GoPlusAVS => GOPLUS_REPO,
             Self::DittoNetwork => DITTO_NETWORK_REPO,
+            Self::AtlasNetwork => ATLAS_NETWORK_REPO,
+            Self::Bolt => BOLT_REPO,
+            Self::MishtiNetwork => return Err(NodeTypeError::NoRepository),
+            Self::Brevis => return Err(NodeTypeError::NoRepository),
             Self::Nuffle => return Err(NodeTypeError::NoRepository),
+            Self::Blockless => return Err(NodeTypeError::NoRepository),
             Self::UngateInfiniRoute(_infini_route_type) => return Err(NodeTypeError::NoRepository),
             Self::AlignedLayer => return Err(NodeTypeError::NoRepository),
             Self::SkateChain(_skate_chain_type) => return Err(NodeTypeError::NoRepository),
+            Self::Redstone => return Err(NodeTypeError::NoRepository),
             Self::UnifiAVS => return Err(NodeTypeError::InvalidNodeType),
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
             Self::AethosHolesky => {
@@ -259,6 +288,10 @@ impl NodeType {
     // TODO: Find real default names of nodes marked with `temp_`
     pub fn default_container_name_mainnet(&self) -> Result<&'static str, NodeTypeError> {
         let res = match self {
+            Self::Bolt => BOLT_CONTAINER_NAME,
+            Self::Zellular => ZELLULAR_CONTAINER_NAME,
+            Self::AtlasNetwork => ATLAS_NETWORK_CONTAINER_NAME,
+            Self::Primus => PRIMUS_CONTAINER_NAME,
             Self::Gasp => GASP_CONTAINER_NAME,
             Self::EigenDA => EIGENDA_NATIVE_NODE,
             Self::EOracle => EORACLE_DATA_VALIDATOR,
@@ -294,9 +327,12 @@ impl NodeType {
                     MachType::Unknown => return Err(NodeTypeError::SpecializedError("GenericAltlayer isn't an actual container, its just the image. Assign a specific altlayer type".to_string())),
                 }
             },
+            Self::MishtiNetwork => return Err(NodeTypeError::NoDefaultContainerName),
             Self::Brevis => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::Blockless => return Err(NodeTypeError::NoDefaultContainerName),
             Self::K3LabsAvs => return Err(NodeTypeError::NoDefaultContainerName),
             Self::K3LabsAvsHolesky => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::Redstone => return Err(NodeTypeError::NoDefaultContainerName),
             Self::AlignedLayer => return Err(NodeTypeError::InvalidNodeType),
             Self::SkateChain(_skate_chain_type) => return Err(NodeTypeError::NoDefaultContainerName),
             Self::UnifiAVS => return Err(NodeTypeError::InvalidNodeType),
@@ -329,6 +365,10 @@ impl NodeType {
 
     pub fn default_container_name_holesky(&self) -> Result<&'static str, NodeTypeError> {
         let res = match self {
+            Self::Bolt => BOLT_CONTAINER_NAME,
+            Self::Zellular => ZELLULAR_CONTAINER_NAME,
+            Self::AtlasNetwork => ATLAS_NETWORK_CONTAINER_NAME,
+            Self::Primus => PRIMUS_CONTAINER_NAME,
             Self::Gasp => GASP_CONTAINER_NAME,
             Self::EigenDA => EIGENDA_NATIVE_NODE,
             Self::EOracle => EORACLE_DATA_VALIDATOR,
@@ -365,7 +405,10 @@ impl NodeType {
                     MachType::Unknown => return Err(NodeTypeError::SpecializedError("GenericAltlayer isn't an actual container, its just the image. Assign a specific altlayer type".to_string())),
                 }
             },
+            Self::MishtiNetwork => return Err(NodeTypeError::NoDefaultContainerName),
             Self::Brevis => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::Blockless => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::Redstone => return Err(NodeTypeError::NoDefaultContainerName),
             Self::K3LabsAvs => return Err(NodeTypeError::NoDefaultContainerName),
             Self::K3LabsAvsHolesky => return Err(NodeTypeError::NoDefaultContainerName),
             Self::AlignedLayer => return Err(NodeTypeError::InvalidNodeType),
@@ -409,6 +452,10 @@ impl NodeType {
             NodeType::ChainbaseNetwork,
             NodeType::Gasp,
             NodeType::DittoNetwork,
+            NodeType::Primus,
+            NodeType::AtlasNetwork,
+            NodeType::Zellular,
+            NodeType::Bolt,
             //AWS rate limits currently
             NodeType::Altlayer(AltlayerType::Unknown),
             NodeType::AltlayerMach(MachType::Unknown),
@@ -433,7 +480,7 @@ impl NodeType {
     pub fn from_repo(repo: &str) -> Option<Self> {
         debug!("repo: {}", repo);
         match repo {
-            // tag-agnostic nodes
+            ATLAS_NETWORK_REPO => Some(Self::AtlasNetwork),
             AVAPROTOCOL_REPO => Some(Self::AvaProtocol),
             EIGENDA_REPO => Some(Self::EigenDA),
             LAGRANGE_STATECOMS_REPO => Some(Self::LagrangeStateCommittee),
@@ -459,12 +506,15 @@ impl NodeType {
             PRIMEV_IMAGE_REPO => Some(Self::PrimevMevCommit),
             GOPLUS_REPO => Some(Self::GoPlusAVS),
             OMNI_REPO => Some(Self::Omni),
+            PRIMUS_REPO => Some(Self::Primus),
+            BOLT_REPO => Some(Self::Bolt),
             _ => None,
         }
     }
 
     pub fn from_default_container_name(container_name: &str) -> Option<Self> {
         let node_type = match container_name {
+            ATLAS_NETWORK_CONTAINER_NAME => Self::AtlasNetwork,
             EIGENDA_NATIVE_NODE => Self::EigenDA,
             EORACLE_DATA_VALIDATOR => Self::EOracle,
             MACH_AVS_ETHEREUM => Self::Altlayer(AltlayerType::AltlayerMach),
@@ -495,6 +545,8 @@ impl NodeType {
             NUFFLE_CONTAINER_NAME => Self::Nuffle,
             NUFFLE_CONTAINER_NAME_2 => Self::Nuffle,
             PRIMEV_MEV_COMMIT_CONTAINER_NAME => Self::PrimevMevCommit,
+            PRIMUS_CONTAINER_NAME => Self::Primus,
+            BOLT_CONTAINER_NAME => Self::Bolt,
             _ => return None,
         };
         Some(node_type)
