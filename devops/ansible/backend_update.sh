@@ -7,8 +7,10 @@ remote_user="${remote_user:-wawrzek_ivynet_dev}"
 echo " Remote user is: ${remote_user}"
 
 echo "Find the backend version in Cargo.toml"
-version=$(toml get ../../backend/Cargo.toml package.version |tr -d [\"])
-echo " Version is: ${version}"
+version_backend=$(toml get ../../backend/Cargo.toml package.version |tr -d [\"])
+version_scraper=$(toml get ../../scraper/Cargo.toml package.version |tr -d [\"])
+echo " Backend Version is: ${version_backend}"
+echo " Scraper Version is: ${version_scraper}"
 echo "Activate Ansible (if necessary)"
 [ -f "$HOME/bin/ansible/bin/activate" ] && source $HOME/bin/ansible/bin/activate
 
@@ -19,9 +21,10 @@ Run the playbook
  ansible-playbook \\
   -i gcp.yml \\
   -u ${remote_user} \\
-  -e "ivynet_backend_release=${version}" \\
+  -e "ivynet_backend_release=${version_backend}" \\
+  -e "ivynet_scraper_release=${version_scraper}" \\
   --vault-password-file ~/.vault.txt \\
   backend.yml
 EOF
 
-ansible-playbook -i gcp.yml -u ${remote_user} -e "ivynet_backend_release=${version}" --vault-password-file ~/.vault.txt backend.yml
+ansible-playbook -i gcp.yml -u ${remote_user} -e "ivynet_backend_release=${version_backend} ivynet_scraper_release=${version_scraper}" --vault-password-file ~/.vault.txt backend.yml
