@@ -14,6 +14,11 @@ pub trait ImageRegistry {
 impl ImageRegistry for NodeType {
     fn registry(&self) -> Result<RegistryType, NodeTypeError> {
         let res = match self {
+            Self::Redstone => Othentic,
+            Self::Bolt => Github,
+            Self::Zellular => DockerHub,
+            Self::AtlasNetwork => DockerHub,
+            Self::Primus => DockerHub,
             Self::Gasp => DockerHub,
             Self::DittoNetwork => DockerHub,
             Self::EigenDA => Github,
@@ -40,10 +45,12 @@ impl ImageRegistry for NodeType {
             Self::UngateInfiniRoute(_any) => Othentic,
             Self::GoPlusAVS => Local,
             Self::SkateChain(_any) => Othentic,
+            Self::MishtiNetwork => Othentic,
             Self::Brevis => Local,
             Self::Nuffle => Local,
             Self::AlignedLayer => Local,
             Self::PrimevMevCommit => Local,
+            Self::Blockless => Local,
             Self::UnifiAVS => return Err(NodeTypeError::InvalidNodeType),
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };
