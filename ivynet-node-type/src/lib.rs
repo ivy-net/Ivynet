@@ -75,6 +75,7 @@ pub enum NodeType {
     Zellular,                           //Testnet only
     Bolt,                               //Testnet only
     Redstone,                           //Testnet only
+    MishtiNetwork,                      //Testnet only
 }
 
 impl IntoEnumIterator for NodeType {
@@ -115,6 +116,7 @@ impl IntoEnumIterator for NodeType {
             NodeType::Zellular,
             NodeType::Bolt,
             NodeType::Redstone,
+            NodeType::MishtiNetwork,
         ]
         .into_iter()
         .chain(AltlayerType::iter().map(NodeType::Altlayer))
@@ -258,6 +260,7 @@ impl NodeType {
             Self::DittoNetwork => DITTO_NETWORK_REPO,
             Self::AtlasNetwork => ATLAS_NETWORK_REPO,
             Self::Bolt => BOLT_REPO,
+            Self::MishtiNetwork => return Err(NodeTypeError::NoRepository),
             Self::Brevis => return Err(NodeTypeError::NoRepository),
             Self::Nuffle => return Err(NodeTypeError::NoRepository),
             Self::Blockless => return Err(NodeTypeError::NoRepository),
@@ -324,6 +327,7 @@ impl NodeType {
                     MachType::Unknown => return Err(NodeTypeError::SpecializedError("GenericAltlayer isn't an actual container, its just the image. Assign a specific altlayer type".to_string())),
                 }
             },
+            Self::MishtiNetwork => return Err(NodeTypeError::NoDefaultContainerName),
             Self::Brevis => return Err(NodeTypeError::NoDefaultContainerName),
             Self::Blockless => return Err(NodeTypeError::NoDefaultContainerName),
             Self::K3LabsAvs => return Err(NodeTypeError::NoDefaultContainerName),
@@ -401,6 +405,7 @@ impl NodeType {
                     MachType::Unknown => return Err(NodeTypeError::SpecializedError("GenericAltlayer isn't an actual container, its just the image. Assign a specific altlayer type".to_string())),
                 }
             },
+            Self::MishtiNetwork => return Err(NodeTypeError::NoDefaultContainerName),
             Self::Brevis => return Err(NodeTypeError::NoDefaultContainerName),
             Self::Blockless => return Err(NodeTypeError::NoDefaultContainerName),
             Self::Redstone => return Err(NodeTypeError::NoDefaultContainerName),

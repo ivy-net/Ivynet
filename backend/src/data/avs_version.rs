@@ -59,6 +59,7 @@ impl From<&NodeType> for VersionType {
             NodeType::UnifiAVS => VersionType::LocalOnly,
             NodeType::Blockless => VersionType::LocalOnly,
             NodeType::Redstone => VersionType::LocalOnly,
+            NodeType::MishtiNetwork => VersionType::LocalOnly,
         }
     }
 }

@@ -40,6 +40,7 @@ impl ImageRegistry for NodeType {
             Self::UngateInfiniRoute(_any) => Othentic,
             Self::GoPlusAVS => Local,
             Self::SkateChain(_any) => Othentic,
+            Self::MishtiNetwork => Othentic,
             Self::Brevis => Local,
             Self::Nuffle => Local,
             Self::AlignedLayer => Local,
