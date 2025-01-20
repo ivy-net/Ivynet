@@ -4,16 +4,20 @@ use bollard::secret::{EventMessage, EventMessageTypeEnum};
 use ivynet_docker::dockerapi::{DockerApi, DockerClient, DockerStreamError};
 use ivynet_grpc::{
     backend::backend_client::BackendClient,
-    messages::{NodeTypeQueries, NodeTypeQuery},
+    messages::{NodeData, NodeTypeQueries, NodeTypeQuery, SignedNodeData},
     tonic::{transport::Channel, Request, Response},
 };
+use ivynet_signer::{sign_utils::sign_node_data, IvyWallet};
 use tokio::time::sleep;
 use tokio_stream::StreamExt;
 use tracing::{debug, error};
 use uuid::Uuid;
 
 use super::{
-    logs_listener::LogsListenerManager, metrics_listener::MetricsListenerHandle, ConfiguredAvs,
+    dispatch::{TelemetryDispatchError, TelemetryDispatchHandle},
+    logs_listener::LogsListenerManager,
+    metrics_listener::MetricsListenerHandle,
+    ConfiguredAvs,
 };
 
 #[derive(Debug)]
@@ -21,6 +25,9 @@ pub struct DockerStreamListener<D: DockerApi> {
     pub docker: D,
     pub metrics_listener_handle: MetricsListenerHandle,
     pub logs_listener_handle: LogsListenerManager,
+    pub dispatch: TelemetryDispatchHandle,
+    pub machine_id: Uuid,
+    pub identity_wallet: IvyWallet,
     pub backend: BackendClient<Channel>,
 }
 
@@ -28,17 +35,26 @@ impl DockerStreamListener<DockerClient> {
     pub fn new(
         metrics_listener: MetricsListenerHandle,
         logs_listener: LogsListenerManager,
+        dispatch: TelemetryDispatchHandle,
+        identity_wallet: IvyWallet,
+        machine_id: Uuid,
         backend: BackendClient<Channel>,
     ) -> Self {
         Self {
             docker: DockerClient::default(),
             metrics_listener_handle: metrics_listener,
             logs_listener_handle: logs_listener,
+            dispatch,
+            machine_id,
+            identity_wallet,
             backend,
         }
     }
 
-    pub async fn run(mut self, known_nodes: Vec<ConfiguredAvs>) -> Result<(), DockerStreamError> {
+    pub async fn run(
+        mut self,
+        known_nodes: Vec<ConfiguredAvs>,
+    ) -> Result<(), DockerStreamListenerError> {
         let mut docker_stream = self.docker.stream_events().await;
         while let Some(Ok(event)) = docker_stream.next().await {
             debug!("Dockerstream Event | {:?}", event);
@@ -63,7 +79,7 @@ impl DockerStreamListener<DockerClient> {
         &mut self,
         event: EventMessage,
         avses: &[ConfiguredAvs],
-    ) -> Result<(), DockerStreamError> {
+    ) -> Result<(), DockerStreamListenerError> {
         let actor = event.actor.ok_or(DockerStreamError::MissingActor)?;
         let attributes = actor.attributes.ok_or(DockerStreamError::MissingAttributes)?;
         let inc_container_name =
@@ -109,7 +125,7 @@ impl DockerStreamListener<DockerClient> {
                 .unwrap_or("unknown".to_string());
 
                 Some(ConfiguredAvs {
-                    assigned_name: format!("{}-{}", inc_container_name, Uuid::new_v4()),
+                    assigned_name: inc_container_name.to_string(),
                     container_name: inc_container_name.clone(),
                     avs_type: found_type,
                     metric_port: metrics_port,
@@ -119,6 +135,23 @@ impl DockerStreamListener<DockerClient> {
 
         if let Some(configured) = configured {
             debug!("Found container: {}", inc_container_name);
+
+            let node_data = NodeData {
+                name: configured.container_name.clone(),
+                node_type: Some(configured.avs_type.clone()),
+                manifest: Some(inc_container_digest),
+                metrics_alive: Some(configured.metric_port.is_some()),
+                node_running: Some(true),
+            };
+
+            let node_data_signature = sign_node_data(&node_data, &self.identity_wallet)?;
+            let signed_node_data = SignedNodeData {
+                machine_id: self.machine_id.into(),
+                signature: node_data_signature.to_vec(),
+                node_data: Some(node_data),
+            };
+
+            self.dispatch.send_node_data(signed_node_data).await?;
 
             if let Err(e) = self.metrics_listener_handle.add_node(&configured).await {
                 error!("Error adding node: {:?}", e);
@@ -148,6 +181,14 @@ impl DockerStreamListener<DockerClient> {
     }
 }
 
-pub trait ToConfiguredAvs {
-    fn to_configured_avs(&self) -> Option<ConfiguredAvs>;
+#[derive(Debug, thiserror::Error)]
+pub enum DockerStreamListenerError {
+    #[error("Dockerstream error: {0}")]
+    DockerStreamError(#[from] DockerStreamError),
+
+    #[error("Ivynet signing error: {0}")]
+    SigningError(#[from] ivynet_signer::sign_utils::IvySigningError),
+
+    #[error("Telemetry dispatch error: {0}")]
+    DispatchError(#[from] TelemetryDispatchError),
 }
