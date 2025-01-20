@@ -52,7 +52,7 @@ ivynet_backend_postgres_user_pass: !vault |
           39383261303437376234343536313563306236626565316463386533396236353737
 
 # Backend release
-ivynet_backend_release: "0.4.1"
+ivynet_backend_release: "0.4.32"
 
 # If sendgrid has to be setup
 ivynet_backend_sendgrid: true
