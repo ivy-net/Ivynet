@@ -187,8 +187,18 @@ impl<D: DockerApi> MetricsListener<D> {
                 }
             }
             MetricsListenerAction::RemoveNode(avs) => {
+                let avs_num = self.avses.len();
                 self.avs_cache.remove(&avs);
                 self.avses.retain(|x| x.container_name != avs.container_name);
+                if avs_num != self.avses.len() {
+                    info!("Detected container stop: {}", avs.container_name);
+                } else {
+                    // Return early if no nodes were dropped due to an earlier removal.
+                    // This will frequently happen on a docker down action, as the event
+                    // stream sends 'stop', 'kill', and 'die' events in quick succession.
+                    // Functionality reproduced below as well.
+                    return Ok(());
+                }
             }
             MetricsListenerAction::RemoveNodeByName(container_name) => {
                 let avs_num = self.avses.len();
@@ -196,6 +206,8 @@ impl<D: DockerApi> MetricsListener<D> {
                 self.avses.retain(|x| x.container_name != container_name);
                 if avs_num != self.avses.len() {
                     info!("Detected container stop: {}", container_name);
+                } else {
+                    return Ok(());
                 }
             }
         }
