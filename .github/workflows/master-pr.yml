@@ -46,7 +46,6 @@ jobs:
       - name: Pack migrations
         run: |
           DEST=/tmp/ivy-master
-          cd backend
           tar -czf migrations.tar.gz migrations
           cp migrations.tar.gz ${DEST}
 
