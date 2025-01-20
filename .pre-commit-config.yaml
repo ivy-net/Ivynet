@@ -6,7 +6,7 @@ repos:
     rev: v4.6.0
     hooks:
       - id: no-commit-to-branch
-        args: [--branch, dev, --branch, master]
+        args: [--pattern, release-*, --branch, master]
       - id: trailing-whitespace
         exclude: specification/
       - id: end-of-file-fixer
