@@ -14,6 +14,11 @@ pub trait ImageRegistry {
 impl ImageRegistry for NodeType {
     fn registry(&self) -> Result<RegistryType, NodeTypeError> {
         let res = match self {
+            Self::Redstone => Othentic,
+            Self::Bolt => Github,
+            Self::Zellular => DockerHub,
+            Self::AtlasNetwork => DockerHub,
+            Self::Primus => DockerHub,
             Self::Gasp => DockerHub,
             Self::DittoNetwork => DockerHub,
             Self::EigenDA => Github,
@@ -40,10 +45,12 @@ impl ImageRegistry for NodeType {
             Self::UngateInfiniRoute(_any) => Othentic,
             Self::GoPlusAVS => Local,
             Self::SkateChain(_any) => Othentic,
+            Self::MishtiNetwork => Othentic,
             Self::Brevis => Local,
             Self::Nuffle => Local,
             Self::AlignedLayer => Local,
             Self::PrimevMevCommit => Local,
+            Self::Blockless => Local,
             Self::UnifiAVS => return Err(NodeTypeError::InvalidNodeType),
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };
@@ -77,8 +84,12 @@ impl DockerRegistry {
     }
 
     pub async fn from_host_and_repo(host: &str, repo: &str) -> Result<Self, RegistryError> {
-        let registry_type = RegistryType::from_host(host)
-            .ok_or_else(|| RegistryError::RetryExhausted("Unknown registry host".to_string()))?;
+        let registry_type = RegistryType::from_host(host).ok_or_else(|| {
+            RegistryError::RetryExhausted(format!(
+                "Unknown registry host '{}' repo '{}'",
+                host, repo
+            ))
+        })?;
 
         let client = docker_registry::v2::Client::configure()
             .registry(host)
