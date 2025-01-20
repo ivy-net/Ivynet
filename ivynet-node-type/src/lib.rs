@@ -528,34 +528,12 @@ impl NodeType {
 
     /// Get a vec of all known node types. Excludes `NodeType::Unknown`.
     pub fn all_known_with_repo() -> Vec<Self> {
-        vec![
-            NodeType::AvaProtocol,
-            NodeType::EigenDA,
-            NodeType::LagrangeStateCommittee,
-            NodeType::LagrangeZkWorker,
-            NodeType::LagrangeZKProver,
-            NodeType::K3LabsAvs,
-            NodeType::K3LabsAvsHolesky,
-            NodeType::EOracle,
-            NodeType::Predicate,
-            NodeType::Hyperlane,
-            NodeType::WitnessChain,
-            NodeType::Omni,
-            NodeType::Automata,
-            NodeType::OpenLayerMainnet,
-            NodeType::OpenLayerHolesky,
-            NodeType::ArpaNetworkNodeClient,
-            NodeType::ChainbaseNetwork,
-            NodeType::Gasp,
-            NodeType::DittoNetwork,
-            NodeType::Primus,
-            NodeType::AtlasNetwork,
-            NodeType::Zellular,
-            NodeType::Bolt,
-            //AWS rate limits currently
-            NodeType::Altlayer(AltlayerType::Unknown),
-            NodeType::AltlayerMach(MachType::Unknown),
-        ]
+        Self::list_all_variants()
+            .into_iter()
+            .filter(|node_type| node_type != &Self::Unknown)
+            .filter(Self::has_valid_repository)
+            .filter(|node_type| node_type.flatten_layered_type())
+            .collect()
     }
 
     pub fn all_default_repositories() -> Vec<&'static str> {
@@ -657,6 +635,37 @@ impl NodeType {
 
     pub fn list_all_variants() -> Vec<Self> {
         Self::iter().collect()
+    }
+
+    fn has_valid_repository(&self) -> bool {
+        self.default_repository().ok().filter(|repo| repo.split('/').count() == 2).is_some()
+    }
+
+    fn flatten_layered_type(&self) -> bool {
+        match self {
+            NodeType::Altlayer(inner_type) => match inner_type {
+                AltlayerType::AltlayerMach => false,
+                AltlayerType::GmNetworkMach => false,
+                AltlayerType::Unknown => true,
+            },
+            NodeType::AltlayerMach(inner_type) => match inner_type {
+                MachType::Xterio => false,
+                MachType::DodoChain => false,
+                MachType::Cyber => false,
+                MachType::Unknown => true,
+            },
+            NodeType::SkateChain(inner_type) => match inner_type {
+                SkateChainType::Base => false,
+                SkateChainType::Mantle => false,
+                SkateChainType::UnknownL2 => true,
+            },
+            NodeType::UngateInfiniRoute(inner_type) => match inner_type {
+                InfiniRouteType::UnknownL2 => true,
+                InfiniRouteType::Base => false,
+                InfiniRouteType::Polygon => false,
+            },
+            _ => true,
+        }
     }
 }
 

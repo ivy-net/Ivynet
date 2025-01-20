@@ -73,8 +73,8 @@ impl fmt::Display for RegistryType {
             Self::GoogleCloud => "gcr.io",
             Self::AWS => "public.ecr.aws",
             Self::Chainbase => "repository.chainbase.com",
-            Self::Othentic => "Othentic has no registry",
-            Self::Local => "Local build only",
+            Self::Othentic => "othentic",
+            Self::Local => "local",
         };
         write!(f, "{}", registry)
     }

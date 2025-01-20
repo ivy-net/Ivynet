@@ -84,8 +84,12 @@ impl DockerRegistry {
     }
 
     pub async fn from_host_and_repo(host: &str, repo: &str) -> Result<Self, RegistryError> {
-        let registry_type = RegistryType::from_host(host)
-            .ok_or_else(|| RegistryError::RetryExhausted("Unknown registry host".to_string()))?;
+        let registry_type = RegistryType::from_host(host).ok_or_else(|| {
+            RegistryError::RetryExhausted(format!(
+                "Unknown registry host '{}' repo '{}'",
+                host, repo
+            ))
+        })?;
 
         let client = docker_registry::v2::Client::configure()
             .registry(host)
