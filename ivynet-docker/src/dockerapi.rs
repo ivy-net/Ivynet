@@ -9,7 +9,6 @@ use bollard::{
     Docker,
 };
 use futures::future::join_all;
-use ivynet_node_type::NodeType;
 use tokio_stream::Stream;
 use tracing::debug;
 
@@ -89,7 +88,7 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
             .collect()
     }
 
-    async fn find_container_by_name(&self, name: &str) -> Option<Container> {
+    async fn find_container_by_name(&self, container_name: &str) -> Option<Container> {
         let containers = self.list_containers().await;
         containers
             .into_iter()
@@ -97,29 +96,27 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
                 container
                     .names
                     .as_ref()
-                    .map(|names| names.iter().any(|n| n.contains(name)))
+                    .map(|names| names.iter().any(|n| n.contains(container_name)))
                     .unwrap_or_default()
             })
             .map(Container::new)
     }
 
-    /// Find an active container for a given node type
-    async fn find_node_container(&self, node_type: &NodeType) -> Option<Container> {
-        let image_name = node_type.default_repository().unwrap();
-        self.inspect(image_name).await
-    }
-
-    /// Find all active containers for a slice of node types
-    async fn find_node_containers(&self, node_types: &[NodeType]) -> Vec<Container> {
-        let image_names: Vec<&str> =
-            node_types.iter().map(|node_type| node_type.default_repository().unwrap()).collect();
-        self.inspect_many(&image_names).await
-    }
-
-    /// Find all active containers for all available node types
-    async fn find_all_node_containers(&self) -> Vec<Container> {
-        let node_types = NodeType::all_known_with_repo();
-        self.find_node_containers(&node_types).await
+    async fn find_containers_by_name(&self, container_names: &[&str]) -> Vec<Container> {
+        let containers = self.list_containers().await;
+        containers
+            .into_iter()
+            .filter(|container| {
+                container
+                    .names
+                    .as_ref()
+                    .map(|names| {
+                        names.iter().any(|n| container_names.iter().any(|cn| n.contains(cn)))
+                    })
+                    .unwrap_or_default()
+            })
+            .map(Container::new)
+            .collect()
     }
 
     async fn stream_logs_latest(
@@ -133,28 +130,29 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
     /// Stream logs for a given node type since a given timestamp
     async fn stream_logs_for_node(
         &self,
-        node_type: &NodeType,
+        node_type: &str,
         since: i64,
     ) -> Option<Pin<Box<dyn Stream<Item = Result<LogOutput, Error>> + Send>>> {
-        let container = self.find_node_container(node_type).await?;
+        let container = self.find_container_by_name(node_type).await?;
         Some(self.stream_logs(container, since).await)
     }
 
     /// Stream logs for a given node type since current time
     async fn stream_logs_for_node_latest(
         &self,
-        node_type: &NodeType,
+        node_type: &str,
     ) -> Option<Pin<Box<dyn Stream<Item = Result<LogOutput, Error>> + Send>>> {
-        let container = self.find_node_container(node_type).await?;
+        let container = self.find_container_by_name(node_type).await?;
         Some(self.stream_logs_latest(container).await)
     }
 
     /// Stream logs for all nodes since a given timestamp. Returns a merged stream.
-    async fn stream_logs_for_all_nodes(
+    async fn stream_logs_for_nodes(
         &self,
+        nodes: &[&str],
         since: i64,
     ) -> Pin<Box<dyn Stream<Item = Result<LogOutput, Error>> + Send + Unpin>> {
-        let containers = self.find_all_node_containers().await;
+        let containers = self.find_containers_by_name(nodes).await;
         let stream_futures =
             containers.into_iter().map(|container| self.stream_logs(container, since));
         let streams = join_all(stream_futures).await;
@@ -164,8 +162,9 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
     /// Stream logs for all nodes since current time. Returns a merged stream.
     async fn stream_logs_for_all_nodes_latest(
         &self,
+        nodes: &[&str],
     ) -> Pin<Box<dyn Stream<Item = Result<LogOutput, Error>> + Send + Unpin>> {
-        let containers = self.find_all_node_containers().await;
+        let containers = self.find_containers_by_name(nodes).await;
         let stream_futures =
             containers.into_iter().map(|container| self.stream_logs_latest(container));
         let streams = join_all(stream_futures).await;

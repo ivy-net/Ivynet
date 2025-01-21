@@ -2906,7 +2906,6 @@ dependencies = [
  "bollard",
  "chrono",
  "futures",
- "ivynet-node-type",
  "mockall",
  "regex",
  "reqwest 0.12.12",
