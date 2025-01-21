@@ -254,7 +254,7 @@ mod tests {
 
     use db::{data::avs_version::find_latest_avs_version, DbAvsVersionData};
     use ethers::types::Chain;
-    use ivynet_node_type::{AltlayerType, MachType, NodeType};
+    use ivynet_node_type::NodeType;
     use sqlx::PgPool;
 
     use crate::update_node_data_versions;
@@ -269,16 +269,16 @@ mod tests {
         for t in &node_types {
             types_hashmap.insert(
                 t,
-                DbAvsVersionData::get_avs_version_with_chain(&pool, t, chain).await.unwrap(),
+                DbAvsVersionData::get_avs_version_with_chain(pool, t, chain).await.unwrap(),
             );
         }
 
-        update_node_data_versions(&node_types, &pool, &chain).await.unwrap();
+        update_node_data_versions(&node_types, pool, chain).await.unwrap();
 
         let tags = {
             let mut map = HashMap::new();
             for t in node_types.iter() {
-                let (tag, digest) = find_latest_avs_version(&pool, t, &chain).await.unwrap();
+                let (tag, digest) = find_latest_avs_version(pool, t, chain).await.unwrap();
                 map.insert(t, (tag, digest));
             }
             map
@@ -288,7 +288,7 @@ mod tests {
         for t in node_types.iter() {
             new_versions_map.insert(
                 t,
-                DbAvsVersionData::get_avs_version_with_chain(&pool, t, &chain).await.unwrap(),
+                DbAvsVersionData::get_avs_version_with_chain(pool, t, chain).await.unwrap(),
             );
         }
 
