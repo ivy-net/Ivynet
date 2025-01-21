@@ -749,6 +749,7 @@ dependencies = [
  "ivynet-docker",
  "ivynet-grpc",
  "ivynet-io",
+ "ivynet-node-type",
  "ivynet-signer",
  "linemux",
  "once_cell",

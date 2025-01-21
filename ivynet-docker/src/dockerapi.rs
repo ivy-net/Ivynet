@@ -119,6 +119,25 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
             .collect()
     }
 
+    async fn find_container_by_name_or_image(
+        &self,
+        name: &str,
+        image: &Option<String>,
+    ) -> Option<Container> {
+        let containers = self.list_containers().await;
+        containers
+            .into_iter()
+            .find(|container| {
+                container
+                    .names
+                    .as_ref()
+                    .map(|names| names.iter().any(|n| n.contains(name)))
+                    .unwrap_or_default()
+                    || container.image.as_ref() == image.as_ref()
+            })
+            .map(Container::new)
+    }
+
     async fn stream_logs_latest(
         &self,
         container: Container,

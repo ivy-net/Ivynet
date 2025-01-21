@@ -57,13 +57,20 @@ enum Commands {
         subcmd: key::KeyCommands,
     },
     #[command(name = "monitor", about = "Start node monitor daemon")]
-    Monitor,
+    Monitor {
+        /// To keep containers split even if they are using the same image
+        #[arg(short, long, default_value_t = false)]
+        no_merge: bool,
+    },
 
     #[command(name = "scan", about = "Scanning for existing AVS instances running on the machine")]
     Scan {
         /// For forcing manual container addition even when all other AVS's are already configured
         #[arg(short, long, default_value_t = false)]
         force: bool,
+        /// To keep containers split even if they are using the same image
+        #[arg(short, long, default_value_t = false)]
+        no_merge: bool,
     },
 
     #[command(
@@ -113,8 +120,8 @@ async fn main() -> Result<(), AnyError> {
         }
         Commands::Key { subcmd } => key::parse_key_subcommands(subcmd).await?,
         // Commands::Node { subcmd } => avs::parse_avs_subcommands(subcmd).await?,
-        Commands::Monitor => monitor::start_monitor(config).await?,
-        Commands::Scan { force } => monitor::scan(force, &config).await?,
+        Commands::Monitor { no_merge } => monitor::start_monitor(!no_merge, config).await?,
+        Commands::Scan { force, no_merge } => monitor::scan(force, no_merge, &config).await?,
         Commands::RegisterNode => init::register_node().await?,
         Commands::RenameNode { old_name, new_name } => {
             monitor::rename_node(&config, old_name, new_name).await?;

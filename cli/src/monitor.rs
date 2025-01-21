@@ -9,6 +9,7 @@ use ivynet_grpc::{
     tonic::{transport::Channel, Request},
 };
 use ivynet_io::{read_toml, write_toml, IoError};
+use ivynet_node_type::NodeType;
 use ivynet_signer::sign_utils::sign_name_change;
 use serde::{Deserialize, Serialize};
 use std::{
@@ -135,7 +136,10 @@ pub async fn rename_node(
     Ok(())
 }
 
-pub async fn start_monitor(mut config: IvyConfig) -> Result<(), anyhow::Error> {
+pub async fn start_monitor(
+    merge_containers: bool,
+    mut config: IvyConfig,
+) -> Result<(), anyhow::Error> {
     if config.identity_wallet().is_err() {
         set_backend_connection(&mut config).await?;
     }
@@ -167,13 +171,20 @@ pub async fn start_monitor(mut config: IvyConfig) -> Result<(), anyhow::Error> {
     );
 
     info!("Starting monitor listener...");
-    listen(backend_client, machine_id, identity_wallet, &monitor_config.configured_avses).await?;
+    listen(
+        backend_client,
+        machine_id,
+        identity_wallet,
+        &monitor_config.configured_avses,
+        merge_containers,
+    )
+    .await?;
     Ok(())
 }
 
 /// Scan function to set up configured AVS cache file. Derives `NodeType` from the name on the
 /// metrics port and node name from the container name list.
-pub async fn scan(force: bool, config: &IvyConfig) -> Result<(), anyhow::Error> {
+pub async fn scan(force: bool, no_merge: bool, config: &IvyConfig) -> Result<(), anyhow::Error> {
     let backend_url = config.get_server_url()?;
     let backend_ca = config.get_server_ca();
     let backend_ca = if backend_ca.is_empty() { None } else { Some(backend_ca) };
@@ -190,9 +201,13 @@ pub async fn scan(force: bool, config: &IvyConfig) -> Result<(), anyhow::Error> 
     let potential_docker_nodes = docker_client.potential_nodes().await;
 
     info!("POTENTIAL: {:#?}", potential_docker_nodes);
-    let (_existing_nodes, new_configured_nodes, leftover_potential_nodes) =
-        find_new_avses(&mut backend, &monitor_config.configured_avses, &potential_docker_nodes)
-            .await?;
+    let (existing_nodes, new_configured_nodes, leftover_potential_nodes) = find_new_avses(
+        &mut backend,
+        &monitor_config.configured_avses,
+        &potential_docker_nodes,
+        no_merge,
+    )
+    .await?;
 
     if !force && new_configured_nodes.is_empty() {
         println!("No potential new AVSes found");
@@ -201,12 +216,11 @@ pub async fn scan(force: bool, config: &IvyConfig) -> Result<(), anyhow::Error> 
     let selected_avses = select_avses(&new_configured_nodes, &leftover_potential_nodes)?;
     if selected_avses.is_empty() {
         println!("No AVSes selected");
-        return Ok(());
+    } else {
+        info!("New setup stored with {} AVSes configured", monitor_config.configured_avses.len());
     }
 
-    update_monitor_config(&mut monitor_config, selected_avses)?;
-    info!("New setup stored with {} AVSes configured", monitor_config.configured_avses.len());
-
+    update_monitor_config(&mut monitor_config, existing_nodes, selected_avses)?;
     Ok(())
 }
 
@@ -220,6 +234,7 @@ async fn find_new_avses(
     backend: &mut BackendClient<Channel>,
     configured_avses: &[ConfiguredAvs],
     potential_avses: &[PotentialAvs],
+    no_merge: bool,
 ) -> Result<(Vec<ConfiguredAvs>, Vec<ConfiguredAvs>, Vec<ConfiguredAvs>), anyhow::Error> {
     let mut configured_nodes = configured_avses.to_vec();
     let mut new_configured_nodes = Vec::new();
@@ -250,16 +265,23 @@ async fn find_new_avses(
         let new_avs = ConfiguredAvs {
             assigned_name: avs.image_name.clone(),
             container_name: avs.container_name.clone(),
+            image_name: Some(avs.image_name.clone()),
             avs_type: node_type,
             metric_port,
         };
 
         // update the existing configured AVS if it exists, otherwise push to new vec
-        if let Some(node) =
-            configured_nodes.iter_mut().find(|a| a.container_name == new_avs.container_name)
-        {
+        if let Some(node) = configured_nodes.iter_mut().find(|a| {
+            a.container_name == new_avs.container_name ||
+                (!no_merge &&
+                    NodeType::from(a.avs_type.as_str()) ==
+                        NodeType::from(new_avs.avs_type.as_str()))
+        }) {
             node.avs_type = new_avs.avs_type;
             node.metric_port = new_avs.metric_port;
+            if new_avs.image_name.is_some() {
+                node.image_name = new_avs.image_name;
+            }
         } else if new_avs.avs_type != "unknown" {
             new_configured_nodes.push(new_avs);
         } else {
@@ -290,10 +312,6 @@ fn select_avses(
 
     if !leftover_potential_avses.is_empty() && should_add_manual_avses()? {
         selected_avses.extend(select_manual_avses(leftover_potential_avses)?);
-    }
-
-    if selected_avses.is_empty() {
-        return Err(anyhow!("No AVSes were selected"));
     }
 
     Ok(selected_avses)
@@ -345,6 +363,7 @@ fn select_manual_avses(
         .map(|idx| ConfiguredAvs {
             assigned_name: String::new(),
             container_name: potential_avses[idx].container_name.to_string(),
+            image_name: potential_avses[idx].image_name.clone(),
             avs_type: "unknown".to_string(),
             metric_port: None,
         })
@@ -353,6 +372,7 @@ fn select_manual_avses(
 
 fn update_monitor_config(
     config: &mut MonitorConfig,
+    existing_nodes: Vec<ConfiguredAvs>,
     mut new_avses: Vec<ConfiguredAvs>,
 ) -> Result<(), anyhow::Error> {
     let mut seen_names: HashSet<String> =
@@ -376,6 +396,7 @@ fn update_monitor_config(
         }
     }
 
+    config.configured_avses = existing_nodes;
     config.configured_avses.extend(new_avses);
     config.store().map_err(|e| anyhow!("Failed to store config: {}", e))?;
 

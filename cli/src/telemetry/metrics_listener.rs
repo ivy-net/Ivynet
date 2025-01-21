@@ -235,7 +235,10 @@ pub async fn report_metrics(
     debug!("System Docker images: {:#?}", images);
 
     for avs in avses {
-        let version_hash = match docker.find_container_by_name(&avs.container_name).await {
+        let version_hash = match docker
+            .find_container_by_name_or_image(&avs.container_name, &avs.image_name)
+            .await
+        {
             None => {
                 warn!(
                     "Container {} is configured but does not appear to be running. Skipping telemetry.",

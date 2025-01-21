@@ -43,6 +43,7 @@ pub enum TelemetryError {
 pub struct ConfiguredAvs {
     pub assigned_name: String,
     pub container_name: String,
+    pub image_name: Option<String>,
     pub avs_type: String,
     pub metric_port: Option<u16>,
 }
@@ -63,6 +64,7 @@ impl<'de> Deserialize<'de> for ConfiguredAvs {
         struct Helper {
             assigned_name: String,
             container_name: String,
+            image_name: Option<String>,
             #[serde(default)]
             metric_port: Option<u16>,
             avs_type: AvsTypeField,
@@ -91,6 +93,7 @@ impl<'de> Deserialize<'de> for ConfiguredAvs {
         Ok(ConfiguredAvs {
             assigned_name: helper.assigned_name,
             container_name: helper.container_name,
+            image_name: helper.image_name,
             avs_type,
             metric_port: helper.metric_port,
         })
@@ -135,6 +138,7 @@ pub async fn listen(
     machine_id: Uuid,
     identity_wallet: IvyWallet,
     avses: &[ConfiguredAvs],
+    merge_containers: bool,
 ) -> Result<(), Error> {
     let docker = DockerClient::default();
 
@@ -178,6 +182,7 @@ pub async fn listen(
         identity_wallet,
         machine_id,
         backend_client,
+        merge_containers,
     );
     tokio::spawn(docker_listener.run(avses.to_vec()));
 

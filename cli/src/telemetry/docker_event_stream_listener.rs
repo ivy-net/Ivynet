@@ -7,10 +7,11 @@ use ivynet_grpc::{
     messages::{NodeData, NodeTypeQueries, NodeTypeQuery, SignedNodeData},
     tonic::{transport::Channel, Request, Response},
 };
+use ivynet_node_type::NodeType;
 use ivynet_signer::{sign_utils::sign_node_data, IvyWallet};
 use tokio::time::sleep;
 use tokio_stream::StreamExt;
-use tracing::{debug, error};
+use tracing::{debug, error, info};
 use uuid::Uuid;
 
 use super::{
@@ -29,6 +30,7 @@ pub struct DockerStreamListener<D: DockerApi> {
     pub machine_id: Uuid,
     pub identity_wallet: IvyWallet,
     pub backend: BackendClient<Channel>,
+    pub merging_containers: bool,
 }
 
 impl DockerStreamListener<DockerClient> {
@@ -39,6 +41,7 @@ impl DockerStreamListener<DockerClient> {
         identity_wallet: IvyWallet,
         machine_id: Uuid,
         backend: BackendClient<Channel>,
+        merging_containers: bool,
     ) -> Self {
         Self {
             docker: DockerClient::default(),
@@ -48,6 +51,7 @@ impl DockerStreamListener<DockerClient> {
             machine_id,
             identity_wallet,
             backend,
+            merging_containers,
         }
     }
 
@@ -80,6 +84,7 @@ impl DockerStreamListener<DockerClient> {
         event: EventMessage,
         avses: &[ConfiguredAvs],
     ) -> Result<(), DockerStreamListenerError> {
+        info!("Starting new docker");
         let actor = event.actor.ok_or(DockerStreamError::MissingActor)?;
         let attributes = actor.attributes.ok_or(DockerStreamError::MissingAttributes)?;
         let inc_container_name =
@@ -104,7 +109,35 @@ impl DockerStreamListener<DockerClient> {
             }
         };
 
-        let configured = match avses.iter().find(|avs| avs.container_name == *inc_container_name) {
+        let guessed_type: Option<NodeType> = if !self.merging_containers {
+            self.backend
+                .node_type_queries(Request::new(NodeTypeQueries {
+                    node_types: vec![NodeTypeQuery {
+                        image_name: inc_image_name.clone(),
+                        image_digest: inc_container_digest.clone(),
+                        container_name: inc_container_name.clone(),
+                    }],
+                }))
+                .await
+                .map_err(|_| DockerStreamListenerError::BackendConnectionError)?
+                .into_inner()
+                .node_types
+                .first()
+                .map(|nt| nt.node_type.as_str().into())
+        } else {
+            None
+        };
+        // We treat an avs with the same image as the same avs configuration, so whenever an avs is
+        // found using the same image, we are updating the configured avs that is already on the
+        // list
+        let configured = match avses.iter().find(|avs| {
+            if let Some(node_type) = guessed_type {
+                avs.container_name == *inc_container_name ||
+                    NodeType::from(avs.avs_type.as_str()) == node_type
+            } else {
+                avs.container_name == *inc_container_name
+            }
+        }) {
             Some(avs) => Some(avs.clone()),
             None => {
                 let node_type_query = NodeTypeQuery {
@@ -127,6 +160,7 @@ impl DockerStreamListener<DockerClient> {
                 Some(ConfiguredAvs {
                     assigned_name: inc_container_name.to_string(),
                     container_name: inc_container_name.clone(),
+                    image_name: Some(inc_image_name.clone()),
                     avs_type: found_type,
                     metric_port: metrics_port,
                 })
@@ -191,4 +225,7 @@ pub enum DockerStreamListenerError {
 
     #[error("Telemetry dispatch error: {0}")]
     DispatchError(#[from] TelemetryDispatchError),
+
+    #[error("Backend connection error")]
+    BackendConnectionError,
 }

@@ -19,7 +19,7 @@ ivynet-docker.workspace = true
 ivynet-grpc.workspace = true
 ivynet-io.workspace = true
 ivynet-signer.workspace = true
-
+ivynet-node-type.workspace = true
 bollard.workspace = true
 clap = { version = "4.5.7", features = ["derive", "env"] }
 dirs.workspace = true
