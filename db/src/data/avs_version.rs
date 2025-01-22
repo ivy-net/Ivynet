@@ -19,6 +19,7 @@ pub enum VersionType {
 impl From<&NodeType> for VersionType {
     fn from(node_type: &NodeType) -> Self {
         match node_type {
+            NodeType::Tanssi => VersionType::FixedVer,
             NodeType::Bolt(_) => VersionType::SemVer,
             NodeType::Zellular => VersionType::FixedVer,
             NodeType::AtlasNetwork => VersionType::FixedVer,
@@ -33,7 +34,7 @@ impl From<&NodeType> for VersionType {
             NodeType::K3LabsAvs => VersionType::FixedVer,
             NodeType::K3LabsAvsHolesky => VersionType::FixedVer,
             NodeType::Predicate => VersionType::SemVer,
-            NodeType::Hyperlane => VersionType::SemVer,
+            NodeType::Hyperlane(_) => VersionType::SemVer,
             NodeType::WitnessChain => VersionType::SemVer,
             NodeType::Unknown => VersionType::SemVer,
             NodeType::LagrangeStateCommittee => VersionType::SemVer,
@@ -58,6 +59,7 @@ impl From<&NodeType> for VersionType {
             NodeType::Blockless => VersionType::LocalOnly,
             NodeType::Redstone => VersionType::LocalOnly,
             NodeType::MishtiNetwork => VersionType::LocalOnly,
+            NodeType::Cycle => VersionType::LocalOnly,
         }
     }
 }
@@ -78,6 +80,7 @@ impl VersionType {
             (NodeType::ArpaNetworkNodeClient, _) => Some("latest"),
             (NodeType::AtlasNetwork, _) => Some("testnet-eigenlayer"),
             (NodeType::Zellular, _) => Some("latest"),
+            (NodeType::Tanssi, _) => Some("latest"),
             _ => None,
         }
     }

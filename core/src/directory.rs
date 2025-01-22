@@ -17,7 +17,7 @@ const ALL_MAINNET_AVSES: [(NodeType, H160); 29] = [
     (NodeType::LagrangeZkWorker, h160!(0x22CAc0e6A1465F043428e8AeF737b3cb09D0eEDa)),
     (NodeType::LagrangeStateCommittee, h160!(0x35F4f28A8d3Ff20EEd10e087e8F96Ea2641E6AA2)),
     (NodeType::EOracle, h160!(0x23221c5bB90C7c57ecc1E75513e2E4257673F0ef)),
-    (NodeType::Hyperlane, h160!(0xe8E59c6C8B56F2c178f63BCFC4ce5e5e2359c8fc)),
+    (NodeType::Hyperlane(ActiveSet::Eigenlayer), h160!(0xe8E59c6C8B56F2c178f63BCFC4ce5e5e2359c8fc)),
     (NodeType::K3LabsAvs, h160!(0x83742C346E9f305dcA94e20915aB49A483d33f3E)),
     (NodeType::WitnessChain, h160!(0xD25c2c5802198CB8541987b73A8db4c9BCaE5cC7)),
     (NodeType::AvaProtocol, h160!(0x18343Aa10e3D2F3A861e5649627324aEAD987Adf)),
@@ -71,7 +71,7 @@ const ALL_HOLESKY_AVSES: [(NodeType, H160); 34] = [
     (NodeType::LagrangeStateCommittee, h160!(0x18A74E66cc90F0B1744Da27E72Df338cEa0A542b)),
     (NodeType::LagrangeZkWorker, h160!(0xf98d5de1014110c65c51b85ea55f73863215cc10)),
     (NodeType::EOracle, h160!(0x80FE337623Bc849F4b7379f4AB28aF2b470bEa98)),
-    (NodeType::Hyperlane, h160!(0xc76E477437065093D353b7d56c81ff54D167B0Ab)),
+    (NodeType::Hyperlane(ActiveSet::Eigenlayer), h160!(0xc76E477437065093D353b7d56c81ff54D167B0Ab)),
     // K3 doesn't seem to have a testnet
     (NodeType::WitnessChain, h160!(0xa987EC494b13b21A8a124F8Ac03c9F530648C87D)),
     (NodeType::AvaProtocol, h160!(0xEA3E82F9Ae371A6a372A6DCffB1a9bD17e0608eF)),

@@ -14,6 +14,7 @@ pub trait ImageRegistry {
 impl ImageRegistry for NodeType {
     fn registry(&self) -> Result<RegistryType, NodeTypeError> {
         let res = match self {
+            Self::Tanssi => DockerHub,
             Self::Redstone => Othentic,
             Self::Bolt(_) => Github,
             Self::Zellular => DockerHub,
@@ -30,7 +31,7 @@ impl ImageRegistry for NodeType {
             Self::K3LabsAvs => DockerHub,
             Self::K3LabsAvsHolesky => DockerHub,
             Self::Predicate => Github,
-            Self::Hyperlane => GoogleCloud,
+            Self::Hyperlane(_) => GoogleCloud,
             Self::WitnessChain => DockerHub,
             Self::Altlayer(_altlayer_type) => AWS,
             Self::AltlayerMach(_altlayer_mach_type) => AWS,
@@ -51,6 +52,7 @@ impl ImageRegistry for NodeType {
             Self::AlignedLayer => Local,
             Self::PrimevMevCommit(_) => Local,
             Self::Blockless => Local,
+            Self::Cycle => Local,
             Self::UnifiAVS => return Err(NodeTypeError::InvalidNodeType),
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };
@@ -170,6 +172,8 @@ pub enum DockerRegistryError {
 #[cfg(test)]
 mod docker_registry_tests {
 
+    use ivynet_node_type::ActiveSet;
+
     use super::*;
 
     #[test]
@@ -274,7 +278,7 @@ mod docker_registry_tests {
 
     #[tokio::test]
     async fn test_get_hyperlane_digests() -> Result<(), Box<dyn std::error::Error>> {
-        let node_type = NodeType::Hyperlane;
+        let node_type = NodeType::Hyperlane(ActiveSet::Unknown);
         let client = DockerRegistry::from_node_type(&node_type).await?;
         let tags = client.get_tags().await?;
         assert!(!tags.is_empty());

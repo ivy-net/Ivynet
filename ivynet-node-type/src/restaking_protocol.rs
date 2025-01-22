@@ -24,7 +24,6 @@ impl RestakingProtocol for NodeType {
             NodeType::EOracle => RestakingProtocolType::Eigenlayer,
             NodeType::Gasp => RestakingProtocolType::Eigenlayer,
             NodeType::Predicate => RestakingProtocolType::Eigenlayer,
-            NodeType::Hyperlane => RestakingProtocolType::Eigenlayer,
             NodeType::WitnessChain => RestakingProtocolType::Eigenlayer,
             NodeType::Omni => RestakingProtocolType::Eigenlayer,
             NodeType::Automata => RestakingProtocolType::Eigenlayer,
@@ -47,7 +46,8 @@ impl RestakingProtocol for NodeType {
             NodeType::Redstone => RestakingProtocolType::Eigenlayer,
             NodeType::MishtiNetwork => RestakingProtocolType::Eigenlayer,
             //Symbiotic
-
+            NodeType::Cycle => RestakingProtocolType::Symbiotic,
+            NodeType::Tanssi => RestakingProtocolType::Symbiotic,
             //Complicated
             NodeType::Altlayer(inner) => match inner {
                 AltlayerType::Unknown => return None,
@@ -73,6 +73,11 @@ impl RestakingProtocol for NodeType {
                 ActiveSet::Symbiotic => RestakingProtocolType::Symbiotic,
             },
             NodeType::Bolt(inner) => match inner {
+                ActiveSet::Unknown => return None,
+                ActiveSet::Eigenlayer => RestakingProtocolType::Eigenlayer,
+                ActiveSet::Symbiotic => RestakingProtocolType::Symbiotic,
+            },
+            NodeType::Hyperlane(inner) => match inner {
                 ActiveSet::Unknown => return None,
                 ActiveSet::Eigenlayer => RestakingProtocolType::Eigenlayer,
                 ActiveSet::Symbiotic => RestakingProtocolType::Symbiotic,
