@@ -238,16 +238,6 @@ async fn update_node_data_versions(
     Ok(())
 }
 
-async fn update_node_data_version(
-    pool: &PgPool,
-    node_type: NodeType,
-    chain: Chain,
-) -> Result<(), BackendError> {
-    let (tag, digest) = find_latest_avs_version(pool, &node_type, &chain).await?;
-    db::DbAvsVersionData::set_avs_version(pool, &node_type, &chain, &tag, &digest).await?;
-    Ok(())
-}
-
 #[cfg(test)]
 mod tests {
     use std::collections::HashMap;
