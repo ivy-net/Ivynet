@@ -1,4 +1,4 @@
-use super::NodeType;
+use super::{ActiveSet, AltlayerType, InfiniRouteType, MachType, NodeType, SkateChainType};
 
 pub enum RestakingProtocolType {
     Eigenlayer,
@@ -6,12 +6,12 @@ pub enum RestakingProtocolType {
 }
 
 pub trait RestakingProtocol {
-    fn restaking_protocol(&self) -> RestakingProtocolType;
+    fn restaking_protocol(&self) -> Option<RestakingProtocolType>;
 }
 
 impl RestakingProtocol for NodeType {
-    fn restaking_protocol(&self) -> RestakingProtocolType {
-        match self {
+    fn restaking_protocol(&self) -> Option<RestakingProtocolType> {
+        let protocol = match self {
             //Eigenlayer
             NodeType::Unknown => RestakingProtocolType::Eigenlayer,
             NodeType::AvaProtocol => RestakingProtocolType::Eigenlayer,
@@ -26,8 +26,6 @@ impl RestakingProtocol for NodeType {
             NodeType::Predicate => RestakingProtocolType::Eigenlayer,
             NodeType::Hyperlane => RestakingProtocolType::Eigenlayer,
             NodeType::WitnessChain => RestakingProtocolType::Eigenlayer,
-            NodeType::Altlayer(_) => RestakingProtocolType::Eigenlayer,
-            NodeType::AltlayerMach(_) => RestakingProtocolType::Eigenlayer,
             NodeType::Omni => RestakingProtocolType::Eigenlayer,
             NodeType::Automata => RestakingProtocolType::Eigenlayer,
             NodeType::OpenLayerMainnet => RestakingProtocolType::Eigenlayer,
@@ -36,23 +34,51 @@ impl RestakingProtocol for NodeType {
             NodeType::ArpaNetworkNodeClient => RestakingProtocolType::Eigenlayer,
             NodeType::UnifiAVS => RestakingProtocolType::Eigenlayer,
             NodeType::ChainbaseNetworkV1 => RestakingProtocolType::Eigenlayer,
-            NodeType::SkateChain(_) => RestakingProtocolType::Eigenlayer,
             NodeType::ChainbaseNetwork => RestakingProtocolType::Eigenlayer,
             NodeType::DittoNetwork => RestakingProtocolType::Eigenlayer,
             NodeType::Primus => RestakingProtocolType::Eigenlayer,
             NodeType::GoPlusAVS => RestakingProtocolType::Eigenlayer,
-            NodeType::UngateInfiniRoute(_) => RestakingProtocolType::Eigenlayer,
-            NodeType::PrimevMevCommit => RestakingProtocolType::Eigenlayer,
             NodeType::AlignedLayer => RestakingProtocolType::Eigenlayer,
             NodeType::Brevis => RestakingProtocolType::Eigenlayer,
             NodeType::Nuffle => RestakingProtocolType::Eigenlayer,
             NodeType::Blockless => RestakingProtocolType::Eigenlayer,
             NodeType::AtlasNetwork => RestakingProtocolType::Eigenlayer,
             NodeType::Zellular => RestakingProtocolType::Eigenlayer,
-            NodeType::Bolt => RestakingProtocolType::Eigenlayer,
             NodeType::Redstone => RestakingProtocolType::Eigenlayer,
             NodeType::MishtiNetwork => RestakingProtocolType::Eigenlayer,
             //Symbiotic
-        }
+
+            //Complicated
+            NodeType::Altlayer(inner) => match inner {
+                AltlayerType::Unknown => return None,
+                _ => RestakingProtocolType::Eigenlayer,
+            },
+            NodeType::AltlayerMach(inner) => match inner {
+                MachType::Unknown => return None,
+                _ => RestakingProtocolType::Eigenlayer,
+            },
+
+            NodeType::SkateChain(inner) => match inner {
+                SkateChainType::UnknownL2 => return None,
+                _ => RestakingProtocolType::Eigenlayer,
+            },
+            NodeType::UngateInfiniRoute(inner) => match inner {
+                InfiniRouteType::UnknownL2 => return None,
+                _ => RestakingProtocolType::Eigenlayer,
+            },
+
+            NodeType::PrimevMevCommit(inner) => match inner {
+                ActiveSet::Unknown => return None,
+                ActiveSet::Eigenlayer => RestakingProtocolType::Eigenlayer,
+                ActiveSet::Symbiotic => RestakingProtocolType::Symbiotic,
+            },
+            NodeType::Bolt(inner) => match inner {
+                ActiveSet::Unknown => return None,
+                ActiveSet::Eigenlayer => RestakingProtocolType::Eigenlayer,
+                ActiveSet::Symbiotic => RestakingProtocolType::Symbiotic,
+            },
+        };
+
+        Some(protocol)
     }
 }

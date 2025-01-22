@@ -3,7 +3,9 @@ use std::{collections::HashMap, sync::LazyLock};
 use ethers::types::{Chain, H160};
 use ivynet_macros::h160;
 
-use ivynet_node_type::{AltlayerType, InfiniRouteType, MachType, NodeType, SkateChainType};
+use ivynet_node_type::{
+    ActiveSet, AltlayerType, InfiniRouteType, MachType, NodeType, SkateChainType,
+};
 
 const ALL_DIRECTORIES: [(Chain, H160); 2] = [
     (Chain::Mainnet, h160!(0x135DDa560e946695d6f155dACaFC6f1F25C1F5AF)),
@@ -56,7 +58,10 @@ const ALL_MAINNET_AVSES: [(NodeType, H160); 29] = [
         NodeType::UngateInfiniRoute(InfiniRouteType::Polygon),
         h160!(0xf75bc9850f4c44e682537c477c4bb08f71f695da),
     ),
-    (NodeType::PrimevMevCommit, h160!(0xbc77233855e3274e1903771675eb71e602d9dc2e)),
+    (
+        NodeType::PrimevMevCommit(ActiveSet::Eigenlayer),
+        h160!(0xbc77233855e3274e1903771675eb71e602d9dc2e),
+    ),
     (NodeType::AlignedLayer, h160!(0xef2a435e5ee44b2041100ef8cbc8ae035166606c)),
     (NodeType::Gasp, h160!(0x9A986296d45C327dAa5998519AE1B3757F1e6Ba1)),
 ];
@@ -95,7 +100,10 @@ const ALL_HOLESKY_AVSES: [(NodeType, H160); 34] = [
         NodeType::UngateInfiniRoute(InfiniRouteType::Base),
         h160!(0x1b8ad2ab0fa5585804ce9e9e2c6097f0328bb05c),
     ),
-    (NodeType::PrimevMevCommit, h160!(0xededb8ed37a43fd399108a44646b85b780d85dd4)),
+    (
+        NodeType::PrimevMevCommit(ActiveSet::Eigenlayer),
+        h160!(0xededb8ed37a43fd399108a44646b85b780d85dd4),
+    ),
     (NodeType::AlignedLayer, h160!(0x58f280bebe9b34c9939c3c39e0890c81f163b623)),
     (NodeType::Gasp, h160!(0xb4dd45a08BFA6fBC19F7cD624cdfef87CE95e7AC)),
     (NodeType::DittoNetwork, h160!(0x5FD0026a449eeA51Bd1471E4ee8df8607aaECC24)),
@@ -104,7 +112,7 @@ const ALL_HOLESKY_AVSES: [(NodeType, H160); 34] = [
     (NodeType::Primus, h160!(0x3DD26B1e365FBED12B384093FD13e7Ed93fa9979)),
     (NodeType::AtlasNetwork, h160!(0x590dDF9A1a475bF46F10627A49051036d5286a61)),
     (NodeType::Zellular, h160!(0x73746A9a52dD3e925dCE3f4E0f2D69F95755c424)),
-    (NodeType::Bolt, h160!(0xa632a3e652110Bb2901D5cE390685E6a9838Ca04)),
+    (NodeType::Bolt(ActiveSet::Eigenlayer), h160!(0xa632a3e652110Bb2901D5cE390685E6a9838Ca04)),
     (NodeType::Redstone, h160!(0xBA7A7CaEE3b1ed84a98dBc20Ea20fe21FE7D557e)),
     (NodeType::MishtiNetwork, h160!(0xe87ff321F5721a9285Ec651d01c0C0B857430c2c)),
 ];

@@ -7,33 +7,45 @@ mod restaking_protocol;
 
 const EIGENDA_METRICS_ID: &str = "da-node";
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter, Default)]
 pub enum MachType {
     Xterio,
     DodoChain,
     Cyber,
+    #[default]
     Unknown,
 }
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter, Default)]
 pub enum AltlayerType {
     AltlayerMach,
     GmNetworkMach,
+    #[default]
     Unknown,
 }
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter, Default)]
 pub enum InfiniRouteType {
     Base,
     Polygon,
+    #[default]
     UnknownL2,
 }
 
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter, Default)]
 pub enum SkateChainType {
     Base,
     Mantle,
+    #[default]
     UnknownL2,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, EnumIter, Default)]
+pub enum ActiveSet {
+    Eigenlayer,
+    Symbiotic,
+    #[default]
+    Unknown,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
@@ -57,7 +69,7 @@ pub enum NodeType {
     Automata,
     OpenLayerMainnet,
     OpenLayerHolesky,
-    AethosHolesky, // Predicate was Aethos - still live in holesky?
+    AethosHolesky, // Deprecated - now Predicate
     ArpaNetworkNodeClient,
     // OpacityNetwork, //Doesn't really exist yet
     UnifiAVS, // I think this is on-chain only - https://docs.puffer.fi/unifi-avs-protocol
@@ -68,16 +80,16 @@ pub enum NodeType {
     Primus,                             //Testnet only  - Unverified registry
     GoPlusAVS,                          //Built locally
     UngateInfiniRoute(InfiniRouteType), //Built locally
-    PrimevMevCommit,                    //Built locally
     AlignedLayer,                       //Built locally
     Brevis,                             //Built locally
     Nuffle,                             //Built locally - Testnet only
     Blockless,                          //Built Locally - Testnet only - Unverified registry
     AtlasNetwork,                       //Testnet only
     Zellular,                           //Testnet only
-    Bolt,                               //Testnet only
     Redstone,                           //Testnet only
     MishtiNetwork,                      //Testnet only
+    PrimevMevCommit(ActiveSet),         //Built locally
+    Bolt(ActiveSet),                    //Testnet only
 }
 
 impl IntoEnumIterator for NodeType {
@@ -106,7 +118,6 @@ impl IntoEnumIterator for NodeType {
             NodeType::UnifiAVS,
             NodeType::ChainbaseNetwork,
             NodeType::GoPlusAVS,
-            NodeType::PrimevMevCommit,
             NodeType::AlignedLayer,
             NodeType::DittoNetwork,
             NodeType::Gasp,
@@ -116,11 +127,12 @@ impl IntoEnumIterator for NodeType {
             NodeType::Primus,
             NodeType::AtlasNetwork,
             NodeType::Zellular,
-            NodeType::Bolt,
             NodeType::Redstone,
             NodeType::MishtiNetwork,
         ]
         .into_iter()
+        .chain(ActiveSet::iter().map(NodeType::PrimevMevCommit))
+        .chain(ActiveSet::iter().map(NodeType::Bolt))
         .chain(AltlayerType::iter().map(NodeType::Altlayer))
         .chain(MachType::iter().map(NodeType::AltlayerMach))
         .chain(SkateChainType::iter().map(NodeType::SkateChain))
@@ -345,26 +357,26 @@ impl NodeType {
             Self::Predicate => PREDICATE_REPO,
             Self::Hyperlane => HYPERLANE_REPO,
             Self::WitnessChain => WITNESSCHAIN_REPO,
-            Self::Altlayer(_altlayer_type) => ALTLAYER_GENERIC_REPO,
-            Self::AltlayerMach(_altlayer_mach_type) => ALTLAYER_MACH_REPO,
+            Self::Altlayer(_) => ALTLAYER_GENERIC_REPO,
+            Self::AltlayerMach(_) => ALTLAYER_MACH_REPO,
             Self::Omni => OMNI_REPO,
             Self::Automata => AUTOMATA_REPO,
             Self::OpenLayerMainnet => OPEN_LAYER_MAINNET_REPO,
             Self::OpenLayerHolesky => OPEN_LAYER_HOLESKY_REPO,
             Self::ArpaNetworkNodeClient => ARPA_NETWORK_NODE_CLIENT_REPO,
             Self::ChainbaseNetwork => CHAINBASE_NETWORK_V2_REPO,
-            Self::PrimevMevCommit => PRIMEV_LOCAL_REPO,
+            Self::PrimevMevCommit(_) => PRIMEV_LOCAL_REPO,
             Self::GoPlusAVS => GOPLUS_REPO,
             Self::DittoNetwork => DITTO_NETWORK_REPO,
             Self::AtlasNetwork => ATLAS_NETWORK_REPO,
-            Self::Bolt => BOLT_REPO,
+            Self::Bolt(_) => BOLT_REPO,
             Self::MishtiNetwork => return Err(NodeTypeError::NoRepository),
             Self::Brevis => return Err(NodeTypeError::NoRepository),
             Self::Nuffle => return Err(NodeTypeError::NoRepository),
             Self::Blockless => return Err(NodeTypeError::NoRepository),
-            Self::UngateInfiniRoute(_infini_route_type) => return Err(NodeTypeError::NoRepository),
+            Self::UngateInfiniRoute(_) => return Err(NodeTypeError::NoRepository),
             Self::AlignedLayer => return Err(NodeTypeError::NoRepository),
-            Self::SkateChain(_skate_chain_type) => return Err(NodeTypeError::NoRepository),
+            Self::SkateChain(_) => return Err(NodeTypeError::NoRepository),
             Self::Redstone => return Err(NodeTypeError::NoRepository),
             Self::UnifiAVS => return Err(NodeTypeError::InvalidNodeType),
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
@@ -386,7 +398,7 @@ impl NodeType {
     // TODO: Find real default names of nodes marked with `temp_`
     pub fn default_container_name_mainnet(&self) -> Result<&'static str, NodeTypeError> {
         let res = match self {
-            Self::Bolt => BOLT_CONTAINER_NAME,
+            Self::Bolt(_) => BOLT_CONTAINER_NAME,
             Self::Zellular => ZELLULAR_CONTAINER_NAME,
             Self::AtlasNetwork => ATLAS_NETWORK_CONTAINER_NAME,
             Self::Primus => PRIMUS_CONTAINER_NAME,
@@ -407,9 +419,9 @@ impl NodeType {
             Self::Hyperlane => HYPERLANE_AGENT_CONTAINER_NAME,
             Self::WitnessChain => WITNESSCHAIN_CONTAINER_NAME,
             Self::GoPlusAVS => GOPLUS_CONTAINER_NAME,
-            Self::UngateInfiniRoute(_infini_route_type) => UNGATE_MAINNET,
+            Self::UngateInfiniRoute(_) => UNGATE_MAINNET,
             Self::DittoNetwork => DITTO_NETWORK_CONTAINER_NAME,
-            Self::PrimevMevCommit => PRIMEV_MEV_COMMIT_CONTAINER_NAME,
+            Self::PrimevMevCommit(_) => PRIMEV_MEV_COMMIT_CONTAINER_NAME,
             Self::Altlayer(altlayer_type) => {
                 match altlayer_type {
                     AltlayerType::AltlayerMach => MACH_AVS_ETHEREUM,
@@ -463,7 +475,7 @@ impl NodeType {
 
     pub fn default_container_name_holesky(&self) -> Result<&'static str, NodeTypeError> {
         let res = match self {
-            Self::Bolt => BOLT_CONTAINER_NAME,
+            Self::Bolt(_) => BOLT_CONTAINER_NAME,
             Self::Zellular => ZELLULAR_CONTAINER_NAME,
             Self::AtlasNetwork => ATLAS_NETWORK_CONTAINER_NAME,
             Self::Primus => PRIMUS_CONTAINER_NAME,
@@ -478,7 +490,7 @@ impl NodeType {
             Self::LagrangeStateCommittee => LAGRANGE_STATE_COMMITTEE_CONTAINER_NAME,
             Self::LagrangeZkWorker => LAGRANGE_WORKER_CONTAINER_NAME,
             Self::Nuffle => NUFFLE_CONTAINER_NAME,
-            Self::PrimevMevCommit => PRIMEV_MEV_COMMIT_CONTAINER_NAME,
+            Self::PrimevMevCommit(_) => PRIMEV_MEV_COMMIT_CONTAINER_NAME,
             Self::LagrangeZKProver => {
                 return Err(NodeTypeError::SpecializedError(
                     "TODO".to_string(),
@@ -578,12 +590,12 @@ impl NodeType {
             GASP_REPO => Some(Self::Gasp),
             DITTO_NETWORK_REPO => Some(Self::DittoNetwork),
             NUFFLE_REPO => Some(Self::Nuffle),
-            PRIMEV_LOCAL_REPO => Some(Self::PrimevMevCommit),
-            PRIMEV_IMAGE_REPO => Some(Self::PrimevMevCommit),
+            PRIMEV_LOCAL_REPO => Some(Self::PrimevMevCommit(ActiveSet::Unknown)),
+            PRIMEV_IMAGE_REPO => Some(Self::PrimevMevCommit(ActiveSet::Unknown)),
             GOPLUS_REPO => Some(Self::GoPlusAVS),
             OMNI_REPO => Some(Self::Omni),
             PRIMUS_REPO => Some(Self::Primus),
-            BOLT_REPO => Some(Self::Bolt),
+            BOLT_REPO => Some(Self::Bolt(ActiveSet::Unknown)),
             _ => None,
         }
     }
@@ -620,9 +632,9 @@ impl NodeType {
             DITTO_NETWORK_CONTAINER_NAME => Self::DittoNetwork,
             NUFFLE_CONTAINER_NAME => Self::Nuffle,
             NUFFLE_CONTAINER_NAME_2 => Self::Nuffle,
-            PRIMEV_MEV_COMMIT_CONTAINER_NAME => Self::PrimevMevCommit,
+            PRIMEV_MEV_COMMIT_CONTAINER_NAME => Self::PrimevMevCommit(ActiveSet::Unknown),
             PRIMUS_CONTAINER_NAME => Self::Primus,
-            BOLT_CONTAINER_NAME => Self::Bolt,
+            BOLT_CONTAINER_NAME => Self::Bolt(ActiveSet::Unknown),
             _ => return None,
         };
         Some(node_type)
