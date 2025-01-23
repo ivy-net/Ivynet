@@ -22,11 +22,6 @@
   ansible.builtin.import_tasks:
     file: get_ivynet.yml
 
-- name: Download eigenlayer resources (cli, point files etc.)
-  ansible.builtin.import_tasks:
-    file: get_eigen.yml
-  when: ivynet_client_eigenda
-
 - name: Upload MOTD
   ansible.builtin.template:
     src: motd.txt.j2
@@ -82,3 +77,9 @@
   tags:
     - ivynet_client
     - ivynet
+
+- name: Download eigenlayer resources (cli, point files etc.)
+  ansible.builtin.import_tasks:
+    file: get_eigen.yml
+  when:
+    - ivynet_client_eigenda
