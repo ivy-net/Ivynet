@@ -19,7 +19,8 @@ pub enum VersionType {
 impl From<&NodeType> for VersionType {
     fn from(node_type: &NodeType) -> Self {
         match node_type {
-            NodeType::Bolt => VersionType::SemVer,
+            NodeType::Tanssi => VersionType::FixedVer,
+            NodeType::Bolt(_) => VersionType::SemVer,
             NodeType::Zellular => VersionType::FixedVer,
             NodeType::AtlasNetwork => VersionType::FixedVer,
             NodeType::Primus => VersionType::SemVer,
@@ -33,31 +34,32 @@ impl From<&NodeType> for VersionType {
             NodeType::K3LabsAvs => VersionType::FixedVer,
             NodeType::K3LabsAvsHolesky => VersionType::FixedVer,
             NodeType::Predicate => VersionType::SemVer,
-            NodeType::Hyperlane => VersionType::SemVer,
+            NodeType::Hyperlane(_) => VersionType::SemVer,
             NodeType::WitnessChain => VersionType::SemVer,
             NodeType::Unknown => VersionType::SemVer,
             NodeType::LagrangeStateCommittee => VersionType::SemVer,
-            NodeType::Altlayer(_any) => VersionType::SemVer,
-            NodeType::AltlayerMach(_any) => VersionType::SemVer,
+            NodeType::Altlayer(_) => VersionType::SemVer,
+            NodeType::AltlayerMach(_) => VersionType::SemVer,
             NodeType::Omni => VersionType::FixedVer,
             NodeType::Automata => VersionType::SemVer,
             NodeType::OpenLayerHolesky => VersionType::FixedVer,
             NodeType::OpenLayerMainnet => VersionType::FixedVer,
             NodeType::ChainbaseNetworkV1 => VersionType::SemVer,
             NodeType::ChainbaseNetwork => VersionType::SemVer,
-            NodeType::UngateInfiniRoute(_any) => VersionType::FixedVer,
+            NodeType::UngateInfiniRoute(_) => VersionType::FixedVer,
             NodeType::AethosHolesky => VersionType::SemVer,
             NodeType::ArpaNetworkNodeClient => VersionType::FixedVer,
             NodeType::Brevis => VersionType::LocalOnly,
-            NodeType::PrimevMevCommit => VersionType::LocalOnly,
+            NodeType::PrimevMevCommit(_) => VersionType::LocalOnly,
             NodeType::Nuffle => VersionType::LocalOnly,
             NodeType::AlignedLayer => VersionType::LocalOnly,
             NodeType::GoPlusAVS => VersionType::LocalOnly,
-            NodeType::SkateChain(_any) => VersionType::LocalOnly,
+            NodeType::SkateChain(_) => VersionType::LocalOnly,
             NodeType::UnifiAVS => VersionType::LocalOnly,
             NodeType::Blockless => VersionType::LocalOnly,
             NodeType::Redstone => VersionType::LocalOnly,
             NodeType::MishtiNetwork => VersionType::LocalOnly,
+            NodeType::Cycle => VersionType::LocalOnly,
         }
     }
 }
@@ -78,6 +80,7 @@ impl VersionType {
             (NodeType::ArpaNetworkNodeClient, _) => Some("latest"),
             (NodeType::AtlasNetwork, _) => Some("testnet-eigenlayer"),
             (NodeType::Zellular, _) => Some("latest"),
+            (NodeType::Tanssi, _) => Some("latest"),
             _ => None,
         }
     }
