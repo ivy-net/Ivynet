@@ -55,7 +55,7 @@
       Accept: "application/octet-stream"
     follow_redirects: all
     status_code: [200, 304]
-    dest: "{{ ivynet_client_install_path }}/bin/ivynet"
+    dest: "{{ ivynet_client_path_install }}/bin/ivynet"
     owner: root
     group: root
     mode: "0755"
@@ -66,7 +66,7 @@
 
 - name: Save ivynet release info
   ansible.builtin.copy:
-    dest: "{{ ivynet_client_install_path }}/ivynet.tag"
+    dest: "{{ ivynet_client_path_install }}/ivynet.tag"
     content: |
       {{ ivynet_client_release.tag }}
     owner: root

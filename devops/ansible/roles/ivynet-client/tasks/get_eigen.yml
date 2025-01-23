@@ -32,7 +32,7 @@
 - name: Copy eigenlayer-cli to final destination
   ansible.builtin.copy:
     src: /tmp/eigenlayer
-    dest: "{{ ivynet_client_install_path }}/bin"
+    dest: "{{ ivynet_client_path_install }}/bin"
     owner: root
     group: root
     mode: "0755"
@@ -45,7 +45,7 @@
 - name: Get EigenDA Operator Setup
   ansible.builtin.git:  # noqa: latest[git]
     repo: https://github.com/Layr-Labs/eigenda-operator-setup.git
-    dest: "{{ ivynet_client_install_path }}/eigenda-operator-setup"
+    dest: "{{ ivynet_client_path_install }}/eigenda-operator-setup"
     clone: true
     update: true
   tags:
@@ -56,7 +56,7 @@
 - name: Download g1, g2 files
   ansible.builtin.command:
     cmd: "gsutil cp gs://ivynet-builds/{{ item }} ."
-    chdir: "{{ ivynet_client_install_path }}/resources"
+    chdir: "{{ ivynet_client_path_install }}/resources"
     creates: " {{ item }}"
   loop:
     - g1.point

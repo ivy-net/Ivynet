@@ -1,7 +1,7 @@
 ---
 - name: Prepare directories
   ansible.builtin.file:
-    path: "{{ ivynet_client_install_path }}/{{ item }}"
+    path: "{{ ivynet_client_path_install }}/{{ item }}"
     state: directory
     owner: root
     group: root
@@ -25,6 +25,7 @@
 - name: Download eigenlayer resources (cli, point files etc.)
   ansible.builtin.import_tasks:
     file: get_eigen.yml
+  when: ivynet_client_eigenda
 
 - name: Upload MOTD
   ansible.builtin.template:
@@ -37,10 +38,44 @@
     - ivynet_client
     - general
 
+- name: Copy Backend Service file
+  ansible.builtin.template:
+    src: ivynet-client.service.j2
+    dest: /etc/systemd/system/ivynet-client.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload daemon
+    - Restart client service
+  tags:
+    - ivynet_client
+    - general
+    - ivynet
+    - systemd
+    - template
+
+- name: Populate service facts
+  ansible.builtin.service_facts:
+
+- name: Set Backend service
+  ansible.builtin.systemd_service:
+    name: ivynet-client
+    state: started
+    enabled: true
+    daemon_reload: true
+  when:
+    - "'ivynet-client.service' not in services"
+  tags:
+    - ivynet_client
+    - general
+    - ivynet
+    - systemd
+
 - name: Add ivynet bin dir to system-wide $PATH.
   ansible.builtin.copy:
     dest: /etc/profile.d/ivy-path.sh
-    content: "PATH=$PATH:{{ ivynet_client_install_path }}/bin"
+    content: "PATH=$PATH:{{ ivynet_client_path_install }}/bin"
     owner: root
     group: root
     mode: "0644"

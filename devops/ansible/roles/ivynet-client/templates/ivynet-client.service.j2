@@ -1,0 +1,12 @@
+[Unit]
+Description=Ivynet Client service
+After=network.target
+
+[Service]
+ExecStart={{ ivynet_client_path_install }}/bin/ivynet
+Type=simple
+Restart=always
+
+[Install]
+WantedBy=default.target
+RequiredBy=network.target

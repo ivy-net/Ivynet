@@ -1,4 +1,7 @@
 ---
+# Switch do download eigenDA
+ivynet_client_eigenda: false
+
 # Token to access github
 ivynet_client_github_token: !vault |
           $ANSIBLE_VAULT;1.1;AES256
@@ -10,4 +13,4 @@ ivynet_client_github_token: !vault |
           3866393766616537613266336166323234616535343537663537
 
 # Path where to install binaries and other files
-ivynet_client_install_path: /opt/ivynet
+ivynet_client_path_install: /opt/ivynet
