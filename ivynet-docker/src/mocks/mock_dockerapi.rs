@@ -61,6 +61,14 @@ impl DockerApi for MockDockerClient {
         Box::pin(stream::iter(self.logs.clone().into_iter().map(Ok)))
     }
 
+    async fn stream_logs_by_container_id(
+        &self,
+        _container_id: &str,
+        _since: i64,
+    ) -> Pin<Box<dyn Stream<Item = Result<LogOutput, Error>> + Send + Unpin>> {
+        Box::pin(stream::iter(self.logs.clone().into_iter().map(Ok)))
+    }
+
     async fn stream_events(
         &self,
     ) -> Pin<Box<dyn Stream<Item = Result<EventMessage, Error>> + Send + Unpin>> {

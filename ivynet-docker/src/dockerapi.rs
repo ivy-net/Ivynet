@@ -48,6 +48,12 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
         &self,
     ) -> Pin<Box<dyn Stream<Item = Result<EventMessage, Error>> + Send + Unpin>>;
 
+    async fn stream_logs_by_container_id(
+        &self,
+        container_id: &str,
+        since: i64,
+    ) -> Pin<Box<dyn Stream<Item = Result<LogOutput, Error>> + Send + Unpin>>;
+
     async fn inspect(&self, image_name: &str) -> Option<Container> {
         let containers = self.list_containers().await;
         for container in containers {
@@ -117,6 +123,14 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
             })
             .map(Container::new)
             .collect()
+    }
+
+    async fn find_container_by_id(&self, id: &str) -> Option<Container> {
+        let containers = self.list_containers().await;
+        containers
+            .into_iter()
+            .find(|container| container.id.as_deref() == Some(id))
+            .map(Container::new)
     }
 
     async fn stream_logs_latest(
@@ -225,6 +239,16 @@ impl DockerApi for DockerClient {
         let log_opts: LogsOptions<&str> =
             LogsOptions { follow: true, stdout: true, stderr: true, since, ..Default::default() };
         Box::pin(self.0.logs(container.id().unwrap(), Some(log_opts)))
+    }
+
+    async fn stream_logs_by_container_id(
+        &self,
+        container_id: &str,
+        since: i64,
+    ) -> Pin<Box<dyn Stream<Item = Result<LogOutput, Error>> + Send + Unpin>> {
+        let log_opts: LogsOptions<&str> =
+            LogsOptions { follow: true, stdout: true, stderr: true, since, ..Default::default() };
+        Box::pin(self.0.logs(container_id, Some(log_opts)))
     }
 
     async fn stream_events(

@@ -85,20 +85,6 @@ Please refer to the CLI documentation [here](./cli/README.md)
 | EigenDA      | NA                | Implemented                | NA                               | PR Open                        |
 | WitnessChain | Yes, both         | In Progress                | Keyring upgrades                 |                                |
 | Omni         | Waiting on Omni   | NA                         | "Final Testnet" releasing soon   |                                |
-| AltLayer     | NO                | Implemented up to whitelist| Whitelist                        |                                |
-| OpenLayer    | Yes               | Next up                    | NA                               |                                |
-| Lagrange     | Yes - blocked BLS | Implemented                | !!LG has no unregister function!!|                                |
+### Host network mode port detection
 
-# Extra components
-
-* The [avss](./avss) folder contain attemps to deploy AVS locally.
-* In the [devops](./devops) there are various 'devopsy' tools and informations.
-
-## Fluentd Logging
-
-
-Ivynet uses fluentd for docker container logging. When starting an AVS, Ivynet will make a copy of the docker-compose.yml file and enable the fluentd logger for that service (Your original docker-compose file will not be altered.) Fluentd accepts logging connections over port 24224, and will log to the ~/.ivynet/fluentd/log directory. Additionally, logs will be relayed to the Ivynet daemon over HTTP port 50051, and then from daemon to backend via GRPC 50050.
-
-Ensure port 50051 is open on your firewall.
-
-Fluentd containers and configs are built during the `init` phase via `ivynet init`.
+Ivynet will automatically detect the the ports used by a given Node running in host network mode by attaching a docker sidecar with netstat installed. This container will run netstat and output ONLY lines which contain valid processes within the scope of the host container. 
