@@ -17,3 +17,6 @@ ivynet_client_github_token: !vault |
 
 # Path where to install binaries and other files
 ivynet_client_path_install: /opt/ivynet
+
+# Setup systemd for the client
+ivynet_client_systemd: true
