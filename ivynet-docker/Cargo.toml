@@ -29,7 +29,5 @@ tracing.workspace = true
 regex.workspace = true
 which.workspace = true
 
-ivynet-node-type.workspace = true
-
 [dev-dependencies]
 mockall = "0.13.1"
