@@ -120,7 +120,7 @@ mod scraper_tests {
     use sqlx::PgPool;
 
     #[ignore]
-    #[sqlx::test]
+    #[sqlx::test(migrations = "../migrations")]
     async fn test_add_avs_active_set(pool: PgPool) -> sqlx::Result<(), Box<dyn std::error::Error>> {
         std::env::set_var("DATABASE_URL", "postgresql://ivy:secret_ivy@localhost:5432/ivynet");
         let avs = Address::from_slice(&[1; 20]);

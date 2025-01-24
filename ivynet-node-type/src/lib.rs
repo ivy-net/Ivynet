@@ -667,6 +667,22 @@ impl NodeType {
         Self::iter().collect()
     }
 
+    pub fn all_machtypes() -> Vec<Self> {
+        MachType::iter().map(NodeType::AltlayerMach).collect()
+    }
+
+    pub fn all_altlayertypes() -> Vec<Self> {
+        AltlayerType::iter().map(NodeType::Altlayer).collect()
+    }
+
+    pub fn all_skatechaintypes() -> Vec<Self> {
+        SkateChainType::iter().map(NodeType::SkateChain).collect()
+    }
+
+    pub fn all_infiniroutetypes() -> Vec<Self> {
+        InfiniRouteType::iter().map(NodeType::UngateInfiniRoute).collect()
+    }
+
     fn has_valid_repository(&self) -> bool {
         self.default_repository().ok().filter(|repo| repo.split('/').count() == 2).is_some()
     }

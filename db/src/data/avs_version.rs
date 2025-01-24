@@ -216,7 +216,7 @@ mod avs_version_tests {
     // TODO: These tests need to be more abstract and run over dummy data instead of live db data.
 
     #[ignore]
-    #[sqlx::test(fixtures("../../fixtures/avs_version_hashes.sql"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("../../fixtures/avs_version_hashes.sql"))]
     async fn test_eigenda_version_parsing(
         pool: PgPool,
     ) -> sqlx::Result<(), Box<dyn std::error::Error>> {
@@ -229,7 +229,7 @@ mod avs_version_tests {
     }
 
     #[ignore]
-    #[sqlx::test(fixtures("../../fixtures/avs_version_hashes.sql"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("../../fixtures/avs_version_hashes.sql"))]
     async fn test_ava_version_parsing(
         pool: PgPool,
     ) -> sqlx::Result<(), Box<dyn std::error::Error>> {
@@ -241,7 +241,7 @@ mod avs_version_tests {
     }
 
     #[ignore]
-    #[sqlx::test(fixtures("../../fixtures/avs_version_hashes.sql"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("../../fixtures/avs_version_hashes.sql"))]
     async fn test_k3labs_version_parsing(
         pool: PgPool,
     ) -> sqlx::Result<(), Box<dyn std::error::Error>> {
@@ -253,7 +253,7 @@ mod avs_version_tests {
     }
 
     #[ignore]
-    #[sqlx::test(fixtures("../../fixtures/avs_version_hashes.sql"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("../../fixtures/avs_version_hashes.sql"))]
     async fn test_lagrange_zk_holesky_version_parsing(
         pool: PgPool,
     ) -> sqlx::Result<(), Box<dyn std::error::Error>> {
@@ -265,7 +265,7 @@ mod avs_version_tests {
     }
 
     #[ignore]
-    #[sqlx::test(fixtures("../../fixtures/avs_version_hashes.sql"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("../../fixtures/avs_version_hashes.sql"))]
     async fn test_eoracle_version_parsing(
         pool: PgPool,
     ) -> sqlx::Result<(), Box<dyn std::error::Error>> {
