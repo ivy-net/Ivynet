@@ -12,7 +12,6 @@
     enabled: true
   tags:
     - ivynet_client
-    - general
     - docker
 
 - name: Install packages (for rust, docker and ansible)
@@ -34,7 +33,6 @@
     - python3-pip
   tags:
     - ivynet_client
-    - general
     - docker
     - download
 
@@ -45,6 +43,5 @@
     break_system_packages: true
   tags:
     - ivynet_client
-    - general
     - download
     - github

@@ -1,4 +1,7 @@
 ---
+# Location of the backend server
+ivynet_client_backend_server: "api2.test.ivynet.dev"
+
 # Switch do download eigenDA
 ivynet_client_eigenda: false
 

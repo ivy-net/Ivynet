@@ -8,7 +8,6 @@
   register: ivynet_client_release
   tags:
     - ivynet_client
-    - ivynet
     - github
 
 - name: Expose tag of the downloaded assets
@@ -16,7 +15,6 @@
     msg: "{{ ivynet_client_release.tag }} is the tag"
   tags:
     - ivynet_client
-    - ivynet
     - github
 
 - name: Get release id
@@ -30,7 +28,6 @@
   register: ivynet_client_assets_output
   tags:
     - ivynet_client
-    - ivynet
     - github
 
 - name: Prepare variable if assets id
@@ -42,7 +39,6 @@
     json_output_query: "json.assets[?name=='ivynet'].id"
   tags:
     - ivynet_client
-    - ivynet
     - github
 
 - name: Get asset
@@ -56,12 +52,11 @@
     follow_redirects: all
     status_code: [200, 304]
     dest: "{{ ivynet_client_path_install }}/bin/ivynet"
-    owner: root
+    owner: ivynet
     group: root
     mode: "0755"
   tags:
     - ivynet_client
-    - ivynet
     - github
 
 - name: Save ivynet release info
@@ -69,10 +64,9 @@
     dest: "{{ ivynet_client_path_install }}/ivynet.tag"
     content: |
       {{ ivynet_client_release.tag }}
-    owner: root
+    owner: ivynet
     group: root
     mode: "0444"
   tags:
     - ivynet_client
-    - ivynet
     - github
