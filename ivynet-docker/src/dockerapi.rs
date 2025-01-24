@@ -132,8 +132,8 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
                     .names
                     .as_ref()
                     .map(|names| names.iter().any(|n| n.contains(name)))
-                    .unwrap_or_default()
-                    || container.image.as_ref() == image.as_ref()
+                    .unwrap_or_default() ||
+                    container.image.as_ref() == image.as_ref()
             })
             .map(Container::new)
     }
