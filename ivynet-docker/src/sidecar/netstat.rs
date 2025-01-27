@@ -51,6 +51,7 @@ impl FromStr for NetstatEntry {
 /// Parse a single line from `netstat -tupln` into a `NetstatEntry`.
 ///
 /// Returns `None` if the line does not match the expected format.
+/// This hasn't been tested against very long process names. Potential for truncated lines.
 fn parse_netstat_line(line: &str) -> Result<NetstatEntry, ParseError> {
     let line = line.trim_end(); // strip trailing whitespace and \r if present
     let re = Regex::new(NETSTAT_REGEX)?;
