@@ -75,14 +75,18 @@ impl Container {
         self.0.state.as_deref()
     }
 
-    pub fn public_ports(&self) -> Vec<u16> {
-        self.ports()
-            .map(|ports| ports.iter().filter_map(|port| port.public_port).collect())
-            .unwrap_or_default()
+    pub async fn public_ports(&self, docker: &DockerClient) -> Vec<u16> {
+        match self.is_network_mode_host() {
+            true => self.get_host_ports(docker).await.unwrap_or_default(),
+            false => self
+                .ports()
+                .map(|ports| ports.iter().filter_map(|port| port.public_port).collect())
+                .unwrap_or_default(),
+        }
     }
 
-    pub async fn metrics_port(&self) -> Option<u16> {
-        let mut ports = self.public_ports();
+    pub async fn metrics_port(&self, docker: &DockerClient) -> Option<u16> {
+        let mut ports = self.public_ports(docker).await;
         ports.sort();
         ports.dedup();
         for port in ports {
@@ -122,10 +126,6 @@ impl Container {
 
     /// Get the ports exposed by the container on the host machine / network
     pub async fn get_host_ports(&self, docker: &DockerClient) -> Result<Vec<u16>, ContainerError> {
-        if !self.is_network_mode_host() {
-            return Err(ContainerError::NotHostNetworkMode);
-        }
-
         let sidecar_name = build_sidecar_image(&docker.0).await?;
         let sidecar_container = self.run_one_shot_sidecar(docker, &sidecar_name).await?;
 

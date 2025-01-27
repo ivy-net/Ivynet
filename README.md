@@ -87,4 +87,4 @@ Please refer to the CLI documentation [here](./cli/README.md)
 | Omni         | Waiting on Omni   | NA                         | "Final Testnet" releasing soon   |                                |
 ### Host network mode port detection
 
-Ivynet will automatically detect the the ports used by a given Node running in host network mode by attaching a docker sidecar with netstat installed. This container will run netstat and output ONLY lines which contain valid processes within the scope of the host container. 
+Ivynet will automatically detect the the ports used by a given Node running in host network mode by attaching a docker sidecar with netstat installed. This container will run netstat and output ONLY lines which contain valid processes within the scope of the host container.
