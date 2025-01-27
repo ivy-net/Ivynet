@@ -22,7 +22,6 @@
     mode: "0700"
   tags:
     - general
-    - ssl
 
 - name: Install and configure 3rd party tools
   ansible.builtin.import_tasks:
@@ -58,10 +57,6 @@
 - name: Configure DB for backend
   ansible.builtin.import_tasks:
     file: setup_db.yml
-
-- name: Configure SSL
-  ansible.builtin.import_tasks:
-    file: ssl.yml
 
 - name: Copy logs cleaner script
   ansible.builtin.copy:

@@ -1,0 +1,13 @@
+[Unit]
+Description=Ivynet Ingress service
+After=network.target
+
+[Service]
+ExecStart={{ ivynet_ingress_path_install }}/bin/ivynet-ingress
+EnvironmentFile={{ ivynet_ingress_path_secrets }}/env
+Type=simple
+Restart=always
+
+[Install]
+WantedBy=default.target
+RequiredBy=network.target

@@ -1,0 +1,52 @@
+---
+# Name of the GCP bucket
+ivynet_ingress_gcp_bucket: ivynet-share-test
+
+# File with GCP credentials
+ivynet_ingress_gcp_cred: ~/.devops-automation-key.json
+
+# Name of GCP project
+ivynet_ingress_gcp_project: ivynet-tests
+
+# Token to access github
+ivynet_ingress_github_token: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          36363834613035363762636134643162623863323436623539303234396434653065636163316462
+          6430303535333932326562306230646634303930396533640a313965396562363066323232356235
+          64623165336364353330623162333265333661643965353365386564326332653565636634623063
+          3961396236313466310a316465383062646263323764306336393033323064333031323566353838
+          37306335386139313035366663623066636135323139643166386638653532626563623264376165
+          3866393766616537613266336166323234616535343537663537
+
+# Source of binaries (true for release, false for master)
+ivynet_ingress_is_release: true
+
+# Logs level for IvyNet internals
+ivynet_ingress_logs_lowlevel: ""
+
+# Path where to install binaries and other files
+ivynet_ingress_path_install: "/opt/ivynet"
+
+# Path to directory with SQL migration
+ivynet_ingress_path_resources: "{{ ivynet_ingress_path_install }}/resources"
+
+# Path to directory with secrets
+ivynet_ingress_path_secrets: "{{ ivynet_ingress_path_install }}/secrets"
+
+# DB for ivynet
+ivynet_ingress_postgres_db: "ivynet"
+
+# DB host
+ivynet_ingress_postgres_host: "localhost"
+
+# Password for the postgresql user (only for Cloud SQL; should be a secret)
+ivynet_ingress_postgres_pass: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          66396130343737313730356331643265303965633066633466653561366534626162376565643936
+          6635646562646334303461383764306231346231333561640a343564336361633231653565623936
+          61613265333263636430313863376431363937346133363963383363636161626163383264663632
+          3532383339313162310a363435643265626664353364653661383339616263396236333562316439
+          6331
+
+# Ingress release
+ivynet_ingress_release: "0.5.0"
