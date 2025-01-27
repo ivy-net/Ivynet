@@ -11,7 +11,7 @@ use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 use uuid::Uuid;
 
-use crate::system::get_detailed_system_information;
+use crate::{monitor::MonitorConfig, system::get_detailed_system_information};
 
 use super::{
     dispatch::{TelemetryDispatchError, TelemetryDispatchHandle},
@@ -184,6 +184,12 @@ impl<D: DockerApi> MetricsListener<D> {
                 (Some(replacement.1.avs_type.to_string()), "".to_string(), false),
             );
             self.avses.push(replacement.1.clone());
+            if let Ok(mut config) = MonitorConfig::load_from_default_path() {
+                _ = config.change_avs_container_name(
+                    &replacement.0.container_name,
+                    &replacement.1.container_name,
+                );
+            }
             // We do nothning else here. In next round of the loop this will rename will be used in
             // the metrics queue
         }
@@ -202,11 +208,18 @@ impl<D: DockerApi> MetricsListener<D> {
                 if let Some(existing) =
                     self.avses.iter_mut().find(|x| x.container_name == avs.container_name)
                 {
-                    existing.avs_type = avs.avs_type;
+                    existing.avs_type = avs.avs_type.clone();
                     existing.metric_port = avs.metric_port;
                 } else {
                     self.avses.push(avs.clone());
                     info!("Added metrics listener for container: {}", avs.container_name);
+                }
+                // We need to resave the monitor file
+                if let Ok(mut monitor_config) = MonitorConfig::load_from_default_path() {
+                    monitor_config.configured_avses.push(avs.clone());
+                    _ = monitor_config.store();
+                } else {
+                    error!("Cannot load monitor config for changes");
                 }
             }
             MetricsListenerAction::ReplaceNode(old_avs, new_avs) => {
@@ -217,7 +230,15 @@ impl<D: DockerApi> MetricsListener<D> {
                     (Some(new_avs.avs_type.to_string()), "".to_string(), false),
                 );
                 self.avses.push(new_avs.clone());
-                // We need to restart the broadcast after the update
+                // Resaving the file
+                if let Ok(mut monitor_config) = MonitorConfig::load_from_default_path() {
+                    _ = monitor_config.change_avs_container_name(
+                        &old_avs.container_name,
+                        &new_avs.container_name,
+                    );
+                } else {
+                    error!("Cannot load monitor config for changes");
+                }
             }
             MetricsListenerAction::RemoveNode(avs) => {
                 let avs_num = self.avses.len();
@@ -277,8 +298,8 @@ pub async fn report_metrics(
                 if let Some(matched) = docker.find_container_by_image(&avs.image_name).await {
                     if let Some(names) = matched.names() {
                         if let Some(name) = names.into_iter().next() {
-                            // We first need to check if we already have that name on the list not to
-                            // duplicate
+                            // We first need to check if we already have that name on the list not
+                            // to duplicate
                             if avses.iter().find(|a| a.container_name == *name).is_none() {
                                 let mut replacement = avs.clone();
                                 replacement.container_name = name.clone();

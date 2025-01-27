@@ -77,6 +77,19 @@ impl MonitorConfig {
         });
         self.store()
     }
+
+    pub fn change_avs_container_name(
+        &mut self,
+        old_name: &str,
+        new_name: &str,
+    ) -> Result<(), MonitorConfigError> {
+        self.configured_avses.iter_mut().for_each(|avs| {
+            if avs.container_name == old_name {
+                avs.container_name = new_name.to_string();
+            }
+        });
+        self.store()
+    }
 }
 
 pub async fn rename_node(
