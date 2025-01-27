@@ -79,6 +79,14 @@ impl MetricsListenerHandle {
         Ok(())
     }
 
+    pub async fn replace_node(
+        &self,
+        old_avs: &ConfiguredAvs,
+        new_avs: &ConfiguredAvs,
+    ) -> Result<(), MetricsListenerHandleError> {
+        self.tx.send(MetricsListenerAction::ReplaceNode(old_avs.clone(), new_avs.clone())).await?;
+        Ok(())
+    }
     pub async fn remove_node_by_name(
         &self,
         container_name: &str,
@@ -156,7 +164,7 @@ impl<D: DockerApi> MetricsListener<D> {
     }
 
     async fn broadcast_metrics(&mut self) -> Result<(), MetricsListenerError> {
-        report_metrics(
+        if let Some(replacement) = report_metrics(
             &self.docker,
             self.machine_id,
             &self.identity_wallet,
@@ -164,7 +172,22 @@ impl<D: DockerApi> MetricsListener<D> {
             &self.dispatch,
             &mut self.avs_cache,
         )
-        .await
+        .await?
+        {
+            // TODO: This is a hack .This should be somehow marked in the loop process, but I don't
+            // have an access to sender of the channel.
+            // I'm open for suggestions how to handle it
+            self.avs_cache.remove(&replacement.0);
+            self.avses.retain(|x| x.container_name != replacement.0.container_name);
+            self.avs_cache.insert(
+                replacement.1.clone(),
+                (Some(replacement.1.avs_type.to_string()), "".to_string(), false),
+            );
+            self.avses.push(replacement.1.clone());
+            // We do nothning else here. In next round of the loop this will rename will be used in
+            // the metrics queue
+        }
+        Ok(())
     }
 
     async fn handle_action(
@@ -185,6 +208,16 @@ impl<D: DockerApi> MetricsListener<D> {
                     self.avses.push(avs.clone());
                     info!("Added metrics listener for container: {}", avs.container_name);
                 }
+            }
+            MetricsListenerAction::ReplaceNode(old_avs, new_avs) => {
+                self.avs_cache.remove(&old_avs);
+                self.avses.retain(|x| x.container_name != old_avs.container_name);
+                self.avs_cache.insert(
+                    new_avs.clone(),
+                    (Some(new_avs.avs_type.to_string()), "".to_string(), false),
+                );
+                self.avses.push(new_avs.clone());
+                // We need to restart the broadcast after the update
             }
             MetricsListenerAction::RemoveNode(avs) => {
                 let avs_num = self.avses.len();
@@ -219,6 +252,7 @@ impl<D: DockerApi> MetricsListener<D> {
 pub enum MetricsListenerAction {
     AddNode(ConfiguredAvs),
     RemoveNode(ConfiguredAvs),
+    ReplaceNode(ConfiguredAvs, ConfiguredAvs),
     /// Remove a node by its container name
     RemoveNodeByName(String),
 }
@@ -230,16 +264,33 @@ pub async fn report_metrics(
     avses: &[ConfiguredAvs],
     dispatch: &TelemetryDispatchHandle,
     avs_cache: &mut HashMap<ConfiguredAvs, (Option<String>, String, bool)>,
-) -> Result<(), MetricsListenerError> {
+) -> Result<Option<(ConfiguredAvs, ConfiguredAvs)>, MetricsListenerError> {
     let images = docker.list_images().await;
     debug!("System Docker images: {:#?}", images);
 
     for avs in avses {
-        let version_hash = match docker
-            .find_container_by_name_or_image(&avs.container_name, &avs.image_name)
-            .await
-        {
+        let version_hash = match docker.find_container_by_name(&avs.container_name).await {
             None => {
+                // There is a chance that this container has been renamed.
+                // We match it up using avs_type and if found, we break the loop
+                // forcing avs list refresh with new container replacement
+                if let Some(matched) = docker.find_container_by_image(&avs.image_name).await {
+                    if let Some(names) = matched.names() {
+                        if let Some(name) = names.into_iter().next() {
+                            // We first need to check if we already have that name on the list not to
+                            // duplicate
+                            if avses.iter().find(|a| a.container_name == *name).is_none() {
+                                let mut replacement = avs.clone();
+                                replacement.container_name = name.clone();
+                                info!(
+                                    "Replacing container named {} with {}",
+                                    avs.container_name, replacement.container_name
+                                );
+                                return Ok(Some((avs.clone(), replacement)));
+                            }
+                        }
+                    }
+                }
                 warn!(
                     "Container {} is configured but does not appear to be running. Skipping telemetry.",
                     avs.container_name
@@ -338,7 +389,7 @@ pub async fn report_metrics(
     };
     dispatch.send_metrics(signed_metrics).await?;
 
-    Ok(())
+    Ok(None)
 }
 
 pub async fn fetch_telemetry_from(port: u16) -> Result<Vec<Metrics>, MetricsListenerError> {
