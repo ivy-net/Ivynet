@@ -164,7 +164,7 @@ impl<D: DockerApi> MetricsListener<D> {
     }
 
     async fn broadcast_metrics(&mut self) -> Result<(), MetricsListenerError> {
-        if let Some(replacement) = report_metrics(
+        match report_metrics(
             &self.docker,
             self.machine_id,
             &self.identity_wallet,
@@ -174,24 +174,31 @@ impl<D: DockerApi> MetricsListener<D> {
         )
         .await?
         {
-            // TODO: This is a hack .This should be somehow marked in the loop process, but I don't
-            // have an access to sender of the channel.
-            // I'm open for suggestions how to handle it
-            self.avs_cache.remove(&replacement.0);
-            self.avses.retain(|x| x.container_name != replacement.0.container_name);
-            self.avs_cache.insert(
-                replacement.1.clone(),
-                (Some(replacement.1.avs_type.to_string()), "".to_string(), false),
-            );
-            self.avses.push(replacement.1.clone());
-            if let Ok(mut config) = MonitorConfig::load_from_default_path() {
-                _ = config.change_avs_container_name(
-                    &replacement.0.container_name,
-                    &replacement.1.container_name,
+            Some((avs_to_replace, Some(replacement))) => {
+                // TODO: This is a hack .This should be somehow marked in the loop process, but I don't
+                // have an access to sender of the channel.
+                // I'm open for suggestions how to handle it
+                self.avs_cache.remove(&avs_to_replace);
+                self.avses.retain(|x| x.container_name != avs_to_replace.container_name);
+                self.avs_cache.insert(
+                    replacement.clone(),
+                    (Some(replacement.avs_type.to_string()), "".to_string(), false),
                 );
+                self.avses.push(replacement.clone());
+                if let Ok(mut config) = MonitorConfig::load_from_default_path() {
+                    _ = config.change_avs_container_name(
+                        &avs_to_replace.container_name,
+                        &replacement.container_name,
+                    );
+                }
+                // We do nothning else here. In next round of the loop this will rename will be used in
+                // the metrics queue
             }
-            // We do nothning else here. In next round of the loop this will rename will be used in
-            // the metrics queue
+            Some((avs_to_remove, None)) => {
+                self.avs_cache.remove(&avs_to_remove);
+                self.avses.retain(|x| x.container_name != avs_to_remove.container_name);
+            }
+            _ => {}
         }
         Ok(())
     }
@@ -202,24 +209,28 @@ impl<D: DockerApi> MetricsListener<D> {
     ) -> Result<(), MetricsListenerError> {
         match action {
             MetricsListenerAction::AddNode(avs) => {
-                self.avs_cache
-                    .insert(avs.clone(), (Some(avs.avs_type.to_string()), "".to_string(), false));
-                // if container with name already exists, replace avs_type and metric_port
-                if let Some(existing) =
-                    self.avses.iter_mut().find(|x| x.container_name == avs.container_name)
-                {
-                    existing.avs_type = avs.avs_type.clone();
-                    existing.metric_port = avs.metric_port;
-                } else {
-                    self.avses.push(avs.clone());
-                    info!("Added metrics listener for container: {}", avs.container_name);
-                }
-                // We need to resave the monitor file
-                if let Ok(mut monitor_config) = MonitorConfig::load_from_default_path() {
-                    monitor_config.configured_avses.push(avs.clone());
-                    _ = monitor_config.store();
-                } else {
-                    error!("Cannot load monitor config for changes");
+                if self.avses.iter().find(|a| a.container_name == *avs.container_name).is_none() {
+                    self.avs_cache.insert(
+                        avs.clone(),
+                        (Some(avs.avs_type.to_string()), "".to_string(), false),
+                    );
+                    // if container with name already exists, replace avs_type and metric_port
+                    if let Some(existing) =
+                        self.avses.iter_mut().find(|x| x.container_name == avs.container_name)
+                    {
+                        existing.avs_type = avs.avs_type.clone();
+                        existing.metric_port = avs.metric_port;
+                    } else {
+                        self.avses.push(avs.clone());
+                        info!("Added metrics listener for container: {}", avs.container_name);
+                    }
+                    // We need to resave the monitor file
+                    if let Ok(mut monitor_config) = MonitorConfig::load_from_default_path() {
+                        monitor_config.configured_avses.push(avs.clone());
+                        _ = monitor_config.store();
+                    } else {
+                        error!("Cannot load monitor config for changes");
+                    }
                 }
             }
             MetricsListenerAction::ReplaceNode(old_avs, new_avs) => {
@@ -285,7 +296,7 @@ pub async fn report_metrics(
     avses: &[ConfiguredAvs],
     dispatch: &TelemetryDispatchHandle,
     avs_cache: &mut HashMap<ConfiguredAvs, (Option<String>, String, bool)>,
-) -> Result<Option<(ConfiguredAvs, ConfiguredAvs)>, MetricsListenerError> {
+) -> Result<Option<(ConfiguredAvs, Option<ConfiguredAvs>)>, MetricsListenerError> {
     let images = docker.list_images().await;
     debug!("System Docker images: {:#?}", images);
 
@@ -307,7 +318,7 @@ pub async fn report_metrics(
                                     "Replacing container named {} with {}",
                                     avs.container_name, replacement.container_name
                                 );
-                                return Ok(Some((avs.clone(), replacement)));
+                                return Ok(Some((avs.clone(), Some(replacement))));
                             }
                         }
                     }
@@ -316,7 +327,8 @@ pub async fn report_metrics(
                     "Container {} is configured but does not appear to be running. Skipping telemetry.",
                     avs.container_name
                 );
-                continue;
+                // If we reached here, we should remove this avs from the list
+                return Ok(Some((avs.clone(), None)));
             }
             Some(container) => match container.image() {
                 None => {
