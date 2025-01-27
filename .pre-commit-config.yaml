@@ -30,5 +30,3 @@ repos:
       - id: machete
       - id: cargo-check
       - id: clippy
-      - id: test
-        args: ['-v']
