@@ -84,7 +84,6 @@ impl DockerStreamListener<DockerClient> {
         event: EventMessage,
         avses: &[ConfiguredAvs],
     ) -> Result<(), DockerStreamListenerError> {
-        info!("Starting new docker");
         let actor = event.actor.ok_or(DockerStreamError::MissingActor)?;
         let attributes = actor.attributes.ok_or(DockerStreamError::MissingAttributes)?;
         let inc_container_name =
