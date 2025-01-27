@@ -7,9 +7,10 @@ use ivynet_node_type::{
     ActiveSet, AltlayerType, InfiniRouteType, MachType, NodeType, SkateChainType,
 };
 
-const ALL_DIRECTORIES: [(Chain, H160); 2] = [
+const ALL_DIRECTORIES: [(Chain, H160); 3] = [
     (Chain::Mainnet, h160!(0x135DDa560e946695d6f155dACaFC6f1F25C1F5AF)),
     (Chain::Holesky, h160!(0x055733000064333CaDDbC92763c58BF0192fFeBf)),
+    (Chain::Holesky, h160!(0x58973d16FFA900D11fC22e5e2B6840d9f7e13401)),
 ];
 
 const ALL_MAINNET_AVSES: [(NodeType, H160); 29] = [

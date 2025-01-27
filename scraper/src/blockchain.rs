@@ -25,6 +25,8 @@ abigen!(
     r#"[
         event AVSMetadataURIUpdated(address indexed avs, string metadataURI)
         event OperatorAVSRegistrationStatusUpdated(address indexed operator, address indexed avs, uint8 status)
+        event OptIn(address indexed who, address indexed where)
+        event OptOut(address indexed who, address indexed where)
     ]"#,
 );
 
@@ -223,6 +225,32 @@ pub async fn report_directory_event(
                 .report_metadata_uri_event(Request::new(MetadataUriEvent {
                     avs: ev.avs.as_bytes().to_vec(),
                     metadata_uri: ev.metadata_uri,
+                    block_number: event.1.block_number.as_u64(),
+                    log_index: event.1.log_index.as_u64(),
+                }))
+                .await?;
+        }
+        DirectoryEvents::OptInFilter(oin) => {
+            backend
+                .report_registration_event(Request::new(RegistrationEvent {
+                    directory: event.1.address.as_bytes().to_vec(),
+                    avs: oin.where_.as_bytes().to_vec(),
+                    chain_id,
+                    address: oin.who.as_bytes().to_vec(),
+                    active: true,
+                    block_number: event.1.block_number.as_u64(),
+                    log_index: event.1.log_index.as_u64(),
+                }))
+                .await?;
+        }
+        DirectoryEvents::OptOutFilter(oout) => {
+            backend
+                .report_registration_event(Request::new(RegistrationEvent {
+                    directory: event.1.address.as_bytes().to_vec(),
+                    avs: oout.where_.as_bytes().to_vec(),
+                    chain_id,
+                    address: oout.who.as_bytes().to_vec(),
+                    active: false,
                     block_number: event.1.block_number.as_u64(),
                     log_index: event.1.log_index.as_u64(),
                 }))
