@@ -108,6 +108,7 @@ impl DockerStreamListener<DockerClient> {
             }
         };
 
+        // TODO: This query to backend seems to be extremely slow. Need to investigate
         let guessed_type: Option<NodeType> = if !self.merging_containers {
             self.backend
                 .node_type_queries(Request::new(NodeTypeQueries {
