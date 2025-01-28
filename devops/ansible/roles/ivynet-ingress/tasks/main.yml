@@ -24,6 +24,21 @@
     - general
     - ssl
 
+- name: Copy Env file
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ ivynet_ingress_path_secrets }}/env.ingress"
+    owner: root
+    group: root
+    mode: "0600"
+  notify:
+    - Restart ingress service
+  tags:
+    - general
+    - ivynet
+    - systemd
+    - template
+
 - name: Download ivynet-ingress for master
   ansible.builtin.import_tasks:
     file: get_ingress_master.yml
@@ -36,56 +51,10 @@
   when:
     - ivynet_ingress_is_release
 
-# I need to readd it somehow
-#- name: Copy Env file
-#  ansible.builtin.template:
-#    src: env.j2
-#    dest: "{{ ivynet_ingress_path_secrets }}/env"
-#    owner: root
-#    group: root
-#    mode: "0600"
-#  notify:
-#    - Restart ingress service
-#  tags:
-#    - general
-#    - ivynet
-#    - systemd
-#    - template
+- name: Configure SystemD
+  ansible.builtin.import_tasks:
+    file: systemd.yml
 
 - name: Configure SSL
   ansible.builtin.import_tasks:
     file: ssl.yml
-
-- name: Copy Ingress Service file
-  ansible.builtin.template:
-    src: ivynet-ingress.service.j2
-    dest: /etc/systemd/system/ivynet-ingress.service
-    owner: root
-    group: root
-    mode: "0644"
-  notify:
-    - Reload daemon
-    - Restart ingress service
-  tags:
-    - ivynet_ingress
-    - general
-    - ivynet
-    - systemd
-    - template
-
-- name: Populate service facts
-  ansible.builtin.service_facts:
-
-- name: Set Ingress service
-  ansible.builtin.systemd_service:
-    name: ivynet-ingress
-    state: started
-    enabled: true
-    daemon_reload: true
-  when:
-    - "'ivynet-ingress.service' not in services"
-  tags:
-    - ivynet_ingress
-    - general
-    - ivynet
-    - systemd

@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 ExecStart={{ ivynet_ingress_path_install }}/bin/ivynet-ingress
-EnvironmentFile={{ ivynet_ingress_path_secrets }}/env
+EnvironmentFile={{ ivynet_ingress_path_secrets }}/env.ingress
 Type=simple
 Restart=always
 
