@@ -104,6 +104,9 @@ pub enum MetricsListenerError {
 
     #[error("Failed to dispatch metrics: {0}")]
     DispatchError(#[from] TelemetryDispatchError),
+
+    #[error("Cache missing for container: {0}")]
+    CacheMissing(String),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -134,7 +137,7 @@ pub struct MetricsListener<D: DockerApi> {
     machine_id: Uuid,
     identity_wallet: IvyWallet,
     avses: Vec<ConfiguredAvs>,
-    avs_cache: HashMap<ConfiguredAvs, (Option<String>, String, bool)>,
+    avs_cache: HashMap<ConfiguredAvs, (Option<String>, Option<String>, bool)>,
     dispatch: TelemetryDispatchHandle,
     rx: mpsc::Receiver<MetricsListenerAction>,
     error_tx: ErrorChannelTx,
@@ -152,7 +155,7 @@ impl<D: DockerApi> MetricsListener<D> {
     ) -> Self {
         let mut avs_cache = HashMap::new();
         for avs in &avses {
-            avs_cache.insert(avs.clone(), (Some(avs.avs_type.to_string()), "".to_string(), false));
+            avs_cache.insert(avs.clone(), (Some(avs.avs_type.to_string()), None, false));
         }
         Self { docker, machine_id, identity_wallet, avses, avs_cache, dispatch, rx, error_tx }
     }
@@ -194,8 +197,7 @@ impl<D: DockerApi> MetricsListener<D> {
     ) -> Result<(), MetricsListenerError> {
         match action {
             MetricsListenerAction::AddNode(avs) => {
-                self.avs_cache
-                    .insert(avs.clone(), (Some(avs.avs_type.to_string()), "".to_string(), false));
+                self.avs_cache.insert(avs.clone(), (Some(avs.avs_type.to_string()), None, false));
                 // if container with name already exists, replace avs_type and metric_port
                 if let Some(existing) =
                     self.avses.iter_mut().find(|x| x.container_name == avs.container_name)
@@ -250,7 +252,7 @@ pub async fn report_metrics(
     identity_wallet: &IvyWallet,
     avses: &[ConfiguredAvs],
     dispatch: &TelemetryDispatchHandle,
-    avs_cache: &mut HashMap<ConfiguredAvs, (Option<String>, String, bool)>,
+    avs_cache: &mut HashMap<ConfiguredAvs, (Option<String>, Option<String>, bool)>,
 ) -> Result<(), MetricsListenerError> {
     let images = docker.list_images().await;
     debug!("System Docker images: {:#?}", images);
@@ -321,12 +323,16 @@ pub async fn report_metrics(
 
         let is_running = docker.is_running(&avs.container_name).await;
 
-        let (node_type, prev_version_hash, was_running) = &avs_cache[avs];
+        let cache_entry = avs_cache
+            .get(avs)
+            .ok_or_else(|| MetricsListenerError::CacheMissing(avs.container_name.clone()))?;
+
+        let (node_type, prev_version_hash, was_running) = &cache_entry;
         // Send node data
         let node_data = NodeData {
             name: avs.assigned_name.to_string(),
             node_type: node_type.clone(),
-            manifest: if *prev_version_hash == version_hash {
+            manifest: if *prev_version_hash == Some(version_hash.clone()) {
                 None
             } else {
                 Some(version_hash.clone())
@@ -343,7 +349,7 @@ pub async fn report_metrics(
         };
 
         dispatch.send_node_data(signed_node_data).await?;
-        avs_cache.insert(avs.clone(), (None, version_hash, is_running));
+        avs_cache.insert(avs.clone(), (None, Some(version_hash), is_running));
     }
     // Last but not least - send system metrics
     let system_metrics = fetch_system_telemetry();
