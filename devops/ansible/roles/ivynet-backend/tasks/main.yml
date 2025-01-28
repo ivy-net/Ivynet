@@ -64,4 +64,4 @@
 
 - name: Prepare extra scripts
   ansible.builtin.import_tasks:
-    fiLe: scripts.yml
+    file: scripts.yml
