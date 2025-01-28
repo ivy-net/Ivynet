@@ -15,7 +15,7 @@ use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
 };
-use tracing::info;
+use tracing::{error, info};
 
 use crate::{
     config::{IvyConfig, DEFAULT_CONFIG_PATH},
@@ -135,9 +135,11 @@ pub async fn rename_node(
     Ok(())
 }
 
-pub async fn start_monitor(mut config: IvyConfig) -> Result<(), anyhow::Error> {
+pub async fn start_monitor(config: IvyConfig) -> Result<(), anyhow::Error> {
     if config.identity_wallet().is_err() {
-        set_backend_connection(&mut config).await?;
+        return Err(anyhow!(
+            "No identity wallet found in config. Please configure your machine with ivynet scan"
+        ));
     }
 
     let monitor_config = MonitorConfig::load_from_default_path().unwrap_or_default();
@@ -173,7 +175,10 @@ pub async fn start_monitor(mut config: IvyConfig) -> Result<(), anyhow::Error> {
 
 /// Scan function to set up configured AVS cache file. Derives `NodeType` from the name on the
 /// metrics port and node name from the container name list.
-pub async fn scan(force: bool, config: &IvyConfig) -> Result<(), anyhow::Error> {
+pub async fn scan(force: bool, mut config: IvyConfig) -> Result<(), anyhow::Error> {
+    if config.identity_wallet().is_err() {
+        set_backend_connection(&mut config).await?;
+    }
     let backend_url = config.get_server_url()?;
     let backend_ca = config.get_server_ca();
     let backend_ca = if backend_ca.is_empty() { None } else { Some(backend_ca) };

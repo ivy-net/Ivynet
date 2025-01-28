@@ -135,22 +135,29 @@ impl DockerStreamListener<DockerClient> {
                 };
                 let query = Request::new(NodeTypeQueries { node_types: vec![node_type_query] });
 
-                let node_type =
+                let response =
                     self.backend.node_type_queries(query).await.map(Response::into_inner).ok();
 
-                let found_type = if let Some(node_type) = node_type {
-                    node_type.node_types.first().map(|t| t.node_type.clone())
-                } else {
-                    None
+                // Only create configuration if we get a valid node type
+                match response {
+                    Some(node_type) => {
+                        if let Some(node_type) = node_type.node_types.first() {
+                            if node_type.node_type != "unknown" {
+                                Some(ConfiguredAvs {
+                                    assigned_name: inc_container_name.to_string(),
+                                    container_name: inc_container_name.clone(),
+                                    avs_type: node_type.node_type.clone(),
+                                    metric_port: metrics_port,
+                                })
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    }
+                    None => None,
                 }
-                .unwrap_or("unknown".to_string());
-
-                Some(ConfiguredAvs {
-                    assigned_name: inc_container_name.to_string(),
-                    container_name: inc_container_name.clone(),
-                    avs_type: found_type,
-                    metric_port: metrics_port,
-                })
             }
         };
 

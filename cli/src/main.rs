@@ -114,7 +114,7 @@ async fn main() -> Result<(), AnyError> {
         Commands::Key { subcmd } => key::parse_key_subcommands(subcmd).await?,
         // Commands::Node { subcmd } => avs::parse_avs_subcommands(subcmd).await?,
         Commands::Monitor => monitor::start_monitor(config).await?,
-        Commands::Scan { force } => monitor::scan(force, &config).await?,
+        Commands::Scan { force } => monitor::scan(force, config).await?,
         Commands::RegisterNode => init::register_node(config).await?,
         Commands::RenameNode { old_name, new_name } => {
             monitor::rename_node(&config, old_name, new_name).await?;
