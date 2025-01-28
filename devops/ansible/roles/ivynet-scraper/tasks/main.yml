@@ -83,3 +83,16 @@
     - general
     - ivynet
     - systemd
+
+- name: Restart Scraper
+  ansible.builtin.cron:
+    name: "Restart scraper for {{ item }}"
+    minute: 3
+    hour: "*"
+    job: "/usr/bin/systemd restart ivynet-scraper-{{ item }}"
+  loop:
+    - holesky
+    - mainnet
+  tags:
+    - ivynet_scraper
+    - general
