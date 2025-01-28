@@ -164,23 +164,6 @@ impl DockerStreamListener<DockerClient> {
         if let Some(configured) = configured {
             debug!("Found container: {}", inc_container_name);
 
-            let node_data = NodeData {
-                name: configured.container_name.clone(),
-                node_type: Some(configured.avs_type.clone()),
-                manifest: Some(inc_container_digest),
-                metrics_alive: Some(configured.metric_port.is_some()),
-                node_running: Some(true),
-            };
-
-            let node_data_signature = sign_node_data(&node_data, &self.identity_wallet)?;
-            let signed_node_data = SignedNodeData {
-                machine_id: self.machine_id.into(),
-                signature: node_data_signature.to_vec(),
-                node_data: Some(node_data),
-            };
-
-            self.dispatch.send_node_data(signed_node_data).await?;
-
             if let Err(e) = self.metrics_listener_handle.add_node(&configured).await {
                 error!("Error adding node: {:?}", e);
             }
