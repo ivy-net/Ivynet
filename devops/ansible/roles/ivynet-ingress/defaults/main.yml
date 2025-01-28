@@ -49,10 +49,10 @@ ivynet_ingress_postgres_pass: !vault |
           6331
 
 # Postgresql user for Backend
-ivynet_backend_postgres_user: "ivy"
+ivynet_ingress_postgres_user: "ivy"
 
 # Password for a postgres user
-ivynet_backend_postgres_user_pass: !vault |
+ivynet_ingress_postgres_user_pass: !vault |
           $ANSIBLE_VAULT;1.1;AES256
           63666132666433393466653862316162663436643238633966666236616136613139353532323230
           3735356638373733313830383139363133656232316535660a646439366631376662316233346163

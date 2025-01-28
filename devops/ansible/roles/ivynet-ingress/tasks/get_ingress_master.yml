@@ -28,7 +28,6 @@
     mode: "0755"
   loop:
     - ivynet-ingress
-    - ivynet-ingress
   tags:
     - ivynet_ingress
     - ivynet
