@@ -14,7 +14,7 @@ const ALL_DIRECTORIES: [(Chain, H160); 4] = [
     (Chain::Holesky, h160!(0x58973d16FFA900D11fC22e5e2B6840d9f7e13401)),
 ];
 
-const ALL_MAINNET_AVSES: [(NodeType, H160); 30] = [
+const ALL_MAINNET_AVSES: [(NodeType, H160); 42] = [
     (NodeType::EigenDA, h160!(0x870679E138bCdf293b7Ff14dD44b70FC97e12fc0)),
     (NodeType::LagrangeZkWorker, h160!(0x22CAc0e6A1465F043428e8AeF737b3cb09D0eEDa)),
     (NodeType::LagrangeStateCommittee, h160!(0x35F4f28A8d3Ff20EEd10e087e8F96Ea2641E6AA2)),
@@ -67,6 +67,27 @@ const ALL_MAINNET_AVSES: [(NodeType, H160); 30] = [
     (NodeType::AlignedLayer, h160!(0xef2a435e5ee44b2041100ef8cbc8ae035166606c)),
     (NodeType::Gasp, h160!(0x9A986296d45C327dAa5998519AE1B3757F1e6Ba1)),
     (NodeType::Bolt(ActiveSet::Symbiotic), h160!(0xA42ec46F2c9DC671a72218E145CC13dc119fB722)),
+    (NodeType::Hyperlane(ActiveSet::Symbiotic), h160!(0x59cf937Ea9FA9D7398223E3aA33d92F7f5f986A2)),
+    (
+        NodeType::DittoNetwork(ActiveSet::Symbiotic),
+        h160!(0x8560C667Ae72F28D09465B342A480daB28821f6b),
+    ),
+    (NodeType::Cycle, h160!(0x759D4335cb712aa188935C2bD3Aa6D205aC61305)),
+    (
+        NodeType::MishtiNetwork(ActiveSet::Symbiotic),
+        h160!(0xe87ff321F5721a9285Ec651d01c0C0B857430c2c),
+    ),
+    (NodeType::Kalypso, h160!(0x3a7B173124DcFeCff1847FF7f8f56e72ABE02340)),
+    (NodeType::RouterXtendNetwork, h160!(0xcf128E88E11507aBAd12a7624A34E3d22F731AbC)),
+    (NodeType::CapxCloud, h160!(0xAD12e74847d6D1487A6a3A6b75D1f509f3F627e8)),
+    (NodeType::Symbiosis, h160!(0x5112EbA9bc2468Bb5134CBfbEAb9334EdaE7106a)),
+    (NodeType::Radius, h160!(0xfCa0128A19A5c06b0148c27ee7623417a11BaAbd)),
+    (
+        NodeType::PrimevMevCommit(ActiveSet::Symbiotic),
+        h160!(0x9101eda106A443A0fA82375936D0D1680D5a64F5),
+    ),
+    (NodeType::IBTCNetwork, h160!(0xe4661BDbC4f557d2684F8a7C4aF50572e51D4166)),
+    (NodeType::ZKLink, h160!(0x213F448e7a1C8DAEDe41cf94883Cc6149244d00F)),
 ];
 
 const ALL_HOLESKY_AVSES: [(NodeType, H160); 34] = [
@@ -109,7 +130,10 @@ const ALL_HOLESKY_AVSES: [(NodeType, H160); 34] = [
     ),
     (NodeType::AlignedLayer, h160!(0x58f280bebe9b34c9939c3c39e0890c81f163b623)),
     (NodeType::Gasp, h160!(0xb4dd45a08BFA6fBC19F7cD624cdfef87CE95e7AC)),
-    (NodeType::DittoNetwork, h160!(0x5FD0026a449eeA51Bd1471E4ee8df8607aaECC24)),
+    (
+        NodeType::DittoNetwork(ActiveSet::Eigenlayer),
+        h160!(0x5FD0026a449eeA51Bd1471E4ee8df8607aaECC24),
+    ),
     (NodeType::Nuffle, h160!(0x2344C0FE02Ccd2b32155Ca0ffcb1978a6d96a552)),
     (NodeType::Blockless, h160!(0x234c91AbD960B72e63d5e63C8246A259f3827Ac8)),
     (NodeType::Primus, h160!(0x3DD26B1e365FBED12B384093FD13e7Ed93fa9979)),
@@ -117,7 +141,10 @@ const ALL_HOLESKY_AVSES: [(NodeType, H160); 34] = [
     (NodeType::Zellular, h160!(0x73746A9a52dD3e925dCE3f4E0f2D69F95755c424)),
     (NodeType::Bolt(ActiveSet::Eigenlayer), h160!(0xa632a3e652110Bb2901D5cE390685E6a9838Ca04)),
     (NodeType::Redstone, h160!(0xBA7A7CaEE3b1ed84a98dBc20Ea20fe21FE7D557e)),
-    (NodeType::MishtiNetwork, h160!(0xe87ff321F5721a9285Ec651d01c0C0B857430c2c)),
+    (
+        NodeType::MishtiNetwork(ActiveSet::Eigenlayer),
+        h160!(0xe87ff321F5721a9285Ec651d01c0C0B857430c2c),
+    ),
 ];
 
 type AvsMap = HashMap<Chain, HashMap<NodeType, H160>>;
