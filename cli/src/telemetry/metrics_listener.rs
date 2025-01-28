@@ -234,9 +234,9 @@ impl<D: DockerApi> MetricsListener<D> {
                         {
                             monitor_config.configured_avses.push(avs.clone());
                             _ = monitor_config.store();
-                        } else {
-                            error!("Cannot load monitor config for changes");
                         }
+                    } else {
+                        error!("Cannot load monitor config for changes");
                     }
                 }
             }

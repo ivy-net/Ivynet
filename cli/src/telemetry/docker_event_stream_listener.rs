@@ -11,7 +11,7 @@ use ivynet_node_type::NodeType;
 use ivynet_signer::{sign_utils::sign_node_data, IvyWallet};
 use tokio::time::sleep;
 use tokio_stream::StreamExt;
-use tracing::{debug, error, info};
+use tracing::{debug, error};
 use uuid::Uuid;
 
 use super::{
