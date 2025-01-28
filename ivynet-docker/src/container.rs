@@ -75,7 +75,7 @@ impl Container {
         self.0.state.as_deref()
     }
 
-    pub async fn public_ports(&self, docker: &DockerClient) -> Vec<u16> {
+    pub async fn public_ports(&self, docker: &impl DockerApi) -> Vec<u16> {
         match self.is_network_mode_host() {
             true => self.get_host_ports(docker).await.unwrap_or_default(),
             false => self
@@ -125,8 +125,11 @@ impl Container {
     }
 
     /// Get the ports exposed by the container on the host machine / network
-    pub async fn get_host_ports(&self, docker: &DockerClient) -> Result<Vec<u16>, ContainerError> {
-        let sidecar_name = build_sidecar_image(&docker.0).await?;
+    pub async fn get_host_ports(
+        &self,
+        docker: &impl DockerApi,
+    ) -> Result<Vec<u16>, ContainerError> {
+        let sidecar_name = build_sidecar_image(&docker.inner()).await?;
         let sidecar_container = self.run_one_shot_sidecar(docker, &sidecar_name).await?;
 
         let mut logs = docker.stream_logs_by_container_id(&sidecar_container, 0).await;
@@ -160,7 +163,7 @@ impl Container {
     /// of the sidecar container.
     async fn run_one_shot_sidecar(
         &self,
-        docker: &DockerClient,
+        docker: &impl DockerApi,
         sidecar_image: &str,
     ) -> Result<String, ContainerError> {
         // HostConfig with pid_mode and network_mode set to use the target container
@@ -186,7 +189,7 @@ impl Container {
 
         // Create the container
         let create_response = docker
-            .0
+            .inner()
             .create_container(Some(create_options), config)
             .await
             .map_err(ContainerError::CreateContainerError)?;
@@ -194,7 +197,7 @@ impl Container {
 
         // Start the container
         docker
-            .0
+            .inner()
             .start_container::<String>(&sidecar_id, None)
             .await
             .map_err(ContainerError::StartContainerError)?;
@@ -202,7 +205,7 @@ impl Container {
         info!("Sidecar started: {:#?}", sidecar_name);
 
         docker
-            .0
+            .inner()
             .wait_container::<String>(&sidecar_id, None)
             .try_for_each(|details| async move {
                 println!("Container exit details: {:?}", details);
@@ -232,33 +235,4 @@ pub enum ContainerError {
     ContainerError(#[from] Error),
     #[error(transparent)]
     ParseError(#[from] netstat::ParseError),
-}
-
-#[cfg(test)]
-mod container_tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_ivynet_sidecar() {
-        // let docker = Docker::connect_with_local_defaults().unwrap();
-        // let docker_client = DockerClient(docker);
-        // let containers = docker_client.list_containers().await;
-        // let container = containers.first().unwrap();
-        // let sidecar = container.attach_sidecar(&docker_client,
-        // "ivynet_network_inspector:0.1.0").await; assert!(sidecar.is_ok());
-
-        let docker = DockerClient::default();
-        let nginx_container = docker.find_container_by_name("my_nginx").await.unwrap();
-        let host_ports = nginx_container.get_host_ports(&docker).await.unwrap();
-
-        // let port = ContainerPort::Tcp(6379);
-        // let container = GenericImage::new("redis", "7.2.4")
-        //     .with_exposed_port(port)
-        //     .with_wait_for(WaitFor::message_on_stdout("Ready to accept connections"))
-        //     .with_network("host")
-        //     .with_env_var("DEBUG", "1")
-        //     .start()
-        //     .await
-        //     .expect("Failed to start Redis");
-    }
 }
