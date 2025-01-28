@@ -7,13 +7,14 @@ use ivynet_node_type::{
     ActiveSet, AltlayerType, InfiniRouteType, MachType, NodeType, SkateChainType,
 };
 
-const ALL_DIRECTORIES: [(Chain, H160); 3] = [
+const ALL_DIRECTORIES: [(Chain, H160); 4] = [
     (Chain::Mainnet, h160!(0x135DDa560e946695d6f155dACaFC6f1F25C1F5AF)),
+    (Chain::Mainnet, h160!(0x7133415b33B438843D581013f98A08704316633c)),
     (Chain::Holesky, h160!(0x055733000064333CaDDbC92763c58BF0192fFeBf)),
     (Chain::Holesky, h160!(0x58973d16FFA900D11fC22e5e2B6840d9f7e13401)),
 ];
 
-const ALL_MAINNET_AVSES: [(NodeType, H160); 29] = [
+const ALL_MAINNET_AVSES: [(NodeType, H160); 30] = [
     (NodeType::EigenDA, h160!(0x870679E138bCdf293b7Ff14dD44b70FC97e12fc0)),
     (NodeType::LagrangeZkWorker, h160!(0x22CAc0e6A1465F043428e8AeF737b3cb09D0eEDa)),
     (NodeType::LagrangeStateCommittee, h160!(0x35F4f28A8d3Ff20EEd10e087e8F96Ea2641E6AA2)),
@@ -65,6 +66,7 @@ const ALL_MAINNET_AVSES: [(NodeType, H160); 29] = [
     ),
     (NodeType::AlignedLayer, h160!(0xef2a435e5ee44b2041100ef8cbc8ae035166606c)),
     (NodeType::Gasp, h160!(0x9A986296d45C327dAa5998519AE1B3757F1e6Ba1)),
+    (NodeType::Bolt(ActiveSet::Symbiotic), h160!(0xA42ec46F2c9DC671a72218E145CC13dc119fB722)),
 ];
 
 const ALL_HOLESKY_AVSES: [(NodeType, H160); 34] = [
