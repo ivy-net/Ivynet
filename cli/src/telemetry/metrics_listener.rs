@@ -16,7 +16,7 @@ use crate::system::get_detailed_system_information;
 use super::{
     dispatch::{TelemetryDispatchError, TelemetryDispatchHandle},
     parser::TelemetryParser,
-    ConfiguredAvs, ErrorChannelTx,
+    ConfiguredAvs, ErrorChannelTx, TelemetryError,
 };
 
 const TELEMETRY_INTERVAL_IN_MINUTES: u64 = 1;
@@ -94,14 +94,35 @@ pub enum MetricsListenerHandleError {
     SendError(#[from] mpsc::error::SendError<MetricsListenerAction>),
 }
 
-#[derive(Clone, Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum MetricsListenerError {
-    #[error("Failed to fetch metrics from container: {0}")]
-    MetricsFetchError(#[from] Arc<reqwest::Error>),
+    #[error("Failed to fetch metrics from container {container_name} on port {port}: {source}")]
+    FetchError { container_name: String, port: u16, source: MetricsFetchError },
+
     #[error("Failed to sign metrics: {0}")]
     SigningError(#[from] Arc<IvySigningError>),
-    #[error("Failed to send metrics: {0}")]
+
+    #[error("Failed to dispatch metrics: {0}")]
     DispatchError(#[from] TelemetryDispatchError),
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum MetricsFetchError {
+    #[error("Failed to connect to metrics endpoint: {0}")]
+    ConnectionError(#[from] reqwest::Error),
+
+    #[error("Timeout while fetching metrics after {timeout_secs} seconds")]
+    TimeoutError {
+        timeout_secs: u64,
+        #[source]
+        source: reqwest::Error,
+    },
+
+    #[error("Failed to parse metrics response: {0}")]
+    ParseError(String),
+
+    #[error("Invalid metric format in line {line_number}: {line}")]
+    InvalidMetricFormat { line_number: usize, line: String },
 }
 
 /// The MetricsListener is responsible for listening to metrics from the machine and sending them
@@ -150,7 +171,7 @@ impl<D: DockerApi> MetricsListener<D> {
                 }
             };
             if let Err(e) = res {
-                let _ = self.error_tx.send(e.into());
+                let _ = self.error_tx.send(TelemetryError::MetricsListenerError(e.into()));
             }
         }
     }
@@ -272,7 +293,8 @@ pub async fn report_metrics(
         };
 
         let metrics = if let Some(port) = avs.metric_port {
-            let metrics: Vec<Metrics> = fetch_telemetry_from(port).await.unwrap_or_default();
+            let metrics: Vec<Metrics> =
+                fetch_telemetry_from(&avs.container_name, port).await.unwrap_or_default();
 
             let metrics_signature =
                 sign_metrics(metrics.as_slice(), identity_wallet).map_err(Arc::new)?;
@@ -338,18 +360,70 @@ pub async fn report_metrics(
     Ok(())
 }
 
-pub async fn fetch_telemetry_from(port: u16) -> Result<Vec<Metrics>, MetricsListenerError> {
+pub async fn fetch_telemetry_from(
+    container_name: &str,
+    port: u16,
+) -> Result<Vec<Metrics>, MetricsListenerError> {
+    const TIMEOUT_SECS: u64 = 10;
+
     let client = Client::new();
+
     let resp = client
         .get(format!("http://localhost:{}/metrics", port))
-        .timeout(Duration::from_secs(10))
+        .timeout(Duration::from_secs(TIMEOUT_SECS))
         .send()
         .await
-        .map_err(Arc::new)?;
-    let body = resp.text().await.map_err(Arc::new)?;
-    let metrics =
-        body.split('\n').filter_map(|line| TelemetryParser::new(line).parse()).collect::<Vec<_>>();
-    Ok(metrics)
+        .map_err(|e| {
+            if e.is_timeout() {
+                MetricsFetchError::TimeoutError { timeout_secs: TIMEOUT_SECS, source: e }
+            } else {
+                MetricsFetchError::ConnectionError(e)
+            }
+        })
+        .map_err(|e| MetricsListenerError::FetchError {
+            container_name: container_name.to_string(),
+            port,
+            source: e,
+        })?;
+
+    let body = resp.text().await.map_err(MetricsFetchError::ConnectionError).map_err(|e| {
+        MetricsListenerError::FetchError {
+            container_name: container_name.to_string(),
+            port,
+            source: e,
+        }
+    })?;
+
+    let mut metrics = Vec::new();
+    for (line_number, line) in body.lines().enumerate() {
+        let trimmed = line.trim();
+        // Skip empty lines and Prometheus metadata/comment lines
+        if trimmed.is_empty() || trimmed.starts_with("# ") {
+            continue;
+        }
+
+        match TelemetryParser::new(line).parse() {
+            Some(metric) => metrics.push(metric),
+            None => {
+                warn!(
+                    "Failed to parse metric at line {}: '{}' for container {}",
+                    line_number + 1,
+                    line,
+                    container_name
+                );
+            }
+        }
+    }
+
+    if metrics.is_empty() {
+        Err(MetricsListenerError::FetchError {
+            container_name: container_name.to_string(),
+            port,
+            source: MetricsFetchError::ParseError("No valid metrics found in response".to_string()),
+        })
+    } else {
+        Ok(metrics)
+    }
 }
 
 fn fetch_system_telemetry() -> Vec<Metrics> {
