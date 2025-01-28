@@ -1,5 +1,6 @@
 use anyhow::anyhow;
 use dialoguer::{Input, MultiSelect, Select};
+use fs2::FileExt;
 use ivynet_docker::dockerapi::DockerClient;
 use ivynet_grpc::{
     self,
@@ -13,7 +14,8 @@ use ivynet_signer::sign_utils::sign_name_change;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
-    path::PathBuf,
+    fs::{File, OpenOptions},
+    path::{Path, PathBuf},
 };
 use tracing::{error, info};
 
@@ -36,8 +38,20 @@ pub struct PotentialAvs {
 
 #[derive(thiserror::Error, Debug)]
 pub enum MonitorConfigError {
-    #[error(transparent)]
+    #[error("Failed to acquire lock: {0}")]
+    LockError(#[from] std::io::Error),
+
+    #[error("Config IO error: {0}")]
     ConfigIo(#[from] IoError),
+
+    #[error("Failed to create config directory: {0}")]
+    DirectoryError(std::io::Error),
+
+    #[error("Config is locked by another process")]
+    AlreadyLocked,
+
+    #[error("Failed to write config atomically: {0}")]
+    AtomicWriteError(std::io::Error),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
@@ -47,7 +61,28 @@ pub struct MonitorConfig {
 }
 
 impl MonitorConfig {
-    pub fn load(path: PathBuf) -> Result<Self, MonitorConfigError> {
+    /// Creates a new file lock for the config
+    fn create_lock(path: &Path) -> Result<File, MonitorConfigError> {
+        // Ensure directory exists
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).map_err(MonitorConfigError::DirectoryError)?;
+        }
+
+        let lock_path = path.with_extension("lock");
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(&lock_path)?;
+
+        // Lock will be held until file is dropped
+        file.lock_exclusive()?;
+        Ok(file)
+    }
+
+    fn load(path: PathBuf) -> Result<Self, MonitorConfigError> {
+        let _lock = Self::create_lock(&path)?;
         let config: Self = read_toml(&path)?;
         Ok(config)
     }
@@ -60,6 +95,7 @@ impl MonitorConfig {
 
     pub fn store(&self) -> Result<(), MonitorConfigError> {
         let config_path = DEFAULT_CONFIG_PATH.to_owned().join(MONITOR_CONFIG_FILE);
+        let _lock = Self::create_lock(&config_path)?;
         write_toml(&config_path, self)?;
         Ok(())
     }

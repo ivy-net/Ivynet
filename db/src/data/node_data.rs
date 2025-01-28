@@ -1,6 +1,9 @@
 use ivynet_core::directory::avs_contract;
 use ivynet_docker_registry::{registry::ImageRegistry, registry_type::RegistryType};
-use ivynet_node_type::NodeType;
+use ivynet_node_type::{
+    restaking_protocol::{RestakingProtocol, RestakingProtocolType},
+    NodeType,
+};
 use serde::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -52,6 +55,7 @@ pub struct NodeStatusReport {
 pub struct AvsInfo {
     #[serde(flatten)]
     pub avs: Avs,
+    pub protocol: Option<RestakingProtocolType>,
     pub is_running: bool,
     pub uptime: f64,
     pub performance_score: f64,
@@ -133,8 +137,11 @@ pub async fn build_avs_info(
         avs.avs_version = "Local".to_string();
     }
 
+    let protocol = avs.avs_type.restaking_protocol();
+
     Ok(AvsInfo {
         avs,
+        protocol,
         is_running,
         uptime: metrics.get(UPTIME_METRIC).map_or(0.0, |m| m.value),
         performance_score: metrics.get(EIGEN_PERFORMANCE_METRIC).map_or(0.0, |m| m.value),

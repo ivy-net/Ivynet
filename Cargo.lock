@@ -745,6 +745,7 @@ dependencies = [
  "dialoguer",
  "dirs",
  "ethers",
+ "fs2",
  "futures",
  "ivynet-docker",
  "ivynet-grpc",

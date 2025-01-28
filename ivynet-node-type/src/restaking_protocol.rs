@@ -1,5 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 use super::{ActiveSet, AltlayerType, InfiniRouteType, MachType, NodeType, SkateChainType};
 
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum RestakingProtocolType {
     Eigenlayer,
     Symbiotic,

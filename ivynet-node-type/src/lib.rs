@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use strum::{EnumIter, IntoEnumIterator};
 use tracing::{debug, error, warn};
 
-mod restaking_protocol;
+pub mod restaking_protocol;
 
 const EIGENDA_METRICS_ID: &str = "da-node";
 
