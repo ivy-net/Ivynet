@@ -287,7 +287,8 @@ async fn find_new_avses(
     for avs in potential_avses {
         let node_type =
             container_node_types.get(&avs.container_name).cloned().unwrap_or("unknown".to_string());
-        let metric_port = get_metrics_port(&avs.container_name, &avs.ports).await?;
+        let metric_port =
+            get_metrics_port(&reqwest::Client::new(), &avs.container_name, &avs.ports).await?;
         let new_avs = ConfiguredAvs {
             assigned_name: avs.image_name.clone(),
             container_name: avs.container_name.clone(),
@@ -312,11 +313,12 @@ async fn find_new_avses(
 }
 
 async fn get_metrics_port(
+    http_client: &reqwest::Client,
     container_name: &str,
     ports: &[u16],
 ) -> Result<Option<u16>, anyhow::Error> {
     for &port in ports {
-        if let Ok(metrics) = fetch_telemetry_from(container_name, port).await {
+        if let Ok(metrics) = fetch_telemetry_from(http_client, container_name, port).await {
             if !metrics.is_empty() {
                 return Ok(Some(port));
             }

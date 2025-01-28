@@ -141,6 +141,7 @@ pub struct MetricsListener<D: DockerApi> {
     dispatch: TelemetryDispatchHandle,
     rx: mpsc::Receiver<MetricsListenerAction>,
     error_tx: ErrorChannelTx,
+    http_client: reqwest::Client,
 }
 
 impl<D: DockerApi> MetricsListener<D> {
@@ -157,7 +158,17 @@ impl<D: DockerApi> MetricsListener<D> {
         for avs in &avses {
             avs_cache.insert(avs.clone(), (Some(avs.avs_type.to_string()), None, false));
         }
-        Self { docker, machine_id, identity_wallet, avses, avs_cache, dispatch, rx, error_tx }
+        Self {
+            docker,
+            machine_id,
+            identity_wallet,
+            avses,
+            avs_cache,
+            dispatch,
+            rx,
+            error_tx,
+            http_client: reqwest::Client::new(),
+        }
     }
 
     pub async fn run(mut self) {
@@ -187,6 +198,7 @@ impl<D: DockerApi> MetricsListener<D> {
             self.avses.as_slice(),
             &self.dispatch,
             &mut self.avs_cache,
+            &self.http_client,
         )
         .await
     }
@@ -253,6 +265,7 @@ pub async fn report_metrics(
     avses: &[ConfiguredAvs],
     dispatch: &TelemetryDispatchHandle,
     avs_cache: &mut HashMap<ConfiguredAvs, (Option<String>, Option<String>, bool)>,
+    http_client: &reqwest::Client,
 ) -> Result<(), MetricsListenerError> {
     let images = docker.list_images().await;
     debug!("System Docker images: {:#?}", images);
@@ -296,7 +309,9 @@ pub async fn report_metrics(
 
         let metrics = if let Some(port) = avs.metric_port {
             let metrics: Vec<Metrics> =
-                fetch_telemetry_from(&avs.container_name, port).await.unwrap_or_default();
+                fetch_telemetry_from(http_client, &avs.container_name, port)
+                    .await
+                    .unwrap_or_default();
 
             let metrics_signature =
                 sign_metrics(metrics.as_slice(), identity_wallet).map_err(Arc::new)?;
@@ -367,12 +382,11 @@ pub async fn report_metrics(
 }
 
 pub async fn fetch_telemetry_from(
+    client: &Client,
     container_name: &str,
     port: u16,
 ) -> Result<Vec<Metrics>, MetricsListenerError> {
     const TIMEOUT_SECS: u64 = 10;
-
-    let client = Client::new();
 
     let resp = client
         .get(format!("http://localhost:{}/metrics", port))
