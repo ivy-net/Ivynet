@@ -4,10 +4,10 @@ use bollard::secret::{EventMessage, EventMessageTypeEnum};
 use ivynet_docker::dockerapi::{DockerApi, DockerClient, DockerStreamError};
 use ivynet_grpc::{
     backend::backend_client::BackendClient,
-    messages::{NodeData, NodeTypeQueries, NodeTypeQuery, SignedNodeData},
+    messages::{NodeTypeQueries, NodeTypeQuery},
     tonic::{transport::Channel, Request, Response},
 };
-use ivynet_signer::{sign_utils::sign_node_data, IvyWallet};
+use ivynet_signer::IvyWallet;
 use tokio::time::sleep;
 use tokio_stream::StreamExt;
 use tracing::{debug, error};
