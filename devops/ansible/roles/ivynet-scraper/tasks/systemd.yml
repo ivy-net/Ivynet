@@ -1,0 +1,54 @@
+---
+- name: Copy Scraper Service files
+  ansible.builtin.template:
+    src: ivynet-scraper.service.j2
+    dest: /etc/systemd/system/ivynet-scraper-{{ item }}.service
+    owner: root
+    group: root
+    mode: "0644"
+  vars:
+    network: "{{ item }}"
+  loop:
+    - mainnet
+    - holesky
+  notify:
+    - Reload daemon
+    - Restart scraper holesky service
+    - Restart scraper mainnet service
+  tags:
+    - ivynet_scraper
+    - general
+    - ivynet
+    - systemd
+
+
+- name: Populate service facts
+  ansible.builtin.service_facts:
+
+- name: Set Scraper Holesky service
+  ansible.builtin.systemd_service:
+    name: ivynet-scraper-holesky
+    state: started
+    enabled: true
+    daemon_reload: true
+  when:
+    - "'ivynet-scraper-holesky.service' not in services"
+  tags:
+    - ivynet_scraper
+    - general
+    - ivynet
+    - systemd
+
+- name: Set Scraper Mainnet service
+  ansible.builtin.systemd_service:
+    name: ivynet-scraper-mainnet
+    state: started
+    enabled: true
+    daemon_reload: true
+  when:
+    - "'ivynet-scraper-mainnet.service' not in services"
+  tags:
+    - ivynet_scraper
+    - general
+    - ivynet
+    - systemd
