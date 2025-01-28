@@ -104,8 +104,29 @@ impl DockerStreamListener<DockerClient> {
             }
         };
 
-        let configured = match avses.iter().find(|avs| avs.container_name == *inc_container_name) {
-            Some(avs) => Some(avs.clone()),
+        let mut configured = None;
+        for avs in avses {
+            // First try to find by container name
+            if avs.container_name == *inc_container_name {
+                configured = Some(avs.clone());
+                break;
+            }
+            // If not found by name, check if any existing AVS is monitoring
+            // the same container (by image hash)
+            if let Some(existing_container) =
+                self.docker.find_container_by_name(&avs.container_name).await
+            {
+                if let Some(existing_digest) = existing_container.image_id() {
+                    if existing_digest == inc_container_digest {
+                        configured = Some(avs.clone());
+                        break;
+                    }
+                }
+            }
+        }
+
+        let configured = match configured {
+            Some(avs) => Some(avs),
             None => {
                 let node_type_query = NodeTypeQuery {
                     container_name: inc_container_name.clone(),
