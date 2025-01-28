@@ -1,12 +1,10 @@
 ---
 name: Run PreCommit
 
-on:
-  pull_request:
-    types: [opened, synchronize, reopened, ready_for_review]
+on: [push]
+
 jobs:
   pre-commit:
-    if: github.event.pull_request.draft == false
     name: pre-commit checks
     runs-on: ubuntu-latest
     steps:
@@ -39,9 +37,6 @@ jobs:
       - name: Install hooks
         run: |
           pre-commit install --install-hooks
-      - name: Prebuild tests
-        run: |
-          cargo build --tests
       - name: Run Pre-Commit
         run: >
           pre-commit run
