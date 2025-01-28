@@ -89,7 +89,7 @@
     name: "Restart scraper for {{ item }}"
     minute: 3
     hour: "*"
-    job: "/usr/bin/systemd restart ivynet-scraper-{{ item }}"
+    job: "/usr/bin/systemctl restart ivynet-scraper-{{ item }}"
   loop:
     - holesky
     - mainnet
