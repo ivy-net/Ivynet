@@ -31,7 +31,7 @@
     - postgres
 
 - name: Download sqlx-cli
-  get_url:
+  ansible.builtin.get_url:
     url: "{{ ivynet_backend_sqlx_url }}/{{ item }}"
     dest: "{{ ivynet_backend_path_install }}/bin"
     mode: "0755"

@@ -150,12 +150,16 @@
 
 - name: Run migrations
   ansible.builtin.command:
-    cmd: >
+    cmd: >-
       {{ ivynet_backend_path_install }}/bin/sqlx
       migrate
       run
       --database-url
-      postgresql://{{ ivynet_backend_postgres_user }}:{{ ivynet_backend_postgres_user_pass }}@{{ ivynet_backend_postgres_host }}:5432/{{ ivynet_backend_postgres_db }}
+      postgresql://\
+      {{ ivynet_backend_postgres_user }}:\
+      {{ ivynet_backend_postgres_user_pass }}@\
+      {{ ivynet_backend_postgres_host }}:5432/\
+      {{ ivynet_backend_postgres_db }}
     chdir: "{{ ivynet_backend_path_resources }}"
   register: migration_out
   changed_when: migration_out.stdout != ""
@@ -164,3 +168,15 @@
     - ivynet
     - db-config
     - sqlx
+
+- name: Stop local postgresql (for remote DB)
+  ansible.builtin.systemd_service:
+    name: postgresql
+    state: stopped
+    enabled: false
+  when:
+    - ivynet_backend_postgres_host != 'localhost'
+  tags:
+    - ivynet_backend
+    - ivynet
+    - db-config
