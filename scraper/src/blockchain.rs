@@ -234,7 +234,6 @@ pub async fn report_directory_event(
             //     .await?;
         }
         DirectoryEvents::OptInFilter(oin) => {
-            println!("OptIn event {oin:?}");
             backend
                 .report_registration_event(Request::new(RegistrationEvent {
                     directory: event.1.address.as_bytes().to_vec(),
@@ -248,7 +247,6 @@ pub async fn report_directory_event(
                 .await?;
         }
         DirectoryEvents::OptOutFilter(oout) => {
-            println!("OptOut event {oout:?}");
             backend
                 .report_registration_event(Request::new(RegistrationEvent {
                     directory: event.1.address.as_bytes().to_vec(),
