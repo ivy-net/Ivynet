@@ -131,6 +131,8 @@ pub async fn build_avs_info(
         avs.avs_version = "Othentic".to_string();
     } else if avs.avs_type.registry() == Ok(RegistryType::Local) {
         avs.avs_version = "Local".to_string();
+    } else if avs.avs_type.registry() == Ok(RegistryType::OptInOnly) {
+        avs.avs_version = "OptInOnly".to_string();
     }
 
     Ok(AvsInfo {
@@ -202,6 +204,7 @@ pub fn get_update_status(
             UpdateStatus::Updateable
         }
         VersionType::LocalOnly => UpdateStatus::Unknown,
+        VersionType::OptInOnly => UpdateStatus::Unknown,
     }
 }
 

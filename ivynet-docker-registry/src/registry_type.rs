@@ -14,6 +14,7 @@ pub enum RegistryType {
     Chainbase,
     Othentic,
     Local,
+    OptInOnly,
 }
 
 impl RegistryType {
@@ -38,6 +39,7 @@ impl RegistryType {
             "repository.chainbase.com" => Some(Self::Chainbase),
             "othentic" => Some(Self::Othentic),
             "local" => Some(Self::Local),
+            "opt-in-only" => Some(Self::OptInOnly),
             _ => None,
         }
     }
@@ -75,6 +77,7 @@ impl fmt::Display for RegistryType {
             Self::Chainbase => "repository.chainbase.com",
             Self::Othentic => "othentic",
             Self::Local => "local",
+            Self::OptInOnly => "opt-in-only",
         };
         write!(f, "{}", registry)
     }

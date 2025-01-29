@@ -4,7 +4,7 @@ use tokio_stream::StreamExt;
 use tracing::{error, warn};
 
 use crate::registry_type::RegistryType::{
-    self, Chainbase, DockerHub, Github, GoogleCloud, Local, Othentic, AWS,
+    self, Chainbase, DockerHub, Github, GoogleCloud, Local, OptInOnly, Othentic, AWS,
 };
 
 pub trait ImageRegistry {
@@ -53,15 +53,15 @@ impl ImageRegistry for NodeType {
             Self::PrimevMevCommit(_) => Local,
             Self::Blockless => Local,
             Self::Cycle => Local,
-            Self::Kalypso => todo!(),
-            Self::RouterXtendNetwork => todo!(),
-            Self::CapxCloud => todo!(),
-            Self::Symbiosis => todo!(),
-            Self::Radius => todo!(),
-            Self::IBTCNetwork => todo!(),
-            Self::ZKLink => todo!(),
-            Self::HyveDA => todo!(),
-            Self::UnifiAVS => return Err(NodeTypeError::InvalidNodeType),
+            Self::Kalypso => Local,
+            Self::RouterXtendNetwork => OptInOnly,
+            Self::CapxCloud => OptInOnly,
+            Self::Symbiosis => OptInOnly,
+            Self::Radius => OptInOnly,
+            Self::IBTCNetwork => OptInOnly,
+            Self::ZKLink => OptInOnly,
+            Self::HyveDA => OptInOnly,
+            Self::UnifiAVS => OptInOnly,
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };
         Ok(res)

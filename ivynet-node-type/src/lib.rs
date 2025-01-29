@@ -419,14 +419,14 @@ impl NodeType {
                         .to_string(),
                 ))
             }
-            Self::Kalypso => todo!(),
-            Self::RouterXtendNetwork => todo!(),
-            Self::CapxCloud => todo!(),
-            Self::Symbiosis => todo!(),
-            Self::Radius => todo!(),
-            Self::IBTCNetwork => todo!(),
-            Self::ZKLink => todo!(),
-            Self::HyveDA => todo!(),
+            Self::Kalypso => return Err(NodeTypeError::NoRepository),
+            Self::RouterXtendNetwork => return Err(NodeTypeError::NoRepository),
+            Self::CapxCloud => return Err(NodeTypeError::NoRepository),
+            Self::Symbiosis => return Err(NodeTypeError::NoRepository),
+            Self::Radius => return Err(NodeTypeError::NoRepository),
+            Self::IBTCNetwork => return Err(NodeTypeError::NoRepository),
+            Self::ZKLink => return Err(NodeTypeError::NoRepository),
+            Self::HyveDA => return Err(NodeTypeError::NoRepository),
         };
         Ok(res)
     }
@@ -508,14 +508,14 @@ impl NodeType {
                 ))
             }
 
-            Self::Kalypso => todo!(),
-            Self::RouterXtendNetwork => todo!(),
-            Self::CapxCloud => todo!(),
-            Self::Symbiosis => todo!(),
-            Self::Radius => todo!(),
-            Self::IBTCNetwork => todo!(),
-            Self::ZKLink => todo!(),
-            Self::HyveDA => todo!(),
+            Self::Kalypso => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::RouterXtendNetwork => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::CapxCloud => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::Symbiosis => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::Radius => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::IBTCNetwork => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::ZKLink => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::HyveDA => return Err(NodeTypeError::NoDefaultContainerName),
         };
         Ok(res)
     }
@@ -585,14 +585,14 @@ impl NodeType {
                         .to_string(),
                 ))
             },
-            Self::Kalypso => todo!(),
-            Self::RouterXtendNetwork => todo!(),
-            Self::CapxCloud => todo!(),
-            Self::Symbiosis => todo!(),
-            Self::Radius => todo!(),
-            Self::IBTCNetwork => todo!(),
-            Self::ZKLink => todo!(),
-            Self::HyveDA => todo!(),
+            Self::Kalypso => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::RouterXtendNetwork => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::CapxCloud => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::Symbiosis => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::Radius => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::IBTCNetwork => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::ZKLink => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::HyveDA => return Err(NodeTypeError::NoDefaultContainerName),
         };
         Ok(res)
     }

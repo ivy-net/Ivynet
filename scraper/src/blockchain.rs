@@ -8,8 +8,7 @@ use futures::{stream::SelectAll, Stream, StreamExt};
 use ivynet_core::directory::get_all_directories_for_chain;
 use ivynet_grpc::{
     backend_events::{
-        backend_events_client::BackendEventsClient, LatestBlockRequest, MetadataUriEvent,
-        RegistrationEvent,
+        backend_events_client::BackendEventsClient, LatestBlockRequest, RegistrationEvent,
     },
     tonic::{transport::Channel, Request},
 };

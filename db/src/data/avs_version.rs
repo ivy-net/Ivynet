@@ -13,6 +13,8 @@ pub enum VersionType {
     HybridVer,
     /// Node types that you only build locally
     LocalOnly,
+    /// Node types that are opt-in only
+    OptInOnly,
 }
 
 // TODO: This is really messy, should probably live in core but has a ToSchema dep
@@ -55,19 +57,19 @@ impl From<&NodeType> for VersionType {
             NodeType::AlignedLayer => VersionType::LocalOnly,
             NodeType::GoPlusAVS => VersionType::LocalOnly,
             NodeType::SkateChain(_) => VersionType::LocalOnly,
-            NodeType::UnifiAVS => VersionType::LocalOnly,
             NodeType::Blockless => VersionType::LocalOnly,
             NodeType::Redstone => VersionType::LocalOnly,
             NodeType::MishtiNetwork(_) => VersionType::LocalOnly,
             NodeType::Cycle => VersionType::LocalOnly,
-            NodeType::Kalypso => todo!(),
-            NodeType::RouterXtendNetwork => todo!(),
-            NodeType::CapxCloud => todo!(),
-            NodeType::Symbiosis => todo!(),
-            NodeType::Radius => todo!(),
-            NodeType::IBTCNetwork => todo!(),
-            NodeType::ZKLink => todo!(),
-            NodeType::HyveDA => todo!(),
+            NodeType::Kalypso => VersionType::LocalOnly,
+            NodeType::UnifiAVS => VersionType::OptInOnly,
+            NodeType::RouterXtendNetwork => VersionType::OptInOnly,
+            NodeType::CapxCloud => VersionType::OptInOnly,
+            NodeType::Symbiosis => VersionType::OptInOnly,
+            NodeType::Radius => VersionType::OptInOnly,
+            NodeType::IBTCNetwork => VersionType::OptInOnly,
+            NodeType::ZKLink => VersionType::OptInOnly,
+            NodeType::HyveDA => VersionType::OptInOnly,
         }
     }
 }
@@ -163,6 +165,7 @@ pub async fn find_latest_avs_version(
             }
         }
         VersionType::LocalOnly => ("Local".to_string(), "Local_Builds_Only".to_string()),
+        VersionType::OptInOnly => ("OptInOnly".to_string(), "OptInOnly".to_string()),
     };
     Ok((tag, digest))
 }
