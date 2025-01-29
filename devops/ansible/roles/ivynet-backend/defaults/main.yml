@@ -39,7 +39,7 @@ ivynet_backend_postgres_db: "ivynet"
 # DB host
 ivynet_backend_postgres_host: "localhost"
 
-# Swith to change the password
+# Switch to change the password
 ivynet_backend_postgres_no_password_changes: true
 
 # Password for the postgresql user (only for Cloud SQL; should be a secret)
