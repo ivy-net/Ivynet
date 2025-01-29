@@ -129,6 +129,7 @@ impl DockerStreamListener<DockerClient> {
         } else {
             None
         };
+
         // We treat an avs with the same image as the same avs configuration, so whenever an avs is
         // found using the same image, we are updating the configured avs that is already on the
         // list

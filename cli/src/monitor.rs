@@ -51,7 +51,16 @@ pub struct MonitorConfig {
 
 impl MonitorConfig {
     pub fn load(path: PathBuf) -> Result<Self, MonitorConfigError> {
-        let config: Self = read_toml(&path)?;
+        let mut config: Self = read_toml(&path)?;
+        // Reset all containers as active
+        config.configured_avses = config
+            .configured_avses
+            .iter_mut()
+            .map(|avs| {
+                avs.active = true;
+                avs.clone()
+            })
+            .collect::<Vec<_>>();
         Ok(config)
     }
 
@@ -84,7 +93,7 @@ impl MonitorConfig {
                 avs.assigned_name = new_name.to_string();
             }
         });
-        self.store()
+        Ok(())
     }
 
     pub fn change_avs_container_name(
@@ -97,7 +106,6 @@ impl MonitorConfig {
         {
             to_change.active = true;
             to_change.container_name = new_name.to_string();
-            self.store()?;
             Ok(true)
         } else {
             Ok(false)
@@ -118,7 +126,6 @@ impl MonitorConfig {
                 info!("Added metrics listener for container: {}", avs.container_name);
             }
 
-            self.store()?;
             Ok(true)
         } else {
             Ok(false)
@@ -153,7 +160,6 @@ impl MonitorConfig {
             self.configured_avses.iter_mut().find(|x| x.container_name == avs_name)
         {
             deactivating.active = active;
-            self.store()?;
             Ok(true)
         } else {
             Ok(false)
@@ -169,7 +175,6 @@ impl MonitorConfig {
         self.configured_avses.retain(|x| x.container_name != old_avs.container_name);
         if orig_size != self.configured_avses.len() {
             self.configured_avses.push(new_avs.clone());
-            self.store()?;
             Ok(true)
         } else {
             Ok(false)
@@ -371,10 +376,10 @@ async fn find_new_avses(
 
         // update the existing configured AVS if it exists, otherwise push to new vec
         if let Some(node) = configured_nodes.iter_mut().find(|a| {
-            a.container_name == new_avs.container_name ||
-                (!no_merge &&
-                    NodeType::from(a.avs_type.as_str()) ==
-                        NodeType::from(new_avs.avs_type.as_str()))
+            a.container_name == new_avs.container_name
+                || (!no_merge
+                    && NodeType::from(a.avs_type.as_str())
+                        == NodeType::from(new_avs.avs_type.as_str()))
         }) {
             node.avs_type = new_avs.avs_type;
             node.metric_port = new_avs.metric_port;

@@ -170,6 +170,8 @@ impl<D: DockerApi> MetricsListener<D> {
             if let Err(e) = res {
                 let _ = self.error_tx.send(e.into());
             }
+
+            _ = self.config.lock().await.store();
         }
     }
 
