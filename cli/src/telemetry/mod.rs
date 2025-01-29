@@ -90,7 +90,7 @@ impl<'de> Deserialize<'de> for ConfiguredAvs {
 
         Ok(ConfiguredAvs {
             assigned_name: helper.assigned_name,
-            container_name: helper.container_name,
+            container_name: helper.container_name.trim_start_matches('/').to_string(),
             avs_type,
             metric_port: helper.metric_port,
         })
@@ -195,7 +195,7 @@ async fn handle_telemetry_errors(mut error_rx: ErrorChannelRx) -> Result<(), Err
 }
 
 #[cfg(test)]
-mod tests {
+mod monitor_config_tests {
     use crate::monitor::MonitorConfig;
 
     use super::*;
@@ -368,6 +368,27 @@ mod tests {
 
             let avs: ConfiguredAvs = serde_json::from_value(json).unwrap();
             assert_eq!(avs.avs_type, expected);
+        }
+    }
+
+    #[test]
+    fn test_container_name_slash_handling() {
+        let variations = vec![
+            ("/test", "test"),
+            ("///test", "test"),
+            ("test", "test"),
+            ("/test/nested", "test/nested"),
+        ];
+
+        for (input, expected) in variations {
+            let json = json!({
+                "assigned_name": "test",
+                "container_name": input,
+                "avs_type": "EigenDA"
+            });
+
+            let avs: ConfiguredAvs = serde_json::from_value(json).unwrap();
+            assert_eq!(avs.container_name, expected);
         }
     }
 }
