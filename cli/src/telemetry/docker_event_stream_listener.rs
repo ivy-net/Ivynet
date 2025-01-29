@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use bollard::secret::{EventMessage, EventMessageTypeEnum};
 use ivynet_docker::dockerapi::{DockerApi, DockerClient, DockerStreamError};
@@ -9,10 +9,12 @@ use ivynet_grpc::{
 };
 use ivynet_node_type::NodeType;
 use ivynet_signer::{sign_utils::sign_node_data, IvyWallet};
-use tokio::time::sleep;
+use tokio::{sync::Mutex, time::sleep};
 use tokio_stream::StreamExt;
-use tracing::{debug, error};
+use tracing::{debug, error, info};
 use uuid::Uuid;
+
+use crate::monitor::MonitorConfig;
 
 use super::{
     dispatch::{TelemetryDispatchError, TelemetryDispatchHandle},
@@ -57,7 +59,7 @@ impl DockerStreamListener<DockerClient> {
 
     pub async fn run(
         mut self,
-        known_nodes: Vec<ConfiguredAvs>,
+        config: Arc<Mutex<MonitorConfig>>,
     ) -> Result<(), DockerStreamListenerError> {
         let mut docker_stream = self.docker.stream_events().await;
         while let Some(Ok(event)) = docker_stream.next().await {
@@ -66,7 +68,7 @@ impl DockerStreamListener<DockerClient> {
                 if let Some(action) = event.action.as_deref() {
                     match action {
                         "start" => {
-                            self.on_start(event, &known_nodes).await?;
+                            self.on_start(event, &config).await?;
                         }
                         "stop" | "kill" | "die" => {
                             self.on_stop(event).await?;
@@ -82,7 +84,7 @@ impl DockerStreamListener<DockerClient> {
     pub async fn on_start(
         &mut self,
         event: EventMessage,
-        avses: &[ConfiguredAvs],
+        config: &Arc<Mutex<MonitorConfig>>,
     ) -> Result<(), DockerStreamListenerError> {
         let actor = event.actor.ok_or(DockerStreamError::MissingActor)?;
         let attributes = actor.attributes.ok_or(DockerStreamError::MissingAttributes)?;
@@ -109,13 +111,13 @@ impl DockerStreamListener<DockerClient> {
         };
 
         // TODO: This query to backend seems to be extremely slow. Need to investigate
-        let guessed_type: Option<NodeType> = if !self.merging_containers {
+        let guessed_type: Option<NodeType> = if self.merging_containers {
             self.backend
                 .node_type_queries(Request::new(NodeTypeQueries {
                     node_types: vec![NodeTypeQuery {
                         image_name: inc_image_name.clone(),
                         image_digest: inc_container_digest.clone(),
-                        container_name: inc_container_name.clone(),
+                        container_name: inc_container_name.to_string(),
                     }],
                 }))
                 .await
@@ -130,18 +132,11 @@ impl DockerStreamListener<DockerClient> {
         // We treat an avs with the same image as the same avs configuration, so whenever an avs is
         // found using the same image, we are updating the configured avs that is already on the
         // list
-        let configured = match avses.iter().find(|avs| {
-            if let Some(node_type) = guessed_type {
-                avs.container_name == *inc_container_name ||
-                    NodeType::from(avs.avs_type.as_str()) == node_type
-            } else {
-                avs.container_name == *inc_container_name
-            }
-        }) {
+        let configured = match config.lock().await.activate_avs(inc_container_name, guessed_type) {
             Some(avs) => Some(avs.clone()),
             None => {
                 let node_type_query = NodeTypeQuery {
-                    container_name: inc_container_name.clone(),
+                    container_name: inc_container_name.to_string(),
                     image_name: inc_image_name.clone(),
                     image_digest: inc_container_digest.clone(),
                 };
@@ -159,7 +154,7 @@ impl DockerStreamListener<DockerClient> {
 
                 Some(ConfiguredAvs {
                     assigned_name: inc_container_name.to_string(),
-                    container_name: inc_container_name.clone(),
+                    container_name: inc_container_name.to_string(),
                     image_name: Some(inc_image_name.clone()),
                     avs_type: found_type,
                     metric_port: metrics_port,
@@ -170,6 +165,7 @@ impl DockerStreamListener<DockerClient> {
 
         if let Some(configured) = configured {
             debug!("Found container: {}", inc_container_name);
+            info!("Found container: {}", inc_container_name);
 
             let node_data = NodeData {
                 name: configured.container_name.clone(),

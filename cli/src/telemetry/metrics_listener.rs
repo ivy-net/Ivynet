@@ -370,29 +370,31 @@ pub async fn report_metrics(
 
         let is_running = docker.is_running(&avs.container_name).await;
 
-        let (node_type, prev_version_hash, was_running) = &avs_cache[&avs];
-        // Send node data
-        let node_data = NodeData {
-            name: avs.assigned_name.to_string(),
-            node_type: node_type.clone(),
-            manifest: if *prev_version_hash == version_hash {
-                None
-            } else {
-                Some(version_hash.clone())
-            },
-            metrics_alive: Some(!metrics.is_empty()),
-            node_running: if is_running != *was_running { Some(true) } else { None },
-        };
+        if let Some((node_type, prev_version_hash, was_running)) = &avs_cache.get(&avs) {
+            // Send node data
+            let node_data = NodeData {
+                name: avs.assigned_name.to_string(),
+                node_type: node_type.clone(),
+                manifest: if *prev_version_hash == version_hash {
+                    None
+                } else {
+                    Some(version_hash.clone())
+                },
+                metrics_alive: Some(!metrics.is_empty()),
+                node_running: if is_running != *was_running { Some(true) } else { None },
+            };
 
-        let node_data_signature = sign_node_data(&node_data, identity_wallet).map_err(Arc::new)?;
-        let signed_node_data = SignedNodeData {
-            machine_id: machine_id.into(),
-            signature: node_data_signature.to_vec(),
-            node_data: Some(node_data),
-        };
+            let node_data_signature =
+                sign_node_data(&node_data, identity_wallet).map_err(Arc::new)?;
+            let signed_node_data = SignedNodeData {
+                machine_id: machine_id.into(),
+                signature: node_data_signature.to_vec(),
+                node_data: Some(node_data),
+            };
 
-        dispatch.send_node_data(signed_node_data).await?;
-        avs_cache.insert(avs.clone(), (None, version_hash, is_running));
+            dispatch.send_node_data(signed_node_data).await?;
+            avs_cache.insert(avs.clone(), (None, version_hash, is_running));
+        }
     }
     // Last but not least - send system metrics
     let system_metrics = fetch_system_telemetry();

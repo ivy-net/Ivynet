@@ -125,6 +125,25 @@ impl MonitorConfig {
         }
     }
 
+    pub fn activate_avs(
+        &mut self,
+        name: &str,
+        avs_type: Option<NodeType>,
+    ) -> Option<ConfiguredAvs> {
+        if let Some(avs) = self.configured_avses.iter_mut().find(|avs| {
+            if let Some(node_type) = avs_type {
+                avs.container_name == name || NodeType::from(avs.avs_type.as_str()) == node_type
+            } else {
+                avs.container_name == name
+            }
+        }) {
+            avs.active = true;
+            Some(avs.clone())
+        } else {
+            None
+        }
+    }
+
     pub fn change_active_state(
         &mut self,
         avs_name: &str,

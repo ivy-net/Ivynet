@@ -172,7 +172,7 @@ pub async fn listen(
         &docker,
         machine_id,
         &identity_wallet,
-        config,
+        config.clone(),
         &dispatch,
         error_tx,
     );
@@ -188,7 +188,7 @@ pub async fn listen(
         backend_client,
         merge_containers,
     );
-    tokio::spawn(docker_listener.run(active_avses));
+    tokio::spawn(docker_listener.run(config));
 
     // This should never return unless the error channel is closed
     handle_telemetry_errors(error_rx).await?;
