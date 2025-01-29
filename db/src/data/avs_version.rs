@@ -24,7 +24,7 @@ impl From<&NodeType> for VersionType {
             NodeType::Zellular => VersionType::FixedVer,
             NodeType::AtlasNetwork => VersionType::FixedVer,
             NodeType::Primus => VersionType::SemVer,
-            NodeType::DittoNetwork => VersionType::SemVer,
+            NodeType::DittoNetwork(_) => VersionType::SemVer,
             NodeType::Gasp => VersionType::FixedVer,
             NodeType::EigenDA => VersionType::SemVer,
             NodeType::LagrangeZkWorker => VersionType::FixedVer,
@@ -58,8 +58,15 @@ impl From<&NodeType> for VersionType {
             NodeType::UnifiAVS => VersionType::LocalOnly,
             NodeType::Blockless => VersionType::LocalOnly,
             NodeType::Redstone => VersionType::LocalOnly,
-            NodeType::MishtiNetwork => VersionType::LocalOnly,
+            NodeType::MishtiNetwork(_) => VersionType::LocalOnly,
             NodeType::Cycle => VersionType::LocalOnly,
+            NodeType::Kalypso => todo!(),
+            NodeType::RouterXtendNetwork => todo!(),
+            NodeType::CapxCloud => todo!(),
+            NodeType::Symbiosis => todo!(),
+            NodeType::Radius => todo!(),
+            NodeType::IBTCNetwork => todo!(),
+            NodeType::ZKLink => todo!(),
         }
     }
 }
