@@ -183,34 +183,6 @@ impl<D: DockerApi> MetricsListener<D> {
             &mut self.avs_cache,
         )
         .await
-        // {
-        //     Some((avs_to_replace, Some(replacement))) => {
-        //         // TODO: This is a hack .This should be somehow marked in the loop process, but I
-        //         // don't have an access to sender of the channel.
-        //         // I'm open for suggestions how to handle it
-        //         self.avs_cache.remove(&avs_to_replace);
-        //         self.avses.retain(|x| x.container_name != avs_to_replace.container_name);
-        //         self.avs_cache.insert(
-        //             replacement.clone(),
-        //             (Some(replacement.avs_type.to_string()), "".to_string(), false),
-        //         );
-        //         self.avses.push(replacement.clone());
-        //         if let Ok(mut config) = MonitorConfig::load_from_default_path() {
-        //             _ = config.change_avs_container_name(
-        //                 &avs_to_replace.container_name,
-        //                 &replacement.container_name,
-        //             );
-        //         }
-        //         // We do nothning else here. In next round of the loop this will rename will be
-        // used         // in the metrics queue
-        //     }
-        //     Some((avs_to_remove, None)) => {
-        //         self.avs_cache.remove(&avs_to_remove);
-        //         self.avses.retain(|x| x.container_name != avs_to_remove.container_name);
-        //     }
-        //     _ => {}
-        // }
-        // Ok(())
     }
 
     async fn handle_action(
