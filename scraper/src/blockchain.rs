@@ -219,7 +219,7 @@ pub async fn report_directory_event(
                 .await?;
         }
         DirectoryEvents::AvsmetadataURIUpdatedFilter(ev) => {
-            // info!("AVS metadata URI updated event {ev:?}");
+            info!("AVS metadata URI updated event {ev:?}");
 
             // backend
             //     .report_metadata_uri_event(Request::new(MetadataUriEvent {
