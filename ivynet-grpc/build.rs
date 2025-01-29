@@ -33,7 +33,7 @@ fn get_protos_from_dir() -> Vec<String> {
             let path = entry.path();
             if path.is_dir() {
                 dirs.push(path);
-            } else if path.extension().map_or(false, |ext| ext == "proto") {
+            } else if path.extension().is_some_and(|ext| ext == "proto") {
                 protos.push(path.to_string_lossy().to_string());
             }
         }

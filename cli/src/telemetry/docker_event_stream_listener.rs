@@ -85,6 +85,8 @@ impl DockerStreamListener<DockerClient> {
         let inc_container_name =
             attributes.get("name").ok_or(DockerStreamError::MissingAttributes)?;
 
+        println!("{:#?}", attributes);
+
         let inc_container = match self.docker.find_container_by_name(inc_container_name).await {
             Some(container) => container,
             None => {
@@ -95,12 +97,12 @@ impl DockerStreamListener<DockerClient> {
         let inc_image_name = inc_container.image().unwrap_or_default().to_string();
         let inc_container_digest = inc_container.image_id().unwrap_or_default().to_string();
 
-        let metrics_port = match inc_container.metrics_port().await {
+        let metrics_port = match inc_container.metrics_port(&self.docker).await {
             Some(port) => Some(port),
             None => {
                 // wait for metrics port to potentially come up
                 sleep(Duration::from_secs(10)).await;
-                inc_container.metrics_port().await
+                inc_container.metrics_port(&self.docker).await
             }
         };
 
