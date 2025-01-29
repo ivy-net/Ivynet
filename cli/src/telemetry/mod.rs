@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use convert_case::{Case, Casing};
 use dispatch::{TelemetryDispatchError, TelemetryDispatchHandle};
@@ -9,11 +9,11 @@ use ivynet_signer::IvyWallet;
 use logs_listener::LogsListenerManager;
 use metrics_listener::MetricsListenerHandle;
 use serde::{Deserialize, Serialize};
-use tokio::sync::broadcast;
+use tokio::sync::{broadcast, Mutex};
 use tracing::{error, info, warn};
 use uuid::Uuid;
 
-use crate::error::Error;
+use crate::{error::Error, monitor::MonitorConfig};
 
 pub mod dispatch;
 pub mod docker_event_stream_listener;
@@ -46,6 +46,7 @@ pub struct ConfiguredAvs {
     pub image_name: Option<String>,
     pub avs_type: String,
     pub metric_port: Option<u16>,
+    pub active: bool,
 }
 
 #[derive(Deserialize)]
@@ -68,6 +69,7 @@ impl<'de> Deserialize<'de> for ConfiguredAvs {
             #[serde(default)]
             metric_port: Option<u16>,
             avs_type: AvsTypeField,
+            active: Option<bool>,
         }
 
         let helper = Helper::deserialize(deserializer)?;
@@ -96,6 +98,7 @@ impl<'de> Deserialize<'de> for ConfiguredAvs {
             image_name: helper.image_name,
             avs_type,
             metric_port: helper.metric_port,
+            active: helper.active.unwrap_or(false),
         })
     }
 }
@@ -137,7 +140,7 @@ pub async fn listen(
     backend_client: BackendClient<Channel>,
     machine_id: Uuid,
     identity_wallet: IvyWallet,
-    avses: &[ConfiguredAvs],
+    config: Arc<Mutex<MonitorConfig>>,
     merge_containers: bool,
 ) -> Result<(), Error> {
     let docker = DockerClient::default();
@@ -152,10 +155,11 @@ pub async fn listen(
     let mut logs_listener_handle =
         LogsListenerManager::new(&docker, &identity_wallet, machine_id, &dispatch);
 
-    for node in avses {
+    let active_avses = config.lock().await.active_avses();
+    for node in &active_avses {
         info!("Searching for node: {}", node.container_name);
         if let Some(container) = &docker.find_container_by_name(&node.container_name).await {
-            if let Err(e) = logs_listener_handle.add_listener(container, node).await {
+            if let Err(e) = logs_listener_handle.add_listener(container, &node).await {
                 error!("Failed to add logs listener for container: {}", e);
             };
         } else {
@@ -168,7 +172,7 @@ pub async fn listen(
         &docker,
         machine_id,
         &identity_wallet,
-        avses,
+        config,
         &dispatch,
         error_tx,
     );
@@ -184,7 +188,7 @@ pub async fn listen(
         backend_client,
         merge_containers,
     );
-    tokio::spawn(docker_listener.run(avses.to_vec()));
+    tokio::spawn(docker_listener.run(active_avses));
 
     // This should never return unless the error channel is closed
     handle_telemetry_errors(error_rx).await?;

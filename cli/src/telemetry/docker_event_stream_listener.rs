@@ -163,6 +163,7 @@ impl DockerStreamListener<DockerClient> {
                     image_name: Some(inc_image_name.clone()),
                     avs_type: found_type,
                     metric_port: metrics_port,
+                    active: true,
                 })
             }
         };

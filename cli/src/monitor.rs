@@ -15,7 +15,9 @@ use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
     path::PathBuf,
+    sync::Arc,
 };
+use tokio::sync::Mutex;
 use tracing::info;
 
 use crate::{
@@ -53,6 +55,13 @@ impl MonitorConfig {
         Ok(config)
     }
 
+    pub fn active_avses(&self) -> Vec<ConfiguredAvs> {
+        self.configured_avses
+            .iter()
+            .filter_map(|avs| if avs.active { Some(avs.clone()) } else { None })
+            .collect()
+    }
+
     pub fn load_from_default_path() -> Result<Self, MonitorConfigError> {
         let config_path = DEFAULT_CONFIG_PATH.to_owned().join(MONITOR_CONFIG_FILE);
         // Previous impl built a bad path - let this error properly
@@ -82,13 +91,70 @@ impl MonitorConfig {
         &mut self,
         old_name: &str,
         new_name: &str,
-    ) -> Result<(), MonitorConfigError> {
-        self.configured_avses.iter_mut().for_each(|avs| {
-            if avs.container_name == old_name {
-                avs.container_name = new_name.to_string();
+    ) -> Result<bool, MonitorConfigError> {
+        if let Some(to_change) =
+            self.configured_avses.iter_mut().find(|avs| avs.container_name == old_name)
+        {
+            to_change.active = true;
+            to_change.container_name = new_name.to_string();
+            self.store()?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    pub fn add_avs(&mut self, avs: ConfiguredAvs) -> Result<bool, MonitorConfigError> {
+        if self.configured_avses.iter().find(|a| a.container_name == *avs.container_name).is_none()
+        {
+            // if container with name already exists, replace avs_type and metric_port
+            if let Some(existing) =
+                self.configured_avses.iter_mut().find(|x| x.container_name == avs.container_name)
+            {
+                existing.avs_type = avs.avs_type.clone();
+                existing.metric_port = avs.metric_port;
+            } else {
+                self.configured_avses.push(avs.clone());
+                info!("Added metrics listener for container: {}", avs.container_name);
             }
-        });
-        self.store()
+
+            self.store()?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    pub fn change_active_state(
+        &mut self,
+        avs_name: &str,
+        active: bool,
+    ) -> Result<bool, MonitorConfigError> {
+        if let Some(deactivating) =
+            self.configured_avses.iter_mut().find(|x| x.container_name == avs_name)
+        {
+            deactivating.active = active;
+            self.store()?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
+    }
+
+    pub fn replace_avs(
+        &mut self,
+        old_avs: ConfiguredAvs,
+        new_avs: ConfiguredAvs,
+    ) -> Result<bool, MonitorConfigError> {
+        let orig_size = self.configured_avses.len();
+        self.configured_avses.retain(|x| x.container_name != old_avs.container_name);
+        if orig_size != self.configured_avses.len() {
+            self.configured_avses.push(new_avs.clone());
+            self.store()?;
+            Ok(true)
+        } else {
+            Ok(false)
+        }
     }
 }
 
@@ -188,7 +254,7 @@ pub async fn start_monitor(
         backend_client,
         machine_id,
         identity_wallet,
-        &monitor_config.configured_avses,
+        Arc::new(Mutex::new(monitor_config)),
         merge_containers,
     )
     .await?;
@@ -281,6 +347,7 @@ async fn find_new_avses(
             image_name: Some(avs.image_name.clone()),
             avs_type: node_type,
             metric_port,
+            active: true,
         };
 
         // update the existing configured AVS if it exists, otherwise push to new vec
@@ -379,6 +446,7 @@ fn select_manual_avses(
             image_name: potential_avses[idx].image_name.clone(),
             avs_type: "unknown".to_string(),
             metric_port: None,
+            active: true,
         })
         .collect())
 }
