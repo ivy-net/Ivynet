@@ -98,6 +98,7 @@ pub async fn fetch(
     mut backend: BackendEventsClient<Channel>,
     from_block: u64,
     addresses: &[Address],
+    reset_blockheight: bool,
 ) -> Result<()> {
     info!("Starting even listener under {rpc_url}");
 
@@ -136,6 +137,9 @@ pub async fn fetch(
             .into_inner()
             .block_number;
         if last_checked < from_block {
+            last_checked = from_block;
+        }
+        if reset_blockheight {
             last_checked = from_block;
         }
         fetch_all_directory_events_between(
