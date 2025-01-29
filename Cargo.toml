@@ -76,7 +76,7 @@ tonic-reflection = "0.12"
 anyhow = "1.0"
 async-trait = "0.1.80"
 blsful = "2.5.7"
-bollard = "0.18.1"
+bollard = "0.17.1"
 convert_case = "0.6.0"
 chrono = "0.4.0"
 dialoguer = "0.11.0"
@@ -101,6 +101,7 @@ sqlx = { version = "0.8", features = [
 	"uuid",
 ] }
 strum = { version = "0.26.3", features = ["derive"] }
+tar = "0.4.43"
 tempfile = "3.10.1"
 thiserror = "2.0.3"
 tokio = { version = "1.37.0", features = ["full"] }

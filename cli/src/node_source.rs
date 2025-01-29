@@ -1,6 +1,6 @@
-use ivynet_docker::dockerapi::DockerApi;
+use futures::stream::{iter, StreamExt};
+use ivynet_docker::{container::Container, dockerapi::DockerApi};
 use ivynet_grpc::async_trait;
-use tracing::debug;
 
 use crate::monitor::PotentialAvs;
 
@@ -15,37 +15,46 @@ impl<T: DockerApi> NodeSource for T {
     async fn potential_nodes(&self) -> Vec<PotentialAvs> {
         let images = self.list_images().await;
         let containers = self.list_containers().await;
-        containers
-            .into_iter()
-            .filter_map(|c| {
-                let (names, image_name) = (c.names?, c.image?);
-                let mut ports = match c.ports {
-                    Some(ports) => ports.into_iter().filter_map(|p| p.public_port).collect::<Vec<_>>(),
-                    None => Vec::new(),
+
+        let container_stream = iter(containers);
+
+        container_stream
+            .then(|container_summary| async {
+                let container = Container(container_summary);
+
+                let (names, image_name) = match (container.names(), container.image()) {
+                    (Some(n), Some(i)) => (n, i),
+                    _ => return None,
                 };
-                ports.sort();
+
+                let mut ports = container.public_ports(self).await;
+                ports.sort_unstable();
                 ports.dedup();
 
-                if let Some(image_hash) = images.get(&image_name) {
-                    return Some(PotentialAvs {
-                        container_name: names.first().unwrap_or(&image_name).to_string(),
-                        image_name: image_name.clone(),
-                        image_hash: image_hash.to_string(),
+                if let Some(image_hash) = images.get(image_name) {
+                    Some(PotentialAvs {
+                        container_name: names
+                            .first()
+                            .unwrap_or(&image_name.to_string())
+                            .to_string(),
+                        image_name: image_name.to_string(),
+                        image_hash: image_hash.clone(),
                         ports,
-                    });
-                } else if let Some(key) = images.keys().find(|key| key.contains(&image_name)) {
-                    debug!("SHOULD BE: No version tag image: {}", image_name);
+                    })
+                } else if let Some(key) = images.keys().find(|key| key.contains(image_name)) {
                     let image_hash = images.get(key).unwrap();
-                    debug!("key (should be with version tag, and its what we'll use for potential avs): {}", key);
-                    return Some(PotentialAvs {
-                        container_name: names.first().unwrap_or(&image_name).to_string(),
+                    Some(PotentialAvs {
+                        container_name: names.first().unwrap_or(key).to_string(),
                         image_name: key.clone(),
-                        image_hash: image_hash.to_string(),
+                        image_hash: image_hash.clone(),
                         ports,
-                    });
+                    })
+                } else {
+                    None
                 }
-                None
             })
-            .collect::<Vec<_>>()
+            .filter_map(|maybe_avs| async move { maybe_avs }) // only keep `Some(...)`
+            .collect()
+            .await
     }
 }
