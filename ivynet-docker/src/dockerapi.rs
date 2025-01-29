@@ -5,7 +5,7 @@ use bollard::{
     container::{LogOutput, LogsOptions},
     errors::Error,
     image::ListImagesOptions,
-    secret::{ContainerSummary, EventMessage, ImageSummary},
+    secret::{EventMessage, ImageSummary},
     Docker,
 };
 use futures::future::join_all;
@@ -35,9 +35,9 @@ impl Default for DockerClient {
 // TODO: Implement lifetimes to allow passing as ref
 #[async_trait]
 pub trait DockerApi: Clone + Sync + Send + 'static {
-    fn inner(&self) -> Docker;
-    async fn list_containers(&self) -> Vec<ContainerSummary>;
+    async fn list_containers(&self) -> Vec<Container>;
     async fn list_images(&self) -> HashMap<String, String>;
+    fn inner(&self) -> Docker;
 
     async fn stream_logs(
         &self,
@@ -59,9 +59,9 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
         let containers = self.list_containers().await;
         for container in containers {
             println!("Checking container {container:?}");
-            if let Some(ref image_string) = container.image {
+            if let Some(image_string) = container.image() {
                 if image_string.contains(image_name) {
-                    return Some(Container::new(container.clone()));
+                    return Some(container);
                 }
             }
         }
@@ -86,27 +86,23 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
             .into_iter()
             .filter(|container| {
                 container
-                    .image
+                    .image()
                     .as_ref()
                     .map(|image_string| image_names.iter().any(|name| image_string.contains(name)))
                     .unwrap_or_default()
             })
-            .map(Container::new)
             .collect()
     }
 
     async fn find_container_by_name(&self, container_name: &str) -> Option<Container> {
         let containers = self.list_containers().await;
-        containers
-            .into_iter()
-            .find(|container| {
-                container
-                    .names
-                    .as_ref()
-                    .map(|names| names.iter().any(|n| n.contains(container_name)))
-                    .unwrap_or_default()
-            })
-            .map(Container::new)
+        containers.into_iter().find(|container| {
+            container
+                .names()
+                .as_ref()
+                .map(|names| names.iter().any(|n| n.contains(container_name)))
+                .unwrap_or_default()
+        })
     }
 
     async fn find_containers_by_name(&self, container_names: &[&str]) -> Vec<Container> {
@@ -115,23 +111,19 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
             .into_iter()
             .filter(|container| {
                 container
-                    .names
+                    .names()
                     .as_ref()
                     .map(|names| {
                         names.iter().any(|n| container_names.iter().any(|cn| n.contains(cn)))
                     })
                     .unwrap_or_default()
             })
-            .map(Container::new)
             .collect()
     }
 
     async fn find_container_by_id(&self, id: &str) -> Option<Container> {
         let containers = self.list_containers().await;
-        containers
-            .into_iter()
-            .find(|container| container.id.as_deref() == Some(id))
-            .map(Container::new)
+        containers.into_iter().find(|container| container.id() == Some(id))
     }
 
     async fn stream_logs_latest(
@@ -228,12 +220,14 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
 
 #[async_trait]
 impl DockerApi for DockerClient {
-    fn inner(&self) -> Docker {
-        self.0.clone()
+    async fn list_containers(&self) -> Vec<Container> {
+        let containers =
+            self.0.list_containers::<String>(None).await.expect("Cannot list containers");
+        containers.into_iter().map(Container::new).collect()
     }
 
-    async fn list_containers(&self) -> Vec<ContainerSummary> {
-        self.0.list_containers::<String>(None).await.expect("Cannot list containers")
+    fn inner(&self) -> Docker {
+        self.0.clone()
     }
 
     async fn stream_logs(

@@ -16,45 +16,36 @@ impl<T: DockerApi> NodeSource for T {
         let images = self.list_images().await;
         let containers = self.list_containers().await;
 
-        let container_stream = iter(containers);
+        let mut potentials = Vec::new();
 
-        container_stream
-            .then(|container_summary| async {
-                let container = Container(container_summary);
+        for container in containers {
+            let (names, image_name) = match (container.names(), container.image()) {
+                (Some(n), Some(i)) => (n, i),
+                _ => continue,
+            };
 
-                let (names, image_name) = match (container.names(), container.image()) {
-                    (Some(n), Some(i)) => (n, i),
-                    _ => return None,
-                };
+            let mut ports = container.public_ports(self).await;
+            ports.sort_unstable();
+            ports.dedup();
 
-                let mut ports = container.public_ports(self).await;
-                ports.sort_unstable();
-                ports.dedup();
+            if let Some(image_hash) = images.get(image_name) {
+                potentials.push(PotentialAvs {
+                    container_name: names.first().unwrap_or(&image_name.to_string()).to_string(),
+                    image_name: image_name.to_string(),
+                    image_hash: image_hash.clone(),
+                    ports,
+                });
+            } else if let Some(key) = images.keys().find(|key| key.contains(image_name)) {
+                let image_hash = images.get(key).unwrap();
+                potentials.push(PotentialAvs {
+                    container_name: names.first().unwrap_or(key).to_string(),
+                    image_name: key.clone(),
+                    image_hash: image_hash.clone(),
+                    ports,
+                });
+            }
+        }
 
-                if let Some(image_hash) = images.get(image_name) {
-                    Some(PotentialAvs {
-                        container_name: names
-                            .first()
-                            .unwrap_or(&image_name.to_string())
-                            .to_string(),
-                        image_name: image_name.to_string(),
-                        image_hash: image_hash.clone(),
-                        ports,
-                    })
-                } else if let Some(key) = images.keys().find(|key| key.contains(image_name)) {
-                    let image_hash = images.get(key).unwrap();
-                    Some(PotentialAvs {
-                        container_name: names.first().unwrap_or(key).to_string(),
-                        image_name: key.clone(),
-                        image_hash: image_hash.clone(),
-                        ports,
-                    })
-                } else {
-                    None
-                }
-            })
-            .filter_map(|maybe_avs| async move { maybe_avs }) // only keep `Some(...)`
-            .collect()
-            .await
+        potentials
     }
 }
