@@ -5,6 +5,7 @@ use bollard::{
     container::LogOutput,
     errors::Error,
     secret::{ContainerSummary, EventMessage, ImageSummary},
+    Docker,
 };
 use futures::{stream, Stream};
 
@@ -49,6 +50,10 @@ impl DockerApi for MockDockerClient {
         self.records.iter().map(|r| Container::new(r.container_summary.clone())).collect()
     }
 
+    fn inner(&self) -> Docker {
+        DockerClient::default().0
+    }
+
     async fn list_images(&self) -> HashMap<String, String> {
         DockerClient::process_images(self.images.to_vec())
     }
@@ -56,6 +61,14 @@ impl DockerApi for MockDockerClient {
     async fn stream_logs(
         &self,
         _container: Container,
+        _since: i64,
+    ) -> Pin<Box<dyn Stream<Item = Result<LogOutput, Error>> + Send + Unpin>> {
+        Box::pin(stream::iter(self.logs.clone().into_iter().map(Ok)))
+    }
+
+    async fn stream_logs_by_container_id(
+        &self,
+        _container_id: &str,
         _since: i64,
     ) -> Pin<Box<dyn Stream<Item = Result<LogOutput, Error>> + Send + Unpin>> {
         Box::pin(stream::iter(self.logs.clone().into_iter().map(Ok)))
