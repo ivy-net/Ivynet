@@ -197,7 +197,7 @@ async fn update_node_data_versions(
             (NodeType::OpenLayerMainnet, Chain::Holesky) => continue,
             (NodeType::Altlayer(altlayer_type), _) => match altlayer_type {
                 AltlayerType::Unknown => {
-                    let (tag, digest) = find_latest_avs_version(pool, &node_type, chain).await?;
+                    let (tag, digest) = find_latest_avs_version(pool, node_type, chain).await?;
                     for altlayer_type in AltlayerType::iter() {
                         db::DbAvsVersionData::set_avs_version(
                             pool,
@@ -213,7 +213,7 @@ async fn update_node_data_versions(
             },
             (NodeType::AltlayerMach(mach_type), _) => match mach_type {
                 MachType::Unknown => {
-                    let (tag, digest) = find_latest_avs_version(pool, &node_type, chain).await?;
+                    let (tag, digest) = find_latest_avs_version(pool, node_type, chain).await?;
                     for mach_type in MachType::iter() {
                         db::DbAvsVersionData::set_avs_version(
                             pool,
@@ -228,8 +228,8 @@ async fn update_node_data_versions(
                 _ => continue,
             },
             _ => {
-                let (tag, digest) = find_latest_avs_version(pool, &node_type, chain).await?;
-                db::DbAvsVersionData::set_avs_version(pool, &node_type, chain, &tag, &digest)
+                let (tag, digest) = find_latest_avs_version(pool, node_type, chain).await?;
+                db::DbAvsVersionData::set_avs_version(pool, node_type, chain, &tag, &digest)
                     .await?;
             }
         }

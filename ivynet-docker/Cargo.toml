@@ -22,6 +22,7 @@ futures.workspace = true
 reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
+tar.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tokio-stream.workspace = true
@@ -31,3 +32,4 @@ which.workspace = true
 
 [dev-dependencies]
 mockall = "0.13.1"
+testcontainers = "0.23.1"

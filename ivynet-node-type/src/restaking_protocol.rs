@@ -5,6 +5,7 @@ pub enum RestakingProtocolType {
     Symbiotic,
 }
 
+#[allow(dead_code)]
 pub trait RestakingProtocol {
     fn restaking_protocol(&self) -> Option<RestakingProtocolType>;
 }
