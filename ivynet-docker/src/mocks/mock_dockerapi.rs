@@ -45,8 +45,8 @@ impl Default for MockDockerClient {
 
 #[async_trait]
 impl DockerApi for MockDockerClient {
-    async fn list_containers(&self) -> Vec<ContainerSummary> {
-        self.records.iter().map(|r| r.container_summary.clone()).collect()
+    async fn list_containers(&self) -> Vec<Container> {
+        self.records.iter().map(|r| Container::new(r.container_summary.clone())).collect()
     }
 
     async fn list_images(&self) -> HashMap<String, String> {

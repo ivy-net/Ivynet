@@ -28,7 +28,7 @@ impl FromStr for DockerImageVersion {
 }
 
 #[derive(Clone, Debug)]
-pub struct Container(pub ContainerSummary);
+pub struct Container(ContainerSummary);
 
 impl Container {
     pub fn new(container: ContainerSummary) -> Self {
@@ -36,8 +36,16 @@ impl Container {
     }
 
     /// Returns a vec of container names. Container names must be unique per docker daemon.
-    pub fn names(&self) -> Option<&Vec<String>> {
-        self.0.names.as_ref()
+    pub fn names(&self) -> Option<Vec<String>> {
+        let mut names = self.0.names.clone()?;
+        // Strip leading slashes from container name
+        for name in names.iter_mut() {
+            if name.starts_with('/') {
+                // This may be faster with a remove(0) call
+                *name = name[1..].to_string();
+            }
+        }
+        Some(names)
     }
 
     /// Container ID
@@ -106,5 +114,21 @@ impl Container {
     ) -> impl Stream<Item = Result<LogOutput, bollard::errors::Error>> {
         let now = chrono::Utc::now().timestamp();
         self.stream_logs(docker, now)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::dockerapi::DockerApi;
+
+    use super::*;
+
+    #[tokio::test]
+    async fn test_container_name_trim() {
+        let docker = DockerClient::default();
+        let containers = docker.list_containers().await;
+        for container in containers {
+            println!("{:#?}", container.names())
+        }
     }
 }
