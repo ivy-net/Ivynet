@@ -14,7 +14,10 @@ const ALL_DIRECTORIES: [(Chain, H160); 4] = [
     (Chain::Holesky, h160!(0x58973d16FFA900D11fC22e5e2B6840d9f7e13401)), //Symbiotic
 ];
 
-const ALL_MAINNET_AVSES: [(NodeType, H160); 42] = [
+/*------------------------------------------------
+----------------MAINNET AVS ----------------------
+--------------------------------------------------*/
+const ALL_MAINNET_AVSES: [(NodeType, H160); 43] = [
     (NodeType::EigenDA, h160!(0x870679E138bCdf293b7Ff14dD44b70FC97e12fc0)),
     (NodeType::LagrangeZkWorker, h160!(0x22CAc0e6A1465F043428e8AeF737b3cb09D0eEDa)),
     (NodeType::LagrangeStateCommittee, h160!(0x35F4f28A8d3Ff20EEd10e087e8F96Ea2641E6AA2)),
@@ -74,7 +77,7 @@ const ALL_MAINNET_AVSES: [(NodeType, H160); 42] = [
     (NodeType::Cycle, h160!(0x759D4335cb712aa188935C2bD3Aa6D205aC61305)),
     (
         NodeType::MishtiNetwork(ActiveSet::Symbiotic),
-        h160!(0xe87ff321F5721a9285Ec651d01c0C0B857430c2c),
+        h160!(0x42F15F9E4dF4994317453477e80e24797CC1A929),
     ),
     (NodeType::Kalypso, h160!(0x3a7B173124DcFeCff1847FF7f8f56e72ABE02340)),
     (NodeType::RouterXtendNetwork, h160!(0xcf128E88E11507aBAd12a7624A34E3d22F731AbC)),
@@ -87,8 +90,12 @@ const ALL_MAINNET_AVSES: [(NodeType, H160); 42] = [
     ),
     (NodeType::IBTCNetwork, h160!(0xe4661BDbC4f557d2684F8a7C4aF50572e51D4166)),
     (NodeType::ZKLink, h160!(0x213F448e7a1C8DAEDe41cf94883Cc6149244d00F)),
+    (NodeType::HyveDA, h160!(0xe3a148b25cca54eccbd3a4ab01e235d154f03efa)),
 ];
 
+/*------------------------------------------------
+----------------HOLESKY AVS ----------------------
+--------------------------------------------------*/
 const ALL_HOLESKY_AVSES: [(NodeType, H160); 34] = [
     (NodeType::EigenDA, h160!(0xD4A7E1Bd8015057293f0D0A557088c286942e84b)),
     (NodeType::LagrangeStateCommittee, h160!(0x18A74E66cc90F0B1744Da27E72Df338cEa0A542b)),

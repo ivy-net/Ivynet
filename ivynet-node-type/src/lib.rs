@@ -99,6 +99,7 @@ pub enum NodeType {
     Radius,
     IBTCNetwork,
     ZKLink,
+    HyveDA,
 }
 
 impl IntoEnumIterator for NodeType {
@@ -144,6 +145,7 @@ impl IntoEnumIterator for NodeType {
             NodeType::Radius,
             NodeType::IBTCNetwork,
             NodeType::ZKLink,
+            NodeType::HyveDA,
         ]
         .into_iter()
         .chain(ActiveSet::iter().map(NodeType::Hyperlane))
@@ -424,6 +426,7 @@ impl NodeType {
             Self::Radius => todo!(),
             Self::IBTCNetwork => todo!(),
             Self::ZKLink => todo!(),
+            Self::HyveDA => todo!(),
         };
         Ok(res)
     }
@@ -512,6 +515,7 @@ impl NodeType {
             Self::Radius => todo!(),
             Self::IBTCNetwork => todo!(),
             Self::ZKLink => todo!(),
+            Self::HyveDA => todo!(),
         };
         Ok(res)
     }
@@ -588,6 +592,7 @@ impl NodeType {
             Self::Radius => todo!(),
             Self::IBTCNetwork => todo!(),
             Self::ZKLink => todo!(),
+            Self::HyveDA => todo!(),
         };
         Ok(res)
     }

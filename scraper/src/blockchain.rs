@@ -219,18 +219,19 @@ pub async fn report_directory_event(
                 .await?;
         }
         DirectoryEvents::AvsmetadataURIUpdatedFilter(ev) => {
-            info!("AVS metadata URI updated event {ev:?}");
+            // info!("AVS metadata URI updated event {ev:?}");
 
-            backend
-                .report_metadata_uri_event(Request::new(MetadataUriEvent {
-                    avs: ev.avs.as_bytes().to_vec(),
-                    metadata_uri: ev.metadata_uri,
-                    block_number: event.1.block_number.as_u64(),
-                    log_index: event.1.log_index.as_u64(),
-                }))
-                .await?;
+            // backend
+            //     .report_metadata_uri_event(Request::new(MetadataUriEvent {
+            //         avs: ev.avs.as_bytes().to_vec(),
+            //         metadata_uri: ev.metadata_uri,
+            //         block_number: event.1.block_number.as_u64(),
+            //         log_index: event.1.log_index.as_u64(),
+            //     }))
+            //     .await?;
         }
         DirectoryEvents::OptInFilter(oin) => {
+            println!("OptIn event {oin:?}");
             backend
                 .report_registration_event(Request::new(RegistrationEvent {
                     directory: event.1.address.as_bytes().to_vec(),
@@ -244,6 +245,7 @@ pub async fn report_directory_event(
                 .await?;
         }
         DirectoryEvents::OptOutFilter(oout) => {
+            println!("OptOut event {oout:?}");
             backend
                 .report_registration_event(Request::new(RegistrationEvent {
                     directory: event.1.address.as_bytes().to_vec(),

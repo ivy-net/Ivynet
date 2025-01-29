@@ -98,6 +98,7 @@ impl RestakingProtocol for NodeType {
             NodeType::Radius => RestakingProtocolType::Symbiotic,
             NodeType::IBTCNetwork => RestakingProtocolType::Symbiotic,
             NodeType::ZKLink => RestakingProtocolType::Symbiotic,
+            NodeType::HyveDA => RestakingProtocolType::Symbiotic,
         };
 
         Some(protocol)

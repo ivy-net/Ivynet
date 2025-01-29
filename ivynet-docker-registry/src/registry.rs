@@ -60,6 +60,7 @@ impl ImageRegistry for NodeType {
             Self::Radius => todo!(),
             Self::IBTCNetwork => todo!(),
             Self::ZKLink => todo!(),
+            Self::HyveDA => todo!(),
             Self::UnifiAVS => return Err(NodeTypeError::InvalidNodeType),
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };

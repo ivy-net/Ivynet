@@ -67,6 +67,7 @@ impl From<&NodeType> for VersionType {
             NodeType::Radius => todo!(),
             NodeType::IBTCNetwork => todo!(),
             NodeType::ZKLink => todo!(),
+            NodeType::HyveDA => todo!(),
         }
     }
 }
