@@ -8,10 +8,10 @@ use ivynet_node_type::{
 };
 
 const ALL_DIRECTORIES: [(Chain, H160); 4] = [
-    (Chain::Mainnet, h160!(0x135DDa560e946695d6f155dACaFC6f1F25C1F5AF)),
-    (Chain::Mainnet, h160!(0x7133415b33B438843D581013f98A08704316633c)),
-    (Chain::Holesky, h160!(0x055733000064333CaDDbC92763c58BF0192fFeBf)),
-    (Chain::Holesky, h160!(0x58973d16FFA900D11fC22e5e2B6840d9f7e13401)),
+    (Chain::Mainnet, h160!(0x135DDa560e946695d6f155dACaFC6f1F25C1F5AF)), //Eigenlayer
+    (Chain::Mainnet, h160!(0x7133415b33B438843D581013f98A08704316633c)), //Symbiotic
+    (Chain::Holesky, h160!(0x055733000064333CaDDbC92763c58BF0192fFeBf)), //Eigenlayer
+    (Chain::Holesky, h160!(0x58973d16FFA900D11fC22e5e2B6840d9f7e13401)), //Symbiotic
 ];
 
 const ALL_MAINNET_AVSES: [(NodeType, H160); 42] = [
@@ -25,7 +25,6 @@ const ALL_MAINNET_AVSES: [(NodeType, H160); 42] = [
     (NodeType::AvaProtocol, h160!(0x18343Aa10e3D2F3A861e5649627324aEAD987Adf)),
     (NodeType::Predicate, h160!(0xaCB91045B8bBa06f9026e1A30855B6C4A1c5BaC6)),
     (NodeType::Brevis, h160!(0x9FC952BdCbB7Daca7d420fA55b942405B073A89d)),
-    //New
     (
         NodeType::Altlayer(AltlayerType::AltlayerMach),
         h160!(0x71a77037870169d47aad6c2c9360861a4c0df2bf),
