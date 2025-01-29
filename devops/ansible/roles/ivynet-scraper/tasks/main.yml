@@ -32,3 +32,16 @@
 - name: Configure SystemD
   ansible.builtin.import_tasks:
     file: systemd.yml
+
+- name: Restart Scraper
+  ansible.builtin.cron:
+    name: "Restart scraper for {{ item }}"
+    minute: 3
+    hour: "*"
+    job: "/usr/bin/systemctl restart ivynet-scraper-{{ item }}"
+  loop:
+    - holesky
+    - mainnet
+  tags:
+    - ivynet_scraper
+    - general
