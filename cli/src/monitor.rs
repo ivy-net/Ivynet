@@ -1,5 +1,6 @@
 use anyhow::anyhow;
 use dialoguer::{Input, MultiSelect, Select};
+use fs2::FileExt;
 use ivynet_docker::dockerapi::DockerClient;
 use ivynet_grpc::{
     self,
@@ -13,9 +14,10 @@ use ivynet_signer::sign_utils::sign_name_change;
 use serde::{Deserialize, Serialize};
 use std::{
     collections::{HashMap, HashSet},
-    path::PathBuf,
+    fs::{File, OpenOptions},
+    path::{Path, PathBuf},
 };
-use tracing::info;
+use tracing::{debug, error, info};
 
 use crate::{
     config::{IvyConfig, DEFAULT_CONFIG_PATH},
@@ -36,8 +38,20 @@ pub struct PotentialAvs {
 
 #[derive(thiserror::Error, Debug)]
 pub enum MonitorConfigError {
-    #[error(transparent)]
+    #[error("Failed to acquire lock: {0}")]
+    LockError(#[from] std::io::Error),
+
+    #[error("Config IO error: {0}")]
     ConfigIo(#[from] IoError),
+
+    #[error("Failed to create config directory: {0}")]
+    DirectoryError(std::io::Error),
+
+    #[error("Config is locked by another process")]
+    AlreadyLocked,
+
+    #[error("Failed to write config atomically: {0}")]
+    AtomicWriteError(std::io::Error),
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, Default)]
@@ -47,7 +61,28 @@ pub struct MonitorConfig {
 }
 
 impl MonitorConfig {
-    pub fn load(path: PathBuf) -> Result<Self, MonitorConfigError> {
+    /// Creates a new file lock for the config
+    fn create_lock(path: &Path) -> Result<File, MonitorConfigError> {
+        // Ensure directory exists
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent).map_err(MonitorConfigError::DirectoryError)?;
+        }
+
+        let lock_path = path.with_extension("lock");
+        let file = OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(true)
+            .open(&lock_path)?;
+
+        // Lock will be held until file is dropped
+        file.lock_exclusive()?;
+        Ok(file)
+    }
+
+    fn load(path: PathBuf) -> Result<Self, MonitorConfigError> {
+        let _lock = Self::create_lock(&path)?;
         let config: Self = read_toml(&path)?;
         Ok(config)
     }
@@ -60,6 +95,7 @@ impl MonitorConfig {
 
     pub fn store(&self) -> Result<(), MonitorConfigError> {
         let config_path = DEFAULT_CONFIG_PATH.to_owned().join(MONITOR_CONFIG_FILE);
+        let _lock = Self::create_lock(&config_path)?;
         write_toml(&config_path, self)?;
         Ok(())
     }
@@ -135,9 +171,11 @@ pub async fn rename_node(
     Ok(())
 }
 
-pub async fn start_monitor(mut config: IvyConfig) -> Result<(), anyhow::Error> {
+pub async fn start_monitor(config: IvyConfig) -> Result<(), anyhow::Error> {
     if config.identity_wallet().is_err() {
-        set_backend_connection(&mut config).await?;
+        return Err(anyhow!(
+            "No identity wallet found in config. Please configure your machine with ivynet scan"
+        ));
     }
 
     let monitor_config = MonitorConfig::load_from_default_path().unwrap_or_default();
@@ -173,7 +211,10 @@ pub async fn start_monitor(mut config: IvyConfig) -> Result<(), anyhow::Error> {
 
 /// Scan function to set up configured AVS cache file. Derives `NodeType` from the name on the
 /// metrics port and node name from the container name list.
-pub async fn scan(force: bool, config: &IvyConfig) -> Result<(), anyhow::Error> {
+pub async fn scan(force: bool, mut config: IvyConfig) -> Result<(), anyhow::Error> {
+    if config.identity_wallet().is_err() {
+        set_backend_connection(&mut config).await?;
+    }
     let backend_url = config.get_server_url()?;
     let backend_ca = config.get_server_ca();
     let backend_ca = if backend_ca.is_empty() { None } else { Some(backend_ca) };
@@ -189,7 +230,7 @@ pub async fn scan(force: bool, config: &IvyConfig) -> Result<(), anyhow::Error> 
     let docker_client = DockerClient::default();
     let potential_docker_nodes = docker_client.potential_nodes().await;
 
-    info!("POTENTIAL: {:#?}", potential_docker_nodes);
+    debug!("POTENTIAL: {:#?}", potential_docker_nodes);
     let (_existing_nodes, new_configured_nodes, leftover_potential_nodes) =
         find_new_avses(&mut backend, &monitor_config.configured_avses, &potential_docker_nodes)
             .await?;
@@ -246,7 +287,8 @@ async fn find_new_avses(
     for avs in potential_avses {
         let node_type =
             container_node_types.get(&avs.container_name).cloned().unwrap_or("unknown".to_string());
-        let metric_port = get_metrics_port(&avs.ports).await?;
+        let metric_port =
+            get_metrics_port(&reqwest::Client::new(), &avs.container_name, &avs.ports).await?;
         let new_avs = ConfiguredAvs {
             assigned_name: avs.image_name.clone(),
             container_name: avs.container_name.clone(),
@@ -270,9 +312,13 @@ async fn find_new_avses(
     Ok((configured_nodes, new_configured_nodes, leftover_potential_nodes))
 }
 
-async fn get_metrics_port(ports: &[u16]) -> Result<Option<u16>, anyhow::Error> {
+async fn get_metrics_port(
+    http_client: &reqwest::Client,
+    container_name: &str,
+    ports: &[u16],
+) -> Result<Option<u16>, anyhow::Error> {
     for &port in ports {
-        if let Ok(metrics) = fetch_telemetry_from(port).await {
+        if let Ok(metrics) = fetch_telemetry_from(http_client, container_name, port).await {
             if !metrics.is_empty() {
                 return Ok(Some(port));
             }

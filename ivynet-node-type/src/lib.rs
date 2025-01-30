@@ -3,7 +3,7 @@ use serde::{Deserialize, Serialize};
 use strum::{EnumIter, IntoEnumIterator};
 use tracing::{debug, error, warn};
 
-mod restaking_protocol;
+pub mod restaking_protocol;
 
 const EIGENDA_METRICS_ID: &str = "da-node";
 
@@ -88,7 +88,8 @@ pub enum NodeType {
     Redstone,                           //Testnet only
     MishtiNetwork(ActiveSet),           //Testnet only
     Cycle,                              //Testnet only
-    PrimevMevCommit(ActiveSet),         //Built locally
+    PrimevMevCommit(ActiveSet),         //I have no idea
+    PrimevBidder,                       //Built locally
     Bolt(ActiveSet),                    //Testnet only
     Hyperlane(ActiveSet),
     Tanssi,
@@ -146,6 +147,7 @@ impl IntoEnumIterator for NodeType {
             NodeType::IBTCNetwork,
             NodeType::ZKLink,
             NodeType::HyveDA,
+            NodeType::PrimevBidder,
         ]
         .into_iter()
         .chain(ActiveSet::iter().map(NodeType::Hyperlane))
@@ -309,7 +311,7 @@ pub const GOPLUS_REPO: &str = "goplus_avs"; //Local only
 pub const NUFFLE_REPO: &str = "nffl-operator"; //Local only // Holesky Only
 pub const GASP_REPO: &str = "gaspxyz/gasp-avs"; //Holesky only
 pub const DITTO_NETWORK_REPO: &str = "dittonetwork/avs-operator"; //Holesky only
-pub const PRIMEV_LOCAL_REPO: &str = "bidder_node_docker-mev-commit-bidderr"; //Local only
+pub const PRIMEV_BIDDER_REPO: &str = "bidder_node_docker-mev-commit-bidder"; //Local only
 pub const PRIMEV_IMAGE_REPO: &str = "primevprotocol/mev-commit"; //Remote only //I think its out of date?
 pub const OMNI_REPO: &str = "omniops/halovisor"; //Holesky only
 pub const PRIMUS_REPO: &str = "padolabs/pado-network"; //Testnet only - Unverified registry
@@ -343,7 +345,8 @@ pub const LAGRANGE_STATE_COMMITTEE_CONTAINER_NAME: &str = "lagrange-node";
 pub const HYPERLANE_AGENT_CONTAINER_NAME: &str = "ethereum-validator";
 pub const GASP_CONTAINER_NAME: &str = "gasp-avs";
 pub const DITTO_NETWORK_CONTAINER_NAME: &str = "ditto-operator";
-pub const PRIMEV_MEV_COMMIT_CONTAINER_NAME: &str = "mev-commit-bidder-1";
+// pub const PRIMEV_MEV_COMMIT_CONTAINER_NAME: &str = "mev-commit-bidder-1";
+pub const PRIMEV_BIDDER_CONTAINER_NAME: &str = "bidder_node_docker-mev-commit-bidder-1";
 pub const CYCLE_CONTAINER_NAME: &str = "cycle-data-availability";
 pub const TANSSI_CONTAINER_NAME: &str = "para";
 
@@ -393,7 +396,8 @@ impl NodeType {
             Self::OpenLayerHolesky => OPEN_LAYER_HOLESKY_REPO,
             Self::ArpaNetworkNodeClient => ARPA_NETWORK_NODE_CLIENT_REPO,
             Self::ChainbaseNetwork => CHAINBASE_NETWORK_V2_REPO,
-            Self::PrimevMevCommit(_) => PRIMEV_LOCAL_REPO,
+            Self::PrimevMevCommit(_) => return Err(NodeTypeError::NoRepository),
+            Self::PrimevBidder => PRIMEV_BIDDER_REPO,
             Self::GoPlusAVS => GOPLUS_REPO,
             Self::DittoNetwork(_) => DITTO_NETWORK_REPO,
             Self::AtlasNetwork => ATLAS_NETWORK_REPO,
@@ -459,7 +463,8 @@ impl NodeType {
             Self::GoPlusAVS => GOPLUS_CONTAINER_NAME,
             Self::UngateInfiniRoute(_) => UNGATE_MAINNET,
             Self::DittoNetwork(_) => DITTO_NETWORK_CONTAINER_NAME,
-            Self::PrimevMevCommit(_) => PRIMEV_MEV_COMMIT_CONTAINER_NAME,
+            Self::PrimevMevCommit(_) => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::PrimevBidder => PRIMEV_BIDDER_CONTAINER_NAME,
             Self::Altlayer(altlayer_type) => {
                 match altlayer_type {
                     AltlayerType::AltlayerMach => MACH_AVS_ETHEREUM,
@@ -539,7 +544,8 @@ impl NodeType {
             Self::LagrangeStateCommittee => LAGRANGE_STATE_COMMITTEE_CONTAINER_NAME,
             Self::LagrangeZkWorker => LAGRANGE_WORKER_CONTAINER_NAME,
             Self::Nuffle => NUFFLE_CONTAINER_NAME,
-            Self::PrimevMevCommit(_) => PRIMEV_MEV_COMMIT_CONTAINER_NAME,
+            Self::PrimevMevCommit(_) => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::PrimevBidder => PRIMEV_BIDDER_CONTAINER_NAME,
             Self::LagrangeZKProver => {
                 return Err(NodeTypeError::SpecializedError(
                     "TODO".to_string(),
@@ -647,8 +653,7 @@ impl NodeType {
             GASP_REPO => Some(Self::Gasp),
             DITTO_NETWORK_REPO => Some(Self::DittoNetwork(ActiveSet::Unknown)),
             NUFFLE_REPO => Some(Self::Nuffle),
-            PRIMEV_LOCAL_REPO => Some(Self::PrimevMevCommit(ActiveSet::Unknown)),
-            PRIMEV_IMAGE_REPO => Some(Self::PrimevMevCommit(ActiveSet::Unknown)),
+            PRIMEV_BIDDER_REPO => Some(Self::PrimevBidder),
             GOPLUS_REPO => Some(Self::GoPlusAVS),
             OMNI_REPO => Some(Self::Omni),
             PRIMUS_REPO => Some(Self::Primus),
@@ -691,7 +696,7 @@ impl NodeType {
             DITTO_NETWORK_CONTAINER_NAME => Self::DittoNetwork(ActiveSet::Unknown),
             NUFFLE_CONTAINER_NAME => Self::Nuffle,
             NUFFLE_CONTAINER_NAME_2 => Self::Nuffle,
-            PRIMEV_MEV_COMMIT_CONTAINER_NAME => Self::PrimevMevCommit(ActiveSet::Unknown),
+            PRIMEV_BIDDER_CONTAINER_NAME => Self::PrimevBidder,
             PRIMUS_CONTAINER_NAME => Self::Primus,
             BOLT_CONTAINER_NAME => Self::Bolt(ActiveSet::Unknown),
             CYCLE_CONTAINER_NAME => Self::Cycle,

@@ -1,6 +1,9 @@
-use ivynet_core::directory::avs_contract;
+use ivynet_core::directory::{avs_contract, get_chained_avs_map};
 use ivynet_docker_registry::{registry::ImageRegistry, registry_type::RegistryType};
-use ivynet_node_type::NodeType;
+use ivynet_node_type::{
+    restaking_protocol::{RestakingProtocol, RestakingProtocolType},
+    NodeType,
+};
 use serde::Serialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -11,6 +14,7 @@ use crate::{
     avs_version::{DbAvsVersionData, NodeTypeId, VersionData},
     error::DatabaseError,
     metric::Metric,
+    operator_keys::OperatorKey,
     Avs, AvsActiveSet, AvsVersionHash,
 };
 use ivynet_core::ethers::types::Chain;
@@ -52,6 +56,7 @@ pub struct NodeStatusReport {
 pub struct AvsInfo {
     #[serde(flatten)]
     pub avs: Avs,
+    pub protocol: Option<RestakingProtocolType>,
     pub is_running: bool,
     pub uptime: f64,
     pub performance_score: f64,
@@ -65,6 +70,14 @@ pub enum UpdateStatus {
     Updateable,
     UpToDate,
     Unknown,
+}
+
+#[derive(Serialize, ToSchema, Clone, Debug)]
+pub struct ActiveSetInfo {
+    pub node_type: NodeType,
+    pub restaking_protocol: Option<RestakingProtocolType>,
+    pub status: bool,
+    pub chain: Chain,
 }
 
 pub async fn build_avs_info(
@@ -135,8 +148,11 @@ pub async fn build_avs_info(
         avs.avs_version = "OptInOnly".to_string();
     }
 
+    let protocol = avs.avs_type.restaking_protocol();
+
     Ok(AvsInfo {
         avs,
+        protocol,
         is_running,
         uptime: metrics.get(UPTIME_METRIC).map_or(0.0, |m| m.value),
         performance_score: metrics.get(EIGEN_PERFORMANCE_METRIC).map_or(0.0, |m| m.value),
@@ -257,6 +273,40 @@ pub async fn update_avs_active_set(
 
     Avs::update_active_set(pool, machine_id, avs_name, active_set).await?;
     Ok(())
+}
+
+pub async fn get_active_set_information(
+    pool: &sqlx::PgPool,
+    operator_keys: Vec<OperatorKey>,
+) -> Result<Vec<(OperatorKey, Vec<ActiveSetInfo>)>, DatabaseError> {
+    let (mainnet_map, holesky_map) = get_chained_avs_map();
+
+    let mut op_key_active_set_info: Vec<(OperatorKey, Vec<ActiveSetInfo>)> = vec![];
+    for op_key in operator_keys {
+        let active_set_avses = AvsActiveSet::get_active_set_avses(pool, op_key.public_key).await?;
+
+        let active_set_info: Vec<ActiveSetInfo> = active_set_avses
+            .into_iter()
+            .filter_map(|avs| {
+                let avs_type = match avs.chain_id {
+                    Chain::Mainnet => mainnet_map.get(&avs.avs),
+                    Chain::Holesky => holesky_map.get(&avs.avs),
+                    _ => None,
+                }?;
+
+                Some(ActiveSetInfo {
+                    node_type: *avs_type,
+                    restaking_protocol: avs_type.restaking_protocol(),
+                    status: avs.active,
+                    chain: avs.chain_id,
+                })
+            })
+            .collect();
+
+        op_key_active_set_info.push((op_key, active_set_info));
+    }
+
+    Ok(op_key_active_set_info)
 }
 
 // TODO: These need to also text fixed versions

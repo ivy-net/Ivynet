@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use convert_case::{Case, Casing};
 use dispatch::{TelemetryDispatchError, TelemetryDispatchHandle};
@@ -24,7 +24,7 @@ pub mod parser;
 pub type ErrorChannelTx = broadcast::Sender<TelemetryError>;
 pub type ErrorChannelRx = broadcast::Receiver<TelemetryError>;
 
-#[derive(Clone, Debug, thiserror::Error)]
+#[derive(Debug, Clone, thiserror::Error)]
 pub enum TelemetryError {
     #[error("Telemetry dispatch error: {0}")]
     DispatchError(TelemetryDispatchError),
@@ -36,7 +36,7 @@ pub enum TelemetryError {
     TelemetryDispatchError(#[from] TelemetryDispatchError),
 
     #[error("Metrics listener error: {0}")]
-    MetricsListenerError(#[from] metrics_listener::MetricsListenerError),
+    MetricsListenerError(Arc<metrics_listener::MetricsListenerError>),
 }
 
 #[derive(Clone, Debug, Serialize, Hash, Eq, PartialEq)]

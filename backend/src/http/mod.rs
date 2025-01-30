@@ -135,7 +135,8 @@ fn create_router() -> Router<HttpState> {
             "/avs",
             Router::new()
                 .route("/", get(node::all_avs_info))
-                .route("/status", get(node::avs_status)),
+                .route("/status", get(node::avs_status))
+                .route("/active_set", get(node::avs_active_set)),
         )
         .nest(
             "/info/avs",

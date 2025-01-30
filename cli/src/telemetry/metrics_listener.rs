@@ -16,7 +16,7 @@ use crate::system::get_detailed_system_information;
 use super::{
     dispatch::{TelemetryDispatchError, TelemetryDispatchHandle},
     parser::TelemetryParser,
-    ConfiguredAvs, ErrorChannelTx,
+    ConfiguredAvs, ErrorChannelTx, TelemetryError,
 };
 
 const TELEMETRY_INTERVAL_IN_MINUTES: u64 = 1;
@@ -94,14 +94,38 @@ pub enum MetricsListenerHandleError {
     SendError(#[from] mpsc::error::SendError<MetricsListenerAction>),
 }
 
-#[derive(Clone, Debug, thiserror::Error)]
+#[derive(Debug, thiserror::Error)]
 pub enum MetricsListenerError {
-    #[error("Failed to fetch metrics from container: {0}")]
-    MetricsFetchError(#[from] Arc<reqwest::Error>),
+    #[error("Failed to fetch metrics from container {container_name} on port {port}: {source}")]
+    FetchError { container_name: String, port: u16, source: MetricsFetchError },
+
     #[error("Failed to sign metrics: {0}")]
     SigningError(#[from] Arc<IvySigningError>),
-    #[error("Failed to send metrics: {0}")]
+
+    #[error("Failed to dispatch metrics: {0}")]
     DispatchError(#[from] TelemetryDispatchError),
+
+    #[error("Cache missing for container: {0}")]
+    CacheMissing(String),
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum MetricsFetchError {
+    #[error("Failed to connect to metrics endpoint: {0}")]
+    ConnectionError(#[from] reqwest::Error),
+
+    #[error("Timeout while fetching metrics after {timeout_secs} seconds")]
+    TimeoutError {
+        timeout_secs: u64,
+        #[source]
+        source: reqwest::Error,
+    },
+
+    #[error("Failed to parse metrics response: {0}")]
+    ParseError(String),
+
+    #[error("Invalid metric format in line {line_number}: {line}")]
+    InvalidMetricFormat { line_number: usize, line: String },
 }
 
 /// The MetricsListener is responsible for listening to metrics from the machine and sending them
@@ -113,10 +137,11 @@ pub struct MetricsListener<D: DockerApi> {
     machine_id: Uuid,
     identity_wallet: IvyWallet,
     avses: Vec<ConfiguredAvs>,
-    avs_cache: HashMap<ConfiguredAvs, (Option<String>, String, bool)>,
+    avs_cache: HashMap<ConfiguredAvs, (Option<String>, Option<String>, bool)>,
     dispatch: TelemetryDispatchHandle,
     rx: mpsc::Receiver<MetricsListenerAction>,
     error_tx: ErrorChannelTx,
+    http_client: reqwest::Client,
 }
 
 impl<D: DockerApi> MetricsListener<D> {
@@ -131,9 +156,19 @@ impl<D: DockerApi> MetricsListener<D> {
     ) -> Self {
         let mut avs_cache = HashMap::new();
         for avs in &avses {
-            avs_cache.insert(avs.clone(), (Some(avs.avs_type.to_string()), "".to_string(), false));
+            avs_cache.insert(avs.clone(), (Some(avs.avs_type.to_string()), None, false));
         }
-        Self { docker, machine_id, identity_wallet, avses, avs_cache, dispatch, rx, error_tx }
+        Self {
+            docker,
+            machine_id,
+            identity_wallet,
+            avses,
+            avs_cache,
+            dispatch,
+            rx,
+            error_tx,
+            http_client: reqwest::Client::new(),
+        }
     }
 
     pub async fn run(mut self) {
@@ -150,7 +185,7 @@ impl<D: DockerApi> MetricsListener<D> {
                 }
             };
             if let Err(e) = res {
-                let _ = self.error_tx.send(e.into());
+                let _ = self.error_tx.send(TelemetryError::MetricsListenerError(e.into()));
             }
         }
     }
@@ -163,6 +198,7 @@ impl<D: DockerApi> MetricsListener<D> {
             self.avses.as_slice(),
             &self.dispatch,
             &mut self.avs_cache,
+            &self.http_client,
         )
         .await
     }
@@ -173,8 +209,7 @@ impl<D: DockerApi> MetricsListener<D> {
     ) -> Result<(), MetricsListenerError> {
         match action {
             MetricsListenerAction::AddNode(avs) => {
-                self.avs_cache
-                    .insert(avs.clone(), (Some(avs.avs_type.to_string()), "".to_string(), false));
+                self.avs_cache.insert(avs.clone(), (Some(avs.avs_type.to_string()), None, false));
                 // if container with name already exists, replace avs_type and metric_port
                 if let Some(existing) =
                     self.avses.iter_mut().find(|x| x.container_name == avs.container_name)
@@ -229,7 +264,8 @@ pub async fn report_metrics(
     identity_wallet: &IvyWallet,
     avses: &[ConfiguredAvs],
     dispatch: &TelemetryDispatchHandle,
-    avs_cache: &mut HashMap<ConfiguredAvs, (Option<String>, String, bool)>,
+    avs_cache: &mut HashMap<ConfiguredAvs, (Option<String>, Option<String>, bool)>,
+    http_client: &reqwest::Client,
 ) -> Result<(), MetricsListenerError> {
     let images = docker.list_images().await;
     debug!("System Docker images: {:#?}", images);
@@ -272,7 +308,10 @@ pub async fn report_metrics(
         };
 
         let metrics = if let Some(port) = avs.metric_port {
-            let metrics: Vec<Metrics> = fetch_telemetry_from(port).await.unwrap_or_default();
+            let metrics: Vec<Metrics> =
+                fetch_telemetry_from(http_client, &avs.container_name, port)
+                    .await
+                    .unwrap_or_default();
 
             let metrics_signature =
                 sign_metrics(metrics.as_slice(), identity_wallet).map_err(Arc::new)?;
@@ -299,12 +338,16 @@ pub async fn report_metrics(
 
         let is_running = docker.is_running(&avs.container_name).await;
 
-        let (node_type, prev_version_hash, was_running) = &avs_cache[avs];
+        let cache_entry = avs_cache
+            .get(avs)
+            .ok_or_else(|| MetricsListenerError::CacheMissing(avs.container_name.clone()))?;
+
+        let (node_type, prev_version_hash, was_running) = &cache_entry;
         // Send node data
         let node_data = NodeData {
             name: avs.assigned_name.to_string(),
             node_type: node_type.clone(),
-            manifest: if *prev_version_hash == version_hash {
+            manifest: if *prev_version_hash == Some(version_hash.clone()) {
                 None
             } else {
                 Some(version_hash.clone())
@@ -321,7 +364,7 @@ pub async fn report_metrics(
         };
 
         dispatch.send_node_data(signed_node_data).await?;
-        avs_cache.insert(avs.clone(), (None, version_hash, is_running));
+        avs_cache.insert(avs.clone(), (None, Some(version_hash), is_running));
     }
     // Last but not least - send system metrics
     let system_metrics = fetch_system_telemetry();
@@ -338,18 +381,69 @@ pub async fn report_metrics(
     Ok(())
 }
 
-pub async fn fetch_telemetry_from(port: u16) -> Result<Vec<Metrics>, MetricsListenerError> {
-    let client = Client::new();
+pub async fn fetch_telemetry_from(
+    client: &Client,
+    container_name: &str,
+    port: u16,
+) -> Result<Vec<Metrics>, MetricsListenerError> {
+    const TIMEOUT_SECS: u64 = 10;
+
     let resp = client
         .get(format!("http://localhost:{}/metrics", port))
-        .timeout(Duration::from_secs(10))
+        .timeout(Duration::from_secs(TIMEOUT_SECS))
         .send()
         .await
-        .map_err(Arc::new)?;
-    let body = resp.text().await.map_err(Arc::new)?;
-    let metrics =
-        body.split('\n').filter_map(|line| TelemetryParser::new(line).parse()).collect::<Vec<_>>();
-    Ok(metrics)
+        .map_err(|e| {
+            if e.is_timeout() {
+                MetricsFetchError::TimeoutError { timeout_secs: TIMEOUT_SECS, source: e }
+            } else {
+                MetricsFetchError::ConnectionError(e)
+            }
+        })
+        .map_err(|e| MetricsListenerError::FetchError {
+            container_name: container_name.to_string(),
+            port,
+            source: e,
+        })?;
+
+    let body = resp.text().await.map_err(MetricsFetchError::ConnectionError).map_err(|e| {
+        MetricsListenerError::FetchError {
+            container_name: container_name.to_string(),
+            port,
+            source: e,
+        }
+    })?;
+
+    let mut metrics = Vec::new();
+    for (line_number, line) in body.lines().enumerate() {
+        let trimmed = line.trim();
+        // Skip empty lines and Prometheus metadata/comment lines
+        if trimmed.is_empty() || trimmed.starts_with("# ") {
+            continue;
+        }
+
+        match TelemetryParser::new(line).parse() {
+            Some(metric) => metrics.push(metric),
+            None => {
+                debug!(
+                    "Failed to parse metric at line {}: '{}' for container {}",
+                    line_number + 1,
+                    line,
+                    container_name
+                );
+            }
+        }
+    }
+
+    if metrics.is_empty() {
+        Err(MetricsListenerError::FetchError {
+            container_name: container_name.to_string(),
+            port,
+            source: MetricsFetchError::ParseError("No valid metrics found in response".to_string()),
+        })
+    } else {
+        Ok(metrics)
+    }
 }
 
 fn fetch_system_telemetry() -> Vec<Metrics> {

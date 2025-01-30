@@ -4,10 +4,10 @@ use bollard::secret::{EventMessage, EventMessageTypeEnum};
 use ivynet_docker::dockerapi::{DockerApi, DockerClient, DockerStreamError};
 use ivynet_grpc::{
     backend::backend_client::BackendClient,
-    messages::{NodeData, NodeTypeQueries, NodeTypeQuery, SignedNodeData},
+    messages::{NodeTypeQueries, NodeTypeQuery},
     tonic::{transport::Channel, Request, Response},
 };
-use ivynet_signer::{sign_utils::sign_node_data, IvyWallet};
+use ivynet_signer::IvyWallet;
 use tokio::time::sleep;
 use tokio_stream::StreamExt;
 use tracing::{debug, error};
@@ -85,8 +85,6 @@ impl DockerStreamListener<DockerClient> {
         let inc_container_name =
             attributes.get("name").ok_or(DockerStreamError::MissingAttributes)?;
 
-        println!("{:#?}", attributes);
-
         let inc_container = match self.docker.find_container_by_name(inc_container_name).await {
             Some(container) => container,
             None => {
@@ -106,8 +104,29 @@ impl DockerStreamListener<DockerClient> {
             }
         };
 
-        let configured = match avses.iter().find(|avs| avs.container_name == *inc_container_name) {
-            Some(avs) => Some(avs.clone()),
+        let mut configured = None;
+        for avs in avses {
+            // First try to find by container name
+            if avs.container_name == *inc_container_name {
+                configured = Some(avs.clone());
+                break;
+            }
+            // If not found by name, check if any existing AVS is monitoring
+            // the same container (by image hash)
+            if let Some(existing_container) =
+                self.docker.find_container_by_name(&avs.container_name).await
+            {
+                if let Some(existing_digest) = existing_container.image_id() {
+                    if existing_digest == inc_container_digest {
+                        configured = Some(avs.clone());
+                        break;
+                    }
+                }
+            }
+        }
+
+        let configured = match configured {
+            Some(avs) => Some(avs),
             None => {
                 let node_type_query = NodeTypeQuery {
                     container_name: inc_container_name.clone(),
@@ -116,44 +135,34 @@ impl DockerStreamListener<DockerClient> {
                 };
                 let query = Request::new(NodeTypeQueries { node_types: vec![node_type_query] });
 
-                let node_type =
+                let response =
                     self.backend.node_type_queries(query).await.map(Response::into_inner).ok();
 
-                let found_type = if let Some(node_type) = node_type {
-                    node_type.node_types.first().map(|t| t.node_type.clone())
-                } else {
-                    None
+                // Only create configuration if we get a valid node type
+                match response {
+                    Some(node_type) => {
+                        if let Some(node_type) = node_type.node_types.first() {
+                            if node_type.node_type != "unknown" {
+                                Some(ConfiguredAvs {
+                                    assigned_name: inc_container_name.to_string(),
+                                    container_name: inc_container_name.clone(),
+                                    avs_type: node_type.node_type.clone(),
+                                    metric_port: metrics_port,
+                                })
+                            } else {
+                                None
+                            }
+                        } else {
+                            None
+                        }
+                    }
+                    None => None,
                 }
-                .unwrap_or("unknown".to_string());
-
-                Some(ConfiguredAvs {
-                    assigned_name: inc_container_name.to_string(),
-                    container_name: inc_container_name.clone(),
-                    avs_type: found_type,
-                    metric_port: metrics_port,
-                })
             }
         };
 
         if let Some(configured) = configured {
             debug!("Found container: {}", inc_container_name);
-
-            let node_data = NodeData {
-                name: configured.container_name.clone(),
-                node_type: Some(configured.avs_type.clone()),
-                manifest: Some(inc_container_digest),
-                metrics_alive: Some(configured.metric_port.is_some()),
-                node_running: Some(true),
-            };
-
-            let node_data_signature = sign_node_data(&node_data, &self.identity_wallet)?;
-            let signed_node_data = SignedNodeData {
-                machine_id: self.machine_id.into(),
-                signature: node_data_signature.to_vec(),
-                node_data: Some(node_data),
-            };
-
-            self.dispatch.send_node_data(signed_node_data).await?;
 
             if let Err(e) = self.metrics_listener_handle.add_node(&configured).await {
                 error!("Error adding node: {:?}", e);

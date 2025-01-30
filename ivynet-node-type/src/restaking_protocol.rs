@@ -1,5 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 use super::{ActiveSet, AltlayerType, InfiniRouteType, MachType, NodeType, SkateChainType};
 
+#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum RestakingProtocolType {
     Eigenlayer,
     Symbiotic,
@@ -47,6 +50,7 @@ impl RestakingProtocol for NodeType {
             //Symbiotic
             NodeType::Cycle => RestakingProtocolType::Symbiotic,
             NodeType::Tanssi => RestakingProtocolType::Symbiotic,
+            NodeType::PrimevBidder => RestakingProtocolType::Symbiotic,
             //Complicated
             NodeType::DittoNetwork(inner) => match inner {
                 ActiveSet::Unknown => return None,

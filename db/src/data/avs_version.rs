@@ -53,6 +53,7 @@ impl From<&NodeType> for VersionType {
             NodeType::ArpaNetworkNodeClient => VersionType::FixedVer,
             NodeType::Brevis => VersionType::LocalOnly,
             NodeType::PrimevMevCommit(_) => VersionType::LocalOnly,
+            NodeType::PrimevBidder => VersionType::LocalOnly,
             NodeType::Nuffle => VersionType::LocalOnly,
             NodeType::AlignedLayer => VersionType::LocalOnly,
             NodeType::GoPlusAVS => VersionType::LocalOnly,

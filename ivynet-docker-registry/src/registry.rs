@@ -51,6 +51,7 @@ impl ImageRegistry for NodeType {
             Self::Nuffle => Local,
             Self::AlignedLayer => Local,
             Self::PrimevMevCommit(_) => Local,
+            Self::PrimevBidder => Local,
             Self::Blockless => Local,
             Self::Cycle => Local,
             Self::Kalypso => Local,

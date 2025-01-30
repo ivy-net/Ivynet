@@ -1,5 +1,6 @@
 use bollard::{image::BuildImageOptions, Docker};
 use futures::TryStreamExt;
+use tracing::debug;
 
 pub(crate) mod netstat;
 
@@ -44,7 +45,7 @@ pub async fn build_sidecar_image(docker: &Docker) -> Result<String, DockerSideca
     // Stream the build output to stdout (optional, can be omitted or logged)
     while let Some(chunk_result) = build_stream.try_next().await? {
         if let Some(output) = chunk_result.stream {
-            print!("{}", output);
+            debug!("{}", output);
         }
         if let Some(error) = chunk_result.error {
             eprintln!("{}", error);
