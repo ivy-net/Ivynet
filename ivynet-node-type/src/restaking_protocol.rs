@@ -50,6 +50,7 @@ impl RestakingProtocol for NodeType {
             //Symbiotic
             NodeType::Cycle => RestakingProtocolType::Symbiotic,
             NodeType::Tanssi => RestakingProtocolType::Symbiotic,
+            NodeType::PrimevBidder => RestakingProtocolType::Symbiotic,
             //Complicated
             NodeType::DittoNetwork(inner) => match inner {
                 ActiveSet::Unknown => return None,

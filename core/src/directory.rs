@@ -7,11 +7,11 @@ use ivynet_node_type::{
     ActiveSet, AltlayerType, InfiniRouteType, MachType, NodeType, SkateChainType,
 };
 
-const ALL_DIRECTORIES: [(Chain, H160); 4] = [
-    (Chain::Mainnet, h160!(0x135DDa560e946695d6f155dACaFC6f1F25C1F5AF)), //Eigenlayer
-    (Chain::Mainnet, h160!(0x7133415b33B438843D581013f98A08704316633c)), //Symbiotic
-    (Chain::Holesky, h160!(0x055733000064333CaDDbC92763c58BF0192fFeBf)), //Eigenlayer
-    (Chain::Holesky, h160!(0x58973d16FFA900D11fC22e5e2B6840d9f7e13401)), //Symbiotic
+const ALL_DIRECTORIES: [(Chain, H160, &str); 4] = [
+    (Chain::Mainnet, h160!(0x135DDa560e946695d6f155dACaFC6f1F25C1F5AF), "Eigenlayer"), //Eigenlayer
+    (Chain::Mainnet, h160!(0x7133415b33B438843D581013f98A08704316633c), "Symbiotic"),  //Symbiotic
+    (Chain::Holesky, h160!(0x055733000064333CaDDbC92763c58BF0192fFeBf), "Eigenlayer"), //Eigenlayer
+    (Chain::Holesky, h160!(0x58973d16FFA900D11fC22e5e2B6840d9f7e13401), "Symbiotic"),  //Symbiotic
 ];
 
 /*------------------------------------------------
@@ -168,10 +168,13 @@ static ALL_AVSES: LazyLock<AvsMap> = LazyLock::new(|| {
 });
 
 static DIRECTORIES_BY_CHAIN: LazyLock<HashMap<Chain, Vec<H160>>> = LazyLock::new(|| {
-    ALL_DIRECTORIES.iter().fold(HashMap::with_capacity(2), |mut acc, (chain, addr)| {
-        acc.entry(*chain).or_default().push(*addr);
-        acc
-    })
+    ALL_DIRECTORIES.iter().fold(
+        HashMap::with_capacity(2),
+        |mut acc, (chain, addr, _restaking_protocol)| {
+            acc.entry(*chain).or_default().push(*addr);
+            acc
+        },
+    )
 });
 
 static AVSES_BY_CHAIN: LazyLock<HashMap<Chain, Vec<H160>>> = LazyLock::new(|| {
@@ -210,4 +213,19 @@ pub fn get_avs_from_address(address: H160) -> Option<(Chain, NodeType, H160)> {
             .iter()
             .find_map(|(node_type, &addr)| (addr == address).then_some((chain, *node_type, addr)))
     })
+}
+
+pub fn get_chained_avs_map() -> (HashMap<H160, NodeType>, HashMap<H160, NodeType>) {
+    let mut mainnet_map: HashMap<H160, NodeType> = HashMap::with_capacity(ALL_MAINNET_AVSES.len());
+    let mut holesky_map: HashMap<H160, NodeType> = HashMap::with_capacity(ALL_HOLESKY_AVSES.len());
+
+    for (node_type, addr) in ALL_MAINNET_AVSES {
+        mainnet_map.insert(addr, node_type);
+    }
+
+    for (node_type, addr) in ALL_HOLESKY_AVSES {
+        holesky_map.insert(addr, node_type);
+    }
+
+    (mainnet_map, holesky_map)
 }

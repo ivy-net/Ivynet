@@ -1,4 +1,4 @@
-use ivynet_core::directory::avs_contract;
+use ivynet_core::directory::{avs_contract, get_chained_avs_map};
 use ivynet_docker_registry::{registry::ImageRegistry, registry_type::RegistryType};
 use ivynet_node_type::{
     restaking_protocol::{RestakingProtocol, RestakingProtocolType},
@@ -14,6 +14,7 @@ use crate::{
     avs_version::{DbAvsVersionData, NodeTypeId, VersionData},
     error::DatabaseError,
     metric::Metric,
+    operator_keys::OperatorKey,
     Avs, AvsActiveSet, AvsVersionHash,
 };
 use ivynet_core::ethers::types::Chain;
@@ -69,6 +70,13 @@ pub enum UpdateStatus {
     Updateable,
     UpToDate,
     Unknown,
+}
+
+#[derive(Serialize, ToSchema, Clone, Debug)]
+pub struct ActiveSetInfo {
+    pub avs: NodeType,
+    pub avs_type: RestakingProtocolType,
+    pub status: bool,
 }
 
 pub async fn build_avs_info(
@@ -264,6 +272,27 @@ pub async fn update_avs_active_set(
 
     Avs::update_active_set(pool, machine_id, avs_name, active_set).await?;
     Ok(())
+}
+
+pub async fn get_active_set_information(
+    pool: &sqlx::PgPool,
+    operator_keys: Vec<OperatorKey>,
+    avses: Vec<Avs>,
+) -> Result<Vec<(OperatorKey, Vec<ActiveSetInfo>)>, DatabaseError> {
+    let (mainnet_map, holesky_map) = get_chained_avs_map();
+
+    for op_key in operator_keys {
+        println!("op_key: {:#?}", op_key);
+        let active_set_avses = AvsActiveSet::get_active_set_avses(pool, op_key.public_key).await?;
+        println!("active_set_avses: {:#?}", active_set_avses);
+        for avs_active_set in active_set_avses {
+            let avs_addr = avs_active_set.avs;
+            let chain = avs_active_set.chain_id;
+            let avs_type = mainnet_map.get(&avs_addr).unwrap_or(continue);
+        }
+    }
+    todo!();
+    Ok(vec![])
 }
 
 // TODO: These need to also text fixed versions

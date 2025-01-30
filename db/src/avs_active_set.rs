@@ -9,7 +9,7 @@ pub struct AvsActiveSet {
     pub directory: Address,
     pub avs: Address,
     pub operator: Address,
-    pub chain_id: u64,
+    pub chain_id: Chain,
     pub active: bool,
     pub block: u64,
     pub log_index: u64,
@@ -46,7 +46,7 @@ impl From<DbAvsActiveSet> for AvsActiveSet {
             directory: Address::from_slice(&key.directory),
             avs: Address::from_slice(&key.avs),
             operator: Address::from_slice(&key.operator),
-            chain_id: key.chain_id as u64,
+            chain_id: Chain::try_from(key.chain_id as u64).unwrap_or(Chain::Mainnet),
             active: key.active,
             block: key.block as u64,
             log_index: key.log_index as u64,
@@ -111,6 +111,20 @@ impl AvsActiveSet {
         } else {
             Ok(0)
         }
+    }
+
+    pub async fn get_active_set_avses(
+        pool: &sqlx::PgPool,
+        operator: Address,
+    ) -> Result<Vec<AvsActiveSet>, DatabaseError> {
+        let avses = sqlx::query_as!(
+            DbAvsActiveSet,
+            r#"SELECT * FROM avs_active_set WHERE operator = $1"#,
+            operator.as_bytes()
+        )
+        .fetch_all(pool)
+        .await?;
+        Ok(avses.into_iter().map(|a| a.into()).collect())
     }
 }
 
