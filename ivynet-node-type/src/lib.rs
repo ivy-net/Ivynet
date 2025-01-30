@@ -75,7 +75,7 @@ pub enum NodeType {
     ChainbaseNetworkV1,
     SkateChain(SkateChainType), /* Othentic-cli - not sure whats going on here either https://github.com/Skate-Org/avs-X-othentic/blob/main/docker-compose.yml */
     ChainbaseNetwork,
-    DittoNetwork,                       //Testnet only
+    DittoNetwork(ActiveSet),
     Primus,                             //Testnet only  - Unverified registry
     GoPlusAVS,                          //Built locally
     UngateInfiniRoute(InfiniRouteType), //Built locally
@@ -86,12 +86,20 @@ pub enum NodeType {
     AtlasNetwork,                       //Testnet only
     Zellular,                           //Testnet only
     Redstone,                           //Testnet only
-    MishtiNetwork,                      //Testnet only
+    MishtiNetwork(ActiveSet),           //Testnet only
     Cycle,                              //Testnet only
     PrimevMevCommit(ActiveSet),         //Built locally
     Bolt(ActiveSet),                    //Testnet only
     Hyperlane(ActiveSet),
     Tanssi,
+    Kalypso,
+    RouterXtendNetwork,
+    CapxCloud,
+    Symbiosis,
+    Radius,
+    IBTCNetwork,
+    ZKLink,
+    HyveDA,
 }
 
 impl IntoEnumIterator for NodeType {
@@ -120,7 +128,6 @@ impl IntoEnumIterator for NodeType {
             NodeType::ChainbaseNetwork,
             NodeType::GoPlusAVS,
             NodeType::AlignedLayer,
-            NodeType::DittoNetwork,
             NodeType::Gasp,
             NodeType::Nuffle,
             NodeType::Unknown,
@@ -129,12 +136,21 @@ impl IntoEnumIterator for NodeType {
             NodeType::AtlasNetwork,
             NodeType::Zellular,
             NodeType::Redstone,
-            NodeType::MishtiNetwork,
             NodeType::Cycle,
             NodeType::Tanssi,
+            NodeType::Kalypso,
+            NodeType::RouterXtendNetwork,
+            NodeType::CapxCloud,
+            NodeType::Symbiosis,
+            NodeType::Radius,
+            NodeType::IBTCNetwork,
+            NodeType::ZKLink,
+            NodeType::HyveDA,
         ]
         .into_iter()
         .chain(ActiveSet::iter().map(NodeType::Hyperlane))
+        .chain(ActiveSet::iter().map(NodeType::MishtiNetwork))
+        .chain(ActiveSet::iter().map(NodeType::DittoNetwork))
         .chain(ActiveSet::iter().map(NodeType::PrimevMevCommit))
         .chain(ActiveSet::iter().map(NodeType::Bolt))
         .chain(AltlayerType::iter().map(NodeType::Altlayer))
@@ -219,6 +235,8 @@ impl Serialize for NodeType {
             }
             NodeType::Bolt(inner) => serialize_compound("bolt", inner, serializer),
             NodeType::Hyperlane(inner) => serialize_compound("hyperlane", inner, serializer),
+            NodeType::MishtiNetwork(inner) => serialize_compound("mishti", inner, serializer),
+            NodeType::DittoNetwork(inner) => serialize_compound("ditto", inner, serializer),
             // Simple types - use Display implementation
             _ => serializer.serialize_str(&self.to_string()),
         }
@@ -251,6 +269,8 @@ impl<'de> Deserialize<'de> for NodeType {
                 "primevmevcommit" => parse_inner(inner).map(NodeType::PrimevMevCommit),
                 "bolt" => parse_inner(inner).map(NodeType::Bolt),
                 "hyperlane" => parse_inner(inner).map(NodeType::Hyperlane),
+                "mishti" => parse_inner(inner).map(NodeType::MishtiNetwork),
+                "ditto" => parse_inner(inner).map(NodeType::DittoNetwork),
                 _ => Err(D::Error::custom(format!(
                     "Invalid compound NodeType {normalized_outer}({})",
                     inner
@@ -375,10 +395,10 @@ impl NodeType {
             Self::ChainbaseNetwork => CHAINBASE_NETWORK_V2_REPO,
             Self::PrimevMevCommit(_) => PRIMEV_LOCAL_REPO,
             Self::GoPlusAVS => GOPLUS_REPO,
-            Self::DittoNetwork => DITTO_NETWORK_REPO,
+            Self::DittoNetwork(_) => DITTO_NETWORK_REPO,
             Self::AtlasNetwork => ATLAS_NETWORK_REPO,
             Self::Bolt(_) => BOLT_REPO,
-            Self::MishtiNetwork => return Err(NodeTypeError::NoRepository),
+            Self::MishtiNetwork(_) => return Err(NodeTypeError::NoRepository),
             Self::Brevis => return Err(NodeTypeError::NoRepository),
             Self::Nuffle => return Err(NodeTypeError::NoRepository),
             Self::Blockless => return Err(NodeTypeError::NoRepository),
@@ -399,6 +419,14 @@ impl NodeType {
                         .to_string(),
                 ))
             }
+            Self::Kalypso => return Err(NodeTypeError::NoRepository),
+            Self::RouterXtendNetwork => return Err(NodeTypeError::NoRepository),
+            Self::CapxCloud => return Err(NodeTypeError::NoRepository),
+            Self::Symbiosis => return Err(NodeTypeError::NoRepository),
+            Self::Radius => return Err(NodeTypeError::NoRepository),
+            Self::IBTCNetwork => return Err(NodeTypeError::NoRepository),
+            Self::ZKLink => return Err(NodeTypeError::NoRepository),
+            Self::HyveDA => return Err(NodeTypeError::NoRepository),
         };
         Ok(res)
     }
@@ -430,7 +458,7 @@ impl NodeType {
             Self::WitnessChain => WITNESSCHAIN_CONTAINER_NAME,
             Self::GoPlusAVS => GOPLUS_CONTAINER_NAME,
             Self::UngateInfiniRoute(_) => UNGATE_MAINNET,
-            Self::DittoNetwork => DITTO_NETWORK_CONTAINER_NAME,
+            Self::DittoNetwork(_) => DITTO_NETWORK_CONTAINER_NAME,
             Self::PrimevMevCommit(_) => PRIMEV_MEV_COMMIT_CONTAINER_NAME,
             Self::Altlayer(altlayer_type) => {
                 match altlayer_type {
@@ -447,7 +475,7 @@ impl NodeType {
                     MachType::Unknown => return Err(NodeTypeError::SpecializedError("GenericAltlayer isn't an actual container, its just the image. Assign a specific altlayer type".to_string())),
                 }
             },
-            Self::MishtiNetwork => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::MishtiNetwork(_) => return Err(NodeTypeError::NoDefaultContainerName),
             Self::Brevis => return Err(NodeTypeError::NoDefaultContainerName),
             Self::Blockless => return Err(NodeTypeError::NoDefaultContainerName),
             Self::K3LabsAvs => return Err(NodeTypeError::NoDefaultContainerName),
@@ -479,6 +507,15 @@ impl NodeType {
                     "AethosHolesky is deprecated - now Predicate".to_string(),
                 ))
             }
+
+            Self::Kalypso => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::RouterXtendNetwork => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::CapxCloud => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::Symbiosis => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::Radius => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::IBTCNetwork => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::ZKLink => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::HyveDA => return Err(NodeTypeError::NoDefaultContainerName),
         };
         Ok(res)
     }
@@ -494,7 +531,7 @@ impl NodeType {
             Self::Gasp => GASP_CONTAINER_NAME,
             Self::EigenDA => EIGENDA_NATIVE_NODE,
             Self::EOracle => EORACLE_DATA_VALIDATOR,
-            Self::DittoNetwork => DITTO_NETWORK_CONTAINER_NAME,
+            Self::DittoNetwork(_) => DITTO_NETWORK_CONTAINER_NAME,
             Self::Omni => OMNI_HALOVISOR,
             Self::Automata => AUTOMATA_OPERATOR_HOLESKY,
             Self::AvaProtocol => AVA_OPERATOR,
@@ -527,7 +564,7 @@ impl NodeType {
                     MachType::Unknown => return Err(NodeTypeError::SpecializedError("GenericAltlayer isn't an actual container, its just the image. Assign a specific altlayer type".to_string())),
                 }
             },
-            Self::MishtiNetwork => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::MishtiNetwork(_) => return Err(NodeTypeError::NoDefaultContainerName),
             Self::Brevis => return Err(NodeTypeError::NoDefaultContainerName),
             Self::Blockless => return Err(NodeTypeError::NoDefaultContainerName),
             Self::Redstone => return Err(NodeTypeError::NoDefaultContainerName),
@@ -547,7 +584,15 @@ impl NodeType {
                     "ChainbaseNetworkV1 is deprecated - update to V2 - ChainbaseNetwork"
                         .to_string(),
                 ))
-            }
+            },
+            Self::Kalypso => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::RouterXtendNetwork => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::CapxCloud => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::Symbiosis => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::Radius => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::IBTCNetwork => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::ZKLink => return Err(NodeTypeError::NoDefaultContainerName),
+            Self::HyveDA => return Err(NodeTypeError::NoDefaultContainerName),
         };
         Ok(res)
     }
@@ -600,7 +645,7 @@ impl NodeType {
             LAGRANGE_WORKER_REPO => Some(Self::LagrangeZkWorker),
             BREVIS_REPO => Some(Self::Brevis),
             GASP_REPO => Some(Self::Gasp),
-            DITTO_NETWORK_REPO => Some(Self::DittoNetwork),
+            DITTO_NETWORK_REPO => Some(Self::DittoNetwork(ActiveSet::Unknown)),
             NUFFLE_REPO => Some(Self::Nuffle),
             PRIMEV_LOCAL_REPO => Some(Self::PrimevMevCommit(ActiveSet::Unknown)),
             PRIMEV_IMAGE_REPO => Some(Self::PrimevMevCommit(ActiveSet::Unknown)),
@@ -643,7 +688,7 @@ impl NodeType {
             UNGATE_NAME_2 => Self::UngateInfiniRoute(InfiniRouteType::UnknownL2),
             UNGATE_NAME_3 => Self::UngateInfiniRoute(InfiniRouteType::UnknownL2),
             GASP_CONTAINER_NAME => Self::Gasp,
-            DITTO_NETWORK_CONTAINER_NAME => Self::DittoNetwork,
+            DITTO_NETWORK_CONTAINER_NAME => Self::DittoNetwork(ActiveSet::Unknown),
             NUFFLE_CONTAINER_NAME => Self::Nuffle,
             NUFFLE_CONTAINER_NAME_2 => Self::Nuffle,
             PRIMEV_MEV_COMMIT_CONTAINER_NAME => Self::PrimevMevCommit(ActiveSet::Unknown),

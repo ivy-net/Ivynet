@@ -1,5 +1,4 @@
-use futures::stream::{iter, StreamExt};
-use ivynet_docker::{container::Container, dockerapi::DockerApi};
+use ivynet_docker::dockerapi::DockerApi;
 use ivynet_grpc::async_trait;
 
 use crate::monitor::PotentialAvs;

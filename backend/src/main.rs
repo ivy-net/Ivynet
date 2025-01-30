@@ -13,7 +13,7 @@ use ivynet_backend::{
     config::Config, error::BackendError, get_node_version_hashes, http, telemetry::start_tracing,
 };
 use ivynet_core::utils::try_parse_chain;
-use ivynet_node_type::{AltlayerType, MachType, NodeType};
+use ivynet_node_type::{ActiveSet, AltlayerType, MachType, NodeType};
 use sqlx::PgPool;
 use strum::IntoEnumIterator;
 use tracing::{debug, error, info, warn};
@@ -176,6 +176,10 @@ async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
                 info!("Skipping local only node type {}", name);
                 continue;
             }
+            VersionType::OptInOnly => {
+                info!("Skipping opt-in only node type {}", name);
+                continue;
+            }
         }
     }
 
@@ -218,6 +222,54 @@ async fn update_node_data_versions(
                         db::DbAvsVersionData::set_avs_version(
                             pool,
                             &NodeType::AltlayerMach(mach_type),
+                            chain,
+                            &tag,
+                            &digest,
+                        )
+                        .await?;
+                    }
+                }
+                _ => continue,
+            },
+            (NodeType::DittoNetwork(active_set), _) => match active_set {
+                ActiveSet::Unknown => {
+                    let (tag, digest) = find_latest_avs_version(pool, node_type, chain).await?;
+                    for protocol in ActiveSet::iter() {
+                        db::DbAvsVersionData::set_avs_version(
+                            pool,
+                            &NodeType::DittoNetwork(protocol),
+                            chain,
+                            &tag,
+                            &digest,
+                        )
+                        .await?;
+                    }
+                }
+                _ => continue,
+            },
+            (NodeType::Bolt(active_set), _) => match active_set {
+                ActiveSet::Unknown => {
+                    let (tag, digest) = find_latest_avs_version(pool, node_type, chain).await?;
+                    for protocol in ActiveSet::iter() {
+                        db::DbAvsVersionData::set_avs_version(
+                            pool,
+                            &NodeType::Bolt(protocol),
+                            chain,
+                            &tag,
+                            &digest,
+                        )
+                        .await?;
+                    }
+                }
+                _ => continue,
+            },
+            (NodeType::Hyperlane(active_set), _) => match active_set {
+                ActiveSet::Unknown => {
+                    let (tag, digest) = find_latest_avs_version(pool, node_type, chain).await?;
+                    for protocol in ActiveSet::iter() {
+                        db::DbAvsVersionData::set_avs_version(
+                            pool,
+                            &NodeType::Hyperlane(protocol),
                             chain,
                             &tag,
                             &digest,

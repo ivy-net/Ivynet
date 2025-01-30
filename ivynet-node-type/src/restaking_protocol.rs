@@ -35,7 +35,6 @@ impl RestakingProtocol for NodeType {
             NodeType::UnifiAVS => RestakingProtocolType::Eigenlayer,
             NodeType::ChainbaseNetworkV1 => RestakingProtocolType::Eigenlayer,
             NodeType::ChainbaseNetwork => RestakingProtocolType::Eigenlayer,
-            NodeType::DittoNetwork => RestakingProtocolType::Eigenlayer,
             NodeType::Primus => RestakingProtocolType::Eigenlayer,
             NodeType::GoPlusAVS => RestakingProtocolType::Eigenlayer,
             NodeType::AlignedLayer => RestakingProtocolType::Eigenlayer,
@@ -45,11 +44,20 @@ impl RestakingProtocol for NodeType {
             NodeType::AtlasNetwork => RestakingProtocolType::Eigenlayer,
             NodeType::Zellular => RestakingProtocolType::Eigenlayer,
             NodeType::Redstone => RestakingProtocolType::Eigenlayer,
-            NodeType::MishtiNetwork => RestakingProtocolType::Eigenlayer,
             //Symbiotic
             NodeType::Cycle => RestakingProtocolType::Symbiotic,
             NodeType::Tanssi => RestakingProtocolType::Symbiotic,
             //Complicated
+            NodeType::DittoNetwork(inner) => match inner {
+                ActiveSet::Unknown => return None,
+                ActiveSet::Eigenlayer => RestakingProtocolType::Eigenlayer,
+                ActiveSet::Symbiotic => RestakingProtocolType::Symbiotic,
+            },
+            NodeType::MishtiNetwork(inner) => match inner {
+                ActiveSet::Unknown => return None,
+                ActiveSet::Eigenlayer => RestakingProtocolType::Eigenlayer,
+                ActiveSet::Symbiotic => RestakingProtocolType::Symbiotic,
+            },
             NodeType::Altlayer(inner) => match inner {
                 AltlayerType::Unknown => return None,
                 _ => RestakingProtocolType::Eigenlayer,
@@ -83,6 +91,14 @@ impl RestakingProtocol for NodeType {
                 ActiveSet::Eigenlayer => RestakingProtocolType::Eigenlayer,
                 ActiveSet::Symbiotic => RestakingProtocolType::Symbiotic,
             },
+            NodeType::Kalypso => RestakingProtocolType::Symbiotic,
+            NodeType::RouterXtendNetwork => RestakingProtocolType::Symbiotic,
+            NodeType::CapxCloud => RestakingProtocolType::Symbiotic,
+            NodeType::Symbiosis => RestakingProtocolType::Symbiotic,
+            NodeType::Radius => RestakingProtocolType::Symbiotic,
+            NodeType::IBTCNetwork => RestakingProtocolType::Symbiotic,
+            NodeType::ZKLink => RestakingProtocolType::Symbiotic,
+            NodeType::HyveDA => RestakingProtocolType::Symbiotic,
         };
 
         Some(protocol)
