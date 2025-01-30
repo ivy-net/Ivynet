@@ -8,9 +8,7 @@ use ivynet_signer::IvyWallet;
 use crate::{config::IvyConfig, error::Error};
 
 pub async fn register_node(mut config: IvyConfig) -> Result<(), Error> {
-    if config.identity_wallet().is_err() {
-        set_backend_connection(&mut config).await?;
-    }
+    set_backend_connection(&mut config).await?;
     let wallet = config.identity_wallet()?;
     let client_key = wallet.address();
 

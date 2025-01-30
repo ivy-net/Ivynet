@@ -425,7 +425,7 @@ pub async fn fetch_telemetry_from(
         match TelemetryParser::new(line).parse() {
             Some(metric) => metrics.push(metric),
             None => {
-                warn!(
+                debug!(
                     "Failed to parse metric at line {}: '{}' for container {}",
                     line_number + 1,
                     line,

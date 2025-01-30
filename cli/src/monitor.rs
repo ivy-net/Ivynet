@@ -17,7 +17,7 @@ use std::{
     fs::{File, OpenOptions},
     path::{Path, PathBuf},
 };
-use tracing::{error, info};
+use tracing::{debug, error, info};
 
 use crate::{
     config::{IvyConfig, DEFAULT_CONFIG_PATH},
@@ -230,7 +230,7 @@ pub async fn scan(force: bool, mut config: IvyConfig) -> Result<(), anyhow::Erro
     let docker_client = DockerClient::default();
     let potential_docker_nodes = docker_client.potential_nodes().await;
 
-    info!("POTENTIAL: {:#?}", potential_docker_nodes);
+    debug!("POTENTIAL: {:#?}", potential_docker_nodes);
     let (_existing_nodes, new_configured_nodes, leftover_potential_nodes) =
         find_new_avses(&mut backend, &monitor_config.configured_avses, &potential_docker_nodes)
             .await?;

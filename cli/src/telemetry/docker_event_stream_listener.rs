@@ -85,8 +85,6 @@ impl DockerStreamListener<DockerClient> {
         let inc_container_name =
             attributes.get("name").ok_or(DockerStreamError::MissingAttributes)?;
 
-        println!("{:#?}", attributes);
-
         let inc_container = match self.docker.find_container_by_name(inc_container_name).await {
             Some(container) => container,
             None => {
