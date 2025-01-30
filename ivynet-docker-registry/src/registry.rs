@@ -4,7 +4,7 @@ use tokio_stream::StreamExt;
 use tracing::{error, warn};
 
 use crate::registry_type::RegistryType::{
-    self, Chainbase, DockerHub, Github, GoogleCloud, Local, Othentic, AWS,
+    self, Chainbase, DockerHub, Github, GoogleCloud, Local, OptInOnly, Othentic, AWS,
 };
 
 pub trait ImageRegistry {
@@ -21,7 +21,7 @@ impl ImageRegistry for NodeType {
             Self::AtlasNetwork => DockerHub,
             Self::Primus => DockerHub,
             Self::Gasp => DockerHub,
-            Self::DittoNetwork => DockerHub,
+            Self::DittoNetwork(_) => DockerHub,
             Self::EigenDA => Github,
             Self::EOracle => DockerHub,
             Self::AvaProtocol => DockerHub,
@@ -43,17 +43,25 @@ impl ImageRegistry for NodeType {
             Self::ArpaNetworkNodeClient => Github,
             Self::ChainbaseNetworkV1 => Chainbase,
             Self::ChainbaseNetwork => Chainbase,
-            Self::UngateInfiniRoute(_any) => Othentic,
+            Self::UngateInfiniRoute(_) => Othentic,
             Self::GoPlusAVS => Local,
-            Self::SkateChain(_any) => Othentic,
-            Self::MishtiNetwork => Othentic,
+            Self::SkateChain(_) => Othentic,
+            Self::MishtiNetwork(_) => Othentic,
             Self::Brevis => Local,
             Self::Nuffle => Local,
             Self::AlignedLayer => Local,
             Self::PrimevMevCommit(_) => Local,
             Self::Blockless => Local,
             Self::Cycle => Local,
-            Self::UnifiAVS => return Err(NodeTypeError::InvalidNodeType),
+            Self::Kalypso => Local,
+            Self::RouterXtendNetwork => OptInOnly,
+            Self::CapxCloud => OptInOnly,
+            Self::Symbiosis => OptInOnly,
+            Self::Radius => OptInOnly,
+            Self::IBTCNetwork => OptInOnly,
+            Self::ZKLink => OptInOnly,
+            Self::HyveDA => OptInOnly,
+            Self::UnifiAVS => OptInOnly,
             Self::Unknown => return Err(NodeTypeError::InvalidNodeType),
         };
         Ok(res)

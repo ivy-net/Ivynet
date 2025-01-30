@@ -38,6 +38,9 @@ pub struct Params {
 
     #[arg(long, env = "LOG_LEVEL", default_value_t = LevelFilter::INFO)]
     pub log_level: LevelFilter,
+
+    #[arg(long, short, default_value_t = false)]
+    pub reset_blockheight: bool,
 }
 
 #[tokio::main]
@@ -56,7 +59,14 @@ async fn main() -> Result<(), anyhow::Error> {
     let backend =
         BackendEventsClient::new(create_channel(params.backend_uri, params.grpc_tls_ca).await?);
 
-    blockchain::fetch(&params.rpc_url, backend, params.start_block, &addresses).await?;
+    blockchain::fetch(
+        &params.rpc_url,
+        backend,
+        params.start_block,
+        &addresses,
+        params.reset_blockheight,
+    )
+    .await?;
 
     Ok(())
 }
