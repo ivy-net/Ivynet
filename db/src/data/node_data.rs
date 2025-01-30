@@ -74,8 +74,8 @@ pub enum UpdateStatus {
 
 #[derive(Serialize, ToSchema, Clone, Debug)]
 pub struct ActiveSetInfo {
-    pub avs: NodeType,
-    pub avs_type: RestakingProtocolType,
+    pub node_type: NodeType,
+    pub restaking_protocol: Option<RestakingProtocolType>,
     pub status: bool,
 }
 
@@ -277,22 +277,43 @@ pub async fn update_avs_active_set(
 pub async fn get_active_set_information(
     pool: &sqlx::PgPool,
     operator_keys: Vec<OperatorKey>,
-    avses: Vec<Avs>,
 ) -> Result<Vec<(OperatorKey, Vec<ActiveSetInfo>)>, DatabaseError> {
     let (mainnet_map, holesky_map) = get_chained_avs_map();
 
+    let mut op_key_active_set_info: Vec<(OperatorKey, Vec<ActiveSetInfo>)> = vec![];
     for op_key in operator_keys {
-        println!("op_key: {:#?}", op_key);
         let active_set_avses = AvsActiveSet::get_active_set_avses(pool, op_key.public_key).await?;
-        println!("active_set_avses: {:#?}", active_set_avses);
+        let mut active_set_info: Vec<ActiveSetInfo> = vec![];
         for avs_active_set in active_set_avses {
             let avs_addr = avs_active_set.avs;
             let chain = avs_active_set.chain_id;
-            let avs_type = mainnet_map.get(&avs_addr).unwrap_or(continue);
+            if chain == Chain::Mainnet {
+                if let Some(avs_type) = mainnet_map.get(&avs_addr) {
+                    let avs_info = ActiveSetInfo {
+                        node_type: *avs_type,
+                        restaking_protocol: avs_type.restaking_protocol(),
+                        status: avs_active_set.active,
+                    };
+                    active_set_info.push(avs_info);
+                }
+            } else if chain == Chain::Holesky {
+                if let Some(avs_type) = holesky_map.get(&avs_addr) {
+                    let avs_info = ActiveSetInfo {
+                        node_type: *avs_type,
+                        restaking_protocol: avs_type.restaking_protocol(),
+                        status: avs_active_set.active,
+                    };
+                    active_set_info.push(avs_info);
+                }
+            } else {
+                println!("Unknown chain: {:#?}", chain);
+                continue;
+            }
         }
+        op_key_active_set_info.push((op_key, active_set_info));
     }
-    todo!();
-    Ok(vec![])
+
+    Ok(op_key_active_set_info)
 }
 
 // TODO: These need to also text fixed versions

@@ -7,9 +7,7 @@ use db::{
     },
     metric::Metric,
     operator_keys::OperatorKey,
-    AvsActiveSet,
 };
-use ivynet_core::directory::get_chained_avs_map;
 
 use super::{authorize, HttpState};
 
@@ -98,11 +96,10 @@ pub async fn avs_active_set(
     jar: CookieJar,
 ) -> Result<Json<Vec<(OperatorKey, Vec<ActiveSetInfo>)>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    let avses = account.all_avses(&state.pool).await?;
     let key_infos =
         OperatorKey::get_all_keys_for_organization(&state.pool, account.organization_id).await?;
 
-    let active_set_info = get_active_set_information(&state.pool, key_infos, avses).await?;
+    let active_set_info = get_active_set_information(&state.pool, key_infos).await?;
 
     Ok(Json(active_set_info))
 }

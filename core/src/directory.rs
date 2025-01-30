@@ -4,14 +4,31 @@ use ethers::types::{Chain, H160};
 use ivynet_macros::h160;
 
 use ivynet_node_type::{
-    ActiveSet, AltlayerType, InfiniRouteType, MachType, NodeType, SkateChainType,
+    restaking_protocol::RestakingProtocolType, ActiveSet, AltlayerType, InfiniRouteType, MachType,
+    NodeType, SkateChainType,
 };
 
-const ALL_DIRECTORIES: [(Chain, H160, &str); 4] = [
-    (Chain::Mainnet, h160!(0x135DDa560e946695d6f155dACaFC6f1F25C1F5AF), "Eigenlayer"), //Eigenlayer
-    (Chain::Mainnet, h160!(0x7133415b33B438843D581013f98A08704316633c), "Symbiotic"),  //Symbiotic
-    (Chain::Holesky, h160!(0x055733000064333CaDDbC92763c58BF0192fFeBf), "Eigenlayer"), //Eigenlayer
-    (Chain::Holesky, h160!(0x58973d16FFA900D11fC22e5e2B6840d9f7e13401), "Symbiotic"),  //Symbiotic
+const ALL_DIRECTORIES: [(Chain, H160, RestakingProtocolType); 4] = [
+    (
+        Chain::Mainnet,
+        h160!(0x135DDa560e946695d6f155dACaFC6f1F25C1F5AF),
+        RestakingProtocolType::Eigenlayer,
+    ), //Eigenlayer
+    (
+        Chain::Mainnet,
+        h160!(0x7133415b33B438843D581013f98A08704316633c),
+        RestakingProtocolType::Symbiotic,
+    ), //Symbiotic
+    (
+        Chain::Holesky,
+        h160!(0x055733000064333CaDDbC92763c58BF0192fFeBf),
+        RestakingProtocolType::Eigenlayer,
+    ), //Eigenlayer
+    (
+        Chain::Holesky,
+        h160!(0x58973d16FFA900D11fC22e5e2B6840d9f7e13401),
+        RestakingProtocolType::Symbiotic,
+    ), //Symbiotic
 ];
 
 /*------------------------------------------------
