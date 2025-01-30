@@ -77,6 +77,7 @@ pub struct ActiveSetInfo {
     pub node_type: NodeType,
     pub restaking_protocol: Option<RestakingProtocolType>,
     pub status: bool,
+    pub chain: Chain,
 }
 
 pub async fn build_avs_info(
@@ -283,33 +284,25 @@ pub async fn get_active_set_information(
     let mut op_key_active_set_info: Vec<(OperatorKey, Vec<ActiveSetInfo>)> = vec![];
     for op_key in operator_keys {
         let active_set_avses = AvsActiveSet::get_active_set_avses(pool, op_key.public_key).await?;
-        let mut active_set_info: Vec<ActiveSetInfo> = vec![];
-        for avs_active_set in active_set_avses {
-            let avs_addr = avs_active_set.avs;
-            let chain = avs_active_set.chain_id;
-            if chain == Chain::Mainnet {
-                if let Some(avs_type) = mainnet_map.get(&avs_addr) {
-                    let avs_info = ActiveSetInfo {
-                        node_type: *avs_type,
-                        restaking_protocol: avs_type.restaking_protocol(),
-                        status: avs_active_set.active,
-                    };
-                    active_set_info.push(avs_info);
-                }
-            } else if chain == Chain::Holesky {
-                if let Some(avs_type) = holesky_map.get(&avs_addr) {
-                    let avs_info = ActiveSetInfo {
-                        node_type: *avs_type,
-                        restaking_protocol: avs_type.restaking_protocol(),
-                        status: avs_active_set.active,
-                    };
-                    active_set_info.push(avs_info);
-                }
-            } else {
-                println!("Unknown chain: {:#?}", chain);
-                continue;
-            }
-        }
+
+        let active_set_info: Vec<ActiveSetInfo> = active_set_avses
+            .into_iter()
+            .filter_map(|avs| {
+                let avs_type = match avs.chain_id {
+                    Chain::Mainnet => mainnet_map.get(&avs.avs),
+                    Chain::Holesky => holesky_map.get(&avs.avs),
+                    _ => None,
+                }?;
+
+                Some(ActiveSetInfo {
+                    node_type: *avs_type,
+                    restaking_protocol: avs_type.restaking_protocol(),
+                    status: avs.active,
+                    chain: avs.chain_id,
+                })
+            })
+            .collect();
+
         op_key_active_set_info.push((op_key, active_set_info));
     }
 
