@@ -13,6 +13,16 @@
   tags:
     - general
 
+- name: Add another bin dir to system-wide $PATH.
+  ansible.builtin.copy:
+    dest: /etc/profile.d/ivy-path.sh
+    content: 'PATH=$PATH:{{ ivynet_scraper_path_install }}/bin'
+    owner: root
+    group: root
+    mode: "0644"
+  tags:
+    - ivynet_scraper
+
 - name: Install and configure 3rd party tools
   ansible.builtin.import_tasks:
     file: third_party.yml

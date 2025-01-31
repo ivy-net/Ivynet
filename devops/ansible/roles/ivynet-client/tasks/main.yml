@@ -13,15 +13,15 @@
 
 - name: Prepare directories
   ansible.builtin.file:
-    path: "{{ ivynet_client_path_install }}/{{ item }}"
+    path: "{{ item }}"
     state: directory
     owner: ivynet
     group: root
     mode: "0755"
   loop:
-    - ''
-    - bin
-    - resources
+    - "{{ ivynet_client_path_install }}"
+    - "{{ ivynet_client_path_install }}/bin"
+    - "{{ ivynet_client_path_resources }}"
   tags:
     - ivynet_client
 
@@ -35,7 +35,7 @@
   tags:
     - ivynet_client
 
-- name: Download third party tools (rust, docker)
+- name: Install and configure 3rd party tools
   ansible.builtin.import_tasks:
     file: third_party.yml
 
