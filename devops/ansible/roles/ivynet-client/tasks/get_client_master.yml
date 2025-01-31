@@ -12,10 +12,7 @@
   become: false
   loop:
     - ivynet-client
-    - ivynet-ingress
   tags:
-    - ivynet_client
-    - ivynet
     - download
     - gcp
 
@@ -29,7 +26,5 @@
   loop:
     - ivynet-client
   tags:
-    - ivynet_client
-    - ivynet
     - download
     - gcp

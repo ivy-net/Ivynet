@@ -7,9 +7,10 @@
     create_home: true
     shell: /bin/false
   tags:
-    - ivnet_client
-    - ivynet_user
+    - config
+    - general
     - systemd
+    - user
 
 - name: Prepare directories
   ansible.builtin.file:
@@ -23,7 +24,7 @@
     - "{{ ivynet_client_path_install }}/bin"
     - "{{ ivynet_client_path_resources }}"
   tags:
-    - ivynet_client
+    - general
 
 - name: Add ivynet bin dir to system-wide $PATH.
   ansible.builtin.copy:
@@ -33,7 +34,8 @@
     group: root
     mode: "0644"
   tags:
-    - ivynet_client
+    - config
+    - general
 
 - name: Install and configure 3rd party tools
   ansible.builtin.import_tasks:
@@ -65,7 +67,7 @@
     group: root
     mode: "0644"
   tags:
-    - ivynet_client
+    - general
     - template
 
 - name: Download eigenlayer resources (cli, point files etc.)

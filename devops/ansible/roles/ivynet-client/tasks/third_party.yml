@@ -11,7 +11,7 @@
     state: present
     enabled: true
   tags:
-    - ivynet_client
+    - config
     - docker
 
 - name: Install packages (for rust, docker and ansible)
@@ -32,7 +32,6 @@
     - python3-jmespath
     - python3-pip
   tags:
-    - ivynet_client
     - docker
     - download
 
@@ -42,6 +41,5 @@
     state: latest
     break_system_packages: true
   tags:
-    - ivynet_client
     - download
     - github
