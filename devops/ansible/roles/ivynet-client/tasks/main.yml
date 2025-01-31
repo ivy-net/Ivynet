@@ -57,7 +57,7 @@
   ansible.builtin.import_tasks:
     file: systemd.yml
   when:
-    - ivynet_client_systemd
+    - ivynet_client_systemd | bool
 
 - name: Upload MOTD
   ansible.builtin.template:
