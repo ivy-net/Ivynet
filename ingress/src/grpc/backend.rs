@@ -203,6 +203,7 @@ impl Backend for BackendService {
                 Avs::record_avs_data_from_client(&self.pool, machine_id, &name, &nt, &manifest)
                     .await
                     .map_err(|e| Status::internal(format!("Failed while saving node_data: {e}")))?;
+                _ = update_avs_version(&self.pool, machine_id, &name, &manifest).await;
             }
             (None, Some(manifest)) => {
                 _ = update_avs_version(&self.pool, machine_id, &name, &manifest).await;
