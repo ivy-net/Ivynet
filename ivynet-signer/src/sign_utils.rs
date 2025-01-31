@@ -3,7 +3,7 @@ use ethers::{
     types::{Address, Signature, H256, U256},
     utils::keccak256,
 };
-use ivynet_grpc::messages::{Metrics, NodeData};
+use ivynet_grpc::messages::{Metrics, NodeData, NodeDataV2};
 
 use crate::IvyWallet;
 
@@ -31,6 +31,7 @@ pub fn recover_from_string(
 }
 
 // --- NodeData ---
+#[deprecated = "Use sign_node_data_v2 instead"]
 pub fn sign_node_data(
     node_data: &NodeData,
     wallet: &IvyWallet,
@@ -42,10 +43,9 @@ fn hash_node_data(node_data: &NodeData) -> Result<H256, IvySigningError> {
     let mut tokens = Vec::new();
     let node_data = node_data.clone();
     tokens.push(Token::String(node_data.name));
-    tokens.push(Token::String(node_data.node_type.unwrap_or_default()));
-    tokens.push(Token::String(node_data.manifest.unwrap_or_default()));
-    tokens.push(Token::Bool(node_data.metrics_alive.unwrap_or(false)));
-    tokens.push(Token::Bool(node_data.node_running.unwrap_or(false)));
+    tokens.push(Token::String(node_data.node_type));
+    tokens.push(Token::String(node_data.manifest));
+    tokens.push(Token::Bool(node_data.metrics_alive));
     Ok(H256::from(&keccak256(encode(&tokens))))
 }
 
@@ -54,6 +54,32 @@ pub async fn recover_node_data(
     signature: &Signature,
 ) -> Result<Address, IvySigningError> {
     recover_from_hash(hash_node_data(node_data)?, signature)
+}
+
+// --- NodeData V2 ---
+pub fn sign_node_data_v2(
+    node_data: &NodeDataV2,
+    wallet: &IvyWallet,
+) -> Result<Signature, IvySigningError> {
+    sign_hash(hash_node_data_v2(node_data)?, wallet)
+}
+
+fn hash_node_data_v2(node_data: &NodeDataV2) -> Result<H256, IvySigningError> {
+    let mut tokens = Vec::new();
+    let node_data = node_data.clone();
+    tokens.push(Token::String(node_data.name));
+    tokens.push(Token::String(node_data.node_type.unwrap_or_default()));
+    tokens.push(Token::String(node_data.manifest.unwrap_or_default()));
+    tokens.push(Token::Bool(node_data.metrics_alive.unwrap_or(false)));
+    tokens.push(Token::Bool(node_data.node_running.unwrap_or(false)));
+    Ok(H256::from(&keccak256(encode(&tokens))))
+}
+
+pub async fn recover_node_data_v2(
+    node_data: &NodeDataV2,
+    signature: &Signature,
+) -> Result<Address, IvySigningError> {
+    recover_from_hash(hash_node_data_v2(node_data)?, signature)
 }
 
 // --- Metrics ---

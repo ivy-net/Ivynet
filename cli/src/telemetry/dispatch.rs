@@ -1,6 +1,6 @@
 use ivynet_grpc::{
     backend::backend_client::BackendClient,
-    messages::{SignedLog, SignedMetrics, SignedNodeData},
+    messages::{SignedLog, SignedMetrics, SignedNodeDataV2},
     tonic::{self, transport::Channel},
 };
 
@@ -9,7 +9,7 @@ use super::ErrorChannelTx;
 #[derive(Debug, Clone)]
 pub enum TelemetryMsg {
     Metrics(SignedMetrics),
-    NodeData(SignedNodeData),
+    NodeData(SignedNodeDataV2),
     Log(SignedLog),
 }
 
@@ -29,7 +29,9 @@ impl TelemetryDispatcher {
             let send_res = match node_data {
                 TelemetryMsg::Metrics(metrics) => self.backend_client.metrics(metrics).await,
                 TelemetryMsg::Log(log) => self.backend_client.logs(log).await,
-                TelemetryMsg::NodeData(node_data) => self.backend_client.node_data(node_data).await,
+                TelemetryMsg::NodeData(node_data) => {
+                    self.backend_client.node_data_v2(node_data).await
+                }
             };
             if let Err(e) = send_res {
                 let err = TelemetryDispatchError::TransportError(e);
@@ -74,7 +76,7 @@ impl TelemetryDispatchHandle {
     }
     pub async fn send_node_data(
         &self,
-        node_data: SignedNodeData,
+        node_data: SignedNodeDataV2,
     ) -> Result<(), TelemetryDispatchError> {
         self.send(TelemetryMsg::NodeData(node_data)).await
     }

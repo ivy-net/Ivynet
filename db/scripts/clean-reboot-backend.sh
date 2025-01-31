@@ -51,6 +51,17 @@ wait_for_postgres() {
 
 # Main deployment steps
 main() {
+
+    local do_versions=false
+
+    for arg in "$@"; do
+        case $arg in
+            --versions)
+                    do_versions=true
+                    ;;
+            esac
+        done
+
     # Check for docker compose
     if ! command -v docker compose >/dev/null; then
         log "Error: docker compose not found. Please install Docker Desktop for Mac"
@@ -93,12 +104,15 @@ main() {
     fi
 
     # Fetch node version hashes for valid docker images
-    echo "Fetching node version hashes..."
-    cargo run -- --add-node-version-hashes
+    if $do_versions; then
+        # Fetch node version hashes for valid docker images
+        log "Fetching node version hashes..."
+        cargo run -- --add-node-version-hashes
 
-    # Update latest node data versions
-    echo "Updating node data versions..."
-    cargo run -- --update-node-data-versions
+        # Update latest node data versions
+        log "Updating node data versions..."
+        cargo run -- --update-node-data-versions
+    fi
 
     log "Setting EigenDA breaking change version..."
     cargo run -- --set-breaking-change-version eigenda:holesky:0.8.0:1728622800000

@@ -733,8 +733,11 @@ impl NodeType {
         InfiniRouteType::iter().map(NodeType::UngateInfiniRoute).collect()
     }
 
+    //This function assumes that the repository is in the format of "organization" / "repo"
+    //And all of the local builds are just the repo name and no organization (we have control over
+    // this bit)
     fn has_valid_repository(&self) -> bool {
-        self.default_repository().ok().filter(|repo| repo.split('/').count() == 2).is_some()
+        self.default_repository().ok().filter(|repo| repo.split('/').count() > 1).is_some()
     }
 
     fn flatten_layered_type(&self) -> bool {
@@ -748,6 +751,7 @@ impl NodeType {
             NodeType::PrimevMevCommit(inner_type) => matches!(inner_type, ActiveSet::Unknown),
             NodeType::Bolt(inner_type) => matches!(inner_type, ActiveSet::Unknown),
             NodeType::Hyperlane(inner_type) => matches!(inner_type, ActiveSet::Unknown),
+            NodeType::DittoNetwork(inner_type) => matches!(inner_type, ActiveSet::Unknown),
             _ => true,
         }
     }
