@@ -11,7 +11,7 @@
   delegate_to: localhost
   become: false
   loop:
-    - ivynet-client
+    - ivynet
   tags:
     - download
     - gcp
@@ -19,12 +19,12 @@
 - name: Upload binaries
   ansible.builtin.copy:
     src: "/tmp/{{ item }}"
-    dest: "{{ ivynet_client_path_install }}/bin/ivynet"
+    dest: "{{ ivynet_client_path_install }}/bin/{{ item }}"
     owner: root
     group: root
     mode: "0755"
   loop:
-    - ivynet-client
+    - ivynet
   tags:
     - download
     - gcp

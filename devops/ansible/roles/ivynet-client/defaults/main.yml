@@ -24,6 +24,8 @@ ivynet_client_github_token: !vault |
           37306335386139313035366663623066636135323139643166386638653532626563623264376165
           3866393766616537613266336166323234616535343537663537
 
+# Source of binaries (true for release, false for master)
+ivynet_client_is_release: true
 # Path where to install binaries and other files
 ivynet_client_path_install: /opt/ivynet
 
