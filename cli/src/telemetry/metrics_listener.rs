@@ -128,6 +128,24 @@ pub enum MetricsFetchError {
     InvalidMetricFormat { line_number: usize, line: String },
 }
 
+#[derive(Debug, Clone)]
+pub struct AvsStateCache {
+    node_type: Option<String>,
+    version_hash: Option<String>,
+    is_running: bool,
+}
+
+impl AvsStateCache {
+    pub fn new(node_type: String) -> Self {
+        Self { node_type: Some(node_type), version_hash: None, is_running: false }
+    }
+
+    pub fn update(&mut self, version_hash: Option<String>, is_running: bool) {
+        self.version_hash = version_hash;
+        self.is_running = is_running;
+    }
+}
+
 /// The MetricsListener is responsible for listening to metrics from the machine and sending them
 /// to the telemetry dispatch. It is also responsible for listening to changes in the AVS list and
 /// updating the AVS list accordingly. `avses` would probably be better represented by a set keyed
@@ -137,7 +155,7 @@ pub struct MetricsListener<D: DockerApi> {
     machine_id: Uuid,
     identity_wallet: IvyWallet,
     avses: Vec<ConfiguredAvs>,
-    avs_cache: HashMap<ConfiguredAvs, (Option<String>, Option<String>, bool)>,
+    avs_cache: HashMap<ConfiguredAvs, AvsStateCache>,
     dispatch: TelemetryDispatchHandle,
     rx: mpsc::Receiver<MetricsListenerAction>,
     error_tx: ErrorChannelTx,
@@ -156,7 +174,7 @@ impl<D: DockerApi> MetricsListener<D> {
     ) -> Self {
         let mut avs_cache = HashMap::new();
         for avs in &avses {
-            avs_cache.insert(avs.clone(), (Some(avs.avs_type.to_string()), None, false));
+            avs_cache.insert(avs.clone(), AvsStateCache::new(avs.avs_type.to_string()));
         }
         Self {
             docker,
@@ -209,7 +227,7 @@ impl<D: DockerApi> MetricsListener<D> {
     ) -> Result<(), MetricsListenerError> {
         match action {
             MetricsListenerAction::AddNode(avs) => {
-                self.avs_cache.insert(avs.clone(), (Some(avs.avs_type.to_string()), None, false));
+                self.avs_cache.insert(avs.clone(), AvsStateCache::new(avs.avs_type.to_string()));
                 // if container with name already exists, replace avs_type and metric_port
                 if let Some(existing) =
                     self.avses.iter_mut().find(|x| x.container_name == avs.container_name)
@@ -264,7 +282,7 @@ pub async fn report_metrics(
     identity_wallet: &IvyWallet,
     avses: &[ConfiguredAvs],
     dispatch: &TelemetryDispatchHandle,
-    avs_cache: &mut HashMap<ConfiguredAvs, (Option<String>, Option<String>, bool)>,
+    avs_cache: &mut HashMap<ConfiguredAvs, AvsStateCache>,
     http_client: &reqwest::Client,
 ) -> Result<(), MetricsListenerError> {
     let images = docker.list_images().await;
@@ -342,19 +360,17 @@ pub async fn report_metrics(
             .get(avs)
             .ok_or_else(|| MetricsListenerError::CacheMissing(avs.container_name.clone()))?;
 
-        let (node_type, prev_version_hash, was_running) = &cache_entry;
         // Send node data
         let node_data = NodeDataV2 {
             name: avs.assigned_name.to_string(),
-            node_type: node_type.clone(),
-            manifest: if *prev_version_hash == Some(version_hash.clone()) {
-                None
-            } else {
-                Some(version_hash.clone())
-            },
+            node_type: cache_entry.node_type.clone(),
+            manifest: Some(version_hash.clone()),
             metrics_alive: Some(!metrics.is_empty()),
-            node_running: if is_running != *was_running { Some(true) } else { None },
+            node_running: Some(is_running),
         };
+
+        let mut new_cache_entry = cache_entry.clone();
+        new_cache_entry.update(Some(version_hash), is_running);
 
         let node_data_signature =
             sign_node_data_v2(&node_data, identity_wallet).map_err(Arc::new)?;
@@ -365,7 +381,7 @@ pub async fn report_metrics(
         };
 
         dispatch.send_node_data(signed_node_data).await?;
-        avs_cache.insert(avs.clone(), (None, Some(version_hash), is_running));
+        avs_cache.insert(avs.clone(), new_cache_entry);
     }
     // Last but not least - send system metrics
     let system_metrics = fetch_system_telemetry();
