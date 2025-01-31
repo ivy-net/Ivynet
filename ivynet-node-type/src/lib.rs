@@ -751,6 +751,7 @@ impl NodeType {
             NodeType::PrimevMevCommit(inner_type) => matches!(inner_type, ActiveSet::Unknown),
             NodeType::Bolt(inner_type) => matches!(inner_type, ActiveSet::Unknown),
             NodeType::Hyperlane(inner_type) => matches!(inner_type, ActiveSet::Unknown),
+            NodeType::DittoNetwork(inner_type) => matches!(inner_type, ActiveSet::Unknown),
             _ => true,
         }
     }
