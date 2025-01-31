@@ -1,9 +1,7 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use ivynet_docker::dockerapi::DockerApi;
-use ivynet_grpc::messages::{
-    Metrics, NodeDataV2, SignedMetrics, SignedNodeDataV2,
-};
+use ivynet_grpc::messages::{Metrics, NodeDataV2, SignedMetrics, SignedNodeDataV2};
 use ivynet_signer::{
     sign_utils::{sign_metrics, sign_node_data_v2, IvySigningError},
     IvyWallet,
