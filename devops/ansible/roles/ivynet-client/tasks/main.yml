@@ -45,13 +45,13 @@
   ansible.builtin.import_tasks:
     file: get_client_master.yml
   when:
-    - not ivynet_client_is_release
+    - not ivynet_client_is_release | bool
 
 - name: Download ivynet-client for release
   ansible.builtin.import_tasks:
     file: get_client.yml
   when:
-    - ivynet_client_is_release
+    - ivynet_client_is_release | bool
 
 - name: Setup systemd
   ansible.builtin.import_tasks:
@@ -74,4 +74,4 @@
   ansible.builtin.import_tasks:
     file: get_eigen.yml
   when:
-    - ivynet_client_eigenda
+    - ivynet_client_eigenda | bool

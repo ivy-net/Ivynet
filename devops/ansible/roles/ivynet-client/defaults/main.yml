@@ -26,6 +26,7 @@ ivynet_client_github_token: !vault |
 
 # Source of binaries (true for release, false for master)
 ivynet_client_is_release: true
+
 # Path where to install binaries and other files
 ivynet_client_path_install: /opt/ivynet
 

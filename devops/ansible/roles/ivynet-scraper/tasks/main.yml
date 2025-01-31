@@ -31,13 +31,13 @@
   ansible.builtin.import_tasks:
     file: get_scraper_master.yml
   when:
-    - not ivynet_scraper_is_release
+    - not ivynet_scraper_is_release | bool
 
 - name: Download scraper for release
   ansible.builtin.import_tasks:
     file: get_scraper.yml
   when:
-    - ivynet_scraper_is_release
+    - ivynet_scraper_is_release | bool
 
 - name: Configure SystemD
   ansible.builtin.import_tasks:
