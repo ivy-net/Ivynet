@@ -10,7 +10,6 @@
   register: ivynet_backend_assets_output
   tags:
     - ivynet_backend
-    - ivynet
     - github
 
 - name: Prepare variable with backend assets id
@@ -22,7 +21,6 @@
     json_output_query: "json.assets[?name=='ivynet-backend'].id"
   tags:
     - ivynet_backend
-    - ivynet
     - github
 
 - name: Get binaries
@@ -41,7 +39,6 @@
     mode: "0755"
   tags:
     - ivynet_backend
-    - ivynet
     - github
 
 - name: Save ivynet release info
@@ -56,6 +53,5 @@
   notify: Restart backend service
   tags:
     - ivynet_backend
-    - ivynet
     - github
     - systemd

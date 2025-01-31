@@ -39,9 +39,17 @@
   ansible.builtin.import_tasks:
     file: third_party.yml
 
-- name: Download ivynet-cli
+- name: Download ivynet-client for master
   ansible.builtin.import_tasks:
-    file: get_ivynet.yml
+    file: get_client_master.yml
+  when:
+    - not ivynet_client_is_release
+
+- name: Download ivynet-client for release
+  ansible.builtin.import_tasks:
+    file: get_client.yml
+  when:
+    - ivynet_client_is_release
 
 - name: Setup systemd
   ansible.builtin.import_tasks:
