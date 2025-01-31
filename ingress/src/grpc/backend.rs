@@ -14,8 +14,9 @@ use ivynet_grpc::{
     backend::backend_server::{Backend, BackendServer},
     client::{Request, Response},
     messages::{
-        NodeData, NodeType as NodeTypeMessage, NodeTypeQueries, NodeTypes, RegistrationCredentials,
-        SignedLog, SignedMetrics, SignedNameChange, SignedNodeData,
+        NodeData, NodeDataV2, NodeType as NodeTypeMessage, NodeTypeQueries, NodeTypes,
+        RegistrationCredentials, SignedLog, SignedMetrics, SignedNameChange, SignedNodeData,
+        SignedNodeDataV2,
     },
     server, Status,
 };
@@ -23,7 +24,7 @@ use ivynet_grpc::{
 use ivynet_docker::logs::{find_log_level, find_or_create_log_timestamp, sanitize_log};
 use ivynet_node_type::NodeType;
 use ivynet_signer::sign_utils::{
-    recover_from_string, recover_metrics, recover_name_change, recover_node_data,
+    recover_from_string, recover_metrics, recover_name_change, recover_node_data, recover_node_data_v2,
 };
 use sqlx::PgPool;
 use std::{str::FromStr, sync::Arc};
@@ -135,7 +136,58 @@ impl Backend for BackendService {
             return Err(Status::not_found("Machine not registered for given client".to_string()));
         }
 
-        let NodeData { name, node_type, manifest, metrics_alive, node_running } = node_data;
+        let NodeData { name, node_type, manifest, metrics_alive } = node_data;
+
+        let nt = match NodeType::from(node_type.as_str()) {
+            NodeType::Unknown => AvsVersionHash::get_avs_type_from_hash(&self.pool, &manifest)
+                .await
+                .unwrap_or(NodeType::Unknown),
+            node_type => node_type,
+        };
+
+        Avs::record_avs_data_from_client(&self.pool, machine_id, &name, &nt, &manifest)
+            .await
+            .map_err(|e| Status::internal(format!("Failed while saving node_data: {e}")))?;
+
+        Avs::update_metrics_alive(&self.pool, machine_id, &name, metrics_alive).await.map_err(
+            |e| Status::internal(format!("Failed while setting metrics available flag: {e}")),
+        )?;
+
+        _ = update_avs_version(&self.pool, machine_id, &name, &manifest).await;
+        _ = update_avs_active_set(&self.pool, machine_id, &name).await;
+
+        Ok(Response::new(()))
+    }
+
+    async fn node_data_v2(
+        &self,
+        request: Request<SignedNodeDataV2>,
+    ) -> Result<Response<()>, Status> {
+        let req = request.into_inner();
+
+        // TODO: Why does it force this to be an option even though it's not in the proto?
+        let node_data = if let Some(node_data) = req.node_data {
+            node_data
+        } else {
+            return Err(Status::invalid_argument("Node data is missing".to_string()));
+        };
+
+        let client_id = recover_node_data_v2(
+            &node_data,
+            &Signature::try_from(req.signature.as_slice())
+                .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
+        )
+        .await?;
+
+        let machine_id = Uuid::from_slice(&req.machine_id).map_err(|e| {
+            Status::invalid_argument(format!("Machine id has wrong length ({e:?})"))
+        })?;
+
+        if !Machine::is_owned_by(&self.pool, &client_id, machine_id).await.unwrap_or(false) {
+            return Err(Status::not_found("Machine not registered for given client".to_string()));
+        }
+
+        let NodeDataV2 { name, node_type, manifest, metrics_alive, node_running } = node_data;
 
         match (node_type, manifest) {
             (Some(node_type), Some(manifest)) => {

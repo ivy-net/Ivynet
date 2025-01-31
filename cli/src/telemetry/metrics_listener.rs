@@ -1,9 +1,11 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use ivynet_docker::dockerapi::DockerApi;
-use ivynet_grpc::messages::{Metrics, NodeData, SignedMetrics, SignedNodeData};
+use ivynet_grpc::messages::{
+    Metrics, NodeData, NodeDataV2, SignedMetrics, SignedNodeData, SignedNodeDataV2,
+};
 use ivynet_signer::{
-    sign_utils::{sign_metrics, sign_node_data, IvySigningError},
+    sign_utils::{sign_metrics, sign_node_data, sign_node_data_v2, IvySigningError},
     IvyWallet,
 };
 use reqwest::Client;
@@ -344,7 +346,7 @@ pub async fn report_metrics(
 
         let (node_type, prev_version_hash, was_running) = &cache_entry;
         // Send node data
-        let node_data = NodeData {
+        let node_data = NodeDataV2 {
             name: avs.assigned_name.to_string(),
             node_type: node_type.clone(),
             manifest: if *prev_version_hash == Some(version_hash.clone()) {
@@ -356,8 +358,9 @@ pub async fn report_metrics(
             node_running: if is_running != *was_running { Some(true) } else { None },
         };
 
-        let node_data_signature = sign_node_data(&node_data, identity_wallet).map_err(Arc::new)?;
-        let signed_node_data = SignedNodeData {
+        let node_data_signature =
+            sign_node_data_v2(&node_data, identity_wallet).map_err(Arc::new)?;
+        let signed_node_data = SignedNodeDataV2 {
             machine_id: machine_id.into(),
             signature: node_data_signature.to_vec(),
             node_data: Some(node_data),
