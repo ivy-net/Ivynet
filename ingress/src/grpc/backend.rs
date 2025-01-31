@@ -24,7 +24,8 @@ use ivynet_grpc::{
 use ivynet_docker::logs::{find_log_level, find_or_create_log_timestamp, sanitize_log};
 use ivynet_node_type::NodeType;
 use ivynet_signer::sign_utils::{
-    recover_from_string, recover_metrics, recover_name_change, recover_node_data, recover_node_data_v2,
+    recover_from_string, recover_metrics, recover_name_change, recover_node_data,
+    recover_node_data_v2,
 };
 use sqlx::PgPool;
 use std::{str::FromStr, sync::Arc};

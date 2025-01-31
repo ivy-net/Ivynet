@@ -31,6 +31,7 @@ pub fn recover_from_string(
 }
 
 // --- NodeData ---
+#[deprecated = "Use sign_node_data_v2 instead"]
 pub fn sign_node_data(
     node_data: &NodeData,
     wallet: &IvyWallet,

@@ -69,8 +69,6 @@ impl Machine {
         client_id: &Address,
         machine_id: Uuid,
     ) -> Result<bool, DatabaseError> {
-        println!("Client id: {:?}", client_id);
-        println!("Machine id: {:?}", machine_id);
         let machines = sqlx::query_as!(
             DbMachine,
             "SELECT machine_id, name, client_id, created_at, updated_at FROM machine WHERE client_id = $1 AND machine_id = $2",
@@ -79,7 +77,6 @@ impl Machine {
         )
         .fetch_all(pool)
         .await?;
-        println!("Machines: {:?}", machines);
         Ok(!machines.is_empty())
     }
 
