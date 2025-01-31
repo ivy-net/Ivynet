@@ -19,7 +19,7 @@
 - name: Upload binaries
   ansible.builtin.copy:
     src: "/tmp/{{ item }}"
-    dest: "{{ ivynet_client_path_install }}/bin/{{ item }}"
+    dest: "{{ ivynet_client_path_install }}/bin/ivynet"
     owner: root
     group: root
     mode: "0755"

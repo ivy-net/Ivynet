@@ -51,7 +51,7 @@
 - name: Download g1, g2 files
   ansible.builtin.command:
     cmd: "gsutil cp gs://ivynet-builds/{{ item }} ."
-    chdir: "{{ ivynet_client_path_install }}/resources"
+    chdir: "{{ ivynet_client_path_resources }}"
     creates: " {{ item }}"
   loop:
     - g1.point

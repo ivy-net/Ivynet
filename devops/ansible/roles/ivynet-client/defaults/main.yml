@@ -1,6 +1,15 @@
 ---
-# Location of the backend server
-ivynet_client_backend_server: "api2.test.ivynet.dev"
+# Name of the GCP bucket
+ivynet_client_gcp_bucket: ivynet-share-test
+
+# File with GCP credentials
+ivynet_client_gcp_cred: ~/.devops-automation-key.json
+
+# Name of GCP project
+ivynet_client_gcp_project: ivynet-tests
+
+# Location of the client server
+ivynet_client_client_server: "api2.test.ivynet.dev"
 
 # Switch do download eigenDA
 ivynet_client_eigenda: false
@@ -17,6 +26,9 @@ ivynet_client_github_token: !vault |
 
 # Path where to install binaries and other files
 ivynet_client_path_install: /opt/ivynet
+
+# Path where to save extra resources
+ivynet_client_path_resources: "{{ ivynet_client_path_install }}/resources"
 
 # Setup systemd for the client
 ivynet_client_systemd: true
