@@ -1,7 +1,11 @@
 ---
 name: Run PreCommit
 
-on: [push]
+on:
+  push:
+    branches-ignore:
+      - master
+      - release-*
 
 jobs:
   pre-commit:
