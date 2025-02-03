@@ -7,11 +7,11 @@ use ivynet_grpc::{
     messages::{NodeTypeQueries, NodeTypeQuery},
     tonic::{transport::Channel, Request, Response},
 };
-use ivynet_signer::IvyWallet;
 use tokio::time::sleep;
 use tokio_stream::StreamExt;
 use tracing::{debug, error};
-use uuid::Uuid;
+
+use crate::ivy_machine::IvyMachine;
 
 use super::{
     dispatch::{TelemetryDispatchError, TelemetryDispatchHandle},
@@ -26,8 +26,7 @@ pub struct DockerStreamListener<D: DockerApi> {
     pub metrics_listener_handle: MetricsListenerHandle,
     pub logs_listener_handle: LogsListenerManager,
     pub dispatch: TelemetryDispatchHandle,
-    pub machine_id: Uuid,
-    pub identity_wallet: IvyWallet,
+    pub machine: IvyMachine,
     pub backend: BackendClient<Channel>,
 }
 
@@ -36,8 +35,7 @@ impl DockerStreamListener<DockerClient> {
         metrics_listener: MetricsListenerHandle,
         logs_listener: LogsListenerManager,
         dispatch: TelemetryDispatchHandle,
-        identity_wallet: IvyWallet,
-        machine_id: Uuid,
+        machine: IvyMachine,
         backend: BackendClient<Channel>,
     ) -> Self {
         Self {
@@ -45,8 +43,7 @@ impl DockerStreamListener<DockerClient> {
             metrics_listener_handle: metrics_listener,
             logs_listener_handle: logs_listener,
             dispatch,
-            machine_id,
-            identity_wallet,
+            machine,
             backend,
         }
     }

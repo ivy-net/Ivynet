@@ -133,6 +133,17 @@ pub async fn recover_name_change(
     recover_from_hash(hash_name_change(old_name, new_name)?, signature)
 }
 
+// --- Log ---
+pub fn sign_log(log: &str, wallet: &IvyWallet) -> Result<Signature, IvySigningError> {
+    sign_string(log, wallet)
+}
+
+pub fn recover_log(log: &str, signature: &Signature) -> Result<Address, IvySigningError> {
+    recover_from_string(log, signature)
+}
+
+// --- Errors ---
+
 #[derive(Debug, thiserror::Error)]
 pub enum IvySigningError {
     #[error("Bls signing error: {0}")]
