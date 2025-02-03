@@ -1,9 +1,25 @@
+use std::ops::Deref;
+
 use ivynet_grpc::{messages::SignedNodeData, BackendMiddleware, Response, Status};
 use kameo::{message::Message, Actor};
 
 use super::ErrorChannelTx;
 
-pub type NodeDataMonitorHandle<B> = kameo::actor::ActorRef<NodeDataMonitor<B>>;
+pub struct NodeDataMonitorHandle<B: BackendMiddleware>(kameo::actor::ActorRef<NodeDataMonitor<B>>);
+
+impl<B: BackendMiddleware> NodeDataMonitorHandle<B> {
+    pub fn new(backend_client: B, _error_tx: ErrorChannelTx) -> Self {
+        Self(kameo::actor::spawn(NodeDataMonitor::new(backend_client, _error_tx)))
+    }
+}
+
+impl<B: BackendMiddleware> Deref for NodeDataMonitorHandle<B> {
+    type Target = kameo::actor::ActorRef<NodeDataMonitor<B>>;
+
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
 
 #[derive(Actor, Debug)]
 pub struct NodeDataMonitor<B: BackendMiddleware> {
