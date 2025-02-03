@@ -364,13 +364,13 @@ pub async fn report_metrics(
         let node_data = NodeDataV2 {
             name: avs.assigned_name.to_string(),
             node_type: cache_entry.node_type.clone(),
-            manifest: Some(version_hash.clone()),
+            manifest: Some(version_hash.clone().into()),
             metrics_alive: Some(!metrics.is_empty()),
             node_running: Some(is_running),
         };
 
         let mut new_cache_entry = cache_entry.clone();
-        new_cache_entry.update(Some(version_hash), is_running);
+        new_cache_entry.update(Some(version_hash.into()), is_running);
 
         let node_data_signature =
             sign_node_data_v2(&node_data, identity_wallet).map_err(Arc::new)?;

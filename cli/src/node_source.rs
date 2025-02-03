@@ -33,6 +33,7 @@ impl<T: DockerApi> NodeSource for T {
                     image_name: image_name.to_string(),
                     image_hash: image_hash.clone(),
                     ports,
+                    manifest: Some(image_hash.clone()),
                 });
             } else if let Some(key) = images.keys().find(|key| key.contains(image_name)) {
                 let image_hash = images.get(key).unwrap();

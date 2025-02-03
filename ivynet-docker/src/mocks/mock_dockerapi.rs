@@ -11,7 +11,7 @@ use futures::{stream, Stream};
 
 use crate::{
     container::Container,
-    dockerapi::{DockerApi, DockerClient},
+    dockerapi::{DockerApi, DockerClient, DockerImage, Sha256Hash},
 };
 
 #[derive(Clone)]
@@ -54,7 +54,7 @@ impl DockerApi for MockDockerClient {
         DockerClient::default().0
     }
 
-    async fn list_images(&self) -> HashMap<String, String> {
+    async fn list_images(&self) -> HashMap<Sha256Hash, DockerImage> {
         DockerClient::process_images(self.images.to_vec())
     }
 
@@ -213,7 +213,10 @@ mod tests {
 
         let result = mock.list_images().await;
 
-        assert_eq!(result.get("image:latest").unwrap(), "sha256:digest1");
+        assert_eq!(
+            result.get(&Sha256Hash::from_string("sha256:digest1")).unwrap(),
+            &DockerImage::from("image:latest")
+        );
         assert_eq!(result.len(), 1);
     }
 
@@ -229,7 +232,10 @@ mod tests {
 
         let result = mock.list_images().await;
 
-        assert_eq!(result.get("image1").unwrap(), "sha256:digest1");
+        assert_eq!(
+            result.get(&Sha256Hash::from_string("sha256:digest1")).unwrap(),
+            &DockerImage::from("image1")
+        );
         assert_eq!(result.len(), 1);
     }
 
@@ -245,7 +251,10 @@ mod tests {
 
         let result = mock.list_images().await;
 
-        assert_eq!(result.get("image:latest").unwrap(), "sha256:digest1");
+        assert_eq!(
+            result.get(&Sha256Hash::from_string("sha256:digest1")).unwrap(),
+            &DockerImage::from("image:latest")
+        );
         assert_eq!(result.len(), 1);
     }
 
@@ -261,8 +270,14 @@ mod tests {
 
         let result = mock.list_images().await;
 
-        assert_eq!(result.get("image:latest").unwrap(), "sha256:digest4");
-        assert_eq!(result.get("image:v1").unwrap(), "sha256:digest4");
+        assert_eq!(
+            result.get(&Sha256Hash::from_string("sha256:digest4")).unwrap(),
+            &DockerImage::from("image:latest")
+        );
+        assert_eq!(
+            result.get(&Sha256Hash::from_string("sha256:digest4")).unwrap(),
+            &DockerImage::from("image:v1")
+        );
         assert_eq!(result.len(), 2);
     }
 

@@ -1,7 +1,7 @@
 use anyhow::anyhow;
 use dialoguer::{Input, MultiSelect, Select};
 use fs2::FileExt;
-use ivynet_docker::dockerapi::DockerClient;
+use ivynet_docker::dockerapi::{DockerClient, DockerImage, Sha256Hash};
 use ivynet_grpc::{
     self,
     backend::backend_client::BackendClient,
@@ -31,8 +31,8 @@ const MONITOR_CONFIG_FILE: &str = "monitor-config.toml";
 #[derive(Clone, Debug)]
 pub struct PotentialAvs {
     pub container_name: String,
-    pub image_name: String,
-    pub image_hash: String,
+    pub image_name: DockerImage,
+    pub image_hash: Sha256Hash,
     pub ports: Vec<u16>,
 }
 
@@ -269,8 +269,8 @@ async fn find_new_avses(
     let node_type_queries = potential_avses
         .iter()
         .map(|avs| NodeTypeQuery {
-            image_name: avs.image_name.clone(),
-            image_digest: avs.image_hash.clone(),
+            image_name: avs.image_name.clone().into(),
+            image_digest: avs.image_hash.clone().to_string(),
             container_name: avs.container_name.clone(),
         })
         .collect::<Vec<_>>();
@@ -290,10 +290,12 @@ async fn find_new_avses(
         let metric_port =
             get_metrics_port(&reqwest::Client::new(), &avs.container_name, &avs.ports).await?;
         let new_avs = ConfiguredAvs {
-            assigned_name: avs.image_name.clone(),
+            assigned_name: avs.image_name.clone().into(),
             container_name: avs.container_name.clone(),
             avs_type: node_type,
             metric_port,
+            image: Some(avs.image_name.clone().into()),
+            manifest: Some(avs.image_hash.clone().into()),
         };
 
         // update the existing configured AVS if it exists, otherwise push to new vec

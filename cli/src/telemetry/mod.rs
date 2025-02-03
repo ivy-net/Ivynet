@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use convert_case::{Case, Casing};
 use dispatch::{TelemetryDispatchError, TelemetryDispatchHandle};
 use docker_event_stream_listener::DockerStreamListener;
-use ivynet_docker::dockerapi::{DockerApi, DockerClient};
+use ivynet_docker::dockerapi::{DockerApi, DockerClient, DockerImage, Sha256Hash};
 use ivynet_grpc::{backend::backend_client::BackendClient, tonic::transport::Channel};
 use ivynet_signer::IvyWallet;
 use logs_listener::LogsListenerManager;
@@ -45,6 +45,8 @@ pub struct ConfiguredAvs {
     pub container_name: String,
     pub avs_type: String,
     pub metric_port: Option<u16>,
+    pub manifest: Option<Sha256Hash>,
+    pub image: Option<DockerImage>,
 }
 
 #[derive(Deserialize)]
@@ -66,6 +68,8 @@ impl<'de> Deserialize<'de> for ConfiguredAvs {
             #[serde(default)]
             metric_port: Option<u16>,
             avs_type: AvsTypeField,
+            image: Option<DockerImage>,
+            manifest: Option<Sha256Hash>,
         }
 
         let helper = Helper::deserialize(deserializer)?;
@@ -93,6 +97,8 @@ impl<'de> Deserialize<'de> for ConfiguredAvs {
             container_name: helper.container_name.trim_start_matches('/').to_string(),
             avs_type,
             metric_port: helper.metric_port,
+            manifest: helper.manifest,
+            image: helper.image,
         })
     }
 }
