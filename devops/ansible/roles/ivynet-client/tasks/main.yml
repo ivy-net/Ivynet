@@ -5,7 +5,7 @@
     comment: Ivynet Client user
     groups: docker
     create_home: true
-    shell: /bin/false
+    shell: /bin/bash
   tags:
     - config
     - general
