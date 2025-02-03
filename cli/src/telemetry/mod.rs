@@ -17,6 +17,7 @@ pub mod dispatch;
 pub mod docker_event_stream_listener;
 pub mod logs_listener;
 pub mod metrics_listener;
+pub mod node_data_listener;
 pub mod parser;
 
 pub type ErrorChannelTx = broadcast::Sender<TelemetryError>;
