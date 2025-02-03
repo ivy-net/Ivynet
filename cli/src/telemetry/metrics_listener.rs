@@ -1,11 +1,11 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
-use ivynet_docker::dockerapi::DockerApi;
+use ivynet_docker::dockerapi::{DockerApi, Sha256Hash};
 use ivynet_grpc::messages::{Metrics, NodeDataV2};
 use ivynet_signer::sign_utils::IvySigningError;
 use reqwest::Client;
 use tokio::sync::mpsc;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info};
 
 use crate::ivy_machine::{IvyMachine, MachineIdentityError, SysInfo};
 
@@ -128,7 +128,7 @@ pub enum MetricsFetchError {
 #[derive(Debug, Clone)]
 pub struct AvsStateCache {
     node_type: Option<String>,
-    version_hash: Option<String>,
+    version_hash: Option<Sha256Hash>,
     is_running: bool,
 }
 
@@ -137,7 +137,7 @@ impl AvsStateCache {
         Self { node_type: Some(node_type), version_hash: None, is_running: false }
     }
 
-    pub fn update(&mut self, version_hash: Option<String>, is_running: bool) {
+    pub fn update(&mut self, version_hash: Option<Sha256Hash>, is_running: bool) {
         self.version_hash = version_hash;
         self.is_running = is_running;
     }
@@ -277,44 +277,42 @@ pub async fn report_metrics(
     avs_cache: &mut HashMap<ConfiguredAvs, AvsStateCache>,
     http_client: &reqwest::Client,
 ) -> Result<(), MetricsListenerError> {
-    let images = docker.list_images().await;
-    debug!("System Docker images: {:#?}", images);
-
     for avs in avses {
-        let version_hash = match docker.find_container_by_name(&avs.container_name).await {
+        let container = match docker.find_container_by_name(&avs.container_name).await {
+            Some(container) => container,
             None => {
-                warn!(
-                    "Container {} is configured but does not appear to be running. Skipping telemetry.",
-                    avs.container_name
-                );
-                continue;
-            }
-            Some(container) => match container.image() {
-                None => {
-                    error!(
-                        "Container {} is running but has no image. This should be unenterable.",
-                        avs.container_name
-                    );
+                if let Some(manifest) = avs.manifest {
+                    match docker.find_container_by_id(&manifest.to_string()).await {
+                        Some(container) => container,
+                        None => {
+                            error!(
+                                "Could not find container by manifest: {:#?}. Continuing.",
+                                avs.manifest
+                            );
+                            continue;
+                        }
+                    }
+                } else if let Some(image) = avs.image.clone() {
+                    match docker.find_container_by_id(&image.image).await {
+                        Some(container) => container,
+                        None => {
+                            error!("Could not find container by image. {:#?} Continuing.", avs);
+                            continue;
+                        }
+                    }
+                } else {
+                    error!("Could not find container by any method. {:#?} Continuing.", avs);
                     continue;
                 }
-                Some(image_name) => images
-                    .get(image_name)
-                    .or_else(|| {
-                        images
-                            .keys()
-                            .find(|key| key.contains(image_name))
-                            .and_then(|key| images.get(key))
-                    })
-                    .cloned(),
-            },
+            }
         };
 
-        let Some(version_hash) = version_hash else {
-            warn!(
-                "Container {} is running but we could not locate a digest. Continuing.",
-                avs.container_name
-            );
-            continue;
+        let manifest = match container.image_id() {
+            Some(manifest) => Sha256Hash::from_string(manifest),
+            None => {
+                error!("Container {} is running but has no image manifest", avs.container_name);
+                continue;
+            }
         };
 
         let metrics = if let Some(port) = avs.metric_port {
@@ -334,8 +332,9 @@ pub async fn report_metrics(
         // Send node data
 
         info!(
-            "Sending node data with version hash: {:#?} for avs: {}",
-            version_hash, avs.assigned_name
+            "Sending node data with version hash: {} for avs: {}",
+            manifest.to_string(),
+            avs.assigned_name
         );
 
         let is_running = docker.is_running(&avs.container_name).await;
@@ -348,13 +347,15 @@ pub async fn report_metrics(
         let node_data = NodeDataV2 {
             name: avs.assigned_name.to_string(),
             node_type: cache_entry.node_type.clone(),
-            manifest: Some(version_hash.clone().into()),
+            manifest: Some(manifest.to_string()),
             metrics_alive: Some(!metrics.is_empty()),
             node_running: Some(is_running),
         };
 
+        println!("Sending node data: {:#?}", node_data);
+
         let mut new_cache_entry = cache_entry.clone();
-        new_cache_entry.update(Some(version_hash.into()), is_running);
+        new_cache_entry.update(Some(manifest), is_running);
 
         let signed_node_data = machine.sign_node_data_v2(&node_data)?;
 
