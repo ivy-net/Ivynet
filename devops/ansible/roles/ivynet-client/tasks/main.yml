@@ -1,30 +1,63 @@
 ---
+- name: Add user ivynet
+  ansible.builtin.user:
+    name: ivynet
+    comment: Ivynet Client user
+    groups: docker
+    create_home: true
+    shell: /bin/false
+  tags:
+    - config
+    - general
+    - systemd
+    - user
+
 - name: Prepare directories
   ansible.builtin.file:
-    path: "{{ ivynet_client_install_path }}/{{ item }}"
+    path: "{{ item }}"
     state: directory
-    owner: root
+    owner: ivynet
     group: root
     mode: "0755"
   loop:
-    - ''
-    - bin
-    - resources
+    - "{{ ivynet_client_path_install }}"
+    - "{{ ivynet_client_path_install }}/bin"
+    - "{{ ivynet_client_path_resources }}"
   tags:
-    - ivynet_client
     - general
 
-- name: Download third party tools (rust, docker)
+- name: Add ivynet bin dir to system-wide $PATH.
+  ansible.builtin.copy:
+    dest: /etc/profile.d/ivy-path.sh
+    content: "PATH=$PATH:{{ ivynet_client_path_install }}/bin"
+    owner: root
+    group: root
+    mode: "0644"
+  tags:
+    - config
+    - general
+
+- name: Install and configure 3rd party tools
   ansible.builtin.import_tasks:
     file: third_party.yml
 
-- name: Download ivynet-cli
+- name: Download ivynet-client for master
   ansible.builtin.import_tasks:
-    file: get_ivynet.yml
+    file: get_client_master.yml
+  when:
+    - not ivynet_client_is_release | bool
 
-- name: Download eigenlayer resources (cli, point files etc.)
+- name: Download ivynet-client for release
   ansible.builtin.import_tasks:
-    file: get_eigen.yml
+    file: get_client.yml
+  when:
+    - ivynet_client_is_release | bool
+
+- name: Setup systemd
+  ansible.builtin.import_tasks:
+    file: systemd.yml
+  when:
+    - ivynet_client_systemd | bool
 
 - name: Upload MOTD
   ansible.builtin.template:
@@ -34,16 +67,11 @@
     group: root
     mode: "0644"
   tags:
-    - ivynet_client
     - general
+    - template
 
-- name: Add ivynet bin dir to system-wide $PATH.
-  ansible.builtin.copy:
-    dest: /etc/profile.d/ivy-path.sh
-    content: "PATH=$PATH:{{ ivynet_client_install_path }}/bin"
-    owner: root
-    group: root
-    mode: "0644"
-  tags:
-    - ivynet_client
-    - ivynet
+- name: Download eigenlayer resources (cli, point files etc.)
+  ansible.builtin.import_tasks:
+    file: get_eigen.yml
+  when:
+    - ivynet_client_eigenda | bool

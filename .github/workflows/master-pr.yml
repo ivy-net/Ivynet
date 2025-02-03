@@ -41,6 +41,7 @@ jobs:
           cd target/release
           mkdir ${DEST}
           cp ivynet-backend ${DEST}
+          cp ivynet-client ${DEST}
           cp ivynet-ingress ${DEST}
           cp scraper ${DEST}
       - name: Pack migrations

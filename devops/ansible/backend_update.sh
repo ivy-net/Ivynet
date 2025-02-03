@@ -3,6 +3,7 @@
 # The script to run ansible to update current backend
 # Requires toml cargo package
 
+echo "Check if remote user is defined"
 remote_user="${remote_user:-wawrzek_ivynet_dev}"
 echo " Remote user is: ${remote_user}"
 

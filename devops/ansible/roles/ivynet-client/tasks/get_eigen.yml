@@ -6,7 +6,6 @@
     action: latest_release
   register: eigenlayer_cli_release
   tags:
-    - ivynet_client
     - eigen
     - github
 
@@ -14,7 +13,6 @@
   ansible.builtin.debug:
     msg: "{{ eigenlayer_cli_release.tag }} is the tag"
   tags:
-    - ivynet_client
     - eigen
     - github
 
@@ -25,44 +23,40 @@
     dest: /tmp
     remote_src: true
   tags:
-    - ivynet_client
     - eigen
     - github
 
 - name: Copy eigenlayer-cli to final destination
   ansible.builtin.copy:
     src: /tmp/eigenlayer
-    dest: "{{ ivynet_client_install_path }}/bin"
+    dest: "{{ ivynet_client_path_install }}/bin"
     owner: root
     group: root
     mode: "0755"
     remote_src: true
   tags:
-    - ivynet_client
     - eigen
     - github
 
 - name: Get EigenDA Operator Setup
   ansible.builtin.git:  # noqa: latest[git]
     repo: https://github.com/Layr-Labs/eigenda-operator-setup.git
-    dest: "{{ ivynet_client_install_path }}/eigenda-operator-setup"
+    dest: "{{ ivynet_client_path_install }}/eigenda-operator-setup"
     clone: true
     update: true
   tags:
-    - ivynet_client
     - eigen
     - github
 
 - name: Download g1, g2 files
   ansible.builtin.command:
     cmd: "gsutil cp gs://ivynet-builds/{{ item }} ."
-    chdir: "{{ ivynet_client_install_path }}/resources"
+    chdir: "{{ ivynet_client_path_resources }}"
     creates: " {{ item }}"
   loop:
     - g1.point
     - g2.point.powerOf2
   tags:
-    - ivynet_client
     - eigen
     - download
     - gcp
