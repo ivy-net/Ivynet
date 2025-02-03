@@ -3,6 +3,7 @@ pub mod config;
 pub mod error;
 pub mod init;
 pub mod inspect;
+pub mod ivy_machine;
 pub mod key;
 pub mod metadata;
 pub mod monitor;
