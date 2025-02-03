@@ -20,26 +20,10 @@ use super::{
 
 const TELEMETRY_INTERVAL_IN_MINUTES: u64 = 1;
 
-/**
- * ----------METRICS LISTENER----------
- * The MetricsListener is responsible for querying and transmitting metrics updates from
- * metrics-enabled docker containers to the telemetry dispatch (see `telemetry/dispatch.rs`).
- *
- * The metrics listener broadcasts metrics updates at a regular interval, as well as when it
- * receives a signal to add or remove a node from its list of monitored AVSes.
- *
- * MetricsListenerHandle can be safely cloned and shared across threads.
- *
- * -- Initialization --
- * The MetricsListener is initialized with via the `MetricsListenerHandle::new` function, which
- * spawns a new tokio task to run the MetricsListener. The MetricsListener is initialized with
- * the `machine_id` and `identity_wallet` for signing and authentication, a list of `avses`
- * which are the AVS configurations for the containers to monitor, a `dispatch` handle for
- * sending the metrics to the telemetry dispatch, and an `error_tx` for sending errors to the
- * main thread (or wherever errors are being handled).
- *
- */
-
+/// Handle to the Metrics Listener actor. This handle can be cloned and shared across threads. It
+/// exposes methods for adding and removing nodes from the list of monitored AVSes, as well as for
+/// broadcasting metrics updates. Exposed function nomenclature is `tell_*` for fire-and-forget and
+/// `ask_*` for request-response. TODO: request-response pattern is not currently meaninfully used.
 #[derive(Clone, Debug)]
 pub struct MetricsListenerHandle<D: DockerApi> {
     actor: kameo::actor::ActorRef<MetricsListener<D>>,
@@ -113,8 +97,6 @@ impl<D: DockerApi> Message<MetricsMsg> for MetricsListener<D> {
     ) -> Self::Reply {
         match msg {
             MetricsMsg::AddNode(avs) => {
-                let cache_entry = AvsStateCache::new(avs.avs_type.to_string());
-                self.avs_cache.insert(avs.clone(), cache_entry);
                 // if container with name already exists, replace avs_type and metric_port
                 if let Some(existing) =
                     self.avses.iter_mut().find(|x| x.container_name == avs.container_name)
@@ -128,7 +110,6 @@ impl<D: DockerApi> Message<MetricsMsg> for MetricsListener<D> {
             }
             MetricsMsg::RemoveNode(configured_avs) => {
                 let avs_num = self.avses.len();
-                self.avs_cache.remove(&configured_avs);
                 self.avses.retain(|x| x.container_name != configured_avs.container_name);
                 if avs_num != self.avses.len() {
                     info!("Detected container stop: {}", configured_avs.container_name);
@@ -142,7 +123,6 @@ impl<D: DockerApi> Message<MetricsMsg> for MetricsListener<D> {
             }
             MetricsMsg::RemoveNodeByName(container_name) => {
                 let avs_num = self.avses.len();
-                self.avs_cache.retain(|x, _| x.container_name != container_name);
                 self.avses.retain(|x| x.container_name != container_name);
                 if avs_num != self.avses.len() {
                     info!("Detected container stop: {}", container_name);
@@ -212,24 +192,6 @@ pub enum MetricsFetchError {
     InvalidMetricFormat { line_number: usize, line: String },
 }
 
-#[derive(Debug, Clone)]
-pub struct AvsStateCache {
-    node_type: Option<String>,
-    version_hash: Option<String>,
-    is_running: bool,
-}
-
-impl AvsStateCache {
-    pub fn new(node_type: String) -> Self {
-        Self { node_type: Some(node_type), version_hash: None, is_running: false }
-    }
-
-    pub fn update(&mut self, version_hash: Option<String>, is_running: bool) {
-        self.version_hash = version_hash;
-        self.is_running = is_running;
-    }
-}
-
 /// The MetricsListener is responsible for listening to metrics from the machine and sending them
 /// to the telemetry dispatch. It is also responsible for listening to changes in the AVS list and
 /// updating the AVS list accordingly. `avses` would probably be better represented by a set keyed
@@ -240,7 +202,6 @@ pub struct MetricsListener<D: DockerApi> {
     docker: D,
     machine: IvyMachine,
     avses: Vec<ConfiguredAvs>,
-    avs_cache: HashMap<ConfiguredAvs, AvsStateCache>,
     dispatch: TelemetryDispatchHandle,
     _error_tx: ErrorChannelTx,
     http_client: reqwest::Client,
@@ -254,19 +215,7 @@ impl<D: DockerApi> MetricsListener<D> {
         dispatch: TelemetryDispatchHandle,
         _error_tx: ErrorChannelTx,
     ) -> Self {
-        let mut avs_cache = HashMap::new();
-        for avs in &avses {
-            avs_cache.insert(avs.clone(), AvsStateCache::new(avs.avs_type.to_string()));
-        }
-        Self {
-            docker,
-            machine,
-            avses,
-            avs_cache,
-            dispatch,
-            _error_tx,
-            http_client: reqwest::Client::new(),
-        }
+        Self { docker, machine, avses, dispatch, _error_tx, http_client: reqwest::Client::new() }
     }
 
     async fn broadcast_metrics(&mut self) -> Result<(), MetricsListenerError> {
@@ -275,7 +224,6 @@ impl<D: DockerApi> MetricsListener<D> {
             &self.machine,
             self.avses.as_slice(),
             &self.dispatch,
-            &mut self.avs_cache,
             &self.http_client,
         )
         .await
@@ -287,7 +235,6 @@ pub async fn report_metrics(
     machine: &IvyMachine,
     avses: &[ConfiguredAvs],
     dispatch: &TelemetryDispatchHandle,
-    avs_cache: &mut HashMap<ConfiguredAvs, AvsStateCache>,
     http_client: &reqwest::Client,
 ) -> Result<(), MetricsListenerError> {
     let images = docker.list_images().await;
@@ -330,7 +277,7 @@ pub async fn report_metrics(
             continue;
         };
 
-        let metrics = if let Some(port) = avs.metric_port {
+        if let Some(port) = avs.metric_port {
             let metrics: Vec<Metrics> =
                 fetch_telemetry_from(http_client, &avs.container_name, port)
                     .await
@@ -338,41 +285,12 @@ pub async fn report_metrics(
 
             let signed_metrics = machine.sign_metrics(Some(avs.assigned_name.clone()), &metrics)?;
             dispatch.tell(TelemetryMsg::Metrics(signed_metrics)).await?;
-
-            metrics
-        } else {
-            Vec::new()
-        };
-
-        // Send node data
+        }
 
         info!(
             "Sending node data with version hash: {:#?} for avs: {}",
             version_hash, avs.assigned_name
         );
-
-        let is_running = docker.is_running(&avs.container_name).await;
-
-        let cache_entry = avs_cache
-            .get(avs)
-            .ok_or_else(|| MetricsListenerError::CacheMissing(avs.container_name.clone()))?;
-
-        // Send node data
-        let node_data = NodeDataV2 {
-            name: avs.assigned_name.to_string(),
-            node_type: cache_entry.node_type.clone(),
-            manifest: Some(version_hash.clone()),
-            metrics_alive: Some(!metrics.is_empty()),
-            node_running: Some(is_running),
-        };
-
-        let mut new_cache_entry = cache_entry.clone();
-        new_cache_entry.update(Some(version_hash), is_running);
-
-        let signed_node_data = machine.sign_node_data_v2(&node_data)?;
-
-        dispatch.tell(TelemetryMsg::SignedNodeData(signed_node_data)).await?;
-        avs_cache.insert(avs.clone(), new_cache_entry);
     }
     // Last but not least - send system metrics
     let system_metrics = fetch_system_telemetry();

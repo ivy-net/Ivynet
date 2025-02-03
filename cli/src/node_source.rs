@@ -48,3 +48,11 @@ impl<T: DockerApi> NodeSource for T {
         potentials
     }
 }
+
+#[derive(Clone, Debug)]
+pub struct PotentialAvs {
+    pub container_name: String,
+    pub image_name: String,
+    pub image_hash: String,
+    pub ports: Vec<u16>,
+}

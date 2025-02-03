@@ -4,9 +4,13 @@ use convert_case::{Case, Casing};
 use dispatch::{TelemetryDispatchError, TelemetryDispatchHandle};
 use docker_event_stream_listener::DockerStreamListener;
 use ivynet_docker::dockerapi::{DockerApi, DockerClient};
-use ivynet_grpc::{backend::backend_client::BackendClient, tonic::transport::Channel};
+use ivynet_grpc::{
+    backend::backend_client::BackendClient, messages::NodeDataV2, tonic::transport::Channel,
+    BackendClientMiddleware, BackendMiddleware,
+};
 use logs_listener::LogsListenerManager;
 use metrics_listener::MetricsListenerHandle;
+use node_data_listener::NodeDataMonitorHandle;
 use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
 use tracing::{error, info, warn};
@@ -142,13 +146,43 @@ pub async fn listen(
     // backend
     let dispatch = TelemetryDispatchHandle::new(backend_client.clone(), error_tx.clone());
 
+    let backend_middleware = BackendClientMiddleware::new(backend_client.clone());
+
+    let node_data_monitor = NodeDataMonitorHandle::new(backend_middleware, error_tx.clone());
+
     // Logs Listener handles logs from containers and sends them to the dispatcher
     let mut logs_listener_handle =
         LogsListenerManager::new(&docker, machine.clone().into(), &dispatch);
 
-    for node in avses {
+    // Metrics Listener handles metrics from containers and sends them to the dispatcher
+    let metrics_listener_handle =
+        MetricsListenerHandle::new(&docker, machine.clone(), avses, &dispatch, error_tx);
+
+    // On start, send already-configured node data and setup logs listeners
+    for node in avses.iter() {
         info!("Searching for node: {}", node.container_name);
         if let Some(container) = &docker.find_container_by_name(&node.container_name).await {
+            // --- Send node data for configured nodes ---
+            let image_id = match container.image_id() {
+                Some(id) => id,
+                None => {
+                    warn!("Cannot find image id for container: {}", node.container_name);
+                    continue;
+                }
+            };
+
+            let node_data = NodeDataV2 {
+                name: node.assigned_name.to_string(),
+                node_type: Some(node.avs_type.clone()),
+                manifest: Some(image_id.to_string()),
+                metrics_alive: Some(false),
+                node_running: Some(true),
+            };
+            let signed = machine.sign_node_data_v2(&node_data)?;
+
+            if let Err(e) = node_data_monitor.ask_send_node_data(signed).await {
+                error!("Failed to send node data: {}", e);
+            }
             if let Err(e) = logs_listener_handle.add_listener(container, node).await {
                 error!("Failed to add logs listener for container: {}", e);
             };
@@ -157,13 +191,10 @@ pub async fn listen(
         }
     }
 
-    // Metrics Listener handles metrics from containers and sends them to the dispatcher
-    let metrics_listener_handle =
-        MetricsListenerHandle::new(&docker, machine.clone(), avses, &dispatch, error_tx);
-
     // Stream listener listens for docker events and sends them to the other listeners for
     // processing
     let docker_listener = DockerStreamListener::new(
+        node_data_monitor,
         metrics_listener_handle,
         logs_listener_handle,
         dispatch.clone(),

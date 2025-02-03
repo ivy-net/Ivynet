@@ -1,15 +1,27 @@
 use std::ops::Deref;
 
-use ivynet_grpc::{messages::SignedNodeData, BackendMiddleware, Response, Status};
+use ivynet_grpc::{messages::SignedNodeDataV2, BackendMiddleware, Response, Status};
 use kameo::{message::Message, Actor};
 
 use super::ErrorChannelTx;
 
+#[derive(Debug, Clone)]
 pub struct NodeDataMonitorHandle<B: BackendMiddleware>(kameo::actor::ActorRef<NodeDataMonitor<B>>);
 
 impl<B: BackendMiddleware> NodeDataMonitorHandle<B> {
     pub fn new(backend_client: B, _error_tx: ErrorChannelTx) -> Self {
         Self(kameo::actor::spawn(NodeDataMonitor::new(backend_client, _error_tx)))
+    }
+
+    pub async fn tell_send_node_data(&self, node_data: SignedNodeDataV2) {
+        self.0.tell(NodeDataMsg::NodeData(node_data));
+    }
+
+    pub async fn ask_send_node_data(
+        &self,
+        node_data: SignedNodeDataV2,
+    ) -> Result<Response<()>, NodeDataMonitorError> {
+        self.0.ask(NodeDataMsg::NodeData(node_data)).await.map_err(NodeDataMonitorError::from)
     }
 }
 
@@ -28,7 +40,7 @@ pub struct NodeDataMonitor<B: BackendMiddleware> {
 }
 
 pub enum NodeDataMsg {
-    NodeData(SignedNodeData),
+    NodeData(SignedNodeDataV2),
 }
 
 impl<B: BackendMiddleware> NodeDataMonitor<B> {
@@ -46,9 +58,18 @@ impl<B: BackendMiddleware> Message<NodeDataMsg> for NodeDataMonitor<B> {
         _: kameo::message::Context<'_, Self, Self::Reply>,
     ) -> Self::Reply {
         match msg {
-            NodeDataMsg::NodeData(node_data) => self.backend_client.node_data(node_data).await,
+            NodeDataMsg::NodeData(node_data) => self.backend_client.node_data_v2(node_data).await,
         }
     }
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum NodeDataMonitorError {
+    #[error("Internal server error: {0}")]
+    InternalServerError(Status),
+
+    #[error("Failed to send node data: {0}")]
+    FailedToSendNodeData(#[from] kameo::error::SendError<NodeDataMsg, ivynet_grpc::Status>),
 }
 
 #[cfg(test)]

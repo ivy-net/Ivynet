@@ -26,7 +26,7 @@ pub use tonic::{self, async_trait, Response, Status};
 pub struct BackendClientMiddleware(backend::backend_client::BackendClient<Channel>);
 
 #[async_trait]
-pub trait BackendMiddleware: Clone + Send + 'static {
+pub trait BackendMiddleware: Clone + Send + Sync + 'static {
     fn new(client: BackendClient<Channel>) -> Self;
 
     fn from_channel(channel: Channel) -> Self;
@@ -41,6 +41,11 @@ pub trait BackendMiddleware: Clone + Send + 'static {
     async fn node_data(
         &mut self,
         request: messages::SignedNodeData,
+    ) -> Result<Response<()>, Status>;
+
+    async fn node_data_v2(
+        &mut self,
+        request: messages::SignedNodeDataV2,
     ) -> Result<Response<()>, Status>;
 
     async fn logs(&mut self, request: messages::SignedLog) -> Result<Response<()>, Status>;
@@ -88,6 +93,13 @@ impl BackendMiddleware for BackendClientMiddleware {
         request: messages::SignedNodeData,
     ) -> Result<Response<()>, Status> {
         self.0.node_data(request).await
+    }
+
+    async fn node_data_v2(
+        &mut self,
+        request: messages::SignedNodeDataV2,
+    ) -> Result<Response<()>, Status> {
+        self.0.node_data_v2(request).await
     }
 
     async fn logs(&mut self, request: messages::SignedLog) -> Result<Response<()>, Status> {
@@ -144,6 +156,13 @@ impl BackendMiddleware for BackendClientMock {
     async fn node_data(
         &mut self,
         _request: messages::SignedNodeData,
+    ) -> Result<Response<()>, Status> {
+        Ok(Response::new(()))
+    }
+
+    async fn node_data_v2(
+        &mut self,
+        _request: messages::SignedNodeDataV2,
     ) -> Result<Response<()>, Status> {
         Ok(Response::new(()))
     }

@@ -4,25 +4,30 @@ use bollard::secret::{EventMessage, EventMessageTypeEnum};
 use ivynet_docker::dockerapi::{DockerApi, DockerClient, DockerStreamError};
 use ivynet_grpc::{
     backend::backend_client::BackendClient,
-    messages::{NodeTypeQueries, NodeTypeQuery},
+    messages::{NodeDataV2, NodeTypeQueries, NodeTypeQuery},
     tonic::{transport::Channel, Request, Response},
+    BackendMiddleware,
 };
 use tokio::time::sleep;
 use tokio_stream::StreamExt;
 use tracing::{debug, error};
 
-use crate::ivy_machine::IvyMachine;
+use crate::ivy_machine::{IvyMachine, MachineIdentityError};
 
 use super::{
     dispatch::{TelemetryDispatchError, TelemetryDispatchHandle},
     logs_listener::LogsListenerManager,
     metrics_listener::MetricsListenerHandle,
+    node_data_listener::NodeDataMonitorHandle,
     ConfiguredAvs,
 };
 
+const TELEMETRY_INTERVAL_IN_MINUTES: u64 = 1;
+
 #[derive(Debug)]
-pub struct DockerStreamListener<D: DockerApi> {
+pub struct DockerStreamListener<D: DockerApi, B: BackendMiddleware> {
     pub docker: D,
+    pub node_data_monitor_handle: NodeDataMonitorHandle<B>,
     pub metrics_listener_handle: MetricsListenerHandle<D>,
     pub logs_listener_handle: LogsListenerManager,
     pub dispatch: TelemetryDispatchHandle,
@@ -30,8 +35,9 @@ pub struct DockerStreamListener<D: DockerApi> {
     pub backend: BackendClient<Channel>,
 }
 
-impl DockerStreamListener<DockerClient> {
+impl<B: BackendMiddleware> DockerStreamListener<DockerClient, B> {
     pub fn new(
+        node_data_monitor: NodeDataMonitorHandle<B>,
         metrics_listener: MetricsListenerHandle<DockerClient>,
         logs_listener: LogsListenerManager,
         dispatch: TelemetryDispatchHandle,
@@ -40,6 +46,7 @@ impl DockerStreamListener<DockerClient> {
     ) -> Self {
         Self {
             docker: DockerClient::default(),
+            node_data_monitor_handle: node_data_monitor,
             metrics_listener_handle: metrics_listener,
             logs_listener_handle: logs_listener,
             dispatch,
@@ -53,22 +60,52 @@ impl DockerStreamListener<DockerClient> {
         known_nodes: Vec<ConfiguredAvs>,
     ) -> Result<(), DockerStreamListenerError> {
         let mut docker_stream = self.docker.stream_events().await;
-        while let Some(Ok(event)) = docker_stream.next().await {
-            debug!("Dockerstream Event | {:?}", event);
-            if event.typ == Some(EventMessageTypeEnum::CONTAINER) {
-                if let Some(action) = event.action.as_deref() {
-                    match action {
-                        "start" => {
-                            self.on_start(event, &known_nodes).await?;
+
+        let mut telemetry_interval =
+            tokio::time::interval(Duration::from_secs(TELEMETRY_INTERVAL_IN_MINUTES * 60));
+
+        loop {
+            tokio::select! {
+                // 1) A Docker event arrives.
+                maybe_event = docker_stream.next() => {
+                    match maybe_event {
+                        Some(Ok(event)) => {
+                            debug!("Dockerstream Event | {:?}", event);
+                            if event.typ == Some(EventMessageTypeEnum::CONTAINER) {
+                                if let Some(action) = event.action.as_deref() {
+                                    match action {
+                                        "start" => {
+                                            self.on_start(event, &known_nodes).await?;
+                                        }
+                                        "stop" | "kill" | "die" => {
+                                            self.on_stop(event).await?;
+                                        }
+                                        _ => {
+                                        }
+                                    }
+                                }
+                            }
+                        },
+                        Some(Err(err)) => {
+                            error!("Dockerstream Error | {:?}", err);
+                        },
+                        None => {
+                            // The Docker event stream ended.
+                            break;
                         }
-                        "stop" | "kill" | "die" => {
-                            self.on_stop(event).await?;
-                        }
-                        _ => {}
                     }
+                }
+
+                // 2) The telemetry interval ticks.
+                _ = telemetry_interval.tick() => {
+                    // Broadcast telemetry to your metrics listener
+                    if let Err(e) = self.metrics_listener_handle.tell_broadcast().await{
+                        error!("Error broadcasting metrics: {:?}", e);
+                        };
                 }
             }
         }
+
         Ok(())
     }
 
@@ -161,6 +198,18 @@ impl DockerStreamListener<DockerClient> {
         if let Some(configured) = configured {
             debug!("Found container: {}", inc_container_name);
 
+            let node_data_v2 = NodeDataV2 {
+                name: configured.assigned_name.clone(),
+                node_type: Some(configured.avs_type.clone()),
+                manifest: Some(inc_container_digest.clone()),
+                metrics_alive: Some(false),
+                node_running: Some(true),
+            };
+            let signed = self.machine.sign_node_data_v2(&node_data_v2)?;
+
+            if let Err(e) = self.node_data_monitor_handle.ask_send_node_data(signed).await {
+                error!("Error sending node data: {:?}", e);
+            }
             if let Err(e) = self.metrics_listener_handle.tell_add_node(configured.clone()).await {
                 error!("Error adding node: {:?}", e);
             }
@@ -201,4 +250,7 @@ pub enum DockerStreamListenerError {
 
     #[error("Telemetry dispatch error: {0}")]
     DispatchError(#[from] TelemetryDispatchError),
+
+    #[error("Machine identity error: {0}")]
+    MachineIdentityError(#[from] MachineIdentityError),
 }
