@@ -4,15 +4,14 @@
     name: docker
     types: [deb]
     uris: "https://download.docker.com/linux/{{ ansible_distribution | lower }}"
-# yamllint disable-line rule:line-length
+    # yamllint disable-line rule:line-length
     signed_by: "https://download.docker.com/linux/{{ ansible_distribution | lower }}/gpg"
     suites: ["{{ ansible_distribution_release | lower }}"]
     components: [stable]
     state: present
     enabled: true
   tags:
-    - ivynet_client
-    - general
+    - config
     - docker
 
 - name: Install packages (for rust, docker and ansible)
@@ -33,8 +32,6 @@
     - python3-jmespath
     - python3-pip
   tags:
-    - ivynet_client
-    - general
     - docker
     - download
 
@@ -44,7 +41,5 @@
     state: latest
     break_system_packages: true
   tags:
-    - ivynet_client
-    - general
     - download
     - github

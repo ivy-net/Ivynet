@@ -24,6 +24,16 @@
     - general
     - ssl
 
+- name: Add another bin dir to system-wide $PATH.
+  ansible.builtin.copy:
+    dest: /etc/profile.d/ivy-path.sh
+    content: 'PATH=$PATH:{{ ivynet_ingress_path_install }}/bin'
+    owner: root
+    group: root
+    mode: "0644"
+  tags:
+    - ivynet_ingress
+
 - name: Copy Env file
   ansible.builtin.template:
     src: env.j2
@@ -43,13 +53,13 @@
   ansible.builtin.import_tasks:
     file: get_ingress_master.yml
   when:
-    - not ivynet_ingress_is_release
+    - not ivynet_ingress_is_release | bool
 
 - name: Download ivynet-ingress for release
   ansible.builtin.import_tasks:
     file: get_ingress.yml
   when:
-    - ivynet_ingress_is_release
+    - ivynet_ingress_is_release | bool
 
 - name: Configure SystemD
   ansible.builtin.import_tasks:
