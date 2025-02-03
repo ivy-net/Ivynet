@@ -7,10 +7,7 @@ use reqwest::Client;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
 
-use crate::{
-    ivy_machine::{IvyMachine, MachineIdentityError},
-    system::get_detailed_system_information,
-};
+use crate::ivy_machine::{IvyMachine, MachineIdentityError, SysInfo};
 
 use super::{
     dispatch::{TelemetryDispatchError, TelemetryDispatchHandle},
@@ -438,20 +435,27 @@ pub async fn fetch_telemetry_from(
 }
 
 fn fetch_system_telemetry() -> Vec<Metrics> {
-    // Now we need to add basic metrics
-    let (cores, cpu_usage, ram_usage, free_ram, disk_usage, free_disk, uptime) =
-        get_detailed_system_information();
+    let SysInfo {
+        cpu_cores,
+        cpu_usage,
+        memory_usage,
+        memory_free,
+        disk_usage,
+        disk_free,
+        uptime,
+        ..
+    } = SysInfo::from_system();
 
     vec![
         Metrics { name: "cpu_usage".to_owned(), value: cpu_usage, attributes: Default::default() },
         Metrics {
             name: "ram_usage".to_owned(),
-            value: ram_usage as f64,
+            value: memory_usage as f64,
             attributes: Default::default(),
         },
         Metrics {
             name: "free_ram".to_owned(),
-            value: free_ram as f64,
+            value: memory_free as f64,
             attributes: Default::default(),
         },
         Metrics {
@@ -461,10 +465,14 @@ fn fetch_system_telemetry() -> Vec<Metrics> {
         },
         Metrics {
             name: "free_disk".to_owned(),
-            value: free_disk as f64,
+            value: disk_free as f64,
             attributes: Default::default(),
         },
-        Metrics { name: "cores".to_owned(), value: cores as f64, attributes: Default::default() },
+        Metrics {
+            name: "cores".to_owned(),
+            value: cpu_cores as f64,
+            attributes: Default::default(),
+        },
         Metrics { name: "uptime".to_owned(), value: uptime as f64, attributes: Default::default() },
     ]
 }

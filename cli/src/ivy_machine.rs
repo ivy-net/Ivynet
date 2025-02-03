@@ -115,7 +115,7 @@ pub struct SysInfo {
 }
 
 impl SysInfo {
-    fn from_system() -> Self {
+    pub fn from_system() -> Self {
         let mut sys = System::new();
         sys.refresh_all();
 
