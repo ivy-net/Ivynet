@@ -188,9 +188,10 @@ impl Backend for BackendService {
             return Err(Status::not_found("Machine not registered for given client".to_string()));
         }
 
-        let NodeDataV2 { name, node_type, manifest, metrics_alive, node_running } = node_data.clone();
+        let NodeDataV2 { name, node_type, manifest, metrics_alive, node_running } =
+            node_data.clone();
 
-        println!("Node data: {:#?}", node_data);
+        debug!("Node data: {:#?}", node_data);
 
         match (node_type, manifest) {
             (Some(node_type), Some(manifest)) => {

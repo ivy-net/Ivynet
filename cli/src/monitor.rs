@@ -1,7 +1,10 @@
 use anyhow::anyhow;
 use dialoguer::{Input, MultiSelect, Select};
 use fs2::FileExt;
-use ivynet_docker::dockerapi::{DockerClient, DockerImage, Sha256Hash};
+use ivynet_docker::{
+    container::{ContainerId, ContainerImage},
+    dockerapi::DockerClient,
+};
 use ivynet_grpc::{
     self,
     backend::backend_client::BackendClient,
@@ -32,8 +35,8 @@ const MONITOR_CONFIG_FILE: &str = "monitor-config.toml";
 #[derive(Clone, Debug)]
 pub struct PotentialAvs {
     pub container_name: String,
-    pub docker_image: DockerImage,
-    pub manifest: Sha256Hash,
+    pub docker_image: ContainerImage,
+    pub manifest: ContainerId,
     pub ports: Vec<u16>,
 }
 
@@ -270,7 +273,7 @@ async fn find_new_avses(
     let node_type_queries = potential_avses
         .iter()
         .map(|avs| NodeTypeQuery {
-            image_name: avs.docker_image.clone().into(),
+            image_name: avs.docker_image.clone().to_string(),
             image_digest: avs.manifest.clone().to_string(),
             container_name: avs.container_name.clone(),
         })
@@ -291,12 +294,12 @@ async fn find_new_avses(
         let metric_port =
             get_metrics_port(&reqwest::Client::new(), &avs.container_name, &avs.ports).await?;
         let new_avs = ConfiguredAvs {
-            assigned_name: avs.docker_image.clone().into(),
+            assigned_name: format!("{}_{}", avs.container_name.clone(), avs.docker_image.clone()),
             container_name: avs.container_name.clone(),
             avs_type: node_type,
             metric_port,
-            image: Some(avs.docker_image.clone().into()),
-            manifest: Some(avs.manifest.clone().into()),
+            image: Some(avs.docker_image.clone()),
+            manifest: Some(avs.manifest.clone()),
         };
 
         // update the existing configured AVS if it exists, otherwise push to new vec
@@ -378,8 +381,6 @@ fn select_manual_avses(
 ) -> Result<Vec<ConfiguredAvs>, anyhow::Error> {
     debug_assert!(!potential_avses.is_empty(), "potential_avses must not be empty");
 
-    println!(" MANUAL SELECT: Potential AVSes: {:#?}", potential_avses);
-
     let items: Vec<String> = potential_avses
         .iter()
         .map(|a| format!("{} under container {}", a.assigned_name, a.container_name))
@@ -390,8 +391,6 @@ fn select_manual_avses(
         .items(&items)
         .interact()
         .map_err(|e| anyhow!("Selection failed: {}", e))?;
-
-    println!(" MANUAL SELECT: Selected AVSes: {:#?}", selected);
 
     Ok(selected.into_iter().map(|idx| potential_avses[idx].clone()).collect())
 }

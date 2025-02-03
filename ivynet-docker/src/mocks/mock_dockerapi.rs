@@ -10,8 +10,8 @@ use bollard::{
 use futures::{stream, Stream};
 
 use crate::{
-    container::Container,
-    dockerapi::{DockerApi, DockerClient, DockerImage, Sha256Hash},
+    container::{Container, ContainerId, ContainerImage},
+    dockerapi::{DockerApi, DockerClient},
 };
 
 #[derive(Clone)]
@@ -54,7 +54,7 @@ impl DockerApi for MockDockerClient {
         DockerClient::default().0
     }
 
-    async fn list_images(&self) -> HashMap<Sha256Hash, DockerImage> {
+    async fn list_images(&self) -> HashMap<ContainerId, ContainerImage> {
         DockerClient::process_images(self.images.to_vec())
     }
 
@@ -205,17 +205,25 @@ mod tests {
     async fn test_list_images_normal_case() {
         let mock = MockDockerClient::new();
         let mock = mock.images_only(vec![ImageSummary {
-            id: "sha256:digest1".to_string(),
+            id: "sha256:15b900c8b655dbdb56b1ee66c754d618d4f35551ad8d577b6fee2680b71e1a4d"
+                .to_string(),
             repo_tags: vec!["image:latest".to_string()],
-            repo_digests: vec!["image@sha256:digest1".to_string()],
+            repo_digests: vec![
+                "image@sha256:15b900c8b655dbdb56b1ee66c754d618d4f35551ad8d577b6fee2680b71e1a4d"
+                    .to_string(),
+            ],
             ..Default::default()
         }]);
 
         let result = mock.list_images().await;
 
         assert_eq!(
-            result.get(&Sha256Hash::from_string("sha256:digest1")).unwrap(),
-            &DockerImage::from("image:latest")
+            result
+                .get(&ContainerId::from(
+                    "sha256:15b900c8b655dbdb56b1ee66c754d618d4f35551ad8d577b6fee2680b71e1a4d"
+                ))
+                .unwrap(),
+            &ContainerImage::from("image:latest")
         );
         assert_eq!(result.len(), 1);
     }
@@ -224,17 +232,25 @@ mod tests {
     async fn test_list_images_empty_repo_tags() {
         let mock = MockDockerClient::new();
         let mock = mock.images_only(vec![ImageSummary {
-            id: "sha256:digest1".to_string(),
+            id: "sha256:15b900c8b655dbdb56b1ee66c754d618d4f35551ad8d577b6fee2680b71e1a4d"
+                .to_string(),
             repo_tags: vec![],
-            repo_digests: vec!["image1@sha256:digest1".to_string()],
+            repo_digests: vec![
+                "image1@sha256:15b900c8b655dbdb56b1ee66c754d618d4f35551ad8d577b6fee2680b71e1a4d"
+                    .to_string(),
+            ],
             ..Default::default()
         }]);
 
         let result = mock.list_images().await;
 
         assert_eq!(
-            result.get(&Sha256Hash::from_string("sha256:digest1")).unwrap(),
-            &DockerImage::from("image1")
+            result
+                .get(&ContainerId::from(
+                    "sha256:15b900c8b655dbdb56b1ee66c754d618d4f35551ad8d577b6fee2680b71e1a4d"
+                ))
+                .unwrap(),
+            &ContainerImage::from("image1")
         );
         assert_eq!(result.len(), 1);
     }
@@ -243,7 +259,8 @@ mod tests {
     async fn test_list_images_empty_repo_digests() {
         let mock = MockDockerClient::new();
         let mock = mock.images_only(vec![ImageSummary {
-            id: "sha256:digest1".to_string(),
+            id: "sha256:15b900c8b655dbdb56b1ee66c754d618d4f35551ad8d577b6fee2680b71e1a4d"
+                .to_string(),
             repo_tags: vec!["image:latest".to_string()],
             repo_digests: vec![],
             ..Default::default()
@@ -252,8 +269,12 @@ mod tests {
         let result = mock.list_images().await;
 
         assert_eq!(
-            result.get(&Sha256Hash::from_string("sha256:digest1")).unwrap(),
-            &DockerImage::from("image:latest")
+            result
+                .get(&ContainerId::from(
+                    "sha256:15b900c8b655dbdb56b1ee66c754d618d4f35551ad8d577b6fee2680b71e1a4d"
+                ))
+                .unwrap(),
+            &ContainerImage::from("image:latest")
         );
         assert_eq!(result.len(), 1);
     }
@@ -262,31 +283,43 @@ mod tests {
     async fn test_list_images_multiple_tags() {
         let mock = MockDockerClient::new();
         let mock = mock.images_only(vec![ImageSummary {
-            id: "sha256:digest4".to_string(),
+            id: "sha256:bd6936138442b3cf77aab8394fcf054ff70259276eb343feec1edf8f0d06a98c"
+                .to_string(),
             repo_tags: vec!["image:latest".to_string(), "image:v1".to_string()],
-            repo_digests: vec!["image@sha256:digest4".to_string()],
+            repo_digests: vec![
+                "image@sha256:bd6936138442b3cf77aab8394fcf054ff70259276eb343feec1edf8f0d06a98c"
+                    .to_string(),
+            ],
             ..Default::default()
         }]);
 
         let result = mock.list_images().await;
 
         assert_eq!(
-            result.get(&Sha256Hash::from_string("sha256:digest4")).unwrap(),
-            &DockerImage::from("image:latest")
+            result
+                .get(&ContainerId::from(
+                    "sha256:bd6936138442b3cf77aab8394fcf054ff70259276eb343feec1edf8f0d06a98c"
+                ))
+                .unwrap(),
+            &ContainerImage::from("image:v1")
         );
-        assert_eq!(
-            result.get(&Sha256Hash::from_string("sha256:digest4")).unwrap(),
-            &DockerImage::from("image:v1")
-        );
-        assert_eq!(result.len(), 2);
+        assert_eq!(result.len(), 1);
     }
 
     #[tokio::test]
     async fn test_images_broken_empty_list() {
         let mock = MockDockerClient::new();
         let mock = mock.images_only(vec![
-            ImageSummary { id: "sha256:digest4".to_string(), ..Default::default() },
-            ImageSummary { id: "sha256:digest3".to_string(), ..Default::default() },
+            ImageSummary {
+                id: "sha256:bd6936138442b3cf77aab8394fcf054ff70259276eb343feec1edf8f0d06a98c"
+                    .to_string(),
+                ..Default::default()
+            },
+            ImageSummary {
+                id: "sha256:0ddb7a14d16cdc41a73ef2fc4965345661eb4336cf63024a94d7aecc6b36f3c7"
+                    .to_string(),
+                ..Default::default()
+            },
         ]);
         let result = mock.list_images().await;
         assert_eq!(result.len(), 0);

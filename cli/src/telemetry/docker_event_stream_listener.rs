@@ -1,8 +1,9 @@
 use std::time::Duration;
 
 use bollard::secret::{EventMessage, EventMessageTypeEnum};
-use ivynet_docker::dockerapi::{
-    DockerApi, DockerClient, DockerImage, DockerStreamError, Sha256Hash,
+use ivynet_docker::{
+    container::{ContainerId, ContainerImage},
+    dockerapi::{DockerApi, DockerClient, DockerStreamError},
 };
 use ivynet_grpc::{
     backend::backend_client::BackendClient,
@@ -147,8 +148,10 @@ impl DockerStreamListener<DockerClient> {
                                     container_name: inc_container_name.clone(),
                                     avs_type: node_type.node_type.clone(),
                                     metric_port: metrics_port,
-                                    manifest: Some(Sha256Hash::from_string(&inc_container_digest)),
-                                    image: Some(DockerImage::from(inc_image_name.as_str())),
+                                    manifest: Some(ContainerId::from(
+                                        inc_container_digest.as_str(),
+                                    )),
+                                    image: Some(ContainerImage::from(inc_image_name.as_str())),
                                 })
                             } else {
                                 None

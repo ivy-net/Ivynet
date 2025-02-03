@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
-use ivynet_docker::dockerapi::{DockerApi, Sha256Hash};
+use ivynet_docker::{container::ContainerId, dockerapi::DockerApi};
 use ivynet_grpc::messages::{Metrics, NodeDataV2};
 use ivynet_signer::sign_utils::IvySigningError;
 use reqwest::Client;
@@ -128,7 +128,7 @@ pub enum MetricsFetchError {
 #[derive(Debug, Clone)]
 pub struct AvsStateCache {
     node_type: Option<String>,
-    version_hash: Option<Sha256Hash>,
+    version_hash: Option<ContainerId>,
     is_running: bool,
 }
 
@@ -137,7 +137,7 @@ impl AvsStateCache {
         Self { node_type: Some(node_type), version_hash: None, is_running: false }
     }
 
-    pub fn update(&mut self, version_hash: Option<Sha256Hash>, is_running: bool) {
+    pub fn update(&mut self, version_hash: Option<ContainerId>, is_running: bool) {
         self.version_hash = version_hash;
         self.is_running = is_running;
     }
@@ -281,7 +281,7 @@ pub async fn report_metrics(
         let container = match docker.find_container_by_name(&avs.container_name).await {
             Some(container) => container,
             None => {
-                if let Some(manifest) = avs.manifest {
+                if let Some(manifest) = &avs.manifest {
                     match docker.find_container_by_id(&manifest.to_string()).await {
                         Some(container) => container,
                         None => {
@@ -293,7 +293,7 @@ pub async fn report_metrics(
                         }
                     }
                 } else if let Some(image) = avs.image.clone() {
-                    match docker.find_container_by_id(&image.image).await {
+                    match docker.find_container_by_id(&image.repository).await {
                         Some(container) => container,
                         None => {
                             error!("Could not find container by image. {:#?} Continuing.", avs);
@@ -308,7 +308,7 @@ pub async fn report_metrics(
         };
 
         let manifest = match container.image_id() {
-            Some(manifest) => Sha256Hash::from_string(manifest),
+            Some(manifest) => ContainerId::from(manifest),
             None => {
                 error!("Container {} is running but has no image manifest", avs.container_name);
                 continue;
@@ -352,7 +352,7 @@ pub async fn report_metrics(
             node_running: Some(is_running),
         };
 
-        println!("Sending node data: {:#?}", node_data);
+        debug!("Sending node data: {:#?}", node_data);
 
         let mut new_cache_entry = cache_entry.clone();
         new_cache_entry.update(Some(manifest), is_running);

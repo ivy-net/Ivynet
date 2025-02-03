@@ -1,4 +1,4 @@
-use std::{collections::HashMap, fmt::Display, pin::Pin};
+use std::{collections::HashMap, pin::Pin};
 
 use async_trait::async_trait;
 use bollard::{
@@ -9,23 +9,15 @@ use bollard::{
     Docker,
 };
 use futures::future::join_all;
-use serde::{Deserialize, Serialize};
 use tokio_stream::Stream;
 use tracing::debug;
 
-use super::container::Container;
+use crate::container::ContainerId;
+
+use super::container::{Container, ContainerImage};
 
 #[derive(Debug, Clone)]
 pub struct DockerClient(pub Docker);
-
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct Sha256Hash([u8; 32]);
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Hash)]
-pub struct DockerImage {
-    pub image: String,
-    pub version_tag: Option<String>,
-}
 
 pub fn connect_docker() -> Docker {
     std::env::var("DOCKER_HOST").map(|_| Docker::connect_with_defaults().unwrap()).unwrap_or_else(
@@ -42,75 +34,11 @@ impl Default for DockerClient {
     }
 }
 
-impl From<[u8; 32]> for Sha256Hash {
-    fn from(value: [u8; 32]) -> Self {
-        Self(value)
-    }
-}
-
-impl Sha256Hash {
-    pub fn from_string(value: &str) -> Self {
-        let parts: Vec<&str> = value.split(':').collect();
-        if parts.len() != 2 || parts[0] != "sha256" {
-            panic!("Invalid SHA256 hash format");
-        }
-
-        let hash = parts[1];
-        if hash.len() != 64 {
-            panic!("Invalid hash length");
-        }
-
-        let mut hash_bytes = [0u8; 32];
-        for i in 0..32 {
-            let byte_str = &hash[i * 2..i * 2 + 2];
-            hash_bytes[i] = u8::from_str_radix(byte_str, 16).expect("Invalid hex character");
-        }
-
-        Self(hash_bytes)
-    }
-}
-
-impl Display for Sha256Hash {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        const HEX_CHARS: [u8; 16] = *b"0123456789abcdef";
-        let mut result = String::with_capacity(71); // "sha256:" + 64 hex chars
-        result.push_str("sha256:");
-
-        for &byte in &self.0 {
-            result.push(HEX_CHARS[(byte >> 4) as usize] as char);
-            result.push(HEX_CHARS[(byte & 0xf) as usize] as char);
-        }
-
-        f.write_str(&result)
-    }
-}
-
-impl From<DockerImage> for String {
-    fn from(value: DockerImage) -> Self {
-        if let Some(version_tag) = value.version_tag {
-            format!("{}:{}", value.image, version_tag)
-        } else {
-            value.image
-        }
-    }
-}
-
-impl From<&str> for DockerImage {
-    fn from(value: &str) -> Self {
-        let parts: Vec<&str> = value.split(':').collect();
-        if parts.len() == 2 {
-            Self { image: parts[0].to_string(), version_tag: Some(parts[1].to_string()) }
-        } else {
-            Self { image: value.to_string(), version_tag: None }
-        }
-    }
-}
-
 // TODO: Implement lifetimes to allow passing as ref
 #[async_trait]
 pub trait DockerApi: Clone + Sync + Send + 'static {
     async fn list_containers(&self) -> Vec<Container>;
-    async fn list_images(&self) -> HashMap<Sha256Hash, DockerImage>;
+    async fn list_images(&self) -> HashMap<ContainerId, ContainerImage>;
     fn inner(&self) -> Docker;
 
     async fn stream_logs(
@@ -252,7 +180,7 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
         Box::pin(futures::stream::select_all(streams))
     }
 
-    fn process_images(images: Vec<ImageSummary>) -> HashMap<Sha256Hash, DockerImage> {
+    fn process_images(images: Vec<ImageSummary>) -> HashMap<ContainerId, ContainerImage> {
         let mut map = HashMap::new();
         for image in images {
             if image.repo_digests.is_empty() {
@@ -260,7 +188,10 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
                 DockerClient::use_repo_tags(&image, &mut map);
             } else if image.repo_tags.is_empty() && image.repo_digests.is_empty() {
                 debug!("No repo tags or digests on image: {:#?}", image);
-                map.insert(Sha256Hash::from_string(&image.id.clone()), DockerImage::from("local"));
+                map.insert(
+                    ContainerId::from(image.id.clone().as_str()),
+                    ContainerImage::from("local"),
+                );
             } else {
                 for digest in &image.repo_digests {
                     let elements = digest.split("@").collect::<Vec<_>>();
@@ -268,16 +199,16 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
                         if !image.repo_tags.is_empty() {
                             for tag in &image.repo_tags {
                                 map.insert(
-                                    Sha256Hash::from_string(elements[1]),
-                                    DockerImage::from(tag.as_str()),
+                                    ContainerId::from(elements[1]),
+                                    ContainerImage::from(tag.as_str()),
                                 );
                             }
                         } else {
                             debug!("No repo tags on image: {}", elements[0]);
                             debug!("This should get a debug later as well in node_type");
                             map.insert(
-                                Sha256Hash::from_string(elements[1]),
-                                DockerImage::from(elements[0]),
+                                ContainerId::from(elements[1]),
+                                ContainerImage::from(elements[0]),
                             );
                         }
                     } else {
@@ -289,11 +220,14 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
         map
     }
 
-    fn use_repo_tags(image: &ImageSummary, map: &mut HashMap<Sha256Hash, DockerImage>) {
+    fn use_repo_tags(image: &ImageSummary, map: &mut HashMap<ContainerId, ContainerImage>) {
         debug!("REPO DIGESTS BROKEN: {:#?}", image);
         debug!("Using repo_tags instead");
         for tag in &image.repo_tags {
-            map.insert(Sha256Hash::from_string(&image.id.clone()), DockerImage::from(tag.as_str()));
+            map.insert(
+                ContainerId::from(image.id.clone().as_str()),
+                ContainerImage::from(tag.as_str()),
+            );
         }
     }
 }
@@ -336,7 +270,7 @@ impl DockerApi for DockerClient {
         Box::pin(self.0.events::<&str>(None))
     }
 
-    async fn list_images(&self) -> HashMap<Sha256Hash, DockerImage> {
+    async fn list_images(&self) -> HashMap<ContainerId, ContainerImage> {
         let images = self
             .0
             .list_images(Some(ListImagesOptions::<String> {
@@ -363,64 +297,4 @@ pub enum DockerStreamError {
 }
 
 #[cfg(test)]
-mod dockerapi_tests {
-    use super::*;
-    use std::str::FromStr;
-
-    const TEST_HASH: &str =
-        "sha256:5001444e81ee23f9f66beb096b607d2151e1a12acd2733f67cfbb36247e7443b";
-    const TEST_BYTES: [u8; 32] = [
-        0x50, 0x01, 0x44, 0x4e, 0x81, 0xee, 0x23, 0xf9, 0xf6, 0x6b, 0xeb, 0x09, 0x6b, 0x60, 0x7d,
-        0x21, 0x51, 0xe1, 0xa1, 0x2a, 0xcd, 0x27, 0x33, 0xf6, 0x7c, 0xfb, 0xb3, 0x62, 0x47, 0xe7,
-        0x44, 0x3b,
-    ];
-
-    #[test]
-    fn test_parse_and_display() {
-        let hash = Sha256Hash::from_string(TEST_HASH);
-        assert_eq!(hash.0, TEST_BYTES);
-        assert_eq!(hash.to_string(), TEST_HASH);
-    }
-
-    #[test]
-    fn test_from_bytes() {
-        let hash = Sha256Hash::from(TEST_BYTES);
-        assert_eq!(hash.to_string(), TEST_HASH);
-    }
-
-    #[test]
-    fn test_multiple_hashes() {
-        let test_cases = [
-            "sha256:a33a85525a8a4f95fb3f2bd13c897709e930b376b6770c2ee941d117aff76e7a",
-            "sha256:5001444e81ee23f9f66beb096b607d2151e1a12acd2733f67cfbb36247e7443b",
-            "sha256:0ddb7a14d16cdc41a73ef2fc4965345661eb4336cf63024a94d7aecc6b36f3c7",
-            "sha256:6132897045c12760f19742062670d06810425473ea711786c89d2b4c3a3a31c8",
-        ];
-
-        for hash_str in test_cases {
-            let hash = Sha256Hash::from_string(hash_str);
-            assert_eq!(hash.to_string(), hash_str);
-        }
-    }
-
-    #[test]
-    fn test_equality() {
-        let hash1 = Sha256Hash::from_string(TEST_HASH);
-        let hash2 = Sha256Hash::from(TEST_BYTES);
-        assert_eq!(hash1, hash2);
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_invalid_string_length() {
-        let invalid_hash = "sha256:123"; // Too short
-        Sha256Hash::from_string(invalid_hash);
-    }
-
-    #[test]
-    #[should_panic]
-    fn test_invalid_prefix() {
-        let invalid_hash = "md5:5001444e81ee23f9f66beb096b607d2151e1a12acd2733f67cfbb36247e7443b";
-        Sha256Hash::from_string(invalid_hash);
-    }
-}
+mod dockerapi_tests {}
