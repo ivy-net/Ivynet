@@ -1,17 +1,13 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use ivynet_docker::dockerapi::DockerApi;
-use ivynet_grpc::messages::{Metrics, NodeDataV2, SignedMetrics, SignedNodeDataV2};
-use ivynet_signer::{
-    sign_utils::{sign_metrics, sign_node_data_v2, IvySigningError},
-    IvyWallet,
-};
+use ivynet_grpc::messages::{Metrics, NodeDataV2};
+use ivynet_signer::sign_utils::IvySigningError;
 use reqwest::Client;
 use tokio::sync::mpsc;
 use tracing::{debug, error, info, warn};
-use uuid::Uuid;
 
-use crate::system::get_detailed_system_information;
+use crate::ivy_machine::{IvyMachine, MachineIdentityError, SysInfo};
 
 use super::{
     dispatch::{TelemetryDispatchError, TelemetryDispatchHandle},
@@ -49,8 +45,7 @@ pub struct MetricsListenerHandle {
 impl MetricsListenerHandle {
     pub fn new(
         docker: &impl DockerApi,
-        machine_id: Uuid,
-        identity_wallet: &IvyWallet,
+        machine: IvyMachine,
         avses: &[ConfiguredAvs],
         dispatch: &TelemetryDispatchHandle,
         error_tx: ErrorChannelTx,
@@ -58,8 +53,7 @@ impl MetricsListenerHandle {
         let (tx, rx) = mpsc::channel(100);
         let listener = MetricsListener::new(
             docker.clone(),
-            machine_id,
-            identity_wallet.clone(),
+            machine,
             avses.to_vec(),
             dispatch.clone(),
             rx,
@@ -107,6 +101,9 @@ pub enum MetricsListenerError {
 
     #[error("Cache missing for container: {0}")]
     CacheMissing(String),
+
+    #[error(transparent)]
+    MachineIdentityError(#[from] MachineIdentityError),
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -152,8 +149,7 @@ impl AvsStateCache {
 /// to the container_name name, which is unique per docker sysem.
 pub struct MetricsListener<D: DockerApi> {
     docker: D,
-    machine_id: Uuid,
-    identity_wallet: IvyWallet,
+    machine: IvyMachine,
     avses: Vec<ConfiguredAvs>,
     avs_cache: HashMap<ConfiguredAvs, AvsStateCache>,
     dispatch: TelemetryDispatchHandle,
@@ -165,8 +161,7 @@ pub struct MetricsListener<D: DockerApi> {
 impl<D: DockerApi> MetricsListener<D> {
     fn new(
         docker: D,
-        machine_id: Uuid,
-        identity_wallet: IvyWallet,
+        machine: IvyMachine,
         avses: Vec<ConfiguredAvs>,
         dispatch: TelemetryDispatchHandle,
         rx: mpsc::Receiver<MetricsListenerAction>,
@@ -178,8 +173,7 @@ impl<D: DockerApi> MetricsListener<D> {
         }
         Self {
             docker,
-            machine_id,
-            identity_wallet,
+            machine,
             avses,
             avs_cache,
             dispatch,
@@ -211,8 +205,7 @@ impl<D: DockerApi> MetricsListener<D> {
     async fn broadcast_metrics(&mut self) -> Result<(), MetricsListenerError> {
         report_metrics(
             &self.docker,
-            self.machine_id,
-            &self.identity_wallet,
+            &self.machine,
             self.avses.as_slice(),
             &self.dispatch,
             &mut self.avs_cache,
@@ -278,8 +271,7 @@ pub enum MetricsListenerAction {
 
 pub async fn report_metrics(
     docker: &impl DockerApi,
-    machine_id: Uuid,
-    identity_wallet: &IvyWallet,
+    machine: &IvyMachine,
     avses: &[ConfiguredAvs],
     dispatch: &TelemetryDispatchHandle,
     avs_cache: &mut HashMap<ConfiguredAvs, AvsStateCache>,
@@ -331,15 +323,7 @@ pub async fn report_metrics(
                     .await
                     .unwrap_or_default();
 
-            let metrics_signature =
-                sign_metrics(metrics.as_slice(), identity_wallet).map_err(Arc::new)?;
-            let signed_metrics = SignedMetrics {
-                machine_id: machine_id.into(),
-                avs_name: Some(avs.assigned_name.clone()),
-                signature: metrics_signature.to_vec(),
-                metrics: metrics.to_vec(),
-            };
-
+            let signed_metrics = machine.sign_metrics(Some(avs.assigned_name.clone()), &metrics)?;
             dispatch.send_metrics(signed_metrics).await?;
 
             metrics
@@ -372,27 +356,14 @@ pub async fn report_metrics(
         let mut new_cache_entry = cache_entry.clone();
         new_cache_entry.update(Some(version_hash), is_running);
 
-        let node_data_signature =
-            sign_node_data_v2(&node_data, identity_wallet).map_err(Arc::new)?;
-        let signed_node_data = SignedNodeDataV2 {
-            machine_id: machine_id.into(),
-            signature: node_data_signature.to_vec(),
-            node_data: Some(node_data),
-        };
+        let signed_node_data = machine.sign_node_data_v2(&node_data)?;
 
         dispatch.send_node_data(signed_node_data).await?;
         avs_cache.insert(avs.clone(), new_cache_entry);
     }
     // Last but not least - send system metrics
     let system_metrics = fetch_system_telemetry();
-    let metrics_signature =
-        sign_metrics(system_metrics.as_slice(), identity_wallet).map_err(Arc::new)?;
-    let signed_metrics = SignedMetrics {
-        machine_id: machine_id.into(),
-        avs_name: None,
-        signature: metrics_signature.to_vec(),
-        metrics: system_metrics.to_vec(),
-    };
+    let signed_metrics = machine.sign_metrics(None, &system_metrics)?;
     dispatch.send_metrics(signed_metrics).await?;
 
     Ok(())
@@ -464,20 +435,27 @@ pub async fn fetch_telemetry_from(
 }
 
 fn fetch_system_telemetry() -> Vec<Metrics> {
-    // Now we need to add basic metrics
-    let (cores, cpu_usage, ram_usage, free_ram, disk_usage, free_disk, uptime) =
-        get_detailed_system_information();
+    let SysInfo {
+        cpu_cores,
+        cpu_usage,
+        memory_usage,
+        memory_free,
+        disk_usage,
+        disk_free,
+        uptime,
+        ..
+    } = SysInfo::from_system();
 
     vec![
         Metrics { name: "cpu_usage".to_owned(), value: cpu_usage, attributes: Default::default() },
         Metrics {
             name: "ram_usage".to_owned(),
-            value: ram_usage as f64,
+            value: memory_usage as f64,
             attributes: Default::default(),
         },
         Metrics {
             name: "free_ram".to_owned(),
-            value: free_ram as f64,
+            value: memory_free as f64,
             attributes: Default::default(),
         },
         Metrics {
@@ -487,10 +465,14 @@ fn fetch_system_telemetry() -> Vec<Metrics> {
         },
         Metrics {
             name: "free_disk".to_owned(),
-            value: free_disk as f64,
+            value: disk_free as f64,
             attributes: Default::default(),
         },
-        Metrics { name: "cores".to_owned(), value: cores as f64, attributes: Default::default() },
+        Metrics {
+            name: "cores".to_owned(),
+            value: cpu_cores as f64,
+            attributes: Default::default(),
+        },
         Metrics { name: "uptime".to_owned(), value: uptime as f64, attributes: Default::default() },
     ]
 }

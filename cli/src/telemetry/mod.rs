@@ -5,15 +5,13 @@ use dispatch::{TelemetryDispatchError, TelemetryDispatchHandle};
 use docker_event_stream_listener::DockerStreamListener;
 use ivynet_docker::dockerapi::{DockerApi, DockerClient};
 use ivynet_grpc::{backend::backend_client::BackendClient, tonic::transport::Channel};
-use ivynet_signer::IvyWallet;
 use logs_listener::LogsListenerManager;
 use metrics_listener::MetricsListenerHandle;
 use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
 use tracing::{error, info, warn};
-use uuid::Uuid;
 
-use crate::error::Error;
+use crate::{error::Error, ivy_machine::IvyMachine};
 
 pub mod dispatch;
 pub mod docker_event_stream_listener;
@@ -132,8 +130,7 @@ impl<'de> Deserialize<'de> for ConfiguredAvs {
  */
 pub async fn listen(
     backend_client: BackendClient<Channel>,
-    machine_id: Uuid,
-    identity_wallet: IvyWallet,
+    machine: IvyMachine,
     avses: &[ConfiguredAvs],
 ) -> Result<(), Error> {
     let docker = DockerClient::default();
@@ -146,7 +143,7 @@ pub async fn listen(
 
     // Logs Listener handles logs from containers and sends them to the dispatcher
     let mut logs_listener_handle =
-        LogsListenerManager::new(&docker, &identity_wallet, machine_id, &dispatch);
+        LogsListenerManager::new(&docker, machine.clone().into(), &dispatch);
 
     for node in avses {
         info!("Searching for node: {}", node.container_name);
@@ -160,14 +157,8 @@ pub async fn listen(
     }
 
     // Metrics Listener handles metrics from containers and sends them to the dispatcher
-    let metrics_listener_handle = MetricsListenerHandle::new(
-        &docker,
-        machine_id,
-        &identity_wallet,
-        avses,
-        &dispatch,
-        error_tx,
-    );
+    let metrics_listener_handle =
+        MetricsListenerHandle::new(&docker, machine.clone(), avses, &dispatch, error_tx);
 
     // Stream listener listens for docker events and sends them to the other listeners for
     // processing
@@ -175,8 +166,7 @@ pub async fn listen(
         metrics_listener_handle,
         logs_listener_handle,
         dispatch.clone(),
-        identity_wallet,
-        machine_id,
+        machine,
         backend_client,
     );
     tokio::spawn(docker_listener.run(avses.to_vec()));

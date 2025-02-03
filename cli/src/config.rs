@@ -14,7 +14,7 @@ pub static DEFAULT_CONFIG_PATH: Lazy<PathBuf> = Lazy::new(|| {
     path.join(".ivynet")
 });
 
-use crate::{error::Error, metadata::Metadata, system::get_system_information};
+use crate::{error::Error, ivy_machine::SysInfo, metadata::Metadata};
 
 #[derive(Parser, Debug, Clone)]
 pub enum ConfigCommands {
@@ -134,13 +134,13 @@ fn parse_config_getter_commands(
             println!("{metadata:#?}");
         }
         ConfigGetCommands::SysInfo {} => {
-            let (cpus, mem_info, disk_info) = get_system_information();
+            let SysInfo { cpu_cores, memory_total, disk_free, .. } = SysInfo::from_system();
             println!(" --- System Information: --- ");
-            println!("CPU Cores: {cpus}");
+            println!("CPU Cores: {cpu_cores}");
             println!("Memory Information:");
-            println!("  Total: {mem_info}");
+            println!("  Total: {memory_total}");
             println!("Disk Information:");
-            println!("  Free: {disk_info}");
+            println!("  Free: {disk_free}");
             println!(" --------------------------- ");
         }
         ConfigGetCommands::Config {} => {
