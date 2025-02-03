@@ -3,6 +3,7 @@ use std::{sync::Arc, time::Duration};
 use bollard::container::LogOutput;
 use ivynet_docker::{container::Container, dockerapi::DockerClient};
 use ivynet_signer::sign_utils::IvySigningError;
+use kameo::{actor::ActorRef, Actor};
 use tokio::{task::JoinSet, time};
 use tokio_stream::StreamExt;
 use tracing::{error, info};
@@ -11,6 +12,8 @@ use crate::{
     ivy_machine::{IvyMachine, MachineIdentityError},
     telemetry::{dispatch::TelemetryDispatchHandle, ConfiguredAvs},
 };
+
+use super::dispatch::TelemetryMsg;
 
 type LogListenerResult = Result<ListenerData, LogListenerError>;
 
@@ -67,16 +70,24 @@ impl LogsListenerManager {
     }
 }
 
-// TODO: Not a huge fan of cloning machine_id and identity wallet to this struct via ListenerData
-// for singing, as there will be potentially lots of instances of this and it feels like a waste.
-// Cleaner pattern may be to have a signing service or actor that can be shared across listeners.
-
 /// An individual instance of a LogListener, which listens to the logs of a single container and
-/// sends them to the dispatcher.
+/// sends them to the dispatcher. Has no associated handle, as each is a one-off actor.
+#[derive(Debug)]
 struct LogsListener {
     docker: DockerClient,
     dispatcher: TelemetryDispatchHandle,
     listener_data: ListenerData,
+}
+
+impl Actor for LogsListener {
+    type Mailbox = kameo::mailbox::unbounded::UnboundedMailbox<Self>;
+
+    async fn on_start(&mut self, _actor_ref: ActorRef<Self>) -> Result<(), kameo::error::BoxError> {
+        match self.try_listen().await {
+            Ok(_) => Ok(()),
+            Err(e) => Err(e.into()),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -122,7 +133,7 @@ impl LogsListener {
             .listener_data
             .machine
             .sign_log(&self.listener_data.node_data.assigned_name, &log)?;
-        match self.dispatcher.send_log(signed).await {
+        match self.dispatcher.tell(TelemetryMsg::Log(signed)).await {
             Ok(_) => {}
             Err(e) => {
                 error!("Failed to send or save log: {} | With log: {}", e, &log);

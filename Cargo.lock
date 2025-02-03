@@ -766,6 +766,7 @@ dependencies = [
  "serde",
  "serde_json",
  "serial_test",
+ "sqlx",
  "sysinfo",
  "thiserror 2.0.11",
  "tokio",

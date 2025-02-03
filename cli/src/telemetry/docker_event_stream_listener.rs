@@ -23,7 +23,7 @@ use super::{
 #[derive(Debug)]
 pub struct DockerStreamListener<D: DockerApi> {
     pub docker: D,
-    pub metrics_listener_handle: MetricsListenerHandle,
+    pub metrics_listener_handle: MetricsListenerHandle<D>,
     pub logs_listener_handle: LogsListenerManager,
     pub dispatch: TelemetryDispatchHandle,
     pub machine: IvyMachine,
@@ -32,7 +32,7 @@ pub struct DockerStreamListener<D: DockerApi> {
 
 impl DockerStreamListener<DockerClient> {
     pub fn new(
-        metrics_listener: MetricsListenerHandle,
+        metrics_listener: MetricsListenerHandle<DockerClient>,
         logs_listener: LogsListenerManager,
         dispatch: TelemetryDispatchHandle,
         machine: IvyMachine,
@@ -161,7 +161,7 @@ impl DockerStreamListener<DockerClient> {
         if let Some(configured) = configured {
             debug!("Found container: {}", inc_container_name);
 
-            if let Err(e) = self.metrics_listener_handle.add_node(&configured).await {
+            if let Err(e) = self.metrics_listener_handle.tell_add_node(configured.clone()).await {
                 error!("Error adding node: {:?}", e);
             }
             if let Err(e) =
@@ -181,7 +181,9 @@ impl DockerStreamListener<DockerClient> {
 
         debug!("Container stopped: {}", container_name);
 
-        if let Err(e) = self.metrics_listener_handle.remove_node_by_name(container_name).await {
+        if let Err(e) =
+            self.metrics_listener_handle.tell_remove_node_by_name(container_name.to_string()).await
+        {
             error!("Error removing node: {:?}", e);
         };
 

@@ -140,7 +140,7 @@ pub async fn listen(
 
     // Telemtry dispatcher recieves telemetry messages from other listeners and sends them to the
     // backend
-    let dispatch = TelemetryDispatchHandle::new(backend_client.clone(), &error_tx).await;
+    let dispatch = TelemetryDispatchHandle::new(backend_client.clone(), error_tx.clone());
 
     // Logs Listener handles logs from containers and sends them to the dispatcher
     let mut logs_listener_handle =
