@@ -22,6 +22,7 @@ use tracing::{debug, error, info};
 use crate::{
     config::{IvyConfig, DEFAULT_CONFIG_PATH},
     init::set_backend_connection,
+    ivy_machine::IvyMachine,
     node_source::NodeSource,
     telemetry::{listen, metrics_listener::fetch_telemetry_from, ConfiguredAvs},
 };
@@ -194,8 +195,8 @@ pub async fn start_monitor(config: IvyConfig) -> Result<(), anyhow::Error> {
         }
     }
 
-    let identity_wallet = config.identity_wallet()?;
-    let machine_id = config.machine_id;
+    let machine = IvyMachine::from_config(&config)?;
+
     let backend_url = config.get_server_url()?;
     let backend_ca = config.get_server_ca();
     let backend_ca = if backend_ca.is_empty() { None } else { Some(backend_ca) };
@@ -205,7 +206,7 @@ pub async fn start_monitor(config: IvyConfig) -> Result<(), anyhow::Error> {
     );
 
     info!("Starting monitor listener...");
-    listen(backend_client, machine_id, identity_wallet, &monitor_config.configured_avses).await?;
+    listen(backend_client, machine, &monitor_config.configured_avses).await?;
     Ok(())
 }
 

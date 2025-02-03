@@ -1,18 +1,16 @@
-use std::time::Duration;
+use std::{sync::Arc, time::Duration};
 
 use bollard::container::LogOutput;
 use ivynet_docker::{container::Container, dockerapi::DockerClient};
-use ivynet_grpc::messages::SignedLog;
-use ivynet_signer::{
-    sign_utils::{sign_string, IvySigningError},
-    IvyWallet,
-};
+use ivynet_signer::sign_utils::IvySigningError;
 use tokio::{task::JoinSet, time};
 use tokio_stream::StreamExt;
 use tracing::{error, info};
-use uuid::Uuid;
 
-use crate::telemetry::{dispatch::TelemetryDispatchHandle, ConfiguredAvs};
+use crate::{
+    ivy_machine::{IvyMachine, MachineIdentityError},
+    telemetry::{dispatch::TelemetryDispatchHandle, ConfiguredAvs},
+};
 
 type LogListenerResult = Result<ListenerData, LogListenerError>;
 
@@ -21,8 +19,7 @@ type LogListenerResult = Result<ListenerData, LogListenerError>;
 #[derive(Debug)]
 pub struct LogsListenerManager {
     docker: DockerClient,
-    signer: IvyWallet,
-    machine_id: Uuid,
+    machine: Arc<IvyMachine>,
     dispatcher: TelemetryDispatchHandle,
     listener_set: JoinSet<LogListenerResult>,
 }
@@ -30,14 +27,12 @@ pub struct LogsListenerManager {
 impl LogsListenerManager {
     pub fn new(
         docker: &DockerClient,
-        signer: &IvyWallet,
-        machine_id: Uuid,
+        machine: Arc<IvyMachine>,
         dispatcher: &TelemetryDispatchHandle,
     ) -> Self {
         Self {
             docker: docker.clone(),
-            signer: signer.clone(),
-            machine_id,
+            machine: machine.clone(),
             dispatcher: dispatcher.clone(),
             listener_set: JoinSet::new(),
         }
@@ -54,8 +49,7 @@ impl LogsListenerManager {
         let listener_data = ListenerData {
             container: container.clone(),
             node_data: node_data.clone(),
-            machine_id: self.machine_id,
-            identity_wallet: self.signer.clone(),
+            machine: self.machine.clone(),
         };
         self.add_listener_from_data(&listener_data).await
     }
@@ -89,8 +83,7 @@ struct LogsListener {
 pub struct ListenerData {
     pub container: Container,
     pub node_data: ConfiguredAvs,
-    pub machine_id: Uuid,
-    pub identity_wallet: IvyWallet,
+    pub machine: Arc<IvyMachine>,
 }
 
 impl LogsListener {
@@ -125,13 +118,10 @@ impl LogsListener {
     async fn handle_log(&self, log: LogOutput) -> Result<(), LogListenerError> {
         // println!("log: {:#?}", log);
         let log = log.to_string();
-        let signature = sign_string(&log, &self.listener_data.identity_wallet)?.to_vec();
-        let signed = SignedLog {
-            signature,
-            machine_id: self.listener_data.machine_id.into(),
-            avs_name: self.listener_data.node_data.assigned_name.clone(),
-            log: log.clone(),
-        };
+        let signed = self
+            .listener_data
+            .machine
+            .sign_log(&self.listener_data.node_data.assigned_name, &log)?;
         match self.dispatcher.send_log(signed).await {
             Ok(_) => {}
             Err(e) => {
@@ -152,6 +142,8 @@ pub enum LogListenerError {
     SignatureError(#[from] IvySigningError),
     #[error("Unexpected error: {0}")]
     JoinError(#[from] tokio::task::JoinError),
+    #[error(transparent)]
+    MachineIdentityErorr(#[from] MachineIdentityError),
 }
 
 /// Listener future for processing the stream. Yields the data for the container that the listener
