@@ -8,7 +8,8 @@ import "messages.proto";
 service Backend {
     rpc Register(messages.RegistrationCredentials) returns (google.protobuf.Empty);
     rpc Metrics(messages.SignedMetrics) returns (google.protobuf.Empty);
-    rpc NodeData(messages.SignedNodeData) returns (google.protobuf.Empty);
+    rpc NodeData(messages.SignedNodeData) returns (google.protobuf.Empty); //Release 0.4 - Delete on 0.6 preferably
+    rpc NodeDataV2(messages.SignedNodeDataV2) returns (google.protobuf.Empty); //Release 0.5+
     rpc Logs(messages.SignedLog) returns (google.protobuf.Empty);
     rpc NodeTypeQueries(messages.NodeTypeQueries) returns (messages.NodeTypes);
     rpc NameChange(messages.SignedNameChange) returns (google.protobuf.Empty);

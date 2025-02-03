@@ -149,7 +149,7 @@ async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
                     if !tag.is_empty() && !digest.is_empty() {
                         match db::AvsVersionHash::add_version(pool, &entry, &digest, &tag).await {
                             Ok(_) => debug!("Added {}:{}:{}", name, tag, digest),
-                            Err(e) => warn!("Failed to add {}:{}:{} | {}", name, tag, digest, e),
+                            Err(e) => debug!("Failed to add {}:{}:{} | {}", name, tag, digest, e),
                         };
                     } else {
                         error!("Dropping adding an empty entry (tag '{tag}' digest '{digest}')");
