@@ -123,9 +123,25 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
             .collect()
     }
 
-    async fn find_container_by_id(&self, id: &str) -> Option<Container> {
+    async fn find_container_by_digest(&self, digest: &str) -> Option<Container> {
         let containers = self.list_containers().await;
-        containers.into_iter().find(|container| container.id() == Some(id))
+        containers.into_iter().find(|container| container.image_id() == Some(digest))
+    }
+
+    async fn find_container_by_image(&self, image: &str, strict: bool) -> Option<Container> {
+        let containers = self.list_containers().await;
+        containers.into_iter().find(|container| {
+            if let Some(image_id) = container.image_id() {
+                if strict {
+                    ContainerImage::from(image_id) == ContainerImage::from(image)
+                } else {
+                    ContainerImage::from(image_id).repository ==
+                        ContainerImage::from(image).repository
+                }
+            } else {
+                false
+            }
+        })
     }
 
     async fn stream_logs_latest(
