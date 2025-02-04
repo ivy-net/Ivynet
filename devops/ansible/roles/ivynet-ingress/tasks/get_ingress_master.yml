@@ -12,7 +12,6 @@
   become: false
   loop:
     - ivynet-ingress
-    - ivynet-ingress
   tags:
     - ivynet_ingress
     - ivynet
