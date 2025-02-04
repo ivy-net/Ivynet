@@ -1,0 +1,19 @@
+[package]
+name = "ivynet-notifications"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+categories.workspace = true
+license.workspace = true
+
+[dependencies]
+async-trait.workspace = true
+ethers.workspace = true
+sendgrid = "0.23.0"
+teloxide = { version = "0.12", features = ["macros"] }
+thiserror.workspace = true
+tracing.workspace = true
+uuid.workspace = true
+
+[lints]
+workspace = true
