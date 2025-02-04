@@ -184,37 +184,34 @@ pub async fn listen(
     // On start, send already-configured node data and setup logs listeners
     for node in avses.iter() {
         info!("Searching for node: {}", node.container_name);
-        let container: Option<Container> = match docker
-            .find_container_by_name(&node.container_name)
-            .await
-        {
-            Some(container) => Some(container),
-            None => {
-                if let Some(manifest) = &node.manifest {
-                    match docker.find_container_by_image_id(&manifest.to_string()).await {
-                        Some(container) => Some(container),
-                        None => {
-                            error!(
-                                "Could not find container by manifest: {:#?}. Continuing.",
-                                node.manifest
-                            );
-                            None
+        let container: Option<Container> =
+            match docker.find_container_by_name(&node.container_name).await {
+                Some(container) => Some(container),
+                None => {
+                    if let Some(manifest) = &node.manifest {
+                        match docker.find_container_by_image_id(&manifest.to_string()).await {
+                            Some(container) => Some(container),
+                            None => {
+                                warn!(
+                                    "Could not find container by manifest: {:#?}. Continuing.",
+                                    node.manifest
+                                );
+                                None
+                            }
                         }
-                    }
-                } else if let Some(image) = node.image.clone() {
-                    match docker.find_container_by_image(&image.repository, false).await {
-                        Some(container) => Some(container),
-                        None => {
-                            error!("Could not find container by image. {:#?} Continuing.", node);
-                            None
+                    } else if let Some(image) = node.image.clone() {
+                        match docker.find_container_by_image(&image.repository, false).await {
+                            Some(container) => Some(container),
+                            None => {
+                                warn!("Could not find container by image. {:#?} Continuing.", node);
+                                None
+                            }
                         }
+                    } else {
+                        None
                     }
-                } else {
-                    error!("Could not find container by any method. {:#?} Continuing.", node);
-                    None
                 }
-            }
-        };
+            };
 
         if let Some(container) = container {
             // --- Send node data for configured nodes ---
