@@ -123,7 +123,7 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
             .collect()
     }
 
-    async fn find_container_by_digest(&self, digest: &str) -> Option<Container> {
+    async fn find_container_by_image_id(&self, digest: &str) -> Option<Container> {
         let containers = self.list_containers().await;
         containers.into_iter().find(|container| container.image_id() == Some(digest))
     }

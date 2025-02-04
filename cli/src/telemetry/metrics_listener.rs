@@ -282,7 +282,7 @@ pub async fn report_metrics(
             Some(container) => container,
             None => {
                 if let Some(manifest) = &avs.manifest {
-                    match docker.find_container_by_digest(&manifest.to_string()).await {
+                    match docker.find_container_by_image_id(&manifest.to_string()).await {
                         Some(container) => container,
                         None => {
                             error!(
