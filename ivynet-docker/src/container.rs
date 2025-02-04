@@ -1,4 +1,4 @@
-use std::{str::FromStr, time::Duration};
+use std::{fmt::Display, str::FromStr, time::Duration};
 
 use crate::{
     dockerapi::DockerApi,
@@ -17,25 +17,61 @@ use bollard::{
     secret::{ContainerSummary, HostConfig},
 };
 use futures::TryStreamExt;
+use serde::{Deserialize, Serialize};
 use tokio_stream::Stream;
 use tracing::info;
 
 /// Type representing a docker image verison `repository:tag.` Primarily for tracking image version
 /// between container and image.
-pub struct DockerImageVersion {
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct ContainerImage {
     pub repository: String,
-    pub tag: String,
+    pub tag: Option<String>,
 }
 
-impl FromStr for DockerImageVersion {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        let parts: Vec<&str> = s.rsplitn(2, ':').collect();
-        if parts.len() != 2 {
-            return Err("Invalid image version string".to_string());
+impl From<&str> for ContainerImage {
+    fn from(value: &str) -> Self {
+        let parts: Vec<&str> = value.split(':').collect();
+        if parts.len() == 2 {
+            Self { repository: parts[0].to_string(), tag: Some(parts[1].to_string()) }
+        } else {
+            Self { repository: value.to_string(), tag: None }
         }
-        Ok(Self { repository: parts[0].to_string(), tag: parts[1].to_string() })
+    }
+}
+
+impl Display for ContainerImage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        if let Some(tag) = &self.tag {
+            write!(f, "{}:{}", self.repository, tag)
+        } else {
+            write!(f, "{}", self.repository)
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct ContainerId(pub String);
+
+impl From<&str> for ContainerId {
+    fn from(value: &str) -> Self {
+        let parts: Vec<&str> = value.split(':').collect();
+        if parts.len() != 2 || parts[0] != "sha256" {
+            panic!("Invalid SHA256 hash format");
+        }
+
+        let hash = parts[1];
+        if hash.len() != 64 {
+            panic!("Invalid hash length: {hash}");
+        }
+
+        Self(hash.to_owned())
+    }
+}
+
+impl Display for ContainerId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "sha256:{}", self.0)
     }
 }
 

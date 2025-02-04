@@ -12,7 +12,9 @@ use futures::future::join_all;
 use tokio_stream::Stream;
 use tracing::debug;
 
-use super::container::Container;
+use crate::container::ContainerId;
+
+use super::container::{Container, ContainerImage};
 
 #[derive(Debug, Clone)]
 pub struct DockerClient(pub Docker);
@@ -36,7 +38,7 @@ impl Default for DockerClient {
 #[async_trait]
 pub trait DockerApi: Clone + Sync + Send + 'static {
     async fn list_containers(&self) -> Vec<Container>;
-    async fn list_images(&self) -> HashMap<String, String>;
+    async fn list_images(&self) -> HashMap<ContainerId, ContainerImage>;
     fn inner(&self) -> Docker;
 
     async fn stream_logs(
@@ -178,7 +180,7 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
         Box::pin(futures::stream::select_all(streams))
     }
 
-    fn process_images(images: Vec<ImageSummary>) -> HashMap<String, String> {
+    fn process_images(images: Vec<ImageSummary>) -> HashMap<ContainerId, ContainerImage> {
         let mut map = HashMap::new();
         for image in images {
             if image.repo_digests.is_empty() {
@@ -186,19 +188,28 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
                 DockerClient::use_repo_tags(&image, &mut map);
             } else if image.repo_tags.is_empty() && image.repo_digests.is_empty() {
                 debug!("No repo tags or digests on image: {:#?}", image);
-                map.insert("local".to_string(), image.id.clone());
+                map.insert(
+                    ContainerId::from(image.id.clone().as_str()),
+                    ContainerImage::from("local"),
+                );
             } else {
                 for digest in &image.repo_digests {
                     let elements = digest.split("@").collect::<Vec<_>>();
                     if elements.len() == 2 {
                         if !image.repo_tags.is_empty() {
                             for tag in &image.repo_tags {
-                                map.insert(tag.clone(), elements[1].to_string());
+                                map.insert(
+                                    ContainerId::from(elements[1]),
+                                    ContainerImage::from(tag.as_str()),
+                                );
                             }
                         } else {
                             debug!("No repo tags on image: {}", elements[0]);
                             debug!("This should get a debug later as well in node_type");
-                            map.insert(elements[0].to_string(), elements[1].to_string());
+                            map.insert(
+                                ContainerId::from(elements[1]),
+                                ContainerImage::from(elements[0]),
+                            );
                         }
                     } else {
                         DockerClient::use_repo_tags(&image, &mut map);
@@ -209,11 +220,14 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
         map
     }
 
-    fn use_repo_tags(image: &ImageSummary, map: &mut HashMap<String, String>) {
+    fn use_repo_tags(image: &ImageSummary, map: &mut HashMap<ContainerId, ContainerImage>) {
         debug!("REPO DIGESTS BROKEN: {:#?}", image);
         debug!("Using repo_tags instead");
         for tag in &image.repo_tags {
-            map.insert(tag.clone(), image.id.clone());
+            map.insert(
+                ContainerId::from(image.id.clone().as_str()),
+                ContainerImage::from(tag.as_str()),
+            );
         }
     }
 }
@@ -256,7 +270,7 @@ impl DockerApi for DockerClient {
         Box::pin(self.0.events::<&str>(None))
     }
 
-    async fn list_images(&self) -> HashMap<String, String> {
+    async fn list_images(&self) -> HashMap<ContainerId, ContainerImage> {
         let images = self
             .0
             .list_images(Some(ListImagesOptions::<String> {
@@ -281,3 +295,6 @@ pub enum DockerStreamError {
     #[error("Dockerstream image name mismatch: {0} != {1}")]
     ImageNameMismatch(String, String),
 }
+
+#[cfg(test)]
+mod dockerapi_tests {}

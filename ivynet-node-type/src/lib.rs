@@ -189,6 +189,7 @@ impl From<&str> for NodeType {
             "primevmevcommit" => Self::PrimevMevCommit(ActiveSet::Unknown),
             "bolt" => Self::Bolt(ActiveSet::Unknown),
             "hyperlane" => Self::Hyperlane(ActiveSet::Unknown),
+            "dittonetwork" => Self::DittoNetwork(ActiveSet::Unknown),
             _ => Self::Unknown,
         }
     }
