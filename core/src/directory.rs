@@ -34,7 +34,7 @@ const ALL_DIRECTORIES: [(Chain, H160, RestakingProtocolType); 4] = [
 /*------------------------------------------------
 ----------------MAINNET AVS ----------------------
 --------------------------------------------------*/
-const ALL_MAINNET_AVSES: [(NodeType, H160); 43] = [
+const ALL_MAINNET_AVSES: [(NodeType, H160); 44] = [
     (NodeType::EigenDA, h160!(0x870679E138bCdf293b7Ff14dD44b70FC97e12fc0)),
     (NodeType::LagrangeZkWorker, h160!(0x22CAc0e6A1465F043428e8AeF737b3cb09D0eEDa)),
     (NodeType::LagrangeStateCommittee, h160!(0x35F4f28A8d3Ff20EEd10e087e8F96Ea2641E6AA2)),
@@ -108,6 +108,7 @@ const ALL_MAINNET_AVSES: [(NodeType, H160); 43] = [
     (NodeType::IBTCNetwork, h160!(0xe4661BDbC4f557d2684F8a7C4aF50572e51D4166)),
     (NodeType::ZKLink, h160!(0x213F448e7a1C8DAEDe41cf94883Cc6149244d00F)),
     (NodeType::HyveDA, h160!(0xe3a148b25cca54eccbd3a4ab01e235d154f03efa)),
+    (NodeType::Redstone, h160!(0x6f943318b05ad7c6ee596a220510a6d64b518dd8)),
 ];
 
 /*------------------------------------------------
