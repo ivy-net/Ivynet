@@ -27,6 +27,9 @@
     mode: "0755"
   loop:
     - scraper
+  notify:
+    - Restart scraper holesky service
+    - Restart scraper mainnet service
   tags:
     - ivynet_scraper
     - ivynet

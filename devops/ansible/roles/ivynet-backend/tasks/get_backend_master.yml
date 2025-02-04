@@ -12,7 +12,6 @@
   become: false
   loop:
     - ivynet-backend
-    - ivynet-ingress
   tags:
     - ivynet_backend
     - ivynet
@@ -28,6 +27,7 @@
     mode: "0755"
   loop:
     - ivynet-backend
+  notify: Restart backend service
   tags:
     - ivynet_backend
     - ivynet

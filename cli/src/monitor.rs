@@ -1,7 +1,10 @@
 use anyhow::anyhow;
 use dialoguer::{Input, MultiSelect, Select};
 use fs2::FileExt;
-use ivynet_docker::dockerapi::DockerClient;
+use ivynet_docker::{
+    container::{ContainerId, ContainerImage},
+    dockerapi::DockerClient,
+};
 use ivynet_grpc::{
     self,
     backend::backend_client::BackendClient,
@@ -32,8 +35,8 @@ const MONITOR_CONFIG_FILE: &str = "monitor-config.toml";
 #[derive(Clone, Debug)]
 pub struct PotentialAvs {
     pub container_name: String,
-    pub image_name: String,
-    pub image_hash: String,
+    pub docker_image: ContainerImage,
+    pub manifest: ContainerId,
     pub ports: Vec<u16>,
 }
 
@@ -270,8 +273,8 @@ async fn find_new_avses(
     let node_type_queries = potential_avses
         .iter()
         .map(|avs| NodeTypeQuery {
-            image_name: avs.image_name.clone(),
-            image_digest: avs.image_hash.clone(),
+            image_name: avs.docker_image.clone().to_string(),
+            image_digest: avs.manifest.clone().to_string(),
             container_name: avs.container_name.clone(),
         })
         .collect::<Vec<_>>();
@@ -291,10 +294,12 @@ async fn find_new_avses(
         let metric_port =
             get_metrics_port(&reqwest::Client::new(), &avs.container_name, &avs.ports).await?;
         let new_avs = ConfiguredAvs {
-            assigned_name: avs.image_name.clone(),
+            assigned_name: format!("{}_{}", avs.container_name.clone(), avs.docker_image.clone()),
             container_name: avs.container_name.clone(),
             avs_type: node_type,
             metric_port,
+            image: Some(avs.docker_image.clone()),
+            manifest: Some(avs.manifest.clone()),
         };
 
         // update the existing configured AVS if it exists, otherwise push to new vec
@@ -387,15 +392,7 @@ fn select_manual_avses(
         .interact()
         .map_err(|e| anyhow!("Selection failed: {}", e))?;
 
-    Ok(selected
-        .into_iter()
-        .map(|idx| ConfiguredAvs {
-            assigned_name: String::new(),
-            container_name: potential_avses[idx].container_name.to_string(),
-            avs_type: "unknown".to_string(),
-            metric_port: None,
-        })
-        .collect())
+    Ok(selected.into_iter().map(|idx| potential_avses[idx].clone()).collect())
 }
 
 fn update_monitor_config(
