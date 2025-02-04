@@ -43,3 +43,19 @@
     - ivynet_scraper
     - ivynet
     - github
+
+- name: Save ivynet release info
+  ansible.builtin.copy:
+    # yamllint disable-line rule:line-length
+    dest: "{{ ivynet_scraper_path_install }}/scraper-{{ ivynet_scraper_release }}"
+    content: |
+      scraper-{{ ivynet_scraper_release }}
+    owner: root
+    group: root
+    mode: "0444"
+  notify: Restart scraper service
+  tags:
+    - ivynet_scraper
+    - ivynet
+    - github
+    - systemd
