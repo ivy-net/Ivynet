@@ -1,11 +1,10 @@
-use std::{collections::HashMap, sync::Arc, time::Duration};
+use std::{sync::Arc, time::Duration};
 
-use ivynet_docker::dockerapi::DockerApi;
-use ivynet_grpc::messages::{Metrics, NodeDataV2};
+use ivynet_grpc::messages::Metrics;
 use ivynet_signer::sign_utils::IvySigningError;
 use kameo::{message::Message, Actor};
 use reqwest::Client;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info};
 
 use crate::{
     ivy_machine::{IvyMachine, MachineIdentityError, SysInfo},
@@ -18,32 +17,23 @@ use super::{
     ConfiguredAvs, ErrorChannelTx,
 };
 
-const TELEMETRY_INTERVAL_IN_MINUTES: u64 = 1;
-
 /// Handle to the Metrics Listener actor. This handle can be cloned and shared across threads. It
 /// exposes methods for adding and removing nodes from the list of monitored AVSes, as well as for
 /// broadcasting metrics updates. Exposed function nomenclature is `tell_*` for fire-and-forget and
 /// `ask_*` for request-response. TODO: request-response pattern is not currently meaninfully used.
 #[derive(Clone, Debug)]
-pub struct MetricsListenerHandle<D: DockerApi> {
-    actor: kameo::actor::ActorRef<MetricsListener<D>>,
+pub struct MetricsListenerHandle {
+    actor: kameo::actor::ActorRef<MetricsListener>,
 }
 
-impl<D: DockerApi> MetricsListenerHandle<D> {
+impl MetricsListenerHandle {
     pub fn new(
-        docker: &D,
         machine: IvyMachine,
         avses: &[ConfiguredAvs],
         dispatch: &TelemetryDispatchHandle,
         error_tx: ErrorChannelTx,
     ) -> Self {
-        let listener = MetricsListener::new(
-            docker.clone(),
-            machine,
-            avses.to_vec(),
-            dispatch.clone(),
-            error_tx,
-        );
+        let listener = MetricsListener::new(machine, avses.to_vec(), dispatch.clone(), error_tx);
         let actor = kameo::actor::spawn(listener);
         Self { actor }
     }
@@ -87,7 +77,7 @@ impl<D: DockerApi> MetricsListenerHandle<D> {
     }
 }
 
-impl<D: DockerApi> Message<MetricsMsg> for MetricsListener<D> {
+impl Message<MetricsMsg> for MetricsListener {
     type Reply = ();
 
     async fn handle(
@@ -198,8 +188,7 @@ pub enum MetricsFetchError {
 /// to the container_name name, which is unique per docker sysem.
 
 #[derive(Actor, Debug)]
-pub struct MetricsListener<D: DockerApi> {
-    docker: D,
+pub struct MetricsListener {
     machine: IvyMachine,
     avses: Vec<ConfiguredAvs>,
     dispatch: TelemetryDispatchHandle,
@@ -207,76 +196,29 @@ pub struct MetricsListener<D: DockerApi> {
     http_client: reqwest::Client,
 }
 
-impl<D: DockerApi> MetricsListener<D> {
+impl MetricsListener {
     fn new(
-        docker: D,
         machine: IvyMachine,
         avses: Vec<ConfiguredAvs>,
         dispatch: TelemetryDispatchHandle,
         _error_tx: ErrorChannelTx,
     ) -> Self {
-        Self { docker, machine, avses, dispatch, _error_tx, http_client: reqwest::Client::new() }
+        Self { machine, avses, dispatch, _error_tx, http_client: reqwest::Client::new() }
     }
 
     async fn broadcast_metrics(&mut self) -> Result<(), MetricsListenerError> {
-        report_metrics(
-            &self.docker,
-            &self.machine,
-            self.avses.as_slice(),
-            &self.dispatch,
-            &self.http_client,
-        )
-        .await
+        report_metrics(&self.machine, self.avses.as_slice(), &self.dispatch, &self.http_client)
+            .await
     }
 }
 
 pub async fn report_metrics(
-    docker: &impl DockerApi,
     machine: &IvyMachine,
     avses: &[ConfiguredAvs],
     dispatch: &TelemetryDispatchHandle,
     http_client: &reqwest::Client,
 ) -> Result<(), MetricsListenerError> {
-    let images = docker.list_images().await;
-    debug!("System Docker images: {:#?}", images);
-
     for avs in avses {
-        let version_hash = match docker.find_container_by_name(&avs.container_name).await {
-            None => {
-                warn!(
-                    "Container {} is configured but does not appear to be running. Skipping telemetry.",
-                    avs.container_name
-                );
-                continue;
-            }
-            Some(container) => match container.image() {
-                None => {
-                    error!(
-                        "Container {} is running but has no image. This should be unenterable.",
-                        avs.container_name
-                    );
-                    continue;
-                }
-                Some(image_name) => images
-                    .get(image_name)
-                    .or_else(|| {
-                        images
-                            .keys()
-                            .find(|key| key.contains(image_name))
-                            .and_then(|key| images.get(key))
-                    })
-                    .cloned(),
-            },
-        };
-
-        let Some(version_hash) = version_hash else {
-            warn!(
-                "Container {} is running but we could not locate a digest. Continuing.",
-                avs.container_name
-            );
-            continue;
-        };
-
         if let Some(port) = avs.metric_port {
             let metrics: Vec<Metrics> =
                 fetch_telemetry_from(http_client, &avs.container_name, port)
@@ -286,11 +228,6 @@ pub async fn report_metrics(
             let signed_metrics = machine.sign_metrics(Some(avs.assigned_name.clone()), &metrics)?;
             dispatch.tell(TelemetryMsg::Metrics(signed_metrics)).await?;
         }
-
-        info!(
-            "Sending node data with version hash: {:#?} for avs: {}",
-            version_hash, avs.assigned_name
-        );
     }
     // Last but not least - send system metrics
     let system_metrics = fetch_system_telemetry();

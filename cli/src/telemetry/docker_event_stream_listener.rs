@@ -10,7 +10,7 @@ use ivynet_grpc::{
 };
 use tokio::time::sleep;
 use tokio_stream::StreamExt;
-use tracing::{debug, error};
+use tracing::{debug, error, warn};
 
 use crate::ivy_machine::{IvyMachine, MachineIdentityError};
 
@@ -28,7 +28,7 @@ const TELEMETRY_INTERVAL_IN_MINUTES: u64 = 1;
 pub struct DockerStreamListener<D: DockerApi, B: BackendMiddleware> {
     pub docker: D,
     pub node_data_monitor_handle: NodeDataMonitorHandle<B>,
-    pub metrics_listener_handle: MetricsListenerHandle<D>,
+    pub metrics_listener_handle: MetricsListenerHandle,
     pub logs_listener_handle: LogsListenerManager,
     pub dispatch: TelemetryDispatchHandle,
     pub machine: IvyMachine,
@@ -38,7 +38,7 @@ pub struct DockerStreamListener<D: DockerApi, B: BackendMiddleware> {
 impl<B: BackendMiddleware> DockerStreamListener<DockerClient, B> {
     pub fn new(
         node_data_monitor: NodeDataMonitorHandle<B>,
-        metrics_listener: MetricsListenerHandle<DockerClient>,
+        metrics_listener: MetricsListenerHandle,
         logs_listener: LogsListenerManager,
         dispatch: TelemetryDispatchHandle,
         machine: IvyMachine,
@@ -102,6 +102,33 @@ impl<B: BackendMiddleware> DockerStreamListener<DockerClient, B> {
                     if let Err(e) = self.metrics_listener_handle.tell_broadcast().await{
                         error!("Error broadcasting metrics: {:?}", e);
                         };
+                    for node in known_nodes.iter() {
+                        if let Some(container) = self.docker.find_container_by_name(&node.container_name).await {
+                            // --- Send node data for configured nodes ---
+                            let image_id = match container.image_id() {
+                                Some(id) => id,
+                                None => {
+                                    warn!("Cannot find image id for container: {}", node.container_name);
+                                    continue;
+                                }
+                            };
+
+                            let node_data = NodeDataV2 {
+                                name: node.assigned_name.to_string(),
+                                node_type: Some(node.avs_type.clone()),
+                                manifest: Some(image_id.to_string()),
+                                metrics_alive: Some(false),
+                                node_running: Some(true),
+                            };
+                            let signed = self.machine.sign_node_data_v2(&node_data)?;
+
+                            if let Err(e) = self.node_data_monitor_handle.ask_send_node_data(signed).await {
+                                error!("Failed to send node data: {}", e);
+                            }
+                        } else {
+                            warn!("Cannot find container for configured node: {}.", node.container_name);
+                        }
+                    }
                 }
             }
         }

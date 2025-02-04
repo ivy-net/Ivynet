@@ -2,6 +2,7 @@ use std::ops::Deref;
 
 use ivynet_grpc::{messages::SignedNodeDataV2, BackendMiddleware, Response, Status};
 use kameo::{message::Message, Actor};
+use tracing::debug;
 
 use super::ErrorChannelTx;
 
@@ -21,6 +22,7 @@ impl<B: BackendMiddleware> NodeDataMonitorHandle<B> {
         &self,
         node_data: SignedNodeDataV2,
     ) -> Result<Response<()>, NodeDataMonitorError> {
+        debug!("ASK | {:?}", node_data);
         self.0.ask(NodeDataMsg::NodeData(node_data)).await.map_err(NodeDataMonitorError::from)
     }
 }

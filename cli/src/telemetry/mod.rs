@@ -156,7 +156,7 @@ pub async fn listen(
 
     // Metrics Listener handles metrics from containers and sends them to the dispatcher
     let metrics_listener_handle =
-        MetricsListenerHandle::new(&docker, machine.clone(), avses, &dispatch, error_tx);
+        MetricsListenerHandle::new(machine.clone(), avses, &dispatch, error_tx);
 
     // On start, send already-configured node data and setup logs listeners
     for node in avses.iter() {
