@@ -10,7 +10,7 @@ use ivynet_grpc::{
 };
 use tokio::time::sleep;
 use tokio_stream::StreamExt;
-use tracing::{debug, error, warn};
+use tracing::{debug, error, info, warn};
 
 use crate::ivy_machine::{IvyMachine, MachineIdentityError};
 
@@ -98,6 +98,7 @@ impl<B: BackendMiddleware> DockerStreamListener<DockerClient, B> {
 
                 // 2) The telemetry interval ticks.
                 _ = telemetry_interval.tick() => {
+                    info!("Broadcasting telemetry on tick...");
                     // Broadcast telemetry to your metrics listener
                     if let Err(e) = self.metrics_listener_handle.tell_broadcast().await{
                         error!("Error broadcasting metrics: {:?}", e);
