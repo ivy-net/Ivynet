@@ -101,7 +101,7 @@ impl Container {
         self.0.id.as_deref()
     }
 
-    /// Image ID for the associated container
+    /// Image ID for the associated container. This is the image ID, not the digest.
     pub fn image_id(&self) -> Option<&str> {
         self.0.image_id.as_deref()
     }
@@ -292,7 +292,15 @@ mod tests {
         let docker = DockerClient::default();
         let containers = docker.list_containers().await;
         for container in containers {
-            println!("{:#?}", container.names())
+            let names = container.names().unwrap();
+            if names == vec!["eigenda-native-node"] {
+                println!("NAMES: {:?}", container.names().unwrap());
+                println!("IMAGE: {:?}", container.image().unwrap());
+                println!("ID: {:?}", container.id().unwrap());
+                println!("IMAGE_ID: {:?}", container.image_id().unwrap());
+                let inspect = docker.0.inspect_image(container.image().unwrap()).await.unwrap();
+                println!("INSPECT: {:#?}", inspect);
+            }
         }
     }
 }
