@@ -85,6 +85,7 @@ impl Message<MetricsMsg> for MetricsListener {
         msg: MetricsMsg,
         _: kameo::message::Context<'_, Self, Self::Reply>,
     ) -> Self::Reply {
+        debug!("Received metrics message: {:?}", msg);
         match msg {
             MetricsMsg::AddNode(avs) => {
                 // if container with name already exists, replace avs_type and metric_port
