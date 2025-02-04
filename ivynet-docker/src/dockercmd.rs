@@ -238,8 +238,8 @@ pub enum DockerChildError {
 
 /// Docker tests must be run serially as async testing will erroneously attempt to run multiple
 /// tests via the same contianers.
+#[ignore]
 #[cfg(test)]
-#[cfg(feature = "docker_tests")]
 mod tests {
     use super::*;
     use serial_test::serial;

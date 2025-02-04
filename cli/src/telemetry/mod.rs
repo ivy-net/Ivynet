@@ -14,6 +14,7 @@ use ivynet_grpc::{
 use logs_listener::LogsListenerManager;
 use metrics_listener::MetricsListenerHandle;
 use node_data_listener::NodeDataMonitorHandle;
+use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
 use tracing::{error, info, warn};
@@ -53,6 +54,19 @@ pub struct ConfiguredAvs {
     pub metric_port: Option<u16>,
     pub manifest: Option<ContainerId>,
     pub image: Option<ContainerImage>,
+}
+
+impl ConfiguredAvs {
+    pub async fn metrics_alive(&self) -> bool {
+        if self.metric_port.is_some() {
+            let client = Client::new();
+            let metrics_endpoint =
+                format!("http://localhost:{}/metrics", self.metric_port.unwrap());
+            client.get(&metrics_endpoint).send().await.is_ok()
+        } else {
+            false
+        }
+    }
 }
 
 #[derive(Deserialize)]
@@ -184,7 +198,7 @@ pub async fn listen(
                 name: node.assigned_name.to_string(),
                 node_type: Some(node.avs_type.clone()),
                 manifest: Some(image_id.to_string()),
-                metrics_alive: Some(false),
+                metrics_alive: Some(node.metrics_alive().await),
                 node_running: Some(true),
             };
             let signed = machine.sign_node_data_v2(&node_data)?;

@@ -107,30 +107,17 @@ impl<B: BackendMiddleware> DockerStreamListener<DockerClient, B> {
                         error!("Error broadcasting metrics: {:?}", e);
                         };
                     for node in known_nodes.iter() {
-                        if let Some(container) = self.docker.find_container_by_name(&node.container_name).await {
-                            // --- Send node data for configured nodes ---
-                            let image_id = match container.image_id() {
-                                Some(id) => id,
-                                None => {
-                                    warn!("Cannot find image id for container: {}", node.container_name);
-                                    continue;
-                                }
-                            };
-
-                            let node_data = NodeDataV2 {
-                                name: node.assigned_name.to_string(),
-                                node_type: Some(node.avs_type.clone()),
-                                manifest: Some(image_id.to_string()),
-                                metrics_alive: Some(false),
-                                node_running: Some(true),
-                            };
-                            let signed = self.machine.sign_node_data_v2(&node_data)?;
-
-                            if let Err(e) = self.node_data_monitor_handle.ask_send_node_data(signed).await {
-                                error!("Failed to send node data: {}", e);
-                            }
-                        } else {
-                            warn!("Cannot find container for configured node: {}.", node.container_name);
+                        let manifest = node.manifest.clone().unwrap_or(ContainerId("".to_string()));
+                        let node_data = NodeDataV2 {
+                            name: node.assigned_name.to_string(),
+                            node_type: Some(node.avs_type.clone()),
+                            manifest: Some(manifest.to_string()),
+                            metrics_alive: Some(node.metrics_alive().await),
+                            node_running: Some(true),
+                        };
+                        let signed = self.machine.sign_node_data_v2(&node_data)?;
+                        if let Err(e) = self.node_data_monitor_handle.ask_send_node_data(signed).await {
+                            error!("Failed to send node data: {}", e);
                         }
                     }
                 }
@@ -237,7 +224,7 @@ impl<B: BackendMiddleware> DockerStreamListener<DockerClient, B> {
                 name: configured.assigned_name.clone(),
                 node_type: Some(configured.avs_type.clone()),
                 manifest: Some(inc_container_digest.clone()),
-                metrics_alive: Some(false),
+                metrics_alive: Some(configured.metrics_alive().await),
                 node_running: Some(true),
             };
             let signed = self.machine.sign_node_data_v2(&node_data_v2)?;
