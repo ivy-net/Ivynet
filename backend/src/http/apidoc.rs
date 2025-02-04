@@ -38,6 +38,7 @@ use super::{authorize, client, info, machine, node, organization, pubkey};
         machine::info,
         node::all_avs_info,
         node::avs_status,
+        node::avs_active_set,
         pubkey::get_all_keys,
         pubkey::create_key,
         pubkey::update_key_name,
