@@ -1,3 +1,5 @@
+use crate::ivy_machine::MachineIdentityError;
+
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
     #[error(transparent)]
@@ -50,4 +52,7 @@ pub enum Error {
 
     #[error("Invalid server URI")]
     InvalidUri,
+
+    #[error("Machine Identity Error")]
+    MachineIdentityError(#[from] MachineIdentityError),
 }

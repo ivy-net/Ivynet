@@ -1,87 +1,73 @@
+use std::ops::Deref;
+
 use ivynet_grpc::{
     backend::backend_client::BackendClient,
     messages::{SignedLog, SignedMetrics, SignedNodeDataV2},
     tonic::{self, transport::Channel},
 };
+use kameo::{message::Message, Actor};
+use tracing::error;
 
 use super::ErrorChannelTx;
 
 #[derive(Debug, Clone)]
 pub enum TelemetryMsg {
+    SignedNodeData(SignedNodeDataV2),
     Metrics(SignedMetrics),
-    NodeData(SignedNodeDataV2),
     Log(SignedLog),
 }
 
-struct TelemetryDispatcher {
-    rx: tokio::sync::mpsc::Receiver<TelemetryMsg>,
-    error_tx: ErrorChannelTx,
-    backend_client: BackendClient<Channel>,
-}
-
-impl TelemetryDispatcher {
-    /// Run the telemetry dispatcher. This will listen for incoming telemetry messages and send
-    /// them to the backend. If the backend is unreachable for any endpoint, it will send an error
-    /// to the parent task error receiver. If the parent task reciever is closed, it will return an
-    /// error back to the parent task.
-    pub async fn run(&mut self) -> Result<(), TelemetryDispatchError> {
-        while let Some(node_data) = self.rx.recv().await {
-            let send_res = match node_data {
-                TelemetryMsg::Metrics(metrics) => self.backend_client.metrics(metrics).await,
-                TelemetryMsg::Log(log) => self.backend_client.logs(log).await,
-                TelemetryMsg::NodeData(node_data) => {
-                    self.backend_client.node_data_v2(node_data).await
-                }
-            };
-            if let Err(e) = send_res {
-                let err = TelemetryDispatchError::TransportError(e);
-                self.error_tx
-                    .send(err.into())
-                    .map_err(|_| TelemetryDispatchError::ErrorSendFailed)?;
-            }
-        }
-        Ok(())
-    }
-}
-
-#[derive(Debug)]
-pub struct TelemetryDispatchHandle {
-    tx: tokio::sync::mpsc::Sender<TelemetryMsg>,
-}
-
-impl Clone for TelemetryDispatchHandle {
-    fn clone(&self) -> Self {
-        Self { tx: self.tx.clone() }
-    }
-}
+#[derive(Debug, Clone)]
+pub struct TelemetryDispatchHandle(kameo::actor::ActorRef<TelemetryDispatch>);
 
 impl TelemetryDispatchHandle {
-    pub async fn new(client: BackendClient<Channel>, error_tx: &ErrorChannelTx) -> Self {
-        let (tx, rx) = tokio::sync::mpsc::channel(256);
-        let error_tx = error_tx.clone();
+    pub fn new(backend_client: BackendClient<Channel>, error_tx: ErrorChannelTx) -> Self {
+        Self(kameo::actor::spawn(TelemetryDispatch::new(backend_client, error_tx)))
+    }
+}
 
-        tokio::spawn(async move {
-            let mut dispatcher = TelemetryDispatcher { rx, error_tx, backend_client: client };
-            dispatcher.run().await
-        });
+impl Deref for TelemetryDispatchHandle {
+    type Target = kameo::actor::ActorRef<TelemetryDispatch>;
 
-        TelemetryDispatchHandle { tx }
+    fn deref(&self) -> &Self::Target {
+        &self.0
     }
+}
 
-    pub async fn send(&self, msg: TelemetryMsg) -> Result<(), TelemetryDispatchError> {
-        self.tx.send(msg).await.map_err(TelemetryDispatchError::DispatchError)
+#[derive(Actor, Debug)]
+#[actor(name = "TelemetryDispatch", mailbox = bounded(64))]
+pub struct TelemetryDispatch {
+    pub error_tx: ErrorChannelTx,
+    pub backend_client: BackendClient<Channel>,
+}
+
+impl TelemetryDispatch {
+    pub fn new(backend_client: BackendClient<Channel>, error_tx: ErrorChannelTx) -> Self {
+        Self { error_tx, backend_client }
     }
-    pub async fn send_metrics(&self, metrics: SignedMetrics) -> Result<(), TelemetryDispatchError> {
-        self.send(TelemetryMsg::Metrics(metrics)).await
-    }
-    pub async fn send_node_data(
-        &self,
-        node_data: SignedNodeDataV2,
-    ) -> Result<(), TelemetryDispatchError> {
-        self.send(TelemetryMsg::NodeData(node_data)).await
-    }
-    pub async fn send_log(&self, log: SignedLog) -> Result<(), TelemetryDispatchError> {
-        self.send(TelemetryMsg::Log(log)).await
+}
+
+impl Message<TelemetryMsg> for TelemetryDispatch {
+    type Reply = ();
+
+    async fn handle(
+        &mut self,
+        msg: TelemetryMsg,
+        _: kameo::message::Context<'_, Self, Self::Reply>,
+    ) -> Self::Reply {
+        let res = match msg {
+            TelemetryMsg::Metrics(metrics) => self.backend_client.metrics(metrics).await,
+            TelemetryMsg::Log(log) => self.backend_client.logs(log).await,
+            TelemetryMsg::SignedNodeData(node_data) => {
+                self.backend_client.node_data_v2(node_data).await
+            }
+        };
+        match res {
+            Ok(_) => {}
+            Err(e) => {
+                error!("Telemetry dispatch error: {:?}", e);
+            }
+        }
     }
 }
 
@@ -90,11 +76,7 @@ pub enum TelemetryDispatchError {
     #[error("Failed to get telemetry error. The channel has been previously closed.")]
     ChannelClosed,
     #[error(transparent)]
-    DispatchError(tokio::sync::mpsc::error::SendError<TelemetryMsg>),
-    #[error(transparent)]
     TransportError(tonic::Status),
     #[error("Failed to send error to the parent task.")]
     ErrorSendFailed,
-    #[error("Telemetry send error: {0}")]
-    TelemetrySendError(#[from] tokio::sync::mpsc::error::SendError<TelemetryMsg>),
 }
