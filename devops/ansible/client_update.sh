@@ -21,7 +21,7 @@ ansible-playbook \\
   -i gcp.yml \\
   -u ${remote_user} \\
   --vault-password-file ~/.vault.txt \\
-  ivynet_client.yml
+  ivynet-client.yml
 EOF
 
-ansible-playbook -i gcp.yml -u ${remote_user} --vault-password-file ~/.vault.txt ivynet_client.yml
+ansible-playbook -i gcp.yml -u ${remote_user} --vault-password-file ~/.vault.txt ivynet-client.yml
