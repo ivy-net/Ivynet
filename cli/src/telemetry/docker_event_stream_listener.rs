@@ -7,8 +7,7 @@ use ivynet_docker::{
 };
 use ivynet_grpc::{
     backend::backend_client::BackendClient,
-    messages::{NodeTypeQueries, NodeTypeQuery},
-    node_data::NodeDataV2,
+    messages::{NodeDataV2, NodeTypeQueries, NodeTypeQuery},
     tonic::{transport::Channel, Request, Response},
     BackendMiddleware,
 };

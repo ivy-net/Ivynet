@@ -3,8 +3,10 @@ use ivynet_core::ethers::types::{Signature, H160};
 
 use ivynet_grpc::{
     self,
-    messages::{Metrics, SignedMetrics, SignedNameChange},
-    node_data::{NodeData, NodeDataV2, SignedNodeData, SignedNodeDataV2},
+    messages::{
+        Metrics, NodeData, NodeDataV2, SignedMetrics, SignedNameChange, SignedNodeData,
+        SignedNodeDataV2,
+    },
     Status,
 };
 use ivynet_signer::sign_utils::{

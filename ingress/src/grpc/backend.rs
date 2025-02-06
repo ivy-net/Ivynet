@@ -14,10 +14,10 @@ use ivynet_grpc::{
     backend::backend_server::{Backend, BackendServer},
     client::{Request, Response},
     messages::{
-        Metrics, NodeType as NodeTypeMessage, NodeTypeQueries, NodeTypes, RegistrationCredentials,
-        SignedLog, SignedMetrics, SignedNameChange,
+        Metrics, NodeData, NodeDataV2, NodeType as NodeTypeMessage, NodeTypeQueries, NodeTypes,
+        RegistrationCredentials, SignedLog, SignedMetrics, SignedNameChange, SignedNodeData,
+        SignedNodeDataV2,
     },
-    node_data::{NodeData, NodeDataV2, SignedNodeData, SignedNodeDataV2},
     server, Status,
 };
 

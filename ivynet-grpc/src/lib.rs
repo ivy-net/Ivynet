@@ -45,12 +45,12 @@ pub trait BackendMiddleware: Clone + Send + Sync + 'static {
 
     async fn node_data(
         &mut self,
-        request: node_data::SignedNodeData,
+        request: messages::SignedNodeData,
     ) -> Result<Response<()>, Status>;
 
     async fn node_data_v2(
         &mut self,
-        request: node_data::SignedNodeDataV2,
+        request: messages::SignedNodeDataV2,
     ) -> Result<Response<()>, Status>;
 
     async fn logs(&mut self, request: messages::SignedLog) -> Result<Response<()>, Status>;
@@ -95,14 +95,14 @@ impl BackendMiddleware for BackendClientMiddleware {
 
     async fn node_data(
         &mut self,
-        request: node_data::SignedNodeData,
+        request: messages::SignedNodeData,
     ) -> Result<Response<()>, Status> {
         self.0.node_data(request).await
     }
 
     async fn node_data_v2(
         &mut self,
-        request: node_data::SignedNodeDataV2,
+        request: messages::SignedNodeDataV2,
     ) -> Result<Response<()>, Status> {
         self.0.node_data_v2(request).await
     }
@@ -160,14 +160,14 @@ impl BackendMiddleware for BackendClientMock {
 
     async fn node_data(
         &mut self,
-        _request: node_data::SignedNodeData,
+        _request: messages::SignedNodeData,
     ) -> Result<Response<()>, Status> {
         Ok(Response::new(()))
     }
 
     async fn node_data_v2(
         &mut self,
-        _request: node_data::SignedNodeDataV2,
+        _request: messages::SignedNodeDataV2,
     ) -> Result<Response<()>, Status> {
         Ok(Response::new(()))
     }

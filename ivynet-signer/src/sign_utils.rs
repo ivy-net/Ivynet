@@ -3,10 +3,7 @@ use ethers::{
     types::{Address, Signature, H256, U256},
     utils::keccak256,
 };
-use ivynet_grpc::{
-    messages::Metrics,
-    node_data::{NodeData, NodeDataV2},
-};
+use ivynet_grpc::messages::{Metrics, NodeData, NodeDataV2};
 
 use crate::IvyWallet;
 

@@ -63,3 +63,46 @@ message SignedNameChange {
     string old_name = 3;
     string new_name = 4;
 }
+
+
+
+message SignedMachineData {
+    bytes signature = 1;
+    bytes machine_id = 2;
+    string ivynet_version = 3;
+    UsedAndFree cpu = 4;
+    UsedAndFree memory = 5;
+    repeated UsedAndFree disk = 6;
+}
+
+message UsedAndFree {
+    float used = 1;
+    float free = 2;
+}
+
+message SignedNodeData {
+    bytes signature = 1;
+    bytes machine_id = 2;
+    NodeData node_data = 4;
+}
+
+message NodeData {
+    string name = 1;
+    string node_type = 2;
+    string manifest = 3;
+    bool metrics_alive = 4;
+}
+
+message SignedNodeDataV2 {
+    bytes signature = 1;
+    bytes machine_id = 2;
+    NodeDataV2 node_data = 4;
+}
+
+message NodeDataV2 {
+    string name = 1;
+    optional string node_type = 2;
+    optional string manifest = 3;
+    optional bool metrics_alive = 4;
+    optional bool node_running = 5;
+}
