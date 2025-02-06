@@ -16,11 +16,6 @@ pub mod messages {
     tonic::include_proto!("messages");
 }
 
-pub mod node_data {
-    #![allow(clippy::derive_partial_eq_without_eq)]
-    tonic::include_proto!("node_data");
-}
-
 use backend::backend_client::BackendClient;
 use messages::RegistrationCredentials;
 use tonic::transport::Channel;
