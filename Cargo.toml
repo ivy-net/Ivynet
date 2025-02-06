@@ -64,7 +64,6 @@ ivynet-grpc = { path = "ivynet-grpc" }
 ivynet-io = { path = "ivynet-io" }
 ivynet-node-type = { path = "ivynet-node-type" }
 ivynet-signer = { path = "ivynet-signer" }
-ivynet-types = { path = "ivynet-types" }
 
 #grpc
 prost = "0.13"
