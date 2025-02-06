@@ -5,7 +5,7 @@ use ethers::{
 };
 use ivynet_grpc::{
     messages::Metrics,
-    node_data::{NodeData, NodeDataV2, NodeDataV3},
+    node_data::{NodeData, NodeDataV2},
 };
 
 use crate::IvyWallet;

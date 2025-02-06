@@ -6,7 +6,7 @@ use db::{
     metric::Metric,
     Account, Avs, AvsVersionHash,
 };
-use ivynet_core::ethers::types::{Address, Signature, H160};
+use ivynet_core::ethers::types::{Address, Signature};
 
 use ivynet_docker_registry::node_types::get_node_type;
 use ivynet_grpc::{
@@ -23,14 +23,13 @@ use ivynet_grpc::{
 
 use ivynet_docker::logs::{find_log_level, find_or_create_log_timestamp, sanitize_log};
 use ivynet_node_type::NodeType;
-use ivynet_signer::sign_utils::{
-    recover_from_string, recover_metrics, recover_name_change, recover_node_data,
-    recover_node_data_v2,
-};
+use ivynet_signer::sign_utils::recover_from_string;
 use sqlx::PgPool;
 use std::{str::FromStr, sync::Arc};
 use tracing::debug;
 use uuid::Uuid;
+
+use super::data_validator::validate_request;
 
 pub struct BackendService {
     pool: Arc<PgPool>,
@@ -42,17 +41,7 @@ impl BackendService {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct RecoveredNodeData {
-    signature: Vec<u8>,
-    machine_id: Vec<u8>,
-    name: String,
-    node_type: Option<String>,
-    manifest: Option<String>,
-    metrics_alive: Option<bool>,
-    node_running: Option<bool>,
-    ivynet_version: Option<String>,
-}
+type NameChange = (String, String); //Old name, new name
 
 #[ivynet_grpc::async_trait]
 impl Backend for BackendService {
@@ -135,25 +124,9 @@ impl Backend for BackendService {
         )
         .await?;
 
-        let NodeData { name, node_type, manifest, metrics_alive } = node_data;
+        let recovered_node_data = RecoveredNodeData::from(node_data);
 
-        let nt = match NodeType::from(node_type.as_str()) {
-            NodeType::Unknown => AvsVersionHash::get_avs_type_from_hash(&self.pool, &manifest)
-                .await
-                .unwrap_or(NodeType::Unknown),
-            node_type => node_type,
-        };
-
-        Avs::record_avs_data_from_client(&self.pool, machine_id, &name, &nt, &manifest)
-            .await
-            .map_err(|e| Status::internal(format!("Failed while saving node_data: {e}")))?;
-
-        Avs::update_metrics_alive(&self.pool, machine_id, &name, metrics_alive).await.map_err(
-            |e| Status::internal(format!("Failed while setting metrics available flag: {e}")),
-        )?;
-
-        _ = update_avs_version(&self.pool, machine_id, &name, &manifest).await;
-        _ = update_avs_active_set(&self.pool, machine_id, &name).await;
+        process_node_data(&self.pool, machine_id, recovered_node_data).await?;
 
         Ok(Response::new(()))
     }
@@ -172,44 +145,9 @@ impl Backend for BackendService {
         )
         .await?;
 
-        let NodeDataV2 { name, node_type, manifest, metrics_alive, node_running } =
-            node_data.clone();
+        let recovered_node_data = RecoveredNodeData::from(node_data);
 
-        debug!("Node data: {:#?}", node_data);
-
-        match (node_type, manifest) {
-            (Some(node_type), Some(manifest)) => {
-                let nt = match NodeType::from(node_type.as_str()) {
-                    NodeType::Unknown => {
-                        AvsVersionHash::get_avs_type_from_hash(&self.pool, &manifest)
-                            .await
-                            .unwrap_or(NodeType::Unknown)
-                    }
-                    node_type => node_type,
-                };
-                Avs::record_avs_data_from_client(&self.pool, machine_id, &name, &nt, &manifest)
-                    .await
-                    .map_err(|e| Status::internal(format!("Failed while saving node_data: {e}")))?;
-                _ = update_avs_version(&self.pool, machine_id, &name, &manifest).await;
-            }
-            (None, Some(manifest)) => {
-                _ = update_avs_version(&self.pool, machine_id, &name, &manifest).await;
-            }
-            _ => {}
-        }
-
-        if let Some(metrics_alive) = metrics_alive {
-            Avs::update_metrics_alive(&self.pool, machine_id, &name, metrics_alive).await.map_err(
-                |e| Status::internal(format!("Failed while setting metrics available flag: {e}")),
-            )?;
-        }
-
-        if let Some(node_running) = node_running {
-            Avs::update_node_running(&self.pool, machine_id, &name, node_running).await.map_err(
-                |e| Status::internal(format!("Failed while setting metrics available flag: {e}")),
-            )?;
-        }
-        _ = update_avs_active_set(&self.pool, machine_id, &name).await;
+        process_node_data(&self.pool, machine_id, recovered_node_data).await?;
 
         Ok(Response::new(()))
     }
@@ -217,26 +155,19 @@ impl Backend for BackendService {
     async fn metrics(&self, request: Request<SignedMetrics>) -> Result<Response<()>, Status> {
         let req = request.into_inner();
 
-        let client_id = recover_metrics(
-            &req.metrics,
-            &Signature::try_from(req.signature.as_slice())
-                .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
+        let (machine_id, metrics) = validate_request::<Vec<Metrics>, SignedMetrics>(
+            &self.pool,
+            &req.machine_id,
+            &req.signature,
+            Some(req.metrics),
         )
         .await?;
-
-        let machine_id = Uuid::from_slice(&req.machine_id).map_err(|e| {
-            Status::invalid_argument(format!("Machine id has wrong length ({e:?})"))
-        })?;
-
-        if !Machine::is_owned_by(&self.pool, &client_id, machine_id).await.unwrap_or(false) {
-            return Err(Status::not_found("Machine not registered for given client".to_string()));
-        }
 
         _ = Metric::record(
             &self.pool,
             machine_id,
             req.avs_name.as_deref(),
-            &req.metrics.iter().map(|v| v.into()).collect::<Vec<_>>(),
+            &metrics.iter().map(|v| v.into()).collect::<Vec<_>>(),
         )
         .await
         .map_err(|e| Status::internal(format!("Failed while saving metrics: {e:?}")))?;
@@ -283,27 +214,19 @@ impl Backend for BackendService {
     ) -> Result<Response<()>, Status> {
         let req = request.into_inner();
 
-        let client_id = recover_name_change(
-            &req.old_name,
-            &req.new_name,
-            &Signature::try_from(req.signature.as_slice())
-                .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
+        let (machine_id, name_change) = validate_request::<NameChange, SignedNameChange>(
+            &self.pool,
+            &req.machine_id,
+            &req.signature,
+            Some((req.old_name, req.new_name)),
         )
         .await?;
 
-        let machine_id = Uuid::from_slice(&req.machine_id).map_err(|e| {
-            Status::invalid_argument(format!("Machine id has wrong length ({e:?})"))
-        })?;
-
-        if !Machine::is_owned_by(&self.pool, &client_id, machine_id).await.unwrap_or(false) {
-            return Err(Status::not_found("Machine not registered for given client".to_string()));
-        }
-
-        Avs::update_name(&self.pool, machine_id, &req.old_name, &req.new_name)
+        Avs::update_name(&self.pool, machine_id, &name_change.0, &name_change.1)
             .await
             .map_err(|e| Status::internal(format!("Failed while updating machine name: {e}")))?;
 
-        Metric::update_name_on_metrics(&self.pool, machine_id, &req.old_name, &req.new_name)
+        Metric::update_name_on_metrics(&self.pool, machine_id, &name_change.0, &name_change.1)
             .await
             .map_err(|e| {
                 Status::internal(format!("Failed while updating machine name on metrics: {e}"))
@@ -327,88 +250,82 @@ pub async fn serve(
     Ok(())
 }
 
-trait SignedDataValidator {
-    type DataType;
-
-    async fn recover_signature(
-        data: &Self::DataType,
-        signature: &Signature,
-    ) -> Result<H160, Status>;
+#[derive(Debug, Clone)]
+pub struct RecoveredNodeData {
+    pub name: String,
+    pub node_type: Option<String>,
+    pub manifest: Option<String>,
+    pub metrics_alive: Option<bool>,
+    pub node_running: Option<bool>,
 }
 
-// Common validation logic
-async fn validate_request<T, V>(
+impl From<NodeData> for RecoveredNodeData {
+    fn from(node_data: NodeData) -> Self {
+        RecoveredNodeData {
+            name: node_data.name,
+            node_type: Some(node_data.node_type),
+            manifest: Some(node_data.manifest),
+            metrics_alive: Some(node_data.metrics_alive),
+            node_running: None,
+        }
+    }
+}
+
+impl From<NodeDataV2> for RecoveredNodeData {
+    fn from(node_data: NodeDataV2) -> Self {
+        RecoveredNodeData {
+            name: node_data.name,
+            node_type: node_data.node_type,
+            manifest: node_data.manifest,
+            metrics_alive: node_data.metrics_alive,
+            node_running: node_data.node_running,
+        }
+    }
+}
+
+async fn process_node_data(
     pool: &PgPool,
-    machine_id: &[u8],
-    signature: &[u8],
-    data: Option<T>,
-) -> Result<(Uuid, T), Status>
-where
-    V: SignedDataValidator<DataType = T>,
-{
-    // Only relevant for node_data
-    // Handle the Option<NodeData> case
-    let data = if let Some(data) = data {
-        data
-    } else {
-        return Err(Status::invalid_argument("Data missing from payload".to_string()));
-    };
+    machine_id: Uuid,
+    node_data: RecoveredNodeData,
+) -> Result<(), Status> {
+    let name = node_data.name;
+    let node_type = node_data.node_type;
+    let manifest = node_data.manifest;
+    let metrics_alive = node_data.metrics_alive;
+    let node_running = node_data.node_running;
 
-    // Validate signature
-    let signature = Signature::try_from(signature)
-        .map_err(|_| Status::invalid_argument("Signature is invalid"))?;
-
-    let client_id = V::recover_signature(&data, &signature).await?;
-
-    // Validate machine ID
-    let machine_id = Uuid::from_slice(machine_id)
-        .map_err(|e| Status::invalid_argument(format!("Machine id has wrong length ({e:?})")))?;
-
-    // Check machine ownership
-    if !Machine::is_owned_by(pool, &client_id, machine_id).await.unwrap_or(false) {
-        return Err(Status::not_found("Machine not registered for given client".to_string()));
+    match (node_type, manifest) {
+        (Some(node_type), Some(manifest)) => {
+            let nt = match NodeType::from(node_type.as_str()) {
+                NodeType::Unknown => AvsVersionHash::get_avs_type_from_hash(pool, &manifest)
+                    .await
+                    .unwrap_or(NodeType::Unknown),
+                node_type => node_type,
+            };
+            Avs::record_avs_data_from_client(pool, machine_id, &name, &nt, &manifest)
+                .await
+                .map_err(|e| Status::internal(format!("Failed while saving node_data: {e}")))?;
+            _ = update_avs_version(pool, machine_id, &name, &manifest).await;
+        }
+        (None, Some(manifest)) => {
+            _ = update_avs_version(pool, machine_id, &name, &manifest).await;
+        }
+        _ => {}
     }
 
-    Ok((machine_id, data))
-}
-
-// Implementation for v1
-impl SignedDataValidator for SignedNodeData {
-    type DataType = NodeData;
-
-    async fn recover_signature(
-        data: &Self::DataType,
-        signature: &Signature,
-    ) -> Result<H160, Status> {
-        recover_node_data(data, signature)
-            .await
-            .map_err(|e| Status::invalid_argument(format!("Failed to recover signature: {e}")))
+    if let Some(metrics_alive) = metrics_alive {
+        Avs::update_metrics_alive(pool, machine_id, &name, metrics_alive).await.map_err(|e| {
+            Status::internal(format!("Failed while setting metrics available flag: {e}"))
+        })?;
     }
-}
 
-// Implementation for v2
-impl SignedDataValidator for SignedNodeDataV2 {
-    type DataType = NodeDataV2;
-
-    async fn recover_signature(
-        data: &Self::DataType,
-        signature: &Signature,
-    ) -> Result<H160, Status> {
-        recover_node_data_v2(data, signature)
-            .await
-            .map_err(|e| Status::invalid_argument(format!("Failed to recover signature: {e}")))
+    if let Some(node_running) = node_running {
+        Avs::update_node_running(pool, machine_id, &name, node_running).await.map_err(|e| {
+            Status::internal(format!("Failed while setting metrics available flag: {e}"))
+        })?;
     }
+
+    _ = update_avs_active_set(pool, machine_id, &name).await;
+
+    Ok(())
 }
-
-// impl SignedDataValidator for SignedMetrics {
-//     type DataType = Vec<Metric>;
-
-//     async fn recover_signature(
-//         data: &Self::DataType,
-//         signature: &Signature,
-//     ) -> Result<H160, Status> {
-//         recover_metrics(data, signature)
-//             .await
-//             .map_err(|e| Status::invalid_argument(format!("Failed to recover signature: {e}")))
-//     }
-// }
