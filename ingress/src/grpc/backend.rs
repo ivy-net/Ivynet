@@ -15,8 +15,8 @@ use ivynet_grpc::{
     client::{Request, Response},
     messages::{
         Metrics, NodeData, NodeDataV2, NodeType as NodeTypeMessage, NodeTypeQueries, NodeTypes,
-        RegistrationCredentials, SignedLog, SignedMetrics, SignedNameChange, SignedNodeData,
-        SignedNodeDataV2,
+        RegistrationCredentials, SignedLog, SignedMachineData, SignedMetrics, SignedNameChange,
+        SignedNodeData, SignedNodeDataV2,
     },
     server, Status,
 };
@@ -109,6 +109,19 @@ impl Backend for BackendService {
         ContainerLog::record(&self.pool, &log)
             .await
             .map_err(|e| Status::internal(format!("Failed while saving logs: {e:?}")))?;
+
+        Ok(Response::new(()))
+    }
+
+    async fn machine_data(
+        &self,
+        request: Request<SignedMachineData>,
+    ) -> Result<Response<()>, Status> {
+        let req = request.into_inner();
+
+        println!("Received machine data: {:?}", req);
+
+        //TODO: All the rest of the logic
 
         Ok(Response::new(()))
     }

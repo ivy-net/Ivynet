@@ -1,13 +1,21 @@
 use ethers::types::Address;
 use ivynet_grpc::messages::{
-    Metrics, NodeDataV2, SignedLog, SignedMetrics, SignedNameChange, SignedNodeDataV2,
+    MachineData, Metrics, NodeDataV2, SignedLog, SignedMachineData, SignedMetrics,
+    SignedNameChange, SignedNodeDataV2,
 };
 use ivynet_signer::{
-    sign_utils::{sign_log, sign_metrics, sign_name_change, sign_node_data_v2, IvySigningError},
+    sign_utils::{
+        sign_log, sign_machine_data, sign_metrics, sign_name_change, sign_node_data_v2,
+        IvySigningError,
+    },
     IvyWallet,
 };
 use sysinfo::{Disks, System};
 use uuid::Uuid;
+
+mod version_hash {
+    include!(concat!(env!("OUT_DIR"), "/version.rs"));
+}
 
 use crate::config::IvyConfig;
 
@@ -69,6 +77,29 @@ impl IvyMachine {
         })
     }
 
+    pub fn sign_machine_data(&self) -> Result<SignedMachineData, MachineIdentityError> {
+        let version = version_hash::VERSION_HASH;
+        let machine_data = SysInfo::from_system();
+        let machine_data = MachineData {
+            ivynet_version: version.to_string(),
+            uptime: machine_data.uptime.to_string(),
+            cpu_usage: machine_data.cpu_usage.to_string(),
+            cpu_cores: machine_data.cpu_cores.to_string(),
+            memory_used: machine_data.memory_usage.to_string(),
+            memory_free: machine_data.memory_free.to_string(),
+            memory_total: machine_data.memory_total.to_string(),
+            disk_used_total: machine_data.disk_usage.iter().sum::<u64>().to_string(),
+            free_disk: machine_data.disk_free.iter().map(|d| d.to_string()).collect(),
+            used_disk: machine_data.disk_usage.iter().map(|d| d.to_string()).collect(),
+        };
+        let signature = sign_machine_data(&machine_data, &self.signer)?;
+        Ok(SignedMachineData {
+            machine_id: self.id.into(),
+            signature: signature.into(),
+            machine_data: Some(machine_data.clone()),
+        })
+    }
+
     pub fn sign_name_change(
         &self,
         old_name: &str,
@@ -108,15 +139,15 @@ pub struct SysInfo {
     pub memory_usage: u64,
     pub memory_free: u64,
     pub memory_total: u64,
-    pub disk_free: u64,
-    pub disk_usage: u64,
+    pub disk_free: Vec<u64>,
+    pub disk_usage: Vec<u64>,
     pub disk_total: u64,
     pub uptime: u64,
 }
 
 impl SysInfo {
     pub fn from_system() -> Self {
-        let mut sys = System::new();
+        let mut sys: System = System::new();
         sys.refresh_all();
 
         let cpu_cores = sys.cpus().len() as u64;
@@ -129,14 +160,17 @@ impl SysInfo {
         let memory_free = sys.free_memory();
         let memory_total = sys.total_memory();
 
-        let mut disk_usage = 0;
-        let mut disk_free = 0;
         let mut disk_total = 0;
 
+        let mut disk_free = Vec::new();
+        let mut disk_usage = Vec::new();
+
         for disk in &Disks::new_with_refreshed_list() {
-            disk_usage += disk.total_space() - disk.available_space();
-            disk_free += disk.available_space();
+            // disk_usage += disk.total_space() - disk.available_space();
+            // disk_free += disk.available_space();
             disk_total += disk.total_space();
+            disk_free.push(disk.available_space());
+            disk_usage.push(disk.total_space() - disk.available_space());
         }
 
         let uptime = System::uptime();

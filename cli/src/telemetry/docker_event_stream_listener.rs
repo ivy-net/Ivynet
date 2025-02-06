@@ -20,6 +20,7 @@ use crate::ivy_machine::{IvyMachine, MachineIdentityError};
 use super::{
     dispatch::{TelemetryDispatchError, TelemetryDispatchHandle},
     logs_listener::LogsListenerManager,
+    machine_data_listener::MachineDataMonitorHandle,
     metrics_listener::MetricsListenerHandle,
     node_data_listener::NodeDataMonitorHandle,
     ConfiguredAvs,
@@ -30,6 +31,7 @@ const TELEMETRY_INTERVAL_IN_MINUTES: u64 = 1;
 #[derive(Debug)]
 pub struct DockerStreamListener<D: DockerApi, B: BackendMiddleware> {
     pub docker: D,
+    pub machine_data_monitor_handle: MachineDataMonitorHandle<B>,
     pub node_data_monitor_handle: NodeDataMonitorHandle<B>,
     pub metrics_listener_handle: MetricsListenerHandle,
     pub logs_listener_handle: LogsListenerManager,
@@ -40,6 +42,7 @@ pub struct DockerStreamListener<D: DockerApi, B: BackendMiddleware> {
 
 impl<B: BackendMiddleware> DockerStreamListener<DockerClient, B> {
     pub fn new(
+        machine_data_monitor: MachineDataMonitorHandle<B>,
         node_data_monitor: NodeDataMonitorHandle<B>,
         metrics_listener: MetricsListenerHandle,
         logs_listener: LogsListenerManager,
@@ -49,6 +52,7 @@ impl<B: BackendMiddleware> DockerStreamListener<DockerClient, B> {
     ) -> Self {
         Self {
             docker: DockerClient::default(),
+            machine_data_monitor_handle: machine_data_monitor,
             node_data_monitor_handle: node_data_monitor,
             metrics_listener_handle: metrics_listener,
             logs_listener_handle: logs_listener,
@@ -119,6 +123,10 @@ impl<B: BackendMiddleware> DockerStreamListener<DockerClient, B> {
                         if let Err(e) = self.node_data_monitor_handle.ask_send_node_data(signed).await {
                             error!("Failed to send node data: {}", e);
                         }
+                    }
+                    let signed_machine_data = self.machine.sign_machine_data()?;
+                    if let Err(e) = self.machine_data_monitor_handle.ask_send_machine_data(signed_machine_data).await {
+                        error!("Failed to send machine data: {}", e);
                     }
                 }
             }

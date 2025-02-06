@@ -64,20 +64,24 @@ message SignedNameChange {
     string new_name = 4;
 }
 
-
-
 message SignedMachineData {
     bytes signature = 1;
     bytes machine_id = 2;
-    string ivynet_version = 3;
-    UsedAndFree cpu = 4;
-    UsedAndFree memory = 5;
-    repeated UsedAndFree disk = 6;
+    MachineData machine_data = 3;
 }
 
-message UsedAndFree {
-    float used = 1;
-    float free = 2;
+message MachineData {
+    string ivynet_version = 1;
+    string uptime = 2;
+    string cpu_usage = 3;
+    string cpu_cores = 4;
+    string memory_used = 5;
+    string memory_free = 6;
+    string memory_total = 7;
+    string disk_used_total = 8;
+    repeated string free_disk = 9;
+    repeated string used_disk = 10;
+    
 }
 
 message SignedNodeData {

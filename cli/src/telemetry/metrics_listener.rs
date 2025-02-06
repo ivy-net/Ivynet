@@ -315,7 +315,7 @@ fn fetch_system_telemetry() -> Vec<Metrics> {
         ..
     } = SysInfo::from_system();
 
-    vec![
+    let mut sys_metrics = vec![
         Metrics { name: "cpu_usage".to_owned(), value: cpu_usage, attributes: Default::default() },
         Metrics {
             name: "ram_usage".to_owned(),
@@ -328,20 +328,25 @@ fn fetch_system_telemetry() -> Vec<Metrics> {
             attributes: Default::default(),
         },
         Metrics {
-            name: "disk_usage".to_owned(),
-            value: disk_usage as f64,
-            attributes: Default::default(),
-        },
-        Metrics {
-            name: "free_disk".to_owned(),
-            value: disk_free as f64,
-            attributes: Default::default(),
-        },
-        Metrics {
             name: "cores".to_owned(),
             value: cpu_cores as f64,
             attributes: Default::default(),
         },
         Metrics { name: "uptime".to_owned(), value: uptime as f64, attributes: Default::default() },
-    ]
+    ];
+    for (i, disk) in disk_usage.iter().enumerate() {
+        sys_metrics.push(Metrics {
+            name: format!("disk_usage_{}", i),
+            value: *disk as f64,
+            attributes: Default::default(),
+        });
+    }
+    for (i, disk) in disk_free.iter().enumerate() {
+        sys_metrics.push(Metrics {
+            name: format!("free_disk_{}", i),
+            value: *disk as f64,
+            attributes: Default::default(),
+        });
+    }
+    sys_metrics
 }
