@@ -1,4 +1,8 @@
 ---
+- name: Install and configure 3rd party tools
+  ansible.builtin.import_tasks:
+    file: third_party.yml
+
 - name: Add user ivynet
   ansible.builtin.user:
     name: ivynet
@@ -36,10 +40,6 @@
   tags:
     - config
     - general
-
-- name: Install and configure 3rd party tools
-  ansible.builtin.import_tasks:
-    file: third_party.yml
 
 - name: Download ivynet-client for master
   ansible.builtin.import_tasks:
