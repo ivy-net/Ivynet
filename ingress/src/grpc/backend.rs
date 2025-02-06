@@ -6,7 +6,7 @@ use db::{
     metric::Metric,
     Account, Avs, AvsVersionHash,
 };
-use ivynet_core::ethers::types::{Address, Signature};
+use ivynet_core::ethers::types::{Address, Signature, H160};
 
 use ivynet_docker_registry::node_types::get_node_type;
 use ivynet_grpc::{
@@ -14,10 +14,10 @@ use ivynet_grpc::{
     backend::backend_server::{Backend, BackendServer},
     client::{Request, Response},
     messages::{
-        NodeData, NodeDataV2, NodeType as NodeTypeMessage, NodeTypeQueries, NodeTypes,
-        RegistrationCredentials, SignedLog, SignedMetrics, SignedNameChange, SignedNodeData,
-        SignedNodeDataV2,
+        Metrics, NodeType as NodeTypeMessage, NodeTypeQueries, NodeTypes, RegistrationCredentials,
+        SignedLog, SignedMetrics, SignedNameChange,
     },
+    node_data::{NodeData, NodeDataV2, SignedNodeData, SignedNodeDataV2},
     server, Status,
 };
 
@@ -40,6 +40,18 @@ impl BackendService {
     pub fn new(pool: Arc<PgPool>) -> Self {
         Self { pool }
     }
+}
+
+#[derive(Debug, Clone)]
+pub struct RecoveredNodeData {
+    signature: Vec<u8>,
+    machine_id: Vec<u8>,
+    name: String,
+    node_type: Option<String>,
+    manifest: Option<String>,
+    metrics_alive: Option<bool>,
+    node_running: Option<bool>,
+    ivynet_version: Option<String>,
 }
 
 #[ivynet_grpc::async_trait]
@@ -115,27 +127,13 @@ impl Backend for BackendService {
     async fn node_data(&self, request: Request<SignedNodeData>) -> Result<Response<()>, Status> {
         let req = request.into_inner();
 
-        // TODO: Why does it force this to be an option even though it's not in the proto?
-        let node_data = if let Some(node_data) = req.node_data {
-            node_data
-        } else {
-            return Err(Status::invalid_argument("Node data is missing".to_string()));
-        };
-
-        let client_id = recover_node_data(
-            &node_data,
-            &Signature::try_from(req.signature.as_slice())
-                .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
+        let (machine_id, node_data) = validate_request::<NodeData, SignedNodeData>(
+            &self.pool,
+            &req.machine_id,
+            &req.signature,
+            req.node_data,
         )
         .await?;
-
-        let machine_id = Uuid::from_slice(&req.machine_id).map_err(|e| {
-            Status::invalid_argument(format!("Machine id has wrong length ({e:?})"))
-        })?;
-
-        if !Machine::is_owned_by(&self.pool, &client_id, machine_id).await.unwrap_or(false) {
-            return Err(Status::not_found("Machine not registered for given client".to_string()));
-        }
 
         let NodeData { name, node_type, manifest, metrics_alive } = node_data;
 
@@ -166,27 +164,13 @@ impl Backend for BackendService {
     ) -> Result<Response<()>, Status> {
         let req = request.into_inner();
 
-        // TODO: Why does it force this to be an option even though it's not in the proto?
-        let node_data = if let Some(node_data) = req.node_data {
-            node_data
-        } else {
-            return Err(Status::invalid_argument("Node data is missing".to_string()));
-        };
-
-        let client_id = recover_node_data_v2(
-            &node_data,
-            &Signature::try_from(req.signature.as_slice())
-                .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
+        let (machine_id, node_data) = validate_request::<NodeDataV2, SignedNodeDataV2>(
+            &self.pool,
+            &req.machine_id,
+            &req.signature,
+            req.node_data,
         )
         .await?;
-
-        let machine_id = Uuid::from_slice(&req.machine_id).map_err(|e| {
-            Status::invalid_argument(format!("Machine id has wrong length ({e:?})"))
-        })?;
-
-        if !Machine::is_owned_by(&self.pool, &client_id, machine_id).await.unwrap_or(false) {
-            return Err(Status::not_found("Machine not registered for given client".to_string()));
-        }
 
         let NodeDataV2 { name, node_type, manifest, metrics_alive, node_running } =
             node_data.clone();
@@ -342,3 +326,89 @@ pub async fn serve(
 
     Ok(())
 }
+
+trait SignedDataValidator {
+    type DataType;
+
+    async fn recover_signature(
+        data: &Self::DataType,
+        signature: &Signature,
+    ) -> Result<H160, Status>;
+}
+
+// Common validation logic
+async fn validate_request<T, V>(
+    pool: &PgPool,
+    machine_id: &[u8],
+    signature: &[u8],
+    data: Option<T>,
+) -> Result<(Uuid, T), Status>
+where
+    V: SignedDataValidator<DataType = T>,
+{
+    // Only relevant for node_data
+    // Handle the Option<NodeData> case
+    let data = if let Some(data) = data {
+        data
+    } else {
+        return Err(Status::invalid_argument("Data missing from payload".to_string()));
+    };
+
+    // Validate signature
+    let signature = Signature::try_from(signature)
+        .map_err(|_| Status::invalid_argument("Signature is invalid"))?;
+
+    let client_id = V::recover_signature(&data, &signature).await?;
+
+    // Validate machine ID
+    let machine_id = Uuid::from_slice(machine_id)
+        .map_err(|e| Status::invalid_argument(format!("Machine id has wrong length ({e:?})")))?;
+
+    // Check machine ownership
+    if !Machine::is_owned_by(pool, &client_id, machine_id).await.unwrap_or(false) {
+        return Err(Status::not_found("Machine not registered for given client".to_string()));
+    }
+
+    Ok((machine_id, data))
+}
+
+// Implementation for v1
+impl SignedDataValidator for SignedNodeData {
+    type DataType = NodeData;
+
+    async fn recover_signature(
+        data: &Self::DataType,
+        signature: &Signature,
+    ) -> Result<H160, Status> {
+        recover_node_data(data, signature)
+            .await
+            .map_err(|e| Status::invalid_argument(format!("Failed to recover signature: {e}")))
+    }
+}
+
+// Implementation for v2
+impl SignedDataValidator for SignedNodeDataV2 {
+    type DataType = NodeDataV2;
+
+    async fn recover_signature(
+        data: &Self::DataType,
+        signature: &Signature,
+    ) -> Result<H160, Status> {
+        recover_node_data_v2(data, signature)
+            .await
+            .map_err(|e| Status::invalid_argument(format!("Failed to recover signature: {e}")))
+    }
+}
+
+// impl SignedDataValidator for SignedMetrics {
+//     type DataType = Vec<Metric>;
+
+//     async fn recover_signature(
+//         data: &Self::DataType,
+//         signature: &Signature,
+//     ) -> Result<H160, Status> {
+//         recover_metrics(data, signature)
+//             .await
+//             .map_err(|e| Status::invalid_argument(format!("Failed to recover signature: {e}")))
+//     }
+// }

@@ -16,6 +16,11 @@ pub mod messages {
     tonic::include_proto!("messages");
 }
 
+pub mod node_data {
+    #![allow(clippy::derive_partial_eq_without_eq)]
+    tonic::include_proto!("node_data");
+}
+
 use backend::backend_client::BackendClient;
 use messages::RegistrationCredentials;
 use tonic::transport::Channel;
@@ -40,12 +45,12 @@ pub trait BackendMiddleware: Clone + Send + Sync + 'static {
 
     async fn node_data(
         &mut self,
-        request: messages::SignedNodeData,
+        request: node_data::SignedNodeData,
     ) -> Result<Response<()>, Status>;
 
     async fn node_data_v2(
         &mut self,
-        request: messages::SignedNodeDataV2,
+        request: node_data::SignedNodeDataV2,
     ) -> Result<Response<()>, Status>;
 
     async fn logs(&mut self, request: messages::SignedLog) -> Result<Response<()>, Status>;
@@ -90,14 +95,14 @@ impl BackendMiddleware for BackendClientMiddleware {
 
     async fn node_data(
         &mut self,
-        request: messages::SignedNodeData,
+        request: node_data::SignedNodeData,
     ) -> Result<Response<()>, Status> {
         self.0.node_data(request).await
     }
 
     async fn node_data_v2(
         &mut self,
-        request: messages::SignedNodeDataV2,
+        request: node_data::SignedNodeDataV2,
     ) -> Result<Response<()>, Status> {
         self.0.node_data_v2(request).await
     }
@@ -155,14 +160,14 @@ impl BackendMiddleware for BackendClientMock {
 
     async fn node_data(
         &mut self,
-        _request: messages::SignedNodeData,
+        _request: node_data::SignedNodeData,
     ) -> Result<Response<()>, Status> {
         Ok(Response::new(()))
     }
 
     async fn node_data_v2(
         &mut self,
-        _request: messages::SignedNodeDataV2,
+        _request: node_data::SignedNodeDataV2,
     ) -> Result<Response<()>, Status> {
         Ok(Response::new(()))
     }

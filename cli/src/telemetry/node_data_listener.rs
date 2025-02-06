@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use ivynet_grpc::{messages::SignedNodeDataV2, BackendMiddleware, Response, Status};
+use ivynet_grpc::{node_data::SignedNodeDataV2, BackendMiddleware, Response, Status};
 use kameo::{message::Message, Actor};
 use tracing::debug;
 

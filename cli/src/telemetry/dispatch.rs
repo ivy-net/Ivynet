@@ -2,7 +2,8 @@ use std::ops::Deref;
 
 use ivynet_grpc::{
     backend::backend_client::BackendClient,
-    messages::{SignedLog, SignedMetrics, SignedNodeDataV2},
+    messages::{SignedLog, SignedMetrics},
+    node_data::SignedNodeDataV2,
     tonic::{self, transport::Channel},
 };
 use kameo::{message::Message, Actor};

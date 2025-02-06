@@ -1,6 +1,7 @@
 use ethers::types::Address;
-use ivynet_grpc::messages::{
-    Metrics, NodeDataV2, SignedLog, SignedMetrics, SignedNameChange, SignedNodeDataV2,
+use ivynet_grpc::{
+    messages::{Metrics, SignedLog, SignedMetrics, SignedNameChange},
+    node_data::{NodeDataV2, SignedNodeDataV2},
 };
 use ivynet_signer::{
     sign_utils::{sign_log, sign_metrics, sign_name_change, sign_node_data_v2, IvySigningError},

@@ -8,7 +8,7 @@ use ivynet_docker::{
     dockerapi::{DockerApi, DockerClient},
 };
 use ivynet_grpc::{
-    backend::backend_client::BackendClient, messages::NodeDataV2, tonic::transport::Channel,
+    backend::backend_client::BackendClient, node_data::NodeDataV2, tonic::transport::Channel,
     BackendClientMiddleware, BackendMiddleware,
 };
 use logs_listener::LogsListenerManager;

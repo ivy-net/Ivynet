@@ -1,0 +1,44 @@
+syntax = "proto3";
+package node_data;
+
+message SignedNodeData {
+    bytes signature = 1;
+    bytes machine_id = 2;
+    NodeData node_data = 4;
+}
+
+message NodeData {
+    string name = 1;
+    string node_type = 2;
+    string manifest = 3;
+    bool metrics_alive = 4;
+}
+
+message SignedNodeDataV2 {
+    bytes signature = 1;
+    bytes machine_id = 2;
+    NodeDataV2 node_data = 4;
+}
+
+message NodeDataV2 {
+    string name = 1;
+    optional string node_type = 2;
+    optional string manifest = 3;
+    optional bool metrics_alive = 4;
+    optional bool node_running = 5;
+}
+
+message SignedNodeDataV3 {
+    bytes signature = 1;
+    bytes machine_id = 2;
+    NodeDataV3 node_data = 4;
+}
+
+message NodeDataV3 {
+    string name = 1;
+    optional string node_type = 2;
+    optional string manifest = 3;
+    optional bool metrics_alive = 4;
+    optional bool node_running = 5;
+    optional string ivynet_version = 6;
+}

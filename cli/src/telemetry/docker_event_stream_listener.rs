@@ -7,13 +7,14 @@ use ivynet_docker::{
 };
 use ivynet_grpc::{
     backend::backend_client::BackendClient,
-    messages::{NodeDataV2, NodeTypeQueries, NodeTypeQuery},
+    messages::{NodeTypeQueries, NodeTypeQuery},
+    node_data::NodeDataV2,
     tonic::{transport::Channel, Request, Response},
     BackendMiddleware,
 };
 use tokio::time::sleep;
 use tokio_stream::StreamExt;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info};
 
 use crate::ivy_machine::{IvyMachine, MachineIdentityError};
 

@@ -1,7 +1,5 @@
 syntax = "proto3";
 package messages;
-import "google/protobuf/timestamp.proto";
-import "google/protobuf/descriptor.proto";
 
 message RegistrationCredentials {
     string email = 1;
@@ -27,33 +25,6 @@ message Metrics {
 message MetricsAttribute {
     string name = 1;
     string value = 2;
-}
-
-message SignedNodeData {
-    bytes signature = 1;
-    bytes machine_id = 2;
-    NodeData node_data = 4;
-}
-
-message NodeData {
-    string name = 1;
-    string node_type = 2;
-    string manifest = 3;
-    bool metrics_alive = 4;
-}
-
-message SignedNodeDataV2 {
-    bytes signature = 1;
-    bytes machine_id = 2;
-    NodeDataV2 node_data = 4;
-}
-
-message NodeDataV2 {
-    string name = 1;
-    optional string node_type = 2;
-    optional string manifest = 3;
-    optional bool metrics_alive = 4;
-    optional bool node_running = 5;
 }
 
 message SignedLog {
