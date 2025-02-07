@@ -1,3 +1,4 @@
+mod alerts;
 mod apidoc;
 mod authorize;
 mod client;
@@ -136,6 +137,12 @@ fn create_router() -> Router<HttpState> {
                 .route("/", get(node::all_avs_info))
                 .route("/status", get(node::avs_status))
                 .route("/active_set", get(node::avs_active_set)),
+        )
+        .nest(
+            "/alerts",
+            Router::new()
+                .route("/active", get(node::active_alerts))
+                .route("/resolved", get(node::resolved_alerts)),
         )
         .nest(
             "/info/avs",
