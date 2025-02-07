@@ -230,11 +230,6 @@ pub async fn report_metrics(
             dispatch.tell(TelemetryMsg::Metrics(signed_metrics)).await?;
         }
     }
-    // Last but not least - send system metrics
-    // let system_metrics = fetch_system_telemetry();
-    // let signed_metrics = machine.sign_metrics(None, &system_metrics)?;
-    // dispatch.tell(TelemetryMsg::Metrics(signed_metrics)).await?;
-
     Ok(())
 }
 

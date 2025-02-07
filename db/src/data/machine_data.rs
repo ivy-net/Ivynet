@@ -16,11 +16,11 @@ use crate::{
 const UPTIME_METRIC: &str = "uptime";
 const CORES_METRIC: &str = "cores";
 const CPU_USAGE_METRIC: &str = "cpu_usage";
-const MEMORY_USAGE_METRIC: &str = "memory_usage";
-const MEMORY_FREE_METRIC: &str = "memory_free";
+const MEMORY_USAGE_METRIC: &str = "ram_usage";
+const MEMORY_FREE_METRIC: &str = "free_ram";
 const MEMORY_TOTAL_METRIC: &str = "memory_total";
 const DISK_USAGE_METRIC: &str = "disk_usage";
-const DISK_FREE_METRIC: &str = "disk_free";
+const DISK_FREE_METRIC: &str = "free_disk";
 const DISK_TOTAL_METRIC: &str = "disk_total";
 #[derive(Serialize, ToSchema, Clone, Debug, Default)]
 pub struct MachineStatusReport {
@@ -39,6 +39,7 @@ pub enum MachineStatus {
 pub enum MachineError {
     Idle,
     SystemResourcesUsage,
+    ClientUpdateRequired,
 }
 
 #[derive(Serialize, ToSchema, Clone, Debug)]
@@ -48,8 +49,8 @@ pub struct MachineInfoReport {
     pub status: MachineStatus,
     pub client_version: Option<String>,
     pub hardware_info: HardwareUsageInfo,
-    pub avs_list: Vec<AvsInfo>,
     pub errors: Vec<MachineError>,
+    pub avs_list: Vec<AvsInfo>,
 }
 
 #[derive(Serialize, ToSchema, Clone, Debug)]
@@ -88,16 +89,6 @@ pub async fn build_machine_info(
 
     let hardware_info = build_system_metrics(&machine_metrics);
 
-    // let memory_info = build_hardware_info(
-    //     machine_metrics.get(MEMORY_USAGE_METRIC).cloned(),
-    //     machine_metrics.get(MEMORY_FREE_METRIC).cloned(),
-    // );
-
-    // let disk_info = build_hardware_info(
-    //     machine_metrics.get(DISK_USAGE_METRIC).cloned(),
-    //     machine_metrics.get(DISK_FREE_METRIC).cloned(),
-    // );
-
     if hardware_info.disk_status == HardwareInfoStatus::Critical ||
         hardware_info.memory_status == HardwareInfoStatus::Critical
     {
@@ -120,6 +111,10 @@ pub async fn build_machine_info(
         avs_infos.push(avs_info);
     }
 
+    if machine.client_version.is_none() {
+        errors.push(MachineError::ClientUpdateRequired);
+    }
+
     let info_report = MachineInfoReport {
         machine_id: format!("{:?}", machine.machine_id),
         name: format!("{:?}", machine.name),
@@ -132,27 +127,6 @@ pub async fn build_machine_info(
 
     Ok(info_report)
 }
-
-// pub fn build_hardware_info(
-//     usage_metric: Option<Metric>,
-//     free_metric: Option<Metric>,
-//     total_metric: Option<Metric>,
-// ) -> HardwareUsageInfo {
-//     let usage = if let Some(usage) = usage_metric { usage.value } else { 0.0 };
-//     let free = if let Some(free) = free_metric { free.value } else { 0.0 };
-//     let total = if let Some(total) = total_metric { total.value } else { 0.0 };
-//     HardwareUsageInfo {
-//         usage,
-//         free,
-//         status: if usage > ((usage + free) * 0.95) {
-//             HardwareInfoStatus::Critical
-//         } else if usage > ((usage + free) * 0.9) {
-//             HardwareInfoStatus::Warning
-//         } else {
-//             HardwareInfoStatus::Healthy
-//         },
-//     }
-// }
 
 pub async fn get_machine_health(
     pool: &PgPool,
