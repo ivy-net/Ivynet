@@ -5,10 +5,11 @@ CREATE TABLE IF NOT EXISTS alerts_active (
                                         ON DELETE CASCADE,
     organization_id     BIGINT      NOT NULL REFERENCES organization
                                         ON DELETE CASCADE,
-    client_id           BYTEA       NOT NULL REFERENCES client 
+    client_id           BYTEA       NOT NULL REFERENCES client
                                         ON DELETE CASCADE,
     node_name           VARCHAR(250) NOT NULL,
     created_at          TIMESTAMP   NOT NULL,
     acknowledged_at     TIMESTAMP,
+    custom_data         JSONB,
     PRIMARY KEY (organization_id, alert_id)
 ) PARTITION BY LIST (organization_id);

@@ -1,0 +1,27 @@
+
+[package]
+name = "ivynet-alerts"
+version = "0.1.0"
+edition = "2021"
+authors = ["Noah Foltz <noah@ivynet.dev>"]
+description = "GRPC library for IvyNet"
+repository = "https://github.com/ivy-net/ivynet"
+license = "UNLICENSED"
+
+[package.metadata.cargo-machete]
+ignored = ["prost", "prost-wkt", "prost-wkt-types", "serde", "serde_json"]
+
+[lib]
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+
+[build-dependencies]
