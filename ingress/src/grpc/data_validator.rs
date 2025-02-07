@@ -4,13 +4,14 @@ use ivynet_core::ethers::types::{Signature, H160};
 use ivynet_grpc::{
     self,
     messages::{
-        Metrics, NodeData, NodeDataV2, SignedMetrics, SignedNameChange, SignedNodeData,
-        SignedNodeDataV2,
+        MachineData, Metrics, NodeData, NodeDataV2, SignedLog, SignedMachineData, SignedMetrics,
+        SignedNameChange, SignedNodeData, SignedNodeDataV2,
     },
     Status,
 };
 use ivynet_signer::sign_utils::{
-    recover_metrics, recover_name_change, recover_node_data, recover_node_data_v2,
+    recover_log, recover_machine_data, recover_metrics, recover_name_change, recover_node_data,
+    recover_node_data_v2,
 };
 use sqlx::PgPool;
 use uuid::Uuid;
@@ -68,9 +69,9 @@ impl SignedDataValidator for SignedNodeData {
         data: &Self::DataType,
         signature: &Signature,
     ) -> Result<H160, Status> {
-        recover_node_data(data, signature)
-            .await
-            .map_err(|e| Status::invalid_argument(format!("Failed to recover signature: {e}")))
+        recover_node_data(data, signature).map_err(|e| {
+            Status::invalid_argument(format!("Failed to recover signature for node data: {e}"))
+        })
     }
 }
 
@@ -82,9 +83,9 @@ impl SignedDataValidator for SignedNodeDataV2 {
         data: &Self::DataType,
         signature: &Signature,
     ) -> Result<H160, Status> {
-        recover_node_data_v2(data, signature)
-            .await
-            .map_err(|e| Status::invalid_argument(format!("Failed to recover signature: {e}")))
+        recover_node_data_v2(data, signature).map_err(|e| {
+            Status::invalid_argument(format!("Failed to recover signature for node data v2: {e}"))
+        })
     }
 }
 
@@ -95,9 +96,9 @@ impl SignedDataValidator for SignedMetrics {
         data: &Self::DataType,
         signature: &Signature,
     ) -> Result<H160, Status> {
-        recover_metrics(data, signature)
-            .await
-            .map_err(|e| Status::invalid_argument(format!("Failed to recover signature: {e}")))
+        recover_metrics(data, signature).map_err(|e| {
+            Status::invalid_argument(format!("Failed to recover signature for metrics: {e}"))
+        })
     }
 }
 
@@ -108,8 +109,34 @@ impl SignedDataValidator for SignedNameChange {
         data: &Self::DataType,
         signature: &Signature,
     ) -> Result<H160, Status> {
-        recover_name_change(data.0.as_str(), data.1.as_str(), signature)
-            .await
-            .map_err(|e| Status::invalid_argument(format!("Failed to recover signature: {e}")))
+        recover_name_change(data.0.as_str(), data.1.as_str(), signature).map_err(|e| {
+            Status::invalid_argument(format!("Failed to recover signature for name change: {e}"))
+        })
+    }
+}
+
+impl SignedDataValidator for SignedLog {
+    type DataType = String;
+
+    async fn recover_signature(
+        data: &Self::DataType,
+        signature: &Signature,
+    ) -> Result<H160, Status> {
+        recover_log(data, signature).map_err(|e| {
+            Status::invalid_argument(format!("Failed to recover signature for logs: {e}"))
+        })
+    }
+}
+
+impl SignedDataValidator for SignedMachineData {
+    type DataType = MachineData;
+
+    async fn recover_signature(
+        data: &Self::DataType,
+        signature: &Signature,
+    ) -> Result<H160, Status> {
+        recover_machine_data(data, signature).map_err(|e| {
+            Status::invalid_argument(format!("Failed to recover signature for machine data: {e}"))
+        })
     }
 }

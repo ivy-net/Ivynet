@@ -49,7 +49,7 @@ fn hash_node_data(node_data: &NodeData) -> Result<H256, IvySigningError> {
     Ok(H256::from(&keccak256(encode(&tokens))))
 }
 
-pub async fn recover_node_data(
+pub fn recover_node_data(
     node_data: &NodeData,
     signature: &Signature,
 ) -> Result<Address, IvySigningError> {
@@ -75,7 +75,7 @@ fn hash_node_data_v2(node_data: &NodeDataV2) -> Result<H256, IvySigningError> {
     Ok(H256::from(&keccak256(encode(&tokens))))
 }
 
-pub async fn recover_node_data_v2(
+pub fn recover_node_data_v2(
     node_data: &NodeDataV2,
     signature: &Signature,
 ) -> Result<Address, IvySigningError> {
@@ -87,7 +87,7 @@ pub fn sign_metrics(metrics: &[Metrics], wallet: &IvyWallet) -> Result<Signature
     sign_hash(build_metrics_message(metrics), wallet)
 }
 
-pub async fn recover_metrics(
+pub fn recover_metrics(
     metrics: &[Metrics],
     signature: &Signature,
 ) -> Result<Address, IvySigningError> {
@@ -119,7 +119,7 @@ pub fn sign_machine_data(
     sign_hash(hash_machine_data(machine_data), wallet)
 }
 
-pub async fn recover_machine_data(
+pub fn recover_machine_data(
     machine_data: &MachineData,
     signature: &Signature,
 ) -> Result<Address, IvySigningError> {
@@ -163,7 +163,7 @@ fn hash_name_change(old_name: &str, new_name: &str) -> Result<H256, IvySigningEr
     Ok(H256::from(&keccak256(encode(&tokens))))
 }
 
-pub async fn recover_name_change(
+pub fn recover_name_change(
     old_name: &str,
     new_name: &str,
     signature: &Signature,

@@ -81,7 +81,7 @@ message MachineData {
     string disk_used_total = 8;
     repeated string free_disk = 9;
     repeated string used_disk = 10;
-    
+
 }
 
 message SignedNodeData {

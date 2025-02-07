@@ -231,9 +231,9 @@ pub async fn report_metrics(
         }
     }
     // Last but not least - send system metrics
-    let system_metrics = fetch_system_telemetry();
-    let signed_metrics = machine.sign_metrics(None, &system_metrics)?;
-    dispatch.tell(TelemetryMsg::Metrics(signed_metrics)).await?;
+    // let system_metrics = fetch_system_telemetry();
+    // let signed_metrics = machine.sign_metrics(None, &system_metrics)?;
+    // dispatch.tell(TelemetryMsg::Metrics(signed_metrics)).await?;
 
     Ok(())
 }
@@ -301,52 +301,4 @@ pub async fn fetch_telemetry_from(
     } else {
         Ok(metrics)
     }
-}
-
-fn fetch_system_telemetry() -> Vec<Metrics> {
-    let SysInfo {
-        cpu_cores,
-        cpu_usage,
-        memory_usage,
-        memory_free,
-        disk_usage,
-        disk_free,
-        uptime,
-        ..
-    } = SysInfo::from_system();
-
-    let mut sys_metrics = vec![
-        Metrics { name: "cpu_usage".to_owned(), value: cpu_usage, attributes: Default::default() },
-        Metrics {
-            name: "ram_usage".to_owned(),
-            value: memory_usage as f64,
-            attributes: Default::default(),
-        },
-        Metrics {
-            name: "free_ram".to_owned(),
-            value: memory_free as f64,
-            attributes: Default::default(),
-        },
-        Metrics {
-            name: "cores".to_owned(),
-            value: cpu_cores as f64,
-            attributes: Default::default(),
-        },
-        Metrics { name: "uptime".to_owned(), value: uptime as f64, attributes: Default::default() },
-    ];
-    for (i, disk) in disk_usage.iter().enumerate() {
-        sys_metrics.push(Metrics {
-            name: format!("disk_usage_{}", i),
-            value: *disk as f64,
-            attributes: Default::default(),
-        });
-    }
-    for (i, disk) in disk_free.iter().enumerate() {
-        sys_metrics.push(Metrics {
-            name: format!("free_disk_{}", i),
-            value: *disk as f64,
-            attributes: Default::default(),
-        });
-    }
-    sys_metrics
 }

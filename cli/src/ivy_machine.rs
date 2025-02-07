@@ -214,7 +214,7 @@ mod ivy_machine_tests {
         assert!(!signed_metrics.signature.is_empty());
 
         let signature = Signature::try_from(signed_metrics.signature.as_slice()).unwrap();
-        let recovered = recover_metrics(&metrics, &signature).await.unwrap();
+        let recovered = recover_metrics(&metrics, &signature).unwrap();
         assert_eq!(recovered, machine.pubkey());
     }
 
@@ -232,7 +232,7 @@ mod ivy_machine_tests {
         assert!(!signed_node_data.signature.is_empty());
 
         let signature = Signature::try_from(signed_node_data.signature.as_slice()).unwrap();
-        let recovered = recover_node_data_v2(&node_data, &signature).await.unwrap();
+        let recovered = recover_node_data_v2(&node_data, &signature).unwrap();
         assert_eq!(recovered, machine.pubkey());
     }
 
@@ -252,7 +252,7 @@ mod ivy_machine_tests {
         assert!(!signed_name_change.signature.is_empty());
 
         let signature = Signature::try_from(signed_name_change.signature.as_slice()).unwrap();
-        let recovered = recover_name_change(old_name, new_name, &signature).await.unwrap();
+        let recovered = recover_name_change(old_name, new_name, &signature).unwrap();
         assert_eq!(recovered, machine.pubkey());
     }
 

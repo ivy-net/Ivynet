@@ -1,12 +1,14 @@
 use crate::error::IngressError;
 use db::{
-    data::node_data::{update_avs_active_set, update_avs_version},
+    data::{
+        machine_data::build_system_metrics,
+        node_data::{update_avs_active_set, update_avs_version},
+    },
     log::{ContainerLog, LogLevel},
-    machine::Machine,
     metric::Metric,
-    Account, Avs, AvsVersionHash,
+    Account, Avs, AvsVersionHash, Machine,
 };
-use ivynet_core::ethers::types::{Address, Signature};
+use ivynet_core::ethers::types::Address;
 
 use ivynet_docker_registry::node_types::get_node_type;
 use ivynet_grpc::{
@@ -14,16 +16,15 @@ use ivynet_grpc::{
     backend::backend_server::{Backend, BackendServer},
     client::{Request, Response},
     messages::{
-        Metrics, NodeData, NodeDataV2, NodeType as NodeTypeMessage, NodeTypeQueries, NodeTypes,
-        RegistrationCredentials, SignedLog, SignedMachineData, SignedMetrics, SignedNameChange,
-        SignedNodeData, SignedNodeDataV2,
+        MachineData, Metrics, NodeData, NodeDataV2, NodeType as NodeTypeMessage, NodeTypeQueries,
+        NodeTypes, RegistrationCredentials, SignedLog, SignedMachineData, SignedMetrics,
+        SignedNameChange, SignedNodeData, SignedNodeDataV2,
     },
     server, Status,
 };
 
 use ivynet_docker::logs::{find_log_level, find_or_create_log_timestamp, sanitize_log};
 use ivynet_node_type::NodeType;
-use ivynet_signer::sign_utils::recover_from_string;
 use sqlx::PgPool;
 use std::{str::FromStr, sync::Arc};
 use tracing::debug;
@@ -77,28 +78,16 @@ impl Backend for BackendService {
         let request = request.into_inner();
         debug!("Received logs: {:?}", request.log);
 
-        let client_id = recover_from_string(
-            &request.log,
-            &Signature::try_from(request.signature.as_slice())
-                .map_err(|_| Status::invalid_argument("Signature is invalid"))?,
-        )?;
-
-        if !Machine::is_owned_by(
+        let (machine_id, log) = validate_request::<String, SignedLog>(
             &self.pool,
-            &client_id,
-            Uuid::from_slice(&request.machine_id)
-                .map_err(|_| Status::invalid_argument("Machine id has wrong length".to_string()))?,
+            &request.machine_id,
+            &request.signature,
+            Some(request.log),
         )
-        .await
-        .unwrap_or(false)
-        {
-            return Err(Status::not_found("Machine not registered for given client".to_string()));
-        }
+        .await?;
 
-        let machine_id = Uuid::from_slice(&request.machine_id)
-            .map_err(|_| Status::invalid_argument("Machine id has wrong length".to_string()))?;
         let avs_name = request.avs_name;
-        let log = sanitize_log(&request.log);
+        let log = sanitize_log(log.as_str());
         let log_level = LogLevel::from_str(&find_log_level(&log))
             .map_err(|_| Status::invalid_argument("Log level is invalid".to_string()))?;
         let created_at = Some(find_or_create_log_timestamp(&log));
@@ -119,9 +108,28 @@ impl Backend for BackendService {
     ) -> Result<Response<()>, Status> {
         let req = request.into_inner();
 
-        println!("Received machine data: {:?}", req);
+        let (machine_id, machine_data) = validate_request::<MachineData, SignedMachineData>(
+            &self.pool,
+            &req.machine_id,
+            &req.signature,
+            req.machine_data,
+        )
+        .await?;
 
-        //TODO: All the rest of the logic
+        let system_metrics = build_system_metrics(&machine_data);
+
+        Machine::update_client_version(&self.pool, &machine_id, &machine_data.ivynet_version)
+            .await
+            .map_err(|e| Status::internal(format!("Failed while updating client version: {e}")))?;
+
+        _ = Metric::record(
+            &self.pool,
+            machine_id,
+            None,
+            &system_metrics.iter().map(|v| v.into()).collect::<Vec<_>>(),
+        )
+        .await
+        .map_err(|e| Status::internal(format!("Failed while saving system metrics: {e:?}")))?;
 
         Ok(Response::new(()))
     }
