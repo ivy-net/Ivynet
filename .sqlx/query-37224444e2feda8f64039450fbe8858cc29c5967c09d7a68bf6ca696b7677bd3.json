@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE machine SET client_version = $2 WHERE machine_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "37224444e2feda8f64039450fbe8858cc29c5967c09d7a68bf6ca696b7677bd3"
+}

@@ -7,7 +7,7 @@ use reqwest::Client;
 use tracing::{debug, error, info};
 
 use crate::{
-    ivy_machine::{IvyMachine, MachineIdentityError, SysInfo},
+    ivy_machine::{IvyMachine, MachineIdentityError},
     telemetry::dispatch::TelemetryMsg,
 };
 

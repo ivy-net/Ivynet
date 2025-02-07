@@ -1,7 +1,7 @@
 use crate::error::IngressError;
 use db::{
     data::{
-        machine_data::{build_system_metrics, convert_system_metrics},
+        machine_data::convert_system_metrics,
         node_data::{update_avs_active_set, update_avs_version},
     },
     log::{ContainerLog, LogLevel},
