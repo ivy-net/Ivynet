@@ -47,16 +47,16 @@ pub struct MachineInfoReport {
     pub name: String,
     pub status: MachineStatus,
     pub client_version: Option<String>,
-    pub system_metrics: SystemMetrics,
+    pub hardware_info: HardwareUsageInfo,
     pub avs_list: Vec<AvsInfo>,
     pub errors: Vec<MachineError>,
 }
 
 #[derive(Serialize, ToSchema, Clone, Debug)]
 pub struct HardwareUsageInfo {
-    pub usage: f64,
-    pub free: f64,
-    pub status: HardwareInfoStatus,
+    pub sys_metrics: SystemMetrics,
+    pub memory_status: HardwareInfoStatus,
+    pub disk_status: HardwareInfoStatus,
 }
 
 #[derive(Serialize, ToSchema, Clone, Debug, PartialEq, Eq)]
@@ -86,20 +86,20 @@ pub async fn build_machine_info(
 ) -> Result<MachineInfoReport, DatabaseError> {
     let mut errors = vec![];
 
-    let system_metrics = build_system_metrics(&machine_metrics);
+    let hardware_info = build_system_metrics(&machine_metrics);
 
-    let memory_info = build_hardware_info(
-        machine_metrics.get(MEMORY_USAGE_METRIC).cloned(),
-        machine_metrics.get(MEMORY_FREE_METRIC).cloned(),
-    );
+    // let memory_info = build_hardware_info(
+    //     machine_metrics.get(MEMORY_USAGE_METRIC).cloned(),
+    //     machine_metrics.get(MEMORY_FREE_METRIC).cloned(),
+    // );
 
-    let disk_info = build_hardware_info(
-        machine_metrics.get(DISK_USAGE_METRIC).cloned(),
-        machine_metrics.get(DISK_FREE_METRIC).cloned(),
-    );
+    // let disk_info = build_hardware_info(
+    //     machine_metrics.get(DISK_USAGE_METRIC).cloned(),
+    //     machine_metrics.get(DISK_FREE_METRIC).cloned(),
+    // );
 
-    if disk_info.status == HardwareInfoStatus::Critical ||
-        memory_info.status == HardwareInfoStatus::Critical
+    if hardware_info.disk_status == HardwareInfoStatus::Critical ||
+        hardware_info.memory_status == HardwareInfoStatus::Critical
     {
         errors.push(MachineError::SystemResourcesUsage);
     }
@@ -125,7 +125,7 @@ pub async fn build_machine_info(
         name: format!("{:?}", machine.name),
         client_version: machine.client_version.clone(),
         status: if errors.is_empty() { MachineStatus::Healthy } else { MachineStatus::Unhealthy },
-        system_metrics,
+        hardware_info,
         avs_list: avs_infos,
         errors,
     };
@@ -133,26 +133,26 @@ pub async fn build_machine_info(
     Ok(info_report)
 }
 
-pub fn build_hardware_info(
-    usage_metric: Option<Metric>,
-    free_metric: Option<Metric>,
-    total_metric: Option<Metric>,
-) -> HardwareUsageInfo {
-    let usage = if let Some(usage) = usage_metric { usage.value } else { 0.0 };
-    let free = if let Some(free) = free_metric { free.value } else { 0.0 };
-    let total = if let Some(total) = total_metric { total.value } else { 0.0 };
-    HardwareUsageInfo {
-        usage,
-        free,
-        status: if usage > ((usage + free) * 0.95) {
-            HardwareInfoStatus::Critical
-        } else if usage > ((usage + free) * 0.9) {
-            HardwareInfoStatus::Warning
-        } else {
-            HardwareInfoStatus::Healthy
-        },
-    }
-}
+// pub fn build_hardware_info(
+//     usage_metric: Option<Metric>,
+//     free_metric: Option<Metric>,
+//     total_metric: Option<Metric>,
+// ) -> HardwareUsageInfo {
+//     let usage = if let Some(usage) = usage_metric { usage.value } else { 0.0 };
+//     let free = if let Some(free) = free_metric { free.value } else { 0.0 };
+//     let total = if let Some(total) = total_metric { total.value } else { 0.0 };
+//     HardwareUsageInfo {
+//         usage,
+//         free,
+//         status: if usage > ((usage + free) * 0.95) {
+//             HardwareInfoStatus::Critical
+//         } else if usage > ((usage + free) * 0.9) {
+//             HardwareInfoStatus::Warning
+//         } else {
+//             HardwareInfoStatus::Healthy
+//         },
+//     }
+// }
 
 pub async fn get_machine_health(
     pool: &PgPool,
@@ -179,8 +179,8 @@ pub async fn get_machine_health(
     Ok((healthy_list, unhealthy_list))
 }
 
-pub fn build_system_metrics(machine_metrics: &HashMap<String, Metric>) -> SystemMetrics {
-    let system_metrics = SystemMetrics {
+pub fn build_system_metrics(machine_metrics: &HashMap<String, Metric>) -> HardwareUsageInfo {
+    let metrics = SystemMetrics {
         cpu_cores: if let Some(cores) = machine_metrics.get(CORES_METRIC) {
             cores.value as u64
         } else {
@@ -249,7 +249,44 @@ pub fn build_system_metrics(machine_metrics: &HashMap<String, Metric>) -> System
             0
         },
     };
-    system_metrics
+
+    // Calculate memory status
+    let memory_status = if metrics.memory_usage == 0 && metrics.memory_free == 0 {
+        HardwareInfoStatus::Healthy
+    } else {
+        let total = metrics.memory_usage + metrics.memory_free;
+        if total == 0 {
+            HardwareInfoStatus::Healthy
+        } else if metrics.memory_usage as f64 > (total as f64 * 0.95) {
+            HardwareInfoStatus::Critical
+        } else if metrics.memory_usage as f64 > (total as f64 * 0.9) {
+            HardwareInfoStatus::Warning
+        } else {
+            HardwareInfoStatus::Healthy
+        }
+    };
+
+    // Calculate disk status
+    let disk_status = if metrics.disk_usage.is_empty() || metrics.disk_free.is_empty() {
+        HardwareInfoStatus::Healthy
+    } else {
+        let mut worst_status = HardwareInfoStatus::Healthy;
+        for (usage, free) in metrics.disk_usage.iter().zip(metrics.disk_free.iter()) {
+            let total = *usage + *free;
+            if total == 0 {
+                continue;
+            }
+            if *usage as f64 > (total as f64 * 0.95) {
+                worst_status = HardwareInfoStatus::Critical;
+                break;
+            } else if *usage as f64 > (total as f64 * 0.9) {
+                worst_status = HardwareInfoStatus::Warning;
+            }
+        }
+        worst_status
+    };
+
+    HardwareUsageInfo { sys_metrics: metrics, memory_status, disk_status }
 }
 
 pub fn convert_system_metrics(sys_info: &MachineData) -> Vec<Metrics> {

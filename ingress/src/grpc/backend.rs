@@ -1,7 +1,7 @@
 use crate::error::IngressError;
 use db::{
     data::{
-        machine_data::build_system_metrics,
+        machine_data::{build_system_metrics, convert_system_metrics},
         node_data::{update_avs_active_set, update_avs_version},
     },
     log::{ContainerLog, LogLevel},
@@ -116,7 +116,7 @@ impl Backend for BackendService {
         )
         .await?;
 
-        let system_metrics = build_system_metrics(&machine_data);
+        let system_metrics = convert_system_metrics(&machine_data);
 
         Machine::update_client_version(&self.pool, &machine_id, &machine_data.ivynet_version)
             .await
