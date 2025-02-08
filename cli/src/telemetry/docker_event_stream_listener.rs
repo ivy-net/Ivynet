@@ -106,10 +106,10 @@ impl<B: BackendMiddleware> DockerStreamListener<DockerClient, B> {
                 // 2) The telemetry interval ticks.
                 _ = telemetry_interval.tick() => {
                     info!("Broadcasting telemetry on tick...");
-                    // Broadcast telemetry to your metrics listener
-                    if let Err(e) = self.metrics_listener_handle.tell_broadcast().await{
-                        error!("Error broadcasting metrics: {:?}", e);
-                        };
+
+                    let signed_machine_data = self.machine.sign_machine_data()?;
+                    self.machine_data_monitor_handle.tell_send_machine_data(signed_machine_data).await;
+
                     for node in known_nodes.iter() {
                         let manifest = node.manifest.clone().unwrap_or(ContainerId("".to_string()));
                         let node_data = NodeDataV2 {
@@ -124,10 +124,13 @@ impl<B: BackendMiddleware> DockerStreamListener<DockerClient, B> {
                             error!("Failed to send node data: {}", e);
                         }
                     }
-                    let signed_machine_data = self.machine.sign_machine_data()?;
-                    if let Err(e) = self.machine_data_monitor_handle.ask_send_machine_data(signed_machine_data).await {
-                        error!("Failed to send machine data: {}", e);
-                    }
+
+                    // Broadcast telemetry to your metrics listener
+                    if let Err(e) = self.metrics_listener_handle.tell_broadcast().await{
+                        error!("Error broadcasting metrics: {:?}", e);
+                        };
+
+
                 }
             }
         }
