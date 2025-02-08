@@ -3,7 +3,7 @@ use ethers::{
     types::{Address, Signature, H256, U256},
     utils::keccak256,
 };
-use ivynet_grpc::messages::{Metrics, NodeData, NodeDataV2};
+use ivynet_grpc::messages::{MachineData, Metrics, NodeData, NodeDataV2};
 
 use crate::IvyWallet;
 
@@ -49,7 +49,7 @@ fn hash_node_data(node_data: &NodeData) -> Result<H256, IvySigningError> {
     Ok(H256::from(&keccak256(encode(&tokens))))
 }
 
-pub async fn recover_node_data(
+pub fn recover_node_data(
     node_data: &NodeData,
     signature: &Signature,
 ) -> Result<Address, IvySigningError> {
@@ -75,7 +75,7 @@ fn hash_node_data_v2(node_data: &NodeDataV2) -> Result<H256, IvySigningError> {
     Ok(H256::from(&keccak256(encode(&tokens))))
 }
 
-pub async fn recover_node_data_v2(
+pub fn recover_node_data_v2(
     node_data: &NodeDataV2,
     signature: &Signature,
 ) -> Result<Address, IvySigningError> {
@@ -87,7 +87,7 @@ pub fn sign_metrics(metrics: &[Metrics], wallet: &IvyWallet) -> Result<Signature
     sign_hash(build_metrics_message(metrics), wallet)
 }
 
-pub async fn recover_metrics(
+pub fn recover_metrics(
     metrics: &[Metrics],
     signature: &Signature,
 ) -> Result<Address, IvySigningError> {
@@ -111,6 +111,44 @@ fn build_metrics_message(metrics: &[Metrics]) -> H256 {
     H256::from(&keccak256(encode(&tokens)))
 }
 
+// --- MachineData ---
+pub fn sign_machine_data(
+    machine_data: &MachineData,
+    wallet: &IvyWallet,
+) -> Result<Signature, IvySigningError> {
+    sign_hash(hash_machine_data(machine_data), wallet)
+}
+
+pub fn recover_machine_data(
+    machine_data: &MachineData,
+    signature: &Signature,
+) -> Result<Address, IvySigningError> {
+    recover_from_hash(hash_machine_data(machine_data), signature)
+}
+
+fn hash_machine_data(machine_data: &MachineData) -> H256 {
+    let mut tokens = vec![
+        Token::String(machine_data.ivynet_version.to_string()),
+        Token::String(machine_data.uptime.to_string()),
+        Token::String(machine_data.cpu_usage.to_string()),
+        Token::String(machine_data.cpu_cores.to_string()),
+        Token::String(machine_data.memory_used.to_string()),
+        Token::String(machine_data.memory_free.to_string()),
+        Token::String(machine_data.memory_total.to_string()),
+        Token::String(machine_data.disk_used_total.to_string()),
+    ];
+
+    let free_disk_tokens =
+        machine_data.free_disk.iter().map(|f| Token::String(f.to_string())).collect::<Vec<_>>();
+    let used_disk_tokens =
+        machine_data.used_disk.iter().map(|u| Token::String(u.to_string())).collect::<Vec<_>>();
+
+    tokens.extend(free_disk_tokens);
+    tokens.extend(used_disk_tokens);
+
+    H256::from(&keccak256(encode(&tokens)))
+}
+
 // --- NameChange ---
 pub fn sign_name_change(
     old_name: &str,
@@ -125,7 +163,7 @@ fn hash_name_change(old_name: &str, new_name: &str) -> Result<H256, IvySigningEr
     Ok(H256::from(&keccak256(encode(&tokens))))
 }
 
-pub async fn recover_name_change(
+pub fn recover_name_change(
     old_name: &str,
     new_name: &str,
     signature: &Signature,

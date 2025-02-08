@@ -14,7 +14,6 @@ use super::{authorize, client, info, machine, node, organization, pubkey};
         authorize::forgot_password,
         organization::new,
         organization::get_me,
-        organization::get,
         organization::invite,
         organization::machines,
         organization::avses,
