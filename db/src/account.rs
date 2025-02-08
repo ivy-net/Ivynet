@@ -194,7 +194,7 @@ impl Account {
         name: &str,
     ) -> Result<(), DatabaseError> {
         Client::create(pool, self, client_id).await?;
-        Machine::create(pool, client_id, name, machine_id).await?;
+        Machine::create(pool, client_id, name, machine_id, None).await?;
         Ok(())
     }
 

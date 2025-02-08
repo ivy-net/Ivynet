@@ -49,6 +49,7 @@ pub struct InvitationRequest {
     pub role: Role,
 }
 
+/// Create a new organization
 #[utoipa::path(
     post,
     path = "/organization",
@@ -97,6 +98,7 @@ pub async fn new(
     Ok(CreationResult { id: org.organization_id as u64 }.into())
 }
 
+/// Get your organization
 #[utoipa::path(
     get,
     path = "/organization",
@@ -114,23 +116,24 @@ pub async fn get_me(
     Ok(Organization::get(&state.pool, account.organization_id.try_into().unwrap()).await?.into())
 }
 
-#[utoipa::path(
-    get,
-    path = "/organization/:id",
-    params(
-        ("id", description = "Organization id")
-    ),
-    responses(
-        (status = 200, body = Organization),
-        (status = 404)
-    )
-)]
-pub async fn get(
-    State(state): State<HttpState>,
-    Path(id): Path<u64>,
-) -> Result<Json<Organization>, BackendError> {
-    Ok(Organization::get(&state.pool, id).await?.into())
-}
+//This should not be public
+// #[utoipa::path(
+//     get,
+//     path = "/organization/:id",
+//     params(
+//         ("id", description = "Organization id")
+//     ),
+//     responses(
+//         (status = 200, body = Organization),
+//         (status = 404)
+//     )
+// )]
+// pub async fn get(
+//     State(state): State<HttpState>,
+//     Path(id): Path<u64>,
+// ) -> Result<Json<Organization>, BackendError> {
+//     Ok(Organization::get(&state.pool, id).await?.into())
+// }
 
 /// Get an overview of all machines in the organization
 #[utoipa::path(
@@ -170,6 +173,7 @@ pub async fn avses(
     Ok(account.all_avses(&state.pool).await?.into())
 }
 
+/// Invite a new user to the organization
 #[utoipa::path(
     post,
     path = "/organization/invite",
@@ -225,6 +229,7 @@ pub async fn invite(
     Ok(InvitationResponse { id: new_acc.verification_id }.into())
 }
 
+/// Confirm an invitation to the organization
 #[utoipa::path(
     post,
     path = "/organization/confirm/:id",

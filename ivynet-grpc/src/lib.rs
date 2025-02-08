@@ -48,6 +48,11 @@ pub trait BackendMiddleware: Clone + Send + Sync + 'static {
         request: messages::SignedNodeDataV2,
     ) -> Result<Response<()>, Status>;
 
+    async fn machine_data(
+        &mut self,
+        request: messages::SignedMachineData,
+    ) -> Result<Response<()>, Status>;
+
     async fn logs(&mut self, request: messages::SignedLog) -> Result<Response<()>, Status>;
 
     async fn node_type_queries(
@@ -100,6 +105,13 @@ impl BackendMiddleware for BackendClientMiddleware {
         request: messages::SignedNodeDataV2,
     ) -> Result<Response<()>, Status> {
         self.0.node_data_v2(request).await
+    }
+
+    async fn machine_data(
+        &mut self,
+        request: messages::SignedMachineData,
+    ) -> Result<Response<()>, Status> {
+        self.0.machine_data(request).await
     }
 
     async fn logs(&mut self, request: messages::SignedLog) -> Result<Response<()>, Status> {
@@ -163,6 +175,13 @@ impl BackendMiddleware for BackendClientMock {
     async fn node_data_v2(
         &mut self,
         _request: messages::SignedNodeDataV2,
+    ) -> Result<Response<()>, Status> {
+        Ok(Response::new(()))
+    }
+
+    async fn machine_data(
+        &mut self,
+        _request: messages::SignedMachineData,
     ) -> Result<Response<()>, Status> {
         Ok(Response::new(()))
     }

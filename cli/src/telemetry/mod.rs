@@ -12,6 +12,7 @@ use ivynet_grpc::{
     BackendClientMiddleware, BackendMiddleware,
 };
 use logs_listener::LogsListenerManager;
+use machine_data_listener::MachineDataMonitorHandle;
 use metrics_listener::MetricsListenerHandle;
 use node_data_listener::NodeDataMonitorHandle;
 use reqwest::Client;
@@ -24,6 +25,7 @@ use crate::{error::Error, ivy_machine::IvyMachine};
 pub mod dispatch;
 pub mod docker_event_stream_listener;
 pub mod logs_listener;
+pub mod machine_data_listener;
 pub mod metrics_listener;
 pub mod node_data_listener;
 pub mod parser;
@@ -171,7 +173,10 @@ pub async fn listen(
 
     let backend_middleware = BackendClientMiddleware::new(backend_client.clone());
 
-    let node_data_monitor = NodeDataMonitorHandle::new(backend_middleware, error_tx.clone());
+    let node_data_monitor =
+        NodeDataMonitorHandle::new(backend_middleware.clone(), error_tx.clone());
+
+    let machine_data_monitor = MachineDataMonitorHandle::new(backend_middleware, error_tx.clone());
 
     // Logs Listener handles logs from containers and sends them to the dispatcher
     let mut logs_listener_handle =
@@ -246,6 +251,7 @@ pub async fn listen(
     // Stream listener listens for docker events and sends them to the other listeners for
     // processing
     let docker_listener = DockerStreamListener::new(
+        machine_data_monitor,
         node_data_monitor,
         metrics_listener_handle,
         logs_listener_handle,
