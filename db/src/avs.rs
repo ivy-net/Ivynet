@@ -262,9 +262,6 @@ impl Avs {
         avs_name: &str,
         node_type: &NodeType,
     ) -> Result<(), DatabaseError> {
-        println!("NODE TYPE: {:#?}", node_type);
-        println!("MACHINE ID: {:#?}", machine_id);
-        println!("AVS NAME: {:#?}", avs_name);
         let result = sqlx::query!(
             "UPDATE avs SET avs_type = $1 WHERE machine_id = $2 AND avs_name = $3",
             node_type.to_string(),
@@ -273,7 +270,6 @@ impl Avs {
         )
         .execute(pool)
         .await?;
-        println!("RESULT: {:#?}", result);
 
         Ok(())
     }
