@@ -8,7 +8,7 @@ use cli::{
 use ivynet_grpc::client::Uri;
 use std::{fs, path::PathBuf, str::FromStr as _};
 use tracing::info;
-use tracing_subscriber::FmtSubscriber;
+use tracing_subscriber::{self, filter::EnvFilter, prelude::*};
 
 #[allow(unused_imports)]
 use tracing::{debug, error, warn, Level};
@@ -42,6 +42,10 @@ struct Args {
     /// Skip backend connection
     #[arg(long, env = "NO_BACKEND", default_value_t = false)]
     pub no_backend: bool,
+
+    /// Ivy client debug only - no deps (like tower spam)
+    #[arg(long, env = "DEBUG_NO_DEPS", default_value_t = false)]
+    pub debug_no_deps: bool,
 }
 
 #[derive(Subcommand, Debug)]
@@ -85,7 +89,7 @@ enum Commands {
 async fn main() -> Result<(), AnyError> {
     let args = Args::parse();
 
-    start_tracing(args.log_level)?;
+    start_tracing(args.log_level, args.debug_no_deps)?;
 
     let config = {
         match IvyConfig::load_from_default_path() {
@@ -124,9 +128,31 @@ async fn main() -> Result<(), AnyError> {
     Ok(())
 }
 
-fn start_tracing(level: Level) -> Result<(), Error> {
-    let subscriber = FmtSubscriber::builder().with_max_level(level).finish();
-    tracing::subscriber::set_global_default(subscriber)?;
+fn start_tracing(level: Level, debug_no_deps: bool) -> Result<(), Error> {
+    if debug_no_deps {
+        // When debug_no_deps is true, we want debug for cli and warn for deps
+        let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
+            EnvFilter::new("warn") // Set base level for dependencies to warn
+                .add_directive("cli=debug".parse().unwrap()) // Enable debug for cli crate
+                .add_directive("ivynet_docker=debug".parse().unwrap())
+                .add_directive("ivynet_grpc=debug".parse().unwrap())
+                .add_directive("ivynet_io=debug".parse().unwrap())
+                .add_directive("ivynet_signer=debug".parse().unwrap())
+                
+        });
+
+        tracing_subscriber::registry().with(tracing_subscriber::fmt::layer()).with(filter).init();
+    } else {
+        // Normal mode - everything at specified level
+        tracing_subscriber::registry()
+            .with(tracing_subscriber::fmt::layer())
+            .with(
+                EnvFilter::try_from_default_env()
+                    .unwrap_or_else(|_| EnvFilter::new(level.to_string())),
+            )
+            .init();
+    }
+
     Ok(())
 }
 
