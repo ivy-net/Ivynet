@@ -238,8 +238,10 @@ impl Serialize for NodeType {
             }
             NodeType::Bolt(inner) => serialize_compound("bolt", inner, serializer),
             NodeType::Hyperlane(inner) => serialize_compound("hyperlane", inner, serializer),
-            NodeType::MishtiNetwork(inner) => serialize_compound("mishti", inner, serializer),
-            NodeType::DittoNetwork(inner) => serialize_compound("ditto", inner, serializer),
+            NodeType::MishtiNetwork(inner) => {
+                serialize_compound("mishti-network", inner, serializer)
+            }
+            NodeType::DittoNetwork(inner) => serialize_compound("ditto-network", inner, serializer),
             // Simple types - use Display implementation
             _ => serializer.serialize_str(&self.to_string()),
         }
@@ -274,6 +276,8 @@ impl<'de> Deserialize<'de> for NodeType {
                 "hyperlane" => parse_inner(inner).map(NodeType::Hyperlane),
                 "mishti" => parse_inner(inner).map(NodeType::MishtiNetwork),
                 "ditto" => parse_inner(inner).map(NodeType::DittoNetwork),
+                "mishtinetwork" => parse_inner(inner).map(NodeType::MishtiNetwork),
+                "dittonetwork" => parse_inner(inner).map(NodeType::DittoNetwork),
                 _ => Err(D::Error::custom(format!(
                     "Invalid compound NodeType {normalized_outer}({})",
                     inner
@@ -823,6 +827,9 @@ mod node_type_tests {
             ("skate-chain(base)", NodeType::SkateChain(SkateChainType::Base)),
             ("skate-chain(mantle)", NodeType::SkateChain(SkateChainType::Mantle)),
             ("skate-chain(unknown-l2)", NodeType::SkateChain(SkateChainType::UnknownL2)),
+            ("ditto-network(unknown)", NodeType::DittoNetwork(ActiveSet::Unknown)),
+            ("ditto-network(eigenlayer)", NodeType::DittoNetwork(ActiveSet::Eigenlayer)),
+            ("ditto-network(symbiotic)", NodeType::DittoNetwork(ActiveSet::Symbiotic)),
         ];
 
         for (input, expected) in test_cases {
