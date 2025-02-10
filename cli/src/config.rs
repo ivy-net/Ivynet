@@ -140,7 +140,7 @@ fn parse_config_getter_commands(
             println!("Memory Information:");
             println!("  Total: {memory_total}");
             println!("Disk Information:");
-            println!("  Free: {disk_free}");
+            println!("  Free: {:#?}", disk_free);
             println!(" --------------------------- ");
         }
         ConfigGetCommands::Config {} => {

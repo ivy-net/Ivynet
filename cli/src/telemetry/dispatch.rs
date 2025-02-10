@@ -2,7 +2,7 @@ use std::ops::Deref;
 
 use ivynet_grpc::{
     backend::backend_client::BackendClient,
-    messages::{SignedLog, SignedMetrics, SignedNodeDataV2},
+    messages::{SignedLog, SignedMachineData, SignedMetrics, SignedNodeDataV2},
     tonic::{self, transport::Channel},
 };
 use kameo::{message::Message, Actor};
@@ -15,6 +15,7 @@ pub enum TelemetryMsg {
     SignedNodeData(SignedNodeDataV2),
     Metrics(SignedMetrics),
     Log(SignedLog),
+    SignedMachineData(SignedMachineData),
 }
 
 #[derive(Debug, Clone)]
@@ -60,6 +61,9 @@ impl Message<TelemetryMsg> for TelemetryDispatch {
             TelemetryMsg::Log(log) => self.backend_client.logs(log).await,
             TelemetryMsg::SignedNodeData(node_data) => {
                 self.backend_client.node_data_v2(node_data).await
+            }
+            TelemetryMsg::SignedMachineData(machine_data) => {
+                self.backend_client.machine_data(machine_data).await
             }
         };
         match res {
