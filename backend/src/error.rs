@@ -91,6 +91,15 @@ pub enum BackendError {
 
     #[error("Invalid data for set_avs_version")]
     InvalidSetAvsVersionData,
+
+    #[error(transparent)]
+    BackendAlertError(#[from] BackendAlertError),
+}
+
+#[derive(Debug, Error)]
+pub enum BackendAlertError {
+    #[error("Alert not found for id: {0}")]
+    AlertNotFound(u64),
 }
 
 impl IntoResponse for BackendError {

@@ -8,14 +8,15 @@ use crate::error::DatabaseError;
 use super::{alerts_historical::HistoryAlert, AlertType};
 
 pub struct NewAlert {
-    alert_type: AlertType,
-    machine_id: Uuid,
-    organization_id: i64,
-    client_id: Address,
-    node_name: String,
-    created_at: NaiveDateTime,
+    pub alert_type: AlertType,
+    pub machine_id: Uuid,
+    pub organization_id: i64,
+    pub client_id: Address,
+    pub node_name: String,
+    pub created_at: NaiveDateTime,
 }
 
+#[derive(Debug, Clone)]
 pub struct ActiveAlert {
     pub alert_id: i64,
     pub alert_type: AlertType,
@@ -25,6 +26,20 @@ pub struct ActiveAlert {
     pub node_name: String,
     pub created_at: NaiveDateTime,
     pub acknowledged_at: Option<NaiveDateTime>,
+}
+
+#[cfg(test)]
+impl From<ActiveAlert> for NewAlert {
+    fn from(alert: ActiveAlert) -> Self {
+        Self {
+            alert_type: alert.alert_type,
+            machine_id: alert.machine_id,
+            organization_id: alert.organization_id,
+            client_id: alert.client_id,
+            node_name: alert.node_name,
+            created_at: alert.created_at,
+        }
+    }
 }
 
 pub struct DbActiveAlert {
@@ -54,6 +69,53 @@ impl From<DbActiveAlert> for ActiveAlert {
 }
 
 impl ActiveAlert {
+    pub async fn get(pool: &PgPool, alert_id: i64) -> Result<Option<ActiveAlert>, DatabaseError> {
+        let alert = sqlx::query_as!(
+            DbActiveAlert,
+            r#"
+            SELECT
+                alert_id,
+                alert_type,
+                machine_id,
+                organization_id,
+                client_id,
+                node_name,
+                created_at,
+                acknowledged_at
+            FROM alerts_active
+            WHERE alert_id = $1
+            "#,
+            alert_id
+        )
+        .fetch_optional(pool)
+        .await?;
+
+        Ok(alert.map(|n| n.into()))
+    }
+
+    #[cfg(test)]
+    pub async fn get_all(pool: &PgPool) -> Result<Vec<ActiveAlert>, DatabaseError> {
+        let alerts = sqlx::query_as!(
+            DbActiveAlert,
+            r#"
+            SELECT
+                alert_id,
+                alert_type,
+                machine_id,
+                organization_id,
+                client_id,
+                node_name,
+                created_at,
+                acknowledged_at
+            FROM alerts_active
+            "#,
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(alerts.into_iter().map(|n| n.into()).collect())
+    }
+
     pub async fn record_new(pool: &PgPool, alert: &NewAlert) -> Result<(), DatabaseError> {
         sqlx::query!(
             r#"

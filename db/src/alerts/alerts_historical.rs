@@ -81,6 +81,58 @@ impl From<ActiveAlert> for HistoryAlert {
 }
 
 impl HistoryAlert {
+    pub async fn get(pool: &PgPool, alert_id: i64) -> Result<Option<HistoryAlert>, DatabaseError> {
+        let db_history_alert = sqlx::query_as!(
+            DbHistoryAlert,
+            r#"
+            SELECT
+                alert_id,
+                alert_type,
+                machine_id,
+                organization_id,
+                client_id,
+                node_name,
+                created_at,
+                acknowledged_at,
+                resolved_at
+            FROM
+                alerts_historical
+            WHERE
+                alert_id = $1
+            "#,
+            alert_id
+        )
+        .fetch_optional(pool)
+        .await?;
+
+        Ok(db_history_alert.map(|a| a.into()))
+    }
+
+    #[cfg(test)]
+    pub async fn get_all(pool: &PgPool) -> Result<Vec<HistoryAlert>, DatabaseError> {
+        let db_history_alerts = sqlx::query_as!(
+            DbHistoryAlert,
+            r#"
+            SELECT
+                alert_id,
+                alert_type,
+                machine_id,
+                organization_id,
+                client_id,
+                node_name,
+                created_at,
+                acknowledged_at,
+                resolved_at
+            FROM
+                alerts_historical
+            "#,
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(db_history_alerts.into_iter().map(|a| a.into()).collect())
+    }
+
     pub async fn record_new(pool: &PgPool, alert: &HistoryAlert) -> Result<(), DatabaseError> {
         sqlx::query!(
             r#"
@@ -108,6 +160,42 @@ impl HistoryAlert {
         .execute(pool)
         .await?;
         Ok(())
+    }
+
+    pub async fn alerts_by_org_between(
+        pool: &PgPool,
+        organization_id: i64,
+        from: NaiveDateTime,
+        to: NaiveDateTime,
+    ) -> Result<Vec<HistoryAlert>, DatabaseError> {
+        let db_history_alerts = sqlx::query_as!(
+            DbHistoryAlert,
+            r#"
+            SELECT
+                alert_id,
+                alert_type,
+                machine_id,
+                organization_id,
+                client_id,
+                node_name,
+                created_at,
+                acknowledged_at,
+                resolved_at
+            FROM
+                alerts_historical
+            WHERE
+                organization_id = $1
+                AND created_at >= $2
+                AND created_at <= $3
+            "#,
+            organization_id,
+            from,
+            to
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(db_history_alerts.into_iter().map(|a| a.into()).collect())
     }
 
     pub async fn all_alerts_by_org(

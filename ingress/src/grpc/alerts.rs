@@ -3,7 +3,7 @@ use ivynet_grpc::{
     self,
     alerts::{
         alerts_server::{Alerts, AlertsServer},
-        Alert, SignedAcknowledgeAlert, SignedAlert, SignedResolveAlert,
+        SignedAcknowledgeAlert, SignedAlert, SignedResolveAlert,
     },
     client::{Request, Response},
     server, Status,
@@ -12,6 +12,7 @@ use sqlx::PgPool;
 use std::sync::Arc;
 
 pub struct AlertService {
+    #[allow(dead_code)]
     pool: Arc<PgPool>,
 }
 
