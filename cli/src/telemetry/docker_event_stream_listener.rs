@@ -108,7 +108,9 @@ impl<B: BackendMiddleware> DockerStreamListener<DockerClient, B> {
                     info!("Broadcasting telemetry on tick...");
 
                     let signed_machine_data = self.machine.sign_machine_data()?;
-                    self.machine_data_monitor_handle.tell_send_machine_data(signed_machine_data).await;
+                    if let Err(e) = self.machine_data_monitor_handle.ask_send_machine_data(signed_machine_data).await {
+                        error!("Failed to send machine data: {}", e);
+                    }
 
                     for node in known_nodes.iter() {
                         let manifest = node.manifest.clone().unwrap_or(ContainerId("".to_string()));
