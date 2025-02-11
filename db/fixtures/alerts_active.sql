@@ -5,6 +5,7 @@ DECLARE
     client_id bytea := decode('0101010101010101010101010101010101010101', 'hex');
 BEGIN
     INSERT INTO alerts_active (
+        alert_id,
         alert_type,
         machine_id,
         organization_id,
@@ -13,6 +14,7 @@ BEGIN
         created_at,
         custom_data
     ) VALUES (
+        '00000000-0000-0000-0000-000000000001'::uuid,
         1,
         machine_id,
         (SELECT organization_id FROM organization WHERE name = org_name),

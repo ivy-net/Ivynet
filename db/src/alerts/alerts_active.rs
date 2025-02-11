@@ -135,28 +135,32 @@ impl ActiveAlert {
     }
 
     pub async fn insert_one(pool: &PgPool, alert: &NewAlert) -> Result<(), DatabaseError> {
+        let alert_id = alert.generate_uuid();
         sqlx::query!(
             r#"
-        INSERT INTO alerts_active (
-            alert_type,
-            machine_id,
-            organization_id,
-            client_id,
-            node_name,
-            created_at
-        )
-        SELECT
-            $1,
-            m.machine_id,
-            c.organization_id,
-            m.client_id,
-            $2,
-            $3
-        FROM machine m
-        JOIN client c
-          ON m.client_id = c.client_id
-        WHERE m.machine_id = $4   -- lookup based on the provided machine_id
-        "#,
+            INSERT INTO alerts_active (
+                alert_id,
+                alert_type,
+                machine_id,
+                organization_id,
+                client_id,
+                node_name,
+                created_at
+            )
+            SELECT
+                $1,
+                $2,
+                m.machine_id,
+                c.organization_id,
+                m.client_id,
+                $3,
+                $4
+            FROM machine m
+            JOIN client c
+              ON m.client_id = c.client_id
+            WHERE m.machine_id = $5   -- lookup based on the provided machine_id
+            "#,
+            alert_id,
             alert.alert_type as i16,
             alert.node_name,
             alert.created_at,
@@ -170,9 +174,11 @@ impl ActiveAlert {
     pub async fn insert_many(pool: &PgPool, alerts: &[NewAlert]) -> Result<(), DatabaseError> {
         let mut tx = pool.begin().await?;
         for alert in alerts {
+            let alert_id = alert.generate_uuid();
             sqlx::query!(
                 r#"
                 INSERT INTO alerts_active (
+                    alert_id,
                     alert_type,
                     machine_id,
                     organization_id,
@@ -182,16 +188,18 @@ impl ActiveAlert {
                 )
                 SELECT
                     $1,
+                    $2,
                     m.machine_id,
                     c.organization_id,
                     m.client_id,
-                    $2,
-                    $3
+                    $3,
+                    $4
                 FROM machine m
                 JOIN client c
                   ON m.client_id = c.client_id
-                WHERE m.machine_id = $4   -- lookup based on the provided machine_id
+                WHERE m.machine_id = $5   -- lookup based on the provided machine_id
                 "#,
+                alert_id,
                 alert.alert_type as i16,
                 alert.node_name,
                 alert.created_at,
@@ -297,11 +305,14 @@ impl ActiveAlert {
         .await?
         .into();
 
+        let alert_id = active_alert.alert_id;
+
         let history_alert: HistoryAlert = active_alert.into();
 
         sqlx::query!(
             r#"
             INSERT INTO alerts_historical (
+                alert_id,
                 alert_type,
                 machine_id,
                 organization_id,
@@ -319,9 +330,11 @@ impl ActiveAlert {
                 $5,
                 $6,
                 $7,
+                $8,
                 now()
             )
             "#,
+            alert_id,
             history_alert.alert_type as i16,
             history_alert.machine_id,
             history_alert.organization_id,

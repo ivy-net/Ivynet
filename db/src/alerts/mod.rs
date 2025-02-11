@@ -10,6 +10,10 @@ mod test_alerts_db {
 
     use super::*;
 
+    fn debug_uuid() -> Uuid {
+        Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap()
+    }
+
     #[sqlx::test(
         migrations = "../migrations",
         fixtures("../../fixtures/new_user_registration.sql", "../../fixtures/alerts_active.sql",)
@@ -26,6 +30,7 @@ mod test_alerts_db {
             node_name: "test".to_string(),
             created_at: chrono::Utc::now().naive_utc(),
         };
+        let new_alert_uuid = new_alert.generate_uuid();
 
         alerts_active::ActiveAlert::insert_one(&pool, &new_alert).await.unwrap();
 
@@ -34,7 +39,7 @@ mod test_alerts_db {
         assert_eq!(alerts_active.len(), num_alerts + 1);
 
         let new_db_alert =
-            alerts_active::ActiveAlert::get(&pool, num_alerts as i64 + 1).await.unwrap().unwrap();
+            alerts_active::ActiveAlert::get(&pool, new_alert_uuid).await.unwrap().unwrap();
 
         assert_eq!(new_db_alert.alert_type, new_alert.alert_type);
         assert_eq!(new_db_alert.machine_id, new_alert.machine_id);
@@ -57,7 +62,7 @@ mod test_alerts_db {
     )]
     #[ignore]
     async fn test_get_alert_by_id(pool: PgPool) {
-        let alert = alerts_active::ActiveAlert::get(&pool, 1).await.unwrap();
+        let alert = alerts_active::ActiveAlert::get(&pool, debug_uuid()).await.unwrap();
         assert!(alert.is_some());
     }
 
@@ -90,10 +95,10 @@ mod test_alerts_db {
     )]
     #[ignore]
     async fn test_acknowledge_alert(pool: PgPool) {
-        let alert = alerts_active::ActiveAlert::get(&pool, 1).await.unwrap().unwrap();
+        let alert = alerts_active::ActiveAlert::get(&pool, debug_uuid()).await.unwrap().unwrap();
         alerts_active::ActiveAlert::acknowledge(&pool, alert.alert_id).await.unwrap();
         assert!(alert.acknowledged_at.is_none());
-        let alert = alerts_active::ActiveAlert::get(&pool, 1).await.unwrap().unwrap();
+        let alert = alerts_active::ActiveAlert::get(&pool, debug_uuid()).await.unwrap().unwrap();
         assert!(alert.acknowledged_at.is_some());
     }
 
@@ -103,15 +108,16 @@ mod test_alerts_db {
     )]
     #[ignore]
     async fn test_resolve_alert(pool: PgPool) {
-        let alert = alerts_active::ActiveAlert::get(&pool, 1).await.unwrap().unwrap();
+        let alert = alerts_active::ActiveAlert::get(&pool, debug_uuid()).await.unwrap().unwrap();
         alerts_active::ActiveAlert::resolve_alert(&pool, alert.alert_id).await.unwrap();
 
         // confirm that the alert is resolved in historical db
-        let alert_historical = alerts_historical::HistoryAlert::get(&pool, 1).await.unwrap();
+        let alert_historical =
+            alerts_historical::HistoryAlert::get(&pool, debug_uuid()).await.unwrap();
         assert!(alert_historical.is_some());
 
         // confirm that the alert is removed from active db
-        let alert_resolved = alerts_active::ActiveAlert::get(&pool, 1).await.unwrap();
+        let alert_resolved = alerts_active::ActiveAlert::get(&pool, debug_uuid()).await.unwrap();
         assert!(alert_resolved.is_none());
     }
 }
