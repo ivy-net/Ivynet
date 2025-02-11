@@ -183,7 +183,7 @@ impl SystemInformation {
         for disk in &Disks::new_with_refreshed_list() {
             if disk.total_space() > 0 {
                 let id = format!(
-                    "{}-{}",
+                    "{}:{}",
                     disk.mount_point().to_string_lossy(),
                     disk.name().to_string_lossy()
                 );

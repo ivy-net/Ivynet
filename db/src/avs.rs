@@ -262,7 +262,7 @@ impl Avs {
         avs_name: &str,
         node_type: &NodeType,
     ) -> Result<(), DatabaseError> {
-        let result = sqlx::query!(
+        sqlx::query!(
             "UPDATE avs SET avs_type = $1 WHERE machine_id = $2 AND avs_name = $3",
             node_type.to_string(),
             machine_id,
