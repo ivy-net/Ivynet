@@ -1,5 +1,5 @@
 ---
-name: Release Backend
+name: Release Ingress
 
 on:
   push:
