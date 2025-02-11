@@ -181,21 +181,21 @@ impl SystemInformation {
         let mut disks = Vec::new();
 
         for disk in &Disks::new_with_refreshed_list() {
-            // disk_usage += disk.total_space() - disk.available_space();
-            // disk_free += disk.available_space();
-            let id = format!(
-                "{}-{}",
-                disk.mount_point().to_string_lossy(),
-                disk.name().to_string_lossy()
-            );
-            disk_total += disk.total_space();
+            if disk.total_space() > 0 {
+                let id = format!(
+                    "{}-{}",
+                    disk.mount_point().to_string_lossy(),
+                    disk.name().to_string_lossy()
+                );
+                disk_total += disk.total_space();
 
-            disks.push(DiskInfo {
-                id,
-                total: disk.total_space(),
-                free: disk.available_space(),
-                used: disk.total_space() - disk.available_space(),
-            });
+                disks.push(DiskInfo {
+                    id,
+                    total: disk.total_space(),
+                    free: disk.available_space(),
+                    used: disk.total_space() - disk.available_space(),
+                });
+            }
         }
 
         let uptime = System::uptime();
