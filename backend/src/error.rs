@@ -5,6 +5,7 @@ use axum::{
 use ivynet_docker_registry::registry::RegistryError;
 use ivynet_grpc::server::ServerError;
 use thiserror::Error;
+use uuid::Uuid;
 
 #[derive(Debug, Error)]
 pub enum BackendError {
@@ -99,7 +100,7 @@ pub enum BackendError {
 #[derive(Debug, Error)]
 pub enum BackendAlertError {
     #[error("Alert not found for id: {0}")]
-    AlertNotFound(u64),
+    AlertNotFound(Uuid),
 }
 
 impl IntoResponse for BackendError {

@@ -21,7 +21,6 @@ ivynet-docker-registry.workspace = true
 ivynet-grpc.workspace = true
 
 chrono.workspace = true
-kameo.workspace = true
 regex.workspace = true
 sha256 = "1.5.0"
 semver = "1.0.24"

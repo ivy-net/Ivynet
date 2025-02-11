@@ -1,12 +1,16 @@
+use std::fmt::{self, Display, Formatter};
+
 use chrono::NaiveDateTime;
 use ivynet_core::ethers::types::Address;
+use serde::Serialize;
 use sqlx::PgPool;
 use uuid::Uuid;
 
 use crate::error::DatabaseError;
 
-use super::{alert_actor::AlertType, alerts_historical::HistoryAlert};
+use super::{alert_handler::AlertType, alerts_historical::HistoryAlert};
 
+#[derive(Debug, Clone, Serialize)]
 pub struct NewAlert {
     pub alert_type: AlertType,
     pub machine_id: Uuid,
@@ -18,11 +22,23 @@ impl NewAlert {
     pub fn new(machine_id: Uuid, alert_type: AlertType, node_name: String) -> Self {
         Self { alert_type, machine_id, node_name, created_at: chrono::Utc::now().naive_utc() }
     }
+
+    pub fn generate_uuid(&self) -> Uuid {
+        Uuid::new_v5(&Uuid::NAMESPACE_OID, self.to_string().as_bytes())
+    }
+}
+
+/// Custom implementation of display which excludes the timestamp. Used primarily for UUID
+/// generation.
+impl Display for NewAlert {
+    fn fmt(&self, f: &mut Formatter) -> fmt::Result {
+        write!(f, "{:?} {} {}", self.alert_type, self.machine_id, self.node_name)
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct ActiveAlert {
-    pub alert_id: i64,
+    pub alert_id: Uuid,
     pub alert_type: AlertType,
     pub machine_id: Uuid,
     pub organization_id: i64,
@@ -45,7 +61,7 @@ impl From<ActiveAlert> for NewAlert {
 }
 
 pub struct DbActiveAlert {
-    alert_id: i64,
+    alert_id: Uuid,
     alert_type: i64,
     machine_id: Uuid,
     organization_id: i64,
@@ -71,7 +87,7 @@ impl From<DbActiveAlert> for ActiveAlert {
 }
 
 impl ActiveAlert {
-    pub async fn get(pool: &PgPool, alert_id: i64) -> Result<Option<ActiveAlert>, DatabaseError> {
+    pub async fn get(pool: &PgPool, alert_id: Uuid) -> Result<Option<ActiveAlert>, DatabaseError> {
         let alert = sqlx::query_as!(
             DbActiveAlert,
             r#"
@@ -242,7 +258,7 @@ impl ActiveAlert {
         Ok(alerts.into_iter().map(|n| n.into()).collect())
     }
 
-    pub async fn acknowledge(pool: &PgPool, alert_id: i64) -> Result<(), DatabaseError> {
+    pub async fn acknowledge(pool: &PgPool, alert_id: Uuid) -> Result<(), DatabaseError> {
         sqlx::query!(
             r#"
             UPDATE alerts_active
@@ -258,7 +274,7 @@ impl ActiveAlert {
 
     // TODO: Code could be de-duplicated here if we can modify the function signature of
     // HistoryAlery::record_new to accept `&mut E: Exectuor` instead of `&PgPool`
-    pub async fn resolve_alert(pool: &PgPool, alert_id: i64) -> Result<(), DatabaseError> {
+    pub async fn resolve_alert(pool: &PgPool, alert_id: Uuid) -> Result<(), DatabaseError> {
         let mut tx = pool.begin().await?;
         let active_alert: ActiveAlert = sqlx::query_as!(
             DbActiveAlert,

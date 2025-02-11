@@ -5,10 +5,10 @@ use uuid::Uuid;
 
 use crate::error::DatabaseError;
 
-use super::{alert_actor::AlertType, alerts_active::ActiveAlert};
+use super::{alert_handler::AlertType, alerts_active::ActiveAlert};
 
 pub struct HistoryAlert {
-    pub alert_id: i64,
+    pub alert_id: Uuid,
     pub alert_type: AlertType,
     pub machine_id: Uuid,
     pub organization_id: i64,
@@ -20,7 +20,7 @@ pub struct HistoryAlert {
 }
 
 pub struct DbHistoryAlert {
-    alert_id: i64,
+    alert_id: Uuid,
     alert_type: i64,
     machine_id: Uuid,
     organization_id: i64,
@@ -81,7 +81,7 @@ impl From<ActiveAlert> for HistoryAlert {
 }
 
 impl HistoryAlert {
-    pub async fn get(pool: &PgPool, alert_id: i64) -> Result<Option<HistoryAlert>, DatabaseError> {
+    pub async fn get(pool: &PgPool, alert_id: Uuid) -> Result<Option<HistoryAlert>, DatabaseError> {
         let db_history_alert = sqlx::query_as!(
             DbHistoryAlert,
             r#"

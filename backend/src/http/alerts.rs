@@ -6,7 +6,7 @@ use axum::{
 use axum_extra::extract::CookieJar;
 use chrono::{DateTime, NaiveDateTime};
 use db::alerts::{
-    alert_actor::AlertType, alerts_active::ActiveAlert, alerts_historical::HistoryAlert,
+    alert_handler::AlertType, alerts_active::ActiveAlert, alerts_historical::HistoryAlert,
 };
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -27,12 +27,12 @@ pub struct HistoricalAlertParams {
 
 #[derive(Debug, Clone, Copy, Deserialize, ToSchema)]
 pub struct AcknowledgeAlertParams {
-    pub alert_id: u64,
+    pub alert_id: Uuid,
 }
 
 #[derive(Serialize, ToSchema, Clone, Debug)]
 pub struct AlertReport {
-    pub alert_id: i64,
+    pub alert_id: Uuid,
     pub alert_type: AlertType,
     pub machine_id: Uuid,
     pub node_name: String,
@@ -55,7 +55,7 @@ impl From<ActiveAlert> for AlertReport {
 
 #[derive(Serialize, ToSchema, Clone, Debug)]
 pub struct HistoricalAlertReport {
-    pub alert_id: i64,
+    pub alert_id: Uuid,
     pub alert_type: AlertType,
     pub machine_id: Uuid,
     pub node_name: String,
@@ -100,13 +100,13 @@ pub async fn acknowledge_alert(
 ) -> Result<(), BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     let alert_id = params.alert_id;
-    let alert = ActiveAlert::get(&state.pool, alert_id as i64)
+    let alert = ActiveAlert::get(&state.pool, alert_id)
         .await?
         .ok_or(BackendAlertError::AlertNotFound(alert_id))?;
     if alert.organization_id != account.organization_id {
         return Err(BackendAlertError::AlertNotFound(alert_id).into());
     }
-    ActiveAlert::acknowledge(&state.pool, params.alert_id as i64).await?;
+    ActiveAlert::acknowledge(&state.pool, params.alert_id).await?;
     Ok(())
 }
 

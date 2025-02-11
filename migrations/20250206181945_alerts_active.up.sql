@@ -1,5 +1,5 @@
 CREATE TABLE IF NOT EXISTS alerts_active (
-    alert_id            BIGSERIAL,
+    alert_id            UUID        NOT NULL,
     alert_type          INT         NOT NULL,
     machine_id          UUID        NOT NULL REFERENCES machine
                                         ON DELETE CASCADE,

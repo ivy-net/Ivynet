@@ -1,11 +1,11 @@
-pub mod alert_actor;
+pub mod alert_handler;
 pub mod alerts_active;
 pub mod alerts_historical;
 
 #[cfg(test)]
 #[ignore]
 mod test_alerts_db {
-    use alert_actor::AlertType;
+    use alert_handler::AlertType;
     use sqlx::PgPool;
     use uuid::Uuid;
 

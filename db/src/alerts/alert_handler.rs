@@ -1,27 +1,39 @@
 use std::{collections::HashMap, sync::Arc};
 
-use db::{
-    alerts::alerts_active::{ActiveAlert, NewAlert},
+use ivynet_core::ethers::types::Chain;
+use ivynet_grpc::messages::NodeDataV2;
+use ivynet_node_type::NodeType;
+use serde::{Deserialize, Serialize};
+use sqlx::{types::Uuid, PgPool};
+
+use crate::{
     avs_version::{NodeTypeId, VersionData},
     data::{
         avs_version::{extract_semver, VersionType},
         node_data::UpdateStatus,
     },
+    error::DatabaseError,
     Avs, DbAvsVersionData,
 };
-use ethers::types::Chain;
-use ivynet_grpc::messages::NodeDataV2;
-use ivynet_node_type::NodeType;
-use kameo::{actor::ActorRef, message::Message, Actor};
-use sqlx::{types::Uuid, PgPool};
 
-const UPTIME_METRIC: &str = "uptime";
+use super::alerts_active::{ActiveAlert, NewAlert};
+
 pub const RUNNING_METRIC: &str = "running";
 pub const EIGEN_PERFORMANCE_METRIC: &str = "eigen_performance_score";
 
 pub const IDLE_MINUTES_THRESHOLD: i64 = 15;
 pub const EIGEN_PERFORMANCE_HEALTHY_THRESHOLD: f64 = 80.0;
 
+pub enum UuidAlertType {
+    NoMetrics(),
+}
+
+pub struct NoMetricsAlert {
+    pub machine_id: Uuid,
+    pub node_name: String,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum AlertType {
     Custom = 1,
     ActiveSetNoDeployment = 2,
@@ -36,80 +48,61 @@ pub enum AlertType {
     UnregisteredFromActiveSet = 11,
 }
 
-pub struct AlertActorHandle(ActorRef<AlertActor>);
-
-impl AlertActorHandle {
-    pub fn new(db_executor: Arc<PgPool>) -> Self {
-        Self(kameo::actor::spawn(AlertActor { db_executor }))
-    }
-
-    pub fn tell(&self, msg: AlertMessage) {
-        self.0.tell(msg);
-    }
-
-    pub fn tell_node_data_alert(&self, node_data: NodeDataV2, machine_id: Uuid) {
-        self.0.tell(AlertMessage::ExtractNodeDataAlerts(NodeDataMsg { node_data, machine_id }));
-    }
-}
-
-#[derive(Debug, Actor)]
-pub struct AlertActor {
-    db_executor: Arc<PgPool>,
-}
-
-pub enum AlertMessage {
-    ExtractNodeDataAlerts(NodeDataMsg),
-    ExtractLogAlerts(),
-    ExtractEventAlerts(),
-    EtractMetricsAlerts(),
-}
-
-pub struct NodeDataMsg {
-    node_data: NodeDataV2,
-    machine_id: Uuid,
-}
-
-impl Message<AlertMessage> for AlertActor {
-    type Reply = ();
-    async fn handle(
-        &mut self,
-        msg: AlertMessage,
-        _: kameo::message::Context<'_, Self, Self::Reply>,
-    ) -> Self::Reply {
-        match msg {
-            AlertMessage::ExtractNodeDataAlerts(node_data) => {
-                let data = node_data.node_data;
-                let machine_id = node_data.machine_id;
-                let raw_alerts =
-                    extract_node_data_alerts(&self.db_executor, machine_id, data).await;
-                let alerts = raw_alerts
-                    .into_iter()
-                    .map(|alert| NewAlert::new(machine_id, alert, node_data.node_data.name.clone()))
-                    .collect::<Vec<_>>();
-                ActiveAlert::insert_many(&self.db_executor, &alerts).await;
-            }
-            AlertMessage::ExtractLogAlerts() => {}
-            AlertMessage::ExtractEventAlerts() => {}
-            AlertMessage::EtractMetricsAlerts() => {}
+impl From<i64> for AlertType {
+    fn from(value: i64) -> Self {
+        match value {
+            1 => AlertType::Custom,
+            2 => AlertType::ActiveSetNoDeployment,
+            3 => AlertType::CrashedNode,
+            4 => AlertType::HardwareResourceUsage,
+            5 => AlertType::LowPerformanceScore,
+            6 => AlertType::NeedsUpdate,
+            7 => AlertType::NoChainInfo,
+            8 => AlertType::NodeNotRunning,
+            9 => AlertType::NoMetrics,
+            10 => AlertType::NoOperatorId,
+            11 => AlertType::UnregisteredFromActiveSet,
+            _ => AlertType::Custom,
         }
     }
 }
 
-// 1. impl errors recognize on ingress
-// 2. impl errors based on tracked state
+#[derive(Debug, thiserror::Error)]
+pub enum AlertError {
+    #[error(transparent)]
+    DbError(#[from] DatabaseError),
+}
 
-// Backend
-// 1. Get curret err
-// 2. Get historical err
-// 3. Post req for err acknowledgement
-// 4. resolution is a TODO!()
-// 5. IgnoredErrorType table per org
+#[derive(Debug, Clone)]
+pub struct AlertHandler {
+    db_executor: Arc<PgPool>,
+}
+
+impl AlertHandler {
+    pub fn new(db_executor: Arc<PgPool>) -> Self {
+        Self { db_executor }
+    }
+
+    pub async fn handle_node_data_alerts(
+        &self,
+        node_data: NodeDataV2,
+        machine_id: Uuid,
+    ) -> Result<(), AlertError> {
+        let raw_alerts = extract_node_data_alerts(&self.db_executor, machine_id, &node_data).await;
+        let alerts = raw_alerts
+            .into_iter()
+            .map(|alert| NewAlert::new(machine_id, alert, node_data.name.clone()))
+            .collect::<Vec<_>>();
+        ActiveAlert::insert_many(&self.db_executor, &alerts).await?;
+        Ok(())
+    }
+}
 
 async fn extract_node_data_alerts(
     pool: &PgPool,
     machine_id: Uuid,
-    node_data: NodeDataV2,
-) -> Vec<Alert> {
+    node_data: &NodeDataV2,
+) -> Vec<AlertType> {
     let mut alerts = vec![];
 
     // Necessary db calls to compare state
@@ -128,24 +121,24 @@ async fn extract_node_data_alerts(
     if let Some(datetime) = avs.updated_at {
         let now = chrono::Utc::now().naive_utc();
         if now.signed_duration_since(datetime).num_minutes() > IDLE_MINUTES_THRESHOLD {
-            alerts.push(Alert::CrashedNode);
+            alerts.push(AlertType::CrashedNode);
 
             if avs.active_set {
-                alerts.push(Alert::ActiveSetNoDeployment);
+                alerts.push(AlertType::ActiveSetNoDeployment);
             }
         }
     }
 
     if !node_data.metrics_alive() {
-        alerts.push(Alert::NoMetrics);
+        alerts.push(AlertType::NoMetrics);
     }
 
     if !node_data.node_running() {
-        alerts.push(Alert::NodeNotRunning);
+        alerts.push(AlertType::NodeNotRunning);
     }
 
     if avs.chain.is_none() {
-        alerts.push(Alert::NoChainInfo);
+        alerts.push(AlertType::NoChainInfo);
     } else if let Some(chain) = avs.chain {
         if let Ok(version_map) = version_map {
             let update_status = get_update_status(
@@ -157,14 +150,14 @@ async fn extract_node_data_alerts(
             );
             if update_status == UpdateStatus::Outdated || update_status == UpdateStatus::Updateable
             {
-                alerts.push(Alert::NeedsUpdate);
+                alerts.push(AlertType::NeedsUpdate);
             }
         }
     }
 
     // WARN: This doesn't seem correct, as it's pulling from the db.
     if avs.operator_address.is_none() {
-        alerts.push(Alert::NoOperatorId);
+        alerts.push(AlertType::NoOperatorId);
     }
 
     alerts
