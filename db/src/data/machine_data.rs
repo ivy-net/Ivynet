@@ -22,6 +22,9 @@ const MEMORY_TOTAL_METRIC: &str = "memory_total";
 const DISK_USAGE_METRIC: &str = "disk_usage";
 const DISK_FREE_METRIC: &str = "free_disk";
 const DISK_TOTAL_METRIC: &str = "disk_total";
+const DISK_INFO_METRIC: &str = "disk_info";
+const DISK_ID_METRIC: &str = "disk_id";
+
 #[derive(Serialize, ToSchema, Clone, Debug, Default)]
 pub struct MachineStatusReport {
     pub total_machines: usize,
@@ -74,10 +77,16 @@ pub struct SystemMetrics {
     pub memory_usage: u64,
     pub memory_free: u64,
     pub memory_total: u64,
-    pub disk_free: Vec<u64>,
-    pub disk_usage: Vec<u64>,
-    pub disk_total: u64,
+    pub disks: Vec<DiskInfo>,
     pub uptime: u64,
+}
+
+#[derive(Serialize, ToSchema, Clone, Debug)]
+pub struct DiskInfo {
+    pub id: String,
+    pub total: u64,
+    pub free: u64,
+    pub used: u64,
 }
 
 pub async fn build_machine_info(
@@ -154,74 +163,43 @@ pub async fn get_machine_health(
 }
 
 pub fn build_system_metrics(machine_metrics: &HashMap<String, Metric>) -> HardwareUsageInfo {
+    let mut disks = Vec::new();
+
+    // Collect disk information from disk_info_X metrics
+    let mut i = 0;
+    while let Some(disk_metric) = machine_metrics.get(&format!("{}_{}", DISK_INFO_METRIC, i)) {
+        if let Some(attrs) = &disk_metric.attributes {
+            let disk_info = DiskInfo {
+                id: attrs.get(DISK_ID_METRIC).cloned().unwrap_or_default(),
+                total: attrs
+                    .get(DISK_TOTAL_METRIC)
+                    .and_then(|v| v.parse().ok())
+                    .unwrap_or_default(),
+                free: attrs.get(DISK_FREE_METRIC).and_then(|v| v.parse().ok()).unwrap_or_default(),
+                used: attrs.get(DISK_USAGE_METRIC).and_then(|v| v.parse().ok()).unwrap_or_default(),
+            };
+            disks.push(disk_info);
+        }
+        i += 1;
+    }
+
     let metrics = SystemMetrics {
-        cpu_cores: if let Some(cores) = machine_metrics.get(CORES_METRIC) {
-            cores.value as u64
-        } else {
-            0
-        },
-        cpu_usage: if let Some(cpu) = machine_metrics.get(CPU_USAGE_METRIC) {
-            cpu.value
-        } else {
-            0.0
-        },
-        memory_usage: if let Some(mem) = machine_metrics.get(MEMORY_USAGE_METRIC) {
-            mem.value as u64
-        } else {
-            0
-        },
-        memory_free: if let Some(mem) = machine_metrics.get(MEMORY_FREE_METRIC) {
-            mem.value as u64
-        } else {
-            0
-        },
-        memory_total: if let Some(mem) = machine_metrics.get(MEMORY_TOTAL_METRIC) {
-            mem.value as u64
-        } else {
-            0
-        },
-        disk_free: if let Some(disk) = machine_metrics.get(DISK_TOTAL_METRIC) {
-            let mut free = Vec::new();
-            let mut i = 0;
-            while let Some(value) = disk
-                .attributes
-                .as_ref()
-                .and_then(|attrs| attrs.get(&format!("{}_{}", DISK_FREE_METRIC, i)))
-                .and_then(|s| s.parse::<u64>().ok())
-            {
-                free.push(value);
-                i += 1;
-            }
-            free
-        } else {
-            Vec::new()
-        },
-        disk_usage: if let Some(disk) = machine_metrics.get(DISK_TOTAL_METRIC) {
-            let mut usage = Vec::new();
-            let mut i = 0;
-            while let Some(value) = disk
-                .attributes
-                .as_ref()
-                .and_then(|attrs| attrs.get(&format!("{}_{}", DISK_USAGE_METRIC, i)))
-                .and_then(|s| s.parse::<u64>().ok())
-            {
-                usage.push(value);
-                i += 1;
-            }
-            usage
-        } else {
-            Vec::new()
-        },
-        disk_total: if let Some(disk) = machine_metrics.get(DISK_TOTAL_METRIC) {
-            disk.value as u64
-        } else {
-            0
-        },
-        uptime: if let Some(uptime) = machine_metrics.get(UPTIME_METRIC) {
-            uptime.value as u64
-        } else {
-            0
-        },
+        cpu_cores: machine_metrics.get(CORES_METRIC).map(|m| m.value as u64).unwrap_or_default(),
+        cpu_usage: machine_metrics.get(CPU_USAGE_METRIC).map(|m| m.value).unwrap_or_default(),
+        memory_usage: machine_metrics
+            .get(MEMORY_USAGE_METRIC)
+            .map(|m| m.value as u64)
+            .unwrap_or_default(),
+        memory_free: machine_metrics
+            .get(MEMORY_FREE_METRIC)
+            .map(|m| m.value as u64)
+            .unwrap_or_default(),
+        memory_total: machine_metrics
+            .get(MEMORY_TOTAL_METRIC)
+            .map(|m| m.value as u64)
+            .unwrap_or_default(),
+        disks,
+        uptime: machine_metrics.get(UPTIME_METRIC).map(|m| m.value as u64).unwrap_or_default(),
     };
 
     // Calculate memory status
@@ -241,19 +219,19 @@ pub fn build_system_metrics(machine_metrics: &HashMap<String, Metric>) -> Hardwa
     };
 
     // Calculate disk status
-    let disk_status = if metrics.disk_usage.is_empty() || metrics.disk_free.is_empty() {
+    let disk_status = if metrics.disks.is_empty() {
         HardwareInfoStatus::Healthy
     } else {
         let mut worst_status = HardwareInfoStatus::Healthy;
-        for (usage, free) in metrics.disk_usage.iter().zip(metrics.disk_free.iter()) {
-            let total = *usage + *free;
+        for disk in &metrics.disks {
+            let total = disk.used + disk.free;
             if total == 0 {
                 continue;
             }
-            if *usage as f64 > (total as f64 * 0.95) {
+            if disk.used as f64 > (total as f64 * 0.95) {
                 worst_status = HardwareInfoStatus::Critical;
                 break;
-            } else if *usage as f64 > (total as f64 * 0.9) {
+            } else if disk.used as f64 > (total as f64 * 0.9) {
                 worst_status = HardwareInfoStatus::Warning;
             }
         }
@@ -264,21 +242,7 @@ pub fn build_system_metrics(machine_metrics: &HashMap<String, Metric>) -> Hardwa
 }
 
 pub fn convert_system_metrics(sys_info: &MachineData) -> Vec<Metrics> {
-    let mut disk_attributes = vec![];
-    for (i, disk) in sys_info.used_disk.iter().enumerate() {
-        disk_attributes.push(MetricsAttribute {
-            name: format!("{}_{}", DISK_USAGE_METRIC, i),
-            value: disk.to_string(),
-        });
-    }
-    for (i, disk) in sys_info.free_disk.iter().enumerate() {
-        disk_attributes.push(MetricsAttribute {
-            name: format!("{}_{}", DISK_FREE_METRIC, i),
-            value: disk.to_string(),
-        });
-    }
-
-    let sys_metrics = vec![
+    let mut sys_metrics = vec![
         Metrics {
             name: UPTIME_METRIC.to_owned(),
             value: sys_info.uptime.parse::<f64>().unwrap(),
@@ -312,8 +276,22 @@ pub fn convert_system_metrics(sys_info: &MachineData) -> Vec<Metrics> {
         Metrics {
             name: DISK_TOTAL_METRIC.to_owned(),
             value: sys_info.disk_used_total.parse::<f64>().unwrap(),
-            attributes: disk_attributes,
+            attributes: Default::default(),
         },
     ];
+    for (i, disk) in sys_info.disks.iter().enumerate() {
+        let disk_attributes = vec![
+            MetricsAttribute { name: DISK_ID_METRIC.to_owned(), value: disk.id.to_string() },
+            MetricsAttribute { name: DISK_USAGE_METRIC.to_owned(), value: disk.used.to_string() },
+            MetricsAttribute { name: DISK_FREE_METRIC.to_owned(), value: disk.free.to_string() },
+            MetricsAttribute { name: DISK_TOTAL_METRIC.to_owned(), value: disk.total.to_string() },
+        ];
+        sys_metrics.push(Metrics {
+            name: format!("{}_{}", DISK_INFO_METRIC, i),
+            value: 0.0,
+            attributes: disk_attributes,
+        });
+    }
+
     sys_metrics
 }

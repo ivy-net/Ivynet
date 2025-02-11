@@ -119,7 +119,7 @@ impl<B: BackendMiddleware> DockerStreamListener<DockerClient, B> {
                             node_type: Some(node.avs_type.clone()),
                             manifest: Some(manifest.to_string()),
                             metrics_alive: Some(node.metrics_alive().await),
-                            node_running: Some(true),
+                            node_running: Some(node.node_running().await),
                         };
                         let signed = self.machine.sign_node_data_v2(&node_data)?;
                         if let Err(e) = self.node_data_monitor_handle.ask_send_node_data(signed).await {

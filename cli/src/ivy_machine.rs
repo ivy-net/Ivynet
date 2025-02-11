@@ -1,6 +1,6 @@
 use ethers::types::Address;
 use ivynet_grpc::messages::{
-    MachineData, Metrics, NodeDataV2, SignedLog, SignedMachineData, SignedMetrics,
+    DiskInformation, MachineData, Metrics, NodeDataV2, SignedLog, SignedMachineData, SignedMetrics,
     SignedNameChange, SignedNodeDataV2,
 };
 use ivynet_signer::{
@@ -37,8 +37,8 @@ impl IvyMachine {
         Ok(Self { id, signer })
     }
 
-    pub fn system_info(&self) -> SysInfo {
-        SysInfo::from_system()
+    pub fn system_info(&self) -> SystemInformation {
+        SystemInformation::from_system()
     }
 
     pub fn id(&self) -> Uuid {
@@ -79,18 +79,26 @@ impl IvyMachine {
 
     pub fn sign_machine_data(&self) -> Result<SignedMachineData, MachineIdentityError> {
         let version = version_hash::VERSION_HASH;
-        let machine_data = SysInfo::from_system();
+        let sys_info: SystemInformation = self.system_info();
         let machine_data = MachineData {
             ivynet_version: version.to_string(),
-            uptime: machine_data.uptime.to_string(),
-            cpu_usage: machine_data.cpu_usage.to_string(),
-            cpu_cores: machine_data.cpu_cores.to_string(),
-            memory_used: machine_data.memory_usage.to_string(),
-            memory_free: machine_data.memory_free.to_string(),
-            memory_total: machine_data.memory_total.to_string(),
-            disk_used_total: machine_data.disk_usage.iter().sum::<u64>().to_string(),
-            free_disk: machine_data.disk_free.iter().map(|d| d.to_string()).collect(),
-            used_disk: machine_data.disk_usage.iter().map(|d| d.to_string()).collect(),
+            uptime: sys_info.uptime.to_string(),
+            cpu_usage: sys_info.cpu_usage.to_string(),
+            cpu_cores: sys_info.cpu_cores.to_string(),
+            memory_used: sys_info.memory_usage.to_string(),
+            memory_free: sys_info.memory_free.to_string(),
+            memory_total: sys_info.memory_total.to_string(),
+            disk_used_total: sys_info.disk_total.to_string(),
+            disks: sys_info
+                .disks
+                .iter()
+                .map(|d| DiskInformation {
+                    id: d.id.clone(),
+                    total: d.total.to_string(),
+                    free: d.free.to_string(),
+                    used: d.used.to_string(),
+                })
+                .collect(),
         };
         let signature = sign_machine_data(&machine_data, &self.signer)?;
         Ok(SignedMachineData {
@@ -133,19 +141,27 @@ pub enum MachineIdentityError {
     IdentityWalletError,
 }
 
-pub struct SysInfo {
+#[derive(Debug, Clone)]
+pub struct DiskInfo {
+    pub id: String,
+    pub total: u64,
+    pub free: u64,
+    pub used: u64,
+}
+
+#[derive(Debug, Clone)]
+pub struct SystemInformation {
     pub cpu_cores: u64,
     pub cpu_usage: f64,
     pub memory_usage: u64,
     pub memory_free: u64,
     pub memory_total: u64,
-    pub disk_free: Vec<u64>,
-    pub disk_usage: Vec<u64>,
+    pub disks: Vec<DiskInfo>,
     pub disk_total: u64,
     pub uptime: u64,
 }
 
-impl SysInfo {
+impl SystemInformation {
     pub fn from_system() -> Self {
         let mut sys: System = System::new();
         sys.refresh_all();
@@ -162,15 +178,24 @@ impl SysInfo {
 
         let mut disk_total = 0;
 
-        let mut disk_free = Vec::new();
-        let mut disk_usage = Vec::new();
+        let mut disks = Vec::new();
 
         for disk in &Disks::new_with_refreshed_list() {
-            // disk_usage += disk.total_space() - disk.available_space();
-            // disk_free += disk.available_space();
-            disk_total += disk.total_space();
-            disk_free.push(disk.available_space());
-            disk_usage.push(disk.total_space() - disk.available_space());
+            if disk.total_space() > 0 {
+                let id = format!(
+                    "{}:{}",
+                    disk.mount_point().to_string_lossy(),
+                    disk.name().to_string_lossy()
+                );
+                disk_total += disk.total_space();
+
+                disks.push(DiskInfo {
+                    id,
+                    total: disk.total_space(),
+                    free: disk.available_space(),
+                    used: disk.total_space() - disk.available_space(),
+                });
+            }
         }
 
         let uptime = System::uptime();
@@ -181,8 +206,7 @@ impl SysInfo {
             memory_usage,
             memory_free,
             memory_total,
-            disk_free,
-            disk_usage,
+            disks,
             disk_total,
             uptime,
         }

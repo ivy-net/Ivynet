@@ -742,7 +742,7 @@ checksum = "f46ad14479a25103f283c0f10005961cf086d8dc42205bb44c46ac563475dca6"
 
 [[package]]
 name = "cli"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "anyhow",
  "bollard",
@@ -2853,7 +2853,7 @@ checksum = "d75a2a4b1b190afb6f5425f10f6a8f959d2ea0b9c2b1d79553551850539e4674"
 
 [[package]]
 name = "ivynet-backend"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "axum",
  "axum-extra",
@@ -2886,7 +2886,7 @@ dependencies = [
 
 [[package]]
 name = "ivynet-core"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "dialoguer",
  "dirs",
@@ -2963,7 +2963,7 @@ dependencies = [
 
 [[package]]
 name = "ivynet-grpc"
-version = "0.1.0"
+version = "0.5.1"
 dependencies = [
  "prost",
  "prost-build",
@@ -2983,7 +2983,7 @@ dependencies = [
 
 [[package]]
 name = "ivynet-ingress"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "clap",
  "db",
@@ -3035,7 +3035,7 @@ dependencies = [
 
 [[package]]
 name = "ivynet-signer"
-version = "0.1.0"
+version = "0.5.1"
 dependencies = [
  "async-trait",
  "blsful",
