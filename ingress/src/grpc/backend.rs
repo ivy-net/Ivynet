@@ -1,10 +1,10 @@
 use crate::error::IngressError;
 use db::{
+    alerts::alert_handler::AlertHandler,
     data::{
         machine_data::convert_system_metrics,
         node_data::{update_avs_active_set, update_avs_version},
     },
-    alerts::alert_handler::AlertHandler,
     log::{ContainerLog, LogLevel},
     metric::Metric,
     Account, Avs, AvsVersionHash, Machine,
@@ -168,7 +168,7 @@ impl Backend for BackendService {
         )
         .await?;
 
-        let recovered_node_data = RecoveredNodeData::from(node_data);
+        let recovered_node_data = RecoveredNodeData::from(node_data.clone());
 
         process_node_data(&self.pool, machine_id, recovered_node_data).await?;
 
