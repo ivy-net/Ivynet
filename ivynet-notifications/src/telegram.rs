@@ -158,7 +158,7 @@ mod telegram_bot_test {
 
     use teloxide_tests::{MockBot, MockMessageText};
 
-    static MOCK_ORGANIZATION_ID: LazyLock<Uuid> = LazyLock::new(|| Uuid::new_v4());
+    static MOCK_ORGANIZATION_ID: LazyLock<Uuid> = LazyLock::new(Uuid::new_v4);
 
     #[derive(Debug)]
     struct MockDbBackend {
@@ -181,8 +181,8 @@ mod telegram_bot_test {
             }
             false
         }
-        fn chats_for(&mut self, organization_id: Uuid) -> HashSet<String> {
-            self.chats.get(&organization_id).unwrap_or(&HashSet::new()).clone()
+        fn chats_for(&self, organization_id: Uuid) -> HashSet<String> {
+            self.chats.get(&organization_id).cloned().unwrap_or_default()
         }
     }
 
@@ -212,8 +212,8 @@ mod telegram_bot_test {
         }
 
         async fn get_chats_for_organization(&self, organization_id: Uuid) -> Vec<String> {
-            let mut db = self.0.lock().await;
-            db.chats_for(organization_id).iter().map(|c| c.clone()).collect::<Vec<_>>()
+            let db = self.0.lock().await;
+            db.chats_for(organization_id).iter().cloned().collect::<Vec<_>>()
         }
     }
 
