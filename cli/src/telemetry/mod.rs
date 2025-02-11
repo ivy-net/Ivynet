@@ -69,6 +69,11 @@ impl ConfiguredAvs {
             false
         }
     }
+
+    pub async fn node_running(&self) -> bool {
+        let docker = DockerClient::default();
+        docker.find_container_by_name(&self.container_name).await.is_some()
+    }
 }
 
 #[derive(Deserialize)]
