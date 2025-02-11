@@ -1,28 +1,11 @@
-use serde::Serialize;
-
+pub mod alert_actor;
 pub mod alerts_active;
 pub mod alerts_historical;
-
-#[derive(Debug, Clone, Copy, Serialize, Eq, PartialEq)]
-pub enum AlertType {
-    DEBUG = 0,
-    ERROR = 1,
-}
-
-impl From<i64> for AlertType {
-    fn from(value: i64) -> Self {
-        match value {
-            0 => AlertType::DEBUG,
-            1 => AlertType::ERROR,
-            _ => panic!("Unknown alert type: {}", value),
-        }
-    }
-}
 
 #[cfg(test)]
 #[ignore]
 mod test_alerts_db {
-    use ivynet_core::ethers::types::Address;
+    use alert_actor::AlertType;
     use sqlx::PgPool;
     use uuid::Uuid;
 
@@ -38,15 +21,13 @@ mod test_alerts_db {
         let num_alerts = alerts_active.len();
 
         let new_alert = alerts_active::NewAlert {
-            alert_type: AlertType::ERROR,
+            alert_type: AlertType::Custom,
             machine_id: Uuid::parse_str("dcbf22c7-9d96-47ac-bf06-62d6544e440d").unwrap(),
-            organization_id: 1,
-            client_id: Address::from_slice(&[1; 20]),
             node_name: "test".to_string(),
             created_at: chrono::Utc::now().naive_utc(),
         };
 
-        alerts_active::ActiveAlert::record_new(&pool, &new_alert).await.unwrap();
+        alerts_active::ActiveAlert::insert_one(&pool, &new_alert).await.unwrap();
 
         let alerts_active = alerts_active::ActiveAlert::get_all(&pool).await.unwrap();
 
@@ -57,8 +38,6 @@ mod test_alerts_db {
 
         assert_eq!(new_db_alert.alert_type, new_alert.alert_type);
         assert_eq!(new_db_alert.machine_id, new_alert.machine_id);
-        assert_eq!(new_db_alert.organization_id, new_alert.organization_id);
-        assert_eq!(new_db_alert.client_id, new_alert.client_id);
         assert_eq!(new_db_alert.node_name, new_alert.node_name);
     }
 

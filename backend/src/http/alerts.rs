@@ -5,7 +5,9 @@ use axum::{
 };
 use axum_extra::extract::CookieJar;
 use chrono::{DateTime, NaiveDateTime};
-use db::alerts::{alerts_active::ActiveAlert, alerts_historical::HistoryAlert, AlertType};
+use db::alerts::{
+    alert_actor::AlertType, alerts_active::ActiveAlert, alerts_historical::HistoryAlert,
+};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;

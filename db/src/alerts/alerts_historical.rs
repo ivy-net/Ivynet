@@ -5,7 +5,7 @@ use uuid::Uuid;
 
 use crate::error::DatabaseError;
 
-use super::{alerts_active::ActiveAlert, AlertType};
+use super::{alert_actor::AlertType, alerts_active::ActiveAlert};
 
 pub struct HistoryAlert {
     pub alert_id: i64,

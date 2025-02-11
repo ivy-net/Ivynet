@@ -1531,6 +1531,7 @@ dependencies = [
  "ivynet-docker-registry",
  "ivynet-grpc",
  "ivynet-node-type",
+ "kameo",
  "regex",
  "semver",
  "serde",

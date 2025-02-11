@@ -5,15 +5,19 @@ use uuid::Uuid;
 
 use crate::error::DatabaseError;
 
-use super::{alerts_historical::HistoryAlert, AlertType};
+use super::{alert_actor::AlertType, alerts_historical::HistoryAlert};
 
 pub struct NewAlert {
     pub alert_type: AlertType,
     pub machine_id: Uuid,
-    pub organization_id: i64,
-    pub client_id: Address,
     pub node_name: String,
     pub created_at: NaiveDateTime,
+}
+
+impl NewAlert {
+    pub fn new(machine_id: Uuid, alert_type: AlertType, node_name: String) -> Self {
+        Self { alert_type, machine_id, node_name, created_at: chrono::Utc::now().naive_utc() }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -34,8 +38,6 @@ impl From<ActiveAlert> for NewAlert {
         Self {
             alert_type: alert.alert_type,
             machine_id: alert.machine_id,
-            organization_id: alert.organization_id,
-            client_id: alert.client_id,
             node_name: alert.node_name,
             created_at: alert.created_at,
         }
@@ -116,35 +118,73 @@ impl ActiveAlert {
         Ok(alerts.into_iter().map(|n| n.into()).collect())
     }
 
-    pub async fn record_new(pool: &PgPool, alert: &NewAlert) -> Result<(), DatabaseError> {
+    pub async fn insert_one(pool: &PgPool, alert: &NewAlert) -> Result<(), DatabaseError> {
         sqlx::query!(
             r#"
-            INSERT INTO alerts_active (
-                alert_type,
-                machine_id,
-                organization_id,
-                client_id,
-                node_name,
-                created_at
-            )
-            VALUES (
-                $1,
-                $2,
-                $3,
-                $4,
-                $5,
-                $6
-            )
-            "#,
+        INSERT INTO alerts_active (
+            alert_type,
+            machine_id,
+            organization_id,
+            client_id,
+            node_name,
+            created_at
+        )
+        SELECT
+            $1,
+            m.machine_id,
+            c.organization_id,
+            m.client_id,
+            $2,
+            $3
+        FROM machine m
+        JOIN client c
+          ON m.client_id = c.client_id
+        WHERE m.machine_id = $4   -- lookup based on the provided machine_id
+        "#,
             alert.alert_type as i16,
-            alert.machine_id,
-            alert.organization_id,
-            alert.client_id.as_bytes().to_vec(),
             alert.node_name,
             alert.created_at,
+            alert.machine_id,
         )
         .execute(pool)
         .await?;
+        Ok(())
+    }
+
+    pub async fn insert_many(pool: &PgPool, alerts: &[NewAlert]) -> Result<(), DatabaseError> {
+        let mut tx = pool.begin().await?;
+        for alert in alerts {
+            sqlx::query!(
+                r#"
+                INSERT INTO alerts_active (
+                    alert_type,
+                    machine_id,
+                    organization_id,
+                    client_id,
+                    node_name,
+                    created_at
+                )
+                SELECT
+                    $1,
+                    m.machine_id,
+                    c.organization_id,
+                    m.client_id,
+                    $2,
+                    $3
+                FROM machine m
+                JOIN client c
+                  ON m.client_id = c.client_id
+                WHERE m.machine_id = $4   -- lookup based on the provided machine_id
+                "#,
+                alert.alert_type as i16,
+                alert.node_name,
+                alert.created_at,
+                alert.machine_id,
+            )
+            .execute(&mut *tx)
+            .await?;
+        }
+        tx.commit().await?;
         Ok(())
     }
 

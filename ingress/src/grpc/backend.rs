@@ -34,11 +34,12 @@ use super::data_validator::validate_request;
 
 pub struct BackendService {
     pool: Arc<PgPool>,
+    alert_actor_handle: AlertActorHandle,
 }
 
 impl BackendService {
-    pub fn new(pool: Arc<PgPool>) -> Self {
-        Self { pool }
+    pub fn new(pool: Arc<PgPool>, alert_actor_handle: AlertActorHandle) -> Self {
+        Self { pool, alert_actor_handle }
     }
 }
 
@@ -170,6 +171,8 @@ impl Backend for BackendService {
 
         process_node_data(&self.pool, machine_id, recovered_node_data).await?;
 
+        self.alert_actor_handle.tell_node_data_alert(machine_id, node_data);
+
         Ok(Response::new(()))
     }
 
@@ -264,9 +267,14 @@ pub async fn serve(
     port: u16,
 ) -> Result<(), IngressError> {
     tracing::info!("Starting GRPC server on port {port}");
-    server::Server::new(BackendServer::new(BackendService::new(pool)), tls_cert, tls_key)
-        .serve(server::Endpoint::Port(port))
-        .await?;
+    let alert_actor_handle = AlertActorHandle::new(pool.clone());
+    server::Server::new(
+        BackendServer::new(BackendService::new(pool, alert_actor_handle)),
+        tls_cert,
+        tls_key,
+    )
+    .serve(server::Endpoint::Port(port))
+    .await?;
 
     Ok(())
 }
