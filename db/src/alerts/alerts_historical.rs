@@ -108,7 +108,6 @@ impl HistoryAlert {
         Ok(db_history_alert.map(|a| a.into()))
     }
 
-    #[cfg(test)]
     pub async fn get_all(pool: &PgPool) -> Result<Vec<HistoryAlert>, DatabaseError> {
         let db_history_alerts = sqlx::query_as!(
             DbHistoryAlert,

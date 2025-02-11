@@ -111,7 +111,6 @@ impl ActiveAlert {
         Ok(alert.map(|n| n.into()))
     }
 
-    #[cfg(test)]
     pub async fn get_all(pool: &PgPool) -> Result<Vec<ActiveAlert>, DatabaseError> {
         let alerts = sqlx::query_as!(
             DbActiveAlert,
