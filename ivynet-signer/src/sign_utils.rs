@@ -138,13 +138,12 @@ fn hash_machine_data(machine_data: &MachineData) -> H256 {
         Token::String(machine_data.disk_used_total.to_string()),
     ];
 
-    let free_disk_tokens =
-        machine_data.free_disk.iter().map(|f| Token::String(f.to_string())).collect::<Vec<_>>();
-    let used_disk_tokens =
-        machine_data.used_disk.iter().map(|u| Token::String(u.to_string())).collect::<Vec<_>>();
-
-    tokens.extend(free_disk_tokens);
-    tokens.extend(used_disk_tokens);
+    for disk in &machine_data.disks {
+        tokens.push(Token::String(disk.id.clone()));
+        tokens.push(Token::String(disk.total.to_string()));
+        tokens.push(Token::String(disk.free.to_string()));
+        tokens.push(Token::String(disk.used.to_string()));
+    }
 
     H256::from(&keccak256(encode(&tokens)))
 }

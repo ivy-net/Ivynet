@@ -69,6 +69,11 @@ impl ConfiguredAvs {
             false
         }
     }
+
+    pub async fn node_running(&self) -> bool {
+        let docker = DockerClient::default();
+        docker.find_container_by_name(&self.container_name).await.is_some()
+    }
 }
 
 #[derive(Deserialize)]
@@ -245,6 +250,22 @@ pub async fn listen(
             };
         } else {
             warn!("Cannot find container for configured node: {}.", node.container_name);
+
+            let not_running_node_data = NodeDataV2 {
+                name: node.assigned_name.to_string(),
+                node_type: Some(node.avs_type.clone()),
+                manifest: None,
+                metrics_alive: Some(false),
+                node_running: Some(false),
+            };
+
+            let signed = machine.sign_node_data_v2(&not_running_node_data)?;
+
+            if let Err(e) = node_data_monitor.ask_send_node_data(signed).await {
+                error!("Failed to send node data: {}", e);
+            }
+
+            warn!("Node not running - updating node_data: {}", node.container_name);
         }
     }
 

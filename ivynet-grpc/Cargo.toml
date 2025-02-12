@@ -1,6 +1,6 @@
 [package]
 name = "ivynet-grpc"
-version = "0.1.0"
+version = "0.5.1"
 edition = "2021"
 authors = ["Noah Foltz <noah@ivynet.dev>"]
 description = "GRPC library for IvyNet"

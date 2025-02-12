@@ -79,9 +79,14 @@ message MachineData {
     string memory_free = 6;
     string memory_total = 7;
     string disk_used_total = 8;
-    repeated string free_disk = 9;
-    repeated string used_disk = 10;
+    repeated DiskInformation disks = 9;
+}
 
+message DiskInformation {
+    string id = 1;
+    string total = 2;
+    string free = 3;
+    string used = 4;
 }
 
 message SignedNodeData {
