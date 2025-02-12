@@ -8,8 +8,11 @@ license.workspace = true
 
 [dependencies]
 async-trait.workspace = true
+chrono = { workspace = true, features = ["serde"] }
 ethers.workspace = true
+reqwest = { workspace = true, features = ["json"] }
 sendgrid = "0.23.0"
+serde = { workspace = true, features = ["derive"] }
 teloxide = { version = "0.13", features = ["macros"] }
 thiserror.workspace = true
 tracing.workspace = true

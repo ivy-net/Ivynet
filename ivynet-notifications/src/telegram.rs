@@ -2,7 +2,7 @@ use teloxide::{dispatching::UpdateHandler, prelude::*, utils::command::BotComman
 use tracing::warn;
 use uuid::Uuid;
 
-use crate::OrganizationDatabase;
+use crate::{NotificationType, OrganizationDatabase};
 
 use super::Notification;
 
@@ -69,22 +69,37 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
         Ok(())
     }
 
-    pub async fn notify(
-        &self,
-        organization: Uuid,
-        notification: Notification,
-    ) -> Result<(), BotError> {
-        let message = match notification {
-            Notification::OutOfActiveSet(address) => {
+    pub async fn notify(&self, notification: Notification) -> Result<(), BotError> {
+        let message = match notification.notification_type {
+            NotificationType::UnregisteredFromActiveSet(address) => {
                 format!("Address {address:?} has been removed from the active set")
             }
-            Notification::MachineLostContact(machine_id) => {
-                format!("Machine '{machine_id}' has lost connection with our backend")
+            NotificationType::CrashedNode => {
+                format!(
+                    "Machine '{}' has lost connection with our backend",
+                    notification.machine_id
+                )
             }
-            Notification::AVSError { avs, error } => format!("AVS ERROR: [{avs}]: {error}"),
+            NotificationType::Custom(msg) => format!("ERROR: {msg}"),
+            NotificationType::NodeNotRunning(avs) => {
+                format!("AVS {avs} is not running on {}", notification.machine_id)
+            }
+            NotificationType::NoChainInfo(avs) => format!("No information on chain for avs {avs}"),
+            NotificationType::NoMetrics(avs) => format!("No metrics reported from avs {avs}"),
+            NotificationType::NoOperatorId(avs) => format!("No operator configured for {avs}"),
+            NotificationType::HardwareResourceUsage { resource, percent } => format!(
+                "Machine {} has used over {percent}% of {resource}",
+                notification.machine_id
+            ),
+            NotificationType::LowPerformaceScore { avs, performance } => {
+                format!("AVS {avs} has droped in performance to {performance}")
+            }
+            NotificationType::NeedsUpdate { avs, current_version, recommended_version } => {
+                format!("AVS {avs} needs update from {current_version} to {recommended_version}")
+            }
         };
 
-        for chat in self.db.get_chats_for_organization(organization).await {
+        for chat in self.db.get_chats_for_organization(notification.organization).await {
             self.bot.send_message(chat, &message).await?;
         }
         Ok(())
@@ -214,6 +229,13 @@ mod telegram_bot_test {
         async fn get_chats_for_organization(&self, organization_id: Uuid) -> Vec<String> {
             let db = self.0.lock().await;
             db.chats_for(organization_id).iter().cloned().collect::<Vec<_>>()
+        }
+
+        async fn get_pd_integration_key_for_organization(
+            &self,
+            _organization_id: Uuid,
+        ) -> Option<String> {
+            None
         }
     }
 
