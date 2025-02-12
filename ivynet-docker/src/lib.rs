@@ -4,5 +4,4 @@ pub mod dockerapi;
 pub mod dockercmd;
 pub mod logs;
 pub mod mocks;
-pub mod pubsubcontainer;
 pub mod sidecar;

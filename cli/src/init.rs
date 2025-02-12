@@ -9,6 +9,7 @@ use crate::{config::IvyConfig, error::Error};
 
 pub async fn register_node(mut config: IvyConfig) -> Result<(), Error> {
     set_backend_connection(&mut config).await?;
+    println!("Backend connection set.");
     let wallet = config.identity_wallet()?;
     let client_key = wallet.address();
 
@@ -49,7 +50,7 @@ pub async fn set_backend_connection(config: &mut IvyConfig) -> Result<(), Error>
         let hostname =
             { String::from_utf8(rustix::system::uname().nodename().to_bytes().to_vec()) }
                 .expect("Cannot fetch hostname from the node");
-        if backend
+        if let Err(e) = backend
             .register(Request::new(RegistrationCredentials {
                 machine_id: config.machine_id.into(),
                 email,
@@ -58,8 +59,9 @@ pub async fn set_backend_connection(config: &mut IvyConfig) -> Result<(), Error>
                 public_key: client_key.as_bytes().to_vec(),
             }))
             .await
-            .is_ok()
         {
+            println!("Error registering node: {:?}", e);
+        } else {
             break;
         }
     }

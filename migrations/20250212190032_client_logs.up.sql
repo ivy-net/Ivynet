@@ -46,6 +46,6 @@ $$ LANGUAGE plpgsql;
 
 -- Create and attach trigger to org
 CREATE TRIGGER after_insert_client_id
-AFTER INSERT ON client 
+AFTER INSERT ON client
 FOR EACH ROW
 EXECUTE FUNCTION create_client_logs_partition();

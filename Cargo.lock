@@ -2934,7 +2934,6 @@ dependencies = [
  "chrono",
  "futures",
  "mockall",
- "once_cell",
  "regex",
  "reqwest 0.12.12",
  "serde",

@@ -1,5 +1,6 @@
 use crate::error::IngressError;
 use db::{
+    client_log::ClientLog,
     data::{
         machine_data::convert_system_metrics,
         node_data::{update_avs_active_set, update_avs_version},
@@ -91,13 +92,28 @@ impl Backend for BackendService {
         let log_level = LogLevel::from_str(&find_log_level(&log))
             .map_err(|_| Status::invalid_argument("Log level is invalid".to_string()))?;
         let created_at = Some(find_or_create_log_timestamp(&log));
-        let log =
-            ContainerLog { machine_id, avs_name, log, log_level, created_at, other_fields: None };
+        let log = ContainerLog {
+            machine_id,
+            avs_name: avs_name.clone(),
+            log,
+            log_level,
+            created_at,
+            other_fields: None,
+        };
         debug!("STORING LOG: {:?}", log);
 
-        ContainerLog::record(&self.pool, &log)
-            .await
-            .map_err(|e| Status::internal(format!("Failed while saving logs: {e:?}")))?;
+        match avs_name.as_str() {
+            "ivynet-client" => {
+                ClientLog::record_from_containerlog(&self.pool, &log)
+                    .await
+                    .map_err(|e| Status::internal(format!("Failed while saving logs: {e:?}")))?;
+            }
+            _ => {
+                ContainerLog::record(&self.pool, &log)
+                    .await
+                    .map_err(|e| Status::internal(format!("Failed while saving logs: {e:?}")))?;
+            }
+        }
 
         Ok(Response::new(()))
     }

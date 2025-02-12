@@ -46,8 +46,9 @@ where
 
         tokio::spawn(async move {
             let mut backend = backend.lock().await;
-            if let Err(err) = backend.logs(signed_log).await {
-                eprintln!("Error logging: {:?}", err);
+            // Post no logs to the backend if the backend is not available
+            if let Err(e) = backend.logs(signed_log).await {
+                println!("Failed to send log: {:?}", e);
             }
         });
     }

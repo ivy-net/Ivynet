@@ -1,12 +1,14 @@
-use crate::{error::DatabaseError, log::LogLevel};
+use crate::{
+    error::DatabaseError,
+    log::{ContainerLog, LogLevel},
+};
 use chrono::{DateTime, NaiveDateTime, Utc};
 use ivynet_core::ethers::types::Address;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{json, Value};
 use sqlx::{query, query_as, PgPool};
-use std::{collections::HashMap, fmt::Display, str::FromStr};
+use std::{collections::HashMap, fmt::Display};
 use utoipa::ToSchema;
-use uuid::Uuid;
 
 pub const DAYS_TO_KEEP_LOGS: i64 = 2;
 
@@ -85,6 +87,27 @@ impl ClientLog {
         )
         .execute(pool)
         .await?;
+        Ok(())
+    }
+
+    /// Compatability function to record a clientlog from a containerlog formatted message. Derives
+    /// the client_id from the machine_id present in the log in the psql call.
+    pub async fn record_from_containerlog(
+        pool: &PgPool,
+        log: &ContainerLog,
+    ) -> Result<(), DatabaseError> {
+        let created_at =
+            DateTime::from_timestamp(log.created_at.unwrap_or_else(|| Utc::now().timestamp()), 0)
+                .expect("Could not construct datetime")
+                .naive_utc();
+
+        query!(
+            "INSERT INTO client_log (client_id, log, log_level, created_at) VALUES ((SELECT client_id FROM machine WHERE machine_id = $1), $2, $3, $4)",
+            log.machine_id,
+            log.log,
+            log.log_level as LogLevel,
+            created_at,
+            ).execute(pool).await?;
         Ok(())
     }
 
@@ -175,52 +198,52 @@ where
 }
 
 #[cfg(test)]
-mod test_alerts_db {
+mod test_client_logs_db {
     use sqlx::PgPool;
-    use uuid::Uuid;
 
     use super::*;
 
-    fn debug_address() -> Uuid {
-        Address::from_slice(&[1; 20]).into()
+    fn debug_address() -> Address {
+        Address::from_slice(&[1; 20])
     }
 
     #[sqlx::test(
         migrations = "../migrations",
-        fixtures("../../fixtures/new_user_registration.sql", "../../fixtures/alerts_active.sql",)
+        fixtures("../fixtures/new_user_registration.sql", "../fixtures/new_client_log.sql",)
     )]
     #[ignore]
     async fn test_add_new_client_log(pool: PgPool) {
-        let alerts_active = alerts_active::ActiveAlert::get_all(&pool).await.unwrap();
+        let logs = ClientLog::get_all_for_client(&pool, debug_address()).await.unwrap();
 
-        let num_alerts = alerts_active.len();
+        let num_logs = logs.len();
 
-        let new_alert = alerts_active::NewAlert {
-            alert_type: AlertType::Custom,
-            machine_id: Uuid::parse_str("dcbf22c7-9d96-47ac-bf06-62d6544e440d").unwrap(),
-            node_name: "test".to_string(),
-            created_at: chrono::Utc::now().naive_utc(),
+        let new_log = ClientLog {
+            client_id: debug_address(),
+            log: "test".to_string(),
+            log_level: LogLevel::Info,
+            created_at: Some(Utc::now().timestamp()),
+            other_fields: None,
         };
-        let new_alert_uuid = new_alert.generate_uuid();
 
-        alerts_active::ActiveAlert::insert_one(&pool, &new_alert).await.unwrap();
+        ClientLog::record(&pool, &new_log).await.unwrap();
 
-        let alerts_active = alerts_active::ActiveAlert::get_all(&pool).await.unwrap();
+        let logs = ClientLog::get_all_for_client(&pool, debug_address()).await.unwrap();
 
-        assert_eq!(alerts_active.len(), num_alerts + 1);
+        assert_eq!(logs.len(), num_logs + 1);
 
-        let new_db_alert =
-            alerts_active::ActiveAlert::get(&pool, new_alert_uuid).await.unwrap().unwrap();
+        let new_db_log = logs.iter().find(|l| l.log == new_log.log).unwrap();
 
-        assert_eq!(new_db_alert.alert_type, new_alert.alert_type);
-        assert_eq!(new_db_alert.machine_id, new_alert.machine_id);
-        assert_eq!(new_db_alert.node_name, new_alert.node_name);
+        assert_eq!(new_db_log.log, new_log.log);
+        assert_eq!(new_db_log.log_level, new_log.log_level);
     }
 
     #[sqlx::test(
         migrations = "../migrations",
-        fixtures("../../fixtures/new_user_registration.sql", "../../fixtures/alerts_active.sql",)
+        fixtures("../fixtures/new_user_registration.sql", "../fixtures/new_client_log.sql",)
     )]
     #[ignore]
-    async fn test_get_client_log_by_id(pool: PgPool) {}
-
+    async fn test_get_client_log_by_id(pool: PgPool) {
+        let logs = ClientLog::get_all_for_client(&pool, debug_address()).await.unwrap();
+        assert!(!logs.is_empty());
+    }
+}
