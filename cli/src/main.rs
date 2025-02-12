@@ -138,7 +138,6 @@ fn start_tracing(level: Level, debug_no_deps: bool) -> Result<(), Error> {
                 .add_directive("ivynet_grpc=debug".parse().unwrap())
                 .add_directive("ivynet_io=debug".parse().unwrap())
                 .add_directive("ivynet_signer=debug".parse().unwrap())
-                
         });
 
         tracing_subscriber::registry().with(tracing_subscriber::fmt::layer()).with(filter).init();
