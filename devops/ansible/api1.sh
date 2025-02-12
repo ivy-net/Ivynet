@@ -1,16 +1,17 @@
 #!/bin/bash
 #
 
-while getopts b:s:u: flag
+while getopts b:i:s:u: flag
 do
     case "${flag}" in
         b) BACKEND=${OPTARG};;
+        i) INGRESS=${OPTARG};;
         s) SCANNER=${OPTARG};;
         u) USERNAME=${OPTARG};;
     esac
 done
 
-if [[ "${BACKEND}x" == "x" || "${SCANNER}x" == "x" ]]
+if [[ "${BACKEND}x" == "x" || "${SCANNER}x" == "x" || "${INGRESS}x" == "x" ]]
 then
 	echo "One of the version not specified"
 	exit 2
@@ -19,4 +20,14 @@ fi
 
 USERNAME="${USERNAME:-wawrzek_ivynet_dev}"
 
-ansible-playbook -i gcp.yml -u ${USERNAME}  --vault-password-file ~/.vault.txt -e "ivynet_scraper_release=${SCANNER}" -e "ivynet_backend_release=${BACKEND}" api1.yml
+sed -i.bak "s/gcp_area_backend:&gcp_env_gha/api1/" api.yml
+
+ansible-playbook -i gcp.yml \
+  -u ${USERNAME} \
+  --vault-password-file ~/.vault.txt \
+  -e "ivynet_backend_release=${BACKEND}" \
+  -e "ivynet_ingress_release=${INGRESS}" \
+  -e "ivynet_scraper_release=${SCANNER}" \
+  api.yml
+
+mv api.yml.bak api.yml
