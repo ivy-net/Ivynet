@@ -3,7 +3,9 @@ use clap::{Parser, Subcommand};
 use cli::{
     config::{self, IvyConfig},
     error::Error,
-    init, key, monitor,
+    init, key,
+    log_forwarder::LogForwardingLayer,
+    monitor,
 };
 use ivynet_grpc::client::Uri;
 use std::{fs, path::PathBuf, str::FromStr as _};
@@ -89,7 +91,7 @@ enum Commands {
 async fn main() -> Result<(), AnyError> {
     let args = Args::parse();
 
-    start_tracing(args.log_level, args.debug_no_deps)?;
+    start_tracing(args.log_level, args.debug_no_deps).await?;
 
     let config = {
         match IvyConfig::load_from_default_path() {
@@ -128,7 +130,10 @@ async fn main() -> Result<(), AnyError> {
     Ok(())
 }
 
-fn start_tracing(level: Level, debug_no_deps: bool) -> Result<(), Error> {
+async fn start_tracing(level: Level, debug_no_deps: bool) -> Result<(), Error> {
+    let config = IvyConfig::load_from_default_path()?;
+    let log_forwarding_layer = LogForwardingLayer::from_config(&config).await?;
+
     if debug_no_deps {
         // When debug_no_deps is true, we want debug for cli and warn for deps
         let filter = EnvFilter::try_from_default_env().unwrap_or_else(|_| {
@@ -140,7 +145,11 @@ fn start_tracing(level: Level, debug_no_deps: bool) -> Result<(), Error> {
                 .add_directive("ivynet_signer=debug".parse().unwrap())
         });
 
-        tracing_subscriber::registry().with(tracing_subscriber::fmt::layer()).with(filter).init();
+        tracing_subscriber::registry()
+            .with(tracing_subscriber::fmt::layer())
+            .with(filter)
+            .with(log_forwarding_layer)
+            .init();
     } else {
         // Normal mode - everything at specified level
         tracing_subscriber::registry()
@@ -149,6 +158,7 @@ fn start_tracing(level: Level, debug_no_deps: bool) -> Result<(), Error> {
                 EnvFilter::try_from_default_env()
                     .unwrap_or_else(|_| EnvFilter::new(level.to_string())),
             )
+            .with(log_forwarding_layer)
             .init();
     }
 
