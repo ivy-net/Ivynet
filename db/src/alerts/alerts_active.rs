@@ -2,6 +2,7 @@ use std::fmt::{self, Display, Formatter};
 
 use chrono::NaiveDateTime;
 use ivynet_core::ethers::types::Address;
+use ivynet_notifications::NotificationType;
 use serde::Serialize;
 use sqlx::PgPool;
 use utoipa::ToSchema;
@@ -38,28 +39,15 @@ impl Display for NewAlert {
 }
 
 #[derive(Serialize, ToSchema, Clone, Debug)]
-
 pub struct ActiveAlert {
     pub alert_id: Uuid,
-    pub alert_type: AlertType,
+    pub alert_type: NotificationType,
     pub machine_id: Uuid,
     pub organization_id: i64,
     pub client_id: Address,
     pub node_name: String,
     pub created_at: NaiveDateTime,
     pub acknowledged_at: Option<NaiveDateTime>,
-}
-
-#[cfg(test)]
-impl From<ActiveAlert> for NewAlert {
-    fn from(alert: ActiveAlert) -> Self {
-        Self {
-            alert_type: alert.alert_type,
-            machine_id: alert.machine_id,
-            node_name: alert.node_name,
-            created_at: alert.created_at,
-        }
-    }
 }
 
 pub struct DbActiveAlert {
@@ -71,13 +59,17 @@ pub struct DbActiveAlert {
     node_name: String,
     created_at: NaiveDateTime,
     acknowledged_at: Option<NaiveDateTime>,
+    custom_data: Option<serde_json::Value>,
 }
 
 impl From<DbActiveAlert> for ActiveAlert {
     fn from(db_active_alert: DbActiveAlert) -> Self {
+        let notification_type =
+            NotificationType::try_from((db_active_alert.alert_type, db_active_alert.custom_data))
+                .expect("Failed to convert alert type");
         ActiveAlert {
             alert_id: db_active_alert.alert_id,
-            alert_type: db_active_alert.alert_type.into(),
+            alert_type: notification_type,
             machine_id: db_active_alert.machine_id,
             organization_id: db_active_alert.organization_id,
             client_id: Address::from_slice(&db_active_alert.client_id),
@@ -101,7 +93,8 @@ impl ActiveAlert {
                 client_id,
                 node_name,
                 created_at,
-                acknowledged_at
+                acknowledged_at,
+                custom_data
             FROM alerts_active
             WHERE alert_id = $1
             "#,
@@ -125,7 +118,8 @@ impl ActiveAlert {
                 client_id,
                 node_name,
                 created_at,
-                acknowledged_at
+                acknowledged_at,
+                custom_data
             FROM alerts_active
             "#,
         )

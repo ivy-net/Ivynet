@@ -17,6 +17,7 @@ sqlx = { version = "0.8", features = [
 ] }
 ivynet-core.workspace = true
 ivynet-node-type.workspace = true
+ivynet-notifications.workspace = true
 ivynet-docker-registry.workspace = true
 ivynet-grpc.workspace = true
 

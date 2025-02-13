@@ -13,6 +13,7 @@ ethers.workspace = true
 reqwest = { workspace = true, features = ["json"] }
 sendgrid = "0.23.0"
 serde = { workspace = true, features = ["derive"] }
+serde_json.workspace = true
 teloxide = { version = "0.13", features = ["macros"] }
 thiserror.workspace = true
 tracing.workspace = true
