@@ -4,11 +4,9 @@ use axum::{
     Json,
 };
 use axum_extra::extract::CookieJar;
-use chrono::{DateTime, NaiveDateTime};
-use db::alerts::{
-    alert_handler::AlertType, alerts_active::ActiveAlert, alerts_historical::HistoryAlert,
-};
-use serde::{Deserialize, Serialize};
+use chrono::DateTime;
+use db::alerts::{alerts_active::ActiveAlert, alerts_historical::HistoryAlert};
+use serde::Deserialize;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -25,73 +23,42 @@ pub struct HistoricalAlertParams {
     pub to: i64,
 }
 
-#[derive(Debug, Clone, Copy, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Copy, ToSchema, Deserialize)]
 pub struct AcknowledgeAlertParams {
     pub alert_id: Uuid,
 }
 
-#[derive(Serialize, ToSchema, Clone, Debug)]
-pub struct AlertReport {
-    pub alert_id: Uuid,
-    pub alert_type: AlertType,
-    pub machine_id: Uuid,
-    pub node_name: String,
-    pub created_at: NaiveDateTime,
-    pub acknowledged_at: Option<NaiveDateTime>,
-}
-
-impl From<ActiveAlert> for AlertReport {
-    fn from(alert: ActiveAlert) -> Self {
-        Self {
-            alert_id: alert.alert_id,
-            alert_type: alert.alert_type,
-            machine_id: alert.machine_id,
-            node_name: alert.node_name,
-            created_at: alert.created_at,
-            acknowledged_at: alert.acknowledged_at,
-        }
-    }
-}
-
-#[derive(Serialize, ToSchema, Clone, Debug)]
-pub struct HistoricalAlertReport {
-    pub alert_id: Uuid,
-    pub alert_type: AlertType,
-    pub machine_id: Uuid,
-    pub node_name: String,
-    pub created_at: NaiveDateTime,
-    pub acknowledged_at: Option<NaiveDateTime>,
-    pub resolved_at: NaiveDateTime,
-}
-
-impl From<HistoryAlert> for HistoricalAlertReport {
-    fn from(alert: HistoryAlert) -> Self {
-        Self {
-            alert_id: alert.alert_id,
-            alert_type: alert.alert_type,
-            machine_id: alert.machine_id,
-            node_name: alert.node_name,
-            created_at: alert.created_at,
-            acknowledged_at: alert.acknowledged_at,
-            resolved_at: alert.resolved_at,
-        }
-    }
-}
-
+#[utoipa::path(
+    get,
+    path = "/alerts/active",
+    responses(
+        (status = 200, body = [ActiveAlert]),
+        (status = 404)
+    )
+)]
 pub async fn active_alerts(
     headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
-) -> Result<Json<Vec<AlertReport>>, BackendError> {
+) -> Result<Json<Vec<ActiveAlert>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     let alerts = ActiveAlert::all_alerts_by_org(&state.pool, account.organization_id)
         .await?
         .into_iter()
-        .map(AlertReport::from)
+        .map(ActiveAlert::from)
         .collect();
     Ok(Json(alerts))
 }
 
+#[utoipa::path(
+    post,
+    path = "/alerts/acknowledge",
+    request_body = AcknowledgeAlertParams,
+    responses(
+        (status = 200, body = ()),
+        (status = 404)
+    )
+)]
 pub async fn acknowledge_alert(
     headers: HeaderMap,
     State(state): State<HttpState>,
@@ -110,12 +77,21 @@ pub async fn acknowledge_alert(
     Ok(())
 }
 
+#[utoipa::path(
+    get,
+    path = "/alerts/history",
+    request_body = HistoricalAlertParams,
+    responses(
+        (status = 200, body = [HistoryAlert]),
+        (status = 404)
+    )
+)]
 pub async fn alert_history(
     headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
     Query(params): Query<HistoricalAlertParams>,
-) -> Result<Json<Vec<HistoricalAlertReport>>, BackendError> {
+) -> Result<Json<Vec<HistoryAlert>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     let from = DateTime::from_timestamp(params.from, 0)
         .ok_or(BackendError::MalformedParameter("from".to_string(), params.from.to_string()))?
@@ -123,11 +99,11 @@ pub async fn alert_history(
     let to = DateTime::from_timestamp(params.to, 0)
         .ok_or(BackendError::MalformedParameter("to".to_string(), params.to.to_string()))?
         .naive_utc();
-    let alerts: Vec<HistoricalAlertReport> =
+    let alerts: Vec<HistoryAlert> =
         HistoryAlert::alerts_by_org_between(&state.pool, account.organization_id, from, to)
             .await?
             .into_iter()
-            .map(HistoricalAlertReport::from)
+            .map(HistoryAlert::from)
             .collect();
     Ok(Json(alerts))
 }

@@ -4,6 +4,7 @@ use chrono::NaiveDateTime;
 use ivynet_core::ethers::types::Address;
 use serde::Serialize;
 use sqlx::PgPool;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::error::DatabaseError;
@@ -36,7 +37,8 @@ impl Display for NewAlert {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Serialize, ToSchema, Clone, Debug)]
+
 pub struct ActiveAlert {
     pub alert_id: Uuid,
     pub alert_type: AlertType,

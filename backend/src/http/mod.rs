@@ -138,9 +138,13 @@ fn create_router() -> Router<HttpState> {
                 .route("/status", get(node::avs_status))
                 .route("/active_set", get(node::avs_active_set)),
         )
-        .nest("/alerts", Router::new().route("/active", get(alerts::active_alerts)))
-        .route("/history", get(alerts::alert_history))
-        .route("/acknowledge", post(alerts::acknowledge_alert))
+        .nest(
+            "/alerts",
+            Router::new()
+                .route("/active", get(alerts::active_alerts))
+                .route("/history", get(alerts::alert_history))
+                .route("/acknowledge", post(alerts::acknowledge_alert)),
+        )
         .nest(
             "/info/avs",
             Router::new()

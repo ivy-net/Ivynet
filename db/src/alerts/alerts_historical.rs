@@ -1,12 +1,15 @@
 use chrono::{Local, NaiveDateTime};
 use ivynet_core::ethers::types::Address;
+use serde::Serialize;
 use sqlx::PgPool;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::error::DatabaseError;
 
 use super::{alert_handler::AlertType, alerts_active::ActiveAlert};
 
+#[derive(Serialize, ToSchema, Clone, Debug)]
 pub struct HistoryAlert {
     pub alert_id: Uuid,
     pub alert_type: AlertType,
