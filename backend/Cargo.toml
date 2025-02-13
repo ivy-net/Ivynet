@@ -32,7 +32,7 @@ tracing = "0.1"
 tracing-subscriber = "0.3.18"
 uuid = { version = "1.11.0", features = ["v4", "serde"] }
 chrono = "0.4"
-memcache = "0.17.2"
+memcache = "0.18.0"
 axum-extra = { version = "0.9.3", features = ["cookie"] }
 sendgrid = "0.23.0"
 strum.workspace = true
