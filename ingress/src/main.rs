@@ -25,12 +25,20 @@ async fn main() -> Result<(), IngressError> {
         config.grpc_port,
     );
 
-    let events_service =
-        grpc::events_serve(pool, config.events_tls_cert, config.events_tls_key, config.events_port);
+    let events_service = grpc::events_serve(
+        pool.clone(),
+        config.events_tls_cert,
+        config.events_tls_key,
+        config.events_port,
+    );
+
+    let alerts_service =
+        grpc::alerts_serve(pool, config.alerts_tls_cert, config.alerts_tls_key, config.alerts_port);
 
     tokio::select! {
         e = grpc_service => error!("Executor has stopped. Reason: {e:?}"),
         e = events_service => error!("Events service has stopped. Reason: {e:?}"),
+        e = alerts_service => error!("Alerts service has stopped. Reason: {e:?}"),
     }
     Ok(())
 }

@@ -1,0 +1,48 @@
+syntax = "proto3";
+package alerts;
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+message SignedAlert {
+    bytes signature = 1;
+    bytes machine_id = 2;
+    Alert alert = 3;
+}
+
+message Alert {
+    // Integer identifier for the type of alert, resolved to an enum in the client/server
+    int32 alert_type = 1;
+    string node_name = 2;
+    // A serialized JSON string of any additional data that needs to be sent along with the alert.
+    optional string alert_data = 3;
+    google.protobuf.Timestamp timestamp = 4;
+}
+
+message SignedAcknowledgeAlert {
+    bytes signature = 1;
+    bytes machine_id = 2;
+    AcknowledgeAlert alert = 3;
+}
+
+message AcknowledgeAlert {
+    int32 alert_id = 1;
+    google.protobuf.Timestamp timestamp = 2;
+}
+
+message SignedResolveAlert {
+    bytes signature = 1;
+    bytes machine_id = 2;
+    ResolveAlert alert = 3;
+}
+
+message ResolveAlert {
+    int32 alert_id = 1;
+    google.protobuf.Timestamp timestamp = 2;
+}
+
+service Alerts {
+    rpc NewAlert(SignedAlert) returns (google.protobuf.Empty);
+    rpc AcknowledgeAlert(SignedAcknowledgeAlert) returns (google.protobuf.Empty);
+    rpc ResolveAlert(SignedResolveAlert) returns (google.protobuf.Empty);
+}

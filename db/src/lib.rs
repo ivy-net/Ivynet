@@ -1,6 +1,7 @@
 use sqlx::{pool::PoolOptions, PgPool};
 
 pub mod account;
+pub mod alerts;
 pub mod avs;
 pub mod avs_active_set;
 pub mod avs_version;
