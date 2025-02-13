@@ -7,8 +7,15 @@ categories.workspace = true
 license.workspace = true
 
 [dependencies]
-sqlx = { version = "0.8", features = ["postgres", "chrono", "runtime-tokio", "tls-rustls", "uuid", "bigdecimal"] }
-ivynet-core = { path = "../core" }
+sqlx = { version = "0.8", features = [
+	"postgres",
+	"chrono",
+	"runtime-tokio",
+	"tls-rustls",
+	"uuid",
+	"bigdecimal",
+] }
+ivynet-core.workspace = true
 chrono.workspace = true
 serde.workspace = true
 uuid = { version = "1.11.0", features = ["v4", "serde"] }
@@ -16,10 +23,12 @@ utoipa = { version = "5.3.1", features = ["axum_extras"] }
 sha256 = "1.5.0"
 thiserror.workspace = true
 ivynet-node-type.workspace = true
-ivynet-docker.workspace = true
+ivynet-docker-registry.workspace = true
+ivynet-grpc.workspace = true
 semver = "1.0.24"
 serde_json.workspace = true
 regex.workspace = true
+tokio.workspace = true
 
 [lints]
 workspace = true

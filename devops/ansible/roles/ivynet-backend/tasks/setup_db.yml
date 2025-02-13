@@ -52,7 +52,7 @@
 
 - name: Download migrations for the master
   when:
-    - not ivynet_backend_is_release
+    - not ivynet_backend_is_release | bool
   block:
     - name: Get migrations from GCP
       google.cloud.gcp_storage_object:
@@ -121,7 +121,8 @@
     login_password: "{{ ivynet_backend_postgres_pass }}"
     name: "{{ ivynet_backend_postgres_user }}"
     password: "{{ ivynet_backend_postgres_user_pass }}"
-    no_password_changes: "{{ ivynet_backend_postgres_no_password_changes }}"
+    # yamllint disable-line rule:line-length
+    no_password_changes: "{{ ivynet_backend_postgres_no_password_changes | bool }}"
   become: true
   become_user: postgres
   tags:
@@ -150,12 +151,13 @@
 
 - name: Run migrations
   ansible.builtin.command:
-    cmd: >
-      {{ ivynet_backend_path_install }}/bin/sqlx
-      migrate
-      run
-      --database-url
-      postgresql://{{ ivynet_backend_postgres_user }}:{{ ivynet_backend_postgres_user_pass }}@{{ ivynet_backend_postgres_host }}:5432/{{ ivynet_backend_postgres_db }}
+    argv:
+      - "{{ ivynet_backend_path_install }}/bin/sqlx"
+      - "migrate"
+      - "run"
+      - "--database-url"
+      # yamllint disable-line rule:line-length
+      - "postgresql://{{ ivynet_backend_postgres_user }}:{{ ivynet_backend_postgres_user_pass }}@{{ ivynet_backend_postgres_host }}:5432/{{ ivynet_backend_postgres_db }}"
     chdir: "{{ ivynet_backend_path_resources }}"
   register: migration_out
   changed_when: migration_out.stdout != ""
@@ -164,3 +166,15 @@
     - ivynet
     - db-config
     - sqlx
+
+- name: Stop local postgresql (for remote DB)
+  ansible.builtin.systemd_service:
+    name: postgresql
+    state: stopped
+    enabled: false
+  when:
+    - ivynet_backend_postgres_host != 'localhost'
+  tags:
+    - ivynet_backend
+    - ivynet
+    - db-config

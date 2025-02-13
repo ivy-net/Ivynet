@@ -1,5 +1,0 @@
----
-- hosts: test
-  become: true
-  roles:
-    - witness-chain

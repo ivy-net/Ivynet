@@ -5,7 +5,7 @@ use axum::{
     Json,
 };
 use axum_extra::extract::CookieJar;
-use ivynet_core::ethers::types::{Address, Chain};
+use ethers::types::{Address, Chain};
 use ivynet_node_type::NodeType;
 use std::{
     collections::HashMap,
@@ -399,20 +399,25 @@ pub async fn metrics_condensed(
     let machine =
         authorize::verify_machine_ownership(&account, State(state.clone()), machine_id).await?;
 
-    let avs_name = params.get("avs_name").ok_or_else(|| {
-        BackendError::MalformedParameter(
-            "avs_name".to_string(),
-            "AVS name cannot be empty".to_string(),
-        )
-    })?;
-
-    let avses = Avs::get_machines_avs_list(&state.pool, machine.machine_id).await?;
-
-    let avs = avses.iter().find(|avs| avs.avs_name == *avs_name).ok_or(BackendError::InvalidAvs)?;
-    let metrics = Metric::get_all_for_avs(&state.pool, machine.machine_id, &avs.avs_name).await?;
-    let filtered_metrics = node_data::condense_metrics(avs.avs_type, &metrics);
-
-    Ok(Json(filtered_metrics))
+    match params.get("avs_name") {
+        None => {
+            // No AVS name provided - return machine-wide metrics
+            let metrics = Metric::get_machine_metrics_only(&state.pool, machine.machine_id).await?;
+            Ok(Json(metrics.values().cloned().collect()))
+        }
+        Some(avs_name) => {
+            // AVS name provided - return AVS-specific metrics
+            let avses = Avs::get_machines_avs_list(&state.pool, machine.machine_id).await?;
+            let avs = avses
+                .iter()
+                .find(|avs| avs.avs_name == *avs_name)
+                .ok_or(BackendError::InvalidAvs)?;
+            let metrics =
+                Metric::get_all_for_avs(&state.pool, machine.machine_id, &avs.avs_name).await?;
+            let filtered_metrics = node_data::condense_metrics(avs.avs_type, &metrics);
+            Ok(Json(filtered_metrics))
+        }
+    }
 }
 
 /// Get all metrics for a specific node on a specific machine
@@ -438,18 +443,22 @@ pub async fn metrics_all(
     let machine =
         authorize::verify_machine_ownership(&account, State(state.clone()), machine_id).await?;
 
-    let avs_name = params.get("avs_name").ok_or_else(|| {
-        BackendError::MalformedParameter(
-            "avs_name".to_string(),
-            "AVS name cannot be empty".to_string(),
-        )
-    })?;
-
-    let avses = Avs::get_machines_avs_list(&state.pool, machine.machine_id).await?;
-    let avs = avses.iter().find(|avs| avs.avs_name == *avs_name).ok_or(BackendError::InvalidAvs)?;
-    let metrics = Metric::get_all_for_avs(&state.pool, machine.machine_id, &avs.avs_name).await?;
-
-    Ok(Json(metrics))
+    match params.get("avs_name") {
+        None => {
+            let metrics = Metric::get_machine_metrics_only(&state.pool, machine.machine_id).await?;
+            Ok(Json(metrics.values().cloned().collect()))
+        }
+        Some(avs_name) => {
+            let avses = Avs::get_machines_avs_list(&state.pool, machine.machine_id).await?;
+            let avs = avses
+                .iter()
+                .find(|avs| avs.avs_name == *avs_name)
+                .ok_or(BackendError::InvalidAvs)?;
+            let metrics =
+                Metric::get_all_for_avs(&state.pool, machine.machine_id, &avs.avs_name).await?;
+            Ok(Json(metrics))
+        }
+    }
 }
 
 /// Get all logs for a specific node on a specific machine

@@ -5,15 +5,12 @@ use ethers::{
     types::{Address, Chain},
 };
 use futures::{stream::SelectAll, Stream, StreamExt};
-use ivynet_core::{
-    directory::get_all_directories_for_chain,
-    grpc::{
-        backend_events::{
-            backend_events_client::BackendEventsClient, LatestBlockRequest, MetadataUriEvent,
-            RegistrationEvent,
-        },
-        tonic::{transport::Channel, Request},
+use ivynet_core::directory::get_all_directories_for_chain;
+use ivynet_grpc::{
+    backend_events::{
+        backend_events_client::BackendEventsClient, LatestBlockRequest, RegistrationEvent,
     },
+    tonic::{transport::Channel, Request},
 };
 use std::{pin::Pin, sync::Arc};
 use tokio::sync::Mutex;
@@ -27,6 +24,8 @@ abigen!(
     r#"[
         event AVSMetadataURIUpdated(address indexed avs, string metadataURI)
         event OperatorAVSRegistrationStatusUpdated(address indexed operator, address indexed avs, uint8 status)
+        event OptIn(address indexed who, address indexed where)
+        event OptOut(address indexed who, address indexed where)
     ]"#,
 );
 
@@ -99,6 +98,7 @@ pub async fn fetch(
     mut backend: BackendEventsClient<Channel>,
     from_block: u64,
     addresses: &[Address],
+    reset_blockheight: bool,
 ) -> Result<()> {
     info!("Starting even listener under {rpc_url}");
 
@@ -137,6 +137,9 @@ pub async fn fetch(
             .into_inner()
             .block_number;
         if last_checked < from_block {
+            last_checked = from_block;
+        }
+        if reset_blockheight {
             last_checked = from_block;
         }
         fetch_all_directory_events_between(
@@ -221,10 +224,36 @@ pub async fn report_directory_event(
         DirectoryEvents::AvsmetadataURIUpdatedFilter(ev) => {
             info!("AVS metadata URI updated event {ev:?}");
 
+            // backend
+            //     .report_metadata_uri_event(Request::new(MetadataUriEvent {
+            //         avs: ev.avs.as_bytes().to_vec(),
+            //         metadata_uri: ev.metadata_uri,
+            //         block_number: event.1.block_number.as_u64(),
+            //         log_index: event.1.log_index.as_u64(),
+            //     }))
+            //     .await?;
+        }
+        DirectoryEvents::OptInFilter(oin) => {
             backend
-                .report_metadata_uri_event(Request::new(MetadataUriEvent {
-                    avs: ev.avs.as_bytes().to_vec(),
-                    metadata_uri: ev.metadata_uri,
+                .report_registration_event(Request::new(RegistrationEvent {
+                    directory: event.1.address.as_bytes().to_vec(),
+                    avs: oin.where_.as_bytes().to_vec(),
+                    chain_id,
+                    address: oin.who.as_bytes().to_vec(),
+                    active: true,
+                    block_number: event.1.block_number.as_u64(),
+                    log_index: event.1.log_index.as_u64(),
+                }))
+                .await?;
+        }
+        DirectoryEvents::OptOutFilter(oout) => {
+            backend
+                .report_registration_event(Request::new(RegistrationEvent {
+                    directory: event.1.address.as_bytes().to_vec(),
+                    avs: oout.where_.as_bytes().to_vec(),
+                    chain_id,
+                    address: oout.who.as_bytes().to_vec(),
+                    active: false,
                     block_number: event.1.block_number.as_u64(),
                     log_index: event.1.log_index.as_u64(),
                 }))

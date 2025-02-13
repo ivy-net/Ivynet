@@ -13,13 +13,20 @@ pub enum VersionType {
     HybridVer,
     /// Node types that you only build locally
     LocalOnly,
+    /// Node types that are opt-in only
+    OptInOnly,
 }
 
 // TODO: This is really messy, should probably live in core but has a ToSchema dep
 impl From<&NodeType> for VersionType {
     fn from(node_type: &NodeType) -> Self {
         match node_type {
-            NodeType::DittoNetwork => VersionType::SemVer,
+            NodeType::Tanssi => VersionType::FixedVer,
+            NodeType::Bolt(_) => VersionType::SemVer,
+            NodeType::Zellular => VersionType::FixedVer,
+            NodeType::AtlasNetwork => VersionType::FixedVer,
+            NodeType::Primus => VersionType::SemVer,
+            NodeType::DittoNetwork(_) => VersionType::SemVer,
             NodeType::Gasp => VersionType::FixedVer,
             NodeType::EigenDA => VersionType::SemVer,
             NodeType::LagrangeZkWorker => VersionType::FixedVer,
@@ -29,28 +36,41 @@ impl From<&NodeType> for VersionType {
             NodeType::K3LabsAvs => VersionType::FixedVer,
             NodeType::K3LabsAvsHolesky => VersionType::FixedVer,
             NodeType::Predicate => VersionType::SemVer,
-            NodeType::Hyperlane => VersionType::SemVer,
+            NodeType::Hyperlane(_) => VersionType::SemVer,
             NodeType::WitnessChain => VersionType::SemVer,
             NodeType::Unknown => VersionType::SemVer,
             NodeType::LagrangeStateCommittee => VersionType::SemVer,
-            NodeType::Altlayer(_any) => VersionType::SemVer,
-            NodeType::AltlayerMach(_any) => VersionType::SemVer,
+            NodeType::Altlayer(_) => VersionType::SemVer,
+            NodeType::AltlayerMach(_) => VersionType::SemVer,
             NodeType::Omni => VersionType::FixedVer,
             NodeType::Automata => VersionType::SemVer,
             NodeType::OpenLayerHolesky => VersionType::FixedVer,
             NodeType::OpenLayerMainnet => VersionType::FixedVer,
             NodeType::ChainbaseNetworkV1 => VersionType::SemVer,
             NodeType::ChainbaseNetwork => VersionType::SemVer,
-            NodeType::UngateInfiniRoute(_any) => VersionType::FixedVer,
+            NodeType::UngateInfiniRoute(_) => VersionType::FixedVer,
             NodeType::AethosHolesky => VersionType::SemVer,
             NodeType::ArpaNetworkNodeClient => VersionType::FixedVer,
             NodeType::Brevis => VersionType::LocalOnly,
-            NodeType::PrimevMevCommit => VersionType::LocalOnly,
+            NodeType::PrimevMevCommit(_) => VersionType::LocalOnly,
+            NodeType::PrimevBidder => VersionType::LocalOnly,
             NodeType::Nuffle => VersionType::LocalOnly,
             NodeType::AlignedLayer => VersionType::LocalOnly,
             NodeType::GoPlusAVS => VersionType::LocalOnly,
-            NodeType::SkateChain(_any) => VersionType::LocalOnly,
-            NodeType::UnifiAVS => VersionType::LocalOnly,
+            NodeType::SkateChain(_) => VersionType::LocalOnly,
+            NodeType::Blockless => VersionType::LocalOnly,
+            NodeType::Redstone => VersionType::LocalOnly,
+            NodeType::MishtiNetwork(_) => VersionType::LocalOnly,
+            NodeType::Cycle => VersionType::LocalOnly,
+            NodeType::Kalypso => VersionType::LocalOnly,
+            NodeType::UnifiAVS => VersionType::OptInOnly,
+            NodeType::RouterXtendNetwork => VersionType::OptInOnly,
+            NodeType::CapxCloud => VersionType::OptInOnly,
+            NodeType::Symbiosis => VersionType::OptInOnly,
+            NodeType::Radius => VersionType::OptInOnly,
+            NodeType::IBTCNetwork => VersionType::OptInOnly,
+            NodeType::ZKLink => VersionType::OptInOnly,
+            NodeType::HyveDA => VersionType::OptInOnly,
         }
     }
 }
@@ -69,6 +89,9 @@ impl VersionType {
             (NodeType::OpenLayerMainnet, _) => Some("latest"),
             (NodeType::OpenLayerHolesky, _) => Some("latest"),
             (NodeType::ArpaNetworkNodeClient, _) => Some("latest"),
+            (NodeType::AtlasNetwork, _) => Some("testnet-eigenlayer"),
+            (NodeType::Zellular, _) => Some("latest"),
+            (NodeType::Tanssi, _) => Some("latest"),
             _ => None,
         }
     }
@@ -97,7 +120,7 @@ pub async fn find_latest_avs_version(
 
             // If a version type is semver, we sanitize the list, discarding the other
             // elements.
-            let version_vec = version_list
+            let mut version_vec = version_list
                 .iter()
                 .filter_map(|version_data| {
                     let raw_tag = version_data.version.clone();
@@ -108,9 +131,13 @@ pub async fn find_latest_avs_version(
                 })
                 .collect::<Vec<_>>();
 
-            // filter prerelease versions
-            let version_vec =
-                version_vec.into_iter().filter(|(v, _, _)| v.pre.is_empty()).collect::<Vec<_>>();
+            if *chain == Chain::Mainnet {
+                // filter prerelease versions
+                version_vec = version_vec
+                    .into_iter()
+                    .filter(|(v, _, _)| v.pre.is_empty())
+                    .collect::<Vec<_>>();
+            }
 
             let latest = version_vec
                 .iter()
@@ -139,6 +166,7 @@ pub async fn find_latest_avs_version(
             }
         }
         VersionType::LocalOnly => ("Local".to_string(), "Local_Builds_Only".to_string()),
+        VersionType::OptInOnly => ("OptInOnly".to_string(), "OptInOnly".to_string()),
     };
     Ok((tag, digest))
 }
@@ -200,7 +228,7 @@ mod avs_version_tests {
     // TODO: These tests need to be more abstract and run over dummy data instead of live db data.
 
     #[ignore]
-    #[sqlx::test(fixtures("../../fixtures/avs_version_hashes.sql"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("../../fixtures/avs_version_hashes.sql"))]
     async fn test_eigenda_version_parsing(
         pool: PgPool,
     ) -> sqlx::Result<(), Box<dyn std::error::Error>> {
@@ -213,7 +241,7 @@ mod avs_version_tests {
     }
 
     #[ignore]
-    #[sqlx::test(fixtures("../../fixtures/avs_version_hashes.sql"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("../../fixtures/avs_version_hashes.sql"))]
     async fn test_ava_version_parsing(
         pool: PgPool,
     ) -> sqlx::Result<(), Box<dyn std::error::Error>> {
@@ -225,7 +253,7 @@ mod avs_version_tests {
     }
 
     #[ignore]
-    #[sqlx::test(fixtures("../../fixtures/avs_version_hashes.sql"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("../../fixtures/avs_version_hashes.sql"))]
     async fn test_k3labs_version_parsing(
         pool: PgPool,
     ) -> sqlx::Result<(), Box<dyn std::error::Error>> {
@@ -237,7 +265,7 @@ mod avs_version_tests {
     }
 
     #[ignore]
-    #[sqlx::test(fixtures("../../fixtures/avs_version_hashes.sql"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("../../fixtures/avs_version_hashes.sql"))]
     async fn test_lagrange_zk_holesky_version_parsing(
         pool: PgPool,
     ) -> sqlx::Result<(), Box<dyn std::error::Error>> {
@@ -249,7 +277,7 @@ mod avs_version_tests {
     }
 
     #[ignore]
-    #[sqlx::test(fixtures("../../fixtures/avs_version_hashes.sql"))]
+    #[sqlx::test(migrations = "../migrations", fixtures("../../fixtures/avs_version_hashes.sql"))]
     async fn test_eoracle_version_parsing(
         pool: PgPool,
     ) -> sqlx::Result<(), Box<dyn std::error::Error>> {

@@ -1,6 +1,6 @@
 [package]
 name = "cli"
-version = "0.5.0"
+version = "0.5.1"
 edition = "2021"
 authors = ["Noah Foltz <noah@ivynet.dev>"]
 description = "CLI for Ivynet client"
@@ -15,25 +15,40 @@ path = "src/main.rs"
 
 [dependencies]
 #locals
-ivynet-node-type.workspace = true
 ivynet-docker.workspace = true
+ivynet-grpc.workspace = true
+ivynet-io.workspace = true
+ivynet-signer.workspace = true
 
+anyhow.workspace = true
+bollard.workspace = true
 clap = { version = "4.5.7", features = ["derive", "env"] }
-tokio = { version = "1.37.0", features = ["full"] }
-tracing = "0.1.40"
-tracing-subscriber = { version = "0.3.18", features = ["env-filter"] }
-ivynet-core = { path = "../core" }
-thiserror = "2.0"
-dialoguer = "0.11.0"
-anyhow = "1.0.86"
-linemux = "=0.3.0"
-rustix = { version = "0.38", default-features = false, features = ["system"] }
+convert_case.workspace = true
 data-encoding = "2.6.0"
-futures = "0.3.31"
-serde = { version = "1.0.215", features = ["derive"] }
+dialoguer.workspace = true
+dirs.workspace = true
+ethers.workspace = true
+fs2 = "0.4.3"
+futures.workspace = true
+kameo = "0.14.0"
+linemux = "=0.3.0"
+once_cell.workspace = true
+reqwest.workspace = true
+rustix = { version = "0.38", default-features = false, features = ["system"] }
+serde.workspace = true
+serde_json.workspace = true
+sysinfo = "0.33"
+tokio.workspace = true
+tokio-stream.workspace = true
+tracing.workspace = true
+tracing-subscriber.workspace = true
+thiserror.workspace = true
+uuid.workspace = true
 
 [features]
 docker_tests = []
 
 [dev-dependencies]
 serial_test = "3.1.1"
+toml = "0.8"
+sqlx.workspace = true

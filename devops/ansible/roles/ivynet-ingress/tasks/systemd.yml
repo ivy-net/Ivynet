@@ -1,0 +1,34 @@
+---
+- name: Copy Ingress Service file
+  ansible.builtin.template:
+    src: ivynet-ingress.service.j2
+    dest: /etc/systemd/system/ivynet-ingress.service
+    owner: root
+    group: root
+    mode: "0644"
+  notify:
+    - Reload daemon
+    - Restart ingress service
+  tags:
+    - ivynet_ingress
+    - general
+    - ivynet
+    - systemd
+    - template
+
+- name: Populate service facts
+  ansible.builtin.service_facts:
+
+- name: Set Ingress service
+  ansible.builtin.systemd_service:
+    name: ivynet-ingress
+    state: started
+    enabled: true
+    daemon_reload: true
+  when:
+    - "'ivynet-ingress.service' not in services"
+  tags:
+    - ivynet_ingress
+    - general
+    - ivynet
+    - systemd

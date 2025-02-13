@@ -1,3 +1,4 @@
+use ivynet_grpc::messages::{MachineData, Metrics, MetricsAttribute};
 use serde::Serialize;
 use sqlx::PgPool;
 use std::collections::HashMap;
@@ -12,12 +13,17 @@ use crate::{
     metric::Metric,
 };
 
+const UPTIME_METRIC: &str = "uptime";
 const CORES_METRIC: &str = "cores";
 const CPU_USAGE_METRIC: &str = "cpu_usage";
 const MEMORY_USAGE_METRIC: &str = "ram_usage";
 const MEMORY_FREE_METRIC: &str = "free_ram";
+const MEMORY_TOTAL_METRIC: &str = "memory_total";
 const DISK_USAGE_METRIC: &str = "disk_usage";
 const DISK_FREE_METRIC: &str = "free_disk";
+const DISK_TOTAL_METRIC: &str = "disk_total";
+const DISK_INFO_METRIC: &str = "disk_info";
+const DISK_ID_METRIC: &str = "disk_id";
 
 #[derive(Serialize, ToSchema, Clone, Debug, Default)]
 pub struct MachineStatusReport {
@@ -36,6 +42,7 @@ pub enum MachineStatus {
 pub enum MachineError {
     Idle,
     SystemResourcesUsage,
+    ClientUpdateRequired,
 }
 
 #[derive(Serialize, ToSchema, Clone, Debug)]
@@ -43,16 +50,17 @@ pub struct MachineInfoReport {
     pub machine_id: String,
     pub name: String,
     pub status: MachineStatus,
-    pub system_metrics: SystemMetrics,
-    pub avs_list: Vec<AvsInfo>,
+    pub client_version: Option<String>,
+    pub hardware_info: HardwareUsageInfo,
     pub errors: Vec<MachineError>,
+    pub avs_list: Vec<AvsInfo>,
 }
 
 #[derive(Serialize, ToSchema, Clone, Debug)]
 pub struct HardwareUsageInfo {
-    pub usage: f64,
-    pub free: f64,
-    pub status: HardwareInfoStatus,
+    pub sys_metrics: SystemMetrics,
+    pub memory_status: HardwareInfoStatus,
+    pub disk_status: HardwareInfoStatus,
 }
 
 #[derive(Serialize, ToSchema, Clone, Debug, PartialEq, Eq)]
@@ -64,10 +72,21 @@ pub enum HardwareInfoStatus {
 
 #[derive(Serialize, ToSchema, Clone, Debug)]
 pub struct SystemMetrics {
-    pub cores: f64,
+    pub cpu_cores: u64,
     pub cpu_usage: f64,
-    pub memory_info: HardwareUsageInfo,
-    pub disk_info: HardwareUsageInfo,
+    pub memory_usage: u64,
+    pub memory_free: u64,
+    pub memory_total: u64,
+    pub disks: Vec<DiskInfo>,
+    pub uptime: u64,
+}
+
+#[derive(Serialize, ToSchema, Clone, Debug)]
+pub struct DiskInfo {
+    pub id: String,
+    pub total: u64,
+    pub free: u64,
+    pub used: u64,
 }
 
 pub async fn build_machine_info(
@@ -77,32 +96,13 @@ pub async fn build_machine_info(
 ) -> Result<MachineInfoReport, DatabaseError> {
     let mut errors = vec![];
 
-    let memory_info = build_hardware_info(
-        machine_metrics.get(MEMORY_USAGE_METRIC).cloned(),
-        machine_metrics.get(MEMORY_FREE_METRIC).cloned(),
-    );
+    let hardware_info = build_system_metrics(&machine_metrics);
 
-    let disk_info = build_hardware_info(
-        machine_metrics.get(DISK_USAGE_METRIC).cloned(),
-        machine_metrics.get(DISK_FREE_METRIC).cloned(),
-    );
-
-    if disk_info.status == HardwareInfoStatus::Critical ||
-        memory_info.status == HardwareInfoStatus::Critical
+    if hardware_info.disk_status == HardwareInfoStatus::Critical ||
+        hardware_info.memory_status == HardwareInfoStatus::Critical
     {
         errors.push(MachineError::SystemResourcesUsage);
     }
-
-    let system_metrics = SystemMetrics {
-        cores: if let Some(cores) = machine_metrics.get(CORES_METRIC) { cores.value } else { 0.0 },
-        cpu_usage: if let Some(cpu) = machine_metrics.get(CPU_USAGE_METRIC) {
-            cpu.value
-        } else {
-            0.0
-        },
-        memory_info,
-        disk_info,
-    };
 
     let avses = Avs::get_machines_avs_list(pool, machine.machine_id).await?;
     let mut avs_infos = vec![];
@@ -120,35 +120,21 @@ pub async fn build_machine_info(
         avs_infos.push(avs_info);
     }
 
+    if machine.client_version.is_none() {
+        errors.push(MachineError::ClientUpdateRequired);
+    }
+
     let info_report = MachineInfoReport {
         machine_id: format!("{:?}", machine.machine_id),
         name: format!("{:?}", machine.name),
+        client_version: machine.client_version.clone(),
         status: if errors.is_empty() { MachineStatus::Healthy } else { MachineStatus::Unhealthy },
-        system_metrics,
+        hardware_info,
         avs_list: avs_infos,
         errors,
     };
 
     Ok(info_report)
-}
-
-pub fn build_hardware_info(
-    usage_metric: Option<Metric>,
-    free_metric: Option<Metric>,
-) -> HardwareUsageInfo {
-    let usage = if let Some(usage) = usage_metric { usage.value } else { 0.0 };
-    let free = if let Some(free) = free_metric { free.value } else { 0.0 };
-    HardwareUsageInfo {
-        usage,
-        free,
-        status: if usage > ((usage + free) * 0.95) {
-            HardwareInfoStatus::Critical
-        } else if usage > ((usage + free) * 0.9) {
-            HardwareInfoStatus::Warning
-        } else {
-            HardwareInfoStatus::Healthy
-        },
-    }
 }
 
 pub async fn get_machine_health(
@@ -174,4 +160,138 @@ pub async fn get_machine_health(
     }
 
     Ok((healthy_list, unhealthy_list))
+}
+
+pub fn build_system_metrics(machine_metrics: &HashMap<String, Metric>) -> HardwareUsageInfo {
+    let mut disks = Vec::new();
+
+    // Collect disk information from disk_info_X metrics
+    let mut i = 0;
+    while let Some(disk_metric) = machine_metrics.get(&format!("{}_{}", DISK_INFO_METRIC, i)) {
+        if let Some(attrs) = &disk_metric.attributes {
+            let disk_info = DiskInfo {
+                id: attrs.get(DISK_ID_METRIC).cloned().unwrap_or_default(),
+                total: attrs
+                    .get(DISK_TOTAL_METRIC)
+                    .and_then(|v| v.parse().ok())
+                    .unwrap_or_default(),
+                free: attrs.get(DISK_FREE_METRIC).and_then(|v| v.parse().ok()).unwrap_or_default(),
+                used: attrs.get(DISK_USAGE_METRIC).and_then(|v| v.parse().ok()).unwrap_or_default(),
+            };
+            disks.push(disk_info);
+        }
+        i += 1;
+    }
+
+    let metrics = SystemMetrics {
+        cpu_cores: machine_metrics.get(CORES_METRIC).map(|m| m.value as u64).unwrap_or_default(),
+        cpu_usage: machine_metrics.get(CPU_USAGE_METRIC).map(|m| m.value).unwrap_or_default(),
+        memory_usage: machine_metrics
+            .get(MEMORY_USAGE_METRIC)
+            .map(|m| m.value as u64)
+            .unwrap_or_default(),
+        memory_free: machine_metrics
+            .get(MEMORY_FREE_METRIC)
+            .map(|m| m.value as u64)
+            .unwrap_or_default(),
+        memory_total: machine_metrics
+            .get(MEMORY_TOTAL_METRIC)
+            .map(|m| m.value as u64)
+            .unwrap_or_default(),
+        disks,
+        uptime: machine_metrics.get(UPTIME_METRIC).map(|m| m.value as u64).unwrap_or_default(),
+    };
+
+    // Calculate memory status
+    let memory_status = if metrics.memory_usage == 0 && metrics.memory_free == 0 {
+        HardwareInfoStatus::Healthy
+    } else {
+        let total = metrics.memory_usage + metrics.memory_free;
+        if total == 0 {
+            HardwareInfoStatus::Healthy
+        } else if metrics.memory_usage as f64 > (total as f64 * 0.95) {
+            HardwareInfoStatus::Critical
+        } else if metrics.memory_usage as f64 > (total as f64 * 0.9) {
+            HardwareInfoStatus::Warning
+        } else {
+            HardwareInfoStatus::Healthy
+        }
+    };
+
+    // Calculate disk status
+    let disk_status = if metrics.disks.is_empty() {
+        HardwareInfoStatus::Healthy
+    } else {
+        let mut worst_status = HardwareInfoStatus::Healthy;
+        for disk in &metrics.disks {
+            let total = disk.used + disk.free;
+            if total == 0 {
+                continue;
+            }
+            if disk.used as f64 > (total as f64 * 0.95) {
+                worst_status = HardwareInfoStatus::Critical;
+                break;
+            } else if disk.used as f64 > (total as f64 * 0.9) {
+                worst_status = HardwareInfoStatus::Warning;
+            }
+        }
+        worst_status
+    };
+
+    HardwareUsageInfo { sys_metrics: metrics, memory_status, disk_status }
+}
+
+pub fn convert_system_metrics(sys_info: &MachineData) -> Vec<Metrics> {
+    let mut sys_metrics = vec![
+        Metrics {
+            name: UPTIME_METRIC.to_owned(),
+            value: sys_info.uptime.parse::<f64>().unwrap(),
+            attributes: Default::default(),
+        },
+        Metrics {
+            name: CPU_USAGE_METRIC.to_owned(),
+            value: sys_info.cpu_usage.parse::<f64>().unwrap(),
+            attributes: Default::default(),
+        },
+        Metrics {
+            name: CORES_METRIC.to_owned(),
+            value: sys_info.cpu_cores.parse::<f64>().unwrap(),
+            attributes: Default::default(),
+        },
+        Metrics {
+            name: MEMORY_USAGE_METRIC.to_owned(),
+            value: sys_info.memory_used.parse::<f64>().unwrap(),
+            attributes: Default::default(),
+        },
+        Metrics {
+            name: MEMORY_FREE_METRIC.to_owned(),
+            value: sys_info.memory_free.parse::<f64>().unwrap(),
+            attributes: Default::default(),
+        },
+        Metrics {
+            name: MEMORY_TOTAL_METRIC.to_owned(),
+            value: sys_info.memory_total.parse::<f64>().unwrap(),
+            attributes: Default::default(),
+        },
+        Metrics {
+            name: DISK_TOTAL_METRIC.to_owned(),
+            value: sys_info.disk_used_total.parse::<f64>().unwrap(),
+            attributes: Default::default(),
+        },
+    ];
+    for (i, disk) in sys_info.disks.iter().enumerate() {
+        let disk_attributes = vec![
+            MetricsAttribute { name: DISK_ID_METRIC.to_owned(), value: disk.id.to_string() },
+            MetricsAttribute { name: DISK_USAGE_METRIC.to_owned(), value: disk.used.to_string() },
+            MetricsAttribute { name: DISK_FREE_METRIC.to_owned(), value: disk.free.to_string() },
+            MetricsAttribute { name: DISK_TOTAL_METRIC.to_owned(), value: disk.total.to_string() },
+        ];
+        sys_metrics.push(Metrics {
+            name: format!("{}_{}", DISK_INFO_METRIC, i),
+            value: 0.0,
+            attributes: disk_attributes,
+        });
+    }
+
+    sys_metrics
 }

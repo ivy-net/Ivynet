@@ -17,7 +17,7 @@ use axum::{
     routing::{delete, get, post, put},
     Router,
 };
-use ivynet_core::grpc::client::Uri;
+use ivynet_grpc::client::Uri;
 use sendgrid::v3::Sender;
 use serde_json::{json, Value};
 use sqlx::PgPool;
@@ -96,7 +96,6 @@ fn create_router() -> Router<HttpState> {
             Router::new()
                 .route("/", post(organization::new))
                 .route("/", get(organization::get_me))
-                .route("/:id", get(organization::get))
                 .route("/invite", post(organization::invite))
                 .route("/confirm/:id", get(organization::confirm))
                 .route("/machines", get(organization::machines))
@@ -135,7 +134,8 @@ fn create_router() -> Router<HttpState> {
             "/avs",
             Router::new()
                 .route("/", get(node::all_avs_info))
-                .route("/status", get(node::avs_status)),
+                .route("/status", get(node::avs_status))
+                .route("/active_set", get(node::avs_active_set)),
         )
         .nest(
             "/info/avs",

@@ -22,3 +22,7 @@
   roles:
     - role: ivynet-backend
       become: true
+    - role: ivynet-ingress
+      become: true
+    - role: ivynet-scraper
+      become: true

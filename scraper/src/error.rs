@@ -5,8 +5,6 @@ pub enum ScraperError {
     #[error("Unknown error")]
     UnknownError,
 
-    // #[error(transparent)]
-    // UrlParseError(#[from] ivynet_core::grpc::client::UrlParseError),
     #[error(transparent)]
     JsonParseError(#[from] serde_json::Error),
 
@@ -36,7 +34,7 @@ pub enum ScraperError {
     WSClientError(#[from] ivynet_core::ethers::providers::WsClientError),
 
     #[error(transparent)]
-    TonicError(#[from] ivynet_core::grpc::tonic::Status),
+    TonicError(#[from] ivynet_grpc::tonic::Status),
 }
 
 pub type Result<T> = std::result::Result<T, ScraperError>;

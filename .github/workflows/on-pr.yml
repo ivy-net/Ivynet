@@ -1,0 +1,26 @@
+---
+name: Check for PR
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+jobs:
+  pre-commit:
+    if: github.event.pull_request.draft == false
+    name: pre-commit checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Refresh source list
+        run: |
+          sudo apt update
+      - name: Install dependencies
+        run: >
+          sudo apt install -y
+          protobuf-compiler
+          pkg-config
+          libssl-dev
+      - name: Prebuild tests
+        run: |
+          cargo build --tests

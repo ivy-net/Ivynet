@@ -16,7 +16,7 @@ env:
 jobs:
   build-binary:
     name: Build and push binaries to github release page
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4

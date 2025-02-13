@@ -1,4 +1,5 @@
 pub mod backend;
+pub mod data_validator;
 pub mod events;
 
 pub use backend::BackendService;

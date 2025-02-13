@@ -1,0 +1,26 @@
+[package]
+name = "ivynet-docker-registry"
+version = "0.1.0"
+edition = "2021"
+authors = ["Noah Foltz <noah@ivynet.dev>"]
+description = "Docker library for IvyNet node detection and management"
+repository = "https://github.com/ivy-net/ivynet"
+license = "UNLICENSED"
+
+[lib]
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+#locals
+ivynet-node-type.workspace = true
+
+docker-registry.workspace = true
+serde.workspace = true
+strum.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-stream.workspace = true
+tracing.workspace = true

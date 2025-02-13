@@ -104,7 +104,9 @@ impl ContainerLog {
             DateTime::from_timestamp(log.created_at.unwrap_or_else(|| Utc::now().timestamp()), 0)
                 .expect("Could not construct datetime")
                 .naive_utc();
-        query!(
+
+        // Try insert first
+        let result = query!(
             "INSERT INTO log (machine_id, avs_name, log, log_level, created_at, other_fields) VALUES ($1, $2, $3, $4, $5, $6)",
             log.machine_id,
             log.avs_name,
@@ -114,7 +116,39 @@ impl ContainerLog {
             log.other_fields.as_ref().map(|v| json!(v)),
         )
         .execute(pool)
-        .await?;
+        .await;
+
+        match result {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                // Check if error is partition-related (you'll need to identify the specific error)
+                if e.as_database_error()
+                    .map(|dbe| dbe.message().contains("no partition"))
+                    .unwrap_or(false)
+                {
+                    // Create partition and retry
+                    Self::ensure_partition_exists(pool, log.machine_id).await?;
+                    query!(
+                        "INSERT INTO log (machine_id, avs_name, log, log_level, created_at, other_fields) VALUES ($1, $2, $3, $4, $5, $6)",
+                        log.machine_id,
+                        log.avs_name,
+                        log.log,
+                        log.log_level as LogLevel,
+                        created_at,
+                        log.other_fields.as_ref().map(|v| json!(v)),
+                    )
+                    .execute(pool)
+                    .await?;
+                    Ok(())
+                } else {
+                    Err(e.into())
+                }
+            }
+        }
+    }
+
+    async fn ensure_partition_exists(pool: &PgPool, machine_id: Uuid) -> Result<(), DatabaseError> {
+        sqlx::query!("SELECT create_log_partition($1)", machine_id).execute(pool).await?;
         Ok(())
     }
 
@@ -285,14 +319,45 @@ impl ContainerLog {
     }
 
     pub async fn delete_old_logs(pool: &PgPool) -> Result<(), DatabaseError> {
+        const BATCH_SIZE: i64 = 100;
+
         let days_ago = Utc::now().timestamp() - (DAYS_TO_KEEP_LOGS * 24 * 60 * 60);
         let cutoff_date =
             DateTime::from_timestamp(days_ago, 0).expect("Invalid timestamp").naive_utc();
 
-        let deleted_count =
-            query!("DELETE FROM log WHERE created_at < $1", cutoff_date).execute(pool).await?;
+        let mut total_deleted = 0;
 
-        println!("Deleted {} logs", deleted_count.rows_affected());
+        loop {
+            let deleted_count = sqlx::query!(
+                r#"
+                DELETE FROM log
+                WHERE created_at < $1
+                AND ctid = ANY (
+                    SELECT ctid
+                    FROM log
+                    WHERE created_at < $1
+                    LIMIT $2
+                )
+                "#,
+                cutoff_date,
+                BATCH_SIZE
+            )
+            .execute(pool)
+            .await?;
+
+            let affected = deleted_count.rows_affected();
+            total_deleted += affected;
+
+            println!("Deleted batch of {} logs", affected);
+
+            if affected == 0 || affected < BATCH_SIZE as u64 {
+                break;
+            }
+
+            tokio::task::yield_now().await;
+        }
+
+        println!("Total deleted logs: {}", total_deleted);
         Ok(())
     }
 }

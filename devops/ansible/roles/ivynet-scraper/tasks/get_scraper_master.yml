@@ -27,18 +27,11 @@
     mode: "0755"
   loop:
     - scraper
+  notify:
+    - Restart scraper holesky service
+    - Restart scraper mainnet service
   tags:
     - ivynet_scraper
     - ivynet
     - download
     - gcp
-
-- name: Add another bin dir to system-wide $PATH.
-  ansible.builtin.copy:
-    dest: /etc/profile.d/ivy-path.sh
-    content: 'PATH=$PATH:{{ ivynet_scraper_path_install }}/bin'
-    owner: root
-    group: root
-    mode: "0644"
-  tags:
-    - ivynet

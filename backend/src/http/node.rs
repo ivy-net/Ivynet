@@ -2,8 +2,11 @@ use crate::error::BackendError;
 use axum::{extract::State, http::HeaderMap, Json};
 use axum_extra::extract::CookieJar;
 use db::{
-    data::node_data::{build_avs_info, AvsInfo, NodeStatusReport},
+    data::node_data::{
+        build_avs_info, get_active_set_information, ActiveSetInfo, AvsInfo, NodeStatusReport,
+    },
     metric::Metric,
+    operator_keys::OperatorKey,
 };
 
 use super::{authorize, HttpState};
@@ -76,4 +79,27 @@ pub async fn avs_status(
         healthy_nodes: healthy_list,
         unhealthy_nodes: unhealthy_list,
     }))
+}
+
+/// Get AVSes that you are not running a machine but have history in the active set
+#[utoipa::path(
+    get,
+    path = "/avs/active_set",
+    responses(
+        (status = 200, body = [(OperatorKey, [ActiveSetInfo])]),
+        (status = 404)
+    )
+)]
+pub async fn avs_active_set(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+) -> Result<Json<Vec<(OperatorKey, Vec<ActiveSetInfo>)>>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let key_infos =
+        OperatorKey::get_all_keys_for_organization(&state.pool, account.organization_id).await?;
+
+    let active_set_info = get_active_set_information(&state.pool, key_infos).await?;
+
+    Ok(Json(active_set_info))
 }

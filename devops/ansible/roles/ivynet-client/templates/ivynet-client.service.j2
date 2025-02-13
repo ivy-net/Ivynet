@@ -1,0 +1,14 @@
+[Unit]
+Description=Ivynet Client service
+After=network.target
+
+[Service]
+ExecStart={{ ivynet_client_path_install }}/bin/ivynet monitor
+Type=simple
+User=ivynet
+Group=docker
+Restart=always
+
+[Install]
+WantedBy=default.target
+RequiredBy=network.target

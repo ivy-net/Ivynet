@@ -1,0 +1,35 @@
+[package]
+name = "ivynet-grpc"
+version = "0.5.1"
+edition = "2021"
+authors = ["Noah Foltz <noah@ivynet.dev>"]
+description = "GRPC library for IvyNet"
+repository = "https://github.com/ivy-net/ivynet"
+license = "UNLICENSED"
+
+[package.metadata.cargo-machete]
+ignored = ["prost", "prost-wkt", "prost-wkt-types", "serde", "serde_json"]
+
+[lib]
+path = "src/lib.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+prost.workspace = true
+prost-wkt.workspace = true
+prost-wkt-types.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tokio-stream.workspace = true
+tonic.workspace = true
+tonic-reflection.workspace = true
+tracing.workspace = true
+
+[build-dependencies]
+prost-build.workspace = true
+prost-wkt-build.workspace = true
+tonic-build.workspace = true

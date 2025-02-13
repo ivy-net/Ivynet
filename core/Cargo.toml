@@ -1,6 +1,6 @@
 [package]
 name = "ivynet-core"
-version = "0.5.0"
+version = "0.5.1"
 edition = "2021"
 authors = ["Noah Foltz <noah@ivynet.dev>"]
 description = "Core library for Ivynet client functionality"
@@ -17,15 +17,16 @@ workspace = true
 [dependencies]
 #locals
 ivynet-docker.workspace = true
+ivynet-grpc.workspace = true
+ivynet-io.workspace = true
 ivynet-node-type.workspace = true
+ivynet-signer.workspace = true
 
-bollard.workspace = true
-clap = { version = "4.5.7", features = ["derive"] }
 futures-util = "0.3"
 dialoguer = "0.11.0"
 dirs = "5.0.1"
 dotenvy = "0.15.7"
-ethers = "2.0"
+ethers.workspace = true
 indicatif = "0.17.8"
 once_cell = "1.20.2"
 regex.workspace = true
@@ -33,45 +34,34 @@ reqwest.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_yaml.workspace = true
-sysinfo = "0.33"
 thiserror.workspace = true
 tokio.workspace = true
-toml = "0.8.15"
+toml.workspace = true
 tracing.workspace = true
-tokio-stream.workspace = true
-zip = "2.1.3"
+zip.workspace = true
 url = { version = "2.5.1", features = ["serde"] }
-async-trait = "0.1.80"
 ivynet-macros = { path = "../macros" }
-blsful = "2.5.7"
-rand = "0.8"
 
-#grpc
-prost = "0.13"
-prost-wkt = "0.6"
-prost-wkt-types = "0.6"
-tonic = { version = "0.12", features = ["tls", "tls-roots"] }
-tonic-reflection = "0.12"
+# prost.workspace = true
+# prost-wkt.workspace = true
+# prost-wkt-types.workspace = true
+tonic.workspace = true
+
 semver = "1.0.23"
 indexmap = "2.6.0"
 docker-compose-types = "0.15.0"
-eth-keystore = { version = "0.5.0" }
-uuid = { version = "1.11.0", features = ["v4", "serde"] }
 rustc-hex = "2.1.0"
 
 [build-dependencies]
-prost-build = "0.13"
-prost-wkt-build = "0.6"
-tonic-build = "0.12"
+prost-build.workspace = true
+prost-wkt-build.workspace = true
+tonic-build.workspace = true
 
 [dev-dependencies]
-tempfile = "3.10.1"
+tempfile.workspace = true
 serial_test = "3.1.1"
 sqlx.workspace = true
 ivynet-docker.workspace = true
-
-[package.metadata.cargo-machete]
-ignored = ["prost", "prost-wkt", "prost-wkt-types"]
 
 [features]
 docker_tests = []

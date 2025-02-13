@@ -3,6 +3,10 @@
   roles:
     - role: ivynet-backend
       ivynet_backend_is_release: false
+      ivynet_backend_site_url: https://dev.ivynet.dev
+      become: true
+    - role: ivynet-ingress
+      ivynet_ingress_is_release: false
       become: true
     - role: ivynet-scraper
       ivynet_scraper_is_release: false
