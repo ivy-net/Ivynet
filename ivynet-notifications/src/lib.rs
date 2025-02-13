@@ -34,7 +34,7 @@ pub struct Notification {
 #[derive(Debug, Clone)]
 pub enum NotificationType {
     Custom(String),
-    UnregisteredFromActiveSet(H160),
+    UnregisteredFromActiveSet { avs: String, address: H160 },
     MachineNotResponding,
     NodeNotRunning(String),
     NoChainInfo(String),

@@ -40,9 +40,12 @@ impl EmailTemplate {
             NotificationType::Custom(msg) => {
                 (Self::Custom, HashMap::from([("message".to_owned(), msg)]))
             }
-            NotificationType::UnregisteredFromActiveSet(address) => (
+            NotificationType::UnregisteredFromActiveSet { avs, address } => (
                 Self::UnregisteredFromActiveSet,
-                HashMap::from([("address".to_owned(), format!("{:?}", address))]),
+                HashMap::from([
+                    ("avs".to_owned(), avs),
+                    ("address".to_owned(), format!("{:?}", address)),
+                ]),
             ),
             NotificationType::MachineNotResponding => (
                 Self::MachineNotResponding,

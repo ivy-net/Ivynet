@@ -1,3 +1,4 @@
+use ethers::types::H160;
 use teloxide::{dispatching::UpdateHandler, prelude::*, utils::command::BotCommands};
 use tracing::warn;
 use uuid::Uuid;
@@ -71,8 +72,8 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
 
     pub async fn notify(&self, notification: Notification) -> Result<(), BotError> {
         let message = match notification.notification_type {
-            NotificationType::UnregisteredFromActiveSet(address) => {
-                format!("Address {address:?} has been removed from the active set")
+            NotificationType::UnregisteredFromActiveSet { avs, address } => {
+                format!("Address {address:?} has been removed from the active set for avs {avs}")
             }
             NotificationType::MachineNotResponding => {
                 format!(

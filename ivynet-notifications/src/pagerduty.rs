@@ -1,5 +1,6 @@
 use crate::{Notification, NotificationType, OrganizationDatabase};
 use chrono::{DateTime, Utc};
+use ethers::types::H160;
 use reqwest::header;
 use serde::Serialize;
 use uuid::Uuid;
@@ -120,8 +121,8 @@ impl<D: OrganizationDatabase> PagerDutySender<D> {
 
 fn message(notification: &Notification) -> String {
     match &notification.notification_type {
-        NotificationType::UnregisteredFromActiveSet(address) => {
-            format!("Address {address:?} has been removed from the active set")
+        NotificationType::UnregisteredFromActiveSet { avs, address } => {
+            format!("Address {address:?} has been removed from the active set for {avs}")
         }
         NotificationType::MachineNotResponding => {
             format!("Machine '{:?}' has lost connection with our backend", notification.machine_id)
