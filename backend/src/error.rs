@@ -5,6 +5,7 @@ use axum::{
 use ivynet_docker_registry::registry::RegistryError;
 use ivynet_grpc::server::ServerError;
 use thiserror::Error;
+use uuid::Uuid;
 
 #[derive(Debug, Error)]
 pub enum BackendError {
@@ -91,6 +92,15 @@ pub enum BackendError {
 
     #[error("Invalid data for set_avs_version")]
     InvalidSetAvsVersionData,
+
+    #[error(transparent)]
+    BackendAlertError(#[from] BackendAlertError),
+}
+
+#[derive(Debug, Error)]
+pub enum BackendAlertError {
+    #[error("Alert not found for id: {0}")]
+    AlertNotFound(Uuid),
 }
 
 impl IntoResponse for BackendError {

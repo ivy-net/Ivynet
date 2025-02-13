@@ -30,7 +30,7 @@ dirs.workspace = true
 ethers.workspace = true
 fs2 = "0.4.3"
 futures.workspace = true
-kameo = "0.14.0"
+kameo.workspace = true
 linemux = "=0.3.0"
 once_cell.workspace = true
 reqwest.workspace = true
