@@ -1,5 +1,6 @@
 use crate::error::IngressError;
 use db::{
+    alerts::alert_handler::AlertHandler,
     client_log::ClientLog,
     data::{
         machine_data::convert_system_metrics,
@@ -35,11 +36,12 @@ use super::data_validator::validate_request;
 
 pub struct BackendService {
     pool: Arc<PgPool>,
+    alert_handler: AlertHandler,
 }
 
 impl BackendService {
-    pub fn new(pool: Arc<PgPool>) -> Self {
-        Self { pool }
+    pub fn new(pool: Arc<PgPool>, alert_handler: AlertHandler) -> Self {
+        Self { pool, alert_handler }
     }
 }
 
@@ -182,9 +184,13 @@ impl Backend for BackendService {
         )
         .await?;
 
-        let recovered_node_data = RecoveredNodeData::from(node_data);
+        let recovered_node_data = RecoveredNodeData::from(node_data.clone());
 
         process_node_data(&self.pool, machine_id, recovered_node_data).await?;
+
+        self.alert_handler.handle_node_data_alerts(node_data, machine_id).await.map_err(|e| {
+            Status::internal(format!("Failed while sending node data to alert actor: {e}"))
+        })?;
 
         Ok(Response::new(()))
     }
@@ -280,9 +286,14 @@ pub async fn serve(
     port: u16,
 ) -> Result<(), IngressError> {
     tracing::info!("Starting GRPC server on port {port}");
-    server::Server::new(BackendServer::new(BackendService::new(pool)), tls_cert, tls_key)
-        .serve(server::Endpoint::Port(port))
-        .await?;
+    let alert_actor_handle = AlertHandler::new(pool.clone());
+    server::Server::new(
+        BackendServer::new(BackendService::new(pool, alert_actor_handle)),
+        tls_cert,
+        tls_key,
+    )
+    .serve(server::Endpoint::Port(port))
+    .await?;
 
     Ok(())
 }

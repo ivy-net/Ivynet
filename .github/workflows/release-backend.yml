@@ -135,4 +135,4 @@ jobs:
           ssh-agent > ~/.ssh-env
           source ~/.ssh-env
           ssh-add sa.prv
-          ./backend_update.sh
+          ./api_update.sh backend
