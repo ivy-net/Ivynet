@@ -4,7 +4,7 @@ use db::{
 };
 use utoipa::OpenApi;
 
-use super::{authorize, client, info, machine, node, organization, pubkey};
+use super::{alerts, authorize, client, info, machine, node, organization, pubkey};
 #[derive(OpenApi)]
 #[openapi(
     paths(
@@ -46,6 +46,9 @@ use super::{authorize, client, info, machine, node, organization, pubkey};
         machine::set_name,
         machine::system_metrics,
         machine::set_node_type,
+        alerts::active_alerts,
+        alerts::acknowledge_alert,
+        alerts::alert_history,
     ),
     components(
         schemas(
@@ -69,6 +72,10 @@ use super::{authorize, client, info, machine, node, organization, pubkey};
             node_data::NodeStatusReport,
             machine_data::MachineInfoReport,
             machine_data::MachineStatusReport,
+            db::alerts::alerts_active::ActiveAlert,
+            db::alerts::alerts_historical::HistoryAlert,
+            alerts::AcknowledgeAlertParams,
+            alerts::HistoricalAlertParams,
         ),
     ),
     tags(
