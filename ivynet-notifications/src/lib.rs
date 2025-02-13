@@ -25,8 +25,8 @@ pub enum NotificationDispatcherError {
 #[derive(Debug, Clone)]
 pub struct Notification {
     pub id: Uuid,
-    pub organization: Uuid,
-    pub machine_id: H160,
+    pub organization: u64,
+    pub machine_id: Uuid,
     pub notification_type: NotificationType,
     pub resolved: bool,
 }
@@ -35,7 +35,7 @@ pub struct Notification {
 pub enum NotificationType {
     Custom(String),
     UnregisteredFromActiveSet(H160),
-    CrashedNode,
+    MachineNotResponding,
     NodeNotRunning(String),
     NoChainInfo(String),
     NoMetrics(String),
@@ -56,7 +56,7 @@ pub enum Channel {
 pub struct SendgridTemplates<'a> {
     pub custom: &'a str,
     pub unreg_active_set: &'a str,
-    pub crashed_node: &'a str,
+    pub machine_not_responding: &'a str,
     pub node_not_running: &'a str,
     pub no_chain_info: &'a str,
     pub no_metrics: &'a str,
@@ -85,12 +85,10 @@ pub struct NotificationDispatcher<D: OrganizationDatabase> {
 pub trait OrganizationDatabase: Send + Sync + Clone + 'static {
     async fn register_chat(&self, chat_id: &str, email: &str, password: &str) -> bool;
     async fn unregister_chat(&self, chat_id: &str) -> bool;
-    async fn get_emails_for_organization(&self, organization_id: Uuid) -> Vec<String>;
-    async fn get_chats_for_organization(&self, organization_id: Uuid) -> Vec<String>;
-    async fn get_pd_integration_key_for_organization(
-        &self,
-        organization_id: Uuid,
-    ) -> Option<String>;
+    async fn get_emails_for_organization(&self, organization_id: u64) -> Vec<String>;
+    async fn get_chats_for_organization(&self, organization_id: u64) -> Vec<String>;
+    async fn get_pd_integration_key_for_organization(&self, organization_id: u64)
+        -> Option<String>;
 }
 
 impl<D: OrganizationDatabase> NotificationDispatcher<D> {

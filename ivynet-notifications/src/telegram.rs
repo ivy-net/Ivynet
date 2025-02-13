@@ -74,7 +74,7 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
             NotificationType::UnregisteredFromActiveSet(address) => {
                 format!("Address {address:?} has been removed from the active set")
             }
-            NotificationType::CrashedNode => {
+            NotificationType::MachineNotResponding => {
                 format!(
                     "Machine '{}' has lost connection with our backend",
                     notification.machine_id
@@ -164,7 +164,7 @@ mod telegram_bot_test {
 
     use std::{
         collections::{HashMap, HashSet},
-        sync::{Arc, LazyLock},
+        sync::Arc,
     };
 
     use tokio::sync::Mutex;
@@ -173,18 +173,18 @@ mod telegram_bot_test {
 
     use teloxide_tests::{MockBot, MockMessageText};
 
-    static MOCK_ORGANIZATION_ID: LazyLock<Uuid> = LazyLock::new(Uuid::new_v4);
+    static MOCK_ORGANIZATION_ID: u64 = 1;
 
     #[derive(Debug)]
     struct MockDbBackend {
-        chats: HashMap<Uuid, HashSet<String>>,
+        chats: HashMap<u64, HashSet<String>>,
     }
 
     impl MockDbBackend {
         fn new() -> Self {
             Self { chats: HashMap::new() }
         }
-        fn add_chat(&mut self, organization_id: Uuid, chat_id: &str) -> bool {
+        fn add_chat(&mut self, organization_id: u64, chat_id: &str) -> bool {
             self.chats.entry(organization_id).or_default().insert(chat_id.to_string());
             true
         }
@@ -196,7 +196,7 @@ mod telegram_bot_test {
             }
             false
         }
-        fn chats_for(&self, organization_id: Uuid) -> HashSet<String> {
+        fn chats_for(&self, organization_id: u64) -> HashSet<String> {
             self.chats.get(&organization_id).cloned().unwrap_or_default()
         }
     }
@@ -214,7 +214,7 @@ mod telegram_bot_test {
     impl OrganizationDatabase for MockDb {
         async fn register_chat(&self, chat_id: &str, _email: &str, _password: &str) -> bool {
             let mut db = self.0.lock().await;
-            db.add_chat(*MOCK_ORGANIZATION_ID, chat_id)
+            db.add_chat(MOCK_ORGANIZATION_ID, chat_id)
         }
 
         async fn unregister_chat(&self, chat_id: &str) -> bool {
@@ -222,18 +222,18 @@ mod telegram_bot_test {
             db.remove_chat(chat_id)
         }
 
-        async fn get_emails_for_organization(&self, _organization_id: Uuid) -> Vec<String> {
+        async fn get_emails_for_organization(&self, _organization_id: u64) -> Vec<String> {
             Vec::new()
         }
 
-        async fn get_chats_for_organization(&self, organization_id: Uuid) -> Vec<String> {
+        async fn get_chats_for_organization(&self, organization_id: u64) -> Vec<String> {
             let db = self.0.lock().await;
             db.chats_for(organization_id).iter().cloned().collect::<Vec<_>>()
         }
 
         async fn get_pd_integration_key_for_organization(
             &self,
-            _organization_id: Uuid,
+            _organization_id: u64,
         ) -> Option<String> {
             None
         }
@@ -273,7 +273,7 @@ mod telegram_bot_test {
         let message = responses.sent_messages.last().expect("No sent messages were detected!");
 
         assert_eq!(message.text(), Some("Registration successful."));
-        assert_eq!(db.get_chats_for_organization(*MOCK_ORGANIZATION_ID).await.len(), 1);
+        assert_eq!(db.get_chats_for_organization(MOCK_ORGANIZATION_ID).await.len(), 1);
 
         let mock_unregister_message =
             MockMessageText::new().chat(message.chat.clone()).text("/unregister");
@@ -284,7 +284,7 @@ mod telegram_bot_test {
         let message = responses.sent_messages.last().expect("No sent messages were detected!");
 
         assert_eq!(message.text(), Some("You have successfully unregistered this chat."));
-        assert_eq!(db.get_chats_for_organization(*MOCK_ORGANIZATION_ID).await.len(), 0);
+        assert_eq!(db.get_chats_for_organization(MOCK_ORGANIZATION_ID).await.len(), 0);
     }
 
     #[tokio::test]
@@ -300,7 +300,7 @@ mod telegram_bot_test {
         let message = responses.sent_messages.last().expect("No sent messages were detected!");
 
         assert_eq!(message.text(), Some("This chat was not registered."));
-        assert_eq!(db.get_chats_for_organization(*MOCK_ORGANIZATION_ID).await.len(), 0);
+        assert_eq!(db.get_chats_for_organization(MOCK_ORGANIZATION_ID).await.len(), 0);
     }
 
     #[tokio::test]
@@ -317,6 +317,6 @@ mod telegram_bot_test {
         let message = responses.sent_messages.last().expect("No sent messages were detected!");
 
         assert_eq!(message.text(), Some("Registration successful."));
-        assert_eq!(db.get_chats_for_organization(*MOCK_ORGANIZATION_ID).await.len(), 1);
+        assert_eq!(db.get_chats_for_organization(MOCK_ORGANIZATION_ID).await.len(), 1);
     }
 }

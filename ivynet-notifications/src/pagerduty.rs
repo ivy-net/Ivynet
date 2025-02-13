@@ -123,8 +123,8 @@ fn message(notification: &Notification) -> String {
         NotificationType::UnregisteredFromActiveSet(address) => {
             format!("Address {address:?} has been removed from the active set")
         }
-        NotificationType::CrashedNode => {
-            format!("Machine '{}' has lost connection with our backend", notification.machine_id)
+        NotificationType::MachineNotResponding => {
+            format!("Machine '{:?}' has lost connection with our backend", notification.machine_id)
         }
         NotificationType::Custom(msg) => format!("ERROR: {msg}"),
         NotificationType::NodeNotRunning(avs) => {
@@ -147,10 +147,10 @@ fn message(notification: &Notification) -> String {
 
 fn avs_if_any(notification: &Notification) -> Option<String> {
     match &notification.notification_type {
-        NotificationType::NodeNotRunning(avs) |
-        NotificationType::NoChainInfo(avs) |
-        NotificationType::NoMetrics(avs) |
-        NotificationType::NoOperatorId(avs) => Some(avs.to_owned()),
+        NotificationType::NodeNotRunning(avs)
+        | NotificationType::NoChainInfo(avs)
+        | NotificationType::NoMetrics(avs)
+        | NotificationType::NoOperatorId(avs) => Some(avs.to_owned()),
         NotificationType::LowPerformaceScore { avs, performance: _ } => Some(avs.to_owned()),
         NotificationType::NeedsUpdate { avs, current_version: _, recommended_version: _ } => {
             Some(avs.to_owned())

@@ -24,7 +24,7 @@ pub struct EmailSender<D: OrganizationDatabase> {
 enum EmailTemplate {
     Custom,
     UnregisteredFromActiveSet,
-    CrashedNode,
+    MachineNotResponding,
     NodeNotRunning,
     NoChainInfo,
     NoMetrics,
@@ -44,8 +44,8 @@ impl EmailTemplate {
                 Self::UnregisteredFromActiveSet,
                 HashMap::from([("address".to_owned(), format!("{:?}", address))]),
             ),
-            NotificationType::CrashedNode => (
-                Self::CrashedNode,
+            NotificationType::MachineNotResponding => (
+                Self::MachineNotResponding,
                 HashMap::from([("machine_id".to_owned(), format!("{}", notification.machine_id))]),
             ),
             NotificationType::NodeNotRunning(avs) => {
@@ -96,8 +96,10 @@ impl<D: OrganizationDatabase> EmailSender<D> {
             EmailTemplate::UnregisteredFromActiveSet,
             config.sendgrid_templates.unreg_active_set.to_string(),
         );
-        templates
-            .insert(EmailTemplate::CrashedNode, config.sendgrid_templates.crashed_node.to_string());
+        templates.insert(
+            EmailTemplate::MachineNotResponding,
+            config.sendgrid_templates.machine_not_responding.to_string(),
+        );
         templates.insert(
             EmailTemplate::NodeNotRunning,
             config.sendgrid_templates.node_not_running.to_string(),
