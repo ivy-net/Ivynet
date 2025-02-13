@@ -809,7 +809,8 @@
       "name": "running",
       "value": 0.0,
       "attributes": {
-        "avs": "eigenda"
+        "avs_name": "eigendoink",
+        "avs_type": "eigenda"
       },
       "created_at": "2024-10-01T04:42:05.038679"
     }

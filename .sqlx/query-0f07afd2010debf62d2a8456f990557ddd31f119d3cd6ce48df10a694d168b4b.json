@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM operator_keys WHERE organization_id = $1 AND public_key = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0f07afd2010debf62d2a8456f990557ddd31f119d3cd6ce48df10a694d168b4b"
+}

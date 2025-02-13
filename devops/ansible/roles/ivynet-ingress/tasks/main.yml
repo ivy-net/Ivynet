@@ -1,0 +1,70 @@
+---
+- name: Prepare directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ ivynet_ingress_path_install }}"
+    - "{{ ivynet_ingress_path_install }}/bin"
+    - "{{ ivynet_ingress_path_resources }}"
+  tags:
+    - general
+
+- name: Set secrets directory
+  ansible.builtin.file:
+    path: "{{ ivynet_ingress_path_secrets }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  tags:
+    - general
+    - ssl
+
+- name: Add another bin dir to system-wide $PATH.
+  ansible.builtin.copy:
+    dest: /etc/profile.d/ivy-path.sh
+    content: 'PATH=$PATH:{{ ivynet_ingress_path_install }}/bin'
+    owner: root
+    group: root
+    mode: "0644"
+  tags:
+    - ivynet_ingress
+
+- name: Copy Env file
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ ivynet_ingress_path_secrets }}/env.ingress"
+    owner: root
+    group: root
+    mode: "0600"
+  notify:
+    - Restart ingress service
+  tags:
+    - general
+    - ivynet
+    - systemd
+    - template
+
+- name: Download ivynet-ingress for master
+  ansible.builtin.import_tasks:
+    file: get_ingress_master.yml
+  when:
+    - not ivynet_ingress_is_release | bool
+
+- name: Download ivynet-ingress for release
+  ansible.builtin.import_tasks:
+    file: get_ingress.yml
+  when:
+    - ivynet_ingress_is_release | bool
+
+- name: Configure SystemD
+  ansible.builtin.import_tasks:
+    file: systemd.yml
+
+- name: Configure SSL
+  ansible.builtin.import_tasks:
+    file: ssl.yml

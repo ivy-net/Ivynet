@@ -1,20 +1,18 @@
 use std::{collections::HashMap, path::PathBuf};
 
+use ivynet_io::{read_toml, write_toml, IoError};
+use ivynet_node_type::NodeType;
 use serde::{Deserialize, Serialize};
 use thiserror::Error as ThisError;
 
-use crate::{
-    env_parser::EnvLineError,
-    io::{read_toml, write_toml, IoError},
-    node_type::NodeType,
-};
+use crate::env_parser::EnvLineError;
 
 use super::{eigenda::EigenDAConfig, lagrange::config::LagrangeConfig};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum NodeConfig {
     EigenDA(EigenDAConfig),
-    Lagrange(LagrangeConfig),
+    LagrangeZkWorkerHolesky(LagrangeConfig),
     Other(HashMap<String, toml::Value>),
 }
 
@@ -35,7 +33,7 @@ impl NodeConfig {
     pub fn path(&self) -> PathBuf {
         match self {
             NodeConfig::EigenDA(config) => config.path.clone(),
-            NodeConfig::Lagrange(config) => config.path.clone(),
+            NodeConfig::LagrangeZkWorkerHolesky(config) => config.path.clone(),
             NodeConfig::Other(config) => {
                 if let Some(path) = config.get("path") {
                     PathBuf::from(path.to_string())
@@ -49,7 +47,7 @@ impl NodeConfig {
     pub fn name(&self) -> String {
         match self {
             NodeConfig::EigenDA(config) => config.name(),
-            NodeConfig::Lagrange(config) => config.name(),
+            NodeConfig::LagrangeZkWorkerHolesky(config) => config.name(),
             NodeConfig::Other(config) => {
                 if let Some(name) = config.get("name") {
                     name.to_string()
@@ -77,7 +75,8 @@ impl NodeConfig {
     pub fn node_type(&self) -> NodeType {
         match self {
             NodeConfig::EigenDA(_) => NodeType::EigenDA,
-            NodeConfig::Lagrange(_) => NodeType::LagrangeHoleskyWorker,
+            NodeConfig::LagrangeZkWorkerHolesky(_) => NodeType::LagrangeZkWorker,
+            //TODO: THE USER NEEDS TO ENTER THE NODE TYPE STRING
             NodeConfig::Other(_) => NodeType::Unknown,
         }
     }
@@ -112,11 +111,11 @@ pub enum NodeConfigError {
     #[error(transparent)]
     EnvLineError(#[from] EnvLineError),
     #[error(transparent)]
-    KeychainError(#[from] crate::keychain::KeychainError),
+    KeychainError(#[from] ivynet_signer::keychain::KeychainError),
     #[error(transparent)]
     DownloadError(#[from] crate::download::DownloadError),
     #[error(transparent)]
-    DockerCmdError(#[from] crate::docker::dockercmd::DockerError),
+    DockerCmdError(#[from] ivynet_docker::dockercmd::DockerError),
 }
 
 pub fn default_config_dir() -> PathBuf {
@@ -139,10 +138,11 @@ impl NodeConfigBuilder {
             NodeType::EigenDA => dirs::home_dir()
                 .expect("Could not get a home directory")
                 .join(".eigenlayer/eigenda"),
-            NodeType::LagrangeHoleskyWorker => dirs::home_dir()
+            NodeType::LagrangeZkWorker => dirs::home_dir()
                 .expect("Could not get a home directory")
                 .join(".eigenlayer/lagrange"),
             NodeType::Unknown => panic!("Unknown node type"),
+            _ => panic!("Unimplementeded node type"),
         }
     }
 }

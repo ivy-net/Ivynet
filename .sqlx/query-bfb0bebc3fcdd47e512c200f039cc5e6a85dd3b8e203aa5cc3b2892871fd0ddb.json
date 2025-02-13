@@ -1,0 +1,89 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT machine_id, avs_name, avs_type, chain, avs_version, operator_address, active_set, metrics_alive, node_running, version_hash, created_at, updated_at FROM avs WHERE machine_id = $1 AND avs_name = $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "machine_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "avs_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "avs_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "chain",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "avs_version",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "operator_address",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 6,
+        "name": "active_set",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 7,
+        "name": "metrics_alive",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "node_running",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 9,
+        "name": "version_hash",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_at",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "bfb0bebc3fcdd47e512c200f039cc5e6a85dd3b8e203aa5cc3b2892871fd0ddb"
+}

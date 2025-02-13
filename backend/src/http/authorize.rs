@@ -10,19 +10,18 @@ use axum_extra::extract::{
     CookieJar,
 };
 use base64::Engine as _;
+use ethers::types::Address;
 use sendgrid::v3::{Email, Message, Personalization};
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::{
-    db::{
-        machine::Machine,
-        verification::{Verification, VerificationType},
-        Account,
-    },
-    error::BackendError,
+use crate::error::BackendError;
+use db::{
+    machine::Machine,
+    verification::{Verification, VerificationType},
+    Account, Client,
 };
 
 use super::HttpState;
@@ -40,6 +39,7 @@ pub struct ForgotPasswordCredentials {
 
 #[derive(Deserialize, Debug, Clone, ToSchema)]
 pub struct SetPasswordCredentials {
+    pub verification_id: Uuid,
     pub password: String,
 }
 
@@ -125,7 +125,7 @@ pub async fn forgot_password(
         //TODO: Setting this url has to be properly set
         arguments.insert(
             "confirmation_url".to_string(),
-            format!("{}/password_reset/{}", state.root_url, verification.verification_id),
+            format!("{}password_reset/{}", state.root_url, verification.verification_id),
         );
 
         sender
@@ -152,17 +152,13 @@ pub async fn forgot_password(
 )]
 pub async fn set_password(
     State(state): State<HttpState>,
-    Path(id): Path<Uuid>,
     Json(credentials): Json<SetPasswordCredentials>,
 ) -> Result<Json<bool>, BackendError> {
-    let verification = Verification::get(&state.pool, id).await?;
+    let verification = Verification::get(&state.pool, credentials.verification_id).await?;
     if verification.verification_type != VerificationType::User {
         return Err(BackendError::BadId);
     }
     let account = Account::get(&state.pool, verification.associated_id as u64).await?;
-    if !account.password.is_empty() {
-        return Err(BackendError::AlreadySet);
-    }
 
     account.set_password(&state.pool, &credentials.password).await?;
 
@@ -182,7 +178,7 @@ pub async fn verify(
             Some(("Basic", contents)) => {
                 let (username, password) = decode(contents)?;
                 if let Some(pass) = password {
-                    Account::verify(pool, &username, &pass).await
+                    Ok(Account::verify(pool, &username, &pass).await?)
                 } else {
                     Err(BackendError::Unauthorized)
                 }
@@ -193,7 +189,8 @@ pub async fn verify(
         let session = jar.get("session_id").ok_or(BackendError::Unauthorized)?.value();
 
         let user_id = cache.get(session)?.ok_or(BackendError::Unauthorized)?;
-        Account::get(pool, user_id).await
+        cache.set(session, user_id, 15 * 60)?;
+        Ok(Account::get(pool, user_id).await?)
     }
 }
 
@@ -212,7 +209,7 @@ fn decode(input: &str) -> Result<(String, Option<String>), BackendError> {
     })
 }
 
-pub async fn verify_node_ownership(
+pub async fn verify_machine_ownership(
     account: &Account,
     State(state): State<HttpState>,
     machine_id: String,
@@ -221,7 +218,7 @@ pub async fn verify_node_ownership(
     let machine = Machine::get(&state.pool, machine_id).await?.ok_or(BackendError::BadId)?;
     if account.role.can_write() &&
         !account
-            .machines(&state.pool)
+            .all_machines(&state.pool)
             .await?
             .into_iter()
             .filter_map(|m| if m.machine_id == machine.machine_id { Some(m) } else { None })
@@ -231,5 +228,21 @@ pub async fn verify_node_ownership(
         Ok(machine)
     } else {
         Err(BackendError::Unauthorized)
+    }
+}
+
+pub async fn verify_client_ownership(
+    account: &Account,
+    pool: &PgPool,
+    client_id: &str,
+) -> Result<Client, BackendError> {
+    let id = client_id.parse::<Address>().map_err(|_| BackendError::BadId)?;
+
+    let clients = account.clients(pool).await?;
+    let result = clients.iter().find(|c| c.client_id == id);
+
+    match result {
+        Some(client) => Ok(client.clone()),
+        None => Err(BackendError::Unauthorized),
     }
 }

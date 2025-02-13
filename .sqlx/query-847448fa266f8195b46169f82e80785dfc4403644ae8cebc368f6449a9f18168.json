@@ -1,0 +1,58 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT * FROM avs_active_set WHERE operator = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "avs",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 1,
+        "name": "operator",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 2,
+        "name": "chain_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "active",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 4,
+        "name": "block",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "log_index",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 6,
+        "name": "directory",
+        "type_info": "Bytea"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bytea"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "847448fa266f8195b46169f82e80785dfc4403644ae8cebc368f6449a9f18168"
+}

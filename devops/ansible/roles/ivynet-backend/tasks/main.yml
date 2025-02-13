@@ -13,65 +13,65 @@
   tags:
     - general
 
+- name: Set secrets directory
+  ansible.builtin.file:
+    path: "{{ ivynet_backend_path_secrets }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  tags:
+    - general
+
+- name: Add another bin dir to system-wide $PATH.
+  ansible.builtin.copy:
+    dest: /etc/profile.d/ivy-path.sh
+    content: 'PATH=$PATH:{{ ivynet_backend_path_install }}/bin'
+    owner: root
+    group: root
+    mode: "0644"
+  tags:
+    - ivynet_backend
+
+- name: Copy Env file
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ ivynet_backend_path_secrets }}/env.backend"
+    owner: root
+    group: root
+    mode: "0600"
+  notify:
+    - Restart backend service
+  tags:
+    - general
+    - ivynet
+    - systemd
+    - template
+
 - name: Install and configure 3rd party tools
   ansible.builtin.import_tasks:
     file: third_party.yml
 
-- name: Download ivynet-backend
+- name: Download ivynet-backend for master
   ansible.builtin.import_tasks:
-    file: get_ivynet.yml
+    file: get_backend_master.yml
+  when:
+    - not ivynet_backend_is_release
+
+- name: Download ivynet-backend for release
+  ansible.builtin.import_tasks:
+    file: get_backend.yml
+  when:
+    - ivynet_backend_is_release
 
 - name: Configure DB for backend
   ansible.builtin.import_tasks:
     file: setup_db.yml
 
-- name: Configure SSL
+- name: Configure SystemD
   ansible.builtin.import_tasks:
-    file: ssl.yml
+    file: systemd.yml
 
-- name: Copy Env file
-  ansible.builtin.template:
-    src: env.j2
-    dest: "{{ ivynet_backend_path_secrets }}/env"
-    owner: root
-    group: root
-    mode: "0600"
-  notify:
-    - Restart service
-  tags:
-    - general
-    - ivynet
-    - systemd
-
-- name: Copy Backend Service file
-  ansible.builtin.template:
-    src: ivynet-backend.service.j2
-    dest: /etc/systemd/system/ivynet-backend.service
-    owner: root
-    group: root
-    mode: "0644"
-  notify:
-    - Reload daemon
-    - Restart service
-  tags:
-    - ivynet_backend
-    - general
-    - ivynet
-    - systemd
-
-- name: Populate service facts
-  ansible.builtin.service_facts:
-
-- name: Set Backend service
-  ansible.builtin.systemd_service:
-    name: ivynet-backend
-    state: started
-    enabled: true
-    daemon_reload: true
-  when:
-    - "'ivynet-backend.service' not in services"
-  tags:
-    - ivynet_backend
-    - general
-    - ivynet
-    - systemd
+- name: Prepare extra scripts
+  ansible.builtin.import_tasks:
+    file: scripts.yml

@@ -1,0 +1,7 @@
+services:
+  counter:
+    build:
+      context: .
+      dockerfile: Dockerfile.counter
+    container_name: long-running-counter
+    restart: unless-stopped

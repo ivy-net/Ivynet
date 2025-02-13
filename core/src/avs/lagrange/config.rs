@@ -1,29 +1,26 @@
 use dialoguer::Input;
 use ethers::types::Address;
+use ivynet_docker::dockercmd::DockerCmd;
+use ivynet_io::{read_toml, unzip_to, write_toml, IoError};
+use ivynet_signer::keychain::{KeyType, Keychain};
 use serde::{Deserialize, Serialize};
 use std::{
     fs::{self, File},
     path::{Path, PathBuf},
 };
-use url::Url;
-
 use tracing::{debug, error, info};
+use url::Url;
 
 use crate::{
     avs::config::{default_config_dir, NodeConfigError},
-    docker::dockercmd::DockerCmd,
     env_parser::EnvLines,
-    io::{read_toml, unzip_to, IoError},
-    keychain::{KeyType, Keychain},
 };
 
 const LAGRANGE_WORKER_SETUP_REPO: &str =
     "https://github.com/ivy-net/lagrange-worker/archive/refs/heads/main.zip";
 
-/// Types associated with the Lagrange worker config, stored locally in
-/// ${LAGRANGE_WORKER_DIR}/worker-conf.toml
-
 /// Config type for the lagrange worker, defined in worker-conf.toml of the Lagrange spec.
+/// stored locally in ${LAGRANGE_WORKER_DIR}/worker-conf.toml
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct LagrangeConfig {
     pub path: PathBuf,
@@ -42,7 +39,7 @@ impl LagrangeConfig {
     }
 
     pub fn store(&self, path: PathBuf) -> Result<(), IoError> {
-        crate::io::write_toml(&path, &self)
+        write_toml(&path, &self)
     }
 }
 

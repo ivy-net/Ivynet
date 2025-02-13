@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n                machine_id, avs_name, name, value,\n                attributes as \"attributes: sqlx::types::Json<HashMap<String,String>>\",\n                created_at\n               FROM\n                metric\n               WHERE\n                machine_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "machine_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "avs_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 3,
+        "name": "value",
+        "type_info": "Float8"
+      },
+      {
+        "ordinal": 4,
+        "name": "attributes: sqlx::types::Json<HashMap<String,String>>",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "ee4f79705d13230d11ec97655fc48bb778a5c85f98a3cf6da6e82876dd522e8b"
+}

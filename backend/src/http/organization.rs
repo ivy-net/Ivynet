@@ -1,25 +1,23 @@
 use std::collections::HashMap;
 
+use crate::error::BackendError;
 use axum::{
     extract::{Path, State},
     http::HeaderMap,
     Json,
 };
 use axum_extra::extract::CookieJar;
+use db::{
+    avs::Avs,
+    machine::Machine,
+    verification::{Verification, VerificationType},
+    Account, Organization, Role,
+};
 use sendgrid::v3::{Email, Message, Personalization};
 use serde::{Deserialize, Serialize};
+use tracing::debug;
 use utoipa::ToSchema;
 use uuid::Uuid;
-
-use crate::{
-    db::{
-        avs::Avs,
-        machine::Machine,
-        verification::{Verification, VerificationType},
-        Account, Organization, Role,
-    },
-    error::BackendError,
-};
 
 use super::{authorize, HttpState};
 
@@ -51,6 +49,7 @@ pub struct InvitationRequest {
     pub role: Role,
 }
 
+/// Create a new organization
 #[utoipa::path(
     post,
     path = "/organization",
@@ -82,7 +81,7 @@ pub async fn new(
         arguments.insert("organization_name".to_string(), request.name);
         arguments.insert(
             "confirmation_url".to_string(),
-            format!("{}/organization_confirm/{}", state.root_url, verification.verification_id),
+            format!("{}organization_confirm/{}", state.root_url, verification.verification_id),
         );
 
         sender
@@ -99,24 +98,44 @@ pub async fn new(
     Ok(CreationResult { id: org.organization_id as u64 }.into())
 }
 
+/// Get your organization
 #[utoipa::path(
     get,
-    path = "/organization/:id",
-    params(
-        ("id", description = "Organization id")
-    ),
+    path = "/organization",
     responses(
         (status = 200, body = Organization),
         (status = 404)
     )
 )]
-pub async fn get(
+pub async fn get_me(
+    headers: HeaderMap,
     State(state): State<HttpState>,
-    Path(id): Path<u64>,
+    jar: CookieJar,
 ) -> Result<Json<Organization>, BackendError> {
-    Ok(Organization::get(&state.pool, id).await?.into())
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    Ok(Organization::get(&state.pool, account.organization_id.try_into().unwrap()).await?.into())
 }
 
+//This should not be public
+// #[utoipa::path(
+//     get,
+//     path = "/organization/:id",
+//     params(
+//         ("id", description = "Organization id")
+//     ),
+//     responses(
+//         (status = 200, body = Organization),
+//         (status = 404)
+//     )
+// )]
+// pub async fn get(
+//     State(state): State<HttpState>,
+//     Path(id): Path<u64>,
+// ) -> Result<Json<Organization>, BackendError> {
+//     Ok(Organization::get(&state.pool, id).await?.into())
+// }
+
+/// Get an overview of all machines in the organization
 #[utoipa::path(
     get,
     path = "/organization/machines",
@@ -132,9 +151,10 @@ pub async fn machines(
 ) -> Result<Json<Vec<Machine>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
 
-    Ok(account.machines(&state.pool).await?.into())
+    Ok(account.all_machines(&state.pool).await?.into())
 }
 
+/// Get an overview of all AVSes in the organization
 #[utoipa::path(
     get,
     path = "/organization/avses",
@@ -150,9 +170,10 @@ pub async fn avses(
 ) -> Result<Json<Vec<Avs>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
 
-    Ok(account.avses(&state.pool).await?.into())
+    Ok(account.all_avses(&state.pool).await?.into())
 }
 
+/// Invite a new user to the organization
 #[utoipa::path(
     post,
     path = "/organization/invite",
@@ -168,23 +189,29 @@ pub async fn invite(
     jar: CookieJar,
     Json(request): Json<InvitationRequest>,
 ) -> Result<Json<InvitationResponse>, BackendError> {
+    debug!("Getting account");
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     if !account.role.is_admin() {
         return Err(BackendError::InsufficientPriviledges);
     }
 
+    debug!("Fetching the organization");
     let org = Organization::get(&state.pool, account.organization_id as u64).await?;
     let new_acc = org.invite(&state.pool, &request.email, request.role).await?;
-
+    debug!(
+        "Something is missing {:?}, {:?}, {:?}",
+        state.sender, state.sender_email, state.user_verification_template
+    );
     if let (Some(sender), Some(sender_address), Some(inv_template)) =
         (state.sender, state.sender_email, state.user_verification_template)
     {
+        debug!("Sending the email");
         let mut arguments = HashMap::with_capacity(1);
         arguments.insert("organization_name".to_string(), org.name);
         //TODO: Setting this url has to be properly set
         arguments.insert(
             "confirmation_url".to_string(),
-            format!("{}/password_set/{}", state.root_url, new_acc.verification_id),
+            format!("{}password_set/{}", state.root_url, new_acc.verification_id),
         );
 
         sender
@@ -202,6 +229,7 @@ pub async fn invite(
     Ok(InvitationResponse { id: new_acc.verification_id }.into())
 }
 
+/// Confirm an invitation to the organization
 #[utoipa::path(
     post,
     path = "/organization/confirm/:id",

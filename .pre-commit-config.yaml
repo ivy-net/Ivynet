@@ -6,13 +6,14 @@ repos:
     rev: v4.6.0
     hooks:
       - id: no-commit-to-branch
-        args: [--branch, dev, --branch, master]
+        args: [--pattern, release-*, --branch, master]
       - id: trailing-whitespace
         exclude: specification/
       - id: end-of-file-fixer
         exclude: |
           (?x)^(
           backend/migrations|
+          migrations|
           avss/.+\.json
           )
       - id: mixed-line-ending
@@ -23,11 +24,9 @@ repos:
       - id: check-merge-conflict
       - id: check-case-conflict
   - repo: https://github.com/ivy-net/pre-commit-rust
-    rev: v1.4
+    rev: v1.5
     hooks:
       - id: fmt
       - id: machete
       - id: cargo-check
       - id: clippy
-      - id: test
-        args: ['-v']

@@ -1,8 +1,10 @@
+use db::{
+    self,
+    data::{machine_data, node_data},
+};
 use utoipa::OpenApi;
 
-use super::{super::db, authorize, avs, client, organization};
-use crate::data;
-
+use super::{authorize, client, info, machine, node, organization, pubkey};
 #[derive(OpenApi)]
 #[openapi(
     paths(
@@ -11,25 +13,39 @@ use crate::data;
         authorize::set_password,
         authorize::forgot_password,
         organization::new,
-        organization::get,
+        organization::get_me,
         organization::invite,
         organization::machines,
         organization::avses,
         organization::confirm,
         client::client,
-        client::logs,
-        client::status,
-        client::idling,
-        client::unhealthy,
-        client::healthy,
-        client::info,
-        client::metrics_condensed,
-        client::metrics_all,
-        client::delete,
-        client::set_name,
-        client::get_all_node_data,
-        avs::get_version_info,
-        avs::get_all_version_info,
+        client::client_machines,
+        info::get_version_info,
+        info::get_all_version_info,
+        info::get_node_types,
+        machine::machine,
+        machine::status,
+        machine::idle,
+        machine::unhealthy,
+        machine::healthy,
+        machine::metrics_condensed,
+        machine::metrics_all,
+        machine::logs,
+        machine::get_all_node_data,
+        machine::delete_machine,
+        machine::delete_avs_node_data,
+        machine::info,
+        node::all_avs_info,
+        node::avs_status,
+        node::avs_active_set,
+        pubkey::get_all_keys,
+        pubkey::create_key,
+        pubkey::update_key_name,
+        pubkey::delete_key,
+        machine::update_avs,
+        machine::set_name,
+        machine::system_metrics,
+        machine::set_node_type,
     ),
     components(
         schemas(
@@ -50,17 +66,9 @@ use crate::data;
             db::metric::Metric,
             db::log::ContainerLog,
             db::log::LogLevel,
-            data::NodeStatus,
-            client::Status,
-            client::StatusReport,
-            client::Info,
-            client::InfoReport,
-            client::Metrics,
-            client::NameChangeRequest,
-            client::InfoReport,
-            client::HardwareUsageInfo,
-            client::HardwareInfoStatus,
-            client::AvsInfo,
+            node_data::NodeStatusReport,
+            machine_data::MachineInfoReport,
+            machine_data::MachineStatusReport,
         ),
     ),
     tags(

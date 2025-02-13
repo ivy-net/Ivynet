@@ -40,14 +40,13 @@ jobs:
           cargo build --release
       - name: Pack migrations
         run: |
-          cd backend
           tar -czf migrations.tar.gz migrations
       - name: Make release
         uses: softprops/action-gh-release@v2
         with:
           files: |
             target/release/ivynet-backend
-            backend/migrations.tar.gz
+            migrations.tar.gz
           make_latest: false
 
   build-image:
@@ -66,9 +65,11 @@ jobs:
           jmespath
           google-auth
           requests
-      - name: Install toml (package)
+      - name: Install TOML cli
         run: |
-          cargo install toml-cli
+          cd /usr/local/bin
+          wget https://storage.googleapis.com/ivynet-share/toml
+          chmod 0755 toml
       - name: Create a file with the vault password
         run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
         env:
@@ -105,8 +106,9 @@ jobs:
           requests
       - name: Install TOML cli
         run: |
-          . "$HOME/.cargo/env"
-          cargo install toml-cli
+          cd /usr/local/bin
+          wget https://storage.googleapis.com/ivynet-share/toml
+          chmod 0755 toml
       - name: Create a file with the vault password
         run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
         env:

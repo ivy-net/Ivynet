@@ -5,14 +5,14 @@ use ethers::{
     types::{Bytes, Chain, SignatureError, TryFromPrimitiveError},
     utils::hex::FromHexError,
 };
+use ivynet_docker::dockercmd::DockerError;
+use ivynet_grpc::client::ClientError;
+use ivynet_signer::IvyWalletError;
 use thiserror::Error;
 use tonic::Status;
 use zip::result::ZipError;
 
-use crate::{
-    docker::dockercmd::DockerError, eigen::quorum::QuorumError, grpc::client::ClientError,
-    IvyProvider, IvyProviderError,
-};
+use crate::{eigen::quorum::QuorumError, IvyProvider, IvyProviderError};
 
 #[derive(Debug, Error)]
 pub enum IvyError {
@@ -61,10 +61,7 @@ pub enum IvyError {
     SetupError(#[from] SetupError),
 
     #[error(transparent)]
-    IoError(#[from] crate::io::IoError),
-
-    #[error(transparent)]
-    ConfigError(#[from] crate::config::ConfigError),
+    IoError(#[from] ivynet_io::IoError),
 
     #[error("Config type mismatch: expected {0}, found {1}")]
     ConfigMatchError(String, String),
@@ -132,7 +129,7 @@ pub enum IvyError {
     LogParseError(String),
 
     #[error(transparent)]
-    BlsError(#[from] crate::bls::BlsKeyError),
+    BlsError(#[from] ivynet_signer::bls::BlsKeyError),
 
     #[error(transparent)]
     IvyYamlError(#[from] crate::ivy_yaml::IvyYamlError),
@@ -141,13 +138,13 @@ pub enum IvyError {
     DockerError(#[from] DockerError),
 
     #[error(transparent)]
-    IvyWalletError(#[from] crate::wallet::IvyWalletError),
+    IvyWalletError(#[from] IvyWalletError),
 
     #[error(transparent)]
     NodeConfigError(#[from] crate::avs::config::NodeConfigError),
 
     #[error(transparent)]
-    KeychainError(#[from] crate::keychain::KeychainError),
+    KeychainError(#[from] ivynet_signer::keychain::KeychainError),
 
     #[error(transparent)]
     EnvLineError(#[from] crate::env_parser::EnvLineError),
@@ -162,13 +159,10 @@ pub enum IvyError {
     SignerMiddlewareError(#[from] IvyProviderError),
 
     #[error(transparent)]
-    NodeTypeError(#[from] crate::node_type::NodeTypeError),
+    NodeTypeError(#[from] ivynet_node_type::NodeTypeError),
 
     #[error("Docker Image Error")]
     DockerImageError,
-
-    #[error(transparent)]
-    TelemetryDispatchError(#[from] crate::telemetry::dispatch::TelemetryDispatchError),
 
     #[error("{0}")]
     CustomError(String),
@@ -177,7 +171,13 @@ pub enum IvyError {
     NotFound,
 
     #[error("Signature error: {0}")]
-    IvySignatureError(#[from] crate::signature::IvySigningError),
+    IvySignatureError(#[from] ivynet_signer::sign_utils::IvySigningError),
+
+    #[error("Node find error, could not find node for name {0}")]
+    NodeFindError(String),
+
+    #[error(transparent)]
+    DockerStreamError(#[from] ivynet_docker::dockerapi::DockerStreamError),
 }
 
 #[derive(Debug, Error)]

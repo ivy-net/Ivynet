@@ -1,0 +1,42 @@
+---
+# Name of the GCP bucket
+ivynet_scraper_gcp_bucket: ivynet-share-test
+
+# File with GCP credentials
+ivynet_scraper_gcp_cred: ~/.devops-automation-key.json
+
+# Name of GCP project
+ivynet_scraper_gcp_project: ivynet-tests
+
+# Token to access github
+ivynet_scraper_github_token: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          36363834613035363762636134643162623863323436623539303234396434653065636163316462
+          6430303535333932326562306230646634303930396533640a313965396562363066323232356235
+          64623165336364353330623162333265333661643965353365386564326332653565636634623063
+          3961396236313466310a316465383062646263323764306336393033323064333031323566353838
+          37306335386139313035366663623066636135323139643166386638653532626563623264376165
+          3866393766616537613266336166323234616535343537663537
+
+# Source of binaries (true for release, false for master)
+ivynet_scraper_is_release: true
+
+# Logs level for IvyNet internals
+ivynet_scraper_logs_lowlevel: ""
+
+# Path where to install binaries and other files
+ivynet_scraper_path_install: "/opt/ivynet"
+
+# Path to directory with SQL migration
+ivynet_scraper_path_resources: "{{ ivynet_scraper_path_install }}/resources"
+
+# Path to directory with secrets
+ivynet_scraper_path_secrets: "{{ ivynet_scraper_path_install }}/secrets"
+
+# RPCs endpoints
+ivynet_scraper_rpc:
+  mainnet: wss://eth-mainnet.g.alchemy.com/v2/QdZGFJvR0KVqZxOcfOyDmSZbBpMAzskz
+  holesky: wss://eth-holesky.g.alchemy.com/v2/QdZGFJvR0KVqZxOcfOyDmSZbBpMAzskz
+
+# Scraper release
+ivynet_scraper_release: "0.5.0"

@@ -1,7 +1,7 @@
 use std::str::FromStr;
 
 use clap::Parser;
-use ivynet_core::grpc::client::Uri;
+use ivynet_grpc::client::Uri;
 use tracing::Level;
 
 mod version_hash {
@@ -19,18 +19,6 @@ pub struct Config {
 
     #[arg(long, env = "IVY_LOG_LEVEL", default_value_t = Level::INFO)]
     pub log_level: Level,
-
-    #[arg(long, env = "IVY_GRPC_TLS_CA")]
-    pub grpc_tls_ca: Option<String>,
-
-    #[arg(long, env = "IVY_GRPC_TLS_CERT")]
-    pub grpc_tls_cert: Option<String>,
-
-    #[arg(long, env = "IVY_GRPC_TLS_KEY")]
-    pub grpc_tls_key: Option<String>,
-
-    #[arg(long, env = "IVY_GRPC_PORT", default_value_t = 50050)]
-    pub grpc_port: u16,
 
     #[arg(long, env = "IVY_ROOT_URL", value_parser = Uri::from_str, default_value = "http://localhost:8080")]
     pub root_url: Uri,
@@ -70,5 +58,17 @@ pub struct Config {
     pub set_avs_version: Option<String>,
 
     #[arg(long)]
+    pub add_avs_version_hash: Option<String>,
+
+    #[arg(long)]
     pub set_breaking_change_version: Option<String>,
+
+    #[arg(long)]
+    pub add_node_version_hashes: bool,
+
+    #[arg(long)]
+    pub update_node_data_versions: bool,
+
+    #[arg(long)]
+    pub delete_old_logs: bool,
 }

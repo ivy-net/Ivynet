@@ -1,20 +1,23 @@
 use dialoguer::{Input, Password};
-use ivynet_core::{
-    config::IvyConfig,
-    error::IvyError,
-    grpc::{
-        backend::backend_client::BackendClient,
-        client::{create_channel, Source},
-        messages::RegistrationCredentials,
-        tonic::Request,
-    },
-    wallet::IvyWallet,
+use ivynet_grpc::{
+    backend::backend_client::BackendClient, client::create_channel,
+    messages::RegistrationCredentials, tonic::Request,
 };
+use ivynet_signer::IvyWallet;
 
-#[allow(unused_imports)]
-use tracing::debug;
+use crate::{config::IvyConfig, error::Error};
 
-pub async fn set_backend_connection(config: &mut IvyConfig) -> Result<(), IvyError> {
+pub async fn register_node(mut config: IvyConfig) -> Result<(), Error> {
+    set_backend_connection(&mut config).await?;
+    let wallet = config.identity_wallet()?;
+    let client_key = wallet.address();
+
+    println!("Node registration for key {:?} successful.", client_key);
+
+    Ok(())
+}
+
+pub async fn set_backend_connection(config: &mut IvyConfig) -> Result<(), Error> {
     let (identity_key, client_key) = match config.identity_wallet() {
         Ok(key) => (key.to_private_key(), key.address()),
         _ => {
@@ -33,7 +36,7 @@ pub async fn set_backend_connection(config: &mut IvyConfig) -> Result<(), IvyErr
             .interact()
             .expect("No password provided");
         let mut backend = BackendClient::new(
-            create_channel(Source::Uri(config.get_server_url()?), {
+            create_channel(config.get_server_url()?, {
                 let ca = config.get_server_ca();
                 if ca.is_empty() {
                     None

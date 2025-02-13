@@ -4,7 +4,7 @@ After=network.target
 
 [Service]
 ExecStart={{ ivynet_backend_path_install }}/bin/ivynet-backend
-EnvironmentFile={{ ivynet_backend_path_secrets }}/env
+EnvironmentFile={{ ivynet_backend_path_secrets }}/env.backend
 Type=simple
 Restart=always
 

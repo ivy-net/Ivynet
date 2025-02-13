@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM avs_version_data WHERE node_type = $1 AND chain = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f7b4863a02c5df71930fc57e5a2278cbdb57a62178afa8abe3c0abd64c3aeb55"
+}

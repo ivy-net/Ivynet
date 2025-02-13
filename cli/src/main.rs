@@ -1,7 +1,11 @@
 use anyhow::{Error as AnyError, Result};
 use clap::{Parser, Subcommand};
-use cli::{avs, config, error::Error, key, monitor};
-use ivynet_core::{avs::commands::NodeCommands, config::IvyConfig, grpc::client::Uri};
+use cli::{
+    config::{self, IvyConfig},
+    error::Error,
+    init, key, monitor,
+};
+use ivynet_grpc::client::Uri;
 use std::{fs, path::PathBuf, str::FromStr as _};
 use tracing::info;
 use tracing_subscriber::FmtSubscriber;
@@ -23,7 +27,7 @@ struct Args {
     #[arg(long, env = "SERVER_URL", value_parser = Uri::from_str, default_value = if cfg!(debug_assertions) {
         "http://localhost:50050"
     } else {
-        "https://api2.test.ivynet.dev:50050"
+        "https://api1.test.ivynet.dev:50050"
     })]
     pub server_url: Uri,
 
@@ -42,11 +46,6 @@ struct Args {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
-    #[command(name = "node", about = "Request information about or boot a node")]
-    Node {
-        #[command(subcommand)]
-        subcmd: NodeCommands,
-    },
     #[command(name = "config", about = "Manage rpc and config information")]
     Config {
         #[command(subcommand)]
@@ -61,7 +60,25 @@ enum Commands {
     Monitor,
 
     #[command(name = "scan", about = "Scanning for existing AVS instances running on the machine")]
-    Scan,
+    Scan {
+        /// For forcing manual container addition even when all other AVS's are already configured
+        #[arg(short, long, default_value_t = false)]
+        force: bool,
+    },
+
+    #[command(
+        name = "register-node",
+        about = "Register a node with the backend. Requires a correctly configured IvyConfig."
+    )]
+    RegisterNode,
+
+    #[command(name = "rename-node", about = "Rename a node")]
+    RenameNode {
+        #[arg(long, short, env = "OLD_NAME")]
+        old_name: Option<String>,
+        #[arg(long, short, env = "NEW_NAME")]
+        new_name: Option<String>,
+    },
 }
 
 #[tokio::main]
@@ -95,9 +112,13 @@ async fn main() -> Result<(), AnyError> {
             config::parse_config_subcommands(subcmd, config).await?;
         }
         Commands::Key { subcmd } => key::parse_key_subcommands(subcmd).await?,
-        Commands::Node { subcmd } => avs::parse_avs_subcommands(subcmd).await?,
-        Commands::Monitor => monitor::start_monitor().await?,
-        Commands::Scan => monitor::scan().await?,
+        // Commands::Node { subcmd } => avs::parse_avs_subcommands(subcmd).await?,
+        Commands::Monitor => monitor::start_monitor(config).await?,
+        Commands::Scan { force } => monitor::scan(force, config).await?,
+        Commands::RegisterNode => init::register_node(config).await?,
+        Commands::RenameNode { old_name, new_name } => {
+            monitor::rename_node(&config, old_name, new_name).await?;
+        }
     }
 
     Ok(())

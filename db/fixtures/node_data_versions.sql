@@ -1,0 +1,1 @@
+INSERT INTO avs_version_data (avs_name, chain, latest_version_tag, latest_version_digest, breaking_change_tag, breaking_change_datetime) VALUES (0, 'eigenda', 'mainnet', '0.8.2', 'sha256:74abd1fb91919c9a08556de6467938bafd7145c06cc0ec62d2aafe396240820c', '0.8.1', '2024-11-19 20:00:42');

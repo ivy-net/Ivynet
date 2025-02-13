@@ -1,7 +1,7 @@
 use ethers::types::Address;
+use ivynet_signer::IvyWallet;
 use serde::{Deserialize, Serialize};
 
-use crate::wallet::IvyWallet;
 use std::{env, path::PathBuf};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]

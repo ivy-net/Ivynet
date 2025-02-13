@@ -1,0 +1,68 @@
+{
+	"Id": "076976f53c5b65bea1caf4a96453298be32a55eeca89920d4c48546b23078b82",
+	"Names": [
+		"/postgres"
+	],
+	"Image": "postgres:latest",
+	"ImageID": "sha256:80cbdc6c330118a0a7e082e65be9f54d0d633280aec435a18ad0636095239ad5",
+	"Command": "docker-entrypoint.sh postgres",
+	"Created": 1735665554,
+	"Ports": [
+		{
+			"IP": "0.0.0.0",
+			"PrivatePort": 5432,
+			"PublicPort": 5432,
+			"Type": "tcp"
+		},
+		{
+			"IP": "::",
+			"PrivatePort": 5432,
+			"PublicPort": 5432,
+			"Type": "tcp"
+		}
+	],
+	"Labels": {
+		"com.docker.compose.config-hash": "4035d433afc7cac15e353dd9c856d5b533fa7388f031466b07dadbe081d9ef46",
+		"com.docker.compose.oneoff": "False",
+		"com.docker.compose.project": "backend",
+		"com.docker.compose.container-number": "1",
+		"com.docker.compose.service": "postgres",
+		"com.docker.compose.project.working_dir": "/home/user/ivynet/backend",
+		"com.docker.compose.project.config_files": "/home/user/ivynet/backend/backend-compose.yaml",
+		"com.docker.compose.version": "2.29.7",
+		"com.docker.compose.image": "sha256:80cbdc6c330118a0a7e082e65be9f54d0d633280aec435a18ad0636095239ad5",
+		"com.docker.compose.depends_on": ""
+	},
+	"State": "running",
+	"Status": "Up 6 days",
+	"HostConfig": {
+		"NetworkMode": "backend_default"
+	},
+	"NetworkSettings": {
+		"Networks": {
+			"backend_default": {
+				"MacAddress": "02:42:ac:12:00:03",
+				"NetworkID": "03b59f49379fac2ec90016f7d0d12df88a466b8c38e222932e64f8efe9f04ee9",
+				"EndpointID": "40d82e4357e298a6e54b6558c57459bde66dc2277fc13a2024cf85f4eafaa40e",
+				"Gateway": "172.18.0.1",
+				"IPAddress": "172.18.0.3",
+				"IPPrefixLen": 16,
+				"IPv6Gateway": "",
+				"GlobalIPv6Address": "",
+				"GlobalIPv6PrefixLen": 0
+			}
+		}
+	},
+	"Mounts": [
+		{
+			"Type": "volume",
+			"Name": "backend_psql_vol",
+			"Source": "/var/lib/docker/volumes/backend_psql_vol/_data",
+			"Destination": "/var/lib/postgresql/data",
+			"Driver": "local",
+			"Mode": "z",
+			"RW": true,
+			"Propagation": ""
+		}
+	]
+}

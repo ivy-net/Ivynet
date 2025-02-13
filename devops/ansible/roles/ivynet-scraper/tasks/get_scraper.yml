@@ -1,0 +1,63 @@
+---
+- name: Get release id
+  ansible.builtin.uri:
+    # yamllint disable-line rule:line-length
+    url: "https://api.github.com/repos/ivy-net/ivynet/releases/tags/scraper-{{ ivynet_scraper_release }}"
+    method: GET
+    headers:
+      Authorization: "token {{ ivynet_scraper_github_token }}"
+    follow_redirects: all
+  register: ivynet_scraper_assets_output
+  tags:
+    - ivynet_scraper
+    - ivynet
+    - github
+
+- name: Prepare variable with scraper assets id
+  ansible.builtin.set_fact:
+    # yamllint disable-line rule:line-length
+    ivynet_scraper_assets_id: "{{ ivynet_scraper_assets_output | community.general.json_query(json_output_query) }}"
+    cacheable: true
+  vars:
+    json_output_query: "json.assets[?name=='scraper'].id"
+  tags:
+    - ivynet_scraper
+    - ivynet
+    - github
+
+- name: Get binaries
+  ansible.builtin.uri:
+    # yamllint disable-line rule:line-length
+    url: "https://api.github.com/repos/ivy-net/ivynet/releases/assets/{{ ivynet_scraper_assets_id[0] }}"
+    method: GET
+    headers:
+      Authorization: "token {{ ivynet_scraper_github_token }}"
+      Accept: "application/octet-stream"
+    follow_redirects: all
+    status_code: [200, 304]
+    dest: "{{ ivynet_scraper_path_install }}/bin/scraper"
+    owner: root
+    group: root
+    mode: "0755"
+  tags:
+    - ivynet_scraper
+    - ivynet
+    - github
+
+- name: Save ivynet release info
+  ansible.builtin.copy:
+    # yamllint disable-line rule:line-length
+    dest: "{{ ivynet_scraper_path_install }}/scraper-{{ ivynet_scraper_release }}"
+    content: |
+      scraper-{{ ivynet_scraper_release }}
+    owner: root
+    group: root
+    mode: "0444"
+  notify:
+    - Restart scraper holesky service
+    - Restart scraper mainnet service
+  tags:
+    - ivynet_scraper
+    - ivynet
+    - github
+    - systemd

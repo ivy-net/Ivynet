@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE avs SET node_running = $1 WHERE machine_id = $2 AND avs_name = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bool",
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "dc9a673c0001579f6c300bcd0f8fed628326b8f13237261b843fabed03b3fc2d"
+}

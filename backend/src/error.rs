@@ -2,16 +2,17 @@ use axum::{
     http::StatusCode,
     response::{IntoResponse, Response},
 };
-use ivynet_core::grpc::server::ServerError;
+use ivynet_docker_registry::registry::RegistryError;
+use ivynet_grpc::server::ServerError;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum BackendError {
     #[error(transparent)]
-    Tonic(#[from] ivynet_core::grpc::Status),
+    Tonic(#[from] ivynet_grpc::Status),
 
     #[error(transparent)]
-    DbError(#[from] sqlx::Error),
+    DbError(#[from] db::error::DatabaseError),
 
     #[error(transparent)]
     Io(#[from] std::io::Error),
@@ -52,9 +53,6 @@ pub enum BackendError {
     #[error("Insufficient priviledges")]
     InsufficientPriviledges,
 
-    #[error("Bad id")]
-    BadId,
-
     #[error("Already set")]
     AlreadySet,
 
@@ -72,6 +70,27 @@ pub enum BackendError {
 
     #[error("Missing parameter: {0}")]
     MissingParameter(String),
+
+    #[error("Invalid version")]
+    InvalidVersion,
+
+    #[error(transparent)]
+    RegistryError(#[from] RegistryError),
+
+    #[error("No valid node versions found")]
+    NoVersionsFound,
+
+    #[error(transparent)]
+    NodeTypeError(#[from] ivynet_node_type::NodeTypeError),
+
+    #[error("Bad id")]
+    BadId,
+
+    #[error("Invalid chain")]
+    InvalidChain,
+
+    #[error("Invalid data for set_avs_version")]
+    InvalidSetAvsVersionData,
 }
 
 impl IntoResponse for BackendError {

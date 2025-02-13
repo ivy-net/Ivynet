@@ -1,7 +1,11 @@
-pub mod avs;
+pub mod commands;
 pub mod config;
 pub mod error;
 pub mod init;
 pub mod inspect;
+pub mod ivy_machine;
 pub mod key;
+pub mod metadata;
 pub mod monitor;
+pub mod node_source;
+pub mod telemetry;
