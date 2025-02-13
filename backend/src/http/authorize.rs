@@ -83,7 +83,7 @@ pub async fn authorize(
 
 #[utoipa::path(
     get,
-    path = "/authorize/invitation/{id}",
+    path = "/authorize/invitation/:id",
     params(
         ("id", description = "Invitation id.")
     ),
