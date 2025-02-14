@@ -12,6 +12,7 @@ pub enum PagerDutySenderError {
 }
 
 #[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Severity {
     Critical,
     Error,
@@ -19,32 +20,12 @@ pub enum Severity {
     Info,
 }
 
-impl std::fmt::Display for Severity {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Critical => f.write_str("critical"),
-            Self::Error => f.write_str("error"),
-            Self::Warning => f.write_str("warning"),
-            Self::Info => f.write_str("info"),
-        }
-    }
-}
-
 #[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Action {
     Trigger,
     Acknowledge,
     Resolve,
-}
-
-impl std::fmt::Display for Action {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Self::Trigger => f.write_str("trigger"),
-            Self::Acknowledge => f.write_str("acknowledge"),
-            Self::Resolve => f.write_str("resolve"),
-        }
-    }
 }
 
 /// Payload of the event that is being sent
@@ -56,6 +37,7 @@ struct Payload {
     pub timestamp: DateTime<Utc>,
     pub component: Option<String>,
 }
+
 /// Struct of the event to send to PagerDuty service
 #[derive(Clone, Debug, Serialize)]
 struct Event {
@@ -108,6 +90,7 @@ impl<D: OrganizationDatabase> PagerDutySender<D> {
 
     async fn send(&self, event: Event) -> Result<(), PagerDutySenderError> {
         self.client.post(PAGER_DUTY_Q_URL).json(&event).send().await?;
+
         Ok(())
     }
 }
@@ -150,5 +133,111 @@ fn avs_if_any(notification: &Notification) -> Option<String> {
             Some(avs.to_owned())
         }
         _ => None,
+    }
+}
+
+#[cfg(test)]
+mod pagerduty_live_test {
+
+    use std::{
+        collections::{HashMap, HashSet},
+        sync::Arc,
+    };
+
+    use tokio::sync::Mutex;
+
+    use super::*;
+
+    static MOCK_ORGANIZATION_ID: u64 = 1;
+
+    /// Set your integration key to perform live test
+    static MOCK_INTEGRATION_ID: &str = "";
+    #[derive(Debug)]
+    struct MockDbBackend {
+        chats: HashMap<u64, HashSet<String>>,
+    }
+
+    impl MockDbBackend {
+        fn new() -> Self {
+            Self { chats: HashMap::new() }
+        }
+        fn add_chat(&mut self, organization_id: u64, chat_id: &str) -> bool {
+            self.chats.entry(organization_id).or_default().insert(chat_id.to_string());
+            true
+        }
+        fn remove_chat(&mut self, chat_id: &str) -> bool {
+            for chats in self.chats.values_mut() {
+                if chats.remove(chat_id) {
+                    return true;
+                }
+            }
+            false
+        }
+        fn chats_for(&self, organization_id: u64) -> HashSet<String> {
+            self.chats.get(&organization_id).cloned().unwrap_or_default()
+        }
+    }
+
+    #[derive(Clone, Debug)]
+    struct MockDb(Arc<Mutex<MockDbBackend>>);
+
+    impl MockDb {
+        fn new() -> Self {
+            Self(Arc::new(Mutex::new(MockDbBackend::new())))
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl OrganizationDatabase for MockDb {
+        async fn register_chat(&self, chat_id: &str, _email: &str, _password: &str) -> bool {
+            let mut db = self.0.lock().await;
+            db.add_chat(MOCK_ORGANIZATION_ID, chat_id)
+        }
+
+        async fn unregister_chat(&self, chat_id: &str) -> bool {
+            let mut db = self.0.lock().await;
+            db.remove_chat(chat_id)
+        }
+
+        async fn get_emails_for_organization(&self, _organization_id: u64) -> Vec<String> {
+            Vec::new()
+        }
+
+        async fn get_chats_for_organization(&self, organization_id: u64) -> Vec<String> {
+            let db = self.0.lock().await;
+            db.chats_for(organization_id).iter().cloned().collect::<Vec<_>>()
+        }
+
+        async fn get_pd_integration_key_for_organization(
+            &self,
+            _organization_id: u64,
+        ) -> Option<String> {
+            if MOCK_INTEGRATION_ID.is_empty() {
+                None
+            } else {
+                Some(MOCK_INTEGRATION_ID.to_string())
+            }
+        }
+    }
+
+    #[tokio::test]
+    async fn test_raising_event() {
+        let db = MockDb::new();
+
+        let pagerduty = PagerDutySender::new(db);
+
+        let mut test_event = Notification {
+            id: Uuid::new_v4(),
+            organization: MOCK_ORGANIZATION_ID,
+            machine_id: Uuid::new_v4(),
+            notification_type: NotificationType::Custom(
+                "We are testing sending events".to_string(),
+            ),
+            resolved: false,
+        };
+
+        assert!(pagerduty.notify(test_event.clone()).await.is_ok());
+        test_event.resolved = true;
+        assert!(pagerduty.notify(test_event.clone()).await.is_ok());
     }
 }
