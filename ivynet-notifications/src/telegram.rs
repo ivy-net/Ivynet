@@ -1,4 +1,3 @@
-use ethers::types::H160;
 use teloxide::{dispatching::UpdateHandler, prelude::*, utils::command::BotCommands};
 use tracing::warn;
 use uuid::Uuid;

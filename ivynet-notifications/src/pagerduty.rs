@@ -1,7 +1,5 @@
 use crate::{Notification, NotificationType, OrganizationDatabase};
 use chrono::{DateTime, Utc};
-use ethers::types::H160;
-use reqwest::header;
 use serde::Serialize;
 use uuid::Uuid;
 
@@ -49,72 +47,67 @@ impl std::fmt::Display for Action {
     }
 }
 
+/// Payload of the event that is being sent
+#[derive(Clone, Debug, Serialize)]
+struct Payload {
+    pub severity: Severity,
+    pub source: String,
+    pub summary: String,
+    pub timestamp: DateTime<Utc>,
+    pub component: Option<String>,
+}
 /// Struct of the event to send to PagerDuty service
 #[derive(Clone, Debug, Serialize)]
-pub struct PagerDutyEvent {
+struct Event {
     pub routing_key: String,
     pub event_action: Action,
     pub dedup_key: Uuid,
-    #[serde(rename = "payload.severity")]
-    pub severity: Severity,
-    #[serde(rename = "payload.source")]
-    pub source: String,
-    #[serde(rename = "payload.summary")]
-    pub summary: String,
-    #[serde(rename = "payload.timestamp")]
-    pub timestamp: DateTime<Utc>,
-    #[serde(rename = "payload.component")]
-    pub component: Option<String>,
-    #[serde(rename = "payload.group")]
-    pub group: Option<String>,
+    pub client: Option<String>,
+    pub payload: Payload,
 }
 
-impl From<Notification> for PagerDutyEvent {
+impl From<Notification> for Event {
     fn from(value: Notification) -> Self {
         Self {
             routing_key: "".to_owned(),
             event_action: if value.resolved { Action::Resolve } else { Action::Trigger },
             dedup_key: value.id,
-            severity: Severity::Error, // TODO: Maybe we should vary it depending on the
-            // notification type?
-            source: "IvyNet".to_owned(),
-            summary: message(&value),
-            timestamp: chrono::Local::now().into(),
-            component: Some(format!("{:?}", value.machine_id)),
-            group: avs_if_any(&value),
+            client: avs_if_any(&value),
+            payload: Payload {
+                severity: Severity::Error, // TODO: Maybe we should vary it depending on the
+                // notification type?
+                source: "IvyNet".to_owned(),
+                summary: message(&value),
+                timestamp: chrono::Local::now().into(),
+                component: Some(format!("{:?}", value.machine_id)),
+            },
         }
     }
 }
 
 pub struct PagerDutySender<D: OrganizationDatabase> {
     pub client: reqwest::Client,
-    pub token: String,
     pub db: D,
 }
 
 impl<D: OrganizationDatabase> PagerDutySender<D> {
-    pub fn new(token: &str, db: D) -> Self {
-        Self { client: reqwest::Client::new(), token: token.to_owned(), db }
+    pub fn new(db: D) -> Self {
+        Self { client: reqwest::Client::new(), db }
     }
 
     pub async fn notify(&self, notification: Notification) -> Result<(), PagerDutySenderError> {
         if let Some(integration_key) =
             self.db.get_pd_integration_key_for_organization(notification.organization).await
         {
-            let mut event: PagerDutyEvent = notification.into();
+            let mut event: Event = notification.into();
             event.routing_key = integration_key;
-            self.send(&self.token, event).await?;
+            self.send(event).await?;
         }
         Ok(())
     }
 
-    async fn send(&self, token: &str, event: PagerDutyEvent) -> Result<(), PagerDutySenderError> {
-        self.client
-            .post(PAGER_DUTY_Q_URL)
-            .header(header::AUTHORIZATION, format!("Token token={token}"))
-            .json(&event)
-            .send()
-            .await?;
+    async fn send(&self, event: Event) -> Result<(), PagerDutySenderError> {
+        self.client.post(PAGER_DUTY_Q_URL).json(&event).send().await?;
         Ok(())
     }
 }
@@ -148,10 +141,10 @@ fn message(notification: &Notification) -> String {
 
 fn avs_if_any(notification: &Notification) -> Option<String> {
     match &notification.notification_type {
-        NotificationType::NodeNotRunning(avs)
-        | NotificationType::NoChainInfo(avs)
-        | NotificationType::NoMetrics(avs)
-        | NotificationType::NoOperatorId(avs) => Some(avs.to_owned()),
+        NotificationType::NodeNotRunning(avs) |
+        NotificationType::NoChainInfo(avs) |
+        NotificationType::NoMetrics(avs) |
+        NotificationType::NoOperatorId(avs) => Some(avs.to_owned()),
         NotificationType::LowPerformaceScore { avs, performance: _ } => Some(avs.to_owned()),
         NotificationType::NeedsUpdate { avs, current_version: _, recommended_version: _ } => {
             Some(avs.to_owned())

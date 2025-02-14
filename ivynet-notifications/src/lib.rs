@@ -68,7 +68,6 @@ pub struct SendgridTemplates<'a> {
 
 #[derive(Clone, Debug)]
 pub struct NotificationConfig<'a> {
-    pub pagerduty_token: &'a str,
     pub telegram_token: &'a str,
     pub sendgrid_key: &'a str,
     pub sendgrid_from: &'a str,
@@ -96,7 +95,7 @@ impl<D: OrganizationDatabase> NotificationDispatcher<D> {
         Self {
             telegram: TelegramBot::<D>::new(config.telegram_token, db.clone()),
             email_sender: EmailSender::new(&config, db.clone()),
-            pagerduty: PagerDutySender::new(config.pagerduty_token, db),
+            pagerduty: PagerDutySender::new(db),
         }
     }
 
