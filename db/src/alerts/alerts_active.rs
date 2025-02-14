@@ -10,18 +10,18 @@ use uuid::Uuid;
 
 use crate::error::DatabaseError;
 
-use super::{alert_handler::AlertType, alerts_historical::HistoryAlert};
+use super::alerts_historical::HistoryAlert;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct NewAlert {
-    pub alert_type: AlertType,
+    pub alert_type: NotificationType,
     pub machine_id: Uuid,
     pub node_name: String,
     pub created_at: NaiveDateTime,
 }
 
 impl NewAlert {
-    pub fn new(machine_id: Uuid, alert_type: AlertType, node_name: String) -> Self {
+    pub fn new(machine_id: Uuid, alert_type: NotificationType, node_name: String) -> Self {
         Self { alert_type, machine_id, node_name, created_at: chrono::Utc::now().naive_utc() }
     }
 
@@ -64,9 +64,8 @@ pub struct DbActiveAlert {
 
 impl From<DbActiveAlert> for ActiveAlert {
     fn from(db_active_alert: DbActiveAlert) -> Self {
-        let notification_type =
-            NotificationType::try_from((db_active_alert.alert_type, db_active_alert.custom_data))
-                .expect("Failed to convert alert type");
+        let notification_type: NotificationType =
+            serde_json::from_value(db_active_alert.custom_data.unwrap()).unwrap();
         ActiveAlert {
             alert_id: db_active_alert.alert_id,
             alert_type: notification_type,
@@ -131,6 +130,8 @@ impl ActiveAlert {
 
     pub async fn insert_one(pool: &PgPool, alert: &NewAlert) -> Result<(), DatabaseError> {
         let alert_id = alert.generate_uuid();
+        let alert_type_id: i32 = alert.alert_type.clone().into();
+        let alert_data = Some(serde_json::json!(alert.alert_type));
         sqlx::query!(
             r#"
             INSERT INTO alerts_active (
@@ -140,7 +141,8 @@ impl ActiveAlert {
                 organization_id,
                 client_id,
                 node_name,
-                created_at
+                created_at,
+                custom_data
             )
             SELECT
                 $1,
@@ -149,17 +151,19 @@ impl ActiveAlert {
                 c.organization_id,
                 m.client_id,
                 $3,
-                $4
+                $4,
+                $6
             FROM machine m
             JOIN client c
               ON m.client_id = c.client_id
             WHERE m.machine_id = $5   -- lookup based on the provided machine_id
             "#,
             alert_id,
-            alert.alert_type as i16,
+            alert_type_id,
             alert.node_name,
             alert.created_at,
             alert.machine_id,
+            alert_data
         )
         .execute(pool)
         .await?;
@@ -170,35 +174,40 @@ impl ActiveAlert {
         let mut tx = pool.begin().await?;
         for alert in alerts {
             let alert_id = alert.generate_uuid();
+            let alert_type_id: i32 = alert.alert_type.clone().into();
+            let alert_data = Some(serde_json::json!(alert.alert_type));
             sqlx::query!(
                 r#"
-                INSERT INTO alerts_active (
-                    alert_id,
-                    alert_type,
-                    machine_id,
-                    organization_id,
-                    client_id,
-                    node_name,
-                    created_at
-                )
-                SELECT
-                    $1,
-                    $2,
-                    m.machine_id,
-                    c.organization_id,
-                    m.client_id,
-                    $3,
-                    $4
-                FROM machine m
-                JOIN client c
-                  ON m.client_id = c.client_id
-                WHERE m.machine_id = $5   -- lookup based on the provided machine_id
-                "#,
+            INSERT INTO alerts_active (
                 alert_id,
-                alert.alert_type as i16,
+                alert_type,
+                machine_id,
+                organization_id,
+                client_id,
+                node_name,
+                created_at,
+                custom_data
+            )
+            SELECT
+                $1,
+                $2,
+                m.machine_id,
+                c.organization_id,
+                m.client_id,
+                $3,
+                $4,
+                $6
+            FROM machine m
+            JOIN client c
+              ON m.client_id = c.client_id
+            WHERE m.machine_id = $5   -- lookup based on the provided machine_id
+            "#,
+                alert_id,
+                alert_type_id,
                 alert.node_name,
                 alert.created_at,
                 alert.machine_id,
+                alert_data
             )
             .execute(&mut *tx)
             .await?;
@@ -222,7 +231,8 @@ impl ActiveAlert {
                 client_id,
                 node_name,
                 created_at,
-                acknowledged_at
+                acknowledged_at,
+                custom_data
             FROM alerts_active
             WHERE organization_id = $1
             "#,
@@ -249,7 +259,8 @@ impl ActiveAlert {
                 client_id,
                 node_name,
                 created_at,
-                acknowledged_at
+                acknowledged_at,
+                custom_data
             FROM alerts_active
             WHERE machine_id = $1
             "#,
@@ -290,7 +301,8 @@ impl ActiveAlert {
                 client_id,
                 node_name,
                 created_at,
-                acknowledged_at
+                acknowledged_at,
+                custom_data
             FROM alerts_active
             WHERE alert_id = $1
             "#,
@@ -303,6 +315,8 @@ impl ActiveAlert {
         let alert_id = active_alert.alert_id;
 
         let history_alert: HistoryAlert = active_alert.into();
+        let alert_type_id: i32 = history_alert.alert_type.clone().into();
+        let custom_data = Some(serde_json::json!(history_alert.alert_type));
 
         sqlx::query!(
             r#"
@@ -315,7 +329,8 @@ impl ActiveAlert {
                 node_name,
                 created_at,
                 acknowledged_at,
-                resolved_at
+                resolved_at,
+                custom_data
             )
             VALUES (
                 $1,
@@ -326,17 +341,19 @@ impl ActiveAlert {
                 $6,
                 $7,
                 $8,
-                now()
+                now(),
+                $9
             )
             "#,
             alert_id,
-            history_alert.alert_type as i16,
+            alert_type_id,
             history_alert.machine_id,
             history_alert.organization_id,
             history_alert.client_id.as_bytes().to_vec(),
             history_alert.node_name,
             history_alert.created_at,
             history_alert.acknowledged_at,
+            custom_data
         )
         .execute(&mut *tx)
         .await?;

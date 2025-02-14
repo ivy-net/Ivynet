@@ -31,4 +31,7 @@ pub enum DatabaseError {
 
     #[error("Local build only node type")]
     LocalOnlyNode,
+
+    #[error("Notification type serialization error")]
+    NotificationTypeSerializationError(#[from] serde_json::Error),
 }

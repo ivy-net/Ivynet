@@ -3,9 +3,10 @@ use std::collections::HashSet;
 use ethers::types::H160;
 use pagerduty::PagerDutySender;
 use sendgrid::EmailSender;
-use serde::de::value::Error as SerdeError;
-use serde::de::Error;
-use serde::Serialize;
+use serde::{
+    de::{value::Error as SerdeError, Error},
+    Deserialize, Serialize,
+};
 use telegram::TelegramBot;
 use uuid::Uuid;
 
@@ -34,138 +35,96 @@ pub struct Notification {
     pub resolved: bool,
 }
 
-#[derive(Serialize, Debug, Clone, PartialEq, Eq)]
-#[repr(i64)]
+/// Integer flags used primarily for identification with the From<> trait, as the actual values are
+/// unusable for `as i32` conversions as they have associated fields. This apparently also
+/// suppresses null-pointer optimization.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[repr(i32)]
 pub enum NotificationType {
+    /// Custom message
     Custom(String) = 0,
+    /// User ETH address
     UnregisteredFromActiveSet(H160) = 1,
     MachineNotResponding = 2,
+    /// Node name
     NodeNotRunning(String) = 3,
+    /// Node name
     NoChainInfo(String) = 4,
+    /// Node name
     NoMetrics(String) = 5,
+    /// Node name
     NoOperatorId(String) = 6,
-    HardwareResourceUsage { resource: String, percent: u16 } = 7,
-    LowPerformaceScore { avs: String, performance: u16 } = 8,
-    NeedsUpdate { avs: String, current_version: String, recommended_version: String } = 9,
+    HardwareResourceUsage {
+        resource: String,
+        percent: u16,
+    } = 7,
+    LowPerformaceScore {
+        avs: String,
+        performance: u16,
+    } = 8,
+    NeedsUpdate {
+        avs: String,
+        current_version: String,
+        recommended_version: String,
+    } = 9,
 }
 
-/// Intended for use with the DbActiveAlert type. Decodes a tuple of (i64, serde_json::Value) into
-/// a NotificationType.
-impl TryFrom<(i64, Option<serde_json::Value>)> for NotificationType {
-    type Error = SerdeError;
-
-    fn try_from(value: (i64, Option<serde_json::Value>)) -> Result<Self, Self::Error> {
-        let (notification_type, custom_data) = value;
+impl From<NotificationType> for i32 {
+    fn from(notification_type: NotificationType) -> Self {
         match notification_type {
-            0 => Ok(NotificationType::Custom(
-                custom_data
-                    .ok_or_else(|| Error::custom("Missing custom data"))?
-                    .as_str()
-                    .ok_or_else(|| Error::custom("Custom data is not a string"))?
-                    .to_string(),
-            )),
-            1 => Ok(NotificationType::UnregisteredFromActiveSet(
-                custom_data
-                    .ok_or_else(|| Error::custom("Missing custom data"))?
-                    .as_str()
-                    .ok_or_else(|| Error::custom("Custom data is not a string"))?
-                    .parse()
-                    .map_err(|_| Error::custom("Could not parse H160"))?,
-            )),
-            2 => Ok(NotificationType::MachineNotResponding),
-            3 => Ok(NotificationType::NodeNotRunning(
-                custom_data
-                    .ok_or_else(|| Error::custom("Missing custom data"))?
-                    .as_str()
-                    .ok_or_else(|| Error::custom("Custom data is not a string"))?
-                    .to_string(),
-            )),
-            4 => Ok(NotificationType::NoChainInfo(
-                custom_data
-                    .ok_or_else(|| Error::custom("Missing custom data"))?
-                    .as_str()
-                    .ok_or_else(|| Error::custom("Custom data is not a string"))?
-                    .to_string(),
-            )),
-            5 => Ok(NotificationType::NoMetrics(
-                custom_data
-                    .ok_or_else(|| Error::custom("Missing custom data"))?
-                    .as_str()
-                    .ok_or_else(|| Error::custom("Custom data is not a string"))?
-                    .to_string(),
-            )),
-            6 => Ok(NotificationType::NoOperatorId(
-                custom_data
-                    .ok_or_else(|| Error::custom("Missing custom data"))?
-                    .as_str()
-                    .ok_or_else(|| Error::custom("Custom data is not a string"))?
-                    .to_string(),
-            )),
-            7 => {
-                let custom_data =
-                    custom_data.ok_or_else(|| Error::custom("Missing custom data"))?;
-                Ok(NotificationType::HardwareResourceUsage {
-                    resource: custom_data
-                        .get("resource")
-                        .ok_or_else(|| Error::custom("Missing resource field"))?
-                        .as_str()
-                        .ok_or_else(|| Error::custom("Resource field is not a string"))?
-                        .to_string(),
-                    percent: custom_data
-                        .get("percent")
-                        .ok_or_else(|| Error::custom("Missing percent field"))?
-                        .as_u64()
-                        .ok_or_else(|| Error::custom("Percent field is not a number"))?
-                        .try_into()
-                        .map_err(|_| Error::custom("Percent field is not a valid u16"))?,
-                })
-            }
-            8 => {
-                let custom_data =
-                    custom_data.ok_or_else(|| Error::custom("Missing custom data"))?;
-                Ok(NotificationType::LowPerformaceScore {
-                    avs: custom_data
-                        .get("avs")
-                        .ok_or_else(|| Error::custom("Missing avs field"))?
-                        .as_str()
-                        .ok_or_else(|| Error::custom("Avs field is not a string"))?
-                        .to_string(),
-                    performance: custom_data
-                        .get("performance")
-                        .ok_or_else(|| Error::custom("Missing performance field"))?
-                        .as_u64()
-                        .ok_or_else(|| Error::custom("Performance field is not a number"))?
-                        .try_into()
-                        .map_err(|_| Error::custom("Performance field is not a valid u16"))?,
-                })
-            }
-            9 => {
-                let custom_data =
-                    custom_data.ok_or_else(|| Error::custom("Missing custom data"))?;
-                Ok(NotificationType::NeedsUpdate {
-                    avs: custom_data
-                        .get("avs")
-                        .ok_or_else(|| Error::custom("Missing avs field"))?
-                        .as_str()
-                        .ok_or_else(|| Error::custom("Avs field is not a string"))?
-                        .to_string(),
-                    current_version: custom_data
-                        .get("current_version")
-                        .ok_or_else(|| Error::custom("Missing current_version field"))?
-                        .as_str()
-                        .ok_or_else(|| Error::custom("Current_version field is not a string"))?
-                        .to_string(),
-                    recommended_version: custom_data
-                        .get("recommended_version")
-                        .ok_or_else(|| Error::custom("Missing recommended_version field"))?
-                        .as_str()
-                        .ok_or_else(|| Error::custom("Recommended_version field is not a string"))?
-                        .to_string(),
-                })
-            }
-            _ => Err(Error::custom("Unknown notification type")),
+            NotificationType::Custom(_) => 0,
+            NotificationType::UnregisteredFromActiveSet(_) => 1,
+            NotificationType::MachineNotResponding => 2,
+            NotificationType::NodeNotRunning(_) => 3,
+            NotificationType::NoChainInfo(_) => 4,
+            NotificationType::NoMetrics(_) => 5,
+            NotificationType::NoOperatorId(_) => 6,
+            NotificationType::HardwareResourceUsage { .. } => 7,
+            NotificationType::LowPerformaceScore { .. } => 8,
+            NotificationType::NeedsUpdate { .. } => 9,
         }
     }
+}
+
+impl From<NotificationType> for i64 {
+    fn from(notification_type: NotificationType) -> Self {
+        match notification_type {
+            NotificationType::Custom(_) => 0,
+            NotificationType::UnregisteredFromActiveSet(_) => 1,
+            NotificationType::MachineNotResponding => 2,
+            NotificationType::NodeNotRunning(_) => 3,
+            NotificationType::NoChainInfo(_) => 4,
+            NotificationType::NoMetrics(_) => 5,
+            NotificationType::NoOperatorId(_) => 6,
+            NotificationType::HardwareResourceUsage { .. } => 7,
+            NotificationType::LowPerformaceScore { .. } => 8,
+            NotificationType::NeedsUpdate { .. } => 9,
+        }
+    }
+}
+
+impl From<NotificationType> for (i32, serde_json::Value) {
+    fn from(notification_type: NotificationType) -> Self {
+        let notification_id: i32 = notification_type.clone().into();
+        let custom_data = serde_json::json!(notification_type);
+        (notification_id, custom_data)
+    }
+}
+
+impl From<NotificationType> for (i64, serde_json::Value) {
+    fn from(notification_type: NotificationType) -> Self {
+        let notification_id: i64 = notification_type.clone().into();
+        let custom_data = serde_json::json!(notification_type);
+        (notification_id, custom_data)
+    }
+}
+
+fn from_opt_value<T>(custom_data: Option<serde_json::Value>) -> Result<T, SerdeError>
+where
+    for<'a> T: Deserialize<'a>,
+{
+    let data = custom_data.ok_or_else(|| Error::custom("Missing custom data"))?;
+    serde_json::from_value(data).map_err(Error::custom)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
