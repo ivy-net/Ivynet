@@ -60,12 +60,23 @@ impl Account {
         password: &str,
     ) -> Result<Account, DatabaseError> {
         let account = sqlx::query_as!(
-        Account,
-        r#"SELECT user_id, organization_id, email, password, role AS "role!: Role", created_at, updated_at FROM account WHERE email = $1 AND password = $2"#,
-        email, sha256::digest(password)
-    )
-    .fetch_one(pool)
-    .await?;
+            Account,
+            r#"SELECT
+                a.user_id,
+                a.organization_id,
+                a.email,
+                a.password,
+                a.role AS "role!: Role",
+                a.created_at,
+                a.updated_at
+              FROM account a
+              JOIN organization o ON a.organization_id = o.organization_id
+              WHERE a.email = $1 AND a.password = $2 AND o.verified = TRUE"#,
+            email,
+            sha256::digest(password)
+        )
+        .fetch_one(pool)
+        .await?;
 
         Ok(account)
     }
@@ -89,22 +100,12 @@ impl Account {
 
     pub async fn get(pool: &PgPool, id: u64) -> Result<Account, DatabaseError> {
         let account = sqlx::query_as!(
-            Account,
-            r#"SELECT
-                a.user_id,
-                a.organization_id,
-                a.email,
-                a.password,
-                a.role AS "role!: Role",
-                a.created_at,
-                a.updated_at
-              FROM account a
-              JOIN organization o ON a.organization_id = o.organization_id
-              WHERE a.email = $1 AND o.verified = TRUE"#,
-            id as i64
-        )
-        .fetch_one(pool)
-        .await?;
+        Account,
+        r#"SELECT user_id, organization_id, email, password, role AS "role!: Role", created_at, updated_at FROM account WHERE user_id = $1"#,
+        id as i64
+    )
+    .fetch_one(pool)
+    .await?;
 
         Ok(account)
     }
@@ -112,26 +113,16 @@ impl Account {
     pub async fn exists(pool: &PgPool, email: &str) -> Result<bool, DatabaseError> {
         match sqlx::query_as!(
             Account,
-            r#"SELECT
-                a.user_id,
-                a.organization_id,
-                a.email,
-                a.password,
-                a.role AS "role!: Role",
-                a.created_at,
-                a.updated_at
-              FROM account a
-              JOIN organization o ON a.organization_id = o.organization_id
-              WHERE a.email = $1 AND o.verified = TRUE"#,
-            email
-        )
-        .fetch_one(pool)
-        .await
-        {
-            Ok(_) => Ok(true),
-            Err(sqlx::Error::RowNotFound) => Ok(false),
-            Err(err) => Err(err.into()),
-        }
+            r#"SELECT user_id, organization_id, email, password, role AS "role!: Role", created_at, updated_at FROM account WHERE email = $1"#,
+            email)
+            .fetch_one(pool)
+            .await
+            {
+                Ok(_) => Ok(true),
+                Err(sqlx::Error::RowNotFound) => Ok(false),
+                Err(err) => Err(err.into())
+
+            }
     }
 
     pub async fn set_verification(
