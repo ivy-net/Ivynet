@@ -14,6 +14,7 @@ pub enum SettingsType {
 }
 
 #[derive(sqlx::FromRow, Deserialize, Serialize, Clone, Debug)]
+#[derive(Default)]
 pub struct OrganizationNotifications {
     pub organization_id: i64,
     pub email: bool,
@@ -23,18 +24,6 @@ pub struct OrganizationNotifications {
     pub updated_at: Option<NaiveDateTime>,
 }
 
-impl Default for OrganizationNotifications {
-    fn default() -> Self {
-        Self {
-            organization_id: 0,
-            email: false,
-            telegram: false,
-            pagerduty: false,
-            created_at: None,
-            updated_at: None,
-        }
-    }
-}
 
 #[derive(sqlx::FromRow, Deserialize, Serialize, Clone, Debug)]
 pub struct OrganizationNotificationsSettings {
