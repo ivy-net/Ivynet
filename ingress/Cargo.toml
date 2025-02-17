@@ -29,5 +29,8 @@ sqlx = { version = "0.8.3", features = [
 	"bigdecimal",
 ] }
 
+[dev-dependencies]
+ivynet-notifications.workspace = true
+
 [lints]
 workspace = true

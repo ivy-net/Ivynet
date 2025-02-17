@@ -132,6 +132,7 @@ impl ActiveAlert {
         let alert_id = alert.generate_uuid();
         let alert_type_id: i32 = alert.alert_type.clone().into();
         let alert_data = Some(serde_json::json!(alert.alert_type));
+        println!("Inserting alert: {:?}", alert);
         sqlx::query!(
             r#"
             INSERT INTO alerts_active (
