@@ -10,8 +10,9 @@ use axum_extra::extract::CookieJar;
 use db::{
     avs::Avs,
     machine::Machine,
+    notifications::SettingsType,
     verification::{Verification, VerificationType},
-    Account, Organization, Role,
+    Account, Organization, OrganizationNotifications, OrganizationNotificationsSettings, Role,
 };
 use sendgrid::v3::{Email, Message, Personalization};
 use serde::{Deserialize, Serialize};
@@ -47,6 +48,55 @@ pub struct ConfirmationResponse {
 pub struct InvitationRequest {
     pub email: String,
     pub role: Role,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
+pub struct TelegramSettings {
+    pub enabled: bool,
+    pub chats: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
+pub struct PagerDutySettings {
+    pub enabled: bool,
+    pub integration_key: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
+pub struct EmailSettings {
+    pub enabled: bool,
+    pub emails: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
+pub struct NotificationSettings {
+    pub telegram: TelegramSettings,
+    pub email: EmailSettings,
+    pub pagerduty: PagerDutySettings,
+}
+
+impl From<(OrganizationNotifications, Vec<OrganizationNotificationsSettings>)>
+    for NotificationSettings
+{
+    fn from(value: (OrganizationNotifications, Vec<OrganizationNotificationsSettings>)) -> Self {
+        let mut emails = Vec::new();
+        let mut chats = Vec::new();
+        let mut integration_key = None;
+
+        for setting in value.1 {
+            match setting.settings_type {
+                SettingsType::Email => emails.push(setting.settings_value.clone()),
+                SettingsType::Telegram => chats.push(setting.settings_value.clone()),
+                SettingsType::PagerDuty => integration_key = Some(setting.settings_value.clone()),
+            }
+        }
+
+        Self {
+            email: EmailSettings { enabled: value.0.email, emails },
+            telegram: TelegramSettings { enabled: value.0.telegram, chats },
+            pagerduty: PagerDutySettings { enabled: value.0.pagerduty, integration_key },
+        }
+    }
 }
 
 /// Create a new organization
@@ -267,4 +317,84 @@ pub async fn confirm(
     verification.delete(&state.pool).await?;
 
     Ok(ConfirmationResponse { success: true }.into())
+}
+
+/// Listing current notification settings for organization
+#[utoipa::path(
+    get,
+    path = "/organization/notifications",
+    responses(
+        (status = 200, body = NotificationSettings),
+        (status = 404)
+    )
+)]
+pub async fn get_notification_settings(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+) -> Result<Json<NotificationSettings>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+
+    let notifications =
+        OrganizationNotifications::get(&state.pool, account.organization_id as u64).await?;
+    let not_settings = OrganizationNotifications::get_notification_settings(
+        &state.pool,
+        account.organization_id as u64,
+        None,
+    )
+    .await?;
+
+    let response: NotificationSettings = (notifications, not_settings).into();
+
+    Ok(response.into())
+}
+
+/// Setting new notification settings
+#[utoipa::path(
+    post,
+    path = "/organization/notifications",
+    params(
+        ("settings", description = "New notification settings to set")
+    ),
+    responses(
+        (status = 200, body = NotificationSettings),
+        (status = 404)
+    )
+)]
+pub async fn set_notification_settings(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Json(settings): Json<NotificationSettings>,
+) -> Result<Json<NotificationSettings>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    if !account.role.can_write() {
+        return Err(BackendError::InsufficientPriviledges);
+    }
+
+    OrganizationNotifications::set(
+        &state.pool,
+        account.organization_id as u64,
+        settings.email.enabled,
+        settings.telegram.enabled,
+        settings.pagerduty.enabled,
+    )
+    .await?;
+    OrganizationNotifications::set_emails(
+        &state.pool,
+        account.organization_id as u64,
+        &settings.email.emails,
+    )
+    .await?;
+
+    if let Some(ref integration_key) = settings.pagerduty.integration_key {
+        OrganizationNotifications::set_pagerduty_integration(
+            &state.pool,
+            account.organization_id as u64,
+            integration_key,
+        )
+        .await?;
+    }
+
+    Ok(settings.into())
 }

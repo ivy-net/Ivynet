@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT\n                    organization_id,\n                    email, telegram, pagerduty,\n                    created_at, updated_at\n               FROM\n                    organization_notifications\n               WHERE\n                    organization_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "organization_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "email",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 2,
+        "name": "telegram",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "pagerduty",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 5,
+        "name": "updated_at",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "97ffdd951ddf7f52f7ad00ccc0c3743ee02565d4bba409cffc36cdd571a5a212"
+}

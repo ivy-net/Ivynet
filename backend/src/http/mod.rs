@@ -100,7 +100,9 @@ fn create_router() -> Router<HttpState> {
                 .route("/invite", post(organization::invite))
                 .route("/confirm/:id", get(organization::confirm))
                 .route("/machines", get(organization::machines))
-                .route("/avses", get(organization::avses)),
+                .route("/avses", get(organization::avses))
+                .route("/notifications", get(organization::get_notification_settings))
+                .route("/notifications", post(organization::set_notification_settings)),
         )
         .nest(
             "/client",
