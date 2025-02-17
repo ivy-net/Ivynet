@@ -1,11 +1,10 @@
 {
   "db_name": "PostgreSQL",
-  "query": "DELETE FROM\n                notification_settings\n               WHERE\n                organization_id = $1 AND settings_type = $2 AND settings_value = $3",
+  "query": "DELETE FROM\n                notification_settings\n               WHERE\n                settings_type = $1 AND settings_value = $2",
   "describe": {
     "columns": [],
     "parameters": {
       "Left": [
-        "Int8",
         {
           "Custom": {
             "name": "notification_type",
@@ -23,5 +22,5 @@
     },
     "nullable": []
   },
-  "hash": "21d04c9ee0c6794d94c7cb194161b294650c95ac598f6f90250d9b49c9bb8d7c"
+  "hash": "19be860a9a6172b91522bd68e84b50437dd6e048ff1d8cd282c7079065e5b820"
 }

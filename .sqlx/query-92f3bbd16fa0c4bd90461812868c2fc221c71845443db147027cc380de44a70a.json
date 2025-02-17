@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                alert_id,\n                alert_type,\n                machine_id,\n                organization_id,\n                client_id,\n                node_name,\n                created_at,\n                acknowledged_at,\n                resolved_at\n            FROM\n                alerts_historical\n            WHERE\n                alert_id = $1\n            ",
+  "query": "\n            SELECT\n                alert_id,\n                alert_type,\n                machine_id,\n                organization_id,\n                client_id,\n                node_name,\n                created_at,\n                acknowledged_at,\n                resolved_at,\n                custom_data\n            FROM\n                alerts_historical\n            WHERE\n                alert_id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -47,6 +47,11 @@
         "ordinal": 8,
         "name": "resolved_at",
         "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 9,
+        "name": "custom_data",
+        "type_info": "Jsonb"
       }
     ],
     "parameters": {
@@ -63,8 +68,9 @@
       false,
       false,
       true,
-      false
+      false,
+      true
     ]
   },
-  "hash": "d9fde13c66ee1a78f44c0a35e7b85ba1fa4b56942b36da20dbc19bc4dc840c64"
+  "hash": "92f3bbd16fa0c4bd90461812868c2fc221c71845443db147027cc380de44a70a"
 }
