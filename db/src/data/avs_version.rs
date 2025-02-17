@@ -78,8 +78,7 @@ impl From<&NodeType> for VersionType {
 impl VersionType {
     pub fn fixed_name(node_type: &NodeType, chain: &Chain) -> Option<&'static str> {
         match (node_type, chain) {
-            (NodeType::LagrangeZkWorker, Chain::Holesky) => Some("holesky"),
-            (NodeType::LagrangeZkWorker, Chain::Mainnet) => Some("mainnet"),
+            (NodeType::LagrangeZkWorker, _) => Some("latest"),
             (NodeType::LagrangeZKProver, _) => Some("latest"),
             (NodeType::Gasp, _) => Some("latest"),
             (NodeType::K3LabsAvs, _) => Some("latest"),
