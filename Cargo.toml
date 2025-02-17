@@ -106,7 +106,7 @@ sqlx = { version = "0.8", features = [
 ] }
 strum = { version = "0.26.3", features = ["derive"] }
 tar = "0.4.43"
-tempfile = "3.10.1"
+tempfile = "3.17.0"
 thiserror = "2.0.3"
 tokio = { version = "1.37.0", features = ["full"] }
 tokio-stream = { version = "0.1.15", features = ["net"] }
