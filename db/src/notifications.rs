@@ -89,7 +89,7 @@ impl OrganizationNotifications {
         Ok(())
     }
 
-    pub async fn add_chat(pool: &PgPool, id: u64, chat_id: String) -> Result<(), DatabaseError> {
+    pub async fn add_chat(pool: &PgPool, id: u64, chat_id: &str) -> Result<(), DatabaseError> {
         sqlx::query_as!(
             OrganizationNotificationsSettings,
             r#"INSERT INTO
@@ -106,13 +106,12 @@ impl OrganizationNotifications {
         Ok(())
     }
 
-    pub async fn remove_chat(pool: &PgPool, id: u64, chat_id: String) -> Result<(), DatabaseError> {
+    pub async fn remove_chat(pool: &PgPool, chat_id: &str) -> Result<(), DatabaseError> {
         sqlx::query!(
             r#"DELETE FROM
                 notification_settings
                WHERE
-                organization_id = $1 AND settings_type = $2 AND settings_value = $3"#,
-            id as i64,
+                settings_type = $1 AND settings_value = $2"#,
             SettingsType::Telegram as SettingsType,
             chat_id
         )

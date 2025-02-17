@@ -335,8 +335,9 @@ pub async fn get_notification_settings(
 ) -> Result<Json<NotificationSettings>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
 
-    let notifications =
-        OrganizationNotifications::get(&state.pool, account.organization_id as u64).await?;
+    let notifications = OrganizationNotifications::get(&state.pool, account.organization_id as u64)
+        .await
+        .unwrap_or_default();
     let not_settings = OrganizationNotifications::get_notification_settings(
         &state.pool,
         account.organization_id as u64,

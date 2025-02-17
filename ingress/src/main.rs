@@ -20,6 +20,7 @@ async fn main() -> Result<(), IngressError> {
 
     let grpc_service = grpc::backend_serve(
         pool.clone(),
+        config.clone().into(),
         config.grpc_tls_cert,
         config.grpc_tls_key,
         config.grpc_port,

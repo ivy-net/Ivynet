@@ -124,10 +124,10 @@ fn message(notification: &Notification) -> String {
 
 fn avs_if_any(notification: &Notification) -> Option<String> {
     match &notification.notification_type {
-        NotificationType::NodeNotRunning(avs) |
-        NotificationType::NoChainInfo(avs) |
-        NotificationType::NoMetrics(avs) |
-        NotificationType::NoOperatorId(avs) => Some(avs.to_owned()),
+        NotificationType::NodeNotRunning(avs)
+        | NotificationType::NoChainInfo(avs)
+        | NotificationType::NoMetrics(avs)
+        | NotificationType::NoOperatorId(avs) => Some(avs.to_owned()),
         NotificationType::LowPerformaceScore { avs, performance: _ } => Some(avs.to_owned()),
         NotificationType::NeedsUpdate { avs, current_version: _, recommended_version: _ } => {
             Some(avs.to_owned())
@@ -199,13 +199,13 @@ mod pagerduty_live_test {
             db.remove_chat(chat_id)
         }
 
-        async fn get_emails_for_organization(&self, _organization_id: u64) -> Vec<String> {
-            Vec::new()
+        async fn get_emails_for_organization(&self, _organization_id: u64) -> HashSet<String> {
+            HashSet::new()
         }
 
-        async fn get_chats_for_organization(&self, organization_id: u64) -> Vec<String> {
+        async fn get_chats_for_organization(&self, organization_id: u64) -> HashSet<String> {
             let db = self.0.lock().await;
-            db.chats_for(organization_id).iter().cloned().collect::<Vec<_>>()
+            db.chats_for(organization_id)
         }
 
         async fn get_pd_integration_key_for_organization(

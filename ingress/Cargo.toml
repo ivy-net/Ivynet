@@ -20,6 +20,7 @@ ivynet-docker-registry.workspace = true
 ivynet-grpc.workspace = true
 ivynet-node-type.workspace = true
 ivynet-signer.workspace = true
+ivynet-notifications.workspace = true
 sqlx = { version = "0.8.3", features = [
 	"postgres",
 	"chrono",

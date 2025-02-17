@@ -3,8 +3,10 @@ use std::{collections::HashMap, sync::Arc};
 use ivynet_core::ethers::types::Chain;
 use ivynet_grpc::messages::NodeDataV2;
 use ivynet_node_type::NodeType;
-use ivynet_notifications::NotificationType;
-use serde::{Deserialize, Serialize};
+use ivynet_notifications::{
+    NotificationConfig, NotificationDispatcher, NotificationDispatcherError, NotificationType,
+};
+
 use sqlx::{types::Uuid, PgPool};
 
 use crate::{
@@ -17,7 +19,10 @@ use crate::{
     Avs, DbAvsVersionData,
 };
 
-use super::alerts_active::{ActiveAlert, NewAlert};
+use super::{
+    alert_db::AlertDb,
+    alerts_active::{ActiveAlert, NewAlert},
+};
 
 pub const RUNNING_METRIC: &str = "running";
 pub const EIGEN_PERFORMANCE_METRIC: &str = "eigen_performance_score";
@@ -38,16 +43,25 @@ pub struct NoMetricsAlert {
 pub enum AlertError {
     #[error(transparent)]
     DbError(#[from] DatabaseError),
+    #[error(transparent)]
+    NotificationError(#[from] NotificationDispatcherError),
 }
 
-#[derive(Debug, Clone)]
 pub struct AlertHandler {
+    dispatcher: NotificationDispatcher<AlertDb>,
     db_executor: Arc<PgPool>,
 }
 
 impl AlertHandler {
-    pub fn new(db_executor: Arc<PgPool>) -> Self {
-        Self { db_executor }
+    pub fn new(notification_config: NotificationConfig, db_executor: Arc<PgPool>) -> Self {
+        let dispatcher =
+            NotificationDispatcher::new(notification_config, AlertDb::new(db_executor.clone()));
+        Self { dispatcher, db_executor }
+    }
+
+    pub async fn serve(&self) -> Result<(), AlertError> {
+        self.dispatcher.serve().await?;
+        Ok(())
     }
 
     pub async fn handle_node_data_alerts(
@@ -56,6 +70,8 @@ impl AlertHandler {
         machine_id: Uuid,
     ) -> Result<(), AlertError> {
         let raw_alerts = extract_node_data_alerts(&self.db_executor, machine_id, &node_data).await;
+        // TODO: I still need to build Notification structs for each NotificationType I get here.
+        // And I'm not sure how yet...
         let alerts = raw_alerts
             .into_iter()
             .map(|alert| NewAlert::new(machine_id, alert, node_data.name.clone()))

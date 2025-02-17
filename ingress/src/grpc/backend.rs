@@ -26,6 +26,7 @@ use ivynet_grpc::{
 
 use ivynet_docker::logs::{find_log_level, find_or_create_log_timestamp, sanitize_log};
 use ivynet_node_type::NodeType;
+use ivynet_notifications::NotificationConfig;
 use sqlx::PgPool;
 use std::{str::FromStr, sync::Arc};
 use tracing::debug;
@@ -34,13 +35,13 @@ use uuid::Uuid;
 use super::data_validator::validate_request;
 
 pub struct BackendService {
+    pub alert_handler: AlertHandler,
     pool: Arc<PgPool>,
-    alert_handler: AlertHandler,
 }
 
 impl BackendService {
     pub fn new(pool: Arc<PgPool>, alert_handler: AlertHandler) -> Self {
-        Self { pool, alert_handler }
+        Self { alert_handler, pool }
     }
 }
 
@@ -265,12 +266,15 @@ impl Backend for BackendService {
 
 pub async fn serve(
     pool: Arc<PgPool>,
+    notification_config: NotificationConfig,
     tls_cert: Option<String>,
     tls_key: Option<String>,
     port: u16,
 ) -> Result<(), IngressError> {
     tracing::info!("Starting GRPC server on port {port}");
-    let alert_actor_handle = AlertHandler::new(pool.clone());
+    // TODO: Not sure how to handle serving from inside of the alert handle to work with
+    // telegram... yet
+    let alert_actor_handle = AlertHandler::new(notification_config, pool.clone());
     server::Server::new(
         BackendServer::new(BackendService::new(pool, alert_actor_handle)),
         tls_cert,
