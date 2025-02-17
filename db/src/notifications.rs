@@ -13,8 +13,7 @@ pub enum SettingsType {
     PagerDuty,
 }
 
-#[derive(sqlx::FromRow, Deserialize, Serialize, Clone, Debug)]
-#[derive(Default)]
+#[derive(sqlx::FromRow, Deserialize, Serialize, Clone, Debug, Default)]
 pub struct OrganizationNotifications {
     pub organization_id: i64,
     pub email: bool,
@@ -23,7 +22,6 @@ pub struct OrganizationNotifications {
     pub created_at: Option<NaiveDateTime>,
     pub updated_at: Option<NaiveDateTime>,
 }
-
 
 #[derive(sqlx::FromRow, Deserialize, Serialize, Clone, Debug)]
 pub struct OrganizationNotificationsSettings {
