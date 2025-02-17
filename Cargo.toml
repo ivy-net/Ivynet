@@ -10,7 +10,7 @@ members = [
 	"ivynet-grpc",
 	"ivynet-io",
 	"ivynet-node-type",
-    "ivynet-notifications",
+	"ivynet-notifications",
 	"ivynet-signer",
 	"db",
 	"ingress",
@@ -67,6 +67,7 @@ ivynet-docker-registry = { path = "ivynet-docker-registry" }
 ivynet-grpc = { path = "ivynet-grpc" }
 ivynet-io = { path = "ivynet-io" }
 ivynet-node-type = { path = "ivynet-node-type" }
+ivynet-notifications = { path = "ivynet-notifications" }
 ivynet-signer = { path = "ivynet-signer" }
 
 #grpc

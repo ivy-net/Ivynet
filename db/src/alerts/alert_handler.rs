@@ -3,6 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use ivynet_core::ethers::types::Chain;
 use ivynet_grpc::messages::NodeDataV2;
 use ivynet_node_type::NodeType;
+use ivynet_notifications::NotificationType;
 use serde::{Deserialize, Serialize};
 use sqlx::{types::Uuid, PgPool};
 
@@ -31,40 +32,6 @@ pub enum UuidAlertType {
 pub struct NoMetricsAlert {
     pub machine_id: Uuid,
     pub node_name: String,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum AlertType {
-    Custom = 1,
-    ActiveSetNoDeployment = 2,
-    CrashedNode = 3,
-    HardwareResourceUsage = 4,
-    LowPerformanceScore = 5,
-    NeedsUpdate = 6,
-    NoChainInfo = 7,
-    NodeNotRunning = 8,
-    NoMetrics = 9,
-    NoOperatorId = 10,
-    UnregisteredFromActiveSet = 11,
-}
-
-impl From<i64> for AlertType {
-    fn from(value: i64) -> Self {
-        match value {
-            1 => AlertType::Custom,
-            2 => AlertType::ActiveSetNoDeployment,
-            3 => AlertType::CrashedNode,
-            4 => AlertType::HardwareResourceUsage,
-            5 => AlertType::LowPerformanceScore,
-            6 => AlertType::NeedsUpdate,
-            7 => AlertType::NoChainInfo,
-            8 => AlertType::NodeNotRunning,
-            9 => AlertType::NoMetrics,
-            10 => AlertType::NoOperatorId,
-            11 => AlertType::UnregisteredFromActiveSet,
-            _ => AlertType::Custom,
-        }
-    }
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -102,7 +69,7 @@ async fn extract_node_data_alerts(
     pool: &PgPool,
     machine_id: Uuid,
     node_data: &NodeDataV2,
-) -> Vec<AlertType> {
+) -> Vec<NotificationType> {
     let mut alerts = vec![];
 
     // Necessary db calls to compare state
@@ -121,24 +88,24 @@ async fn extract_node_data_alerts(
     if let Some(datetime) = avs.updated_at {
         let now = chrono::Utc::now().naive_utc();
         if now.signed_duration_since(datetime).num_minutes() > IDLE_MINUTES_THRESHOLD {
-            alerts.push(AlertType::CrashedNode);
+            // alerts.push(NotificationType::CrashedNode);
 
             if avs.active_set {
-                alerts.push(AlertType::ActiveSetNoDeployment);
+                // alerts.push(NotificationType::ActiveSetNoDeployment);
             }
         }
     }
 
     if !node_data.metrics_alive() {
-        alerts.push(AlertType::NoMetrics);
+        alerts.push(NotificationType::NoMetrics(node_data.name.clone()));
     }
 
     if !node_data.node_running() {
-        alerts.push(AlertType::NodeNotRunning);
+        alerts.push(NotificationType::NodeNotRunning(node_data.name.clone()));
     }
 
     if avs.chain.is_none() {
-        alerts.push(AlertType::NoChainInfo);
+        alerts.push(NotificationType::NoChainInfo(node_data.name.clone()));
     } else if let Some(chain) = avs.chain {
         if let Ok(version_map) = version_map {
             let update_status = get_update_status(
@@ -150,14 +117,17 @@ async fn extract_node_data_alerts(
             );
             if update_status == UpdateStatus::Outdated || update_status == UpdateStatus::Updateable
             {
-                alerts.push(AlertType::NeedsUpdate);
+                alerts.push(NotificationType::NeedsUpdate {
+                    avs: node_data.name.clone(),
+                    current_version: avs.avs_version.clone(),
+                    recommended_version: todo!("Return recommended version from db"),
+                });
             }
         }
     }
 
-    // WARN: This doesn't seem correct, as it's pulling from the db.
     if avs.operator_address.is_none() {
-        alerts.push(AlertType::NoOperatorId);
+        alerts.push(NotificationType::NoOperatorId(node_data.name.clone()));
     }
 
     alerts

@@ -3,6 +3,7 @@ use std::collections::HashSet;
 use ethers::types::H160;
 use pagerduty::PagerDutySender;
 use sendgrid::EmailSender;
+use serde::{Deserialize, Serialize};
 use telegram::TelegramBot;
 use uuid::Uuid;
 
@@ -31,18 +32,64 @@ pub struct Notification {
     pub resolved: bool,
 }
 
-#[derive(Debug, Clone)]
+/// Integer flags used primarily for identification with the From<> trait, as the actual values are
+/// unusable for `as i32` conversions as they have associated fields. This apparently also
+/// suppresses null-pointer optimization.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq)]
+#[repr(i32)]
 pub enum NotificationType {
-    Custom(String),
-    UnregisteredFromActiveSet { avs: String, address: H160 },
-    MachineNotResponding,
-    NodeNotRunning(String),
-    NoChainInfo(String),
-    NoMetrics(String),
-    NoOperatorId(String),
-    HardwareResourceUsage { resource: String, percent: u16 },
-    LowPerformaceScore { avs: String, performance: u16 },
-    NeedsUpdate { avs: String, current_version: String, recommended_version: String },
+    /// Custom message
+    Custom(String) = 0,
+    /// User ETH address
+    UnregisteredFromActiveSet {
+        avs: String,
+        address: H160,
+    } = 1,
+    MachineNotResponding = 2,
+    /// Node name
+    NodeNotRunning(String) = 3,
+    /// Node name
+    NoChainInfo(String) = 4,
+    /// Node name
+    NoMetrics(String) = 5,
+    /// Node name
+    NoOperatorId(String) = 6,
+    HardwareResourceUsage {
+        resource: String,
+        percent: u16,
+    } = 7,
+    LowPerformaceScore {
+        avs: String,
+        performance: u16,
+    } = 8,
+    NeedsUpdate {
+        avs: String,
+        current_version: String,
+        recommended_version: String,
+    } = 9,
+}
+
+impl From<NotificationType> for i32 {
+    fn from(notification_type: NotificationType) -> Self {
+        match notification_type {
+            NotificationType::Custom(_) => 0,
+            NotificationType::UnregisteredFromActiveSet { .. } => 1,
+            NotificationType::MachineNotResponding => 2,
+            NotificationType::NodeNotRunning(_) => 3,
+            NotificationType::NoChainInfo(_) => 4,
+            NotificationType::NoMetrics(_) => 5,
+            NotificationType::NoOperatorId(_) => 6,
+            NotificationType::HardwareResourceUsage { .. } => 7,
+            NotificationType::LowPerformaceScore { .. } => 8,
+            NotificationType::NeedsUpdate { .. } => 9,
+        }
+    }
+}
+
+impl From<NotificationType> for i64 {
+    fn from(notification_type: NotificationType) -> Self {
+        i32::from(notification_type) as i64
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

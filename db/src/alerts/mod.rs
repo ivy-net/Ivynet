@@ -4,7 +4,7 @@ pub mod alerts_historical;
 
 #[cfg(test)]
 mod test_alerts_db {
-    use alert_handler::AlertType;
+    use ivynet_notifications::NotificationType;
     use sqlx::PgPool;
     use uuid::Uuid;
 
@@ -25,7 +25,7 @@ mod test_alerts_db {
         let num_alerts = alerts_active.len();
 
         let new_alert = alerts_active::NewAlert {
-            alert_type: AlertType::Custom,
+            alert_type: NotificationType::Custom("test".to_string()),
             machine_id: Uuid::parse_str("dcbf22c7-9d96-47ac-bf06-62d6544e440d").unwrap(),
             node_name: "test".to_string(),
             created_at: chrono::Utc::now().naive_utc(),
