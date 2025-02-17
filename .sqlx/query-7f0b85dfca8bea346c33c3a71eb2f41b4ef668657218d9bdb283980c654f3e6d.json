@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT user_id, organization_id, email, password, role AS \"role!: Role\", created_at, updated_at FROM account WHERE user_id = $1",
+  "query": "SELECT\n                a.user_id,\n                a.organization_id,\n                a.email,\n                a.password,\n                a.role AS \"role!: Role\",\n                a.created_at,\n                a.updated_at\n              FROM account a\n              JOIN organization o ON a.organization_id = o.organization_id\n              WHERE a.email = $1 AND o.verified = TRUE",
   "describe": {
     "columns": [
       {
@@ -53,7 +53,7 @@
     ],
     "parameters": {
       "Left": [
-        "Int8"
+        "Text"
       ]
     },
     "nullable": [
@@ -66,5 +66,5 @@
       false
     ]
   },
-  "hash": "bd3759e686c729c44acf209aa7807c71f14f876e53088436b5cda3445c637dfd"
+  "hash": "7f0b85dfca8bea346c33c3a71eb2f41b4ef668657218d9bdb283980c654f3e6d"
 }
