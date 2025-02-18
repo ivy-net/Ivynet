@@ -1,5 +1,5 @@
 use crate::error::DatabaseError;
-use ivynet_core::ethers::types::{Address, Chain};
+use ivynet_error::ethers::types::{Address, Chain};
 use ivynet_grpc::backend_events::RegistrationEvent;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;

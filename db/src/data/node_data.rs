@@ -1,6 +1,6 @@
-use ivynet_core::directory::{avs_contract, get_chained_avs_map};
 use ivynet_docker_registry::{registry::ImageRegistry, registry_type::RegistryType};
 use ivynet_node_type::{
+    directory::{avs_contract, get_chained_avs_map},
     restaking_protocol::{RestakingProtocol, RestakingProtocolType},
     NodeType,
 };
@@ -17,7 +17,7 @@ use crate::{
     operator_keys::OperatorKey,
     Avs, AvsActiveSet, AvsVersionHash,
 };
-use ivynet_core::ethers::types::Chain;
+use ivynet_error::ethers::types::Chain;
 
 use super::avs_version::{extract_semver, VersionType};
 

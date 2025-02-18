@@ -1,5 +1,5 @@
 use db::machine::Machine;
-use ivynet_core::ethers::types::{Signature, H160};
+use ivynet_error::ethers::types::{Signature, H160};
 
 use ivynet_grpc::{
     self,

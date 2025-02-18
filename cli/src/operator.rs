@@ -1,5 +1,5 @@
 use clap::Parser;
-use ivynet_core::{config::IvyConfig, ethers::core::types::Address};
+use ivynet_error::{config::IvyConfig, ethers::core::types::Address};
 
 use crate::error::Error;
 

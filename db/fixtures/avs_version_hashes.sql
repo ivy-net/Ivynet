@@ -24,7 +24,7 @@ INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('k-3-labs-avs', '
 INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('k-3-labs-avs', 'sha256:2a0bcaa6755ac7898901f898a1cbb2db7bd56e375cbe8943ac3b9929b3518613', 'latest');
 INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('lagrange-zk-worker', 'sha256:23ec9fb79730285054e21037a9c3b9d16b81f53ec381ca6e37fd757ca8c8a1e8', 'develop');
 INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('lagrange-zk-worker', 'sha256:8e9276e81975be0f7920f76d1123a4f2cb5a9b5985db482d3b96e245607ee71d', 'holesky');
-INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('lagrange-zk-worker', 'sha256:e3d800fafd1a97a1a424da3ba9e278003c6946948a7de8cfb8b8fe96933430f5', 'mainnet');
+INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('lagrange-zk-worker', 'sha256:e3d800fafd1a97a1a424da3ba9e278003c6946948a7de8cfb8b8fe96933430f5', 'latest');
 INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('lagrange-zk-worker', 'sha256:54865599a7d47bfae9ed16abb3f67fb3fa7738fda0ed98cf7c6cee81568f1fca', 'v0.2.0');
 INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('lagrange-zk-worker', 'sha256:575f346ce8848dc03b2ad6c005c391f141d494427dc43afeb7a9132a50390122', 'v0.3.0');
 INSERT INTO avs_version_hash (avs_type, hash, version) VALUES ('lagrange-zk-worker', 'sha256:37e4fceae6675e03a2cfc4c6ec103478eff6ab0b40319d808f784c840cfea4a3', 'v1.0.0');
