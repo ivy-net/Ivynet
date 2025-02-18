@@ -1,7 +1,8 @@
 use std::collections::HashMap;
 
+use super::utils::try_parse_chain;
 use chrono::NaiveDateTime;
-use ivynet_core::{ethers::types::Chain, utils::try_parse_chain};
+use ethers::types::Chain;
 use ivynet_node_type::NodeType;
 use serde::{Deserialize, Serialize};
 use sqlx::{query, PgPool};

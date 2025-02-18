@@ -1527,10 +1527,13 @@ name = "db"
 version = "0.5.0"
 dependencies = [
  "chrono",
- "ivynet-core",
+ "ethers",
  "ivynet-docker-registry",
+ "ivynet-error",
  "ivynet-grpc",
  "ivynet-node-type",
+ "prost-build",
+ "prost-wkt-build",
  "regex",
  "semver",
  "serde",
@@ -1539,6 +1542,8 @@ dependencies = [
  "sqlx",
  "thiserror 2.0.11",
  "tokio",
+ "tonic",
+ "tonic-build",
  "utoipa",
  "uuid 1.12.1",
 ]
@@ -3439,8 +3444,8 @@ dependencies = [
  "db",
  "ethers",
  "futures",
- "ivynet-core",
  "ivynet-docker-registry",
+ "ivynet-error",
  "ivynet-grpc",
  "ivynet-node-type",
  "memcache",
@@ -3458,47 +3463,6 @@ dependencies = [
  "utoipa",
  "utoipa-swagger-ui",
  "uuid 1.12.1",
-]
-
-[[package]]
-name = "ivynet-core"
-version = "0.5.1"
-dependencies = [
- "dialoguer",
- "dirs",
- "docker-compose-types",
- "dotenvy",
- "ethers",
- "futures-util",
- "indexmap 2.7.1",
- "indicatif",
- "ivynet-docker",
- "ivynet-grpc",
- "ivynet-io",
- "ivynet-macros",
- "ivynet-node-type",
- "ivynet-signer",
- "once_cell",
- "prost-build",
- "prost-wkt-build",
- "regex",
- "reqwest 0.12.12",
- "rustc-hex",
- "semver",
- "serde",
- "serde_json",
- "serde_yaml",
- "serial_test",
- "sqlx",
- "tempfile",
- "thiserror 2.0.11",
- "tokio",
- "toml",
- "tonic",
- "tonic-build",
- "tracing",
- "url",
- "zip 2.2.2",
 ]
 
 [[package]]
@@ -3538,6 +3502,46 @@ dependencies = [
 ]
 
 [[package]]
+name = "ivynet-error"
+version = "0.5.1"
+dependencies = [
+ "dialoguer",
+ "dirs",
+ "docker-compose-types",
+ "dotenvy",
+ "ethers",
+ "futures-util",
+ "indexmap 2.7.1",
+ "indicatif",
+ "ivynet-docker",
+ "ivynet-grpc",
+ "ivynet-io",
+ "ivynet-macros",
+ "ivynet-node-type",
+ "ivynet-signer",
+ "once_cell",
+ "prost-build",
+ "prost-wkt-build",
+ "regex",
+ "reqwest 0.12.12",
+ "rustc-hex",
+ "semver",
+ "serde",
+ "serde_json",
+ "serde_yaml",
+ "serial_test",
+ "sqlx",
+ "tempfile",
+ "thiserror 2.0.11",
+ "tokio",
+ "toml",
+ "tonic-build",
+ "tracing",
+ "url",
+ "zip 2.2.2",
+]
+
+[[package]]
 name = "ivynet-grpc"
 version = "0.5.1"
 dependencies = [
@@ -3563,9 +3567,9 @@ version = "0.5.1"
 dependencies = [
  "clap",
  "db",
- "ivynet-core",
  "ivynet-docker",
  "ivynet-docker-registry",
+ "ivynet-error",
  "ivynet-grpc",
  "ivynet-node-type",
  "ivynet-signer",
@@ -3602,6 +3606,8 @@ name = "ivynet-node-type"
 version = "0.5.0"
 dependencies = [
  "convert_case 0.6.0",
+ "ethers",
+ "ivynet-macros",
  "serde",
  "serde_json",
  "strum",
@@ -3632,6 +3638,7 @@ dependencies = [
  "blsful",
  "dialoguer",
  "dirs",
+ "dotenvy",
  "eth-keystore",
  "ethers",
  "ivynet-grpc",
@@ -5556,8 +5563,9 @@ dependencies = [
  "clap",
  "ethers",
  "futures",
- "ivynet-core",
+ "ivynet-error",
  "ivynet-grpc",
+ "ivynet-node-type",
  "serde_json",
  "thiserror 2.0.11",
  "tokio",

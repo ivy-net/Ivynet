@@ -7,12 +7,12 @@ use db::{
     avs_version::DbAvsVersionData,
     configure,
     data::avs_version::{find_latest_avs_version, VersionType},
+    utils::try_parse_chain,
 };
 use ethers::types::Chain;
 use ivynet_backend::{
     config::Config, error::BackendError, get_node_version_hashes, http, telemetry::start_tracing,
 };
-use ivynet_core::utils::try_parse_chain;
 use ivynet_node_type::{ActiveSet, AltlayerType, MachType, NodeType};
 use sqlx::PgPool;
 use strum::IntoEnumIterator;

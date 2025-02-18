@@ -15,11 +15,11 @@ sqlx = { version = "0.8", features = [
 	"uuid",
 	"bigdecimal",
 ] }
-ivynet-core.workspace = true
+ivynet-error.workspace = true
 ivynet-node-type.workspace = true
 ivynet-docker-registry.workspace = true
 ivynet-grpc.workspace = true
-
+tonic.workspace = true
 chrono.workspace = true
 regex.workspace = true
 sha256 = "1.5.0"
@@ -30,9 +30,15 @@ tokio.workspace = true
 thiserror.workspace = true
 uuid = { version = "1.11.0", features = ["v4", "serde"] }
 utoipa = { version = "4.2.3", features = ["axum_extras"] }
+ethers.workspace = true
 
 [lints]
 workspace = true
 
 [features]
 db_tests = []
+
+[build-dependencies]
+prost-build.workspace = true
+prost-wkt-build.workspace = true
+tonic-build.workspace = true

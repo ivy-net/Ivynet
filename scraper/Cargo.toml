@@ -14,10 +14,12 @@ serde_json.workspace = true
 thiserror.workspace = true
 tokio.workspace = true
 tracing.workspace = true
-ivynet-core.workspace = true
+ivynet-error.workspace = true
 futures.workspace = true
 ethers.workspace = true
 tracing-subscriber.workspace = true
+ivynet-node-type.workspace = true
+
 
 [lints]
 workspace = true

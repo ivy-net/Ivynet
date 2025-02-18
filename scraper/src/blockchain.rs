@@ -5,13 +5,13 @@ use ethers::{
     types::{Address, Chain},
 };
 use futures::{stream::SelectAll, Stream, StreamExt};
-use ivynet_core::directory::get_all_directories_for_chain;
 use ivynet_grpc::{
     backend_events::{
         backend_events_client::BackendEventsClient, LatestBlockRequest, RegistrationEvent,
     },
     tonic::{transport::Channel, Request},
 };
+use ivynet_node_type::directory::get_all_directories_for_chain;
 use std::{pin::Pin, sync::Arc};
 use tokio::sync::Mutex;
 use tracing::{debug, info};
@@ -187,7 +187,7 @@ async fn fetch_all_directory_events_between(
     while let Some(logs) = provider_events.next().await {
         if let Ok(log) = logs {
             let meta = LogMeta::from(&log);
-            let event: std::result::Result<DirectoryEvents, ivynet_core::ethers::abi::Error> =
+            let event: std::result::Result<DirectoryEvents, ivynet_error::ethers::abi::Error> =
                 parse_log(log);
             if let Ok(event) = event {
                 _ = report_directory_event(backend, chain_id, (event, meta)).await;

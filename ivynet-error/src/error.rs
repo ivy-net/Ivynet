@@ -9,10 +9,9 @@ use ivynet_docker::dockercmd::DockerError;
 use ivynet_grpc::client::ClientError;
 use ivynet_signer::IvyWalletError;
 use thiserror::Error;
-use tonic::Status;
 use zip::result::ZipError;
 
-use crate::{eigen::quorum::QuorumError, IvyProvider, IvyProviderError};
+use crate::{IvyProvider, IvyProviderError};
 
 #[derive(Debug, Error)]
 pub enum IvyError {
@@ -49,16 +48,7 @@ pub enum IvyError {
     ReqwestError(#[from] reqwest::Error),
 
     #[error(transparent)]
-    QuorumError(#[from] QuorumError),
-
-    #[error(transparent)]
     ZipError(#[from] ZipError),
-
-    #[error(transparent)]
-    GRPCError(#[from] Status),
-
-    #[error(transparent)]
-    SetupError(#[from] SetupError),
 
     #[error(transparent)]
     IoError(#[from] ivynet_io::IoError),
@@ -132,28 +122,16 @@ pub enum IvyError {
     BlsError(#[from] ivynet_signer::bls::BlsKeyError),
 
     #[error(transparent)]
-    IvyYamlError(#[from] crate::ivy_yaml::IvyYamlError),
-
-    #[error(transparent)]
     DockerError(#[from] DockerError),
 
     #[error(transparent)]
     IvyWalletError(#[from] IvyWalletError),
 
     #[error(transparent)]
-    NodeConfigError(#[from] crate::avs::config::NodeConfigError),
-
-    #[error(transparent)]
     KeychainError(#[from] ivynet_signer::keychain::KeychainError),
-
-    #[error(transparent)]
-    EnvLineError(#[from] crate::env_parser::EnvLineError),
 
     #[error("Invalid docker-compose file: {0}")]
     InvalidDockerCompose(String),
-
-    #[error(transparent)]
-    DownloadError(#[from] crate::download::DownloadError),
 
     #[error(transparent)]
     SignerMiddlewareError(#[from] IvyProviderError),
@@ -180,12 +158,6 @@ pub enum IvyError {
     DockerStreamError(#[from] ivynet_docker::dockerapi::DockerStreamError),
 }
 
-#[derive(Debug, Error)]
-pub enum SetupError {
-    #[error("No .env.example found")]
-    NoEnvExample,
-}
-
 impl From<ContractError<IvyProvider>> for IvyError {
     fn from(value: ContractError<IvyProvider>) -> Self {
         match value {
@@ -206,12 +178,6 @@ impl From<ContractError<IvyProvider>> for IvyError {
             }
             _ => IvyError::UnknownContractError,
         }
-    }
-}
-
-impl From<IvyError> for Status {
-    fn from(e: IvyError) -> Self {
-        Self::from_error(Box::new(e))
     }
 }
 
