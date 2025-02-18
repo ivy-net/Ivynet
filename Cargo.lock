@@ -1587,37 +1587,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "derive_builder"
-version = "0.20.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "507dfb09ea8b7fa618fcf76e953f4f5e192547945816d5358edffe39f6f94947"
-dependencies = [
- "derive_builder_macro",
-]
-
-[[package]]
-name = "derive_builder_core"
-version = "0.20.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2d5bcf7b024d6835cfb3d473887cd966994907effbe9227e8c8219824d06c4e8"
-dependencies = [
- "darling 0.20.10",
- "proc-macro2",
- "quote",
- "syn 2.0.96",
-]
-
-[[package]]
-name = "derive_builder_macro"
-version = "0.20.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ab63b0e2bf4d5928aff72e83a7dace85d7bba5fe12dcc3c5a572d78caffd3f3c"
-dependencies = [
- "derive_builder_core",
- "syn 2.0.96",
-]
-
-[[package]]
 name = "derive_more"
 version = "0.99.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1726,18 +1695,6 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 2.0.96",
-]
-
-[[package]]
-name = "docker-compose-types"
-version = "0.15.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4b9656ab75a70aad3d8d154d40826c53b9b2eee054d7587d6e36284e6d9dabb6"
-dependencies = [
- "derive_builder",
- "indexmap 2.7.1",
- "serde",
- "serde_yaml",
 ]
 
 [[package]]
@@ -3308,19 +3265,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "indicatif"
-version = "0.17.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "cbf675b85ed934d3c67b5c5469701eec7db22689d0a2139d856e0925fa28b281"
-dependencies = [
- "console",
- "number_prefix",
- "portable-atomic",
- "unicode-width",
- "web-time",
-]
-
-[[package]]
 name = "inotify"
 version = "0.9.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3445,7 +3389,6 @@ dependencies = [
  "ethers",
  "futures",
  "ivynet-docker-registry",
- "ivynet-error",
  "ivynet-grpc",
  "ivynet-node-type",
  "memcache",
@@ -3505,40 +3448,9 @@ dependencies = [
 name = "ivynet-error"
 version = "0.5.1"
 dependencies = [
- "dialoguer",
- "dirs",
- "docker-compose-types",
- "dotenvy",
  "ethers",
- "futures-util",
- "indexmap 2.7.1",
- "indicatif",
- "ivynet-docker",
- "ivynet-grpc",
- "ivynet-io",
- "ivynet-macros",
- "ivynet-node-type",
  "ivynet-signer",
- "once_cell",
- "prost-build",
- "prost-wkt-build",
- "regex",
- "reqwest 0.12.12",
- "rustc-hex",
- "semver",
- "serde",
- "serde_json",
- "serde_yaml",
- "serial_test",
- "sqlx",
- "tempfile",
  "thiserror 2.0.11",
- "tokio",
- "toml",
- "tonic-build",
- "tracing",
- "url",
- "zip 2.2.2",
 ]
 
 [[package]]
@@ -4250,12 +4162,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "number_prefix"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "830b246a0e5f20af87141b25c173cd1b609bd7779a4617d6ec582abaf90870f3"
-
-[[package]]
 name = "object"
 version = "0.36.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4644,12 +4550,6 @@ name = "pkg-config"
 version = "0.3.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "953ec861398dccce10c670dfeaf3ec4911ca479e9c02154b3a215178c5f566f2"
-
-[[package]]
-name = "portable-atomic"
-version = "1.10.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "280dc24453071f1b63954171985a0b0d30058d287960968b9b2aca264c8d4ee6"
 
 [[package]]
 name = "powerfmt"

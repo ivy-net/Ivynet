@@ -19,8 +19,8 @@ use serde_json::Value;
 
 pub mod bls;
 pub mod keychain;
-pub mod sign_utils;
 pub mod keyfile;
+pub mod sign_utils;
 
 // TODO: Make this a newtype strict and impl deref + derefmut to get signer stuff for free
 #[derive(Clone, Debug, PartialEq)]
