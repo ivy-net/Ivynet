@@ -52,20 +52,20 @@ pub struct ActiveAlert {
 
 pub struct DbActiveAlert {
     alert_id: Uuid,
-    alert_type: i64,
     machine_id: Uuid,
     organization_id: i64,
     client_id: Vec<u8>,
     node_name: String,
     created_at: NaiveDateTime,
     acknowledged_at: Option<NaiveDateTime>,
-    custom_data: Option<serde_json::Value>,
+    alert_data: serde_json::Value,
+ 
 }
 
 impl From<DbActiveAlert> for ActiveAlert {
     fn from(db_active_alert: DbActiveAlert) -> Self {
         let notification_type: NotificationType =
-            serde_json::from_value(db_active_alert.custom_data.unwrap()).unwrap();
+            serde_json::from_value(db_active_alert.alert_data).unwrap();
         ActiveAlert {
             alert_id: db_active_alert.alert_id,
             alert_type: notification_type,
@@ -86,14 +86,13 @@ impl ActiveAlert {
             r#"
             SELECT
                 alert_id,
-                alert_type,
                 machine_id,
                 organization_id,
                 client_id,
                 node_name,
                 created_at,
                 acknowledged_at,
-                custom_data
+                alert_data
             FROM alerts_active
             WHERE alert_id = $1
             "#,
@@ -111,14 +110,13 @@ impl ActiveAlert {
             r#"
             SELECT
                 alert_id,
-                alert_type,
                 machine_id,
                 organization_id,
                 client_id,
                 node_name,
                 created_at,
                 acknowledged_at,
-                custom_data
+                alert_data
             FROM alerts_active
             "#,
         )
@@ -130,37 +128,33 @@ impl ActiveAlert {
 
     pub async fn insert_one(pool: &PgPool, alert: &NewAlert) -> Result<(), DatabaseError> {
         let alert_id = alert.generate_uuid();
-        let alert_type_id: i32 = alert.alert_type.clone().into();
         let alert_data = Some(serde_json::json!(alert.alert_type));
         println!("Inserting alert: {:?}", alert);
         sqlx::query!(
             r#"
             INSERT INTO alerts_active (
                 alert_id,
-                alert_type,
                 machine_id,
                 organization_id,
                 client_id,
                 node_name,
                 created_at,
-                custom_data
+                alert_data
             )
             SELECT
                 $1,
-                $2,
                 m.machine_id,
                 c.organization_id,
                 m.client_id,
+                $2,
                 $3,
-                $4,
-                $6
+                $5
             FROM machine m
             JOIN client c
               ON m.client_id = c.client_id
-            WHERE m.machine_id = $5   -- lookup based on the provided machine_id
+            WHERE m.machine_id = $4   -- lookup based on the provided machine_id
             "#,
             alert_id,
-            alert_type_id,
             alert.node_name,
             alert.created_at,
             alert.machine_id,
@@ -175,36 +169,32 @@ impl ActiveAlert {
         let mut tx = pool.begin().await?;
         for alert in alerts {
             let alert_id = alert.generate_uuid();
-            let alert_type_id: i32 = alert.alert_type.clone().into();
-            let alert_data = Some(serde_json::json!(alert.alert_type));
+            let alert_data = serde_json::json!(alert.alert_type);
             sqlx::query!(
                 r#"
             INSERT INTO alerts_active (
                 alert_id,
-                alert_type,
                 machine_id,
                 organization_id,
                 client_id,
                 node_name,
                 created_at,
-                custom_data
+                alert_data
             )
             SELECT
                 $1,
-                $2,
                 m.machine_id,
                 c.organization_id,
                 m.client_id,
+                $2,
                 $3,
-                $4,
-                $6
+                $5
             FROM machine m
             JOIN client c
               ON m.client_id = c.client_id
-            WHERE m.machine_id = $5   -- lookup based on the provided machine_id
+            WHERE m.machine_id = $4
             "#,
                 alert_id,
-                alert_type_id,
                 alert.node_name,
                 alert.created_at,
                 alert.machine_id,
@@ -226,14 +216,13 @@ impl ActiveAlert {
             r#"
             SELECT
                 alert_id,
-                alert_type,
                 machine_id,
                 organization_id,
                 client_id,
                 node_name,
                 created_at,
                 acknowledged_at,
-                custom_data
+                alert_data
             FROM alerts_active
             WHERE organization_id = $1
             "#,
@@ -254,14 +243,13 @@ impl ActiveAlert {
             r#"
             SELECT
                 alert_id,
-                alert_type,
                 machine_id,
                 organization_id,
                 client_id,
                 node_name,
                 created_at,
                 acknowledged_at,
-                custom_data
+                alert_data
             FROM alerts_active
             WHERE machine_id = $1
             "#,
@@ -296,14 +284,13 @@ impl ActiveAlert {
             r#"
             SELECT
                 alert_id,
-                alert_type,
                 machine_id,
                 organization_id,
                 client_id,
                 node_name,
                 created_at,
                 acknowledged_at,
-                custom_data
+                alert_data
             FROM alerts_active
             WHERE alert_id = $1
             "#,
@@ -316,14 +303,12 @@ impl ActiveAlert {
         let alert_id = active_alert.alert_id;
 
         let history_alert: HistoryAlert = active_alert.into();
-        let alert_type_id: i32 = history_alert.alert_type.clone().into();
-        let custom_data = Some(serde_json::json!(history_alert.alert_type));
+        let alert_data = serde_json::json!(history_alert.alert_type);
 
         sqlx::query!(
             r#"
             INSERT INTO alerts_historical (
                 alert_id,
-                alert_type,
                 machine_id,
                 organization_id,
                 client_id,
@@ -331,7 +316,7 @@ impl ActiveAlert {
                 created_at,
                 acknowledged_at,
                 resolved_at,
-                custom_data
+                alert_data
             )
             VALUES (
                 $1,
@@ -341,20 +326,18 @@ impl ActiveAlert {
                 $5,
                 $6,
                 $7,
-                $8,
                 now(),
-                $9
+                $8
             )
             "#,
             alert_id,
-            alert_type_id,
             history_alert.machine_id,
             history_alert.organization_id,
             history_alert.client_id.as_bytes().to_vec(),
             history_alert.node_name,
             history_alert.created_at,
             history_alert.acknowledged_at,
-            custom_data
+            alert_data
         )
         .execute(&mut *tx)
         .await?;
