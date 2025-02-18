@@ -9,7 +9,7 @@ use db::{
     metric::Metric,
     Account, Avs, AvsVersionHash, Machine,
 };
-use ivynet_core::ethers::types::Address;
+use ivynet_error::ethers::types::Address;
 
 use ivynet_docker_registry::node_types::get_node_type;
 use ivynet_grpc::{

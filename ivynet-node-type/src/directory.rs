@@ -3,7 +3,7 @@ use std::{collections::HashMap, sync::LazyLock};
 use ethers::types::{Chain, H160};
 use ivynet_macros::h160;
 
-use ivynet_node_type::{
+use super::{
     restaking_protocol::RestakingProtocolType, ActiveSet, AltlayerType, InfiniRouteType, MachType,
     NodeType, SkateChainType,
 };

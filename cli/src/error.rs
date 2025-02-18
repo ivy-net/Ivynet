@@ -35,7 +35,7 @@ pub enum Error {
     #[error("No BLS key found in your keychain")]
     NoBLSKey,
 
-    #[error("Chain parse error: {0}")]
+    #[error("Failed to parse chain: {0}")]
     ChainParseError(String),
 
     #[error(transparent)]

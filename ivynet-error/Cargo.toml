@@ -1,9 +1,9 @@
 [package]
-name = "ivynet-node-type"
-version = "0.5.0"
+name = "ivynet-error"
+version = "0.5.1"
 edition = "2021"
 authors = ["Noah Foltz <noah@ivynet.dev>"]
-description = "Library for supported node types"
+description = "Core library for Ivynet client functionality"
 repository = "https://github.com/ivy-net/ivynet"
 license = "UNLICENSED"
 
@@ -14,11 +14,8 @@ path = "src/lib.rs"
 workspace = true
 
 [dependencies]
-convert_case.workspace = true
-serde.workspace = true
-serde_json.workspace = true
-strum.workspace = true
+#locals
+ivynet-signer.workspace = true
+
 thiserror.workspace = true
-tracing.workspace = true
 ethers.workspace = true
-ivynet-macros = { path = "../macros" }

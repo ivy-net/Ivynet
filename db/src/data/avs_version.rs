@@ -1,5 +1,5 @@
 use crate::{error::DatabaseError, AvsVersionHash};
-use ivynet_core::ethers::types::Chain;
+use ivynet_error::ethers::types::Chain;
 use ivynet_node_type::NodeType;
 
 #[derive(Clone, Debug, PartialEq, Eq)]

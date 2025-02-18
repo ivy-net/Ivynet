@@ -1,4 +1,5 @@
 use thiserror::Error;
+use tonic::Status;
 
 #[derive(Debug, Error)]
 pub enum DatabaseError {
@@ -31,4 +32,16 @@ pub enum DatabaseError {
 
     #[error("Local build only node type")]
     LocalOnlyNode,
+
+    #[error(transparent)]
+    GRPCError(#[from] Status),
+
+    #[error("Chain parse error: {0}")]
+    ChainParseError(String),
+}
+
+impl From<DatabaseError> for Status {
+    fn from(e: DatabaseError) -> Self {
+        Self::from_error(Box::new(e))
+    }
 }

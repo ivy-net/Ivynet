@@ -1,5 +1,5 @@
+use super::IvyWallet;
 use ethers::types::Address;
-use ivynet_signer::IvyWallet;
 use serde::{Deserialize, Serialize};
 
 use std::{env, path::PathBuf};

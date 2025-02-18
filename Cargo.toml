@@ -1,10 +1,11 @@
 [workspace]
 members = [
 	"cli",
-	"core",
 	"macros",
 	"backend",
 	"scraper",
+    "db",
+	"ingress",
 	"ivynet-docker",
 	"ivynet-docker-registry",
 	"ivynet-grpc",
@@ -12,8 +13,8 @@ members = [
 	"ivynet-node-type",
     "ivynet-notifications",
 	"ivynet-signer",
-	"db",
-	"ingress",
+    "ivynet-error",
+
 ]
 resolver = "2"
 
@@ -61,7 +62,7 @@ useless_let_if_seq = "warn"
 db = { path = "db" }
 
 # Local packages
-ivynet-core = { path = "core" }
+ivynet-error = { path = "ivynet-error" }
 ivynet-docker = { path = "ivynet-docker" }
 ivynet-docker-registry = { path = "ivynet-docker-registry" }
 ivynet-grpc = { path = "ivynet-grpc" }
