@@ -100,25 +100,25 @@ pub enum Channel {
 }
 
 #[derive(Clone, Debug)]
-pub struct SendgridTemplates<'a> {
-    pub custom: &'a str,
-    pub unreg_active_set: &'a str,
-    pub machine_not_responding: &'a str,
-    pub node_not_running: &'a str,
-    pub no_chain_info: &'a str,
-    pub no_metrics: &'a str,
-    pub no_operator: &'a str,
-    pub hw_res_usage: &'a str,
-    pub low_perf: &'a str,
-    pub needs_update: &'a str,
+pub struct SendgridTemplates {
+    pub custom: String,
+    pub unreg_active_set: String,
+    pub machine_not_responding: String,
+    pub node_not_running: String,
+    pub no_chain_info: String,
+    pub no_metrics: String,
+    pub no_operator: String,
+    pub hw_res_usage: String,
+    pub low_perf: String,
+    pub needs_update: String,
 }
 
 #[derive(Clone, Debug)]
-pub struct NotificationConfig<'a> {
-    pub telegram_token: &'a str,
-    pub sendgrid_key: &'a str,
-    pub sendgrid_from: &'a str,
-    pub sendgrid_templates: SendgridTemplates<'a>,
+pub struct NotificationConfig {
+    pub telegram_token: String,
+    pub sendgrid_key: String,
+    pub sendgrid_from: String,
+    pub sendgrid_templates: SendgridTemplates,
 }
 
 pub struct NotificationDispatcher<D: OrganizationDatabase> {
@@ -140,7 +140,7 @@ pub trait OrganizationDatabase: Send + Sync + Clone + 'static {
 impl<D: OrganizationDatabase> NotificationDispatcher<D> {
     pub fn new(config: NotificationConfig, db: D) -> Self {
         Self {
-            telegram: TelegramBot::<D>::new(config.telegram_token, db.clone()),
+            telegram: TelegramBot::<D>::new(&config.telegram_token, db.clone()),
             email_sender: EmailSender::new(&config, db.clone()),
             pagerduty: PagerDutySender::new(db),
         }
