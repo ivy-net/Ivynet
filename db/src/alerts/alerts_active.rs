@@ -14,6 +14,7 @@ use super::alerts_historical::HistoryAlert;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct NewAlert {
+    pub id: Uuid,
     pub alert_type: NotificationType,
     pub machine_id: Uuid,
     pub node_name: String,
@@ -22,11 +23,9 @@ pub struct NewAlert {
 
 impl NewAlert {
     pub fn new(machine_id: Uuid, alert_type: NotificationType, node_name: String) -> Self {
-        Self { alert_type, machine_id, node_name, created_at: chrono::Utc::now().naive_utc() }
-    }
-
-    pub fn generate_uuid(&self) -> Uuid {
-        Uuid::new_v5(&Uuid::NAMESPACE_OID, self.to_string().as_bytes())
+        let str_rep = format!("{:?} {} {}", alert_type, machine_id, node_name);
+        let id = Uuid::new_v5(&Uuid::NAMESPACE_OID, str_rep.as_bytes());
+        Self { id, alert_type, machine_id, node_name, created_at: chrono::Utc::now().naive_utc() }
     }
 }
 
@@ -59,7 +58,6 @@ pub struct DbActiveAlert {
     created_at: NaiveDateTime,
     acknowledged_at: Option<NaiveDateTime>,
     alert_data: serde_json::Value,
- 
 }
 
 impl From<DbActiveAlert> for ActiveAlert {
@@ -127,8 +125,7 @@ impl ActiveAlert {
     }
 
     pub async fn insert_one(pool: &PgPool, alert: &NewAlert) -> Result<(), DatabaseError> {
-        let alert_id = alert.generate_uuid();
-        let alert_data = Some(serde_json::json!(alert.alert_type));
+        let alert_data = serde_json::json!(alert.alert_type);
         println!("Inserting alert: {:?}", alert);
         sqlx::query!(
             r#"
@@ -154,7 +151,7 @@ impl ActiveAlert {
               ON m.client_id = c.client_id
             WHERE m.machine_id = $4   -- lookup based on the provided machine_id
             "#,
-            alert_id,
+            alert.id,
             alert.node_name,
             alert.created_at,
             alert.machine_id,
@@ -168,7 +165,6 @@ impl ActiveAlert {
     pub async fn insert_many(pool: &PgPool, alerts: &[NewAlert]) -> Result<(), DatabaseError> {
         let mut tx = pool.begin().await?;
         for alert in alerts {
-            let alert_id = alert.generate_uuid();
             let alert_data = serde_json::json!(alert.alert_type);
             sqlx::query!(
                 r#"
@@ -194,7 +190,7 @@ impl ActiveAlert {
               ON m.client_id = c.client_id
             WHERE m.machine_id = $4
             "#,
-                alert_id,
+                alert.id,
                 alert.node_name,
                 alert.created_at,
                 alert.machine_id,

@@ -92,7 +92,7 @@ impl From<NotificationType> for i64 {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Channel {
     Telegram,
     Email,

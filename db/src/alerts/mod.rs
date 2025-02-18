@@ -31,7 +31,7 @@ mod test_alerts_db {
             node_name: "test".to_string(),
             created_at: chrono::Utc::now().naive_utc(),
         };
-        let new_alert_uuid = new_alert.generate_uuid();
+        let new_alert_uuid = new_alert.id;
 
         alerts_active::ActiveAlert::insert_one(&pool, &new_alert).await.unwrap();
 

@@ -266,7 +266,7 @@ impl Backend for BackendService {
 
 pub async fn serve(
     pool: Arc<PgPool>,
-    notification_config: NotificationConfig,
+    notification_config: NotificationConfig<'_>,
     tls_cert: Option<String>,
     tls_key: Option<String>,
     port: u16,

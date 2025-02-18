@@ -1,10 +1,14 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use ivynet_core::ethers::types::Chain;
 use ivynet_grpc::messages::NodeDataV2;
 use ivynet_node_type::NodeType;
 use ivynet_notifications::{
-    NotificationConfig, NotificationDispatcher, NotificationDispatcherError, NotificationType,
+    Channel, Notification, NotificationConfig, NotificationDispatcher, NotificationDispatcherError,
+    NotificationType,
 };
 
 use sqlx::{types::Uuid, PgPool};
@@ -16,7 +20,7 @@ use crate::{
         node_data::UpdateStatus,
     },
     error::DatabaseError,
-    Avs, DbAvsVersionData,
+    Avs, DbAvsVersionData, Machine, OrganizationNotifications,
 };
 
 use super::{
@@ -45,6 +49,8 @@ pub enum AlertError {
     DbError(#[from] DatabaseError),
     #[error(transparent)]
     NotificationError(#[from] NotificationDispatcherError),
+    #[error(transparent)]
+    SqxlError(#[from] sqlx::Error),
 }
 
 pub struct AlertHandler {
@@ -70,13 +76,46 @@ impl AlertHandler {
         machine_id: Uuid,
     ) -> Result<(), AlertError> {
         let raw_alerts = extract_node_data_alerts(&self.db_executor, machine_id, &node_data).await;
-        // TODO: I still need to build Notification structs for each NotificationType I get here.
-        // And I'm not sure how yet...
+
         let alerts = raw_alerts
             .into_iter()
             .map(|alert| NewAlert::new(machine_id, alert, node_data.name.clone()))
             .collect::<Vec<_>>();
+
         ActiveAlert::insert_many(&self.db_executor, &alerts).await?;
+
+        // Handle notification dispatch
+
+        let org_id = Machine::get_organization_id(&self.db_executor, machine_id).await?;
+        let org_notifications =
+            OrganizationNotifications::get(&self.db_executor, org_id as u64).await?;
+
+        let notifications: Vec<Notification> = alerts
+            .into_iter()
+            .map(|alert| Notification {
+                id: alert.id,
+                organization: org_id as u64,
+                machine_id,
+                notification_type: alert.alert_type,
+                resolved: false,
+            })
+            .collect();
+
+        let mut channels = HashSet::new();
+        if org_notifications.telegram {
+            channels.insert(Channel::Telegram);
+        }
+        if org_notifications.email {
+            channels.insert(Channel::Email);
+        }
+        if org_notifications.pagerduty {
+            channels.insert(Channel::PagerDuty);
+        }
+
+        for notification in notifications {
+            self.dispatcher.notify(notification, channels.clone()).await?;
+        }
+
         Ok(())
     }
 }

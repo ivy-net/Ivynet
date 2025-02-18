@@ -134,6 +134,22 @@ impl Machine {
         Ok(())
     }
 
+    pub async fn get_organization_id(pool: &PgPool, machine_id: Uuid) -> Result<i64, sqlx::Error> {
+        let row = sqlx::query!(
+            r#"
+            SELECT c.organization_id as "organization_id!"
+            FROM machine m
+            JOIN client c ON c.client_id = m.client_id
+            WHERE m.machine_id = $1
+            "#,
+            machine_id
+        )
+        .fetch_one(pool)
+        .await?;
+
+        Ok(row.organization_id)
+    }
+
     pub async fn delete(&self, pool: &PgPool) -> Result<(), DatabaseError> {
         query!("DELETE FROM machine WHERE machine_id = $1", self.machine_id).execute(pool).await?;
         Ok(())
