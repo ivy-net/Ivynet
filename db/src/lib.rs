@@ -15,6 +15,7 @@ pub mod machine;
 pub mod metric;
 pub mod operator_keys;
 pub mod organization;
+pub mod utils;
 pub mod verification;
 
 pub use account::{Account, Role};

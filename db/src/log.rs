@@ -394,7 +394,7 @@ mod logs_db_tests {
     use ivynet_docker::logs::{find_log_level, find_or_create_log_timestamp, sanitize_log};
     use ivynet_node_type::NodeType;
 
-    use ivynet_core::ethers::types::Address;
+    use ivynet_error::ethers::types::Address;
 
     use crate::db::{Account, Avs, Client, Machine, Organization, Role};
 
@@ -481,7 +481,7 @@ mod logs_db_tests {
 //     use super::*;
 //     use crate::db::node::DbNode;
 //     use chrono::Utc;
-//     use ivynet_core::ethers::types::Address;
+//     use ivynet_error::ethers::types::Address;
 //
 //     #[sqlx::test(fixtures(
 //         "../../../backend/fixtures/organization.sql",

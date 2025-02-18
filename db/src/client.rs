@@ -1,5 +1,5 @@
 use chrono::{NaiveDateTime, Utc};
-use ivynet_core::ethers::types::Address;
+use ivynet_error::ethers::types::Address;
 use serde::{Deserialize, Serialize};
 use sqlx::{query, PgPool};
 use utoipa::ToSchema;

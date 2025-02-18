@@ -1,5 +1,5 @@
 use chrono::NaiveDateTime;
-use ivynet_core::ethers::types::{Address, Chain};
+use ivynet_error::ethers::types::{Address, Chain};
 use ivynet_node_type::NodeType;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;

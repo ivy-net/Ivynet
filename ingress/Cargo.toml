@@ -10,7 +10,7 @@ license.workspace = true
 clap = { version = "4.5", features = ["derive", "env"] }
 thiserror.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread"] }
-ivynet-core = { path = "../core" }
+ivynet-error = { path = "../ivynet-error" }
 db = { path = "../db" }
 uuid = { version = "1.11", features = ["v4", "serde"] }
 tracing.workspace = true

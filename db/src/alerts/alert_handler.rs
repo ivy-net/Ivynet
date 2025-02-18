@@ -1,6 +1,6 @@
 use std::{collections::HashMap, sync::Arc};
 
-use ivynet_core::ethers::types::Chain;
+use ivynet_error::ethers::types::Chain;
 use ivynet_grpc::messages::NodeDataV2;
 use ivynet_node_type::NodeType;
 use serde::{Deserialize, Serialize};
