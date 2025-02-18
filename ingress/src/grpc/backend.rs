@@ -1,6 +1,6 @@
 use crate::error::IngressError;
 use db::{
-    alerts::alert_handler::AlertHandler,
+    alerts::{alert_db::AlertDb, alert_handler::AlertHandler},
     data::{
         machine_data::convert_system_metrics,
         node_data::{update_avs_active_set, update_avs_version},
@@ -26,7 +26,7 @@ use ivynet_grpc::{
 
 use ivynet_docker::logs::{find_log_level, find_or_create_log_timestamp, sanitize_log};
 use ivynet_node_type::NodeType;
-use ivynet_notifications::NotificationConfig;
+use ivynet_notifications::{NotificationConfig, NotificationDispatcher};
 use sqlx::PgPool;
 use std::{str::FromStr, sync::Arc};
 use tracing::debug;
@@ -274,14 +274,22 @@ pub async fn serve(
     tracing::info!("Starting GRPC server on port {port}");
     // TODO: Not sure how to handle serving from inside of the alert handle to work with
     // telegram... yet
-    let alert_actor_handle = AlertHandler::new(notification_config, pool.clone());
-    server::Server::new(
-        BackendServer::new(BackendService::new(pool, alert_actor_handle)),
+    let notification_dispatcher =
+        Arc::new(NotificationDispatcher::new(notification_config, AlertDb::new(pool.clone())));
+
+    let server = server::Server::new(
+        BackendServer::new(BackendService::new(
+            pool.clone(),
+            AlertHandler::new(notification_dispatcher.clone(), pool),
+        )),
         tls_cert,
         tls_key,
-    )
-    .serve(server::Endpoint::Port(port))
-    .await?;
+    );
+
+    tokio::select! {
+        e = server.serve(server::Endpoint::Port(port)) => e?,
+        e = notification_dispatcher.serve() => e?
+    }
 
     Ok(())
 }

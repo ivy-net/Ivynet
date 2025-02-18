@@ -3,9 +3,7 @@ use std::{collections::HashMap, sync::Arc};
 use ivynet_core::ethers::types::Chain;
 use ivynet_grpc::messages::NodeDataV2;
 use ivynet_node_type::NodeType;
-use ivynet_notifications::{
-    NotificationConfig, NotificationDispatcher, NotificationDispatcherError, NotificationType,
-};
+use ivynet_notifications::{NotificationDispatcher, NotificationDispatcherError, NotificationType};
 
 use sqlx::{types::Uuid, PgPool};
 
@@ -47,21 +45,15 @@ pub enum AlertError {
     NotificationError(#[from] NotificationDispatcherError),
 }
 
+#[derive(Clone)]
 pub struct AlertHandler {
-    dispatcher: NotificationDispatcher<AlertDb>,
+    pub dispatcher: Arc<NotificationDispatcher<AlertDb>>,
     db_executor: Arc<PgPool>,
 }
 
 impl AlertHandler {
-    pub fn new(notification_config: NotificationConfig, db_executor: Arc<PgPool>) -> Self {
-        let dispatcher =
-            NotificationDispatcher::new(notification_config, AlertDb::new(db_executor.clone()));
+    pub fn new(dispatcher: Arc<NotificationDispatcher<AlertDb>>, db_executor: Arc<PgPool>) -> Self {
         Self { dispatcher, db_executor }
-    }
-
-    pub async fn serve(&self) -> Result<(), AlertError> {
-        self.dispatcher.serve().await?;
-        Ok(())
     }
 
     pub async fn handle_node_data_alerts(
