@@ -34,7 +34,7 @@ where
 {
     fn on_event(&self, event: &Event<'_>, _ctx: Context<'_, S>) {
         let formatted = format_event(event);
-        let signed_log = match self.machine.sign_log("ivynet-client", &formatted) {
+        let signed_log = match self.machine.sign_client_log(&formatted) {
             Ok(signed_log) => signed_log,
             Err(e) => {
                 eprintln!("Error signing log: {:?}", e);
@@ -47,7 +47,7 @@ where
         tokio::spawn(async move {
             let mut backend = backend.lock().await;
             // Post no logs to the backend if the backend is not available
-            if let Err(e) = backend.logs(signed_log).await {
+            if let Err(e) = backend.client_logs(signed_log).await {
                 println!("Failed to send log: {:?}", e);
             }
         });

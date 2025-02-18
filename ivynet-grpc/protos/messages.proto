@@ -34,6 +34,12 @@ message SignedLog {
     string log = 4;
 }
 
+message SignedClientLog {
+    bytes signature =  1;
+    bytes machine_id = 2;
+    string log = 3;
+}
+
 message NodeTypeQuery {
     string image_name = 1;
     string image_digest = 2;

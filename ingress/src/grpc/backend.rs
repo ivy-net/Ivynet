@@ -19,8 +19,8 @@ use ivynet_grpc::{
     client::{Request, Response},
     messages::{
         MachineData, Metrics, NodeData, NodeDataV2, NodeType as NodeTypeMessage, NodeTypeQueries,
-        NodeTypes, RegistrationCredentials, SignedLog, SignedMachineData, SignedMetrics,
-        SignedNameChange, SignedNodeData, SignedNodeDataV2,
+        NodeTypes, RegistrationCredentials, SignedClientLog, SignedLog, SignedMachineData,
+        SignedMetrics, SignedNameChange, SignedNodeData, SignedNodeDataV2,
     },
     server, Status,
 };
@@ -81,13 +81,16 @@ impl Backend for BackendService {
         let request = request.into_inner();
         debug!("Received logs: {:?}", request.log);
 
-        let (machine_id, log) = validate_request::<String, SignedLog>(
+        let signed_data = validate_request::<String, SignedLog>(
             &self.pool,
             &request.machine_id,
             &request.signature,
             Some(request.log),
         )
         .await?;
+
+        let machine_id = signed_data.machine_id;
+        let log = signed_data.data;
 
         let avs_name = request.avs_name;
         let log = sanitize_log(log.as_str());
@@ -104,18 +107,38 @@ impl Backend for BackendService {
         };
         debug!("STORING LOG: {:?}", log);
 
-        match avs_name.as_str() {
-            "ivynet-client" => {
-                ClientLog::record_from_containerlog(&self.pool, &log)
-                    .await
-                    .map_err(|e| Status::internal(format!("Failed while saving logs: {e:?}")))?;
-            }
-            _ => {
-                ContainerLog::record(&self.pool, &log)
-                    .await
-                    .map_err(|e| Status::internal(format!("Failed while saving logs: {e:?}")))?;
-            }
-        }
+        ContainerLog::record(&self.pool, &log)
+            .await
+            .map_err(|e| Status::internal(format!("Failed while saving logs: {e:?}")))?;
+
+        Ok(Response::new(()))
+    }
+
+    async fn client_logs(&self, request: Request<SignedClientLog>) -> Result<Response<()>, Status> {
+        let request = request.into_inner();
+        debug!("Received logs: {:?}", request.log);
+
+        let signed_data = validate_request::<String, SignedClientLog>(
+            &self.pool,
+            &request.machine_id,
+            &request.signature,
+            Some(request.log),
+        )
+        .await?;
+
+        let log = signed_data.data;
+        let client_id = signed_data.client_id;
+
+        let log = sanitize_log(log.as_str());
+        let log_level = LogLevel::from_str(&find_log_level(&log))
+            .map_err(|_| Status::invalid_argument("Log level is invalid".to_string()))?;
+
+        let client_log =
+            ClientLog { client_id, log, log_level, created_at: None, other_fields: None };
+
+        ClientLog::record(&self.pool, &client_log)
+            .await
+            .map_err(|e| Status::internal(format!("Failed while saving logs: {e:?}")))?;
 
         Ok(Response::new(()))
     }
@@ -126,13 +149,16 @@ impl Backend for BackendService {
     ) -> Result<Response<()>, Status> {
         let req = request.into_inner();
 
-        let (machine_id, machine_data) = validate_request::<MachineData, SignedMachineData>(
+        let signed_data = validate_request::<MachineData, SignedMachineData>(
             &self.pool,
             &req.machine_id,
             &req.signature,
             req.machine_data,
         )
         .await?;
+
+        let machine_id = signed_data.machine_id;
+        let machine_data = signed_data.data;
 
         let system_metrics = convert_system_metrics(&machine_data);
 
@@ -155,13 +181,16 @@ impl Backend for BackendService {
     async fn node_data(&self, request: Request<SignedNodeData>) -> Result<Response<()>, Status> {
         let req = request.into_inner();
 
-        let (machine_id, node_data) = validate_request::<NodeData, SignedNodeData>(
+        let signed_data = validate_request::<NodeData, SignedNodeData>(
             &self.pool,
             &req.machine_id,
             &req.signature,
             req.node_data,
         )
         .await?;
+
+        let machine_id = signed_data.machine_id;
+        let node_data = signed_data.data;
 
         let recovered_node_data = RecoveredNodeData::from(node_data);
 
@@ -176,13 +205,16 @@ impl Backend for BackendService {
     ) -> Result<Response<()>, Status> {
         let req = request.into_inner();
 
-        let (machine_id, node_data) = validate_request::<NodeDataV2, SignedNodeDataV2>(
+        let signed_data = validate_request::<NodeDataV2, SignedNodeDataV2>(
             &self.pool,
             &req.machine_id,
             &req.signature,
             req.node_data,
         )
         .await?;
+
+        let machine_id = signed_data.machine_id;
+        let node_data = signed_data.data;
 
         let recovered_node_data = RecoveredNodeData::from(node_data.clone());
 
@@ -198,13 +230,16 @@ impl Backend for BackendService {
     async fn metrics(&self, request: Request<SignedMetrics>) -> Result<Response<()>, Status> {
         let req = request.into_inner();
 
-        let (machine_id, metrics) = validate_request::<Vec<Metrics>, SignedMetrics>(
+        let signed_data = validate_request::<Vec<Metrics>, SignedMetrics>(
             &self.pool,
             &req.machine_id,
             &req.signature,
             Some(req.metrics),
         )
         .await?;
+
+        let machine_id = signed_data.machine_id;
+        let metrics = signed_data.data;
 
         _ = Metric::record(
             &self.pool,
@@ -257,13 +292,16 @@ impl Backend for BackendService {
     ) -> Result<Response<()>, Status> {
         let req = request.into_inner();
 
-        let (machine_id, name_change) = validate_request::<NameChange, SignedNameChange>(
+        let signed_data = validate_request::<NameChange, SignedNameChange>(
             &self.pool,
             &req.machine_id,
             &req.signature,
             Some((req.old_name, req.new_name)),
         )
         .await?;
+
+        let machine_id = signed_data.machine_id;
+        let name_change = signed_data.data;
 
         Avs::update_name(&self.pool, machine_id, &name_change.0, &name_change.1)
             .await

@@ -3,7 +3,7 @@ use crate::{
     log::{ContainerLog, LogLevel},
 };
 use chrono::{DateTime, NaiveDateTime, Utc};
-use ivynet_core::ethers::types::Address;
+use ethers::types::Address;
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::{json, Value};
 use sqlx::{query, query_as, PgPool};
