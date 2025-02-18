@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                alert_id,\n                alert_type,\n                machine_id,\n                organization_id,\n                client_id,\n                node_name,\n                created_at,\n                acknowledged_at\n            FROM alerts_active\n            WHERE alert_id = $1\n            ",
+  "query": "\n            SELECT\n                alert_id,\n                machine_id,\n                organization_id,\n                client_id,\n                node_name,\n                created_at,\n                acknowledged_at,\n                resolved_at,\n                alert_data\n            FROM\n                alerts_historical\n            WHERE\n                alert_id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -10,38 +10,43 @@
       },
       {
         "ordinal": 1,
-        "name": "alert_type",
-        "type_info": "Int4"
-      },
-      {
-        "ordinal": 2,
         "name": "machine_id",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 3,
+        "ordinal": 2,
         "name": "organization_id",
         "type_info": "Int8"
       },
       {
-        "ordinal": 4,
+        "ordinal": 3,
         "name": "client_id",
         "type_info": "Bytea"
       },
       {
-        "ordinal": 5,
+        "ordinal": 4,
         "name": "node_name",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 6,
+        "ordinal": 5,
         "name": "created_at",
         "type_info": "Timestamp"
       },
       {
-        "ordinal": 7,
+        "ordinal": 6,
         "name": "acknowledged_at",
         "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 7,
+        "name": "resolved_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 8,
+        "name": "alert_data",
+        "type_info": "Jsonb"
       }
     ],
     "parameters": {
@@ -56,9 +61,10 @@
       false,
       false,
       false,
+      true,
       false,
-      true
+      false
     ]
   },
-  "hash": "73138f273c2d17a59c688e09d0d413a931df85adbcc42d53290589c03a5b97cd"
+  "hash": "6df3bfd56201a8131d6955559d1e893257f5d4b3ca89b91ed0d1abf082e84e17"
 }

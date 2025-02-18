@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS alerts_historical (
+    alert_db_id       BIGSERIAL NOT NULL,
     alert_id          UUID      NOT NULL,
-    alert_type        INT       NOT NULL,
     machine_id        UUID      NOT NULL REFERENCES machine
                                     ON DELETE CASCADE,
     organization_id   BIGINT    NOT NULL REFERENCES organization
@@ -11,8 +11,8 @@ CREATE TABLE IF NOT EXISTS alerts_historical (
     created_at        TIMESTAMP NOT NULL,
     acknowledged_at   TIMESTAMP,
     resolved_at       TIMESTAMP NOT NULL,
-    custom_data       JSONB,
-    PRIMARY KEY (organization_id, alert_id)
+    alert_data        JSONB     NOT NULL,
+    PRIMARY KEY (organization_id, alert_db_id)
 ) PARTITION BY LIST (organization_id);
 
 -- Create the partition tables for existing organizations

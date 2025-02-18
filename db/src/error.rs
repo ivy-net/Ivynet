@@ -41,6 +41,9 @@ pub enum DatabaseError {
 
     #[error("Invalid input: {0}")]
     InvalidInput(String),
+
+    #[error("Notification type serialization error")]
+    NotificationTypeSerializationError(#[from] serde_json::Error),
 }
 
 impl From<DatabaseError> for Status {

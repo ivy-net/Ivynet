@@ -11,10 +11,10 @@ members = [
 	"ivynet-grpc",
 	"ivynet-io",
 	"ivynet-node-type",
-    "ivynet-notifications",
+	"ivynet-notifications",
 	"ivynet-signer",
-    "ivynet-error",
-
+	"ivynet-error",
+	"ivynet-alerts",
 ]
 resolver = "2"
 
@@ -62,12 +62,14 @@ useless_let_if_seq = "warn"
 db = { path = "db" }
 
 # Local packages
+alerts = { path = "ivynet-alerts" }
 ivynet-error = { path = "ivynet-error" }
 ivynet-docker = { path = "ivynet-docker" }
 ivynet-docker-registry = { path = "ivynet-docker-registry" }
 ivynet-grpc = { path = "ivynet-grpc" }
 ivynet-io = { path = "ivynet-io" }
 ivynet-node-type = { path = "ivynet-node-type" }
+ivynet-notifications = { path = "ivynet-notifications" }
 ivynet-signer = { path = "ivynet-signer" }
 
 #grpc
@@ -105,7 +107,8 @@ sqlx = { version = "0.8", features = [
 	"tls-rustls",
 	"uuid",
 ] }
-strum = { version = "0.26.3", features = ["derive"] }
+strum = { version = "0.27.1", features = ["derive"] }
+strum_macros = "0.27.1"
 tar = "0.4.43"
 tempfile = "3.10.1"
 thiserror = "2.0.3"

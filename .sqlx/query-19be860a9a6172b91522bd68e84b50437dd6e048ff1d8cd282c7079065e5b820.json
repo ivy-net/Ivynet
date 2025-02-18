@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM\n                notification_settings\n               WHERE\n                settings_type = $1 AND settings_value = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        {
+          "Custom": {
+            "name": "notification_type",
+            "kind": {
+              "Enum": [
+                "email",
+                "telegram",
+                "pagerduty"
+              ]
+            }
+          }
+        },
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "19be860a9a6172b91522bd68e84b50437dd6e048ff1d8cd282c7079065e5b820"
+}

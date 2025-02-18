@@ -1,4 +1,8 @@
+use std::time::Duration;
+
+use alerts::Alert;
 use teloxide::{dispatching::UpdateHandler, prelude::*, utils::command::BotCommands};
+use tokio::time::sleep;
 use tracing::warn;
 use uuid::Uuid;
 
@@ -6,10 +10,15 @@ use crate::OrganizationDatabase;
 
 use super::Notification;
 
+type NotificationType = Alert;
+
 #[derive(thiserror::Error, Debug)]
 pub enum BotError {
     #[error(transparent)]
     RequestError(#[from] teloxide::RequestError),
+
+    #[error("No bot configured")]
+    NoBotConfigured,
 }
 
 /// These commands are supported:
@@ -36,7 +45,7 @@ enum BotCommand {
 type HandlerResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
 
 pub struct TelegramBot<D: OrganizationDatabase> {
-    pub bot: Bot,
+    pub bot: Option<Bot>,
     pub db: D,
 }
 
@@ -48,46 +57,79 @@ pub trait TelegramBotApi {
 
 impl<D: OrganizationDatabase> TelegramBot<D> {
     pub fn new(bot_key: &str, db: D) -> Self {
-        Self { bot: Bot::new(bot_key), db }
+        Self { bot: if bot_key.is_empty() { None } else { Some(Bot::new(bot_key)) }, db }
     }
 
     pub async fn serve(&self) -> Result<(), BotError> {
-        let handler = Self::handler_tree();
-        Dispatcher::builder(self.bot.clone(), handler)
-            .dependencies(dptree::deps![self.db.clone()])
-            .default_handler(|upd| async move {
-                warn!("Unhandled update: {:?}", upd);
-            })
-            // If the dispatcher fails for some reason, execute this handler.
-            .error_handler(LoggingErrorHandler::with_custom_text(
-                "An error has occurred in the dispatcher",
-            ))
-            .enable_ctrlc_handler()
-            .build()
-            .dispatch()
-            .await;
+        if let Some(bot) = &self.bot {
+            let handler = Self::handler_tree();
+            Dispatcher::builder(bot.clone(), handler)
+                .dependencies(dptree::deps![self.db.clone()])
+                .default_handler(|upd| async move {
+                    warn!("Unhandled update: {:?}", upd);
+                })
+                // If the dispatcher fails for some reason, execute this handler.
+                .error_handler(LoggingErrorHandler::with_custom_text(
+                    "An error has occurred in the dispatcher",
+                ))
+                .enable_ctrlc_handler()
+                .build()
+                .dispatch()
+                .await;
+        } else {
+            loop {
+                sleep(Duration::from_secs(100)).await;
+            }
+        }
         Ok(())
     }
 
-    pub async fn notify(
-        &self,
-        organization: Uuid,
-        notification: Notification,
-    ) -> Result<(), BotError> {
-        let message = match notification {
-            Notification::OutOfActiveSet(address) => {
-                format!("Address {address:?} has been removed from the active set")
+    pub async fn notify(&self, notification: Notification) -> Result<(), BotError> {
+        let message = match notification.alert {
+            NotificationType::UnregisteredFromActiveSet { avs, address } => {
+                format!("Address {address:?} has been removed from the active set for avs {avs}")
             }
-            Notification::MachineLostContact(machine_id) => {
-                format!("Machine '{machine_id}' has lost connection with our backend")
+            NotificationType::MachineNotResponding => {
+                format!(
+                    "Machine '{}' has lost connection with our backend",
+                    notification.machine_id
+                )
             }
-            Notification::AVSError { avs, error } => format!("AVS ERROR: [{avs}]: {error}"),
+            NotificationType::Custom(msg) => format!("ERROR: {msg}"),
+            NotificationType::NodeNotRunning(avs) => {
+                format!("AVS {avs} is not running on {}", notification.machine_id)
+            }
+            NotificationType::NoChainInfo(avs) => {
+                format!("No information on chain for avs {avs}")
+            }
+            NotificationType::NoMetrics(avs) => format!("No metrics reported from avs {avs}"),
+            NotificationType::NoOperatorId(avs) => format!("No operator configured for {avs}"),
+            NotificationType::HardwareResourceUsage { resource, percent } => format!(
+                "Machine {} has used over {percent}% of {resource}",
+                notification.machine_id
+            ),
+            NotificationType::LowPerformaceScore { avs, performance } => {
+                format!("AVS {avs} has droped in performance to {performance}")
+            }
+            NotificationType::NeedsUpdate { avs, current_version, recommended_version } => {
+                format!("AVS {avs} needs update from {current_version} to {recommended_version}")
+            }
+            NotificationType::ActiveSetNoDeployment { avs, address } => {
+                format!("The validator {address} for {avs} is in the active set, but the node is either not deployed or not responding")
+            }
+            NotificationType::NodeNotResponding(node_name) => {
+                format!("The node {node_name} is not responding")
+            }
         };
 
-        for chat in self.db.get_chats_for_organization(organization).await {
-            self.bot.send_message(chat, &message).await?;
+        if let Some(bot) = &self.bot {
+            for chat in self.db.get_chats_for_organization(notification.organization).await {
+                bot.send_message(chat, &message).await?;
+            }
+            Ok(())
+        } else {
+            Err(BotError::NoBotConfigured)
         }
-        Ok(())
     }
 
     fn handler_tree() -> UpdateHandler<teloxide::RequestError> {
@@ -149,7 +191,7 @@ mod telegram_bot_test {
 
     use std::{
         collections::{HashMap, HashSet},
-        sync::{Arc, LazyLock},
+        sync::Arc,
     };
 
     use tokio::sync::Mutex;
@@ -158,18 +200,18 @@ mod telegram_bot_test {
 
     use teloxide_tests::{MockBot, MockMessageText};
 
-    static MOCK_ORGANIZATION_ID: LazyLock<Uuid> = LazyLock::new(Uuid::new_v4);
+    static MOCK_ORGANIZATION_ID: u64 = 1;
 
     #[derive(Debug)]
     struct MockDbBackend {
-        chats: HashMap<Uuid, HashSet<String>>,
+        chats: HashMap<u64, HashSet<String>>,
     }
 
     impl MockDbBackend {
         fn new() -> Self {
             Self { chats: HashMap::new() }
         }
-        fn add_chat(&mut self, organization_id: Uuid, chat_id: &str) -> bool {
+        fn add_chat(&mut self, organization_id: u64, chat_id: &str) -> bool {
             self.chats.entry(organization_id).or_default().insert(chat_id.to_string());
             true
         }
@@ -181,7 +223,7 @@ mod telegram_bot_test {
             }
             false
         }
-        fn chats_for(&self, organization_id: Uuid) -> HashSet<String> {
+        fn chats_for(&self, organization_id: u64) -> HashSet<String> {
             self.chats.get(&organization_id).cloned().unwrap_or_default()
         }
     }
@@ -199,7 +241,7 @@ mod telegram_bot_test {
     impl OrganizationDatabase for MockDb {
         async fn register_chat(&self, chat_id: &str, _email: &str, _password: &str) -> bool {
             let mut db = self.0.lock().await;
-            db.add_chat(*MOCK_ORGANIZATION_ID, chat_id)
+            db.add_chat(MOCK_ORGANIZATION_ID, chat_id)
         }
 
         async fn unregister_chat(&self, chat_id: &str) -> bool {
@@ -207,13 +249,20 @@ mod telegram_bot_test {
             db.remove_chat(chat_id)
         }
 
-        async fn get_emails_for_organization(&self, _organization_id: Uuid) -> Vec<String> {
-            Vec::new()
+        async fn get_emails_for_organization(&self, _organization_id: u64) -> HashSet<String> {
+            HashSet::new()
         }
 
-        async fn get_chats_for_organization(&self, organization_id: Uuid) -> Vec<String> {
+        async fn get_chats_for_organization(&self, organization_id: u64) -> HashSet<String> {
             let db = self.0.lock().await;
-            db.chats_for(organization_id).iter().cloned().collect::<Vec<_>>()
+            db.chats_for(organization_id)
+        }
+
+        async fn get_pd_integration_key_for_organization(
+            &self,
+            _organization_id: u64,
+        ) -> Option<String> {
+            None
         }
     }
 
@@ -251,7 +300,7 @@ mod telegram_bot_test {
         let message = responses.sent_messages.last().expect("No sent messages were detected!");
 
         assert_eq!(message.text(), Some("Registration successful."));
-        assert_eq!(db.get_chats_for_organization(*MOCK_ORGANIZATION_ID).await.len(), 1);
+        assert_eq!(db.get_chats_for_organization(MOCK_ORGANIZATION_ID).await.len(), 1);
 
         let mock_unregister_message =
             MockMessageText::new().chat(message.chat.clone()).text("/unregister");
@@ -262,7 +311,7 @@ mod telegram_bot_test {
         let message = responses.sent_messages.last().expect("No sent messages were detected!");
 
         assert_eq!(message.text(), Some("You have successfully unregistered this chat."));
-        assert_eq!(db.get_chats_for_organization(*MOCK_ORGANIZATION_ID).await.len(), 0);
+        assert_eq!(db.get_chats_for_organization(MOCK_ORGANIZATION_ID).await.len(), 0);
     }
 
     #[tokio::test]
@@ -278,7 +327,7 @@ mod telegram_bot_test {
         let message = responses.sent_messages.last().expect("No sent messages were detected!");
 
         assert_eq!(message.text(), Some("This chat was not registered."));
-        assert_eq!(db.get_chats_for_organization(*MOCK_ORGANIZATION_ID).await.len(), 0);
+        assert_eq!(db.get_chats_for_organization(MOCK_ORGANIZATION_ID).await.len(), 0);
     }
 
     #[tokio::test]
@@ -295,6 +344,6 @@ mod telegram_bot_test {
         let message = responses.sent_messages.last().expect("No sent messages were detected!");
 
         assert_eq!(message.text(), Some("Registration successful."));
-        assert_eq!(db.get_chats_for_organization(*MOCK_ORGANIZATION_ID).await.len(), 1);
+        assert_eq!(db.get_chats_for_organization(MOCK_ORGANIZATION_ID).await.len(), 1);
     }
 }
