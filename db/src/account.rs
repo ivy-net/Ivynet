@@ -60,12 +60,23 @@ impl Account {
         password: &str,
     ) -> Result<Account, DatabaseError> {
         let account = sqlx::query_as!(
-        Account,
-        r#"SELECT user_id, organization_id, email, password, role AS "role!: Role", created_at, updated_at FROM account WHERE email = $1 AND password = $2"#,
-        email, sha256::digest(password)
-    )
-    .fetch_one(pool)
-    .await?;
+            Account,
+            r#"SELECT
+                a.user_id,
+                a.organization_id,
+                a.email,
+                a.password,
+                a.role AS "role!: Role",
+                a.created_at,
+                a.updated_at
+              FROM account a
+              JOIN organization o ON a.organization_id = o.organization_id
+              WHERE a.email = $1 AND a.password = $2 AND o.verified = TRUE"#,
+            email,
+            sha256::digest(password)
+        )
+        .fetch_one(pool)
+        .await?;
 
         Ok(account)
     }
