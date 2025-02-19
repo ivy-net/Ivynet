@@ -242,16 +242,9 @@ pub async fn invite(
     )
 )]
 pub async fn confirm(
-    headers: HeaderMap,
     State(state): State<HttpState>,
-    jar: CookieJar,
     Path(id): Path<Uuid>,
 ) -> Result<Json<ConfirmationResponse>, BackendError> {
-    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    if account.role != Role::Owner {
-        return Err(BackendError::InsufficientPriviledges);
-    }
-
     let verification = Verification::get(&state.pool, id).await?;
     if verification.verification_type != VerificationType::Organization {
         return Err(BackendError::BadId);
@@ -259,8 +252,9 @@ pub async fn confirm(
 
     let mut org = Organization::get(&state.pool, verification.associated_id as u64).await?;
 
-    if account.organization_id != org.organization_id {
-        return Err(BackendError::InsufficientPriviledges);
+    if org.verified {
+        // We return BAD ID if the organization has been already verified for everyone
+        return Err(BackendError::BadId);
     }
 
     org.verify(&state.pool).await?;
