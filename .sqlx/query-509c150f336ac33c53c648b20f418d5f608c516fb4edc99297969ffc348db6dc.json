@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT client_id, log, log_level AS \"log_level!: LogLevel\", created_at, \n                       other_fields as \"other_fields: sqlx::types::Json<HashMap<String,String>>\"\n                       FROM client_log \n                       WHERE client_id = $1 \n                       AND created_at >= $2 \n                       AND created_at <= $3 \n                       AND log_level = $4\n                       ORDER BY created_at",
+  "query": "SELECT client_id, log, log_level AS \"log_level!: LogLevel\", created_at,\n                       other_fields as \"other_fields: sqlx::types::Json<HashMap<String,String>>\"\n                       FROM client_log\n                       WHERE client_id = $1\n                       AND created_at >= $2\n                       AND created_at <= $3\n                       ORDER BY created_at",
   "describe": {
     "columns": [
       {
@@ -46,21 +46,7 @@
       "Left": [
         "Bytea",
         "Timestamp",
-        "Timestamp",
-        {
-          "Custom": {
-            "name": "log_level",
-            "kind": {
-              "Enum": [
-                "debug",
-                "info",
-                "warning",
-                "error",
-                "unknown"
-              ]
-            }
-          }
-        }
+        "Timestamp"
       ]
     },
     "nullable": [
@@ -71,5 +57,5 @@
       true
     ]
   },
-  "hash": "e6d160413bb9576aeccd016d0c4bd2d173169e4a402e5b89d87ce3de167c6246"
+  "hash": "509c150f336ac33c53c648b20f418d5f608c516fb4edc99297969ffc348db6dc"
 }

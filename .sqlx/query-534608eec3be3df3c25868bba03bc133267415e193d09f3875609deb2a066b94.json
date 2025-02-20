@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT client_id, log, log_level AS \"log_level!: LogLevel\", created_at, \n                       other_fields as \"other_fields: sqlx::types::Json<HashMap<String,String>>\"\n                       FROM client_log \n                       WHERE client_id = $1 \n                       AND log_level = $2\n                       ORDER BY created_at",
+  "query": "SELECT client_id, log, log_level AS \"log_level!: LogLevel\", created_at,\n                       other_fields as \"other_fields: sqlx::types::Json<HashMap<String,String>>\"\n                       FROM client_log\n                       WHERE client_id = $1\n                       AND log_level = $2\n                       ORDER BY created_at",
   "describe": {
     "columns": [
       {
@@ -69,5 +69,5 @@
       true
     ]
   },
-  "hash": "fdffcfb6bc0ab5724b105565b1dd46ca814d3bec28c553440a3741f9dad872ee"
+  "hash": "534608eec3be3df3c25868bba03bc133267415e193d09f3875609deb2a066b94"
 }

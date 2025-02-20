@@ -146,12 +146,12 @@ impl ClientLog {
 
                 query_as!(
                     ClientDbLog,
-                    r#"SELECT client_id, log, log_level AS "log_level!: LogLevel", created_at, 
+                    r#"SELECT client_id, log, log_level AS "log_level!: LogLevel", created_at,
                        other_fields as "other_fields: sqlx::types::Json<HashMap<String,String>>"
-                       FROM client_log 
-                       WHERE client_id = $1 
-                       AND created_at >= $2 
-                       AND created_at <= $3 
+                       FROM client_log
+                       WHERE client_id = $1
+                       AND created_at >= $2
+                       AND created_at <= $3
                        AND log_level = $4
                        ORDER BY created_at"#,
                     client_id.as_bytes().to_vec(),
@@ -173,11 +173,11 @@ impl ClientLog {
 
                 query_as!(
                     ClientDbLog,
-                    r#"SELECT client_id, log, log_level AS "log_level!: LogLevel", created_at, 
+                    r#"SELECT client_id, log, log_level AS "log_level!: LogLevel", created_at,
                        other_fields as "other_fields: sqlx::types::Json<HashMap<String,String>>"
-                       FROM client_log 
-                       WHERE client_id = $1 
-                       AND created_at >= $2 
+                       FROM client_log
+                       WHERE client_id = $1
+                       AND created_at >= $2
                        AND created_at <= $3
                        ORDER BY created_at"#,
                     client_id.as_bytes().to_vec(),
@@ -190,10 +190,10 @@ impl ClientLog {
             (None, None, Some(level)) => {
                 query_as!(
                     ClientDbLog,
-                    r#"SELECT client_id, log, log_level AS "log_level!: LogLevel", created_at, 
+                    r#"SELECT client_id, log, log_level AS "log_level!: LogLevel", created_at,
                        other_fields as "other_fields: sqlx::types::Json<HashMap<String,String>>"
-                       FROM client_log 
-                       WHERE client_id = $1 
+                       FROM client_log
+                       WHERE client_id = $1
                        AND log_level = $2
                        ORDER BY created_at"#,
                     client_id.as_bytes().to_vec(),
@@ -205,9 +205,9 @@ impl ClientLog {
             _ => {
                 query_as!(
                     ClientDbLog,
-                    r#"SELECT client_id, log, log_level AS "log_level!: LogLevel", created_at, 
+                    r#"SELECT client_id, log, log_level AS "log_level!: LogLevel", created_at,
                        other_fields as "other_fields: sqlx::types::Json<HashMap<String,String>>"
-                       FROM client_log 
+                       FROM client_log
                        WHERE client_id = $1
                        ORDER BY created_at"#,
                     client_id.as_bytes().to_vec(),
