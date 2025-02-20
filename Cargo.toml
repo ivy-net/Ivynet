@@ -1,11 +1,13 @@
 [workspace]
 members = [
+    #Binaries
 	"cli",
-	"macros",
-	"backend",
-	"scraper",
-    "db",
+	"api",
+	"scanner",
 	"ingress",
+    #Crates
+    "ivynet-database",
+    "ivynet-macros",
 	"ivynet-docker",
 	"ivynet-docker-registry",
 	"ivynet-grpc",
@@ -14,7 +16,6 @@ members = [
     "ivynet-notifications",
 	"ivynet-signer",
     "ivynet-error",
-
 ]
 resolver = "2"
 
@@ -58,9 +59,6 @@ unused_rounding = "warn"
 useless_let_if_seq = "warn"
 
 [workspace.dependencies]
-# Local packages with binary
-db = { path = "db" }
-
 # Local packages
 ivynet-error = { path = "ivynet-error" }
 ivynet-docker = { path = "ivynet-docker" }
@@ -69,6 +67,8 @@ ivynet-grpc = { path = "ivynet-grpc" }
 ivynet-io = { path = "ivynet-io" }
 ivynet-node-type = { path = "ivynet-node-type" }
 ivynet-signer = { path = "ivynet-signer" }
+ivynet-database = { path = "ivynet-database" }
+ivynet-macros = { path = "ivynet-macros" }
 
 #grpc
 prost = "0.13"

@@ -1,5 +1,5 @@
 [package]
-name = "ivynet-backend"
+name = "api"
 version = "0.5.1"
 edition.workspace = true
 repository.workspace = true
@@ -8,14 +8,21 @@ license.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[[bin]]
+name = "ivynet-api"
+path = "src/main.rs"
+
 [dependencies]
-axum = { version = "0.7", features = ["http2", "macros", "multipart"] }
-clap = { version = "4.5", features = ["derive", "env"] }
-db = { path = "../db" }
-ethers.workspace = true
+# IvyNet crates
+ivynet-database.workspace = true
 ivynet-docker-registry.workspace = true
 ivynet-grpc.workspace = true
 ivynet-node-type.workspace = true
+
+# External crates
+axum = { version = "0.7", features = ["http2", "macros", "multipart"] }
+clap = { version = "4.5", features = ["derive", "env"] }
+ethers.workspace = true
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0", features = ["raw_value"] }
 sqlx.workspace = true

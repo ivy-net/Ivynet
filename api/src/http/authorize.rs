@@ -18,7 +18,7 @@ use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::error::BackendError;
-use db::{
+use ivynet_database::{
     machine::Machine,
     verification::{Verification, VerificationType},
     Account, Client,

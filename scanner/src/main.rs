@@ -6,7 +6,7 @@ use ivynet_grpc::{
     backend_events::backend_events_client::BackendEventsClient,
     client::{create_channel, Uri},
 };
-use scraper::blockchain;
+use scanner::blockchain;
 use tracing::{info, level_filters::LevelFilter};
 use tracing_subscriber::FmtSubscriber;
 

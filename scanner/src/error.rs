@@ -1,7 +1,7 @@
 use thiserror::Error;
 
 #[derive(Error, Debug)]
-pub enum ScraperError {
+pub enum ScannerError {
     #[error("Unknown error")]
     UnknownError,
 
@@ -37,4 +37,4 @@ pub enum ScraperError {
     TonicError(#[from] ivynet_grpc::tonic::Status),
 }
 
-pub type Result<T> = std::result::Result<T, ScraperError>;
+pub type Result<T> = std::result::Result<T, ScannerError>;

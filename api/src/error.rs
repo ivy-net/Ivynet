@@ -13,7 +13,7 @@ pub enum BackendError {
     Tonic(#[from] ivynet_grpc::Status),
 
     #[error(transparent)]
-    DbError(#[from] db::error::DatabaseError),
+    DbError(#[from] ivynet_database::error::DatabaseError),
 
     #[error(transparent)]
     Io(#[from] std::io::Error),

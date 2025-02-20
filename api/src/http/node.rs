@@ -1,7 +1,7 @@
 use crate::error::BackendError;
 use axum::{extract::State, http::HeaderMap, Json};
 use axum_extra::extract::CookieJar;
-use db::{
+use ivynet_database::{
     data::node_data::{
         build_avs_info, get_active_set_information, ActiveSetInfo, AvsInfo, NodeStatusReport,
     },

@@ -396,7 +396,7 @@ mod logs_db_tests {
 
     use ivynet_error::ethers::types::Address;
 
-    use crate::db::{Account, Avs, Client, Machine, Organization, Role};
+    use crate::ivynet_database::{Account, Avs, Client, Machine, Organization, Role};
 
     use super::*;
 
@@ -479,7 +479,7 @@ mod logs_db_tests {
 // #[cfg(test)]
 // mod logs_db_tests {
 //     use super::*;
-//     use crate::db::node::DbNode;
+//     use crate::ivynet_database::node::DbNode;
 //     use chrono::Utc;
 //     use ivynet_error::ethers::types::Address;
 //

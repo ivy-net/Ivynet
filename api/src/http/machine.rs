@@ -14,7 +14,7 @@ use std::{
 };
 use uuid::Uuid;
 
-use db::{
+use ivynet_database::{
     avs::Avs,
     data::{
         machine_data::{

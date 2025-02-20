@@ -1,5 +1,5 @@
 [package]
-name = "db"
+name = "ivynet-database"
 version.workspace = true
 edition.workspace = true
 repository.workspace = true

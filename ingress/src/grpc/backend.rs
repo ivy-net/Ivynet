@@ -1,5 +1,5 @@
 use crate::error::IngressError;
-use db::{
+use ivynet_database::{
     alerts::alert_handler::AlertHandler,
     data::{
         machine_data::convert_system_metrics,

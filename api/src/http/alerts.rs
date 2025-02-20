@@ -5,7 +5,7 @@ use axum::{
 };
 use axum_extra::extract::CookieJar;
 use chrono::DateTime;
-use db::alerts::{alerts_active::ActiveAlert, alerts_historical::HistoryAlert};
+use ivynet_database::alerts::{alerts_active::ActiveAlert, alerts_historical::HistoryAlert};
 use serde::Deserialize;
 use utoipa::ToSchema;
 use uuid::Uuid;

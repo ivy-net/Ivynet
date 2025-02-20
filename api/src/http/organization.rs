@@ -7,7 +7,7 @@ use axum::{
     Json,
 };
 use axum_extra::extract::CookieJar;
-use db::{
+use ivynet_database::{
     avs::Avs,
     machine::Machine,
     verification::{Verification, VerificationType},

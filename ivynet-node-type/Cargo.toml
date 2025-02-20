@@ -21,4 +21,4 @@ strum.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 ethers.workspace = true
-ivynet-macros = { path = "../macros" }
+ivynet-macros.workspace = true

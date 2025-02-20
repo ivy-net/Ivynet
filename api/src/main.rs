@@ -1,17 +1,17 @@
 use std::sync::Arc;
 
+use api::{
+    config::Config, error::BackendError, get_node_version_hashes, http, telemetry::start_tracing,
+};
 use chrono::DateTime;
 use clap::Parser as _;
-use db::{
+use ethers::types::Chain;
+use ivynet_database::{
     self,
     avs_version::DbAvsVersionData,
     configure,
     data::avs_version::{find_latest_avs_version, VersionType},
     utils::try_parse_chain,
-};
-use ethers::types::Chain;
-use ivynet_backend::{
-    config::Config, error::BackendError, get_node_version_hashes, http, telemetry::start_tracing,
 };
 use ivynet_node_type::{ActiveSet, AltlayerType, MachType, NodeType};
 use sqlx::PgPool;
@@ -38,12 +38,13 @@ async fn main() -> Result<(), BackendError> {
         Ok(add_node_version_hashes(&pool).await?)
     } else if config.update_node_data_versions {
         let node_types = NodeType::all_known_with_repo();
-        db::DbAvsVersionData::delete_avses_from_avs_version_data(&pool, &node_types).await?;
+        ivynet_database::DbAvsVersionData::delete_avses_from_avs_version_data(&pool, &node_types)
+            .await?;
         update_node_data_versions(&node_types, &pool, &Chain::Mainnet).await?;
         update_node_data_versions(&node_types, &pool, &Chain::Holesky).await?;
         return Ok(());
     } else if config.delete_old_logs {
-        Ok(db::log::ContainerLog::delete_old_logs(&pool).await?)
+        Ok(ivynet_database::log::ContainerLog::delete_old_logs(&pool).await?)
     } else {
         let cache = memcache::connect(config.cache_url.to_string())?;
         http::serve(
@@ -69,7 +70,7 @@ async fn add_account(pool: &PgPool, org: &str) -> Result<(), BackendError> {
         let cred_data = org_data[0].split(':').collect::<Vec<_>>();
         if cred_data.len() == 2 {
             println!("Creating organization {} with user {}", org_data[1], cred_data[0]);
-            let org = db::Organization::new(pool, org_data[1], true).await?;
+            let org = ivynet_database::Organization::new(pool, org_data[1], true).await?;
             org.attach_admin(pool, cred_data[0], cred_data[1]).await?;
         }
     }
@@ -85,7 +86,7 @@ async fn add_version_hash(pool: &PgPool, version: &str) -> Result<(), BackendErr
                 "Adding new version ({}) for avs {} with hash = {}",
                 avs_data[0], avs_data[1], version_data[1]
             );
-            db::AvsVersionHash::add_version(
+            ivynet_database::AvsVersionHash::add_version(
                 pool,
                 &NodeType::from(avs_data[1]),
                 version_data[1],
@@ -108,8 +109,12 @@ async fn set_avs_version(pool: &sqlx::PgPool, avs_data: &str) -> Result<(), Back
     let node_type = NodeType::from(avs_data[0]);
     let chain = try_parse_chain(avs_data[1]).map_err(|_| BackendError::InvalidChain)?;
     let version = avs_data[2];
-    let digest =
-        db::AvsVersionHash::get_digest_for_version(pool, &node_type.to_string(), version).await?;
+    let digest = ivynet_database::AvsVersionHash::get_digest_for_version(
+        pool,
+        &node_type.to_string(),
+        version,
+    )
+    .await?;
 
     println!("Setting version {:?} for avs {:?} on {:?}", version, node_type, chain);
     DbAvsVersionData::set_avs_version(pool, &node_type, &chain, version, &digest).await?;
@@ -137,7 +142,8 @@ async fn set_breaking_change_version(
 
 async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
     let all_known_with_repo = NodeType::all_known_with_repo();
-    db::AvsVersionHash::delete_avses_from_avs_version_hash(pool, &all_known_with_repo).await?;
+    ivynet_database::AvsVersionHash::delete_avses_from_avs_version_hash(pool, &all_known_with_repo)
+        .await?;
     let registry_tags = get_node_version_hashes().await?;
     info!("Adding {} total node version hashes", registry_tags.len());
     for (entry, tags) in registry_tags {
@@ -147,7 +153,11 @@ async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
                 info!("Adding SemVer version hashes for {}", name);
                 for (tag, digest) in tags {
                     if !tag.is_empty() && !digest.is_empty() {
-                        match db::AvsVersionHash::add_version(pool, &entry, &digest, &tag).await {
+                        match ivynet_database::AvsVersionHash::add_version(
+                            pool, &entry, &digest, &tag,
+                        )
+                        .await
+                        {
                             Ok(_) => debug!("Added {}:{}:{}", name, tag, digest),
                             Err(e) => debug!("Failed to add {}:{}:{} | {}", name, tag, digest, e),
                         };
@@ -160,7 +170,10 @@ async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
                 debug!("Updating fixed and hybrid version hashes for {}", name);
                 for (tag, digest) in tags {
                     if !tag.is_empty() && !digest.is_empty() {
-                        match db::AvsVersionHash::update_version(pool, &entry, &digest, &tag).await
+                        match ivynet_database::AvsVersionHash::update_version(
+                            pool, &entry, &digest, &tag,
+                        )
+                        .await
                         {
                             Ok(_) => debug!("Updated {}:{}:{}", name, tag, digest),
                             Err(e) => warn!("Failed to update {}:{}:{} | {}", name, tag, digest, e),
@@ -203,7 +216,7 @@ async fn update_node_data_versions(
                 AltlayerType::Unknown => {
                     let (tag, digest) = find_latest_avs_version(pool, node_type, chain).await?;
                     for altlayer_type in AltlayerType::iter() {
-                        db::DbAvsVersionData::set_avs_version(
+                        ivynet_database::DbAvsVersionData::set_avs_version(
                             pool,
                             &NodeType::Altlayer(altlayer_type),
                             chain,
@@ -219,7 +232,7 @@ async fn update_node_data_versions(
                 MachType::Unknown => {
                     let (tag, digest) = find_latest_avs_version(pool, node_type, chain).await?;
                     for mach_type in MachType::iter() {
-                        db::DbAvsVersionData::set_avs_version(
+                        ivynet_database::DbAvsVersionData::set_avs_version(
                             pool,
                             &NodeType::AltlayerMach(mach_type),
                             chain,
@@ -235,7 +248,7 @@ async fn update_node_data_versions(
                 ActiveSet::Unknown => {
                     let (tag, digest) = find_latest_avs_version(pool, node_type, chain).await?;
                     for protocol in ActiveSet::iter() {
-                        db::DbAvsVersionData::set_avs_version(
+                        ivynet_database::DbAvsVersionData::set_avs_version(
                             pool,
                             &NodeType::DittoNetwork(protocol),
                             chain,
@@ -251,7 +264,7 @@ async fn update_node_data_versions(
                 ActiveSet::Unknown => {
                     let (tag, digest) = find_latest_avs_version(pool, node_type, chain).await?;
                     for protocol in ActiveSet::iter() {
-                        db::DbAvsVersionData::set_avs_version(
+                        ivynet_database::DbAvsVersionData::set_avs_version(
                             pool,
                             &NodeType::Bolt(protocol),
                             chain,
@@ -267,7 +280,7 @@ async fn update_node_data_versions(
                 ActiveSet::Unknown => {
                     let (tag, digest) = find_latest_avs_version(pool, node_type, chain).await?;
                     for protocol in ActiveSet::iter() {
-                        db::DbAvsVersionData::set_avs_version(
+                        ivynet_database::DbAvsVersionData::set_avs_version(
                             pool,
                             &NodeType::Hyperlane(protocol),
                             chain,
@@ -281,8 +294,10 @@ async fn update_node_data_versions(
             },
             _ => {
                 let (tag, digest) = find_latest_avs_version(pool, node_type, chain).await?;
-                db::DbAvsVersionData::set_avs_version(pool, node_type, chain, &tag, &digest)
-                    .await?;
+                ivynet_database::DbAvsVersionData::set_avs_version(
+                    pool, node_type, chain, &tag, &digest,
+                )
+                .await?;
             }
         }
     }
@@ -294,8 +309,8 @@ async fn update_node_data_versions(
 mod tests {
     use std::collections::HashMap;
 
-    use db::{data::avs_version::find_latest_avs_version, DbAvsVersionData};
     use ethers::types::Chain;
+    use ivynet_database::{data::avs_version::find_latest_avs_version, DbAvsVersionData};
     use ivynet_node_type::NodeType;
     use sqlx::PgPool;
 

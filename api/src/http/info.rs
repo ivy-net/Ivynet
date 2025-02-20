@@ -5,7 +5,7 @@ use axum::{
     Json,
 };
 use axum_extra::extract::CookieJar;
-use db::{avs_version::DbAvsVersionData, AvsVersionData};
+use ivynet_database::{avs_version::DbAvsVersionData, AvsVersionData};
 use ivynet_node_type::NodeType;
 use tracing::debug;
 

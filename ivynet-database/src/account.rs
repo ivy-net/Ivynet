@@ -249,7 +249,7 @@ impl Account {
 // #[cfg(feature = "db_tests")]
 // #[cfg(test)]
 // mod tests {
-//     use crate::db::verification;
+//     use crate::ivynet_database::verification;
 //
 //     use super::*;
 //
