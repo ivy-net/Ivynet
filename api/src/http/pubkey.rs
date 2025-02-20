@@ -5,8 +5,8 @@ use axum::{
     Json,
 };
 use axum_extra::extract::CookieJar;
-use ivynet_database::operator_keys::OperatorKey;
 use ethers::types::Address;
+use ivynet_database::operator_keys::OperatorKey;
 use std::collections::HashMap;
 
 use super::{authorize, HttpState};

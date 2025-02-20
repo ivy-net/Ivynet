@@ -1,8 +1,8 @@
 use std::collections::HashMap;
 
-use ivynet_database::data::avs_version::{extract_semver, VersionType};
 use error::BackendError;
 use futures::future::join_all;
+use ivynet_database::data::avs_version::{extract_semver, VersionType};
 use ivynet_docker_registry::registry::DockerRegistry;
 use ivynet_node_type::NodeType;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
