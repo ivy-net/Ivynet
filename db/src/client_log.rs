@@ -127,6 +127,100 @@ impl ClientLog {
         Ok(logs)
     }
 
+    pub async fn get_all_for_client_with_filters(
+        pool: &PgPool,
+        client_id: Address,
+        from: Option<i64>,
+        to: Option<i64>,
+        log_level: Option<LogLevel>,
+    ) -> Result<Vec<ClientLog>, DatabaseError> {
+        let db_logs = match (from, to, log_level) {
+            (Some(from), Some(to), Some(level)) => {
+                let from_dt =
+                    DateTime::from_timestamp(from, 0).map(|dt| dt.naive_utc()).ok_or_else(
+                        || DatabaseError::InvalidInput("Invalid 'from' timestamp".into()),
+                    )?;
+                let to_dt = DateTime::from_timestamp(to, 0)
+                    .map(|dt| dt.naive_utc())
+                    .ok_or_else(|| DatabaseError::InvalidInput("Invalid 'to' timestamp".into()))?;
+
+                query_as!(
+                    ClientDbLog,
+                    r#"SELECT client_id, log, log_level AS "log_level!: LogLevel", created_at, 
+                       other_fields as "other_fields: sqlx::types::Json<HashMap<String,String>>"
+                       FROM client_log 
+                       WHERE client_id = $1 
+                       AND created_at >= $2 
+                       AND created_at <= $3 
+                       AND log_level = $4
+                       ORDER BY created_at"#,
+                    client_id.as_bytes().to_vec(),
+                    from_dt,
+                    to_dt,
+                    level as LogLevel,
+                )
+                .fetch_all(pool)
+                .await?
+            }
+            (Some(from), Some(to), None) => {
+                let from_dt =
+                    DateTime::from_timestamp(from, 0).map(|dt| dt.naive_utc()).ok_or_else(
+                        || DatabaseError::InvalidInput("Invalid 'from' timestamp".into()),
+                    )?;
+                let to_dt = DateTime::from_timestamp(to, 0)
+                    .map(|dt| dt.naive_utc())
+                    .ok_or_else(|| DatabaseError::InvalidInput("Invalid 'to' timestamp".into()))?;
+
+                query_as!(
+                    ClientDbLog,
+                    r#"SELECT client_id, log, log_level AS "log_level!: LogLevel", created_at, 
+                       other_fields as "other_fields: sqlx::types::Json<HashMap<String,String>>"
+                       FROM client_log 
+                       WHERE client_id = $1 
+                       AND created_at >= $2 
+                       AND created_at <= $3
+                       ORDER BY created_at"#,
+                    client_id.as_bytes().to_vec(),
+                    from_dt,
+                    to_dt,
+                )
+                .fetch_all(pool)
+                .await?
+            }
+            (None, None, Some(level)) => {
+                query_as!(
+                    ClientDbLog,
+                    r#"SELECT client_id, log, log_level AS "log_level!: LogLevel", created_at, 
+                       other_fields as "other_fields: sqlx::types::Json<HashMap<String,String>>"
+                       FROM client_log 
+                       WHERE client_id = $1 
+                       AND log_level = $2
+                       ORDER BY created_at"#,
+                    client_id.as_bytes().to_vec(),
+                    level as LogLevel,
+                )
+                .fetch_all(pool)
+                .await?
+            }
+            _ => {
+                query_as!(
+                    ClientDbLog,
+                    r#"SELECT client_id, log, log_level AS "log_level!: LogLevel", created_at, 
+                       other_fields as "other_fields: sqlx::types::Json<HashMap<String,String>>"
+                       FROM client_log 
+                       WHERE client_id = $1
+                       ORDER BY created_at"#,
+                    client_id.as_bytes().to_vec(),
+                )
+                .fetch_all(pool)
+                .await?
+            }
+        };
+
+        let logs = db_logs.into_iter().map(ClientLog::from).collect::<Vec<_>>();
+        Ok(logs)
+    }
+
     pub async fn delete_old_logs(pool: &PgPool) -> Result<(), DatabaseError> {
         const BATCH_SIZE: i64 = 100;
 

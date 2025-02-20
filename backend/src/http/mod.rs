@@ -106,7 +106,8 @@ fn create_router() -> Router<HttpState> {
             "/client",
             Router::new()
                 .route("/", get(client::client))
-                .route("/:id", get(client::client_machines)),
+                .route("/:id", get(client::client_machines))
+                .route("/:id/logs", get(client::client_logs)),
         )
         .nest(
             "/machine",

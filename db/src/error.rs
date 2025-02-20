@@ -38,6 +38,9 @@ pub enum DatabaseError {
 
     #[error("Chain parse error: {0}")]
     ChainParseError(String),
+
+    #[error("Invalid input: {0}")]
+    InvalidInput(String),
 }
 
 impl From<DatabaseError> for Status {
