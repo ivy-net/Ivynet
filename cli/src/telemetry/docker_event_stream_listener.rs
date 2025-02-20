@@ -13,7 +13,7 @@ use ivynet_grpc::{
 };
 use tokio::time::sleep;
 use tokio_stream::StreamExt;
-use tracing::{debug, error, info, warn};
+use tracing::{debug, error, info};
 
 use crate::ivy_machine::{IvyMachine, MachineIdentityError};
 
