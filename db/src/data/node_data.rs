@@ -78,6 +78,8 @@ pub struct ActiveSetInfo {
     pub restaking_protocol: Option<RestakingProtocolType>,
     pub status: bool,
     pub chain: Chain,
+    pub avs_name: Option<String>,
+    pub machine_id: Option<String>,
 }
 
 pub async fn build_avs_info(
@@ -284,6 +286,7 @@ pub async fn get_active_set_information(
     let mut op_key_active_set_info: Vec<(OperatorKey, Vec<ActiveSetInfo>)> = vec![];
     for op_key in operator_keys {
         let active_set_avses = AvsActiveSet::get_active_set_avses(pool, op_key.public_key).await?;
+        let all_avses = Avs::get_operator_avs_list(pool, &op_key.public_key).await?;
 
         let active_set_info: Vec<ActiveSetInfo> = active_set_avses
             .into_iter()
@@ -294,11 +297,18 @@ pub async fn get_active_set_information(
                     _ => None,
                 }?;
 
+                // Find matching AVS instance for this chain/type combination
+                let matching_avs = all_avses.iter().find(|a| {
+                    a.avs_type == *avs_type && a.chain.map_or(false, |c| c == avs.chain_id)
+                });
+
                 Some(ActiveSetInfo {
                     node_type: *avs_type,
                     restaking_protocol: avs_type.restaking_protocol(),
                     status: avs.active,
                     chain: avs.chain_id,
+                    machine_id: matching_avs.map(|a| a.machine_id.to_string()),
+                    avs_name: matching_avs.map(|a| a.avs_name.clone()),
                 })
             })
             .collect();
