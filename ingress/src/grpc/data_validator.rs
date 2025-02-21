@@ -4,17 +4,23 @@ use ivynet_error::ethers::types::{Signature, H160};
 use ivynet_grpc::{
     self,
     messages::{
-        MachineData, Metrics, NodeData, NodeDataV2, SignedLog, SignedMachineData, SignedMetrics,
-        SignedNameChange, SignedNodeData, SignedNodeDataV2,
+        MachineData, Metrics, NodeData, NodeDataV2, SignedClientLog, SignedLog, SignedMachineData,
+        SignedMetrics, SignedNameChange, SignedNodeData, SignedNodeDataV2,
     },
     Status,
 };
 use ivynet_signer::sign_utils::{
-    recover_log, recover_machine_data, recover_metrics, recover_name_change, recover_node_data,
-    recover_node_data_v2,
+    recover_client_log, recover_log, recover_machine_data, recover_metrics, recover_name_change,
+    recover_node_data, recover_node_data_v2,
 };
 use sqlx::PgPool;
 use uuid::Uuid;
+
+pub struct SignedData<T> {
+    pub machine_id: Uuid,
+    pub client_id: H160,
+    pub data: T,
+}
 
 pub trait SignedDataValidator {
     type DataType;
@@ -31,7 +37,7 @@ pub async fn validate_request<T, V>(
     machine_id: &[u8],
     signature: &[u8],
     data: Option<T>,
-) -> Result<(Uuid, T), Status>
+) -> Result<SignedData<T>, Status>
 where
     V: SignedDataValidator<DataType = T>,
 {
@@ -58,7 +64,7 @@ where
         return Err(Status::not_found("Machine not registered for given client".to_string()));
     }
 
-    Ok((machine_id, data))
+    Ok(SignedData { machine_id, client_id, data })
 }
 
 // Implementation for v1
@@ -124,6 +130,19 @@ impl SignedDataValidator for SignedLog {
     ) -> Result<H160, Status> {
         recover_log(data, signature).map_err(|e| {
             Status::invalid_argument(format!("Failed to recover signature for logs: {e}"))
+        })
+    }
+}
+
+impl SignedDataValidator for SignedClientLog {
+    type DataType = String;
+
+    async fn recover_signature(
+        data: &Self::DataType,
+        signature: &Signature,
+    ) -> Result<H160, Status> {
+        recover_client_log(data, signature).map_err(|e| {
+            Status::invalid_argument(format!("Failed to recover signature for client logs: {e}"))
         })
     }
 }

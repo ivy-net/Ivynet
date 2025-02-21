@@ -29,7 +29,7 @@ impl From<&NodeType> for VersionType {
             NodeType::DittoNetwork(_) => VersionType::SemVer,
             NodeType::Gasp => VersionType::FixedVer,
             NodeType::EigenDA => VersionType::SemVer,
-            NodeType::LagrangeZkWorker => VersionType::FixedVer,
+            NodeType::LagrangeZkWorker => VersionType::SemVer,
             NodeType::LagrangeZKProver => VersionType::FixedVer,
             NodeType::AvaProtocol => VersionType::SemVer,
             NodeType::EOracle => VersionType::HybridVer,
@@ -78,13 +78,12 @@ impl From<&NodeType> for VersionType {
 impl VersionType {
     pub fn fixed_name(node_type: &NodeType, chain: &Chain) -> Option<&'static str> {
         match (node_type, chain) {
-            (NodeType::LagrangeZkWorker, _) => Some("latest"),
             (NodeType::LagrangeZKProver, _) => Some("latest"),
             (NodeType::Gasp, _) => Some("latest"),
             (NodeType::K3LabsAvs, _) => Some("latest"),
             (NodeType::K3LabsAvsHolesky, _) => Some("latest"),
             (NodeType::EOracle, _) => Some("latest"),
-            (NodeType::Omni, _) => Some("latest"),
+            (NodeType::Omni, _) => Some("main"),
             (NodeType::OpenLayerMainnet, _) => Some("latest"),
             (NodeType::OpenLayerHolesky, _) => Some("latest"),
             (NodeType::ArpaNetworkNodeClient, _) => Some("latest"),

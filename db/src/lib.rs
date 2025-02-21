@@ -7,6 +7,7 @@ pub mod avs_active_set;
 pub mod avs_version;
 pub mod avs_version_hash;
 pub mod client;
+pub mod client_log;
 pub mod data;
 pub mod error;
 pub mod log;

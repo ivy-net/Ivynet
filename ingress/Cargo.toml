@@ -14,7 +14,7 @@ ivynet-error = { path = "../ivynet-error" }
 db = { path = "../db" }
 uuid = { version = "1.11", features = ["v4", "serde"] }
 tracing.workspace = true
-tracing-subscriber = "0.3"
+tracing-subscriber.workspace = true
 ivynet-docker.workspace = true
 ivynet-docker-registry.workspace = true
 ivynet-grpc.workspace = true

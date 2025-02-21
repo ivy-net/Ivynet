@@ -16,4 +16,5 @@ service Backend {
     rpc NodeTypeQueries(messages.NodeTypeQueries) returns (messages.NodeTypes);
     rpc NameChange(messages.SignedNameChange) returns (google.protobuf.Empty);
     rpc MachineData(messages.SignedMachineData) returns (google.protobuf.Empty);
+    rpc ClientLogs(messages.SignedClientLog) returns (google.protobuf.Empty);
 }
