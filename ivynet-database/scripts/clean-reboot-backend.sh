@@ -95,7 +95,7 @@ main() {
     fi
 
     # Going back to backend directory
-    cd backend
+    cd api
 
     log "Adding organization..."
     if ! cargo run -- --add-organization testuser@ivynet.dev:test1234/testorg; then

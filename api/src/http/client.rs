@@ -9,7 +9,7 @@ use axum_extra::extract::CookieJar;
 
 use super::{authorize, HttpState};
 use crate::error::BackendError;
-use ivynet_database::{Client, Machine};
+use ivynet_database::{client_log::ClientLog, log::LogLevel, Client, Machine};
 
 /// Grab grab IDs for every machine under every client in the organization
 #[utoipa::path(
