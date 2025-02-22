@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO client_log (client_id, log, log_level, created_at) VALUES ((SELECT client_id FROM machine WHERE machine_id = $1), $2, $3, $4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text",
+        {
+          "Custom": {
+            "name": "log_level",
+            "kind": {
+              "Enum": [
+                "debug",
+                "info",
+                "warning",
+                "error",
+                "unknown"
+              ]
+            }
+          }
+        },
+        "Timestamp"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b24c482238f9b2054baa7cf80a90ebef121d49c36c5bb8f9f763b0bb5b9a9778"
+}

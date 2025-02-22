@@ -179,6 +179,15 @@ pub fn recover_log(log: &str, signature: &Signature) -> Result<Address, IvySigni
     recover_from_string(log, signature)
 }
 
+// --- ClientLog ---
+pub fn sign_client_log(log: &str, wallet: &IvyWallet) -> Result<Signature, IvySigningError> {
+    sign_string(log, wallet)
+}
+
+pub fn recover_client_log(log: &str, signature: &Signature) -> Result<Address, IvySigningError> {
+    recover_from_string(log, signature)
+}
+
 // --- Errors ---
 
 #[derive(Debug, thiserror::Error)]

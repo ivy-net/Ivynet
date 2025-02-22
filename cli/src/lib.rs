@@ -5,6 +5,7 @@ pub mod init;
 pub mod inspect;
 pub mod ivy_machine;
 pub mod key;
+pub mod log_forwarder;
 pub mod metadata;
 pub mod monitor;
 pub mod node_source;

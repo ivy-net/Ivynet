@@ -19,7 +19,7 @@ use bollard::{
 use futures::TryStreamExt;
 use serde::{Deserialize, Serialize};
 use tokio_stream::Stream;
-use tracing::info;
+use tracing::debug;
 
 /// Type representing a docker image verison `repository:tag.` Primarily for tracking image version
 /// between container and image.
@@ -246,13 +246,13 @@ impl Container {
             .await
             .map_err(ContainerError::StartContainerError)?;
 
-        info!("Sidecar started: {:#?}", sidecar_name);
+        debug!("Sidecar started to grab ports: {:#?}", sidecar_name);
 
         docker
             .inner()
             .wait_container::<String>(&sidecar_id, None)
             .try_for_each(|details| async move {
-                println!("Container exit details: {:?}", details);
+                debug!("Container exit details: {:?}", details);
                 Ok(())
             })
             .await?;

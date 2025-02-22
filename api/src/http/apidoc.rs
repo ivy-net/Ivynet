@@ -20,6 +20,7 @@ use super::{alerts, authorize, client, info, machine, node, organization, pubkey
         organization::confirm,
         client::client,
         client::client_machines,
+        client::client_logs,
         info::get_version_info,
         info::get_all_version_info,
         info::get_node_types,

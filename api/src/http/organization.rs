@@ -116,25 +116,6 @@ pub async fn get_me(
     Ok(Organization::get(&state.pool, account.organization_id.try_into().unwrap()).await?.into())
 }
 
-//This should not be public
-// #[utoipa::path(
-//     get,
-//     path = "/organization/:id",
-//     params(
-//         ("id", description = "Organization id")
-//     ),
-//     responses(
-//         (status = 200, body = Organization),
-//         (status = 404)
-//     )
-// )]
-// pub async fn get(
-//     State(state): State<HttpState>,
-//     Path(id): Path<u64>,
-// ) -> Result<Json<Organization>, BackendError> {
-//     Ok(Organization::get(&state.pool, id).await?.into())
-// }
-
 /// Get an overview of all machines in the organization
 #[utoipa::path(
     get,
@@ -229,7 +210,7 @@ pub async fn invite(
     Ok(InvitationResponse { id: new_acc.verification_id }.into())
 }
 
-/// Confirm an invitation to the organization
+/// Confirm creation of an organzation
 #[utoipa::path(
     post,
     path = "/organization/confirm/:id",

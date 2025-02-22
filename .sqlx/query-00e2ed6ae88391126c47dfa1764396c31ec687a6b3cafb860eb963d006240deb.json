@@ -1,0 +1,59 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT client_id, log, log_level AS \"log_level!: LogLevel\", created_at, other_fields as \"other_fields: sqlx::types::Json<HashMap<String,String>>\" FROM client_log WHERE client_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "client_id",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 1,
+        "name": "log",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 2,
+        "name": "log_level!: LogLevel",
+        "type_info": {
+          "Custom": {
+            "name": "log_level",
+            "kind": {
+              "Enum": [
+                "debug",
+                "info",
+                "warning",
+                "error",
+                "unknown"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 4,
+        "name": "other_fields: sqlx::types::Json<HashMap<String,String>>",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bytea"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "00e2ed6ae88391126c47dfa1764396c31ec687a6b3cafb860eb963d006240deb"
+}

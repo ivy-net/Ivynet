@@ -15,13 +15,13 @@ pub fn find_or_create_log_timestamp(log: &str) -> i64 {
 }
 
 pub fn find_log_level(log: &str) -> String {
-    if log.contains("ERR") {
+    if log.contains("ERR") || log.contains("ERROR") {
         "error".to_string()
-    } else if log.contains("WRN") {
+    } else if log.contains("WRN") || log.contains("WARN") {
         "warning".to_string()
-    } else if log.contains("INF") {
+    } else if log.contains("INF") || log.contains("INFO") {
         "info".to_string()
-    } else if log.contains("DBG") {
+    } else if log.contains("DBG") || log.contains("DEBUG") {
         "debug".to_string()
     } else {
         "unknown".to_string()

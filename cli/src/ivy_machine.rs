@@ -1,12 +1,12 @@
 use ethers::types::Address;
 use ivynet_grpc::messages::{
-    DiskInformation, MachineData, Metrics, NodeDataV2, SignedLog, SignedMachineData, SignedMetrics,
-    SignedNameChange, SignedNodeDataV2,
+    DiskInformation, MachineData, Metrics, NodeDataV2, SignedClientLog, SignedLog,
+    SignedMachineData, SignedMetrics, SignedNameChange, SignedNodeDataV2,
 };
 use ivynet_signer::{
     sign_utils::{
-        sign_log, sign_machine_data, sign_metrics, sign_name_change, sign_node_data_v2,
-        IvySigningError,
+        sign_client_log, sign_log, sign_machine_data, sign_metrics, sign_name_change,
+        sign_node_data_v2, IvySigningError,
     },
     IvyWallet,
 };
@@ -128,6 +128,16 @@ impl IvyMachine {
             signature: signature.into(),
             machine_id: self.id.into(),
             avs_name: avs_name.to_string(),
+            log: log.to_string(),
+        })
+    }
+
+    pub fn sign_client_log(&self, log: &str) -> Result<SignedClientLog, MachineIdentityError> {
+        let signature =
+            sign_client_log(log, &self.signer).map_err(MachineIdentityError::SigningError)?;
+        Ok(SignedClientLog {
+            signature: signature.into(),
+            machine_id: self.id.into(),
             log: log.to_string(),
         })
     }
