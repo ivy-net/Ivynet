@@ -6,7 +6,7 @@ use sendgrid::{
     SendgridError,
 };
 
-use crate::{Notification, NotificationConfig, OrganizationDatabase};
+use crate::{Notification, NotificationConfig, OrganizationDatabase, SendgridTemplates};
 
 type NotificationType = Alert;
 
@@ -26,6 +26,7 @@ pub struct EmailSender<D: OrganizationDatabase> {
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 enum EmailTemplate {
     Custom,
+    Generic,
     UnregisteredFromActiveSet,
     MachineNotResponding,
     NodeNotRunning,
@@ -109,44 +110,87 @@ impl<D: OrganizationDatabase> EmailSender<D> {
     pub fn new(config: &NotificationConfig, db: D) -> Self {
         let sender = Sender::new(config.sendgrid_key.to_string(), None);
         let mut templates = HashMap::new();
-        templates.insert(EmailTemplate::Custom, config.sendgrid_templates.custom.to_string());
-        templates.insert(
-            EmailTemplate::UnregisteredFromActiveSet,
-            config.sendgrid_templates.unreg_active_set.to_string(),
-        );
-        templates.insert(
-            EmailTemplate::MachineNotResponding,
-            config.sendgrid_templates.machine_not_responding.to_string(),
-        );
-        templates.insert(
-            EmailTemplate::NodeNotRunning,
-            config.sendgrid_templates.node_not_running.to_string(),
-        );
-        templates.insert(
-            EmailTemplate::NoChainInfo,
-            config.sendgrid_templates.no_chain_info.to_string(),
-        );
-        templates
-            .insert(EmailTemplate::NoMetrics, config.sendgrid_templates.no_metrics.to_string());
-        templates
-            .insert(EmailTemplate::NoOperatorId, config.sendgrid_templates.no_operator.to_string());
-        templates.insert(
-            EmailTemplate::HardwareResourceUsage,
-            config.sendgrid_templates.hw_res_usage.to_string(),
-        );
-        templates.insert(
-            EmailTemplate::LowPerformaceScore,
-            config.sendgrid_templates.low_perf.to_string(),
-        );
-        templates
-            .insert(EmailTemplate::NeedsUpdate, config.sendgrid_templates.needs_update.to_string());
+        match &config.sendgrid_templates {
+            SendgridTemplates::Generic(generic_template) => {
+                templates.insert(EmailTemplate::Generic, generic_template.clone());
+            }
+            SendgridTemplates::Specific(sendgrid_templates) => {
+                templates.insert(EmailTemplate::Custom, sendgrid_templates.custom.to_string());
+                templates.insert(
+                    EmailTemplate::UnregisteredFromActiveSet,
+                    sendgrid_templates.unreg_active_set.to_string(),
+                );
+                templates.insert(
+                    EmailTemplate::MachineNotResponding,
+                    sendgrid_templates.machine_not_responding.to_string(),
+                );
+                templates.insert(
+                    EmailTemplate::NodeNotRunning,
+                    sendgrid_templates.node_not_running.to_string(),
+                );
+                templates.insert(
+                    EmailTemplate::NoChainInfo,
+                    sendgrid_templates.no_chain_info.to_string(),
+                );
+                templates
+                    .insert(EmailTemplate::NoMetrics, sendgrid_templates.no_metrics.to_string());
+                templates.insert(
+                    EmailTemplate::NoOperatorId,
+                    sendgrid_templates.no_operator.to_string(),
+                );
+                templates.insert(
+                    EmailTemplate::HardwareResourceUsage,
+                    sendgrid_templates.hw_res_usage.to_string(),
+                );
+                templates.insert(
+                    EmailTemplate::LowPerformaceScore,
+                    sendgrid_templates.low_perf.to_string(),
+                );
+                templates.insert(
+                    EmailTemplate::NeedsUpdate,
+                    sendgrid_templates.needs_update.to_string(),
+                );
+            }
+        }
         Self { sender, from: config.sendgrid_from.to_string(), db, templates }
     }
 
     pub async fn notify(&self, notification: Notification) -> Result<(), EmailSenderError> {
         let organization = notification.organization;
-        let (template, payload) = EmailTemplate::payload(notification);
+        // If there is only generic template
 
+        let (mut template, mut payload) = EmailTemplate::payload(notification.clone());
+        if self.templates.len() == 1 {
+            template = EmailTemplate::Generic;
+            payload.insert("machine_id".to_string(), format!("{}", notification.machine_id));
+            payload.insert(
+                "error_type".to_string(),
+                match notification.alert {
+                    Alert::Custom(str) => format!("Custom: {str}"),
+                    Alert::NoMetrics(_) => "No metrics available".to_string(),
+                    Alert::NoChainInfo(_) => "No chain info".to_string(),
+                    Alert::NoOperatorId(_) => "No operator id".to_string(),
+                    Alert::NeedsUpdate { avs: _, current_version, recommended_version } => {
+                        format!("AVS needs update from {current_version} to {recommended_version}")
+                    }
+                    Alert::NodeNotRunning(_) => "Node not running".to_string(),
+                    Alert::ActiveSetNoDeployment { avs: _, address } => {
+                        format!("The active set for {address} is registered, but no metrics is received")
+                    }
+                    Alert::UnregisteredFromActiveSet { avs: _, address } => {
+                        format!("Operator {address} unregistered from the active set")
+                    }
+                    Alert::MachineNotResponding => format!("Machine is not responding"),
+                    Alert::NodeNotResponding(_) => "AVS is not responding".to_string(),
+                    Alert::HardwareResourceUsage { resource, percent } => {
+                        format!("Resource {resource} is used in {percent}%")
+                    }
+                    Alert::LowPerformaceScore { avs: _, performance } => {
+                        format!("AVS dropped in performace score to {performance}")
+                    }
+                },
+            );
+        }
         for email in self.db.get_emails_for_organization(organization).await {
             self.sender
                 .send(

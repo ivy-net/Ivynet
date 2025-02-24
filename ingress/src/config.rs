@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use clap::Parser;
 use ivynet_grpc::client::Uri;
-use ivynet_notifications::{NotificationConfig, SendgridTemplates};
+use ivynet_notifications::{NotificationConfig, SendgridSpecificTemplates, SendgridTemplates};
 use tracing::Level;
 
 mod version_hash {
@@ -67,6 +67,9 @@ pub struct Config {
     #[arg(long, env = "SENDGRID_FROM")]
     pub sendgrid_from: Option<String>,
 
+    #[arg(long, env = "STN_GENERIC")]
+    pub stn_generic: Option<String>,
+
     #[arg(long, env = "STN_CUSTOM")]
     pub stn_custom: Option<String>,
 
@@ -107,17 +110,21 @@ impl From<Config> for NotificationConfig {
             telegram_token: val.telegram_token.unwrap_or_default(),
             sendgrid_key: val.sendgrid_key.unwrap_or_default(),
             sendgrid_from: val.sendgrid_from.unwrap_or_default(),
-            sendgrid_templates: SendgridTemplates {
-                custom: val.stn_custom.unwrap_or_default(),
-                unreg_active_set: val.stn_unreg_active_set.unwrap_or_default(),
-                machine_not_responding: val.stn_machine_not_responding.unwrap_or_default(),
-                node_not_running: val.stn_node_not_running.unwrap_or_default(),
-                no_chain_info: val.stn_no_chain_info.unwrap_or_default(),
-                no_metrics: val.stn_no_metrics.unwrap_or_default(),
-                no_operator: val.stn_no_operator.unwrap_or_default(),
-                hw_res_usage: val.stn_hw_res_usage.unwrap_or_default(),
-                low_perf: val.stn_low_performance.unwrap_or_default(),
-                needs_update: val.stn_needs_update.unwrap_or_default(),
+            sendgrid_templates: if let Some(generic) = val.stn_generic {
+                SendgridTemplates::Generic(generic.clone())
+            } else {
+                SendgridTemplates::Specific(SendgridSpecificTemplates {
+                    custom: val.stn_custom.unwrap_or_default(),
+                    unreg_active_set: val.stn_unreg_active_set.unwrap_or_default(),
+                    machine_not_responding: val.stn_machine_not_responding.unwrap_or_default(),
+                    node_not_running: val.stn_node_not_running.unwrap_or_default(),
+                    no_chain_info: val.stn_no_chain_info.unwrap_or_default(),
+                    no_metrics: val.stn_no_metrics.unwrap_or_default(),
+                    no_operator: val.stn_no_operator.unwrap_or_default(),
+                    hw_res_usage: val.stn_hw_res_usage.unwrap_or_default(),
+                    low_perf: val.stn_low_performance.unwrap_or_default(),
+                    needs_update: val.stn_needs_update.unwrap_or_default(),
+                })
             },
         }
     }

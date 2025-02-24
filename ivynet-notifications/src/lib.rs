@@ -39,7 +39,13 @@ pub enum Channel {
 }
 
 #[derive(Clone, Debug)]
-pub struct SendgridTemplates {
+pub enum SendgridTemplates {
+    Generic(String),
+    Specific(SendgridSpecificTemplates),
+}
+
+#[derive(Clone, Debug)]
+pub struct SendgridSpecificTemplates {
     pub custom: String,
     pub unreg_active_set: String,
     pub machine_not_responding: String,
