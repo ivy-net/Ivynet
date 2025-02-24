@@ -216,8 +216,8 @@ async fn extract_node_data_alerts(
 
             if let Some(version_data) = version_map.get(&node_type_id) {
                 let recommended_version = version_data.latest_version.clone();
-                if update_status == UpdateStatus::Outdated
-                    || update_status == UpdateStatus::Updateable
+                if update_status == UpdateStatus::Outdated ||
+                    update_status == UpdateStatus::Updateable
                 {
                     alerts.push(Alert::NeedsUpdate {
                         avs: node_data.name.clone(),
