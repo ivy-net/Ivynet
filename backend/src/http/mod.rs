@@ -8,8 +8,6 @@ mod node;
 mod organization;
 mod pubkey;
 
-use std::sync::Arc;
-
 use crate::error::BackendError;
 
 use axum::{
@@ -30,7 +28,7 @@ use utoipa_swagger_ui::SwaggerUi;
 
 #[derive(Clone)]
 pub struct HttpState {
-    pub pool: Arc<PgPool>,
+    pub pool: PgPool,
     pub cache: memcache::Client,
     pub sender: Option<Sender>,
     pub sender_email: Option<String>,
@@ -42,7 +40,7 @@ pub struct HttpState {
 
 #[allow(clippy::too_many_arguments)]
 pub async fn serve(
-    pool: Arc<PgPool>,
+    pool: PgPool,
     cache: memcache::Client,
     root_url: Uri,
     sendgrid_api_key: Option<String>,

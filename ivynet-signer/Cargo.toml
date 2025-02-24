@@ -20,6 +20,7 @@ async-trait.workspace = true
 blsful.workspace = true
 dialoguer.workspace = true
 dirs.workspace = true
+dotenvy.workspace = true
 ethers.workspace = true
 eth-keystore.workspace = true
 serde.workspace = true
@@ -27,7 +28,6 @@ serde_json.workspace = true
 thiserror.workspace = true
 tonic.workspace = true
 uuid.workspace = true
-dotenvy = "0.15.7"
 
 [dev-dependencies]
 tempfile.workspace = true

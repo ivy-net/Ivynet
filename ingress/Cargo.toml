@@ -8,6 +8,7 @@ license.workspace = true
 
 [dependencies]
 clap = { version = "4.5", features = ["derive", "env"] }
+dotenvy.workspace = true
 thiserror.workspace = true
 tokio = { workspace = true, features = ["rt-multi-thread"] }
 ivynet-error = { path = "../ivynet-error" }

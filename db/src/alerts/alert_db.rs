@@ -1,18 +1,17 @@
 use ivynet_notifications::OrganizationDatabase;
-use std::{collections::HashSet, sync::Arc};
-use tokio::sync::Mutex;
+use std::collections::HashSet;
 
 use sqlx::PgPool;
 
 use crate::{Account, OrganizationNotifications};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct AlertDbBackend {
-    pool: Arc<PgPool>,
+    pool: PgPool,
 }
 
 impl AlertDbBackend {
-    fn new(pool: Arc<PgPool>) -> Self {
+    fn new(pool: PgPool) -> Self {
         Self { pool }
     }
 
@@ -66,33 +65,33 @@ impl AlertDbBackend {
 }
 
 #[derive(Clone, Debug)]
-pub struct AlertDb(Arc<Mutex<AlertDbBackend>>);
+pub struct AlertDb(AlertDbBackend);
 
 impl AlertDb {
-    pub fn new(pool: Arc<PgPool>) -> Self {
-        Self(Arc::new(Mutex::new(AlertDbBackend::new(pool))))
+    pub fn new(pool: PgPool) -> Self {
+        Self(AlertDbBackend::new(pool))
     }
 }
 
 #[ivynet_grpc::async_trait]
 impl OrganizationDatabase for AlertDb {
     async fn register_chat(&self, chat_id: &str, email: &str, password: &str) -> bool {
-        let db = self.0.lock().await;
+        let db = &self.0;
         db.add_chat(email, password, chat_id).await
     }
 
     async fn unregister_chat(&self, chat_id: &str) -> bool {
-        let db = self.0.lock().await;
+        let db = &self.0;
         db.remove_chat(chat_id).await
     }
 
     async fn get_emails_for_organization(&self, organization_id: u64) -> HashSet<String> {
-        let db = self.0.lock().await;
+        let db = &self.0;
         db.emails(organization_id).await
     }
 
     async fn get_chats_for_organization(&self, organization_id: u64) -> HashSet<String> {
-        let db = self.0.lock().await;
+        let db = &self.0;
         db.chats_for(organization_id).await
     }
 
@@ -100,7 +99,7 @@ impl OrganizationDatabase for AlertDb {
         &self,
         organization_id: u64,
     ) -> Option<String> {
-        let db = self.0.lock().await;
+        let db = &self.0;
         db.integration_key(organization_id).await
     }
 }

@@ -3531,6 +3531,7 @@ version = "0.5.1"
 dependencies = [
  "clap",
  "db",
+ "dotenvy",
  "ivynet-docker",
  "ivynet-docker-registry",
  "ivynet-error",

@@ -56,11 +56,11 @@ pub enum AlertError {
 #[derive(Clone)]
 pub struct AlertHandler {
     pub dispatcher: Arc<NotificationDispatcher<AlertDb>>,
-    db_executor: Arc<PgPool>,
+    db_executor: PgPool,
 }
 
 impl AlertHandler {
-    pub fn new(dispatcher: Arc<NotificationDispatcher<AlertDb>>, db_executor: Arc<PgPool>) -> Self {
+    pub fn new(dispatcher: Arc<NotificationDispatcher<AlertDb>>, db_executor: PgPool) -> Self {
         Self { dispatcher, db_executor }
     }
 
@@ -329,9 +329,9 @@ mod tests {
         AlertHandler::new(
             Arc::new(NotificationDispatcher::new(
                 dummy_config_fixture(),
-                AlertDb::new(Arc::new(pool.clone())),
+                AlertDb::new(pool.clone()),
             )),
-            Arc::new(pool.clone()),
+            pool.clone(),
         )
     }
 

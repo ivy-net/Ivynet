@@ -37,11 +37,11 @@ use super::data_validator::validate_request;
 
 pub struct BackendService {
     pub alert_handler: AlertHandler,
-    pool: Arc<PgPool>,
+    pool: PgPool,
 }
 
 impl BackendService {
-    pub fn new(pool: Arc<PgPool>, alert_handler: AlertHandler) -> Self {
+    pub fn new(pool: PgPool, alert_handler: AlertHandler) -> Self {
         Self { alert_handler, pool }
     }
 }
@@ -319,7 +319,7 @@ impl Backend for BackendService {
 }
 
 pub async fn serve(
-    pool: Arc<PgPool>,
+    pool: PgPool,
     notification_config: NotificationConfig,
     tls_cert: Option<String>,
     tls_key: Option<String>,

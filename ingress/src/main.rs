@@ -1,9 +1,7 @@
-use std::sync::Arc;
-
 use clap::Parser as _;
 use db::configure;
 use ivynet_ingress::{config::Config, error::IngressError, grpc};
-use tracing::{error, Level};
+use tracing::{error, info, Level};
 use tracing_subscriber::FmtSubscriber;
 
 pub fn start_tracing(level: Level) -> Result<(), IngressError> {
@@ -14,9 +12,14 @@ pub fn start_tracing(level: Level) -> Result<(), IngressError> {
 
 #[tokio::main]
 async fn main() -> Result<(), IngressError> {
+    if let Err(e) = dotenvy::dotenv() {
+        info!("No .env file found: {:?}", e)
+    }
+
     let config = Config::parse();
+    println!("{:?}", config.telegram_token);
     start_tracing(config.log_level)?;
-    let pool = Arc::new(configure(&config.db_uri, false).await?);
+    let pool = configure(&config.db_uri, false).await?;
 
     let grpc_service = grpc::backend_serve(
         pool.clone(),
