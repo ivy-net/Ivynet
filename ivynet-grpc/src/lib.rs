@@ -11,11 +11,6 @@ pub mod backend_events {
     tonic::include_proto!("backend_events");
 }
 
-pub mod alerts {
-    #![allow(clippy::derive_partial_eq_without_eq)]
-    tonic::include_proto!("alerts");
-}
-
 pub mod messages {
     #![allow(clippy::derive_partial_eq_without_eq)]
     tonic::include_proto!("messages");
