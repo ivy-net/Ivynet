@@ -1,16 +1,16 @@
 ---
 - name: Copy Backend Service file
   ansible.builtin.template:
-    src: ivynet-backend.service.j2
-    dest: /etc/systemd/system/ivynet-backend.service
+    src: ivynet-api.service.j2
+    dest: /etc/systemd/system/ivynet-api.service
     owner: root
     group: root
     mode: "0644"
   notify:
     - Reload daemon
-    - Restart backend service
+    - Restart api service
   tags:
-    - ivynet_backend
+    - ivynet_api
     - general
     - ivynet
     - systemd
@@ -21,14 +21,14 @@
 
 - name: Set Backend service
   ansible.builtin.systemd_service:
-    name: ivynet-backend
+    name: ivynet-api
     state: started
     enabled: true
     daemon_reload: true
   when:
-    - "'ivynet-backend.service' not in services"
+    - "'ivynet-api.service' not in services"
   tags:
-    - ivynet_backend
+    - ivynet_api
     - general
     - ivynet
     - systemd

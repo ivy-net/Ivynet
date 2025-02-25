@@ -3,8 +3,8 @@ Description=Ivynet Backend service
 After=network.target
 
 [Service]
-ExecStart={{ ivynet_backend_path_install }}/bin/ivynet-backend
-EnvironmentFile={{ ivynet_backend_path_secrets }}/env.backend
+ExecStart={{ ivynet_api_path_install }}/bin/ivynet-api
+EnvironmentFile={{ ivynet_api_path_secrets }}/env.api
 Type=simple
 Restart=always
 

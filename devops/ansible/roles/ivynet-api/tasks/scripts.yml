@@ -2,12 +2,12 @@
 - name: Copy logs cleaner script
   ansible.builtin.copy:
     src: logs-cleaner.sh
-    dest: "{{ ivynet_backend_path_install }}/bin"
+    dest: "{{ ivynet_api_path_install }}/bin"
     owner: root
     group: root
     mode: "0755"
   tags:
-    - ivynet_backend
+    - ivynet_api
     - general
     - ivynet
     - db
@@ -18,9 +18,9 @@
     minute: 30
     hour: "1,13"
     # yamllint disable-line rule:line-length
-    job: "{{ ivynet_backend_path_install }}/bin/logs-cleaner.sh 2>&1 |logger -t logs-clener"
+    job: "{{ ivynet_api_path_install }}/bin/logs-cleaner.sh 2>&1 |logger -t logs-clener"
   tags:
-    - ivynet_backend
+    - ivynet_api
     - general
     - ivynet
     - db
@@ -28,12 +28,12 @@
 - name: Copy scanner script
   ansible.builtin.copy:
     src: ivynet-scanner.sh
-    dest: "{{ ivynet_backend_path_install }}/bin"
+    dest: "{{ ivynet_api_path_install }}/bin"
     owner: root
     group: root
     mode: "0755"
   tags:
-    - ivynet_backend
+    - ivynet_api
     - general
     - ivynet
     - scanner
@@ -44,9 +44,9 @@
     minute: 7
     hour: "0,12"
     # yamllint disable-line rule:line-length
-    job: "{{ ivynet_backend_path_install }}/bin/ivynet-scanner.sh 2>&1 |logger -t scanner"
+    job: "{{ ivynet_api_path_install }}/bin/ivynet-scanner.sh 2>&1 |logger -t scanner"
   tags:
-    - ivynet_backend
+    - ivynet_api
     - general
     - ivynet
     - scanner

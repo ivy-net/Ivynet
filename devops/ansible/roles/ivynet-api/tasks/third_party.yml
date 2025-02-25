@@ -10,7 +10,7 @@
     - python3-jmespath
     - python3-pip
   tags:
-    - ivynet_backend
+    - ivynet_api
     - download
     - memcached
     - postgres
@@ -24,7 +24,7 @@
     - github3.py
     - psycopg2-binary
   tags:
-    - ivynet_backend
+    - ivynet_api
     - general
     - download
     - github
@@ -32,8 +32,8 @@
 
 - name: Download sqlx-cli
   ansible.builtin.get_url:
-    url: "{{ ivynet_backend_sqlx_url }}/{{ item }}"
-    dest: "{{ ivynet_backend_path_install }}/bin"
+    url: "{{ ivynet_api_sqlx_url }}/{{ item }}"
+    dest: "{{ ivynet_api_path_install }}/bin"
     mode: "0755"
     owner: root
     group: root
@@ -42,7 +42,7 @@
     - cargo-sqlx
   register: upload_results
   tags:
-    - ivynet_backend
+    - ivynet_api
     - general
     - download
     - gcp

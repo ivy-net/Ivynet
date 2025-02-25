@@ -2,18 +2,18 @@
 - name: Get binaries from GCP
   google.cloud.gcp_storage_object:
     auth_kind: serviceaccount
-    bucket: "{{ ivynet_backend_gcp_bucket }}"
+    bucket: "{{ ivynet_api_gcp_bucket }}"
     src: "ivy-master/{{ item }}"
     dest: "/tmp/{{ item }}"
     action: download
-    service_account_file: "{{ ivynet_backend_gcp_cred }}"
-    project: "{{ ivynet_backend_gcp_project }}"
+    service_account_file: "{{ ivynet_api_gcp_cred }}"
+    project: "{{ ivynet_api_gcp_project }}"
   delegate_to: localhost
   become: false
   loop:
-    - ivynet-backend
+    - ivynet-api
   tags:
-    - ivynet_backend
+    - ivynet_api
     - ivynet
     - download
     - gcp
@@ -21,15 +21,15 @@
 - name: Upload binaries
   ansible.builtin.copy:
     src: "/tmp/{{ item }}"
-    dest: "{{ ivynet_backend_path_install }}/bin/{{ item }}"
+    dest: "{{ ivynet_api_path_install }}/bin/{{ item }}"
     owner: root
     group: root
     mode: "0755"
   loop:
-    - ivynet-backend
-  notify: Restart backend service
+    - ivynet-api
+  notify: Restart api service
   tags:
-    - ivynet_backend
+    - ivynet_api
     - ivynet
     - download
     - gcp

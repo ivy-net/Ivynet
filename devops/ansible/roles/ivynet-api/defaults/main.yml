@@ -1,15 +1,15 @@
 ---
 # Name of the GCP bucket
-ivynet_backend_gcp_bucket: ivynet-share-test
+ivynet_api_gcp_bucket: ivynet-share-test
 
 # File with GCP credentials
-ivynet_backend_gcp_cred: ~/.devops-automation-key.json
+ivynet_api_gcp_cred: ~/.devops-automation-key.json
 
 # Name of GCP project
-ivynet_backend_gcp_project: ivynet-tests
+ivynet_api_gcp_project: ivynet-tests
 
 # Token to access github
-ivynet_backend_github_token: !vault |
+ivynet_api_github_token: !vault |
           $ANSIBLE_VAULT;1.1;AES256
           36363834613035363762636134643162623863323436623539303234396434653065636163316462
           6430303535333932326562306230646634303930396533640a313965396562363066323232356235
@@ -19,31 +19,31 @@ ivynet_backend_github_token: !vault |
           3866393766616537613266336166323234616535343537663537
 
 # Source of binaries (true for release, false for master)
-ivynet_backend_is_release: true
+ivynet_api_is_release: true
 
 # Logs level for IvyNet internals
-ivynet_backend_logs_lowlevel: ""
+ivynet_api_logs_lowlevel: ""
 
 # Path where to install binaries and other files
-ivynet_backend_path_install: "/opt/ivynet"
+ivynet_api_path_install: "/opt/ivynet"
 
 # Path to directory with SQL migration
-ivynet_backend_path_resources: "{{ ivynet_backend_path_install }}/resources"
+ivynet_api_path_resources: "{{ ivynet_api_path_install }}/resources"
 
 # Path to directory with secrets
-ivynet_backend_path_secrets: "{{ ivynet_backend_path_install }}/secrets"
+ivynet_api_path_secrets: "{{ ivynet_api_path_install }}/secrets"
 
 # DB for ivynet
-ivynet_backend_postgres_db: "ivynet"
+ivynet_api_postgres_db: "ivynet"
 
 # DB host
-ivynet_backend_postgres_host: "localhost"
+ivynet_api_postgres_host: "localhost"
 
 # Switch to change the password
-ivynet_backend_postgres_no_password_changes: true
+ivynet_api_postgres_no_password_changes: true
 
 # Password for the postgresql user (only for Cloud SQL; should be a secret)
-ivynet_backend_postgres_pass: !vault |
+ivynet_api_postgres_pass: !vault |
           $ANSIBLE_VAULT;1.1;AES256
           66396130343737313730356331643265303965633066633466653561366534626162376565643936
           6635646562646334303461383764306231346231333561640a343564336361633231653565623936
@@ -52,10 +52,10 @@ ivynet_backend_postgres_pass: !vault |
           6331
 
 # Postgresql user for Backend
-ivynet_backend_postgres_user: "ivy"
+ivynet_api_postgres_user: "ivy"
 
 # Password for a postgres user
-ivynet_backend_postgres_user_pass: !vault |
+ivynet_api_postgres_user_pass: !vault |
           $ANSIBLE_VAULT;1.1;AES256
           63666132666433393466653862316162663436643238633966666236616136613139353532323230
           3735356638373733313830383139363133656232316535660a646439366631376662316233346163
@@ -64,13 +64,13 @@ ivynet_backend_postgres_user_pass: !vault |
           39383261303437376234343536313563306236626565316463386533396236353737
 
 # Backend release
-ivynet_backend_release: "0.5.0"
+ivynet_api_release: "0.5.0"
 
 # If sendgrid has to be setup
-ivynet_backend_sendgrid: true
+ivynet_api_sendgrid: true
 
 # Sengrid API key
-ivynet_backend_sendgrid_key: !vault |
+ivynet_api_sendgrid_key: !vault |
           $ANSIBLE_VAULT;1.1;AES256
           33643630366631316635313564303431383730633039616135663939616437633730653334623232
           3234663830663535653730393638363834623661666331630a386136633761653761383564666464
@@ -82,7 +82,7 @@ ivynet_backend_sendgrid_key: !vault |
           63626232643435323831
 
 # Sengrid config SENGRID_ORG_VER_TMP
-ivynet_backend_sendgrid_org: !vault |
+ivynet_api_sendgrid_org: !vault |
           $ANSIBLE_VAULT;1.1;AES256
           37353463613762306433313534663833383633343562623166393266326533333639316430626530
           3534376463333265633362666338343631326431326361610a313365666366373863373133356366
@@ -92,7 +92,7 @@ ivynet_backend_sendgrid_org: !vault |
           3733323236656438643333373439363066363637323033663338
 
 # Sengrid config SENGRID_USER_VER_TMP
-ivynet_backend_sendgrid_user: !vault |
+ivynet_api_sendgrid_user: !vault |
           $ANSIBLE_VAULT;1.1;AES256
           65313331393665643065363765306662333138663538313930326664326539363836366137633938
           3965333032653530656566613061626139633164363165340a386561326263336631623738363265
@@ -102,7 +102,7 @@ ivynet_backend_sendgrid_user: !vault |
           6231666534643134326136653134613066303733343136306465
 
 # Sengrid config SENGRID_PASS_RESET_TMP
-ivynet_backend_sendgrid_pass_reset: !vault |
+ivynet_api_sendgrid_pass_reset: !vault |
           $ANSIBLE_VAULT;1.1;AES256
           33633634376465393037633235393431366333376637343739353164353564373333643032333433
           3337643864303038346136386466363637336131306134370a646436353137653537356337613362
@@ -112,7 +112,7 @@ ivynet_backend_sendgrid_pass_reset: !vault |
           3438666337613436303931636661313638363634343461303437
 
 # Frontend URL
-ivynet_backend_site_url: https://metrics.ivynet.dev
+ivynet_api_site_url: https://metrics.ivynet.dev
 
 # URL for sqlx binaries
-ivynet_backend_sqlx_url: "https://storage.googleapis.com/ivynet-share"
+ivynet_api_sqlx_url: "https://storage.googleapis.com/ivynet-share"
