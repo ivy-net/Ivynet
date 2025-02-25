@@ -119,18 +119,21 @@ cargo run --bin ivynet-backend -- --update-node-data-versions
 
 6. Run ingress from ./ingress:
 ```sh
-cargo run --bin ivynet-ingress
+cd ingress
+cargo run
 ```
 
 7. Run the backend from ./backend:
 ```sh
-cargo run --bin ivynet-backend
+cd backend
+cargo run
 ```
 
 8. Run the scraper from ./scraper:
 
 ```sh
-cargo run --bin ivynet-scraper
+cd scraper
+cargo run
 ```
 
 Convenient shell script for confiuration-related steps

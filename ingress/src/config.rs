@@ -51,9 +51,6 @@ pub struct Config {
     #[arg(long, env = "IVY_ALERTS_TLS_KEY")]
     pub alerts_tls_key: Option<String>,
 
-    #[arg(long, env = "IVY_ALERTS_PORT", default_value_t = 50052)]
-    pub alerts_port: u16,
-
     #[arg(
         long,
         env = "DATABASE_URL",
