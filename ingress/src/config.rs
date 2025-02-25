@@ -108,7 +108,7 @@ impl From<Config> for NotificationConfig {
             sendgrid_key: val.sendgrid_key.unwrap_or_default(),
             sendgrid_from: val.sendgrid_from.unwrap_or_default(),
             sendgrid_templates: if let Some(generic) = val.stn_generic {
-                SendgridTemplates::Generic(generic.clone())
+                SendgridTemplates::Generic(generic)
             } else {
                 SendgridTemplates::Specific(SendgridSpecificTemplates {
                     custom: val.stn_custom.unwrap_or_default(),
