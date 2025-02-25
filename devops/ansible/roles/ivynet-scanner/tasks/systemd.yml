@@ -18,7 +18,6 @@
   tags:
     - ivynet_scanner
     - general
-    - ivynet
     - systemd
 
 
@@ -36,7 +35,6 @@
   tags:
     - ivynet_scanner
     - general
-    - ivynet
     - systemd
 
 - name: Set Scanner Mainnet service
@@ -50,5 +48,4 @@
   tags:
     - ivynet_scanner
     - general
-    - ivynet
     - systemd

@@ -10,7 +10,6 @@
   register: ivynet_scanner_assets_output
   tags:
     - ivynet_scanner
-    - ivynet
     - github
 
 - name: Prepare variable with scanner assets id
@@ -22,7 +21,6 @@
     json_output_query: "json.assets[?name=='scanner'].id"
   tags:
     - ivynet_scanner
-    - ivynet
     - github
 
 - name: Get binaries
@@ -41,7 +39,6 @@
     mode: "0755"
   tags:
     - ivynet_scanner
-    - ivynet
     - github
 
 - name: Save ivynet release info
@@ -58,6 +55,5 @@
     - Restart scanner mainnet service
   tags:
     - ivynet_scanner
-    - ivynet
     - github
     - systemd

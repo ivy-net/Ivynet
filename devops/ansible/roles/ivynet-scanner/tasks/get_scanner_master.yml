@@ -11,10 +11,9 @@
   delegate_to: localhost
   become: false
   loop:
-    - scanner
+    - ivynet-scanner
   tags:
     - ivynet_scanner
-    - ivynet
     - download
     - gcp
 
@@ -26,12 +25,11 @@
     group: root
     mode: "0755"
   loop:
-    - scanner
+    - ivynet-scanner
   notify:
     - Restart scanner holesky service
     - Restart scanner mainnet service
   tags:
     - ivynet_scanner
-    - ivynet
     - download
     - gcp
