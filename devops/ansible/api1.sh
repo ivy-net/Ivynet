@@ -25,7 +25,7 @@ sed -i.bak "s/gcp_area_backend:&gcp_env_gha/api1/" api.yml
 ansible-playbook -i gcp.yml \
   -u ${USERNAME} \
   --vault-password-file ~/.vault.txt \
-  -e "ivynet_backend_release=${BACKEND}" \
+  -e "ivynet_api_release=${BACKEND}" \
   -e "ivynet_ingress_release=${INGRESS}" \
   -e "ivynet_scraper_release=${SCANNER}" \
   api.yml

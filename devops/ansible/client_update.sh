@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# The script to run ansible to update current backend
+# The script to run ansible to update current client
 # Requires toml cargo package
 
 echo "Check if remote user is defined"

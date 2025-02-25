@@ -13,11 +13,6 @@
       ansible.builtin.set_fact:
         db_ip: "{{ (db_info.stdout | from_yaml )[0].ipAddresses[0].ipAddress }}"
   roles:
-    - role: ivynet-backend
-      ivynet_backend_postgres_host: "{{ db_ip }}"
-      become: true
-    - role: ivynet-ingress
-      ivynet_ingress_postgres_host: "{{ db_ip }}"
-      become: true
-    - role: ivynet-scraper
+    - role: ivynet-api
+      ivynet_api_postgres_host: "{{ db_ip }}"
       become: true

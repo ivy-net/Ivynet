@@ -1,7 +1,7 @@
 # Roles
 
 * ivynet-client -- base for cloudstation - clients binaries, but also rust
-* ivynet-backend -- backend program + third party tools (memcached, postgresql)
+* ivynet-api -- api program + third party tools (memcached, postgresql)
 
 ## Config
 The ansible config
@@ -20,14 +20,14 @@ That makes easier to run tests and packer.
 
 Default molecule scenario cannot test everything.
 For client, it cannot download point files.
-In case of backend, postgres cannot be properly started (systemd).
+In case of api, postgres cannot be properly started (systemd).
 
 ### Client test
 ```
 ANSIBLE_VAULT_PASSWORD_FILE=$HOME/.vault.txt molecule converge -- --skip-tags gcp
 ```
 
-### Backend test
+### API test
 
 * simple test with docker
 ```
@@ -40,6 +40,5 @@ ANSIBLE_PIPELINING=true ANSIBLE_VAULT_PASSWORD_FILE=$HOME/.vault.txt molecule te
 ## TODO
 
 * ensure that client is idempotent
-* Check why sometime molecule does not work with GCP
 * Prepare proper tests for molecule
 * Start to export binaries outside of GitHub (it's going to make roles much easier)
