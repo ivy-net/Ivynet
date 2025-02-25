@@ -212,7 +212,9 @@ mod docker_registry_tests {
         Ok(())
     }
 
+    // This test is inconsistent due to reliance on http call / remote repository
     #[tokio::test]
+    #[ignore]
     async fn test_registry_entry_tags() -> Result<(), Box<dyn std::error::Error>> {
         let all_entries = NodeType::all_known_with_repo();
         for entry in all_entries {

@@ -301,27 +301,29 @@ pub fn get_update_status(
 
 #[cfg(test)]
 mod tests {
-    use ivynet_notifications::NotificationConfig;
+    use ivynet_notifications::{NotificationConfig, SendgridSpecificTemplates, SendgridTemplates};
 
     use super::*;
 
     fn dummy_config_fixture() -> NotificationConfig {
+        let specific_templates = SendgridSpecificTemplates {
+            custom: "test".to_string(),
+            unreg_active_set: "test".to_string(),
+            machine_not_responding: "test".to_string(),
+            node_not_running: "test".to_string(),
+            no_chain_info: "test".to_string(),
+            no_metrics: "test".to_string(),
+            no_operator: "test".to_string(),
+            hw_res_usage: "test".to_string(),
+            low_perf: "test".to_string(),
+            needs_update: "test".to_string(),
+        };
+
         NotificationConfig {
             telegram_token: "test".to_string(),
             sendgrid_key: "test".to_string(),
             sendgrid_from: "test".to_string(),
-            sendgrid_templates: ivynet_notifications::SendgridTemplates {
-                custom: "test".to_string(),
-                unreg_active_set: "test".to_string(),
-                machine_not_responding: "test".to_string(),
-                node_not_running: "test".to_string(),
-                no_chain_info: "test".to_string(),
-                no_metrics: "test".to_string(),
-                no_operator: "test".to_string(),
-                hw_res_usage: "test".to_string(),
-                low_perf: "test".to_string(),
-                needs_update: "test".to_string(),
-            },
+            sendgrid_templates: SendgridTemplates::Specific(specific_templates),
         }
     }
 
