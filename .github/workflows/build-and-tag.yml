@@ -33,8 +33,8 @@ jobs:
           . "$HOME/.cargo/env"
           cargo build --release
 
-  tag-backend:
-    name: Tag backend
+  tag-api:
+    name: Tag api
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     needs: build
@@ -49,29 +49,29 @@ jobs:
           wget https://storage.googleapis.com/ivynet-share/toml
           chmod 0755 toml
       - name: Extract TOML version
-        id: version-backend
+        id: version-api
         run: |
-          version=$(toml get backend/Cargo.toml package.version | tr -d \")
-          echo "TAG_BACKEND_TOML=${version}" >> "$GITHUB_OUTPUT"
+          version=$(toml get api/Cargo.toml package.version | tr -d \")
+          echo "TAG_API_TOML=${version}" >> "$GITHUB_OUTPUT"
           echo "Version: ${version}"
       - name: Get latest git tag
-        id: tag-backend
+        id: tag-api
         run: |
           git pull --tags
-          tag=$(git tag | awk -F- '/backend/ {print $2}'| sort -V | tail -1)
-          echo "TAG_BACKEND_GIT=${tag}" >> "$GITHUB_OUTPUT"
+          tag=$(git tag | awk -F- '/api/ {print $2}'| sort -V | tail -1)
+          echo "TAG_API_GIT=${tag}" >> "$GITHUB_OUTPUT"
           echo "Tag: ${tag}"
       - name: Print versions
         run: |
-          echo "TOML: ${{ steps.version-backend.outputs.TAG_BACKEND_TOML }}"
-          echo "GIT: ${{ steps.tag-backend.outputs.TAG_BACKEND_GIT }}"
+          echo "TOML: ${{ steps.version-api.outputs.TAG_API_TOML }}"
+          echo "GIT: ${{ steps.tag-api.outputs.TAG_API_GIT }}"
       - name: Create new git tag
         if: >
-          steps.version-backend.outputs.TAG_BACKEND_TOML
+          steps.version-api.outputs.TAG_API_TOML
           !=
-          steps.tag-backend.outputs.TAG_BACKEND_GIT
+          steps.tag-api.outputs.TAG_API_GIT
         env:
-          NEW_TAG: backend-${{ steps.version-backend.outputs.TAG_BACKEND_TOML }}
+          NEW_TAG: api-${{ steps.version-api.outputs.TAG_API_TOML }}
         run: |
           git tag -f ${NEW_TAG}
           git push origin ${NEW_TAG}
@@ -138,32 +138,32 @@ jobs:
         id: version-ingress
         run: |
           version=$(toml get ingress/Cargo.toml package.version | tr -d \")
-          echo "TAG_BACKEND_TOML=${version}" >> "$GITHUB_OUTPUT"
+          echo "TAG_API_TOML=${version}" >> "$GITHUB_OUTPUT"
           echo "Version: ${version}"
       - name: Get latest git tag
         id: tag-ingress
         run: |
           git pull --tags
           tag=$(git tag | awk -F- '/ingress/ {print $2}'| sort -V | tail -1)
-          echo "TAG_BACKEND_GIT=${tag}" >> "$GITHUB_OUTPUT"
+          echo "TAG_API_GIT=${tag}" >> "$GITHUB_OUTPUT"
           echo "Tag: ${tag}"
       - name: Print versions
         run: |
-          echo "TOML: ${{ steps.version-ingress.outputs.TAG_BACKEND_TOML }}"
-          echo "GIT: ${{ steps.tag-ingress.outputs.TAG_BACKEND_GIT }}"
+          echo "TOML: ${{ steps.version-ingress.outputs.TAG_API_TOML }}"
+          echo "GIT: ${{ steps.tag-ingress.outputs.TAG_API_GIT }}"
       - name: Create new git tag
         if: >
-          steps.version-ingress.outputs.TAG_BACKEND_TOML
+          steps.version-ingress.outputs.TAG_API_TOML
           !=
-          steps.tag-ingress.outputs.TAG_BACKEND_GIT
+          steps.tag-ingress.outputs.TAG_API_GIT
         env:
-          NEW_TAG: ingress-${{ steps.version-ingress.outputs.TAG_BACKEND_TOML }}
+          NEW_TAG: ingress-${{ steps.version-ingress.outputs.TAG_API_TOML }}
         run: |
           git tag -f ${NEW_TAG}
           git push origin ${NEW_TAG}
 
-  tag-scraper:
-    name: Tag scraper
+  tag-scanner:
+    name: Tag scanner
     if: github.event.pull_request.merged == true
     runs-on: ubuntu-latest
     needs: build
@@ -178,29 +178,29 @@ jobs:
           wget https://storage.googleapis.com/ivynet-share/toml
           chmod 0755 toml
       - name: Extract TOML version
-        id: version-scraper
+        id: version-scanner
         run: |
-          version=$(toml get scraper/Cargo.toml package.version | tr -d \")
-          echo "TAG_BACKEND_TOML=${version}" >> "$GITHUB_OUTPUT"
+          version=$(toml get scanner/Cargo.toml package.version | tr -d \")
+          echo "TAG_API_TOML=${version}" >> "$GITHUB_OUTPUT"
           echo "Version: ${version}"
       - name: Get latest git tag
-        id: tag-scraper
+        id: tag-scanner
         run: |
           git pull --tags
-          tag=$(git tag | awk -F- '/scraper/ {print $2}'| sort -V | tail -1)
-          echo "TAG_BACKEND_GIT=${tag}" >> "$GITHUB_OUTPUT"
+          tag=$(git tag | awk -F- '/scanner/ {print $2}'| sort -V | tail -1)
+          echo "TAG_API_GIT=${tag}" >> "$GITHUB_OUTPUT"
           echo "Tag: ${tag}"
       - name: Print versions
         run: |
-          echo "TOML: ${{ steps.version-scraper.outputs.TAG_BACKEND_TOML }}"
-          echo "GIT: ${{ steps.tag-scraper.outputs.TAG_BACKEND_GIT }}"
+          echo "TOML: ${{ steps.version-scanner.outputs.TAG_API_TOML }}"
+          echo "GIT: ${{ steps.tag-scanner.outputs.TAG_API_GIT }}"
       - name: Create new git tag
         if: >
-          steps.version-scraper.outputs.TAG_BACKEND_TOML
+          steps.version-scanner.outputs.TAG_API_TOML
           !=
-          steps.tag-scraper.outputs.TAG_BACKEND_GIT
+          steps.tag-scanner.outputs.TAG_API_GIT
         env:
-          NEW_TAG: scraper-${{ steps.version-scraper.outputs.TAG_BACKEND_TOML }}
+          NEW_TAG: scanner-${{ steps.version-scanner.outputs.TAG_API_TOML }}
         run: |
           git tag -f ${NEW_TAG}
           git push origin ${NEW_TAG}

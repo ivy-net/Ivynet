@@ -1,10 +1,10 @@
 ---
-name: Release Scraper
+name: Release Scanner
 
 on:
   push:
     tags:
-      - scraper-*.*.*
+      - scanner-*.*.*
 
 permissions:
   id-token: write  # This is required for requesting the JWT
@@ -32,17 +32,17 @@ jobs:
       - name: Run tests
         run: |
           . "$HOME/.cargo/env"
-          cd scraper
+          cd scanner
           cargo test
       - name: Build binaries
         run: |
-          cd scraper
+          cd scanner
           cargo build --release
       - name: Make release
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            target/release/scraper
+            target/release/scanner
           make_latest: false
 
   update-test:
@@ -89,4 +89,4 @@ jobs:
           ssh-agent > ~/.ssh-env
           source ~/.ssh-env
           ssh-add sa.prv
-          ./api_update.sh scraper
+          ./api_update.sh scanner

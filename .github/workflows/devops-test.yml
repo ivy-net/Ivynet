@@ -20,11 +20,11 @@ jobs:
         with:
           ssh-key: "${{ secrets.ED_25519 }}"
       - name: Get latest git tag
-        id: tag-backend
+        id: tag-api
         run: |
           git pull --tags
-          tag=$(git tag | awk -F- '/backend/ {print $2}'| tail -1)
-          echo "TAG_BACKEND_GIT=${tag}" >> "$GITHUB_OUTPUT"
+          tag=$(git tag | awk -F- '/api/ {print $2}'| tail -1)
+          echo "TAG_API_GIT=${tag}" >> "$GITHUB_OUTPUT"
           echo "Tag: ${tag}"
       - name: Debug
         run: |
@@ -34,9 +34,9 @@ jobs:
           cd /usr/local/bin
           wget https://storage.googleapis.com/ivynet-share/toml
           chmod 0755 toml
-      - name: Version backend
-        id: version-backend
+      - name: Version api
+        id: version-api
         run: |
-          version=$(toml get backend/Cargo.toml package.version | tr -d \")
-          echo "TAG_BACKEND_TOML=${version}" >> "$GITHUB_OUTPUT"
+          version=$(toml get api/Cargo.toml package.version | tr -d \")
+          echo "TAG_API_TOML=${version}" >> "$GITHUB_OUTPUT"
           echo "Version: ${version}"
