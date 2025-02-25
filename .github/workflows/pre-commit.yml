@@ -29,7 +29,7 @@ jobs:
           --proto '=https'
           --tlsv1.2
           -sSf https://sh.rustup.rs
-          | sh
+          | sh -s -- -y
       - name: Install machete
         run: |
           . "$HOME/.cargo/env"
