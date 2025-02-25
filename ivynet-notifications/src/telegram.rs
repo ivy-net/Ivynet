@@ -149,6 +149,7 @@ async fn command_handler<D: OrganizationDatabase>(
             bot.send_message(msg.chat.id, BotCommand::descriptions().to_string()).await?;
         }
         BotCommand::Register { email, password } => {
+            bot.delete_message(msg.chat.id, msg.id).await?;
             if db.register_chat(msg.chat.id.to_string().as_str(), &email, &password).await {
                 bot.send_message(msg.chat.id, "Registration successful.").await?;
             } else {
