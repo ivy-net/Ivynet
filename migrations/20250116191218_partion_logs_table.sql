@@ -63,3 +63,4 @@ $$ LANGUAGE plpgsql;
 -- Commit all changes
 -- Note: This migration requires exclusive locks on the affected tables
 COMMIT;
+
