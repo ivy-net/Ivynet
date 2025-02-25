@@ -48,6 +48,10 @@ impl AlertFlags {
             .filter(|&i| self.0.try_get_bit(i).unwrap_or(false))
             .collect()
     }
+
+    pub fn to_alert_types(&self) -> Vec<AlertType> {
+        self.to_alert_ids().into_iter().map(AlertType::from).collect()
+    }
 }
 
 impl Default for AlertFlags {

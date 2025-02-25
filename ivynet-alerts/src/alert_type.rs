@@ -2,11 +2,20 @@ use std::fmt::Display;
 
 use ethers::types::H160;
 use serde::{Deserialize, Serialize};
-use strum::{EnumCount, EnumProperty, IntoDiscriminant};
+use strum::{EnumCount, EnumIter, EnumProperty, IntoDiscriminant, IntoEnumIterator};
 use strum_macros::EnumDiscriminants;
 
 #[derive(
-    Serialize, Deserialize, Debug, Clone, PartialEq, Eq, EnumCount, EnumDiscriminants, EnumProperty,
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    EnumCount,
+    EnumDiscriminants,
+    EnumProperty,
+    EnumIter,
 )]
 #[strum_discriminants(name(AlertType))]
 #[repr(usize)]
@@ -71,6 +80,10 @@ impl AlertType {
     pub fn variant_count() -> usize {
         Alert::variant_count()
     }
+
+    pub fn list_all() -> Vec<AlertType> {
+        Alert::iter().map(|a| a.into()).collect()
+    }
 }
 
 impl Display for AlertType {
@@ -119,7 +132,7 @@ impl<'de> Deserialize<'de> for AlertType {
     }
 }
 
-// This implementation MUST be exhaustive.
+// This implementation MUST be exhaustive. This and the reverse should probably be a macro.
 impl From<&AlertType> for usize {
     fn from(alert_type: &AlertType) -> usize {
         match alert_type {
@@ -135,6 +148,26 @@ impl From<&AlertType> for usize {
             AlertType::HardwareResourceUsage => 10,
             AlertType::LowPerformaceScore => 11,
             AlertType::NeedsUpdate => 12,
+        }
+    }
+}
+
+impl From<usize> for AlertType {
+    fn from(id: usize) -> Self {
+        match id {
+            1 => AlertType::Custom,
+            2 => AlertType::ActiveSetNoDeployment,
+            3 => AlertType::UnregisteredFromActiveSet,
+            4 => AlertType::MachineNotResponding,
+            5 => AlertType::NodeNotResponding,
+            6 => AlertType::NodeNotRunning,
+            7 => AlertType::NoChainInfo,
+            8 => AlertType::NoMetrics,
+            9 => AlertType::NoOperatorId,
+            10 => AlertType::HardwareResourceUsage,
+            11 => AlertType::LowPerformaceScore,
+            12 => AlertType::NeedsUpdate,
+            _ => panic!("Unknown alert type"),
         }
     }
 }

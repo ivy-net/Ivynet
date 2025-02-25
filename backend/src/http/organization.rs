@@ -77,6 +77,13 @@ pub struct NotificationSettings {
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
+pub struct NotificationFlags {
+    telegram: bool,
+    email: bool,
+    pagerduty: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
 pub struct AlertFlagUpdate {
     pub alert: AlertType,
     pub enabled: bool,
@@ -382,6 +389,47 @@ pub async fn set_notification_settings(
     Ok(settings.into())
 }
 
+#[utoipa::path(
+    post,
+    path = "/organization/notifications/set_flags",
+    responses(
+        (status = 200, body = NotificationFlags),
+        (status = 404)
+    )
+)]
+pub async fn set_notification_flags(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Json(flags): Json<NotificationFlags>,
+) -> Result<(), BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+
+    OrganizationNotifications::set(
+        &state.pool,
+        account.organization_id as u64,
+        flags.email,
+        flags.telegram,
+        flags.pagerduty,
+    )
+    .await?;
+
+    Ok(())
+}
+
+/// list alert flags
+#[utoipa::path(
+    get,
+    path = "/organization/alert_flags/list",
+    responses(
+        (status = 200, body = Vec<AlertType>),
+        (status = 404)
+    )
+)]
+pub async fn list_alert_flags() -> Result<Json<Vec<AlertType>>, BackendError> {
+    Ok(Json(AlertType::list_all()))
+}
+
 /// Setting alert flags
 #[utoipa::path(
     post,
@@ -434,16 +482,40 @@ pub async fn get_alert_flags(
     Ok(Json(flags))
 }
 
+/// Get human-readable active alert flags
+#[utoipa::path(
+    get,
+    path = "/organization/alert_flags/get_flags",
+    responses(
+        (status = 200, body = Vec<AlertType>),
+        (status = 404)
+    )
+)]
+pub async fn get_alert_flags_human(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+) -> Result<Json<Vec<AlertType>>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+
+    let flags: AlertFlags =
+        OrganizationNotifications::get_alert_flags(&state.pool, account.organization_id as u64)
+            .await?
+            .into();
+
+    Ok(Json(flags.to_alert_types()))
+}
+
 /// Update an individual alert flag
 #[utoipa::path(
     patch,
     path = "/organization/alert_flags/set_flag",
     params(
-        ("flag" = AlertFlag, Path, description = "The alert flag to update")
+        ("flag" = AlertFlag, Path, description = "The alert flag to set")
     ),
     request_body = AlertFlagUpdate,
     responses(
-        (status = 200, description = "Alert flag updated", body = u64),
+        (status = 200),
         (status = 404)
     )
 )]

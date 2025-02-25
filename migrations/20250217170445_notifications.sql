@@ -25,3 +25,61 @@ CREATE TABLE IF NOT EXISTS notification_settings (
 CREATE INDEX idx_notification_settings_org ON notification_settings (organization_id);
 CREATE INDEX idx_notification_settings_or_type ON notification_settings (organization_id, settings_type);
 
+-- Create a trigger function to create default organization notifications when a new organization is created
+CREATE OR REPLACE FUNCTION create_default_organization_notifications()
+RETURNS TRIGGER AS $$
+BEGIN
+    INSERT INTO organization_notifications (
+        organization_id,
+        email,
+        telegram,
+        pagerduty,
+        alert_flags,
+        created_at,
+        updated_at
+    )
+    VALUES (
+        NEW.organization_id,
+        FALSE,   -- default value for email
+        FALSE,   -- default value for telegram
+        FALSE,   -- default value for pagerduty
+        0,       -- Alert flags off
+        NOW(),   -- created_at timestamp
+        NOW()    -- updated_at timestamp
+    );
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Create the trigger on the organization table
+CREATE TRIGGER after_organization_insert
+AFTER INSERT ON organization
+FOR EACH ROW
+EXECUTE FUNCTION create_default_organization_notifications();
+
+-- Create a new organization_notifications table for each existing organization
+INSERT INTO organization_notifications (
+    organization_id,
+    email,
+    telegram,
+    pagerduty,
+    alert_flags,
+    created_at,
+    updated_at
+)
+SELECT
+    o.organization_id,
+    FALSE,      -- default value for email
+    FALSE,      -- default value for telegram
+    FALSE,      -- default value for pagerduty
+    0,          -- default alert_flags
+    NOW(),      -- current timestamp for created_at
+    NOW()       -- current timestamp for updated_at
+FROM
+    organization o
+WHERE
+    NOT EXISTS (
+        SELECT 1
+        FROM organization_notifications n
+        WHERE n.organization_id = o.organization_id
+    );

@@ -1,7 +1,7 @@
 use clap::Parser as _;
 use db::configure;
 use ivynet_ingress::{config::Config, error::IngressError, grpc};
-use tracing::{error, info, Level};
+use tracing::{error, warn, Level};
 use tracing_subscriber::FmtSubscriber;
 
 pub fn start_tracing(level: Level) -> Result<(), IngressError> {
@@ -12,8 +12,8 @@ pub fn start_tracing(level: Level) -> Result<(), IngressError> {
 
 #[tokio::main]
 async fn main() -> Result<(), IngressError> {
-    if let Err(e) = dotenvy::dotenv() {
-        info!("No .env file found: {:?}", e)
+    if dotenvy::dotenv().is_err() {
+        warn!("No .env file found, proceeding with shell defaults...")
     }
 
     let config = Config::parse();
