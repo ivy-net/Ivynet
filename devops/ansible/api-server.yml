@@ -19,5 +19,5 @@
     - role: ivynet-ingress
       ivynet_ingress_postgres_host: "{{ db_ip }}"
       become: true
-    - role: ivynet-scraper
+    - role: ivynet-scanner
       become: true

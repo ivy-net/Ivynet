@@ -27,7 +27,7 @@ ansible-playbook -i gcp.yml \
   --vault-password-file ~/.vault.txt \
   -e "ivynet_api_release=${BACKEND}" \
   -e "ivynet_ingress_release=${INGRESS}" \
-  -e "ivynet_scraper_release=${SCANNER}" \
+  -e "ivynet_scanner_release=${SCANNER}" \
   api.yml
 
 mv api.yml.bak api.yml

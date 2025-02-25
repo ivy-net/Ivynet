@@ -4,7 +4,7 @@
 # Requires toml cargo package
 
 
-services="api ingress scraper"
+services="api ingress scanner"
 declare version
 
 pre_checks() {
@@ -45,8 +45,8 @@ all_services() {
   version_api=${version}
   find_version "ingress"
   version_ingress=${version}
-  find_version "scraper"
-  version_scraper=${version}
+  find_version "scanner"
+  version_scanner=${version}
   cat << EOF
 Run the playbook
 
@@ -55,7 +55,7 @@ Run the playbook
   -u ${remote_user} \\
   -e "ivynet_api_release=${version_api}" \\
   -e "ivynet_ingress_release=${version_ingress}" \\
-  -e "ivynet_scraper_release=${version_scraper}" \\
+  -e "ivynet_scanner_release=${version_scanner}" \\
   --vault-password-file ~/.vault.txt \\
   api.yml
 EOF
@@ -65,7 +65,7 @@ EOF
     -u ${remote_user} \
     -e "ivynet_api_release=${version_api}" \
     -e "ivynet_ingress_release=${version_ingress}" \
-    -e "ivynet_scraper_release=${version_scraper}" \
+    -e "ivynet_scanner_release=${version_scanner}" \
     --vault-password-file ~/.vault.txt \
     api.yml
 }
