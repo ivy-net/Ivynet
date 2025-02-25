@@ -8,7 +8,7 @@
     - github3.py
     - psycopg2-binary
   tags:
-    - ivynet_scraper
+    - ivynet_scanner
     - general
     - download
     - github

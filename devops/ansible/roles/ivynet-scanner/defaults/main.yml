@@ -1,15 +1,15 @@
 ---
 # Name of the GCP bucket
-ivynet_scraper_gcp_bucket: ivynet-share-test
+ivynet_scanner_gcp_bucket: ivynet-share-test
 
 # File with GCP credentials
-ivynet_scraper_gcp_cred: ~/.devops-automation-key.json
+ivynet_scanner_gcp_cred: ~/.devops-automation-key.json
 
 # Name of GCP project
-ivynet_scraper_gcp_project: ivynet-tests
+ivynet_scanner_gcp_project: ivynet-tests
 
 # Token to access github
-ivynet_scraper_github_token: !vault |
+ivynet_scanner_github_token: !vault |
           $ANSIBLE_VAULT;1.1;AES256
           36363834613035363762636134643162623863323436623539303234396434653065636163316462
           6430303535333932326562306230646634303930396533640a313965396562363066323232356235
@@ -19,24 +19,24 @@ ivynet_scraper_github_token: !vault |
           3866393766616537613266336166323234616535343537663537
 
 # Source of binaries (true for release, false for master)
-ivynet_scraper_is_release: true
+ivynet_scanner_is_release: true
 
 # Logs level for IvyNet internals
-ivynet_scraper_logs_lowlevel: ""
+ivynet_scanner_logs_lowlevel: ""
 
 # Path where to install binaries and other files
-ivynet_scraper_path_install: "/opt/ivynet"
+ivynet_scanner_path_install: "/opt/ivynet"
 
 # Path to directory with SQL migration
-ivynet_scraper_path_resources: "{{ ivynet_scraper_path_install }}/resources"
+ivynet_scanner_path_resources: "{{ ivynet_scanner_path_install }}/resources"
 
 # Path to directory with secrets
-ivynet_scraper_path_secrets: "{{ ivynet_scraper_path_install }}/secrets"
+ivynet_scanner_path_secrets: "{{ ivynet_scanner_path_install }}/secrets"
 
 # RPCs endpoints
-ivynet_scraper_rpc:
+ivynet_scanner_rpc:
   mainnet: wss://eth-mainnet.g.alchemy.com/v2/QdZGFJvR0KVqZxOcfOyDmSZbBpMAzskz
   holesky: wss://eth-holesky.g.alchemy.com/v2/QdZGFJvR0KVqZxOcfOyDmSZbBpMAzskz
 
-# Scraper release
-ivynet_scraper_release: "0.5.0"
+# Scanner release
+ivynet_scanner_release: "0.5.0"

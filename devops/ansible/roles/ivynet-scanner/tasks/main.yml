@@ -7,51 +7,51 @@
     group: root
     mode: "0755"
   loop:
-    - "{{ ivynet_scraper_path_install }}"
-    - "{{ ivynet_scraper_path_install }}/bin"
-    - "{{ ivynet_scraper_path_resources }}"
+    - "{{ ivynet_scanner_path_install }}"
+    - "{{ ivynet_scanner_path_install }}/bin"
+    - "{{ ivynet_scanner_path_resources }}"
   tags:
     - general
 
 - name: Add another bin dir to system-wide $PATH.
   ansible.builtin.copy:
     dest: /etc/profile.d/ivy-path.sh
-    content: 'PATH=$PATH:{{ ivynet_scraper_path_install }}/bin'
+    content: 'PATH=$PATH:{{ ivynet_scanner_path_install }}/bin'
     owner: root
     group: root
     mode: "0644"
   tags:
-    - ivynet_scraper
+    - ivynet_scanner
 
 - name: Install and configure 3rd party tools
   ansible.builtin.import_tasks:
     file: third_party.yml
 
-- name: Download scraper for master
+- name: Download scanner for master
   ansible.builtin.import_tasks:
-    file: get_scraper_master.yml
+    file: get_scanner_master.yml
   when:
-    - not ivynet_scraper_is_release | bool
+    - not ivynet_scanner_is_release | bool
 
-- name: Download scraper for release
+- name: Download scanner for release
   ansible.builtin.import_tasks:
-    file: get_scraper.yml
+    file: get_scanner.yml
   when:
-    - ivynet_scraper_is_release | bool
+    - ivynet_scanner_is_release | bool
 
 - name: Configure SystemD
   ansible.builtin.import_tasks:
     file: systemd.yml
 
-- name: Restart Scraper
+- name: Restart Scanner
   ansible.builtin.cron:
-    name: "Restart scraper for {{ item }}"
+    name: "Restart scanner for {{ item }}"
     minute: 3
     hour: "*"
-    job: "/usr/bin/systemctl restart ivynet-scraper-{{ item }}"
+    job: "/usr/bin/systemctl restart ivynet-scanner-{{ item }}"
   loop:
     - holesky
     - mainnet
   tags:
-    - ivynet_scraper
+    - ivynet_scanner
     - general

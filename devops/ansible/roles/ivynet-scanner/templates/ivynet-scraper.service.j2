@@ -1,14 +1,14 @@
 [Unit]
-Description=Ivynet Scraper {{ network }} service
+Description=Ivynet Scanner {{ network }} service
 After=network.target
 
 [Service]
-Environment="RPC_URL={{ ivynet_scraper_rpc[network] }}"
+Environment="RPC_URL={{ ivynet_scanner_rpc[network] }}"
 {% if network == "holesky" %}
 Environment="START_BLOCK=0"
 {% endif %}
 Environment="BACKEND_URL=http://localhost:50051"
-ExecStart={{ ivynet_scraper_path_install }}/bin/scraper
+ExecStart={{ ivynet_scanner_path_install }}/bin/scanner
 Type=simple
 Restart=always
 
