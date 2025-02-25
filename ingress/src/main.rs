@@ -1,9 +1,7 @@
-use std::sync::Arc;
-
 use clap::Parser as _;
 use db::configure;
 use ivynet_ingress::{config::Config, error::IngressError, grpc};
-use tracing::{error, Level};
+use tracing::{error, warn, Level};
 use tracing_subscriber::FmtSubscriber;
 
 pub fn start_tracing(level: Level) -> Result<(), IngressError> {
@@ -14,12 +12,18 @@ pub fn start_tracing(level: Level) -> Result<(), IngressError> {
 
 #[tokio::main]
 async fn main() -> Result<(), IngressError> {
+    if dotenvy::dotenv().is_err() {
+        warn!("No .env file found, proceeding with shell defaults...")
+    }
+
     let config = Config::parse();
+    println!("{:?}", config.telegram_token);
     start_tracing(config.log_level)?;
-    let pool = Arc::new(configure(&config.db_uri, false).await?);
+    let pool = configure(&config.db_uri, false).await?;
 
     let grpc_service = grpc::backend_serve(
         pool.clone(),
+        config.clone().into(),
         config.grpc_tls_cert,
         config.grpc_tls_key,
         config.grpc_port,
@@ -32,13 +36,9 @@ async fn main() -> Result<(), IngressError> {
         config.events_port,
     );
 
-    let alerts_service =
-        grpc::alerts_serve(pool, config.alerts_tls_cert, config.alerts_tls_key, config.alerts_port);
-
     tokio::select! {
         e = grpc_service => error!("Executor has stopped. Reason: {e:?}"),
         e = events_service => error!("Events service has stopped. Reason: {e:?}"),
-        e = alerts_service => error!("Alerts service has stopped. Reason: {e:?}"),
     }
     Ok(())
 }

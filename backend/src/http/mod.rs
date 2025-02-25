@@ -8,8 +8,6 @@ mod node;
 mod organization;
 mod pubkey;
 
-use std::sync::Arc;
-
 use crate::error::BackendError;
 
 use axum::{
@@ -30,7 +28,7 @@ use utoipa_swagger_ui::SwaggerUi;
 
 #[derive(Clone)]
 pub struct HttpState {
-    pub pool: Arc<PgPool>,
+    pub pool: PgPool,
     pub cache: memcache::Client,
     pub sender: Option<Sender>,
     pub sender_email: Option<String>,
@@ -42,7 +40,7 @@ pub struct HttpState {
 
 #[allow(clippy::too_many_arguments)]
 pub async fn serve(
-    pool: Arc<PgPool>,
+    pool: PgPool,
     cache: memcache::Client,
     root_url: Uri,
     sendgrid_api_key: Option<String>,
@@ -100,7 +98,15 @@ fn create_router() -> Router<HttpState> {
                 .route("/invite", post(organization::invite))
                 .route("/confirm/:id", get(organization::confirm))
                 .route("/machines", get(organization::machines))
-                .route("/avses", get(organization::avses)),
+                .route("/avses", get(organization::avses))
+                .route("/notifications", get(organization::get_notification_settings))
+                .route("/notifications", post(organization::set_notification_settings))
+                .route("/notifications/set_flags", post(organization::set_notification_flags))
+                .route("/alert_flags", get(organization::get_alert_flags))
+                .route("/alert_flags", post(organization::set_alert_flags))
+                .route("/alert_flags/list", get(organization::list_alert_flags))
+                .route("/alert_flags/get_flags", get(organization::get_alert_flags_human))
+                .route("/alert_flags/set_flag", post(organization::update_alert_flag)),
         )
         .nest(
             "/client",

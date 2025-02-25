@@ -11,4 +11,7 @@ pub enum IngressError {
 
     #[error(transparent)]
     DatabaseError(#[from] db::error::DatabaseError),
+
+    #[error(transparent)]
+    NotificationDispatcherError(#[from] ivynet_notifications::NotificationDispatcherError),
 }

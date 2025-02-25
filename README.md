@@ -73,18 +73,89 @@ eigenlayer operator keys create --key-type bls [keyname]
 
 Please refer to the CLI documentation [here](./cli/README.md)
 
-### Backend Readme:
-
-[here](./backend/README.md)
 
 
-## AVS Progress
+### Backend Setup and Testing Guide
 
-| AVS          | Whitelist         | Deployment Progress        | Blockers                         | Metrics                        |
-|--------------|-------------------|----------------------------|----------------------------------|--------------------------------|
-| EigenDA      | NA                | Implemented                | NA                               | PR Open                        |
-| WitnessChain | Yes, both         | In Progress                | Keyring upgrades                 |                                |
-| Omni         | Waiting on Omni   | NA                         | "Final Testnet" releasing soon   |                                |
+1. Bring up the postgres database container:
+
+Optional: Ensure that no existing instance of the database is running:
+
+```sh
+docker compose -f ./db/backend-compose.yaml down -v
+```
+
+Bring up the database:
+
+```sh
+docker compose -f ./db/backend-compose.yaml up -d
+```
+
+2. Set the DATABASE_URL environment variable:
+
+```sh
+export DATABASE_URL=postgresql://ivy:secret_ivy@localhost:5432/ivynet
+```
+
+3. Run database migrations and prepare sqlx:
+
+```sh
+sqlx migrate run
+cargo sqlx prepare --workspace
+```
+
+4. Initialize test organization and AVS versions:
+
+```sh
+cargo run --bin ivynet-backend -- --add-organization testuser@ivynet.dev:test1234/testorg
+```
+
+5. Populate version hashes table from remote docker repositories and latest node versions table:
+
+```sh
+cargo run --bin ivynet-backend -- --add-node-version-hashes
+cargo run --bin ivynet-backend -- --update-node-data-versions
+```
+
+6. Run ingress from ./ingress:
+```sh
+cd ingress
+cargo run
+```
+
+7. Run the backend from ./backend:
+```sh
+cd backend
+cargo run
+```
+
+8. Run the scraper from ./scraper:
+
+```sh
+cd scraper
+cargo run
+```
+
+Convenient shell script for confiuration-related steps
+
+```sh
+echo "Closing existing database..."
+docker compose -f ./db/backend-compose.yaml down -v
+sleep 3
+docker compose -f ./db/backend-compose.yaml up -d
+echo "Waiting for PostgreSQL database..."
+sleep 3
+export DATABASE_URL=postgresql://ivy:secret_ivy@localhost:5432/ivynet
+sqlx migrate run
+cargo sqlx prepare --workspace
+```
+
+Once the backend is running and your monitor process is configured, you can register your machine with the backend:
+
+```sh
+cargo run register-node
+```
+
 ### Host network mode port detection
 
 Ivynet will automatically detect the the ports used by a given Node running in host network mode by attaching a docker sidecar with netstat installed. This container will run netstat and output ONLY lines which contain valid processes within the scope of the host container.

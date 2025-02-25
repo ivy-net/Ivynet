@@ -1,5 +1,6 @@
 use std::fmt::{self, Display, Formatter};
 
+use alerts::Alert;
 use chrono::NaiveDateTime;
 use ivynet_error::ethers::types::Address;
 use serde::Serialize;
@@ -9,23 +10,23 @@ use uuid::Uuid;
 
 use crate::error::DatabaseError;
 
-use super::{alert_handler::AlertType, alerts_historical::HistoryAlert};
+use super::alerts_historical::HistoryAlert;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct NewAlert {
-    pub alert_type: AlertType,
+    pub id: Uuid,
+    pub alert_type: Alert,
     pub machine_id: Uuid,
     pub node_name: String,
     pub created_at: NaiveDateTime,
 }
 
 impl NewAlert {
-    pub fn new(machine_id: Uuid, alert_type: AlertType, node_name: String) -> Self {
-        Self { alert_type, machine_id, node_name, created_at: chrono::Utc::now().naive_utc() }
-    }
-
-    pub fn generate_uuid(&self) -> Uuid {
-        Uuid::new_v5(&Uuid::NAMESPACE_OID, self.to_string().as_bytes())
+    pub fn new(machine_id: Uuid, alert_type: Alert, node_name: String) -> Self {
+        let alert_id = alert_type.uuid_seed();
+        let str_rep = format!("{}-{}-{}", alert_id, machine_id, node_name);
+        let id = Uuid::new_v5(&Uuid::NAMESPACE_OID, str_rep.as_bytes());
+        Self { id, alert_type, machine_id, node_name, created_at: chrono::Utc::now().naive_utc() }
     }
 }
 
@@ -38,10 +39,9 @@ impl Display for NewAlert {
 }
 
 #[derive(Serialize, ToSchema, Clone, Debug)]
-
 pub struct ActiveAlert {
     pub alert_id: Uuid,
-    pub alert_type: AlertType,
+    pub alert_type: Alert,
     pub machine_id: Uuid,
     pub organization_id: i64,
     pub client_id: Address,
@@ -50,34 +50,23 @@ pub struct ActiveAlert {
     pub acknowledged_at: Option<NaiveDateTime>,
 }
 
-#[cfg(test)]
-impl From<ActiveAlert> for NewAlert {
-    fn from(alert: ActiveAlert) -> Self {
-        Self {
-            alert_type: alert.alert_type,
-            machine_id: alert.machine_id,
-            node_name: alert.node_name,
-            created_at: alert.created_at,
-        }
-    }
-}
-
 pub struct DbActiveAlert {
     alert_id: Uuid,
-    alert_type: i64,
     machine_id: Uuid,
     organization_id: i64,
     client_id: Vec<u8>,
     node_name: String,
     created_at: NaiveDateTime,
     acknowledged_at: Option<NaiveDateTime>,
+    alert_data: serde_json::Value,
 }
 
 impl From<DbActiveAlert> for ActiveAlert {
     fn from(db_active_alert: DbActiveAlert) -> Self {
+        let notification_type: Alert = serde_json::from_value(db_active_alert.alert_data).unwrap();
         ActiveAlert {
             alert_id: db_active_alert.alert_id,
-            alert_type: db_active_alert.alert_type.into(),
+            alert_type: notification_type,
             machine_id: db_active_alert.machine_id,
             organization_id: db_active_alert.organization_id,
             client_id: Address::from_slice(&db_active_alert.client_id),
@@ -95,13 +84,13 @@ impl ActiveAlert {
             r#"
             SELECT
                 alert_id,
-                alert_type,
                 machine_id,
                 organization_id,
                 client_id,
                 node_name,
                 created_at,
-                acknowledged_at
+                acknowledged_at,
+                alert_data
             FROM alerts_active
             WHERE alert_id = $1
             "#,
@@ -113,19 +102,46 @@ impl ActiveAlert {
         Ok(alert.map(|n| n.into()))
     }
 
+    pub async fn get_many(
+        pool: &PgPool,
+        alert_ids: &[Uuid],
+    ) -> Result<Vec<ActiveAlert>, DatabaseError> {
+        let alerts = sqlx::query_as!(
+            DbActiveAlert,
+            r#"
+            SELECT
+                alert_id,
+                machine_id,
+                organization_id,
+                client_id,
+                node_name,
+                created_at,
+                acknowledged_at,
+                alert_data
+            FROM alerts_active
+            WHERE alert_id = ANY($1)
+            "#,
+            alert_ids
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(alerts.into_iter().map(|n| n.into()).collect())
+    }
+
     pub async fn get_all(pool: &PgPool) -> Result<Vec<ActiveAlert>, DatabaseError> {
         let alerts = sqlx::query_as!(
             DbActiveAlert,
             r#"
             SELECT
                 alert_id,
-                alert_type,
                 machine_id,
                 organization_id,
                 client_id,
                 node_name,
                 created_at,
-                acknowledged_at
+                acknowledged_at,
+                alert_data
             FROM alerts_active
             "#,
         )
@@ -136,36 +152,37 @@ impl ActiveAlert {
     }
 
     pub async fn insert_one(pool: &PgPool, alert: &NewAlert) -> Result<(), DatabaseError> {
-        let alert_id = alert.generate_uuid();
+        let alert_data = serde_json::json!(alert.alert_type);
+        println!("Inserting alert: {:?}", alert);
         sqlx::query!(
             r#"
             INSERT INTO alerts_active (
                 alert_id,
-                alert_type,
                 machine_id,
                 organization_id,
                 client_id,
                 node_name,
-                created_at
+                created_at,
+                alert_data
             )
             SELECT
                 $1,
-                $2,
                 m.machine_id,
                 c.organization_id,
                 m.client_id,
+                $2,
                 $3,
-                $4
+                $5
             FROM machine m
             JOIN client c
               ON m.client_id = c.client_id
-            WHERE m.machine_id = $5   -- lookup based on the provided machine_id
+            WHERE m.machine_id = $4   -- lookup based on the provided machine_id
             "#,
-            alert_id,
-            alert.alert_type as i16,
+            alert.id,
             alert.node_name,
             alert.created_at,
             alert.machine_id,
+            alert_data
         )
         .execute(pool)
         .await?;
@@ -175,36 +192,36 @@ impl ActiveAlert {
     pub async fn insert_many(pool: &PgPool, alerts: &[NewAlert]) -> Result<(), DatabaseError> {
         let mut tx = pool.begin().await?;
         for alert in alerts {
-            let alert_id = alert.generate_uuid();
+            let alert_data = serde_json::json!(alert.alert_type);
             sqlx::query!(
                 r#"
-                INSERT INTO alerts_active (
-                    alert_id,
-                    alert_type,
-                    machine_id,
-                    organization_id,
-                    client_id,
-                    node_name,
-                    created_at
-                )
-                SELECT
-                    $1,
-                    $2,
-                    m.machine_id,
-                    c.organization_id,
-                    m.client_id,
-                    $3,
-                    $4
-                FROM machine m
-                JOIN client c
-                  ON m.client_id = c.client_id
-                WHERE m.machine_id = $5   -- lookup based on the provided machine_id
-                "#,
+            INSERT INTO alerts_active (
                 alert_id,
-                alert.alert_type as i16,
+                machine_id,
+                organization_id,
+                client_id,
+                node_name,
+                created_at,
+                alert_data
+            )
+            SELECT
+                $1,
+                m.machine_id,
+                c.organization_id,
+                m.client_id,
+                $2,
+                $3,
+                $5
+            FROM machine m
+            JOIN client c
+              ON m.client_id = c.client_id
+            WHERE m.machine_id = $4
+            "#,
+                alert.id,
                 alert.node_name,
                 alert.created_at,
                 alert.machine_id,
+                alert_data
             )
             .execute(&mut *tx)
             .await?;
@@ -222,13 +239,13 @@ impl ActiveAlert {
             r#"
             SELECT
                 alert_id,
-                alert_type,
                 machine_id,
                 organization_id,
                 client_id,
                 node_name,
                 created_at,
-                acknowledged_at
+                acknowledged_at,
+                alert_data
             FROM alerts_active
             WHERE organization_id = $1
             "#,
@@ -249,13 +266,13 @@ impl ActiveAlert {
             r#"
             SELECT
                 alert_id,
-                alert_type,
                 machine_id,
                 organization_id,
                 client_id,
                 node_name,
                 created_at,
-                acknowledged_at
+                acknowledged_at,
+                alert_data
             FROM alerts_active
             WHERE machine_id = $1
             "#,
@@ -290,13 +307,13 @@ impl ActiveAlert {
             r#"
             SELECT
                 alert_id,
-                alert_type,
                 machine_id,
                 organization_id,
                 client_id,
                 node_name,
                 created_at,
-                acknowledged_at
+                acknowledged_at,
+                alert_data
             FROM alerts_active
             WHERE alert_id = $1
             "#,
@@ -309,19 +326,20 @@ impl ActiveAlert {
         let alert_id = active_alert.alert_id;
 
         let history_alert: HistoryAlert = active_alert.into();
+        let alert_data = serde_json::json!(history_alert.alert_type);
 
         sqlx::query!(
             r#"
             INSERT INTO alerts_historical (
                 alert_id,
-                alert_type,
                 machine_id,
                 organization_id,
                 client_id,
                 node_name,
                 created_at,
                 acknowledged_at,
-                resolved_at
+                resolved_at,
+                alert_data
             )
             VALUES (
                 $1,
@@ -331,18 +349,18 @@ impl ActiveAlert {
                 $5,
                 $6,
                 $7,
-                $8,
-                now()
+                now(),
+                $8
             )
             "#,
             alert_id,
-            history_alert.alert_type as i16,
             history_alert.machine_id,
             history_alert.organization_id,
             history_alert.client_id.as_bytes().to_vec(),
             history_alert.node_name,
             history_alert.created_at,
             history_alert.acknowledged_at,
+            alert_data
         )
         .execute(&mut *tx)
         .await?;
