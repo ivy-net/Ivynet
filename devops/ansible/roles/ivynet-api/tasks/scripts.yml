@@ -9,7 +9,6 @@
   tags:
     - ivynet_api
     - general
-    - ivynet
     - db
 
 - name: Clean logs table
@@ -22,12 +21,11 @@
   tags:
     - ivynet_api
     - general
-    - ivynet
     - db
 
 - name: Copy scanner script
   ansible.builtin.copy:
-    src: ivynet-scanner.sh
+    src: ivynet-version-scanner.sh
     dest: "{{ ivynet_api_path_install }}/bin"
     owner: root
     group: root
@@ -35,7 +33,6 @@
   tags:
     - ivynet_api
     - general
-    - ivynet
     - scanner
 
 - name: Run scanner from the cron
@@ -44,9 +41,8 @@
     minute: 7
     hour: "0,12"
     # yamllint disable-line rule:line-length
-    job: "{{ ivynet_api_path_install }}/bin/ivynet-scanner.sh 2>&1 |logger -t scanner"
+    job: "{{ ivynet_api_path_install }}/bin/ivynet-version-scanner.sh 2>&1 |logger -t ver-scanner"
   tags:
     - ivynet_api
     - general
-    - ivynet
     - scanner

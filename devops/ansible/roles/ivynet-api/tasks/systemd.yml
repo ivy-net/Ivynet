@@ -12,7 +12,6 @@
   tags:
     - ivynet_api
     - general
-    - ivynet
     - systemd
     - template
 
@@ -30,5 +29,4 @@
   tags:
     - ivynet_api
     - general
-    - ivynet
     - systemd

@@ -14,7 +14,6 @@
     - ivynet-api
   tags:
     - ivynet_api
-    - ivynet
     - download
     - gcp
 
@@ -30,6 +29,5 @@
   notify: Restart api service
   tags:
     - ivynet_api
-    - ivynet
     - download
     - gcp

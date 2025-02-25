@@ -12,7 +12,6 @@
         json_output_query: "json.assets[?name=='migrations.tar.gz'].id"
       tags:
         - ivynet_api
-        - ivynet
         - github
         - db-config
 
@@ -33,7 +32,6 @@
         mode: "0755"
       tags:
         - ivynet_api
-        - ivynet
         - github
         - db-config
 
@@ -46,7 +44,6 @@
         owner: root
         group: root
       tags:
-        - ivynet
         - github
         - db-config
 
@@ -69,7 +66,6 @@
         - migrations.tar.gz
       tags:
         - ivynet_api
-        - ivynet
         - download
         - gcp
 
@@ -84,7 +80,6 @@
         - migrations.tar.gz
       tags:
         - ivynet_api
-        - ivynet
         - download
         - gcp
 
@@ -96,7 +91,6 @@
         owner: root
         group: root
       tags:
-        - ivynet
         - github
         - db-config
 
@@ -110,7 +104,6 @@
   become_user: postgres
   tags:
     - ivynet_api
-    - ivynet
     - postgres
     - db-config
 
@@ -127,7 +120,6 @@
   become_user: postgres
   tags:
     - ivynet_api
-    - ivynet
     - postgres
     - db-config
 
@@ -145,7 +137,6 @@
   become_user: postgres
   tags:
     - ivynet_api
-    - ivynet
     - postgres
     - db-config
 
@@ -163,7 +154,6 @@
   changed_when: migration_out.stdout != ""
   tags:
     - ivynet_api
-    - ivynet
     - db-config
     - sqlx
 
@@ -176,5 +166,4 @@
     - ivynet_api_postgres_host != 'localhost'
   tags:
     - ivynet_api
-    - ivynet
     - db-config

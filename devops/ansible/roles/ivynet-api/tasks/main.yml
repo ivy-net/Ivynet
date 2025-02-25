@@ -44,7 +44,6 @@
     - Restart api service
   tags:
     - general
-    - ivynet
     - systemd
     - template
 
