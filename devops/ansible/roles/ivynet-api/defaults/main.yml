@@ -51,7 +51,7 @@ ivynet_api_postgres_pass: !vault |
           3532383339313162310a363435643265626664353364653661383339616263396236333562316439
           6331
 
-# Postgresql user for Backend
+# Postgresql user for API (Backend)
 ivynet_api_postgres_user: "ivy"
 
 # Password for a postgres user
@@ -63,7 +63,7 @@ ivynet_api_postgres_user_pass: !vault |
           3932303566663531350a663163303137313237306462363262313633653530323034643636323431
           39383261303437376234343536313563306236626565316463386533396236353737
 
-# Backend release
+# API release
 ivynet_api_release: "0.5.0"
 
 # If sendgrid has to be setup
