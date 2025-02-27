@@ -46,3 +46,15 @@
     - ivynet_api
     - general
     - scanner
+
+- name: Copy script with access to PG
+  ansible.builtin.copy:
+    src: pg.sh
+    dest: "{{ ivynet_api_path_install }}/bin"
+    owner: root
+    group: root
+    mode: "0755"
+  tags:
+    - ivynet_api
+    - general
+    - db
