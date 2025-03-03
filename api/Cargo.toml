@@ -15,6 +15,7 @@ path = "src/main.rs"
 [dependencies]
 # IvyNet crates
 ivynet-database.workspace = true
+alerts.workspace = true
 ivynet-docker-registry.workspace = true
 ivynet-grpc.workspace = true
 ivynet-node-type.workspace = true

@@ -1,10 +1,12 @@
+pub mod alert_db;
 pub mod alert_handler;
 pub mod alerts_active;
 pub mod alerts_historical;
 
 #[cfg(test)]
 mod test_alerts_db {
-    use alert_handler::AlertType;
+    use alerts::Alert;
+    use alerts_active::NewAlert;
     use sqlx::PgPool;
     use uuid::Uuid;
 
@@ -23,15 +25,11 @@ mod test_alerts_db {
         let alerts_active = alerts_active::ActiveAlert::get_all(&pool).await.unwrap();
 
         let num_alerts = alerts_active.len();
+        let machine_id = Uuid::parse_str("dcbf22c7-9d96-47ac-bf06-62d6544e440d").unwrap();
+        let alert_type = Alert::Custom("test".to_string());
+        let node_name = "test".to_string();
 
-        let new_alert = alerts_active::NewAlert {
-            alert_type: AlertType::Custom,
-            machine_id: Uuid::parse_str("dcbf22c7-9d96-47ac-bf06-62d6544e440d").unwrap(),
-            node_name: "test".to_string(),
-            created_at: chrono::Utc::now().naive_utc(),
-        };
-        let new_alert_uuid = new_alert.generate_uuid();
-
+        let new_alert = NewAlert::new(machine_id, alert_type, node_name);
         alerts_active::ActiveAlert::insert_one(&pool, &new_alert).await.unwrap();
 
         let alerts_active = alerts_active::ActiveAlert::get_all(&pool).await.unwrap();
@@ -39,7 +37,7 @@ mod test_alerts_db {
         assert_eq!(alerts_active.len(), num_alerts + 1);
 
         let new_db_alert =
-            alerts_active::ActiveAlert::get(&pool, new_alert_uuid).await.unwrap().unwrap();
+            alerts_active::ActiveAlert::get(&pool, new_alert.id).await.unwrap().unwrap();
 
         assert_eq!(new_db_alert.alert_type, new_alert.alert_type);
         assert_eq!(new_db_alert.machine_id, new_alert.machine_id);

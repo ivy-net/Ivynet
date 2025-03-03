@@ -13,9 +13,10 @@ members = [
 	"ivynet-grpc",
 	"ivynet-io",
 	"ivynet-node-type",
-    "ivynet-notifications",
+	"ivynet-notifications",
 	"ivynet-signer",
-    "ivynet-error",
+	"ivynet-error",
+	"ivynet-alerts",
 ]
 resolver = "2"
 
@@ -60,12 +61,14 @@ useless_let_if_seq = "warn"
 
 [workspace.dependencies]
 # Local packages
+alerts = { path = "ivynet-alerts" }
 ivynet-error = { path = "ivynet-error" }
 ivynet-docker = { path = "ivynet-docker" }
 ivynet-docker-registry = { path = "ivynet-docker-registry" }
 ivynet-grpc = { path = "ivynet-grpc" }
 ivynet-io = { path = "ivynet-io" }
 ivynet-node-type = { path = "ivynet-node-type" }
+ivynet-notifications = { path = "ivynet-notifications" }
 ivynet-signer = { path = "ivynet-signer" }
 ivynet-database = { path = "ivynet-database" }
 ivynet-macros = { path = "ivynet-macros" }
@@ -86,6 +89,7 @@ chrono = "0.4.0"
 dialoguer = "0.11.0"
 dirs = "5.0.1"
 docker-registry = "0.7.0"
+dotenvy = "0.15.7"
 eth-keystore = "0.5.0"
 ethers = { version = "2.0", features = ["ws", "abigen"] }
 futures = "0.3.31"
@@ -105,7 +109,8 @@ sqlx = { version = "0.8", features = [
 	"tls-rustls",
 	"uuid",
 ] }
-strum = { version = "0.26.3", features = ["derive"] }
+strum = { version = "0.27.1", features = ["derive"] }
+strum_macros = "0.27.1"
 tar = "0.4.43"
 tempfile = "3.10.1"
 thiserror = "2.0.3"

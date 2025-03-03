@@ -27,6 +27,7 @@ use ivynet_grpc::{
 
 use ivynet_docker::logs::{find_log_level, find_or_create_log_timestamp, sanitize_log};
 use ivynet_node_type::NodeType;
+use ivynet_notifications::{NotificationConfig, NotificationDispatcher};
 use sqlx::PgPool;
 use std::{str::FromStr, sync::Arc};
 use tracing::debug;
@@ -35,13 +36,13 @@ use uuid::Uuid;
 use super::data_validator::validate_request;
 
 pub struct BackendService {
-    pool: Arc<PgPool>,
-    alert_handler: AlertHandler,
+    pub alert_handler: AlertHandler,
+    pool: PgPool,
 }
 
 impl BackendService {
-    pub fn new(pool: Arc<PgPool>, alert_handler: AlertHandler) -> Self {
-        Self { pool, alert_handler }
+    pub fn new(pool: PgPool, alert_handler: AlertHandler) -> Self {
+        Self { alert_handler, pool }
     }
 }
 
@@ -318,20 +319,31 @@ impl Backend for BackendService {
 }
 
 pub async fn serve(
-    pool: Arc<PgPool>,
+    pool: PgPool,
+    notification_config: NotificationConfig,
     tls_cert: Option<String>,
     tls_key: Option<String>,
     port: u16,
 ) -> Result<(), IngressError> {
     tracing::info!("Starting GRPC server on port {port}");
-    let alert_actor_handle = AlertHandler::new(pool.clone());
-    server::Server::new(
-        BackendServer::new(BackendService::new(pool, alert_actor_handle)),
+    // TODO: Not sure how to handle serving from inside of the alert handle to work with
+    // telegram... yet
+    let notification_dispatcher =
+        Arc::new(NotificationDispatcher::new(notification_config, AlertDb::new(pool.clone())));
+
+    let server = server::Server::new(
+        BackendServer::new(BackendService::new(
+            pool.clone(),
+            AlertHandler::new(notification_dispatcher.clone(), pool),
+        )),
         tls_cert,
         tls_key,
-    )
-    .serve(server::Endpoint::Port(port))
-    .await?;
+    );
+
+    tokio::select! {
+        e = server.serve(server::Endpoint::Port(port)) => e?,
+        e = notification_dispatcher.serve() => e?
+    }
 
     Ok(())
 }

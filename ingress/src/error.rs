@@ -10,5 +10,8 @@ pub enum IngressError {
     GlobalTracingSetError(#[from] tracing::subscriber::SetGlobalDefaultError),
 
     #[error(transparent)]
-    DatabaseError(#[from] ivynet_database::error::DatabaseError),
+    DatabaseError(#[from] db::error::DatabaseError),
+
+    #[error(transparent)]
+    NotificationDispatcherError(#[from] ivynet_notifications::NotificationDispatcherError),
 }

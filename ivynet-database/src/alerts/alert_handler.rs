@@ -1,9 +1,16 @@
-use std::{collections::HashMap, sync::Arc};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
+use alerts::Alert;
 use ivynet_error::ethers::types::Chain;
 use ivynet_grpc::messages::NodeDataV2;
 use ivynet_node_type::NodeType;
-use serde::{Deserialize, Serialize};
+use ivynet_notifications::{
+    Channel, Notification, NotificationDispatcher, NotificationDispatcherError,
+};
+
 use sqlx::{types::Uuid, PgPool};
 
 use crate::{
@@ -13,10 +20,13 @@ use crate::{
         node_data::UpdateStatus,
     },
     error::DatabaseError,
-    Avs, DbAvsVersionData,
+    Avs, DbAvsVersionData, Machine, OrganizationNotifications,
 };
 
-use super::alerts_active::{ActiveAlert, NewAlert};
+use super::{
+    alert_db::AlertDb,
+    alerts_active::{ActiveAlert, NewAlert},
+};
 
 pub const RUNNING_METRIC: &str = "running";
 pub const EIGEN_PERFORMANCE_METRIC: &str = "eigen_performance_score";
@@ -33,54 +43,25 @@ pub struct NoMetricsAlert {
     pub node_name: String,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum AlertType {
-    Custom = 1,
-    ActiveSetNoDeployment = 2,
-    CrashedNode = 3,
-    HardwareResourceUsage = 4,
-    LowPerformanceScore = 5,
-    NeedsUpdate = 6,
-    NoChainInfo = 7,
-    NodeNotRunning = 8,
-    NoMetrics = 9,
-    NoOperatorId = 10,
-    UnregisteredFromActiveSet = 11,
-}
-
-impl From<i64> for AlertType {
-    fn from(value: i64) -> Self {
-        match value {
-            1 => AlertType::Custom,
-            2 => AlertType::ActiveSetNoDeployment,
-            3 => AlertType::CrashedNode,
-            4 => AlertType::HardwareResourceUsage,
-            5 => AlertType::LowPerformanceScore,
-            6 => AlertType::NeedsUpdate,
-            7 => AlertType::NoChainInfo,
-            8 => AlertType::NodeNotRunning,
-            9 => AlertType::NoMetrics,
-            10 => AlertType::NoOperatorId,
-            11 => AlertType::UnregisteredFromActiveSet,
-            _ => AlertType::Custom,
-        }
-    }
-}
-
 #[derive(Debug, thiserror::Error)]
 pub enum AlertError {
     #[error(transparent)]
     DbError(#[from] DatabaseError),
+    #[error(transparent)]
+    NotificationError(#[from] NotificationDispatcherError),
+    #[error(transparent)]
+    SqxlError(#[from] sqlx::Error),
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct AlertHandler {
-    db_executor: Arc<PgPool>,
+    pub dispatcher: Arc<NotificationDispatcher<AlertDb>>,
+    db_executor: PgPool,
 }
 
 impl AlertHandler {
-    pub fn new(db_executor: Arc<PgPool>) -> Self {
-        Self { db_executor }
+    pub fn new(dispatcher: Arc<NotificationDispatcher<AlertDb>>, db_executor: PgPool) -> Self {
+        Self { dispatcher, db_executor }
     }
 
     pub async fn handle_node_data_alerts(
@@ -88,13 +69,93 @@ impl AlertHandler {
         node_data: NodeDataV2,
         machine_id: Uuid,
     ) -> Result<(), AlertError> {
+        // alert extraction and insertion
         let raw_alerts = extract_node_data_alerts(&self.db_executor, machine_id, &node_data).await;
-        let alerts = raw_alerts
+
+        let new_alerts = raw_alerts
             .into_iter()
             .map(|alert| NewAlert::new(machine_id, alert, node_data.name.clone()))
             .collect::<Vec<_>>();
-        ActiveAlert::insert_many(&self.db_executor, &alerts).await?;
+
+        let filtered_new_alerts = self.filter_duplicate_alerts(new_alerts).await?;
+
+        ActiveAlert::insert_many(&self.db_executor, &filtered_new_alerts).await?;
+
+        // Handle notification dispatch. Notification filtering happens post-insertion, so alerts
+        // are still visible in the database.
+        let organization_id =
+            Machine::get_organization_id(&self.db_executor, machine_id).await? as u64;
+
+        let (channels, alert_ids) = self.organization_channel_alerts(organization_id).await;
+
+        let flag_filtered_alerts = filtered_new_alerts
+            .into_iter()
+            .filter(|alert| alert_ids.contains(&alert.alert_type.id()))
+            .collect::<Vec<_>>();
+
+        let notifications: Vec<Notification> = flag_filtered_alerts
+            .into_iter()
+            .map(|alert| Notification {
+                id: alert.id,
+                organization: organization_id,
+                machine_id,
+                alert: alert.alert_type,
+                resolved: false,
+            })
+            .collect();
+
+        for notification in notifications {
+            self.dispatcher.notify(notification, channels.clone()).await?;
+        }
+
         Ok(())
+    }
+
+    // Filters duplicate incoming alerts by checking computed UUID against existing alerts in the
+    // database. If the alert is already present. Returns a list of alerts that are not present in
+    // the database.
+    pub async fn filter_duplicate_alerts(
+        &self,
+        alerts: Vec<NewAlert>,
+    ) -> Result<Vec<NewAlert>, AlertError> {
+        let ids = alerts.iter().map(|alert| alert.id).collect::<Vec<_>>();
+
+        let existing_ids: Vec<Uuid> = ActiveAlert::get_many(&self.db_executor, &ids)
+            .await?
+            .iter()
+            .map(|alert| alert.alert_id)
+            .collect();
+
+        let filtered = alerts
+            .into_iter()
+            .filter(|alert| !existing_ids.contains(&alert.id))
+            .collect::<Vec<_>>();
+
+        Ok(filtered)
+    }
+
+    /// Returns the channels that are enabled for the organization, as well as flags for
+    /// enabled/disabled alerts in the form of a vec.
+    pub async fn organization_channel_alerts(
+        &self,
+        organization_id: u64,
+    ) -> (HashSet<Channel>, Vec<usize>) {
+        let mut channels = HashSet::new();
+        let org_notifications = OrganizationNotifications::get(&self.db_executor, organization_id)
+            .await
+            .expect("Organization notifications not found");
+
+        if org_notifications.telegram {
+            channels.insert(Channel::Telegram);
+        }
+        if org_notifications.email {
+            channels.insert(Channel::Email);
+        }
+        if org_notifications.pagerduty {
+            channels.insert(Channel::PagerDuty);
+        }
+
+        (channels, org_notifications.alert_flags.to_alert_ids())
     }
 }
 
@@ -102,7 +163,7 @@ async fn extract_node_data_alerts(
     pool: &PgPool,
     machine_id: Uuid,
     node_data: &NodeDataV2,
-) -> Vec<AlertType> {
+) -> Vec<Alert> {
     let mut alerts = vec![];
 
     // Necessary db calls to compare state
@@ -121,43 +182,55 @@ async fn extract_node_data_alerts(
     if let Some(datetime) = avs.updated_at {
         let now = chrono::Utc::now().naive_utc();
         if now.signed_duration_since(datetime).num_minutes() > IDLE_MINUTES_THRESHOLD {
-            alerts.push(AlertType::CrashedNode);
-
-            if avs.active_set {
-                alerts.push(AlertType::ActiveSetNoDeployment);
+            alerts.push(Alert::NodeNotResponding(node_data.name.clone()));
+            if avs.active_set && avs.operator_address.is_some() {
+                alerts.push(Alert::ActiveSetNoDeployment {
+                    avs: node_data.name.clone(),
+                    address: avs.operator_address.expect("UNENTERABLE"),
+                });
             }
         }
     }
 
     if !node_data.metrics_alive() {
-        alerts.push(AlertType::NoMetrics);
+        alerts.push(Alert::NoMetrics(node_data.name.clone()));
     }
 
     if !node_data.node_running() {
-        alerts.push(AlertType::NodeNotRunning);
+        alerts.push(Alert::NodeNotRunning(node_data.name.clone()));
     }
 
     if avs.chain.is_none() {
-        alerts.push(AlertType::NoChainInfo);
+        alerts.push(Alert::NoChainInfo(node_data.name.clone()));
     } else if let Some(chain) = avs.chain {
         if let Ok(version_map) = version_map {
             let update_status = get_update_status(
-                version_map,
+                version_map.clone(),
                 &avs.avs_version,
                 &avs.version_hash,
                 Some(chain.to_string()),
                 avs.avs_type,
             );
-            if update_status == UpdateStatus::Outdated || update_status == UpdateStatus::Updateable
-            {
-                alerts.push(AlertType::NeedsUpdate);
+
+            let node_type_id = NodeTypeId { node_type: avs.avs_type, chain };
+
+            if let Some(version_data) = version_map.get(&node_type_id) {
+                let recommended_version = version_data.latest_version.clone();
+                if update_status == UpdateStatus::Outdated ||
+                    update_status == UpdateStatus::Updateable
+                {
+                    alerts.push(Alert::NeedsUpdate {
+                        avs: node_data.name.clone(),
+                        current_version: avs.avs_version.clone(),
+                        recommended_version,
+                    });
+                }
             }
         }
     }
 
-    // WARN: This doesn't seem correct, as it's pulling from the db.
     if avs.operator_address.is_none() {
-        alerts.push(AlertType::NoOperatorId);
+        alerts.push(Alert::NoOperatorId(node_data.name.clone()));
     }
 
     alerts
@@ -223,5 +296,70 @@ pub fn get_update_status(
         }
         VersionType::LocalOnly => UpdateStatus::Unknown,
         VersionType::OptInOnly => UpdateStatus::Unknown,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use ivynet_notifications::{NotificationConfig, SendgridSpecificTemplates, SendgridTemplates};
+
+    use super::*;
+
+    fn dummy_config_fixture() -> NotificationConfig {
+        let specific_templates = SendgridSpecificTemplates {
+            custom: "test".to_string(),
+            unreg_active_set: "test".to_string(),
+            machine_not_responding: "test".to_string(),
+            node_not_running: "test".to_string(),
+            no_chain_info: "test".to_string(),
+            no_metrics: "test".to_string(),
+            no_operator: "test".to_string(),
+            hw_res_usage: "test".to_string(),
+            low_perf: "test".to_string(),
+            needs_update: "test".to_string(),
+        };
+
+        NotificationConfig {
+            telegram_token: "test".to_string(),
+            sendgrid_key: "test".to_string(),
+            sendgrid_from: "test".to_string(),
+            sendgrid_templates: SendgridTemplates::Specific(specific_templates),
+        }
+    }
+
+    fn handler_fixture(pool: &PgPool) -> AlertHandler {
+        AlertHandler::new(
+            Arc::new(NotificationDispatcher::new(
+                dummy_config_fixture(),
+                AlertDb::new(pool.clone()),
+            )),
+            pool.clone(),
+        )
+    }
+
+    #[sqlx::test(
+        migrations = "../migrations",
+        fixtures("../../fixtures/new_user_registration.sql", "../../fixtures/alerts_active.sql",)
+    )]
+    #[ignore]
+    async fn test_filter_duplicate_alerts(pool: PgPool) {
+        let handler = handler_fixture(&pool);
+        let machine_id = Uuid::parse_str("dcbf22c7-9d96-47ac-bf06-62d6544e440d").unwrap();
+        let node_name = "test".to_string();
+        let alert_type_1 = Alert::Custom("runtime_alert_fixture_1".to_string());
+
+        let new_alert_1 = NewAlert::new(machine_id, alert_type_1, node_name.clone());
+
+        let alert_type_2 = Alert::Custom("runtime_alert_fixture_2".to_string());
+        let new_alert_2 = NewAlert::new(machine_id, alert_type_2.clone(), node_name);
+
+        ActiveAlert::insert_one(&pool, &new_alert_1).await.unwrap();
+
+        let alerts = vec![new_alert_1, new_alert_2];
+
+        let filtered_alerts = handler.filter_duplicate_alerts(alerts).await.unwrap();
+
+        assert_eq!(filtered_alerts.len(), 1);
+        assert_eq!(filtered_alerts[0].alert_type, alert_type_2);
     }
 }

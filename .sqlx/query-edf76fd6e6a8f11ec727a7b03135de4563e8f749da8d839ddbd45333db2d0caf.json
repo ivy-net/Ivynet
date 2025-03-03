@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                alert_id,\n                alert_type,\n                machine_id,\n                organization_id,\n                client_id,\n                node_name,\n                created_at,\n                acknowledged_at,\n                resolved_at\n            FROM\n                alerts_historical\n            WHERE\n                organization_id = $1\n                AND created_at >= $2\n                AND created_at <= $3\n            ",
+  "query": "\n            SELECT\n                alert_id,\n                machine_id,\n                organization_id,\n                client_id,\n                node_name,\n                created_at,\n                acknowledged_at,\n                resolved_at,\n                alert_data\n            FROM\n                alerts_historical\n            WHERE\n                organization_id = $1\n                AND created_at >= $2\n                AND created_at <= $3\n            ",
   "describe": {
     "columns": [
       {
@@ -10,43 +10,43 @@
       },
       {
         "ordinal": 1,
-        "name": "alert_type",
-        "type_info": "Int4"
-      },
-      {
-        "ordinal": 2,
         "name": "machine_id",
         "type_info": "Uuid"
       },
       {
-        "ordinal": 3,
+        "ordinal": 2,
         "name": "organization_id",
         "type_info": "Int8"
       },
       {
-        "ordinal": 4,
+        "ordinal": 3,
         "name": "client_id",
         "type_info": "Bytea"
       },
       {
-        "ordinal": 5,
+        "ordinal": 4,
         "name": "node_name",
         "type_info": "Varchar"
       },
       {
-        "ordinal": 6,
+        "ordinal": 5,
         "name": "created_at",
         "type_info": "Timestamp"
       },
       {
-        "ordinal": 7,
+        "ordinal": 6,
         "name": "acknowledged_at",
         "type_info": "Timestamp"
       },
       {
-        "ordinal": 8,
+        "ordinal": 7,
         "name": "resolved_at",
         "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 8,
+        "name": "alert_data",
+        "type_info": "Jsonb"
       }
     ],
     "parameters": {
@@ -63,10 +63,10 @@
       false,
       false,
       false,
-      false,
       true,
+      false,
       false
     ]
   },
-  "hash": "47b429e3d243c339f210fe0790214deeaec03f5a1dff34a9317ae74250442885"
+  "hash": "edf76fd6e6a8f11ec727a7b03135de4563e8f749da8d839ddbd45333db2d0caf"
 }

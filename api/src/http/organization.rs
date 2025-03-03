@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use crate::error::BackendError;
+use alerts::{AlertFlags, AlertType};
 use axum::{
     extract::{Path, State},
     http::HeaderMap,
@@ -10,8 +11,9 @@ use axum_extra::extract::CookieJar;
 use ivynet_database::{
     avs::Avs,
     machine::Machine,
+    notifications::SettingsType,
     verification::{Verification, VerificationType},
-    Account, Organization, Role,
+    Account, Organization, OrganizationNotifications, OrganizationNotificationsSettings, Role,
 };
 use sendgrid::v3::{Email, Message, Personalization};
 use serde::{Deserialize, Serialize};
@@ -47,6 +49,68 @@ pub struct ConfirmationResponse {
 pub struct InvitationRequest {
     pub email: String,
     pub role: Role,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
+pub struct TelegramSettings {
+    pub enabled: bool,
+    pub chats: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
+pub struct PagerDutySettings {
+    pub enabled: bool,
+    pub integration_key: Option<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
+pub struct EmailSettings {
+    pub enabled: bool,
+    pub emails: Vec<String>,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
+pub struct NotificationSettings {
+    pub telegram: TelegramSettings,
+    pub email: EmailSettings,
+    pub pagerduty: PagerDutySettings,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
+pub struct NotificationFlags {
+    telegram: bool,
+    email: bool,
+    pagerduty: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
+pub struct AlertFlagUpdate {
+    pub alert: AlertType,
+    pub enabled: bool,
+}
+
+impl From<(OrganizationNotifications, Vec<OrganizationNotificationsSettings>)>
+    for NotificationSettings
+{
+    fn from(value: (OrganizationNotifications, Vec<OrganizationNotificationsSettings>)) -> Self {
+        let mut emails = Vec::new();
+        let mut chats = Vec::new();
+        let mut integration_key = None;
+
+        for setting in value.1 {
+            match setting.settings_type {
+                SettingsType::Email => emails.push(setting.settings_value.clone()),
+                SettingsType::Telegram => chats.push(setting.settings_value.clone()),
+                SettingsType::PagerDuty => integration_key = Some(setting.settings_value.clone()),
+            }
+        }
+
+        Self {
+            email: EmailSettings { enabled: value.0.email, emails },
+            telegram: TelegramSettings { enabled: value.0.telegram, chats },
+            pagerduty: PagerDutySettings { enabled: value.0.pagerduty, integration_key },
+        }
+    }
 }
 
 /// Create a new organization
@@ -242,4 +306,248 @@ pub async fn confirm(
     verification.delete(&state.pool).await?;
 
     Ok(ConfirmationResponse { success: true }.into())
+}
+
+/// Listing current notification settings for organization
+#[utoipa::path(
+    get,
+    path = "/organization/notifications",
+    responses(
+        (status = 200, body = NotificationSettings),
+        (status = 404)
+    )
+)]
+pub async fn get_notification_settings(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+) -> Result<Json<NotificationSettings>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+
+    let notifications = OrganizationNotifications::get(&state.pool, account.organization_id as u64)
+        .await
+        .unwrap_or_default();
+    let not_settings = OrganizationNotifications::get_notification_settings(
+        &state.pool,
+        account.organization_id as u64,
+        None,
+    )
+    .await?;
+
+    let response: NotificationSettings = (notifications, not_settings).into();
+
+    Ok(response.into())
+}
+
+/// Setting new notification settings
+#[utoipa::path(
+    post,
+    path = "/organization/notifications",
+    params(
+        ("settings", description = "New notification settings to set")
+    ),
+    responses(
+        (status = 200, body = NotificationSettings),
+        (status = 404)
+    )
+)]
+pub async fn set_notification_settings(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Json(settings): Json<NotificationSettings>,
+) -> Result<Json<NotificationSettings>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    if !account.role.can_write() {
+        return Err(BackendError::InsufficientPriviledges);
+    }
+
+    OrganizationNotifications::set(
+        &state.pool,
+        account.organization_id as u64,
+        settings.email.enabled,
+        settings.telegram.enabled,
+        settings.pagerduty.enabled,
+    )
+    .await?;
+    OrganizationNotifications::set_emails(
+        &state.pool,
+        account.organization_id as u64,
+        &settings.email.emails,
+    )
+    .await?;
+
+    if let Some(ref integration_key) = settings.pagerduty.integration_key {
+        OrganizationNotifications::set_pagerduty_integration(
+            &state.pool,
+            account.organization_id as u64,
+            integration_key,
+        )
+        .await?;
+    }
+
+    Ok(settings.into())
+}
+
+#[utoipa::path(
+    post,
+    path = "/organization/notifications/set_flags",
+    responses(
+        (status = 200, body = NotificationFlags),
+        (status = 404)
+    )
+)]
+pub async fn set_notification_flags(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Json(flags): Json<NotificationFlags>,
+) -> Result<(), BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+
+    OrganizationNotifications::set(
+        &state.pool,
+        account.organization_id as u64,
+        flags.email,
+        flags.telegram,
+        flags.pagerduty,
+    )
+    .await?;
+
+    Ok(())
+}
+
+/// list alert flags
+#[utoipa::path(
+    get,
+    path = "/organization/alert_flags/list",
+    responses(
+        (status = 200, body = Vec<AlertType>),
+        (status = 404)
+    )
+)]
+pub async fn list_alert_flags() -> Result<Json<Vec<AlertType>>, BackendError> {
+    Ok(Json(AlertType::list_all()))
+}
+
+/// Setting alert flags
+#[utoipa::path(
+    post,
+    path = "/organization/alert_flags",
+    params(
+        ("flags", description = "Bitflags to set for alerts. Overrides the previous flags")
+    ),
+    responses(
+        (status = 200),
+        (status = 404)
+    )
+)]
+pub async fn set_alert_flags(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Json(flags): Json<u64>,
+) -> Result<(), BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    if !account.role.can_write() {
+        return Err(BackendError::InsufficientPriviledges);
+    }
+
+    OrganizationNotifications::set_alert_flags(&state.pool, account.organization_id as u64, flags)
+        .await?;
+
+    Ok(())
+}
+
+/// Get alert flags
+#[utoipa::path(
+    get,
+    path = "/organization/alert_flags",
+    responses(
+        (status = 200, body = u64),
+        (status = 404)
+    )
+)]
+pub async fn get_alert_flags(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+) -> Result<Json<u64>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+
+    let flags =
+        OrganizationNotifications::get_alert_flags(&state.pool, account.organization_id as u64)
+            .await?;
+
+    Ok(Json(flags))
+}
+
+/// Get human-readable active alert flags
+#[utoipa::path(
+    get,
+    path = "/organization/alert_flags/get_flags",
+    responses(
+        (status = 200, body = Vec<AlertType>),
+        (status = 404)
+    )
+)]
+pub async fn get_alert_flags_human(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+) -> Result<Json<Vec<AlertType>>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+
+    let flags: AlertFlags =
+        OrganizationNotifications::get_alert_flags(&state.pool, account.organization_id as u64)
+            .await?
+            .into();
+
+    Ok(Json(flags.to_alert_types()))
+}
+
+/// Update an individual alert flag
+#[utoipa::path(
+    patch,
+    path = "/organization/alert_flags/set_flag",
+    params(
+        ("flag" = AlertFlag, Path, description = "The alert flag to set")
+    ),
+    request_body = AlertFlagUpdate,
+    responses(
+        (status = 200),
+        (status = 404)
+    )
+)]
+pub async fn update_alert_flag(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Json(payload): Json<AlertFlagUpdate>,
+) -> Result<(), BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    if !account.role.can_write() {
+        return Err(BackendError::InsufficientPriviledges);
+    }
+
+    // Retrieve current flags.
+    let mut flags: AlertFlags =
+        OrganizationNotifications::get_alert_flags(&state.pool, account.organization_id as u64)
+            .await?
+            .into();
+
+    let AlertFlagUpdate { alert, enabled } = payload;
+
+    // Update the flag based on the payload.
+    flags.set_alert_to(&alert, enabled)?;
+
+    // Save the updated flags.
+    OrganizationNotifications::set_alert_flags(
+        &state.pool,
+        account.organization_id as u64,
+        flags.into(),
+    )
+    .await?;
+
+    Ok(())
 }

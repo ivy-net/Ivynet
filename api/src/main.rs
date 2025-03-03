@@ -24,7 +24,7 @@ async fn main() -> Result<(), BackendError> {
 
     start_tracing(config.log_level)?;
 
-    let pool = Arc::new(configure(&config.db_uri, config.migrate).await?);
+    let pool = configure(&config.db_uri, config.migrate).await?;
 
     if let Some(organization) = config.add_organization {
         Ok(add_account(&pool, &organization).await?)

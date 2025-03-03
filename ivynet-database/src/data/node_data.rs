@@ -298,9 +298,9 @@ pub async fn get_active_set_information(
                 }?;
 
                 // Find matching AVS instance for this chain/type combination
-                let matching_avs = all_avses.iter().find(|a| {
-                    a.avs_type == *avs_type && a.chain.map_or(false, |c| c == avs.chain_id)
-                });
+                let matching_avs = all_avses
+                    .iter()
+                    .find(|a| a.avs_type == *avs_type && (a.chain == Some(avs.chain_id)));
 
                 Some(ActiveSetInfo {
                     node_type: *avs_type,

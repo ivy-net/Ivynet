@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE\n                organization_notifications\n               SET\n                alert_flags = $2\n               WHERE\n                organization_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "5876a6bf1e08bbf1dd46cb7c6735e21f43d4730e91c5ea27b09e93518bcbb172"
+}

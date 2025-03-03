@@ -10,14 +10,13 @@ use ivynet_grpc::{
     server, Status,
 };
 use sqlx::PgPool;
-use std::sync::Arc;
 
 pub struct EventsService {
-    pool: Arc<PgPool>,
+    pool: PgPool,
 }
 
 impl EventsService {
-    pub fn new(pool: Arc<PgPool>) -> Self {
+    pub fn new(pool: PgPool) -> Self {
         Self { pool }
     }
 }
@@ -55,7 +54,7 @@ impl BackendEvents for EventsService {
 }
 
 pub async fn serve(
-    pool: Arc<PgPool>,
+    pool: PgPool,
     tls_cert: Option<String>,
     tls_key: Option<String>,
     port: u16,

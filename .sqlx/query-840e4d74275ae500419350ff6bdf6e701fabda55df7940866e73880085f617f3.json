@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT c.organization_id as \"organization_id!\"\n            FROM machine m\n            JOIN client c ON c.client_id = m.client_id\n            WHERE m.machine_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "organization_id!",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "840e4d74275ae500419350ff6bdf6e701fabda55df7940866e73880085f617f3"
+}

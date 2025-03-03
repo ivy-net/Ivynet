@@ -95,6 +95,9 @@ pub enum BackendError {
 
     #[error(transparent)]
     BackendAlertError(#[from] BackendAlertError),
+
+    #[error(transparent)]
+    AlertError(#[from] alerts::BitflagError),
 }
 
 #[derive(Debug, Error)]

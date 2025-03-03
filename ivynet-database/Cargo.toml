@@ -15,8 +15,10 @@ sqlx = { version = "0.8", features = [
 	"uuid",
 	"bigdecimal",
 ] }
+alerts.workspace = true
 ivynet-error.workspace = true
 ivynet-node-type.workspace = true
+ivynet-notifications.workspace = true
 ivynet-docker-registry.workspace = true
 ivynet-grpc.workspace = true
 tonic.workspace = true

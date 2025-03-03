@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO alerts_active (\n                alert_id,\n                machine_id,\n                organization_id,\n                client_id,\n                node_name,\n                created_at,\n                alert_data\n            )\n            SELECT\n                $1,\n                m.machine_id,\n                c.organization_id,\n                m.client_id,\n                $2,\n                $3,\n                $5\n            FROM machine m\n            JOIN client c\n              ON m.client_id = c.client_id\n            WHERE m.machine_id = $4\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Varchar",
+        "Timestamp",
+        "Uuid",
+        "Jsonb"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7f89abb1b4b5db2ea79d6a2b60e00b504fc6f8309dfd43b666c347b2ad9e9b70"
+}
