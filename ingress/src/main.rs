@@ -1,7 +1,7 @@
 use clap::Parser as _;
 use ingress::{config::Config, error::IngressError, grpc};
 use ivynet_database::configure;
-use tracing::{error, Level};
+use tracing::{error, warn, Level};
 use tracing_subscriber::FmtSubscriber;
 
 pub fn start_tracing(level: Level) -> Result<(), IngressError> {
