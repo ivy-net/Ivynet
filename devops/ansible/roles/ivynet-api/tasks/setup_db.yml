@@ -1,0 +1,169 @@
+---
+- name: Download migrations for the release
+  when:
+    - ivynet_api_is_release
+  block:
+    - name: Prepare variable with migrations assets id
+      ansible.builtin.set_fact:
+        # yamllint disable-line rule:line-length
+        ivynet_migrations_assets_id: "{{ ivynet_api_assets_output | community.general.json_query(json_output_query) }}"
+        cacheable: true
+      vars:
+        json_output_query: "json.assets[?name=='migrations.tar.gz'].id"
+      tags:
+        - ivynet_api
+        - github
+        - db-config
+
+    - name: Get migrations
+      ansible.builtin.uri:
+        # yamllint disable-line rule:line-length
+        url: "https://api.github.com/repos/ivy-net/ivynet/releases/assets/{{ ivynet_migrations_assets_id[0] }}"
+        method: GET
+        headers:
+          Authorization: "token {{ ivynet_api_github_token }}"
+          Accept: "application/octet-stream"
+        follow_redirects: all
+        status_code: [200, 304]
+        # yamllint disable-line rule:line-length
+        dest: "{{ ivynet_api_path_install }}/resources/migrations-{{ ivynet_api_release }}.tar.gz"
+        owner: root
+        group: root
+        mode: "0755"
+      tags:
+        - ivynet_api
+        - github
+        - db-config
+
+    - name: Unpack migrations
+      ansible.builtin.unarchive:
+        # yamllint disable-line rule:line-length
+        src: "{{ ivynet_api_path_resources }}/migrations-{{ ivynet_api_release }}.tar.gz"
+        dest: "{{ ivynet_api_path_resources }}"
+        remote_src: true
+        owner: root
+        group: root
+      tags:
+        - github
+        - db-config
+
+- name: Download migrations for the master
+  when:
+    - not ivynet_api_is_release | bool
+  block:
+    - name: Get migrations from GCP
+      google.cloud.gcp_storage_object:
+        auth_kind: serviceaccount
+        bucket: "{{ ivynet_api_gcp_bucket }}"
+        src: "ivy-master/{{ item }}"
+        dest: "/tmp/{{ item }}"
+        action: download
+        service_account_file: "{{ ivynet_api_gcp_cred }}"
+        project: "{{ ivynet_api_gcp_project }}"
+      delegate_to: localhost
+      become: false
+      loop:
+        - migrations.tar.gz
+      tags:
+        - ivynet_api
+        - download
+        - gcp
+
+    - name: Upload migrations
+      ansible.builtin.copy:
+        src: "/tmp/{{ item }}"
+        dest: "{{ ivynet_api_path_install }}/resources/{{ item }}"
+        owner: root
+        group: root
+        mode: "0755"
+      loop:
+        - migrations.tar.gz
+      tags:
+        - ivynet_api
+        - download
+        - gcp
+
+    - name: Unpack migrations
+      ansible.builtin.unarchive:
+        src: "{{ ivynet_api_path_resources }}/migrations.tar.gz"
+        dest: "{{ ivynet_api_path_resources }}"
+        remote_src: true
+        owner: root
+        group: root
+      tags:
+        - github
+        - db-config
+
+- name: Configure postgres DB for ivynet
+  community.postgresql.postgresql_db:
+    # yamllint disable-line rule:line-length
+    login_host: "{{ '' if ivynet_api_postgres_host == 'localhost' else ivynet_api_postgres_host }}"
+    login_password: "{{ ivynet_api_postgres_pass }}"
+    name: ivynet
+  become: true
+  become_user: postgres
+  tags:
+    - ivynet_api
+    - postgres
+    - db-config
+
+- name: Add postgres ivy user
+  community.postgresql.postgresql_user:
+    # yamllint disable-line rule:line-length
+    login_host: "{{ '' if ivynet_api_postgres_host == 'localhost' else ivynet_api_postgres_host }}"
+    login_password: "{{ ivynet_api_postgres_pass }}"
+    name: "{{ ivynet_api_postgres_user }}"
+    password: "{{ ivynet_api_postgres_user_pass }}"
+    # yamllint disable-line rule:line-length
+    no_password_changes: "{{ ivynet_api_postgres_no_password_changes | bool }}"
+  become: true
+  become_user: postgres
+  tags:
+    - ivynet_api
+    - postgres
+    - db-config
+
+- name: Add privilges to the user
+  community.postgresql.postgresql_privs:
+    database: "{{ ivynet_api_postgres_db }}"
+    # yamllint disable-line rule:line-length
+    login_host: "{{ '' if ivynet_api_postgres_host == 'localhost' else ivynet_api_postgres_host }}"
+    login_password: "{{ ivynet_api_postgres_pass }}"
+    objs: public
+    privs: ALL
+    role: "{{ ivynet_api_postgres_user }}"
+    type: schema
+  become: true
+  become_user: postgres
+  tags:
+    - ivynet_api
+    - postgres
+    - db-config
+
+- name: Run migrations
+  ansible.builtin.command:
+    argv:
+      - "{{ ivynet_api_path_install }}/bin/sqlx"
+      - "migrate"
+      - "run"
+      - "--database-url"
+      # yamllint disable-line rule:line-length
+      - "postgresql://{{ ivynet_api_postgres_user }}:{{ ivynet_api_postgres_user_pass }}@{{ ivynet_api_postgres_host }}:5432/{{ ivynet_api_postgres_db }}"
+    chdir: "{{ ivynet_api_path_resources }}"
+  register: migration_out
+  changed_when: migration_out.stdout != ""
+  tags:
+    - ivynet_api
+    - db-config
+    - sqlx
+
+- name: Stop local postgresql (for remote DB)
+  ansible.builtin.systemd_service:
+    name: postgresql
+    state: stopped
+    enabled: false
+  when:
+    - ivynet_api_postgres_host != 'localhost'
+  tags:
+    - ivynet_api
+    - db-config

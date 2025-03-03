@@ -1,0 +1,35 @@
+---
+- name: Get binaries from GCP
+  google.cloud.gcp_storage_object:
+    auth_kind: serviceaccount
+    bucket: "{{ ivynet_scanner_gcp_bucket }}"
+    src: "ivy-master/{{ item }}"
+    dest: "/tmp/{{ item }}"
+    action: download
+    service_account_file: "{{ ivynet_scanner_gcp_cred }}"
+    project: "{{ ivynet_scanner_gcp_project }}"
+  delegate_to: localhost
+  become: false
+  loop:
+    - ivynet-scanner
+  tags:
+    - ivynet_scanner
+    - download
+    - gcp
+
+- name: Upload binaries
+  ansible.builtin.copy:
+    src: "/tmp/{{ item }}"
+    dest: "{{ ivynet_scanner_path_install }}/bin/{{ item }}"
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - ivynet-scanner
+  notify:
+    - Restart scanner holesky service
+    - Restart scanner mainnet service
+  tags:
+    - ivynet_scanner
+    - download
+    - gcp

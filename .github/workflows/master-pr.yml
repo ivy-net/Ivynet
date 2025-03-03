@@ -40,10 +40,10 @@ jobs:
           DEST=/tmp/ivy-master
           cd target/release
           mkdir ${DEST}
-          cp ivynet-backend ${DEST}
           cp ivynet ${DEST}
+          cp ivynet-api ${DEST}
           cp ivynet-ingress ${DEST}
-          cp scraper ${DEST}
+          cp ivynet-scanner ${DEST}
       - name: Pack migrations
         run: |
           DEST=/tmp/ivy-master
@@ -107,7 +107,7 @@ jobs:
             -i gcp.yml \
             -u ${remote_user} \
             --vault-password-file ~/.vault.txt \
-            -e "ivynet_backend_gcp_cred=sa.json" \
-            -e "ivynet_scraper_gcp_cred=sa.json" \
+            -e "ivynet_api_gcp_cred=sa.json" \
+            -e "ivynet_scanner_gcp_cred=sa.json" \
             -e "ivynet_ingress_gcp_cred=sa.json" \
             backend-master.yml

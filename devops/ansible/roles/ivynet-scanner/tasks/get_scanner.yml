@@ -1,0 +1,59 @@
+---
+- name: Get release id
+  ansible.builtin.uri:
+    # yamllint disable-line rule:line-length
+    url: "https://api.github.com/repos/ivy-net/ivynet/releases/tags/scanner-{{ ivynet_scanner_release }}"
+    method: GET
+    headers:
+      Authorization: "token {{ ivynet_scanner_github_token }}"
+    follow_redirects: all
+  register: ivynet_scanner_assets_output
+  tags:
+    - ivynet_scanner
+    - github
+
+- name: Prepare variable with scanner assets id
+  ansible.builtin.set_fact:
+    # yamllint disable-line rule:line-length
+    ivynet_scanner_assets_id: "{{ ivynet_scanner_assets_output | community.general.json_query(json_output_query) }}"
+    cacheable: true
+  vars:
+    json_output_query: "json.assets[?name=='scanner'].id"
+  tags:
+    - ivynet_scanner
+    - github
+
+- name: Get binaries
+  ansible.builtin.uri:
+    # yamllint disable-line rule:line-length
+    url: "https://api.github.com/repos/ivy-net/ivynet/releases/assets/{{ ivynet_scanner_assets_id[0] }}"
+    method: GET
+    headers:
+      Authorization: "token {{ ivynet_scanner_github_token }}"
+      Accept: "application/octet-stream"
+    follow_redirects: all
+    status_code: [200, 304]
+    dest: "{{ ivynet_scanner_path_install }}/bin/scanner"
+    owner: root
+    group: root
+    mode: "0755"
+  tags:
+    - ivynet_scanner
+    - github
+
+- name: Save ivynet release info
+  ansible.builtin.copy:
+    # yamllint disable-line rule:line-length
+    dest: "{{ ivynet_scanner_path_install }}/scanner-{{ ivynet_scanner_release }}"
+    content: |
+      scanner-{{ ivynet_scanner_release }}
+    owner: root
+    group: root
+    mode: "0444"
+  notify:
+    - Restart scanner holesky service
+    - Restart scanner mainnet service
+  tags:
+    - ivynet_scanner
+    - github
+    - systemd

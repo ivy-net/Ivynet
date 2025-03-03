@@ -1,0 +1,16 @@
+---
+- name: Reload daemon
+  ansible.builtin.systemd_service:
+    daemon_reload: true
+
+- name: Restart scanner holesky service
+  ansible.builtin.systemd_service:
+    name: ivynet-scanner-holesky
+    state: restarted
+    enabled: true
+
+- name: Restart scanner mainnet service
+  ansible.builtin.systemd_service:
+    name: ivynet-scanner-mainnet
+    state: restarted
+    enabled: true

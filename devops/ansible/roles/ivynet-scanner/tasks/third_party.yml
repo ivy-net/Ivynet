@@ -1,0 +1,15 @@
+---
+- name: Install extra python packages(for github access)
+  ansible.builtin.pip:  # noqa: package-latest
+    name: "{{ item }}"
+    state: latest
+    break_system_packages: true
+  loop:
+    - github3.py
+    - psycopg2-binary
+  tags:
+    - ivynet_scanner
+    - general
+    - download
+    - github
+    - postgres

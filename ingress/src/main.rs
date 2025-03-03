@@ -1,6 +1,6 @@
 use clap::Parser as _;
-use db::configure;
-use ivynet_ingress::{config::Config, error::IngressError, grpc};
+use ingress::{config::Config, error::IngressError, grpc};
+use ivynet_database::configure;
 use tracing::{error, warn, Level};
 use tracing_subscriber::FmtSubscriber;
 

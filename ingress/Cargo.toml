@@ -1,27 +1,34 @@
 [package]
-name = "ivynet-ingress"
-version = "0.5.1"
+name = "ingress"
+version = "0.6.0"
 edition.workspace = true
 repository.workspace = true
 categories.workspace = true
 license.workspace = true
 
+[[bin]]
+name = "ivynet-ingress"
+path = "src/main.rs"
+
 [dependencies]
-clap = { version = "4.5", features = ["derive", "env"] }
-dotenvy.workspace = true
-thiserror.workspace = true
-tokio = { workspace = true, features = ["rt-multi-thread"] }
-ivynet-error = { path = "../ivynet-error" }
-db = { path = "../db" }
-uuid = { version = "1.11", features = ["v4", "serde"] }
-tracing.workspace = true
-tracing-subscriber.workspace = true
+# IvyNet crates
 ivynet-docker.workspace = true
 ivynet-docker-registry.workspace = true
 ivynet-grpc.workspace = true
 ivynet-node-type.workspace = true
 ivynet-signer.workspace = true
+ivynet-error.workspace = true
+ivynet-database.workspace = true
 ivynet-notifications.workspace = true
+
+# External crates
+clap = { version = "4.5", features = ["derive", "env"] }
+dotenvy.workspace = true
+thiserror.workspace = true
+tokio = { workspace = true, features = ["rt-multi-thread"] }
+uuid = { version = "1.11", features = ["v4", "serde"] }
+tracing.workspace = true
+tracing-subscriber = "0.3"
 sqlx = { version = "0.8.3", features = [
 	"postgres",
 	"chrono",

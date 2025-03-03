@@ -1,5 +1,5 @@
 use crate::error::IngressError;
-use db::{
+use ivynet_database::{
     alerts::{alert_db::AlertDb, alert_handler::AlertHandler},
     client_log::ClientLog,
     data::{

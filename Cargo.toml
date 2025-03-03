@@ -1,11 +1,13 @@
 [workspace]
 members = [
+#Binaries
 	"cli",
-	"macros",
-	"backend",
-	"scraper",
-	"db",
+	"api",
+	"scanner",
 	"ingress",
+#Crates
+    "ivynet-database",
+    "ivynet-macros",
 	"ivynet-docker",
 	"ivynet-docker-registry",
 	"ivynet-grpc",
@@ -19,7 +21,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.5.0"
+version = "0.6.0"
 edition = "2021"
 repository = "https://github.com/ivy-net/ivynet"
 categories = ["cryptography::cryptocurrencies"]
@@ -58,9 +60,6 @@ unused_rounding = "warn"
 useless_let_if_seq = "warn"
 
 [workspace.dependencies]
-# Local packages with binary
-db = { path = "db" }
-
 # Local packages
 alerts = { path = "ivynet-alerts" }
 ivynet-error = { path = "ivynet-error" }
@@ -71,6 +70,8 @@ ivynet-io = { path = "ivynet-io" }
 ivynet-node-type = { path = "ivynet-node-type" }
 ivynet-notifications = { path = "ivynet-notifications" }
 ivynet-signer = { path = "ivynet-signer" }
+ivynet-database = { path = "ivynet-database" }
+ivynet-macros = { path = "ivynet-macros" }
 
 #grpc
 prost = "0.13"
