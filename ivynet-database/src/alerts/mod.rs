@@ -5,8 +5,8 @@ pub mod alerts_historical;
 
 #[cfg(test)]
 mod test_alerts_db {
-    use alerts::Alert;
     use alerts_active::NewAlert;
+    use ivynet_alerts::Alert;
     use sqlx::PgPool;
     use uuid::Uuid;
 

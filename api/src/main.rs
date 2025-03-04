@@ -1,5 +1,3 @@
-use std::sync::Arc;
-
 use api::{
     config::Config, error::BackendError, get_node_version_hashes, http, telemetry::start_tracing,
 };

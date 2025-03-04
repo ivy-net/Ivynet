@@ -13,7 +13,7 @@ pub mod error;
 pub mod log;
 pub mod machine;
 pub mod metric;
-pub mod notifications;
+pub mod notification_settings;
 pub mod operator_keys;
 pub mod organization;
 pub mod utils;
@@ -26,7 +26,7 @@ pub use avs_version::{AvsVersionData, DbAvsVersionData};
 pub use avs_version_hash::AvsVersionHash;
 pub use client::Client;
 pub use machine::Machine;
-pub use notifications::{OrganizationNotifications, OrganizationNotificationsSettings};
+pub use notification_settings::{NotificationSettings, ServiceSettings};
 pub use organization::Organization;
 
 pub async fn configure(uri: &str, _migrate: bool) -> Result<PgPool, error::DatabaseError> {

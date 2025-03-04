@@ -1,5 +1,5 @@
-use alerts::Alert;
 use chrono::{Local, NaiveDateTime};
+use ivynet_alerts::Alert;
 use ivynet_error::ethers::types::Address;
 use serde::Serialize;
 use sqlx::PgPool;
