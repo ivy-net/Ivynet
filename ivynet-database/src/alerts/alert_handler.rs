@@ -20,7 +20,7 @@ use crate::{
         node_data::UpdateStatus,
     },
     error::DatabaseError,
-    Avs, DbAvsVersionData, Machine, OrganizationNotifications,
+    Avs, DbAvsVersionData, Machine, NotificationSettings,
 };
 
 use super::{
@@ -141,7 +141,7 @@ impl AlertHandler {
         organization_id: u64,
     ) -> (HashSet<Channel>, Vec<usize>) {
         let mut channels = HashSet::new();
-        let org_notifications = OrganizationNotifications::get(&self.db_executor, organization_id)
+        let org_notifications = NotificationSettings::get(&self.db_executor, organization_id)
             .await
             .expect("Organization notifications not found");
 
