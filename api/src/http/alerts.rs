@@ -297,3 +297,132 @@ pub struct AlertFlagUpdate {
     pub alert: AlertType,
     pub enabled: bool,
 }
+
+/// List all notification bitflags that can be enabled/disabled
+#[utoipa::path(
+    get,
+    path = "/alerts/notifications/list",
+    responses(
+        (status = 200, body = Vec<AlertType>),
+        (status = 404)
+    )
+)]
+pub async fn list_alert_flags() -> Result<Json<Vec<AlertType>>, BackendError> {
+    Ok(Json(AlertType::list_all()))
+}
+
+/// Set notification flags
+#[utoipa::path(
+    post,
+    path = "/alerts/notifications",
+    request_body = Vec<u64>,
+    responses(
+        (status = 200),
+        (status = 404)
+    )
+)]
+pub async fn set_alert_flags(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Json(flags): Json<u64>,
+) -> Result<(), BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    if !account.role.can_write() {
+        return Err(BackendError::InsufficientPriviledges);
+    }
+
+    NotificationSettings::set_alert_flags(&state.pool, account.organization_id as u64, flags)
+        .await?;
+
+    Ok(())
+}
+
+/// Get notification flags
+#[utoipa::path(
+    get,
+    path = "/alerts/notifications",
+    responses(
+        (status = 200, body = u64),
+        (status = 404)
+    )
+)]
+pub async fn get_alert_flags(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+) -> Result<Json<u64>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+
+    let flags =
+        NotificationSettings::get_alert_flags(&state.pool, account.organization_id as u64).await?;
+
+    Ok(Json(flags))
+}
+
+/// Get human-readable active notification flags
+#[utoipa::path(
+    get,
+    path = "/alerts/notifications/readable",
+    responses(
+        (status = 200, body = Vec<AlertType>),
+        (status = 404)
+    )
+)]
+pub async fn get_alert_flags_human(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+) -> Result<Json<Vec<AlertType>>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+
+    let flags: AlertFlags =
+        NotificationSettings::get_alert_flags(&state.pool, account.organization_id as u64)
+            .await?
+            .into();
+
+    Ok(Json(flags.to_alert_types()))
+}
+
+/// Update an individual notification flag
+#[utoipa::path(
+    patch,
+    path = "/alerts/notifications/set_flag",
+    request_body = AlertFlagUpdate,
+    responses(
+        (status = 200),
+        (status = 404)
+    )
+)]
+pub async fn update_alert_flag(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Json(payload): Json<AlertFlagUpdate>,
+) -> Result<(), BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    if !account.role.can_write() {
+        return Err(BackendError::InsufficientPriviledges);
+    }
+
+    // Retrieve current flags.
+    let mut flags: AlertFlags =
+        NotificationSettings::get_alert_flags(&state.pool, account.organization_id as u64)
+            .await?
+            .into();
+
+    let AlertFlagUpdate { alert, enabled } = payload;
+
+    // Update the flag based on the payload.
+    flags.set_alert_to(&alert, enabled)?;
+
+    // Save the updated flags.
+    NotificationSettings::set_alert_flags(
+        &state.pool,
+        account.organization_id as u64,
+        flags.into(),
+    )
+    .await?;
+
+    Ok(())
+}
