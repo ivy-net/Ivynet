@@ -1,4 +1,3 @@
-use alerts::{AlertFlags, AlertType};
 use axum::{
     extract::{Query, State},
     http::HeaderMap,
@@ -11,6 +10,7 @@ use ivynet_database::{
     notification_settings::ServiceType,
     NotificationSettings, ServiceSettings,
 };
+use ivynet_alerts::{AlertFlags, AlertType};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
@@ -268,7 +268,7 @@ pub async fn set_notification_service_settings(
         (status = 404)
     )
 )]
-pub async fn set_service_flags(
+pub async fn set_notification_service_flags(
     headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
@@ -387,7 +387,7 @@ pub async fn get_alert_flags_human(
 /// Update an individual notification flag
 #[utoipa::path(
     patch,
-    path = "/alerts/notifications/set_flag",
+    path = "/alerts/notifications/set_flags",
     request_body = AlertFlagUpdate,
     responses(
         (status = 200),

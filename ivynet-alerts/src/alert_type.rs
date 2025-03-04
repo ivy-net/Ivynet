@@ -4,6 +4,7 @@ use ethers::types::H160;
 use serde::{Deserialize, Serialize};
 use strum::{EnumCount, EnumIter, EnumProperty, IntoDiscriminant, IntoEnumIterator};
 use strum_macros::EnumDiscriminants;
+use utoipa::ToSchema;
 
 #[derive(
     Serialize,
@@ -16,6 +17,7 @@ use strum_macros::EnumDiscriminants;
     EnumDiscriminants,
     EnumProperty,
     EnumIter,
+    ToSchema,
 )]
 #[strum_discriminants(name(AlertType))]
 #[repr(usize)]

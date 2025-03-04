@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use alerts::Alert;
+use ivynet_alerts::Alert;
 use teloxide::{dispatching::UpdateHandler, prelude::*, utils::command::BotCommands};
 use tokio::time::sleep;
 use tracing::warn;

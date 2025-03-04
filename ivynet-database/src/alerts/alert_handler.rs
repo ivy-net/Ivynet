@@ -3,7 +3,7 @@ use std::{
     sync::Arc,
 };
 
-use alerts::Alert;
+use ivynet_alerts::Alert;
 use ivynet_error::ethers::types::Chain;
 use ivynet_grpc::messages::NodeDataV2;
 use ivynet_node_type::NodeType;

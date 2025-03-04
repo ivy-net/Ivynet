@@ -337,17 +337,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "alerts"
-version = "0.6.0"
-dependencies = [
- "ethers",
- "serde",
- "strum 0.27.1",
- "strum_macros 0.27.1",
- "thiserror 2.0.11",
-]
-
-[[package]]
 name = "alloc-no-stdlib"
 version = "2.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -443,7 +432,6 @@ checksum = "6b964d184e89d9b6b67dd2715bc8e74cf3107fb2b529990c90cf517326150bf4"
 name = "api"
 version = "0.6.0"
 dependencies = [
- "alerts",
  "axum",
  "axum-extra",
  "base64 0.22.1",
@@ -451,6 +439,7 @@ dependencies = [
  "clap",
  "ethers",
  "futures",
+ "ivynet-alerts",
  "ivynet-database",
  "ivynet-docker-registry",
  "ivynet-grpc",
@@ -3455,12 +3444,24 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d75a2a4b1b190afb6f5425f10f6a8f959d2ea0b9c2b1d79553551850539e4674"
 
 [[package]]
+name = "ivynet-alerts"
+version = "0.6.0"
+dependencies = [
+ "ethers",
+ "serde",
+ "strum 0.27.1",
+ "strum_macros 0.27.1",
+ "thiserror 2.0.11",
+ "utoipa",
+]
+
+[[package]]
 name = "ivynet-database"
 version = "0.6.0"
 dependencies = [
- "alerts",
  "chrono",
  "ethers",
+ "ivynet-alerts",
  "ivynet-docker-registry",
  "ivynet-error",
  "ivynet-grpc",
@@ -3585,9 +3586,9 @@ dependencies = [
 name = "ivynet-notifications"
 version = "0.6.0"
 dependencies = [
- "alerts",
  "async-trait",
  "chrono",
+ "ivynet-alerts",
  "reqwest 0.12.12",
  "sendgrid",
  "serde",

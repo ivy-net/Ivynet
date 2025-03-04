@@ -1,5 +1,5 @@
-use alerts::AlertFlags;
 use chrono::NaiveDateTime;
+use ivynet_alerts::AlertFlags;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use utoipa::ToSchema;

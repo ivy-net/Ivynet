@@ -1,3 +1,4 @@
+use ivynet_alerts::AlertType;
 use ivynet_database::{
     self,
     data::{machine_data, node_data},
@@ -58,6 +59,7 @@ use super::{alerts, authorize, client, info, machine, node, organization, pubkey
         alerts::set_notification_service_settings,
         alerts::get_alert_flags,
         alerts::set_alert_flags,
+        alerts::set_notification_service_flags,
     ),
     components(
         schemas(
@@ -91,6 +93,7 @@ use super::{alerts, authorize, client, info, machine, node, organization, pubkey
             ivynet_database::alerts::alerts_historical::HistoryAlert,
             alerts::AcknowledgeAlertParams,
             alerts::HistoricalAlertParams,
+            AlertType,
         ),
     ),
     tags(

@@ -145,12 +145,12 @@ fn create_router() -> Router<HttpState> {
                 .route("/acknowledge", post(alerts::acknowledge_alert))
                 .route("/services", get(alerts::get_notification_service_settings))
                 .route("/services", post(alerts::set_notification_service_settings))
-                .route("/services/set_flags", post(alerts::set_service_flags))
-                .route("/alert_flags", get(alerts::get_alert_flags))
-                .route("/alert_flags", post(alerts::set_alert_flags))
-                .route("/alert_flags/list", get(alerts::list_alert_flags))
-                .route("/alert_flags/readable", get(alerts::get_alert_flags_human))
-                .route("/alert_flags/set_flag", post(alerts::update_alert_flag)),
+                .route("/services/set_flags", post(alerts::set_notification_service_flags))
+                .route("/notifications", get(alerts::get_alert_flags))
+                .route("/notifications", post(alerts::set_alert_flags))
+                .route("/notifications/list", get(alerts::list_alert_flags))
+                .route("/notifications/readable", get(alerts::get_alert_flags_human))
+                .route("/notifications/set_flags", post(alerts::update_alert_flag)),
         )
         .nest(
             "/info/avs",
