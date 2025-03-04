@@ -156,12 +156,6 @@ pub struct NotificationServiceFlags {
     pagerduty: bool,
 }
 
-#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
-pub struct AlertFlagUpdate {
-    pub alert: AlertType,
-    pub enabled: bool,
-}
-
 impl From<(NotificationSettings, Vec<ServiceSettings>)> for NotificationServiceSettings {
     fn from(value: (NotificationSettings, Vec<ServiceSettings>)) -> Self {
         let mut emails = Vec::new();
@@ -187,7 +181,7 @@ impl From<(NotificationSettings, Vec<ServiceSettings>)> for NotificationServiceS
 /// Listing current notification service settings for organization
 #[utoipa::path(
     get,
-    path = "/organization/notifications",
+    path = "/alerts/services",
     responses(
         (status = 200, body = NotificationServiceSettings),
         (status = 404)
@@ -218,7 +212,7 @@ pub async fn get_notification_service_settings(
 /// Set new notification service settings
 #[utoipa::path(
     post,
-    path = "/organization/notifications",
+    path = "/alerts/services",
     params(
         ("settings", description = "New notification service settings to set")
     ),
@@ -268,7 +262,7 @@ pub async fn set_notification_service_settings(
 /// Set individual notification service flags
 #[utoipa::path(
     post,
-    path = "/organization/notifications/set_flags",
+    path = "/organization/services/set_flags",
     responses(
         (status = 200, body = NotificationFlags),
         (status = 404)
@@ -297,3 +291,9 @@ pub async fn set_notification_flags(
 /* ---------------------------------------
 ----NOTIFICATION FLAG FUNCTIONALITY-------
 ------------------------------------------ */
+
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
+pub struct AlertFlagUpdate {
+    pub alert: AlertType,
+    pub enabled: bool,
+}
