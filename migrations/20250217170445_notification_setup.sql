@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS organization_notifications (
+CREATE TABLE IF NOT EXISTS notification_settings (
     organization_id BIGINT NOT NULL REFERENCES organization
                         ON DELETE CASCADE UNIQUE,
     email           BOOL NOT NULL DEFAULT FALSE,
@@ -9,27 +9,27 @@ CREATE TABLE IF NOT EXISTS organization_notifications (
     updated_at      TIMESTAMP NOT NULL
 );
 
-CREATE INDEX idx_org_not ON organization_notifications (organization_id);
+CREATE INDEX idx_notification_settings ON notification_settings (organization_id);
 
-CREATE TYPE notification_type AS ENUM ('email', 'telegram', 'pagerduty');
+CREATE TYPE service_type AS ENUM ('email', 'telegram', 'pagerduty');
 
-CREATE TABLE IF NOT EXISTS notification_settings (
+CREATE TABLE IF NOT EXISTS service_settings (
     id              SERIAL PRIMARY KEY,
     organization_id BIGINT NOT NULL REFERENCES organization
                         ON DELETE CASCADE,
-    settings_type   notification_type NOT NULL,
+    settings_type   service_type NOT NULL,
     settings_value  TEXT NOT NULL, -- INTEGRATION KEY for pager duty a single email for email or telegram chat id for a chat
     created_at      TIMESTAMP NOT NULL
 );
 
-CREATE INDEX idx_notification_settings_org ON notification_settings (organization_id);
-CREATE INDEX idx_notification_settings_or_type ON notification_settings (organization_id, settings_type);
+CREATE INDEX idx_service_settings_org ON service_settings (organization_id);
+CREATE INDEX idx_service_settings_or_type ON service_settings (organization_id, settings_type);
 
--- Create a trigger function to create default organization notifications when a new organization is created
-CREATE OR REPLACE FUNCTION create_default_organization_notifications()
+-- Create a trigger function to create default notification settings when a new organization is created
+CREATE OR REPLACE FUNCTION create_default_notification_settings()
 RETURNS TRIGGER AS $$
 BEGIN
-    INSERT INTO organization_notifications (
+    INSERT INTO notification_settings (
         organization_id,
         email,
         telegram,
@@ -55,10 +55,10 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER after_organization_insert
 AFTER INSERT ON organization
 FOR EACH ROW
-EXECUTE FUNCTION create_default_organization_notifications();
+EXECUTE FUNCTION create_default_notification_settings();
 
--- Create a new organization_notifications table for each existing organization
-INSERT INTO organization_notifications (
+-- Create a new notification_settings table for each existing organization
+INSERT INTO notification_settings (
     organization_id,
     email,
     telegram,
@@ -80,6 +80,6 @@ FROM
 WHERE
     NOT EXISTS (
         SELECT 1
-        FROM organization_notifications n
+        FROM notification_settings n
         WHERE n.organization_id = o.organization_id
     );

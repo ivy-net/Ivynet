@@ -7,7 +7,7 @@ categories.workspace = true
 license.workspace = true
 
 [dependencies]
-alerts.workspace = true
+ivynet-alerts.workspace = true
 
 async-trait.workspace = true
 chrono = { workspace = true, features = ["serde"] }

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT\n                    organization_id,\n                    email, telegram, pagerduty, alert_flags,\n                    created_at, updated_at\n               FROM\n                    organization_notifications\n               WHERE\n                    organization_id = $1",
+  "query": "SELECT\n                    organization_id,\n                    email, telegram, pagerduty, alert_flags,\n                    created_at, updated_at\n               FROM\n                    notification_settings\n               WHERE\n                    organization_id = $1",
   "describe": {
     "columns": [
       {
@@ -54,5 +54,5 @@
       false
     ]
   },
-  "hash": "9df66888980a59eb2e98d74dae147e833f65ee9dfea8152c797568ce5b4dd2fd"
+  "hash": "a6ce437a812e7765b077769df85420bc30775703a0f3b0559733ba8e59aa830f"
 }

@@ -97,7 +97,7 @@ pub enum BackendError {
     BackendAlertError(#[from] BackendAlertError),
 
     #[error(transparent)]
-    AlertError(#[from] alerts::BitflagError),
+    AlertError(#[from] ivynet_alerts::BitflagError),
 }
 
 #[derive(Debug, Error)]
