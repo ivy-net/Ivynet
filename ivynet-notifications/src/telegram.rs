@@ -30,7 +30,7 @@ enum BotCommand {
     #[command(
         rename_rule = "lowercase",
         parse_with = "split",
-        description = "Register this chat to notifications"
+        description = "Register this chat to notifications using /register <email> <password>. Your message will be deleted after registration."
     )]
     Register { email: String, password: String },
 
