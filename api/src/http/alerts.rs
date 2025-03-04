@@ -5,12 +5,12 @@ use axum::{
 };
 use axum_extra::extract::CookieJar;
 use chrono::DateTime;
+use ivynet_alerts::{AlertFlags, AlertType};
 use ivynet_database::{
     alerts::{alerts_active::ActiveAlert, alerts_historical::HistoryAlert},
     notification_settings::ServiceType,
     NotificationSettings, ServiceSettings,
 };
-use ivynet_alerts::{AlertFlags, AlertType};
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
