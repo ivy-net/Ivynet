@@ -1,3 +1,4 @@
+use alerts::{AlertFlags, AlertType};
 use axum::{
     extract::{Query, State},
     http::HeaderMap,
@@ -7,8 +8,8 @@ use axum_extra::extract::CookieJar;
 use chrono::DateTime;
 use ivynet_database::{
     alerts::{alerts_active::ActiveAlert, alerts_historical::HistoryAlert},
-    notification_settings::SettingsType,
-    Notifications, NotificationsSettings,
+    notification_settings::ServiceType,
+    NotificationSettings, ServiceSettings,
 };
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
@@ -124,13 +125,6 @@ pub async fn alert_history(
 ------------------------------------------ */
 
 #[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
-pub struct NotificationServiceSettings {
-    pub telegram: TelegramSettings,
-    pub email: EmailSettings,
-    pub pagerduty: PagerDutySettings,
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
 pub struct TelegramSettings {
     pub enabled: bool,
     pub chats: Vec<String>,
@@ -148,17 +142,37 @@ pub struct EmailSettings {
     pub emails: Vec<String>,
 }
 
-impl From<(Notifications, Vec<NotificationsSettings>)> for NotificationServiceSettings {
-    fn from(value: (Notifications, Vec<NotificationsSettings>)) -> Self {
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
+pub struct NotificationServiceSettings {
+    pub telegram: TelegramSettings,
+    pub email: EmailSettings,
+    pub pagerduty: PagerDutySettings,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
+pub struct NotificationServiceFlags {
+    telegram: bool,
+    email: bool,
+    pagerduty: bool,
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
+pub struct AlertFlagUpdate {
+    pub alert: AlertType,
+    pub enabled: bool,
+}
+
+impl From<(NotificationSettings, Vec<ServiceSettings>)> for NotificationServiceSettings {
+    fn from(value: (NotificationSettings, Vec<ServiceSettings>)) -> Self {
         let mut emails = Vec::new();
         let mut chats = Vec::new();
         let mut integration_key = None;
 
         for setting in value.1 {
             match setting.settings_type {
-                SettingsType::Email => emails.push(setting.settings_value.clone()),
-                SettingsType::Telegram => chats.push(setting.settings_value.clone()),
-                SettingsType::PagerDuty => integration_key = Some(setting.settings_value.clone()),
+                ServiceType::Email => emails.push(setting.settings_value.clone()),
+                ServiceType::Telegram => chats.push(setting.settings_value.clone()),
+                ServiceType::PagerDuty => integration_key = Some(setting.settings_value.clone()),
             }
         }
 
@@ -170,31 +184,114 @@ impl From<(Notifications, Vec<NotificationsSettings>)> for NotificationServiceSe
     }
 }
 
-/// Listing current service settings for notifications - Email, Telegram, PagerDuty
+/// Listing current notification service settings for organization
 #[utoipa::path(
     get,
-    path = "/alerts/notifications/services",
+    path = "/organization/notifications",
     responses(
-        (status = 200, body = NotificationSettings),
+        (status = 200, body = NotificationServiceSettings),
         (status = 404)
     )
 )]
-pub async fn get_notification_settings(
+pub async fn get_notification_service_settings(
     headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
-) -> Result<Json<NotificationsSettings>, BackendError> {
+) -> Result<Json<NotificationServiceSettings>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
 
-    let notifications =
-        Notifications::get(&state.pool, account.organization_id as u64).await.unwrap_or_default();
-    let not_settings =
-        Notifications::get_notification_settings(&state.pool, account.organization_id as u64, None)
-            .await?;
+    let notifications = NotificationSettings::get(&state.pool, account.organization_id as u64)
+        .await
+        .unwrap_or_default();
+    let not_settings = NotificationSettings::get_service_settings(
+        &state.pool,
+        account.organization_id as u64,
+        None,
+    )
+    .await?;
 
-    let response: NotificationsSettings = (notifications, not_settings).into();
+    let response: NotificationServiceSettings = (notifications, not_settings).into();
 
     Ok(response.into())
+}
+
+/// Set new notification service settings
+#[utoipa::path(
+    post,
+    path = "/organization/notifications",
+    params(
+        ("settings", description = "New notification service settings to set")
+    ),
+    responses(
+        (status = 200),
+        (status = 404)
+    )
+)]
+pub async fn set_notification_service_settings(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Json(settings): Json<NotificationServiceSettings>,
+) -> Result<(), BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    if !account.role.can_write() {
+        return Err(BackendError::InsufficientPriviledges);
+    }
+
+    NotificationSettings::set(
+        &state.pool,
+        account.organization_id as u64,
+        settings.email.enabled,
+        settings.telegram.enabled,
+        settings.pagerduty.enabled,
+    )
+    .await?;
+    NotificationSettings::set_emails(
+        &state.pool,
+        account.organization_id as u64,
+        &settings.email.emails,
+    )
+    .await?;
+
+    if let Some(ref integration_key) = settings.pagerduty.integration_key {
+        NotificationSettings::set_pagerduty_integration(
+            &state.pool,
+            account.organization_id as u64,
+            integration_key,
+        )
+        .await?;
+    }
+
+    Ok(())
+}
+
+/// Set individual notification service flags
+#[utoipa::path(
+    post,
+    path = "/organization/notifications/set_flags",
+    responses(
+        (status = 200, body = NotificationFlags),
+        (status = 404)
+    )
+)]
+pub async fn set_notification_flags(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Json(flags): Json<NotificationServiceFlags>,
+) -> Result<(), BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+
+    NotificationSettings::set(
+        &state.pool,
+        account.organization_id as u64,
+        flags.email,
+        flags.telegram,
+        flags.pagerduty,
+    )
+    .await?;
+
+    Ok(())
 }
 
 /* ---------------------------------------
