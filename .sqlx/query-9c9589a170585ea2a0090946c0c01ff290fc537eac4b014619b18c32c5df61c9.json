@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT\n                organization_id, settings_type as \"settings_type: _\", settings_value, created_at\n               FROM\n                notification_settings\n               WHERE\n                organization_id = $1 AND settings_type = $2",
+  "query": "SELECT\n                organization_id, settings_type as \"settings_type: _\", settings_value, created_at\n               FROM\n                service_settings\n               WHERE\n                organization_id = $1",
   "describe": {
     "columns": [
       {
@@ -13,7 +13,7 @@
         "name": "settings_type: _",
         "type_info": {
           "Custom": {
-            "name": "notification_type",
+            "name": "service_type",
             "kind": {
               "Enum": [
                 "email",
@@ -37,19 +37,7 @@
     ],
     "parameters": {
       "Left": [
-        "Int8",
-        {
-          "Custom": {
-            "name": "notification_type",
-            "kind": {
-              "Enum": [
-                "email",
-                "telegram",
-                "pagerduty"
-              ]
-            }
-          }
-        }
+        "Int8"
       ]
     },
     "nullable": [
@@ -59,5 +47,5 @@
       false
     ]
   },
-  "hash": "a7724ad0bfe8fa2df2d946d75547db2cddbfe8469bf3ad8f173f9b812f66236a"
+  "hash": "9c9589a170585ea2a0090946c0c01ff290fc537eac4b014619b18c32c5df61c9"
 }

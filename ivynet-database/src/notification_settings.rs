@@ -1,5 +1,5 @@
-use alerts::AlertFlags;
 use chrono::NaiveDateTime;
+use ivynet_alerts::AlertFlags;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use utoipa::ToSchema;
@@ -7,15 +7,15 @@ use utoipa::ToSchema;
 use crate::error::DatabaseError;
 
 #[derive(Clone, Debug, PartialEq, Eq, PartialOrd, sqlx::Type, Deserialize, Serialize, ToSchema)]
-#[sqlx(type_name = "notification_type", rename_all = "lowercase")]
-pub enum SettingsType {
+#[sqlx(type_name = "service_type", rename_all = "lowercase")]
+pub enum ServiceType {
     Email,
     Telegram,
     PagerDuty,
 }
 
 #[derive(sqlx::FromRow, Deserialize, Serialize, Clone, Debug, Default)]
-pub struct OrganizationNotifications {
+pub struct NotificationSettings {
     pub organization_id: i64,
     pub email: bool,
     pub telegram: bool,
@@ -26,23 +26,23 @@ pub struct OrganizationNotifications {
 }
 
 #[derive(sqlx::FromRow, Deserialize, Serialize, Clone, Debug)]
-pub struct OrganizationNotificationsSettings {
+pub struct ServiceSettings {
     pub organization_id: i64,
-    pub settings_type: SettingsType,
+    pub settings_type: ServiceType,
     pub settings_value: String,
     pub created_at: Option<NaiveDateTime>,
 }
 
-impl OrganizationNotifications {
+impl NotificationSettings {
     pub async fn get(pool: &PgPool, id: u64) -> Result<Self, DatabaseError> {
         Ok(sqlx::query_as!(
-            OrganizationNotifications,
+            NotificationSettings,
             r#"SELECT
                     organization_id,
                     email, telegram, pagerduty, alert_flags,
                     created_at, updated_at
                FROM
-                    organization_notifications
+                    notification_settings
                WHERE
                     organization_id = $1"#,
             id as i64
@@ -60,7 +60,7 @@ impl OrganizationNotifications {
     ) -> Result<(), DatabaseError> {
         sqlx::query!(
             r#"INSERT INTO
-                organization_notifications
+                notification_settings
                 (organization_id, email, telegram, pagerduty, created_at, updated_at)
             VALUES
                 ($1, $2, $3, $4, NOW(), NOW())
@@ -80,14 +80,14 @@ impl OrganizationNotifications {
 
     pub async fn add_chat(pool: &PgPool, id: u64, chat_id: &str) -> Result<(), DatabaseError> {
         sqlx::query_as!(
-            OrganizationNotificationsSettings,
+            ServiceSettings,
             r#"INSERT INTO
-                notification_settings
+                service_settings
                 (organization_id, settings_type, settings_value, created_at)
             VALUES
                 ($1, $2, $3,  NOW())"#,
             id as i64,
-            SettingsType::Telegram as SettingsType,
+            ServiceType::Telegram as ServiceType,
             chat_id
         )
         .execute(pool)
@@ -98,10 +98,10 @@ impl OrganizationNotifications {
     pub async fn remove_chat(pool: &PgPool, chat_id: &str) -> Result<(), DatabaseError> {
         sqlx::query!(
             r#"DELETE FROM
-                notification_settings
+                service_settings
                WHERE
                 settings_type = $1 AND settings_value = $2"#,
-            SettingsType::Telegram as SettingsType,
+            ServiceType::Telegram as ServiceType,
             chat_id
         )
         .execute(pool)
@@ -109,32 +109,32 @@ impl OrganizationNotifications {
         Ok(())
     }
 
-    pub async fn get_notification_settings(
+    pub async fn get_service_settings(
         pool: &PgPool,
         id: u64,
-        settings_type: Option<SettingsType>,
-    ) -> Result<Vec<OrganizationNotificationsSettings>, DatabaseError> {
+        settings_type: Option<ServiceType>,
+    ) -> Result<Vec<ServiceSettings>, DatabaseError> {
         if let Some(settings_type) = settings_type {
             Ok(sqlx::query_as!(
-                OrganizationNotificationsSettings,
+                ServiceSettings,
                 r#"SELECT
                 organization_id, settings_type as "settings_type: _", settings_value, created_at
                FROM
-                notification_settings
+                service_settings
                WHERE
                 organization_id = $1 AND settings_type = $2"#,
                 id as i64,
-                settings_type as SettingsType,
+                settings_type as ServiceType,
             )
             .fetch_all(pool)
             .await?)
         } else {
             Ok(sqlx::query_as!(
-                OrganizationNotificationsSettings,
+                ServiceSettings,
                 r#"SELECT
                 organization_id, settings_type as "settings_type: _", settings_value, created_at
                FROM
-                notification_settings
+                service_settings
                WHERE
                 organization_id = $1"#,
                 id as i64,
@@ -145,7 +145,7 @@ impl OrganizationNotifications {
     }
 
     pub async fn get_all_chats(pool: &PgPool, id: u64) -> Result<Vec<String>, DatabaseError> {
-        Ok(Self::get_notification_settings(pool, id, Some(SettingsType::Telegram))
+        Ok(Self::get_service_settings(pool, id, Some(ServiceType::Telegram))
             .await?
             .iter()
             .map(|s| s.settings_value.clone())
@@ -153,7 +153,7 @@ impl OrganizationNotifications {
     }
 
     pub async fn get_all_emails(pool: &PgPool, id: u64) -> Result<Vec<String>, DatabaseError> {
-        Ok(Self::get_notification_settings(pool, id, Some(SettingsType::Email))
+        Ok(Self::get_service_settings(pool, id, Some(ServiceType::Email))
             .await?
             .iter()
             .map(|s| s.settings_value.clone())
@@ -164,7 +164,7 @@ impl OrganizationNotifications {
         pool: &PgPool,
         id: u64,
     ) -> Result<Option<String>, DatabaseError> {
-        Ok(Self::get_notification_settings(pool, id, Some(SettingsType::PagerDuty))
+        Ok(Self::get_service_settings(pool, id, Some(ServiceType::PagerDuty))
             .await?
             .iter()
             .map(|s| s.settings_value.clone())
@@ -178,11 +178,11 @@ impl OrganizationNotifications {
     ) -> Result<(), DatabaseError> {
         sqlx::query!(
             r#"DELETE FROM
-                notification_settings
+                service_settings
                WHERE
                 organization_id = $1 AND settings_type = $2"#,
             id as i64,
-            SettingsType::Email as SettingsType,
+            ServiceType::Email as ServiceType,
         )
         .execute(pool)
         .await?;
@@ -190,12 +190,12 @@ impl OrganizationNotifications {
         for email in emails {
             sqlx::query!(
                 r#"INSERT INTO
-                notification_settings
+                service_settings
                 (organization_id, settings_type, settings_value, created_at)
                VALUES
                 ($1, $2, $3, NOW())"#,
                 id as i64,
-                SettingsType::Email as SettingsType,
+                ServiceType::Email as ServiceType,
                 email
             )
             .execute(pool)
@@ -210,14 +210,14 @@ impl OrganizationNotifications {
         integration_id: &str,
     ) -> Result<(), DatabaseError> {
         sqlx::query_as!(
-            OrganizationNotificationsSettings,
+            ServiceSettings,
             r#"INSERT INTO
-                notification_settings
+                service_settings
                 (organization_id, settings_type, settings_value, created_at)
             VALUES
                 ($1, $2, $3,  NOW())"#,
             id as i64,
-            SettingsType::PagerDuty as SettingsType,
+            ServiceType::PagerDuty as ServiceType,
             integration_id
         )
         .execute(pool)
@@ -228,7 +228,7 @@ impl OrganizationNotifications {
     pub async fn set_alert_flags(pool: &PgPool, id: u64, flags: u64) -> Result<(), DatabaseError> {
         sqlx::query!(
             r#"UPDATE
-                organization_notifications
+                notification_settings
                SET
                 alert_flags = $2
                WHERE
@@ -246,7 +246,7 @@ impl OrganizationNotifications {
             r#"SELECT
                 alert_flags
                FROM
-                organization_notifications
+                notification_settings
                WHERE
                 organization_id = $1"#,
             id as i64

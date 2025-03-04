@@ -15,10 +15,10 @@ path = "src/main.rs"
 [dependencies]
 # IvyNet crates
 ivynet-database.workspace = true
-alerts.workspace = true
 ivynet-docker-registry.workspace = true
 ivynet-grpc.workspace = true
 ivynet-node-type.workspace = true
+ivynet-alerts.workspace = true
 
 # External crates
 axum = { version = "0.7", features = ["http2", "macros", "multipart"] }
@@ -43,8 +43,8 @@ memcache = "0.18.0"
 axum-extra = { version = "0.9.3", features = ["cookie"] }
 sendgrid = "0.23.0"
 strum.workspace = true
-utoipa = { version = "4.2.3", features = ["axum_extras"] }
-utoipa-swagger-ui = { version = "7.1.0", features = ["axum"] }
+utoipa.workspace = true
+utoipa-swagger-ui.workspace = true
 base64 = "0.22.1"
 tower-http = { version = "0.6.1", features = ["cors"] }
 futures = "0.3.31"
