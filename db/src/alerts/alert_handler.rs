@@ -182,7 +182,7 @@ async fn extract_node_data_alerts(
     if let Some(datetime) = avs.updated_at {
         let now = chrono::Utc::now().naive_utc();
         if now.signed_duration_since(datetime).num_minutes() > IDLE_MINUTES_THRESHOLD {
-            alerts.push(Alert::NodeNotResponding { 
+            alerts.push(Alert::NodeNotResponding {
                 node_name: node_data.name.clone(),
                 node_type: avs.avs_type.to_string(),
             });
@@ -363,19 +363,18 @@ mod tests {
         let handler = handler_fixture(&pool);
         let machine_id = Uuid::parse_str("dcbf22c7-9d96-47ac-bf06-62d6544e440d").unwrap();
         let node_name = "test".to_string();
-        let alert_type_1 = Alert::Custom { 
+        let alert_type_1 = Alert::Custom {
             node_name: node_name.clone(),
             node_type: NodeType::EigenDA.to_string(),
-            extra_data: serde_json::Value::String("runtime_alert_fixture_1".to_string())
+            extra_data: serde_json::Value::String("runtime_alert_fixture_1".to_string()),
         };
-
 
         let new_alert_1 = NewAlert::new(machine_id, alert_type_1, node_name.clone());
 
         let alert_type_2 = Alert::Custom {
-            node_name: node_name.clone(), 
+            node_name: node_name.clone(),
             node_type: NodeType::EigenDA.to_string(),
-            extra_data: serde_json::Value::String("runtime_alert_fixture_2".to_string())
+            extra_data: serde_json::Value::String("runtime_alert_fixture_2".to_string()),
         };
         let new_alert_2 = NewAlert::new(machine_id, alert_type_2.clone(), node_name);
 

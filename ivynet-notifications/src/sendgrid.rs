@@ -84,7 +84,12 @@ impl EmailTemplate {
                     ("performance".to_owned(), format!("{performance}")),
                 ]),
             ),
-            NotificationType::NeedsUpdate { node_name, current_version, recommended_version, .. } => (
+            NotificationType::NeedsUpdate {
+                node_name,
+                current_version,
+                recommended_version,
+                ..
+            } => (
                 Self::NeedsUpdate,
                 HashMap::from([
                     ("avs".to_owned(), node_name),

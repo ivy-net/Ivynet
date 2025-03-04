@@ -29,7 +29,7 @@ mod test_alerts_db {
         let alert_type = Alert::Custom {
             node_name: "test".to_string(),
             node_type: "test".to_string(),
-            extra_data: serde_json::Value::String("test".to_string())
+            extra_data: serde_json::Value::String("test".to_string()),
         };
         let node_name = "test".to_string();
 

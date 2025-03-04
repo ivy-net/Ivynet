@@ -101,9 +101,7 @@ impl<D: OrganizationDatabase> PagerDutySender<D> {
 fn message(notification: &Notification) -> String {
     match &notification.alert {
         NotificationType::UnregisteredFromActiveSet { node_name, operator, .. } => {
-            format!(
-                "Address {operator:?} has been removed from the active set for {node_name}"
-            )
+            format!("Address {operator:?} has been removed from the active set for {node_name}")
         }
         NotificationType::MachineNotResponding => {
             format!("Machine '{:?}' has lost connection with our backend", notification.machine_id)
@@ -127,7 +125,9 @@ fn message(notification: &Notification) -> String {
         NotificationType::LowPerformaceScore { node_name, performance, .. } => {
             format!("AVS {node_name} has droped in performance to {performance}")
         }
-        NotificationType::NeedsUpdate { node_name, current_version, recommended_version, .. } => {
+        NotificationType::NeedsUpdate {
+            node_name, current_version, recommended_version, ..
+        } => {
             format!("AVS {node_name} needs update from {current_version} to {recommended_version}")
         }
         NotificationType::ActiveSetNoDeployment { node_name, operator, .. } => {
@@ -141,14 +141,12 @@ fn message(notification: &Notification) -> String {
 
 fn avs_if_any(notification: &Notification) -> Option<String> {
     match &notification.alert {
-        NotificationType::NodeNotRunning { node_name, .. }
-        | NotificationType::NoChainInfo { node_name, .. }
-        | NotificationType::NoMetrics { node_name, .. }
-        | NotificationType::NoOperatorId { node_name, .. } => Some(node_name.to_owned()),
+        NotificationType::NodeNotRunning { node_name, .. } |
+        NotificationType::NoChainInfo { node_name, .. } |
+        NotificationType::NoMetrics { node_name, .. } |
+        NotificationType::NoOperatorId { node_name, .. } => Some(node_name.to_owned()),
         NotificationType::LowPerformaceScore { node_name, .. } => Some(node_name.to_owned()),
-        NotificationType::NeedsUpdate { node_name, .. } => {
-            Some(node_name.to_owned())
-        }
+        NotificationType::NeedsUpdate { node_name, .. } => Some(node_name.to_owned()),
         _ => None,
     }
 }
@@ -161,9 +159,9 @@ mod pagerduty_live_test {
         sync::Arc,
     };
 
-    use tokio::sync::Mutex;
     use serde_json;
-    
+    use tokio::sync::Mutex;
+
     use super::*;
 
     static MOCK_ORGANIZATION_ID: u64 = 1;

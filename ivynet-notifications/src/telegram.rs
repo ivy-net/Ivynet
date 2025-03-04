@@ -161,7 +161,12 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
                     performance = performance
                 )
             }
-            NotificationType::NeedsUpdate { node_name, node_type: _, current_version, recommended_version } => {
+            NotificationType::NeedsUpdate {
+                node_name,
+                node_type: _,
+                current_version,
+                recommended_version,
+            } => {
                 format!(
                     "❗ *Node Update Available* ❗️\n
                     Node `{node_name}` is running version `{current_version}` but version `{recommended_version}` is available\n
