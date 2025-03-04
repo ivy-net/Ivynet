@@ -17,13 +17,9 @@ impl AlertDbBackend {
 
     pub async fn add_chat(&self, email: &str, password: &str, chat_id: &str) -> bool {
         if let Ok(account) = Account::verify(&self.pool, email, password).await {
-            if NotificationSettings::add_chat(
-                &self.pool,
-                account.organization_id as u64,
-                chat_id,
-            )
-            .await
-            .is_ok()
+            if NotificationSettings::add_chat(&self.pool, account.organization_id as u64, chat_id)
+                .await
+                .is_ok()
             {
                 return true;
             }
@@ -40,19 +36,17 @@ impl AlertDbBackend {
     }
 
     pub async fn chats_for(&self, organization_id: u64) -> HashSet<String> {
-        let chats: Vec<String> =
-            NotificationSettings::get_all_chats(&self.pool, organization_id)
-                .await
-                .unwrap_or_default();
+        let chats: Vec<String> = NotificationSettings::get_all_chats(&self.pool, organization_id)
+            .await
+            .unwrap_or_default();
 
         chats.into_iter().collect()
     }
 
     pub async fn emails(&self, organization_id: u64) -> HashSet<String> {
-        let emails: Vec<String> =
-            NotificationSettings::get_all_emails(&self.pool, organization_id)
-                .await
-                .unwrap_or_default();
+        let emails: Vec<String> = NotificationSettings::get_all_emails(&self.pool, organization_id)
+            .await
+            .unwrap_or_default();
 
         emails.into_iter().collect()
     }
