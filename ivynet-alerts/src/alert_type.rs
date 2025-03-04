@@ -2,9 +2,13 @@ use std::fmt::Display;
 
 use ethers::types::H160;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use strum::{EnumCount, EnumIter, EnumProperty, IntoDiscriminant, IntoEnumIterator};
 use strum_macros::EnumDiscriminants;
-use utoipa::ToSchema;
+use utoipa::{
+    openapi::{RefOr, Schema},
+    ToSchema,
+};
 
 #[derive(
     Serialize,
@@ -34,6 +38,28 @@ pub enum Alert {
     HardwareResourceUsage { resource: String, percent: u16 } = 10,
     LowPerformaceScore { avs: String, performance: u16 } = 11,
     NeedsUpdate { avs: String, current_version: String, recommended_version: String } = 12,
+}
+
+// Implement ToSchema for AlertType
+impl<'s> ToSchema<'s> for AlertType {
+    fn schema() -> (&'s str, utoipa::openapi::RefOr<utoipa::openapi::schema::Schema>) {
+        (
+            "AlertType",
+            RefOr::T(Schema::Object(
+                utoipa::openapi::schema::ObjectBuilder::new()
+                    .schema_type(utoipa::openapi::schema::SchemaType::String)
+                    .enum_values(Some(
+                        AlertType::list_all()
+                            .into_iter()
+                            .map(|alert_type| alert_type.to_string())
+                            .map(Value::String)
+                            .collect::<Vec<Value>>(),
+                    ))
+                    .description(Some("Type of alert that can be triggered"))
+                    .build(),
+            )),
+        )
+    }
 }
 
 impl Alert {
