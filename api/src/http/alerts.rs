@@ -22,13 +22,13 @@ use crate::{
 
 use super::HttpState;
 
-#[derive(Debug, Clone, Copy, Deserialize, ToSchema)]
+#[derive(Debug, Clone, Copy, Deserialize, ToSchema, utoipa::IntoParams)]
 pub struct HistoricalAlertParams {
     pub from: i64,
     pub to: i64,
 }
 
-#[derive(Debug, Clone, Copy, ToSchema, Deserialize)]
+#[derive(Debug, Clone, Copy, ToSchema, Deserialize, utoipa::IntoParams)]
 pub struct AcknowledgeAlertParams {
     pub alert_id: Uuid,
 }
@@ -64,7 +64,7 @@ pub async fn active_alerts(
 #[utoipa::path(
     post,
     path = "/alerts/acknowledge",
-    request_body = AcknowledgeAlertParams,
+    params(AcknowledgeAlertParams),
     responses(
         (status = 200, body = ()),
         (status = 404)
@@ -92,7 +92,7 @@ pub async fn acknowledge_alert(
 #[utoipa::path(
     get,
     path = "/alerts/history",
-    request_body = HistoricalAlertParams,
+    params(HistoricalAlertParams),
     responses(
         (status = 200, body = [HistoryAlert]),
         (status = 404)
@@ -209,13 +209,12 @@ pub async fn get_notification_service_settings(
     Ok(response.into())
 }
 
-/// Set new notification service settings
+/// Set new notification service settings - email, telegram, pagerduty - and the information for
+/// each
 #[utoipa::path(
     post,
     path = "/alerts/services",
-    params(
-        ("settings", description = "New notification service settings to set")
-    ),
+    request_body = NotificationServiceSettings,
     responses(
         (status = 200),
         (status = 404)
@@ -259,16 +258,17 @@ pub async fn set_notification_service_settings(
     Ok(())
 }
 
-/// Set individual notification service flags
+/// Turn notification services on or off
 #[utoipa::path(
     post,
-    path = "/organization/services/set_flags",
+    path = "/alerts/services/set_flags",
+    request_body = NotificationServiceFlags,
     responses(
-        (status = 200, body = NotificationFlags),
+        (status = 200),
         (status = 404)
     )
 )]
-pub async fn set_notification_flags(
+pub async fn set_service_flags(
     headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
