@@ -86,39 +86,116 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
 
     pub async fn notify(&self, notification: Notification) -> Result<(), BotError> {
         let message = match notification.alert {
-            NotificationType::UnregisteredFromActiveSet { avs, address } => {
-                format!("Address {address:?} has been removed from the active set for avs {avs}")
+            NotificationType::UnregisteredFromActiveSet { node, operator } => {
+                format!(
+                    "❗ *Operator Unregistered from Active Set* ❗️\n
+                    Address `{operator}` has been removed from the active set for node `{node}`\n
+                    🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
+                    node = node.node_name,
+                    machine_id = notification.machine_id
+                )
             }
             NotificationType::MachineNotResponding => {
                 format!(
-                    "Machine '{}' has lost connection with our backend",
-                    notification.machine_id
+                    "❗ *Machine Not Responding* ❗️\n
+                    Machine `{machine_id}` has lost connection with our backend\n
+                    🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
+                    machine_id = notification.machine_id
                 )
             }
-            NotificationType::Custom(msg) => format!("ERROR: {msg}"),
-            NotificationType::NodeNotRunning(avs) => {
-                format!("AVS {avs} is not running on {}", notification.machine_id)
+            NotificationType::Custom { node, extra_data } => {
+                format!(
+                    "❗ *Custom Alert* ❗️\n
+                    Node `{node_name}` has triggered a custom alert with custom data: `{extra_data}`\n
+                    🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
+                    node_name = node.node_name,
+                    machine_id = notification.machine_id,
+                )
             }
-            NotificationType::NoChainInfo(avs) => {
-                format!("No information on chain for avs {avs}")
+            NotificationType::NodeNotRunning { node } => {
+                format!(
+                    "❗ *Node Not Running* ❗️\n
+                    Node `{node_name}` is not running on machine `{machine_id}`\n
+                    🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
+                    node_name = node.node_name,
+                    machine_id = notification.machine_id
+                )
             }
-            NotificationType::NoMetrics(avs) => format!("No metrics reported from avs {avs}"),
-            NotificationType::NoOperatorId(avs) => format!("No operator configured for {avs}"),
-            NotificationType::HardwareResourceUsage { resource, percent } => format!(
-                "Machine {} has used over {percent}% of {resource}",
-                notification.machine_id
-            ),
-            NotificationType::LowPerformaceScore { avs, performance } => {
-                format!("AVS {avs} has droped in performance to {performance}")
+            NotificationType::NoChainInfo { node } => {
+                format!(
+                    "❗ *No Chain Info* ❗️\n
+                    Node `{node_name}` has no chain information\n
+                    🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
+                    node_name = node.node_name,
+                    machine_id = notification.machine_id
+                )
             }
-            NotificationType::NeedsUpdate { avs, current_version, recommended_version } => {
-                format!("AVS {avs} needs update from {current_version} to {recommended_version}")
+            NotificationType::NoMetrics { node } => {
+                format!(
+                    "❗ *No Metrics* ❗️\n
+                    Node `{node_name}` is not reporting any metrics\n
+                    🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
+                    node_name = node.node_name,
+                    machine_id = notification.machine_id
+                )
             }
-            NotificationType::ActiveSetNoDeployment { avs, address } => {
-                format!("The validator {address} for {avs} is in the active set, but the node is either not deployed or not responding")
+            NotificationType::NoOperatorId { node } => {
+                format!(
+                    "❗ *No Operator ID* ❗️\n
+                    Node `{node_name}` has no associated operator ID\n
+                    🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
+                    node_name = node.node_name,
+                    machine_id = notification.machine_id
+                )
             }
-            NotificationType::NodeNotResponding(node_name) => {
-                format!("The node {node_name} is not responding")
+            NotificationType::HardwareResourceUsage { machine, resource, percent } => {
+                format!(
+                    "❗ *Hardware Resource Usage* ❗️\n
+                    Machine `{machine_id}` has used over `{percent}%` of `{resource}`\n
+                    🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
+                    machine_id = machine,
+                    percent = percent,
+                    resource = resource
+                )
+            }
+            NotificationType::LowPerformaceScore { node, performance } => {
+                format!(
+                    "❗ *Low Performance Score* ❗️\n
+                    Node `{node_name}` has a LOW performance score of `{performance}`\n
+                    🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
+                    node_name = node.node_name,
+                    machine_id = notification.machine_id,
+                    performance = performance
+                )
+            }
+            NotificationType::NeedsUpdate { node, current_version, recommended_version } => {
+                format!(
+                    "❗ *Node Update Available* ❗️\n
+                    Node `{node_name}` is running version `{current_version}` but version `{recommended_version}` is available\n
+                    🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
+                    node_name = node.node_name,
+                    machine_id = notification.machine_id,
+                    current_version = current_version,
+                    recommended_version = recommended_version
+                )
+            }
+            NotificationType::ActiveSetNoDeployment { node, operator: _ } => {
+                format!(
+                    "❗ *Active Set No Deployment* ❗️\n
+                    Node `{node_name}` is in the active set, but the node is either not deployed or not responding\n
+                    🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
+                    node_name = node.node_name,
+                    machine_id = notification.machine_id
+                )
+            }
+            NotificationType::NodeNotResponding { node } => {
+                format!(
+                    "❗ *Node Not Responding* ❗️\n
+                    Node `{node_name}` is not responding\n
+                    🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
+                    node_name = node.node_name,
+                    machine_id = notification.machine_id
+                )
             }
         };
 

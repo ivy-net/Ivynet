@@ -1,3 +1,4 @@
+pub mod alert_contents;
 mod alert_flags;
 mod alert_type;
 mod bitflag;

@@ -1,37 +1,32 @@
 use std::fmt::Display;
 
-use ethers::types::H160;
+use ethers::types::Address;
 use serde::{Deserialize, Serialize};
-use strum::{EnumCount, EnumIter, EnumProperty, IntoDiscriminant, IntoEnumIterator};
+use strum::{EnumCount, EnumIter, IntoDiscriminant, IntoEnumIterator};
 use strum_macros::EnumDiscriminants;
+use uuid::Uuid;
+
+use crate::alert_contents::Node;
 
 #[derive(
-    Serialize,
-    Deserialize,
-    Debug,
-    Clone,
-    PartialEq,
-    Eq,
-    EnumCount,
-    EnumDiscriminants,
-    EnumProperty,
-    EnumIter,
+    Serialize, Deserialize, Debug, Clone, PartialEq, Eq, EnumCount, EnumDiscriminants, EnumIter,
 )]
 #[strum_discriminants(name(AlertType))]
 #[repr(usize)]
 pub enum Alert {
-    Custom(String) = 1,
-    ActiveSetNoDeployment { avs: String, address: H160 } = 2,
-    UnregisteredFromActiveSet { avs: String, address: H160 } = 3,
+    Custom { node: Node, extra_data: serde_json::Value } = 1,
+    ActiveSetNoDeployment { node: Node, operator: Address } = 2,
+    UnregisteredFromActiveSet { node: Node, operator: Address } = 3,
     MachineNotResponding = 4,
-    NodeNotResponding(String) = 5,
-    NodeNotRunning(String) = 6,
-    NoChainInfo(String) = 7,
-    NoMetrics(String) = 8,
-    NoOperatorId(String) = 9,
-    HardwareResourceUsage { resource: String, percent: u16 } = 10,
-    LowPerformaceScore { avs: String, performance: u16 } = 11,
-    NeedsUpdate { avs: String, current_version: String, recommended_version: String } = 12,
+    NodeNotResponding { node: Node } = 5,
+    NodeNotRunning { node: Node } = 6,
+    NoChainInfo { node: Node } = 7,
+    NoMetrics { node: Node } = 8,
+    NoOperatorId { node: Node } = 9,
+    HardwareResourceUsage { machine: Uuid, resource: String, percent: u16 } = 10,
+    // TODO: Find out how exactly this should be used
+    LowPerformaceScore { node: Node, performance: u16 } = 11,
+    NeedsUpdate { node: Node, current_version: String, recommended_version: String } = 12,
 }
 
 impl Alert {
@@ -44,25 +39,27 @@ impl Alert {
     // id to prevent collision where different notification types may have the same interior field.
     pub fn uuid_seed(&self) -> String {
         match self {
-            Alert::Custom(_) |
-            Alert::ActiveSetNoDeployment { .. } |
-            Alert::UnregisteredFromActiveSet { .. } |
-            Alert::MachineNotResponding |
-            Alert::NodeNotResponding(_) |
-            Alert::NodeNotRunning(_) |
-            Alert::NoChainInfo(_) |
-            Alert::NoMetrics(_) |
-            Alert::NoOperatorId(_) => {
+            Alert::Custom { node, .. } |
+            Alert::ActiveSetNoDeployment { node, .. } |
+            Alert::UnregisteredFromActiveSet { node, .. } |
+            Alert::NodeNotResponding { node } |
+            Alert::NodeNotRunning { node } |
+            Alert::NoChainInfo { node } |
+            Alert::NoMetrics { node } |
+            Alert::NoOperatorId { node } => {
+                format!("{}-{}", node.node_name, self.id())
+            }
+            Alert::MachineNotResponding => {
                 format!("{:?}-{}", self, self.id())
             }
-            Alert::HardwareResourceUsage { resource, .. } => {
-                format!("{:?}-{}", resource, self.id())
+            Alert::HardwareResourceUsage { machine, resource, .. } => {
+                format!("{}-{}-{}", machine, resource, self.id())
             }
-            Alert::LowPerformaceScore { avs, .. } => {
-                format!("{:?}-{}", avs, self.id())
+            Alert::LowPerformaceScore { node, .. } => {
+                format!("{}-{}", node.node_name, self.id())
             }
-            Alert::NeedsUpdate { avs, current_version, .. } => {
-                format!("{:?}-{}-{}", avs, current_version, self.id())
+            Alert::NeedsUpdate { node, current_version, .. } => {
+                format!("{}-{}-{}", node.node_name, current_version, self.id())
             }
         }
     }

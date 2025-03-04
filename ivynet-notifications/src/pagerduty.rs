@@ -100,26 +100,35 @@ impl<D: OrganizationDatabase> PagerDutySender<D> {
 
 fn message(notification: &Notification) -> String {
     match &notification.alert {
-        NotificationType::UnregisteredFromActiveSet { avs, address } => {
-            format!("Address {address:?} has been removed from the active set for {avs}")
+        NotificationType::UnregisteredFromActiveSet { node, operator } => {
+            format!(
+                "Address {operator:?} has been removed from the active set for {avs}",
+                avs = node.node_name
+            )
         }
         NotificationType::MachineNotResponding => {
             format!("Machine '{:?}' has lost connection with our backend", notification.machine_id)
         }
-        NotificationType::Custom(msg) => format!("ERROR: {msg}"),
-        NotificationType::NodeNotRunning(avs) => {
-            format!("AVS {avs} is not running on {}", notification.machine_id)
+        NotificationType::Custom { node: _, extra_data } => format!("ERROR: {extra_data}"),
+        NotificationType::NodeNotRunning { node } => {
+            format!("AVS {avs} is not running on {}", avs = node.node_name, notification.machine_id)
         }
-        NotificationType::NoChainInfo(avs) => format!("No information on chain for avs {avs}"),
-        NotificationType::NoMetrics(avs) => format!("No metrics reported from avs {avs}"),
-        NotificationType::NoOperatorId(avs) => format!("No operator configured for {avs}"),
-        NotificationType::HardwareResourceUsage { resource, percent } => {
+        NotificationType::NoChainInfo { node } => {
+            format!("No information on chain for avs {avs}", avs = node.node_name)
+        }
+        NotificationType::NoMetrics { node } => {
+            format!("No metrics reported from avs {avs}", avs = node.node_name)
+        }
+        NotificationType::NoOperatorId { node } => {
+            format!("No operator configured for {avs}", avs = node.node_name)
+        }
+        NotificationType::HardwareResourceUsage { machine, resource, percent } => {
             format!("Machine {} has used over {percent}% of {resource}", notification.machine_id)
         }
-        NotificationType::LowPerformaceScore { avs, performance } => {
-            format!("AVS {avs} has droped in performance to {performance}")
+        NotificationType::LowPerformaceScore { node, performance } => {
+            format!("AVS {avs} has droped in performance to {performance}", avs = node.node_name)
         }
-        NotificationType::NeedsUpdate { avs, current_version, recommended_version } => {
+        NotificationType::NeedsUpdate { node, current_version, recommended_version } => {
             format!("AVS {avs} needs update from {current_version} to {recommended_version}")
         }
         NotificationType::ActiveSetNoDeployment { avs, address } => {
@@ -133,10 +142,10 @@ fn message(notification: &Notification) -> String {
 
 fn avs_if_any(notification: &Notification) -> Option<String> {
     match &notification.alert {
-        NotificationType::NodeNotRunning(avs) |
-        NotificationType::NoChainInfo(avs) |
-        NotificationType::NoMetrics(avs) |
-        NotificationType::NoOperatorId(avs) => Some(avs.to_owned()),
+        NotificationType::NodeNotRunning { node } |
+        NotificationType::NoChainInfo { node } |
+        NotificationType::NoMetrics { node } |
+        NotificationType::NoOperatorId { node } => Some(avs.to_owned()),
         NotificationType::LowPerformaceScore { avs, performance: _ } => Some(avs.to_owned()),
         NotificationType::NeedsUpdate { avs, current_version: _, recommended_version: _ } => {
             Some(avs.to_owned())
