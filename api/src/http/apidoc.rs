@@ -19,7 +19,6 @@ use super::{alerts, authorize, client, info, machine, node, organization, pubkey
         organization::machines,
         organization::avses,
         organization::confirm,
-
         client::client,
         client::client_machines,
         client::client_logs,

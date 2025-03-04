@@ -209,8 +209,7 @@ pub async fn get_notification_service_settings(
     Ok(response.into())
 }
 
-/// Set new notification service settings - email, telegram, pagerduty - and the information for
-/// each
+/// Set new notification service settings - email, telegram, pagerduty - and information for each
 #[utoipa::path(
     post,
     path = "/alerts/services",
