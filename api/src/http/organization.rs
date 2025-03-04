@@ -417,7 +417,7 @@ pub async fn set_notification_flags(
     Ok(())
 }
 
-/// list alert flags
+/// List all alert flags that can be enabled/disabled
 #[utoipa::path(
     get,
     path = "/organization/alert_flags/list",
@@ -485,7 +485,7 @@ pub async fn get_alert_flags(
 /// Get human-readable active alert flags
 #[utoipa::path(
     get,
-    path = "/organization/alert_flags/get_flags",
+    path = "/organization/alert_flags/readable",
     responses(
         (status = 200, body = Vec<AlertType>),
         (status = 404)

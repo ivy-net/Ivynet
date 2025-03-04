@@ -17,7 +17,7 @@ async fn main() -> Result<(), IngressError> {
     }
 
     let config = Config::parse();
-    println!("{:?}", config.telegram_token);
+    println!("Telegram token: {:?}", config.telegram_token);
     start_tracing(config.log_level)?;
     let pool = configure(&config.db_uri, false).await?;
 

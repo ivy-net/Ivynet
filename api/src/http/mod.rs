@@ -105,7 +105,7 @@ fn create_router() -> Router<HttpState> {
                 .route("/alert_flags", get(organization::get_alert_flags))
                 .route("/alert_flags", post(organization::set_alert_flags))
                 .route("/alert_flags/list", get(organization::list_alert_flags))
-                .route("/alert_flags/get_flags", get(organization::get_alert_flags_human))
+                .route("/alert_flags/readable", get(organization::get_alert_flags_human))
                 .route("/alert_flags/set_flag", post(organization::update_alert_flag)),
         )
         .nest(
