@@ -14,19 +14,59 @@ use crate::alert_contents::Node;
 #[strum_discriminants(name(AlertType))]
 #[repr(usize)]
 pub enum Alert {
-    Custom { node: Node, extra_data: serde_json::Value } = 1,
-    ActiveSetNoDeployment { node: Node, operator: Address } = 2,
-    UnregisteredFromActiveSet { node: Node, operator: Address } = 3,
+    Custom {
+        node_name: String,
+        node_type: String,
+        extra_data: serde_json::Value,
+    } = 1,
+    ActiveSetNoDeployment {
+        node_name: String,
+        node_type: String,
+        operator: Address,
+    } = 2,
+    UnregisteredFromActiveSet {
+        node_name: String,
+        node_type: String,
+        operator: Address,
+    } = 3,
     MachineNotResponding = 4,
-    NodeNotResponding { node: Node } = 5,
-    NodeNotRunning { node: Node } = 6,
-    NoChainInfo { node: Node } = 7,
-    NoMetrics { node: Node } = 8,
-    NoOperatorId { node: Node } = 9,
-    HardwareResourceUsage { machine: Uuid, resource: String, percent: u16 } = 10,
+    NodeNotResponding {
+        node_name: String,
+        node_type: String,
+    } = 5,
+    NodeNotRunning {
+        node_name: String,
+        node_type: String,
+    } = 6,
+    NoChainInfo {
+        node_name: String,
+        node_type: String,
+    } = 7,
+    NoMetrics {
+        node_name: String,
+        node_type: String,
+    } = 8,
+    NoOperatorId {
+        node_name: String,
+        node_type: String,
+    } = 9,
+    HardwareResourceUsage {
+        machine: Uuid,
+        resource: String,
+        percent: u16,
+    } = 10,
     // TODO: Find out how exactly this should be used
-    LowPerformaceScore { node: Node, performance: u16 } = 11,
-    NeedsUpdate { node: Node, current_version: String, recommended_version: String } = 12,
+    LowPerformaceScore {
+        node_name: String,
+        node_type: String,
+        performance: u16,
+    } = 11,
+    NeedsUpdate {
+        node_name: String,
+        node_type: String,
+        current_version: String,
+        recommended_version: String,
+    } = 12,
 }
 
 impl Alert {
@@ -39,15 +79,15 @@ impl Alert {
     // id to prevent collision where different notification types may have the same interior field.
     pub fn uuid_seed(&self) -> String {
         match self {
-            Alert::Custom { node, .. } |
-            Alert::ActiveSetNoDeployment { node, .. } |
-            Alert::UnregisteredFromActiveSet { node, .. } |
-            Alert::NodeNotResponding { node } |
-            Alert::NodeNotRunning { node } |
-            Alert::NoChainInfo { node } |
-            Alert::NoMetrics { node } |
-            Alert::NoOperatorId { node } => {
-                format!("{}-{}", node.node_name, self.id())
+            Alert::Custom { node_name, .. }
+            | Alert::ActiveSetNoDeployment { node_name, .. }
+            | Alert::UnregisteredFromActiveSet { node_name, .. }
+            | Alert::NodeNotResponding { node_name, .. }
+            | Alert::NodeNotRunning { node_name, .. }
+            | Alert::NoChainInfo { node_name, .. }
+            | Alert::NoMetrics { node_name, .. }
+            | Alert::NoOperatorId { node_name, .. } => {
+                format!("{}-{}", node_name, self.id())
             }
             Alert::MachineNotResponding => {
                 format!("{:?}-{}", self, self.id())
@@ -55,11 +95,11 @@ impl Alert {
             Alert::HardwareResourceUsage { machine, resource, .. } => {
                 format!("{}-{}-{}", machine, resource, self.id())
             }
-            Alert::LowPerformaceScore { node, .. } => {
-                format!("{}-{}", node.node_name, self.id())
+            Alert::LowPerformaceScore { node_name, .. } => {
+                format!("{}-{}", node_name, self.id())
             }
-            Alert::NeedsUpdate { node, current_version, .. } => {
-                format!("{}-{}-{}", node.node_name, current_version, self.id())
+            Alert::NeedsUpdate { node_name, current_version, .. } => {
+                format!("{}-{}-{}", node_name, current_version, self.id())
             }
         }
     }

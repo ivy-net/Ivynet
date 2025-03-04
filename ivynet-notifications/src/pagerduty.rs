@@ -100,41 +100,40 @@ impl<D: OrganizationDatabase> PagerDutySender<D> {
 
 fn message(notification: &Notification) -> String {
     match &notification.alert {
-        NotificationType::UnregisteredFromActiveSet { node, operator } => {
+        NotificationType::UnregisteredFromActiveSet { node_name, operator, .. } => {
             format!(
-                "Address {operator:?} has been removed from the active set for {avs}",
-                avs = node.node_name
+                "Address {operator:?} has been removed from the active set for {node_name}"
             )
         }
         NotificationType::MachineNotResponding => {
             format!("Machine '{:?}' has lost connection with our backend", notification.machine_id)
         }
-        NotificationType::Custom { node: _, extra_data } => format!("ERROR: {extra_data}"),
-        NotificationType::NodeNotRunning { node } => {
-            format!("AVS {avs} is not running on {}", avs = node.node_name, notification.machine_id)
+        NotificationType::Custom { node_name, extra_data, .. } => format!("ERROR: {extra_data}"),
+        NotificationType::NodeNotRunning { node_name, node_type } => {
+            format!("AVS {node_name} is not running on {}", notification.machine_id)
         }
-        NotificationType::NoChainInfo { node } => {
-            format!("No information on chain for avs {avs}", avs = node.node_name)
+        NotificationType::NoChainInfo { node_name, .. } => {
+            format!("No information on chain for avs {node_name}")
         }
-        NotificationType::NoMetrics { node } => {
-            format!("No metrics reported from avs {avs}", avs = node.node_name)
+        NotificationType::NoMetrics { node_name, .. } => {
+            format!("No metrics reported from avs {node_name}")
         }
-        NotificationType::NoOperatorId { node } => {
-            format!("No operator configured for {avs}", avs = node.node_name)
+        NotificationType::NoOperatorId { node_name, .. } => {
+            format!("No operator configured for {node_name}")
         }
-        NotificationType::HardwareResourceUsage { machine, resource, percent } => {
+        NotificationType::HardwareResourceUsage { resource, percent, .. } => {
             format!("Machine {} has used over {percent}% of {resource}", notification.machine_id)
         }
-        NotificationType::LowPerformaceScore { node, performance } => {
-            format!("AVS {avs} has droped in performance to {performance}", avs = node.node_name)
+        NotificationType::LowPerformaceScore { node_name, performance, .. } => {
+            format!("AVS {node_name} has droped in performance to {performance}")
         }
-        NotificationType::NeedsUpdate { node, current_version, recommended_version } => {
-            format!("AVS {avs} needs update from {current_version} to {recommended_version}")
+        NotificationType::NeedsUpdate { node_name, current_version, recommended_version, .. } => {
+            format!("AVS {node_name} needs update from {current_version} to {recommended_version}")
         }
-        NotificationType::ActiveSetNoDeployment { avs, address } => {
-            format!("The validator {address} for {avs} is in the active set, but the node is either not deployed or not responding")
+        NotificationType::ActiveSetNoDeployment { node_name, operator, .. } => {
+            format!("The validator {operator} for {node_name} is in the active set, but the node is either not deployed or not responding")
         }
-        NotificationType::NodeNotResponding(node_name) => {
+        NotificationType::NodeNotResponding { node_name, .. } => {
             format!("The node {node_name} is not responding")
         }
     }
@@ -142,13 +141,13 @@ fn message(notification: &Notification) -> String {
 
 fn avs_if_any(notification: &Notification) -> Option<String> {
     match &notification.alert {
-        NotificationType::NodeNotRunning { node } |
-        NotificationType::NoChainInfo { node } |
-        NotificationType::NoMetrics { node } |
-        NotificationType::NoOperatorId { node } => Some(avs.to_owned()),
-        NotificationType::LowPerformaceScore { avs, performance: _ } => Some(avs.to_owned()),
-        NotificationType::NeedsUpdate { avs, current_version: _, recommended_version: _ } => {
-            Some(avs.to_owned())
+        NotificationType::NodeNotRunning { node_name, .. }
+        | NotificationType::NoChainInfo { node_name, .. }
+        | NotificationType::NoMetrics { node_name, .. }
+        | NotificationType::NoOperatorId { node_name, .. } => Some(node_name.to_owned()),
+        NotificationType::LowPerformaceScore { node_name, .. } => Some(node_name.to_owned()),
+        NotificationType::NeedsUpdate { node_name, .. } => {
+            Some(node_name.to_owned())
         }
         _ => None,
     }
@@ -163,7 +162,8 @@ mod pagerduty_live_test {
     };
 
     use tokio::sync::Mutex;
-
+    use serde_json;
+    
     use super::*;
 
     static MOCK_ORGANIZATION_ID: u64 = 1;
@@ -243,12 +243,17 @@ mod pagerduty_live_test {
         let db = MockDb::new();
 
         let pagerduty = PagerDutySender::new(db);
-
         let mut test_event = Notification {
             id: Uuid::new_v4(),
             organization: MOCK_ORGANIZATION_ID,
             machine_id: Uuid::new_v4(),
-            alert: NotificationType::Custom("We are testing sending events".to_string()),
+            alert: Alert::Custom {
+                node_name: "test-node".to_string(),
+                node_type: "test-type".to_string(),
+                extra_data: serde_json::json!({
+                    "message": "We are testing sending events"
+                }),
+            },
             resolved: false,
         };
 

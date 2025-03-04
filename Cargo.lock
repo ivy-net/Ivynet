@@ -3593,6 +3593,7 @@ dependencies = [
  "reqwest 0.12.12",
  "sendgrid",
  "serde",
+ "serde_json",
  "teloxide",
  "teloxide_tests",
  "thiserror 2.0.11",

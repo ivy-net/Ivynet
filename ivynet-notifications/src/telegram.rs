@@ -86,12 +86,11 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
 
     pub async fn notify(&self, notification: Notification) -> Result<(), BotError> {
         let message = match notification.alert {
-            NotificationType::UnregisteredFromActiveSet { node, operator } => {
+            NotificationType::UnregisteredFromActiveSet { node_name, node_type: _, operator } => {
                 format!(
                     "❗ *Operator Unregistered from Active Set* ❗️\n
-                    Address `{operator}` has been removed from the active set for node `{node}`\n
+                    Address `{operator}` has been removed from the active set for node `{node_name}`\n
                     🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    node = node.node_name,
                     machine_id = notification.machine_id
                 )
             }
@@ -103,48 +102,43 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
                     machine_id = notification.machine_id
                 )
             }
-            NotificationType::Custom { node, extra_data } => {
+            NotificationType::Custom { node_name, node_type: _, extra_data } => {
                 format!(
                     "❗ *Custom Alert* ❗️\n
                     Node `{node_name}` has triggered a custom alert with custom data: `{extra_data}`\n
                     🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    node_name = node.node_name,
                     machine_id = notification.machine_id,
                 )
             }
-            NotificationType::NodeNotRunning { node } => {
+            NotificationType::NodeNotRunning { node_name, node_type: _ } => {
                 format!(
                     "❗ *Node Not Running* ❗️\n
                     Node `{node_name}` is not running on machine `{machine_id}`\n
                     🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    node_name = node.node_name,
                     machine_id = notification.machine_id
                 )
             }
-            NotificationType::NoChainInfo { node } => {
+            NotificationType::NoChainInfo { node_name, node_type: _ } => {
                 format!(
                     "❗ *No Chain Info* ❗️\n
                     Node `{node_name}` has no chain information\n
                     🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    node_name = node.node_name,
                     machine_id = notification.machine_id
                 )
             }
-            NotificationType::NoMetrics { node } => {
+            NotificationType::NoMetrics { node_name, node_type: _ } => {
                 format!(
                     "❗ *No Metrics* ❗️\n
                     Node `{node_name}` is not reporting any metrics\n
                     🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    node_name = node.node_name,
                     machine_id = notification.machine_id
                 )
             }
-            NotificationType::NoOperatorId { node } => {
+            NotificationType::NoOperatorId { node_name, node_type: _ } => {
                 format!(
                     "❗ *No Operator ID* ❗️\n
                     Node `{node_name}` has no associated operator ID\n
                     🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    node_name = node.node_name,
                     machine_id = notification.machine_id
                 )
             }
@@ -158,42 +152,38 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
                     resource = resource
                 )
             }
-            NotificationType::LowPerformaceScore { node, performance } => {
+            NotificationType::LowPerformaceScore { node_name, node_type: _, performance } => {
                 format!(
                     "❗ *Low Performance Score* ❗️\n
                     Node `{node_name}` has a LOW performance score of `{performance}`\n
                     🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    node_name = node.node_name,
                     machine_id = notification.machine_id,
                     performance = performance
                 )
             }
-            NotificationType::NeedsUpdate { node, current_version, recommended_version } => {
+            NotificationType::NeedsUpdate { node_name, node_type: _, current_version, recommended_version } => {
                 format!(
                     "❗ *Node Update Available* ❗️\n
                     Node `{node_name}` is running version `{current_version}` but version `{recommended_version}` is available\n
                     🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    node_name = node.node_name,
                     machine_id = notification.machine_id,
                     current_version = current_version,
                     recommended_version = recommended_version
                 )
             }
-            NotificationType::ActiveSetNoDeployment { node, operator: _ } => {
+            NotificationType::ActiveSetNoDeployment { node_name, node_type: _, operator } => {
                 format!(
                     "❗ *Active Set No Deployment* ❗️\n
                     Node `{node_name}` is in the active set, but the node is either not deployed or not responding\n
                     🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    node_name = node.node_name,
                     machine_id = notification.machine_id
                 )
             }
-            NotificationType::NodeNotResponding { node } => {
+            NotificationType::NodeNotResponding { node_name, node_type: _ } => {
                 format!(
                     "❗ *Node Not Responding* ❗️\n
                     Node `{node_name}` is not responding\n
                     🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    node_name = node.node_name,
                     machine_id = notification.machine_id
                 )
             }

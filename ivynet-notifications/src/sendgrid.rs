@@ -43,13 +43,13 @@ enum EmailTemplate {
 impl EmailTemplate {
     pub fn payload(notification: Notification) -> (Self, HashMap<String, String>) {
         match notification.alert {
-            NotificationType::Custom { node: _, extra_data } => {
+            NotificationType::Custom { extra_data, .. } => {
                 (Self::Custom, HashMap::from([("message".to_owned(), extra_data.to_string())]))
             }
-            NotificationType::UnregisteredFromActiveSet { node, operator } => (
+            NotificationType::UnregisteredFromActiveSet { node_name, operator, .. } => (
                 Self::UnregisteredFromActiveSet,
                 HashMap::from([
-                    ("avs".to_owned(), node.node_name),
+                    ("avs".to_owned(), node_name),
                     ("address".to_owned(), format!("{:?}", operator)),
                 ]),
             ),
@@ -57,19 +57,19 @@ impl EmailTemplate {
                 Self::MachineNotResponding,
                 HashMap::from([("machine_id".to_owned(), format!("{}", notification.machine_id))]),
             ),
-            NotificationType::NodeNotRunning { node } => {
-                (Self::NodeNotRunning, HashMap::from([("avs".to_owned(), node.node_name)]))
+            NotificationType::NodeNotRunning { node_name, .. } => {
+                (Self::NodeNotRunning, HashMap::from([("avs".to_owned(), node_name)]))
             }
-            NotificationType::NoChainInfo { node } => {
-                (Self::NoChainInfo, HashMap::from([("avs".to_owned(), node.node_name)]))
+            NotificationType::NoChainInfo { node_name, .. } => {
+                (Self::NoChainInfo, HashMap::from([("avs".to_owned(), node_name)]))
             }
-            NotificationType::NoMetrics { node } => {
-                (Self::NoMetrics, HashMap::from([("avs".to_owned(), node.node_name)]))
+            NotificationType::NoMetrics { node_name, .. } => {
+                (Self::NoMetrics, HashMap::from([("avs".to_owned(), node_name)]))
             }
-            NotificationType::NoOperatorId { node } => {
-                (Self::NoOperatorId, HashMap::from([("avs".to_owned(), node.node_name)]))
+            NotificationType::NoOperatorId { node_name, .. } => {
+                (Self::NoOperatorId, HashMap::from([("avs".to_owned(), node_name)]))
             }
-            NotificationType::HardwareResourceUsage { machine, resource, percent } => (
+            NotificationType::HardwareResourceUsage { resource, percent, .. } => (
                 Self::HardwareResourceUsage,
                 HashMap::from([
                     ("machine_id".to_owned(), format!("{}", notification.machine_id)),
@@ -77,30 +77,30 @@ impl EmailTemplate {
                     ("percent".to_owned(), format!("{percent}")),
                 ]),
             ),
-            NotificationType::LowPerformaceScore { node, performance } => (
+            NotificationType::LowPerformaceScore { node_name, performance, .. } => (
                 Self::LowPerformaceScore,
                 HashMap::from([
-                    ("avs".to_owned(), node.node_name),
+                    ("avs".to_owned(), node_name),
                     ("performance".to_owned(), format!("{performance}")),
                 ]),
             ),
-            NotificationType::NeedsUpdate { node, current_version, recommended_version } => (
+            NotificationType::NeedsUpdate { node_name, current_version, recommended_version, .. } => (
                 Self::NeedsUpdate,
                 HashMap::from([
-                    ("avs".to_owned(), node.node_name),
+                    ("avs".to_owned(), node_name),
                     ("current_version".to_owned(), current_version),
                     ("recommended_version".to_owned(), recommended_version),
                 ]),
             ),
-            NotificationType::ActiveSetNoDeployment { node, operator } => (
+            NotificationType::ActiveSetNoDeployment { node_name, operator, .. } => (
                 Self::ActiveSetNoDeployment,
                 HashMap::from([
-                    ("node_name".to_owned(), node.node_name),
+                    ("node_name".to_owned(), node_name),
                     ("address".to_owned(), format!("{:?}", operator)),
                 ]),
             ),
-            NotificationType::NodeNotResponding { node } => {
-                (Self::NodeNotResponding, HashMap::from([("node_name".to_owned(), node.node_name)]))
+            NotificationType::NodeNotResponding { node_name, .. } => {
+                (Self::NodeNotResponding, HashMap::from([("node_name".to_owned(), node_name)]))
             }
         }
     }
@@ -166,26 +166,26 @@ impl<D: OrganizationDatabase> EmailSender<D> {
             payload.insert(
                 "error_type".to_string(),
                 match notification.alert {
-                    Alert::Custom{node: _, extra_data} => format!("Custom: {extra_data}"),
+                    Alert::Custom{node_name: _, node_type: _, extra_data} => format!("Custom: {extra_data}"),
                     Alert::NoMetrics {..} => "No metrics available".to_string(),
                     Alert::NoChainInfo {..} => "No chain info".to_string(),
                     Alert::NoOperatorId {..} => "No operator id".to_string(),
-                    Alert::NeedsUpdate { node: _ , current_version, recommended_version } => {
+                    Alert::NeedsUpdate { node_name: _, node_type: _, current_version, recommended_version } => {
                         format!("AVS needs update from {current_version} to {recommended_version}")
                     }
                     Alert::NodeNotRunning {..} => "Node not running".to_string(),
-                    Alert::ActiveSetNoDeployment { node: _, operator } => {
+                    Alert::ActiveSetNoDeployment { node_name: _, node_type: _, operator } => {
                         format!("The active set for {operator} is registered, but no metrics is received")
                     }
-                    Alert::UnregisteredFromActiveSet { node: _, operator } => {
+                    Alert::UnregisteredFromActiveSet { node_name: _, node_type: _, operator } => {
                         format!("Operator {operator:?} unregistered from the active set")
                     }
                     Alert::MachineNotResponding => format!("Machine is not responding"),
                     Alert::NodeNotResponding {..} => "AVS is not responding".to_string(),
-                    Alert::HardwareResourceUsage { machine: _, resource, percent } => {
+                    Alert::HardwareResourceUsage { resource, percent, .. } => {
                         format!("Resource {resource} is used in {percent}%")
                     }
-                    Alert::LowPerformaceScore { node: _, performance } => {
+                    Alert::LowPerformaceScore { node_name: _, node_type: _, performance } => {
                         format!("AVS dropped in performace score to {performance}")
                     }
                 },

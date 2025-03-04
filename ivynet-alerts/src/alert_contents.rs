@@ -6,5 +6,4 @@ use uuid::Uuid;
 pub struct Node {
     pub node_name: String,
     pub node_type: String,
-    pub machine_id: Uuid,
 }

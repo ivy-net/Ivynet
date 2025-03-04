@@ -26,7 +26,11 @@ mod test_alerts_db {
 
         let num_alerts = alerts_active.len();
         let machine_id = Uuid::parse_str("dcbf22c7-9d96-47ac-bf06-62d6544e440d").unwrap();
-        let alert_type = Alert::Custom("test".to_string());
+        let alert_type = Alert::Custom {
+            node_name: "test".to_string(),
+            node_type: "test".to_string(),
+            extra_data: serde_json::Value::String("test".to_string())
+        };
         let node_name = "test".to_string();
 
         let new_alert = NewAlert::new(machine_id, alert_type, node_name);
