@@ -1,0 +1,27 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO\n                service_settings\n                (organization_id, settings_type, settings_value, created_at)\n               VALUES\n                ($1, $2, $3, NOW())",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        {
+          "Custom": {
+            "name": "service_type",
+            "kind": {
+              "Enum": [
+                "email",
+                "telegram",
+                "pagerduty"
+              ]
+            }
+          }
+        },
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ef55f8edabcf67305c33eaf90bc182b2bd12ee21904ca0dc6d91f36273e8edd3"
+}

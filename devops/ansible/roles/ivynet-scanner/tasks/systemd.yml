@@ -1,0 +1,51 @@
+---
+- name: Copy Scanner Service files
+  ansible.builtin.template:
+    src: ivynet-scanner.service.j2
+    dest: /etc/systemd/system/ivynet-scanner-{{ item }}.service
+    owner: root
+    group: root
+    mode: "0644"
+  vars:
+    network: "{{ item }}"
+  loop:
+    - mainnet
+    - holesky
+  notify:
+    - Reload daemon
+    - Restart scanner holesky service
+    - Restart scanner mainnet service
+  tags:
+    - ivynet_scanner
+    - general
+    - systemd
+
+
+- name: Populate service facts
+  ansible.builtin.service_facts:
+
+- name: Set Scanner Holesky service
+  ansible.builtin.systemd_service:
+    name: ivynet-scanner-holesky
+    state: started
+    enabled: true
+    daemon_reload: true
+  when:
+    - "'ivynet-scanner-holesky.service' not in services"
+  tags:
+    - ivynet_scanner
+    - general
+    - systemd
+
+- name: Set Scanner Mainnet service
+  ansible.builtin.systemd_service:
+    name: ivynet-scanner-mainnet
+    state: started
+    enabled: true
+    daemon_reload: true
+  when:
+    - "'ivynet-scanner-mainnet.service' not in services"
+  tags:
+    - ivynet_scanner
+    - general
+    - systemd

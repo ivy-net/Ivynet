@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use alerts::Alert;
+use ivynet_alerts::Alert;
 use sendgrid::{
     v3::{Email, Message, Personalization, Sender},
     SendgridError,

@@ -20,9 +20,9 @@
           | sh -s -- -y
       become: true
   roles:
-    - role: ivynet-backend
+    - role: ivynet-api
       become: true
     - role: ivynet-ingress
       become: true
-    - role: ivynet-scraper
+    - role: ivynet-scanner
       become: true

@@ -1,6 +1,6 @@
 use clap::Parser as _;
-use db::configure;
-use ivynet_ingress::{config::Config, error::IngressError, grpc};
+use ingress::{config::Config, error::IngressError, grpc};
+use ivynet_database::configure;
 use tracing::{error, warn, Level};
 use tracing_subscriber::FmtSubscriber;
 
@@ -17,7 +17,7 @@ async fn main() -> Result<(), IngressError> {
     }
 
     let config = Config::parse();
-    println!("{:?}", config.telegram_token);
+    println!("Telegram token: {:?}", config.telegram_token);
     start_tracing(config.log_level)?;
     let pool = configure(&config.db_uri, false).await?;
 

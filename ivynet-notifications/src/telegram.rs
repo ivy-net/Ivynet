@@ -1,6 +1,6 @@
 use std::time::Duration;
 
-use alerts::Alert;
+use ivynet_alerts::Alert;
 use teloxide::{dispatching::UpdateHandler, prelude::*, utils::command::BotCommands};
 use tokio::time::sleep;
 use tracing::warn;
@@ -30,7 +30,7 @@ enum BotCommand {
     #[command(
         rename_rule = "lowercase",
         parse_with = "split",
-        description = "Register this chat to notifications"
+        description = "Register this chat to notifications using /register <email> <password>. Your message will be deleted after registration."
     )]
     Register { email: String, password: String },
 
@@ -66,7 +66,7 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
             Dispatcher::builder(bot.clone(), handler)
                 .dependencies(dptree::deps![self.db.clone()])
                 .default_handler(|upd| async move {
-                    warn!("Unhandled update: {:?}", upd);
+                    warn!("Unhandled update: {:#?}", upd);
                 })
                 // If the dispatcher fails for some reason, execute this handler.
                 .error_handler(LoggingErrorHandler::with_custom_text(
@@ -225,7 +225,11 @@ async fn command_handler<D: OrganizationDatabase>(
             if db.register_chat(msg.chat.id.to_string().as_str(), &email, &password).await {
                 bot.send_message(msg.chat.id, "Registration successful.").await?;
             } else {
-                bot.send_message(msg.chat.id, "Registration failed.").await?;
+                bot.send_message(
+                    msg.chat.id,
+                    "Registration failed. Please check that your email and password are correct.",
+                )
+                .await?;
             }
         }
         BotCommand::Unregister => {

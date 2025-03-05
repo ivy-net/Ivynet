@@ -1,5 +1,5 @@
 use crate::error::IngressError;
-use db::AvsActiveSet;
+use ivynet_database::AvsActiveSet;
 use ivynet_grpc::{
     self,
     backend_events::{

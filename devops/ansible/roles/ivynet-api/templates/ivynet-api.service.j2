@@ -1,0 +1,13 @@
+[Unit]
+Description=Ivynet API service
+After=network.target
+
+[Service]
+ExecStart={{ ivynet_api_path_install }}/bin/ivynet-api
+EnvironmentFile={{ ivynet_api_path_secrets }}/env.api
+Type=simple
+Restart=always
+
+[Install]
+WantedBy=default.target
+RequiredBy=network.target

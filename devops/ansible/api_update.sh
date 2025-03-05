@@ -1,10 +1,10 @@
 #!/bin/bash
 #
-# The script to run ansible to update current backend
+# The script to run ansible to update current api
 # Requires toml cargo package
 
 
-services="backend ingress scraper"
+services="api ingress scanner"
 declare version
 
 pre_checks() {
@@ -41,31 +41,31 @@ ansible-playbook -i gcp.yml -u ${remote_user} -e "ivynet_${1}_release=${version_
 
 all_services() {
 
-  find_version "backend"
-  version_backend=${version}
+  find_version "api"
+  version_api=${version}
   find_version "ingress"
   version_ingress=${version}
-  find_version "scraper"
-  version_scraper=${version}
+  find_version "scanner"
+  version_scanner=${version}
   cat << EOF
 Run the playbook
 
  ansible-playbook \\
   -i gcp.yml \\
   -u ${remote_user} \\
-  -e "ivynet_backend_release=${version_backend}" \\
+  -e "ivynet_api_release=${version_api}" \\
   -e "ivynet_ingress_release=${version_ingress}" \\
-  -e "ivynet_scraper_release=${version_scraper}" \\
+  -e "ivynet_scanner_release=${version_scanner}" \\
   --vault-password-file ~/.vault.txt \\
-  backend.yml
+  api.yml
 EOF
 
   ansible-playbook \
     -i gcp.yml \
     -u ${remote_user} \
-    -e "ivynet_backend_release=${version_backend}" \
+    -e "ivynet_api_release=${version_api}" \
     -e "ivynet_ingress_release=${version_ingress}" \
-    -e "ivynet_scraper_release=${version_scraper}" \
+    -e "ivynet_scanner_release=${version_scanner}" \
     --vault-password-file ~/.vault.txt \
     api.yml
 }

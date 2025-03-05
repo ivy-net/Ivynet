@@ -1,4 +1,4 @@
-use db::machine::Machine;
+use ivynet_database::machine::Machine;
 use ivynet_error::ethers::types::{Signature, H160};
 
 use ivynet_grpc::{

@@ -10,7 +10,7 @@
     - ivynet_user
     - systemd
 
-- name: Copy Backend Service file
+- name: Copy Client Service file
   ansible.builtin.template:
     src: ivynet-client.service.j2
     dest: /etc/systemd/system/ivynet-client.service
@@ -28,7 +28,7 @@
 - name: Populate service facts
   ansible.builtin.service_facts:
 
-- name: Set Backend service
+- name: Set Client service
   ansible.builtin.systemd_service:
     name: ivynet-client
     state: started

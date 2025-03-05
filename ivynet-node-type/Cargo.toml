@@ -1,6 +1,6 @@
 [package]
 name = "ivynet-node-type"
-version = "0.5.0"
+version = "0.6.0"
 edition = "2021"
 authors = ["Noah Foltz <noah@ivynet.dev>"]
 description = "Library for supported node types"
@@ -21,4 +21,4 @@ strum.workspace = true
 thiserror.workspace = true
 tracing.workspace = true
 ethers.workspace = true
-ivynet-macros = { path = "../macros" }
+ivynet-macros.workspace = true

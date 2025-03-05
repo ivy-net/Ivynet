@@ -1,6 +1,6 @@
 use crate::{Notification, OrganizationDatabase};
-use alerts::Alert;
 use chrono::{DateTime, Utc};
+use ivynet_alerts::Alert;
 use serde::Serialize;
 use uuid::Uuid;
 

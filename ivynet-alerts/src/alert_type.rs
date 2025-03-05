@@ -2,12 +2,27 @@ use std::fmt::Display;
 
 use ethers::types::Address;
 use serde::{Deserialize, Serialize};
-use strum::{EnumCount, EnumIter, IntoDiscriminant, IntoEnumIterator};
+use serde_json::Value;
+use strum::{EnumCount, EnumIter, EnumProperty, IntoDiscriminant, IntoEnumIterator};
 use strum_macros::EnumDiscriminants;
+use utoipa::{
+    openapi::{RefOr, Schema},
+    ToSchema,
+};
 use uuid::Uuid;
 
 #[derive(
-    Serialize, Deserialize, Debug, Clone, PartialEq, Eq, EnumCount, EnumDiscriminants, EnumIter,
+    Serialize,
+    Deserialize,
+    Debug,
+    Clone,
+    PartialEq,
+    Eq,
+    EnumCount,
+    EnumDiscriminants,
+    EnumProperty,
+    EnumIter,
+    ToSchema,
 )]
 #[strum_discriminants(name(AlertType))]
 #[repr(usize)]
@@ -65,6 +80,28 @@ pub enum Alert {
         current_version: String,
         recommended_version: String,
     } = 12,
+}
+
+// Implement ToSchema for AlertType
+impl<'s> ToSchema<'s> for AlertType {
+    fn schema() -> (&'s str, utoipa::openapi::RefOr<utoipa::openapi::schema::Schema>) {
+        (
+            "AlertType",
+            RefOr::T(Schema::Object(
+                utoipa::openapi::schema::ObjectBuilder::new()
+                    .schema_type(utoipa::openapi::schema::SchemaType::String)
+                    .enum_values(Some(
+                        AlertType::list_all()
+                            .into_iter()
+                            .map(|alert_type| alert_type.to_string())
+                            .map(Value::String)
+                            .collect::<Vec<Value>>(),
+                    ))
+                    .description(Some("Type of alert that can be triggered"))
+                    .build(),
+            )),
+        )
+    }
 }
 
 impl Alert {

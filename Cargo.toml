@@ -1,11 +1,13 @@
 [workspace]
 members = [
+#Binaries
 	"cli",
-	"macros",
-	"backend",
-	"scraper",
-	"db",
+	"api",
+	"scanner",
 	"ingress",
+#Crates
+    "ivynet-database",
+    "ivynet-macros",
 	"ivynet-docker",
 	"ivynet-docker-registry",
 	"ivynet-grpc",
@@ -19,7 +21,7 @@ members = [
 resolver = "2"
 
 [workspace.package]
-version = "0.5.0"
+version = "0.6.0"
 edition = "2021"
 repository = "https://github.com/ivy-net/ivynet"
 categories = ["cryptography::cryptocurrencies"]
@@ -58,11 +60,8 @@ unused_rounding = "warn"
 useless_let_if_seq = "warn"
 
 [workspace.dependencies]
-# Local packages with binary
-db = { path = "db" }
-
 # Local packages
-alerts = { path = "ivynet-alerts" }
+ivynet-alerts = { path = "ivynet-alerts" }
 ivynet-error = { path = "ivynet-error" }
 ivynet-docker = { path = "ivynet-docker" }
 ivynet-docker-registry = { path = "ivynet-docker-registry" }
@@ -71,6 +70,8 @@ ivynet-io = { path = "ivynet-io" }
 ivynet-node-type = { path = "ivynet-node-type" }
 ivynet-notifications = { path = "ivynet-notifications" }
 ivynet-signer = { path = "ivynet-signer" }
+ivynet-database = { path = "ivynet-database" }
+ivynet-macros = { path = "ivynet-macros" }
 
 #grpc
 prost = "0.13"
@@ -84,7 +85,7 @@ async-trait = "0.1.80"
 blsful = "2.5.7"
 bollard = "0.17.1"
 convert_case = "0.6.0"
-chrono = "0.4.0"
+chrono = "0.4.40"
 dialoguer = "0.11.0"
 dirs = "5.0.1"
 docker-registry = "0.7.0"
@@ -120,5 +121,7 @@ tonic-build = "0.12"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 uuid = { version = "1.12.0", features = ["v4", "v5", "serde"] }
+utoipa = { version = "4.2.3", features = ["axum_extras"] }
+utoipa-swagger-ui = { version = "7.1.0", features = ["axum"] }
 which = "7.0"
-zip = "2.1.3"
+zip = "2.2.3"

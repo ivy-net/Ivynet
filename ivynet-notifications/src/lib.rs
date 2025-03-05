@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use alerts::Alert;
+use ivynet_alerts::Alert;
 use pagerduty::PagerDutySender;
 use sendgrid::EmailSender;
 use telegram::TelegramBot;

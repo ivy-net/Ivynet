@@ -1,0 +1,76 @@
+---
+- name: Prepare directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - "{{ ivynet_api_path_install }}"
+    - "{{ ivynet_api_path_install }}/bin"
+    - "{{ ivynet_api_path_resources }}"
+  tags:
+    - general
+
+- name: Set secrets directory
+  ansible.builtin.file:
+    path: "{{ ivynet_api_path_secrets }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0700"
+  tags:
+    - general
+
+- name: Add another bin dir to system-wide $PATH.
+  ansible.builtin.copy:
+    dest: /etc/profile.d/ivy-path.sh
+    content: 'PATH=$PATH:{{ ivynet_api_path_install }}/bin'
+    owner: root
+    group: root
+    mode: "0644"
+  tags:
+    - ivynet_api
+
+- name: Copy Env file
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ ivynet_api_path_secrets }}/env.api"
+    owner: root
+    group: root
+    mode: "0600"
+  notify:
+    - Restart api service
+  tags:
+    - general
+    - systemd
+    - template
+
+- name: Install and configure 3rd party tools
+  ansible.builtin.import_tasks:
+    file: third_party.yml
+
+- name: Download ivynet-api for master
+  ansible.builtin.import_tasks:
+    file: get_api_master.yml
+  when:
+    - not ivynet_api_is_release
+
+- name: Download ivynet-api for release
+  ansible.builtin.import_tasks:
+    file: get_api.yml
+  when:
+    - ivynet_api_is_release
+
+- name: Configure DB for api
+  ansible.builtin.import_tasks:
+    file: setup_db.yml
+
+- name: Configure SystemD
+  ansible.builtin.import_tasks:
+    file: systemd.yml
+
+- name: Prepare extra scripts
+  ansible.builtin.import_tasks:
+    file: scripts.yml
