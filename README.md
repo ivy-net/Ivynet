@@ -140,9 +140,9 @@ Convenient shell script for confiuration-related steps
 
 ```sh
 echo "Closing existing database..."
-docker compose -f ./db/backend-compose.yaml down -v
+docker compose -f ./ivynet-database/backend-compose.yaml down -v
 sleep 3
-docker compose -f ./db/backend-compose.yaml up -d
+docker compose -f ./ivynet-database/backend-compose.yaml up -d
 echo "Waiting for PostgreSQL database..."
 sleep 3
 export DATABASE_URL=postgresql://ivy:secret_ivy@localhost:5432/ivynet

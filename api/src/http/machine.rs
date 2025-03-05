@@ -518,7 +518,7 @@ pub async fn logs(
     }
 
     if let (Some(from), Some(to)) = (from, to) {
-        if from.checked_sub(to).map_or(true, |diff| diff > MAX_LOG_TIME_RANGE) {
+        if from.checked_sub(to).is_none_or(|diff| diff > MAX_LOG_TIME_RANGE) {
             return Err(BackendError::MalformedParameter(
                 "from/to".to_string(),
                 "Log time range too large - 24 hour max".to_string(),

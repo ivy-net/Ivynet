@@ -182,26 +182,39 @@ async fn extract_node_data_alerts(
     if let Some(datetime) = avs.updated_at {
         let now = chrono::Utc::now().naive_utc();
         if now.signed_duration_since(datetime).num_minutes() > IDLE_MINUTES_THRESHOLD {
-            alerts.push(Alert::NodeNotResponding(node_data.name.clone()));
+            alerts.push(Alert::NodeNotResponding {
+                node_name: node_data.name.clone(),
+                node_type: avs.avs_type.to_string(),
+            });
             if avs.active_set && avs.operator_address.is_some() {
                 alerts.push(Alert::ActiveSetNoDeployment {
-                    avs: node_data.name.clone(),
-                    address: avs.operator_address.expect("UNENTERABLE"),
+                    node_name: node_data.name.clone(),
+                    node_type: avs.avs_type.to_string(),
+                    operator: avs.operator_address.expect("UNENTERABLE"),
                 });
             }
         }
     }
 
     if !node_data.metrics_alive() {
-        alerts.push(Alert::NoMetrics(node_data.name.clone()));
+        alerts.push(Alert::NoMetrics {
+            node_name: node_data.name.clone(),
+            node_type: avs.avs_type.to_string(),
+        });
     }
 
     if !node_data.node_running() {
-        alerts.push(Alert::NodeNotRunning(node_data.name.clone()));
+        alerts.push(Alert::NodeNotRunning {
+            node_name: node_data.name.clone(),
+            node_type: avs.avs_type.to_string(),
+        });
     }
 
     if avs.chain.is_none() {
-        alerts.push(Alert::NoChainInfo(node_data.name.clone()));
+        alerts.push(Alert::NoChainInfo {
+            node_name: node_data.name.clone(),
+            node_type: avs.avs_type.to_string(),
+        });
     } else if let Some(chain) = avs.chain {
         if let Ok(version_map) = version_map {
             let update_status = get_update_status(
@@ -220,7 +233,8 @@ async fn extract_node_data_alerts(
                     update_status == UpdateStatus::Updateable
                 {
                     alerts.push(Alert::NeedsUpdate {
-                        avs: node_data.name.clone(),
+                        node_name: node_data.name.clone(),
+                        node_type: avs.avs_type.to_string(),
                         current_version: avs.avs_version.clone(),
                         recommended_version,
                     });
@@ -230,7 +244,10 @@ async fn extract_node_data_alerts(
     }
 
     if avs.operator_address.is_none() {
-        alerts.push(Alert::NoOperatorId(node_data.name.clone()));
+        alerts.push(Alert::NoOperatorId {
+            node_name: node_data.name.clone(),
+            node_type: avs.avs_type.to_string(),
+        });
     }
 
     alerts
@@ -346,11 +363,19 @@ mod tests {
         let handler = handler_fixture(&pool);
         let machine_id = Uuid::parse_str("dcbf22c7-9d96-47ac-bf06-62d6544e440d").unwrap();
         let node_name = "test".to_string();
-        let alert_type_1 = Alert::Custom("runtime_alert_fixture_1".to_string());
+        let alert_type_1 = Alert::Custom {
+            node_name: node_name.clone(),
+            node_type: NodeType::EigenDA.to_string(),
+            extra_data: serde_json::Value::String("runtime_alert_fixture_1".to_string()),
+        };
 
         let new_alert_1 = NewAlert::new(machine_id, alert_type_1, node_name.clone());
 
-        let alert_type_2 = Alert::Custom("runtime_alert_fixture_2".to_string());
+        let alert_type_2 = Alert::Custom {
+            node_name: node_name.clone(),
+            node_type: NodeType::EigenDA.to_string(),
+            extra_data: serde_json::Value::String("runtime_alert_fixture_2".to_string()),
+        };
         let new_alert_2 = NewAlert::new(machine_id, alert_type_2.clone(), node_name);
 
         ActiveAlert::insert_one(&pool, &new_alert_1).await.unwrap();

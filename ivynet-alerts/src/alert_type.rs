@@ -1,6 +1,6 @@
 use std::fmt::Display;
 
-use ethers::types::H160;
+use ethers::types::Address;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use strum::{EnumCount, EnumIter, EnumProperty, IntoDiscriminant, IntoEnumIterator};
@@ -9,6 +9,7 @@ use utoipa::{
     openapi::{RefOr, Schema},
     ToSchema,
 };
+use uuid::Uuid;
 
 #[derive(
     Serialize,
@@ -26,18 +27,59 @@ use utoipa::{
 #[strum_discriminants(name(AlertType))]
 #[repr(usize)]
 pub enum Alert {
-    Custom(String) = 1,
-    ActiveSetNoDeployment { avs: String, address: H160 } = 2,
-    UnregisteredFromActiveSet { avs: String, address: H160 } = 3,
+    Custom {
+        node_name: String,
+        node_type: String,
+        extra_data: serde_json::Value,
+    } = 1,
+    ActiveSetNoDeployment {
+        node_name: String,
+        node_type: String,
+        operator: Address,
+    } = 2,
+    UnregisteredFromActiveSet {
+        node_name: String,
+        node_type: String,
+        operator: Address,
+    } = 3,
     MachineNotResponding = 4,
-    NodeNotResponding(String) = 5,
-    NodeNotRunning(String) = 6,
-    NoChainInfo(String) = 7,
-    NoMetrics(String) = 8,
-    NoOperatorId(String) = 9,
-    HardwareResourceUsage { resource: String, percent: u16 } = 10,
-    LowPerformaceScore { avs: String, performance: u16 } = 11,
-    NeedsUpdate { avs: String, current_version: String, recommended_version: String } = 12,
+    NodeNotResponding {
+        node_name: String,
+        node_type: String,
+    } = 5,
+    NodeNotRunning {
+        node_name: String,
+        node_type: String,
+    } = 6,
+    NoChainInfo {
+        node_name: String,
+        node_type: String,
+    } = 7,
+    NoMetrics {
+        node_name: String,
+        node_type: String,
+    } = 8,
+    NoOperatorId {
+        node_name: String,
+        node_type: String,
+    } = 9,
+    HardwareResourceUsage {
+        machine: Uuid,
+        resource: String,
+        percent: u16,
+    } = 10,
+    // TODO: Find out how exactly this should be used
+    LowPerformaceScore {
+        node_name: String,
+        node_type: String,
+        performance: u16,
+    } = 11,
+    NeedsUpdate {
+        node_name: String,
+        node_type: String,
+        current_version: String,
+        recommended_version: String,
+    } = 12,
 }
 
 // Implement ToSchema for AlertType
@@ -72,25 +114,27 @@ impl Alert {
     // id to prevent collision where different notification types may have the same interior field.
     pub fn uuid_seed(&self) -> String {
         match self {
-            Alert::Custom(_) |
-            Alert::ActiveSetNoDeployment { .. } |
-            Alert::UnregisteredFromActiveSet { .. } |
-            Alert::MachineNotResponding |
-            Alert::NodeNotResponding(_) |
-            Alert::NodeNotRunning(_) |
-            Alert::NoChainInfo(_) |
-            Alert::NoMetrics(_) |
-            Alert::NoOperatorId(_) => {
+            Alert::Custom { node_name, .. } |
+            Alert::ActiveSetNoDeployment { node_name, .. } |
+            Alert::UnregisteredFromActiveSet { node_name, .. } |
+            Alert::NodeNotResponding { node_name, .. } |
+            Alert::NodeNotRunning { node_name, .. } |
+            Alert::NoChainInfo { node_name, .. } |
+            Alert::NoMetrics { node_name, .. } |
+            Alert::NoOperatorId { node_name, .. } => {
+                format!("{}-{}", node_name, self.id())
+            }
+            Alert::MachineNotResponding => {
                 format!("{:?}-{}", self, self.id())
             }
-            Alert::HardwareResourceUsage { resource, .. } => {
-                format!("{:?}-{}", resource, self.id())
+            Alert::HardwareResourceUsage { machine, resource, .. } => {
+                format!("{}-{}-{}", machine, resource, self.id())
             }
-            Alert::LowPerformaceScore { avs, .. } => {
-                format!("{:?}-{}", avs, self.id())
+            Alert::LowPerformaceScore { node_name, .. } => {
+                format!("{}-{}", node_name, self.id())
             }
-            Alert::NeedsUpdate { avs, current_version, .. } => {
-                format!("{:?}-{}-{}", avs, current_version, self.id())
+            Alert::NeedsUpdate { node_name, current_version, .. } => {
+                format!("{}-{}-{}", node_name, current_version, self.id())
             }
         }
     }
