@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO\n                notification_settings\n                (organization_id, settings_type, settings_value, created_at)\n            VALUES\n                ($1, $2, $3,  NOW())",
+  "query": "INSERT INTO\n                service_settings\n                (organization_id, settings_type, settings_value, created_at)\n               VALUES\n                ($1, $2, $3, NOW())",
   "describe": {
     "columns": [],
     "parameters": {
@@ -8,7 +8,7 @@
         "Int8",
         {
           "Custom": {
-            "name": "notification_type",
+            "name": "service_type",
             "kind": {
               "Enum": [
                 "email",
@@ -23,5 +23,5 @@
     },
     "nullable": []
   },
-  "hash": "ceccaaf30fec7d767b182f3b598be8c046fe5f555f8576f80d05a6f7b1f2c92c"
+  "hash": "ef55f8edabcf67305c33eaf90bc182b2bd12ee21904ca0dc6d91f36273e8edd3"
 }

@@ -61,7 +61,7 @@ useless_let_if_seq = "warn"
 
 [workspace.dependencies]
 # Local packages
-alerts = { path = "ivynet-alerts" }
+ivynet-alerts = { path = "ivynet-alerts" }
 ivynet-error = { path = "ivynet-error" }
 ivynet-docker = { path = "ivynet-docker" }
 ivynet-docker-registry = { path = "ivynet-docker-registry" }
@@ -121,5 +121,7 @@ tonic-build = "0.12"
 tracing = "0.1.41"
 tracing-subscriber = { version = "0.3.19", features = ["env-filter"] }
 uuid = { version = "1.12.0", features = ["v4", "v5", "serde"] }
+utoipa = { version = "4.2.3", features = ["axum_extras"] }
+utoipa-swagger-ui = { version = "7.1.0", features = ["axum"] }
 which = "7.0"
-zip = "2.1.3"
+zip = "2.2.3"

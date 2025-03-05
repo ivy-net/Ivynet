@@ -1,7 +1,7 @@
 use std::fmt::{self, Display, Formatter};
 
-use alerts::Alert;
 use chrono::NaiveDateTime;
+use ivynet_alerts::Alert;
 use ivynet_error::ethers::types::Address;
 use serde::Serialize;
 use sqlx::PgPool;

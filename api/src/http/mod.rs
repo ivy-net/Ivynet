@@ -98,15 +98,7 @@ fn create_router() -> Router<HttpState> {
                 .route("/invite", post(organization::invite))
                 .route("/confirm/:id", get(organization::confirm))
                 .route("/machines", get(organization::machines))
-                .route("/avses", get(organization::avses))
-                .route("/notifications", get(organization::get_notification_settings))
-                .route("/notifications", post(organization::set_notification_settings))
-                .route("/notifications/set_flags", post(organization::set_notification_flags))
-                .route("/alert_flags", get(organization::get_alert_flags))
-                .route("/alert_flags", post(organization::set_alert_flags))
-                .route("/alert_flags/list", get(organization::list_alert_flags))
-                .route("/alert_flags/get_flags", get(organization::get_alert_flags_human))
-                .route("/alert_flags/set_flag", post(organization::update_alert_flag)),
+                .route("/avses", get(organization::avses)),
         )
         .nest(
             "/client",
@@ -150,7 +142,15 @@ fn create_router() -> Router<HttpState> {
             Router::new()
                 .route("/active", get(alerts::active_alerts))
                 .route("/history", get(alerts::alert_history))
-                .route("/acknowledge", post(alerts::acknowledge_alert)),
+                .route("/acknowledge", post(alerts::acknowledge_alert))
+                .route("/services", get(alerts::get_notification_service_settings))
+                .route("/services", post(alerts::set_notification_service_settings))
+                .route("/services/set_flags", post(alerts::set_notification_service_flags))
+                .route("/notifications", get(alerts::get_alert_flags))
+                .route("/notifications", post(alerts::set_alert_flags))
+                .route("/notifications/list", get(alerts::list_alert_flags))
+                .route("/notifications/readable", get(alerts::get_alert_flags_human))
+                .route("/notifications/set_flags", post(alerts::update_alert_flag)),
         )
         .nest(
             "/info/avs",

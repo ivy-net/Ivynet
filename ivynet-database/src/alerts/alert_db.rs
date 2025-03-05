@@ -3,7 +3,7 @@ use std::collections::HashSet;
 
 use sqlx::PgPool;
 
-use crate::{Account, OrganizationNotifications};
+use crate::{Account, NotificationSettings};
 
 #[derive(Debug, Clone)]
 struct AlertDbBackend {
@@ -17,13 +17,9 @@ impl AlertDbBackend {
 
     pub async fn add_chat(&self, email: &str, password: &str, chat_id: &str) -> bool {
         if let Ok(account) = Account::verify(&self.pool, email, password).await {
-            if OrganizationNotifications::add_chat(
-                &self.pool,
-                account.organization_id as u64,
-                chat_id,
-            )
-            .await
-            .is_ok()
+            if NotificationSettings::add_chat(&self.pool, account.organization_id as u64, chat_id)
+                .await
+                .is_ok()
             {
                 return true;
             }
@@ -32,7 +28,7 @@ impl AlertDbBackend {
     }
 
     pub async fn remove_chat(&self, chat_id: &str) -> bool {
-        if OrganizationNotifications::remove_chat(&self.pool, chat_id).await.is_ok() {
+        if NotificationSettings::remove_chat(&self.pool, chat_id).await.is_ok() {
             return true;
         }
 
@@ -40,25 +36,23 @@ impl AlertDbBackend {
     }
 
     pub async fn chats_for(&self, organization_id: u64) -> HashSet<String> {
-        let chats: Vec<String> =
-            OrganizationNotifications::get_all_chats(&self.pool, organization_id)
-                .await
-                .unwrap_or_default();
+        let chats: Vec<String> = NotificationSettings::get_all_chats(&self.pool, organization_id)
+            .await
+            .unwrap_or_default();
 
         chats.into_iter().collect()
     }
 
     pub async fn emails(&self, organization_id: u64) -> HashSet<String> {
-        let emails: Vec<String> =
-            OrganizationNotifications::get_all_emails(&self.pool, organization_id)
-                .await
-                .unwrap_or_default();
+        let emails: Vec<String> = NotificationSettings::get_all_emails(&self.pool, organization_id)
+            .await
+            .unwrap_or_default();
 
         emails.into_iter().collect()
     }
 
     pub async fn integration_key(&self, organization_id: u64) -> Option<String> {
-        OrganizationNotifications::get_pagerduty_integration(&self.pool, organization_id)
+        NotificationSettings::get_pagerduty_integration(&self.pool, organization_id)
             .await
             .unwrap_or_default()
     }

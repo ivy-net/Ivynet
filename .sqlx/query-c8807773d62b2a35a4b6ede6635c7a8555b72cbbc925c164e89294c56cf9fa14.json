@@ -1,14 +1,13 @@
 {
   "db_name": "PostgreSQL",
-  "query": "DELETE FROM\n                notification_settings\n               WHERE\n                organization_id = $1 AND settings_type = $2",
+  "query": "DELETE FROM\n                service_settings\n               WHERE\n                settings_type = $1 AND settings_value = $2",
   "describe": {
     "columns": [],
     "parameters": {
       "Left": [
-        "Int8",
         {
           "Custom": {
-            "name": "notification_type",
+            "name": "service_type",
             "kind": {
               "Enum": [
                 "email",
@@ -17,10 +16,11 @@
               ]
             }
           }
-        }
+        },
+        "Text"
       ]
     },
     "nullable": []
   },
-  "hash": "a39cfe44d3b69451ffefb2ce39008e67a374580d81a5feba60df8fc9c72bf6df"
+  "hash": "c8807773d62b2a35a4b6ede6635c7a8555b72cbbc925c164e89294c56cf9fa14"
 }
