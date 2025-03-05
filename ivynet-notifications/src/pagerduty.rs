@@ -106,8 +106,8 @@ fn message(notification: &Notification) -> String {
         NotificationType::MachineNotResponding => {
             format!("Machine '{:?}' has lost connection with our backend", notification.machine_id)
         }
-        NotificationType::Custom { node_name, extra_data, .. } => format!("ERROR: {extra_data}"),
-        NotificationType::NodeNotRunning { node_name, node_type } => {
+        NotificationType::Custom { extra_data, .. } => format!("ERROR: {extra_data}"),
+        NotificationType::NodeNotRunning { node_name, .. } => {
             format!("AVS {node_name} is not running on {}", notification.machine_id)
         }
         NotificationType::NoChainInfo { node_name, .. } => {

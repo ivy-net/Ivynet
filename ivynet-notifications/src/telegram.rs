@@ -176,7 +176,7 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
                     recommended_version = recommended_version
                 )
             }
-            NotificationType::ActiveSetNoDeployment { node_name, node_type: _, operator } => {
+            NotificationType::ActiveSetNoDeployment { node_name, .. } => {
                 format!(
                     "❗ *Active Set No Deployment* ❗️\n
                     Node `{node_name}` is in the active set, but the node is either not deployed or not responding\n
@@ -184,7 +184,7 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
                     machine_id = notification.machine_id
                 )
             }
-            NotificationType::NodeNotResponding { node_name, node_type: _ } => {
+            NotificationType::NodeNotResponding { node_name, .. } => {
                 format!(
                     "❗ *Node Not Responding* ❗️\n
                     Node `{node_name}` is not responding\n

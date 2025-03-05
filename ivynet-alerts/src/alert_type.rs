@@ -6,8 +6,6 @@ use strum::{EnumCount, EnumIter, IntoDiscriminant, IntoEnumIterator};
 use strum_macros::EnumDiscriminants;
 use uuid::Uuid;
 
-use crate::alert_contents::Node;
-
 #[derive(
     Serialize, Deserialize, Debug, Clone, PartialEq, Eq, EnumCount, EnumDiscriminants, EnumIter,
 )]

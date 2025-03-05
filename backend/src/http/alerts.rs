@@ -45,7 +45,6 @@ pub async fn active_alerts(
     let alerts = ActiveAlert::all_alerts_by_org(&state.pool, account.organization_id)
         .await?
         .into_iter()
-        .map(ActiveAlert::from)
         .collect();
     Ok(Json(alerts))
 }
@@ -103,7 +102,6 @@ pub async fn alert_history(
         HistoryAlert::alerts_by_org_between(&state.pool, account.organization_id, from, to)
             .await?
             .into_iter()
-            .map(HistoryAlert::from)
             .collect();
     Ok(Json(alerts))
 }

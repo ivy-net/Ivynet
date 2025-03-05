@@ -185,7 +185,7 @@ impl<D: OrganizationDatabase> EmailSender<D> {
                     Alert::UnregisteredFromActiveSet { node_name: _, node_type: _, operator } => {
                         format!("Operator {operator:?} unregistered from the active set")
                     }
-                    Alert::MachineNotResponding => format!("Machine is not responding"),
+                    Alert::MachineNotResponding => "Machine is not responding".to_string(),
                     Alert::NodeNotResponding {..} => "AVS is not responding".to_string(),
                     Alert::HardwareResourceUsage { resource, percent, .. } => {
                         format!("Resource {resource} is used in {percent}%")
