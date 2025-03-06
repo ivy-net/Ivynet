@@ -18,6 +18,7 @@ pub mod operator_keys;
 pub mod organization;
 pub mod utils;
 pub mod verification;
+pub mod eigen_avs_metadata;
 
 pub use account::{Account, Role};
 pub use avs::Avs;

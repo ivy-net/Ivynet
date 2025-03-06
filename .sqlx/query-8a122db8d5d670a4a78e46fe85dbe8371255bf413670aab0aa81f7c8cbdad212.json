@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            DELETE FROM eigen_avs_metadata\n            WHERE address = $1 AND block_number = $2\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bpchar",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "8a122db8d5d670a4a78e46fe85dbe8371255bf413670aab0aa81f7c8cbdad212"
+}

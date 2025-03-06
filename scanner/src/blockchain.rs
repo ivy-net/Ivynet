@@ -7,7 +7,8 @@ use ethers::{
 use futures::{stream::SelectAll, Stream, StreamExt};
 use ivynet_grpc::{
     backend_events::{
-        backend_events_client::BackendEventsClient, LatestBlockRequest, RegistrationEvent,
+        backend_events_client::BackendEventsClient, LatestBlockRequest, MetadataUriEvent,
+        RegistrationEvent,
     },
     tonic::{transport::Channel, Request},
 };
@@ -224,14 +225,14 @@ pub async fn report_directory_event(
         DirectoryEvents::AvsmetadataURIUpdatedFilter(ev) => {
             info!("AVS metadata URI updated event {ev:?}");
 
-            // backend
-            //     .report_metadata_uri_event(Request::new(MetadataUriEvent {
-            //         avs: ev.avs.as_bytes().to_vec(),
-            //         metadata_uri: ev.metadata_uri,
-            //         block_number: event.1.block_number.as_u64(),
-            //         log_index: event.1.log_index.as_u64(),
-            //     }))
-            //     .await?;
+            backend
+                .report_metadata_uri_event(Request::new(MetadataUriEvent {
+                    avs: ev.avs.as_bytes().to_vec(),
+                    metadata_uri: ev.metadata_uri,
+                    block_number: event.1.block_number.as_u64(),
+                    log_index: event.1.log_index.as_u64(),
+                }))
+                .await?;
         }
         DirectoryEvents::OptInFilter(oin) => {
             backend

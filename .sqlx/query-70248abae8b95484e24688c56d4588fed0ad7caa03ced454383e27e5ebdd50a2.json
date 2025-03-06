@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            INSERT INTO eigen_avs_metadata (\n                address, block_number, metadata_uri, created_at\n            ) VALUES (\n                $1, $2, $3, NOW()\n            )\n            ON CONFLICT (address, block_number) DO UPDATE SET\n                metadata_uri = EXCLUDED.metadata_uri\n            ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bpchar",
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "70248abae8b95484e24688c56d4588fed0ad7caa03ced454383e27e5ebdd50a2"
+}

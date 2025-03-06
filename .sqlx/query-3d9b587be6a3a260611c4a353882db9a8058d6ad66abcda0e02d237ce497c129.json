@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT \n                id, address, block_number, metadata_uri, \n                name, description, website, logo, twitter, created_at\n            FROM eigen_avs_metadata\n            WHERE address = $1\n            ORDER BY block_number DESC\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 1,
+        "name": "address",
+        "type_info": "Bpchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "block_number",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "metadata_uri",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "name",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 5,
+        "name": "description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 6,
+        "name": "website",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 7,
+        "name": "logo",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 8,
+        "name": "twitter",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bpchar"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "3d9b587be6a3a260611c4a353882db9a8058d6ad66abcda0e02d237ce497c129"
+}

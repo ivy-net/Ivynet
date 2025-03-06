@@ -1,5 +1,6 @@
 use crate::error::IngressError;
 use ivynet_database::AvsActiveSet;
+use ivynet_error::ethers::types::Address;
 use ivynet_grpc::{
     self,
     backend_events::{
@@ -46,9 +47,22 @@ impl BackendEvents for EventsService {
 
     async fn report_metadata_uri_event(
         &self,
-        _request: Request<MetadataUriEvent>,
+        request: Request<MetadataUriEvent>,
     ) -> Result<Response<()>, Status> {
-        // info!("Need to implement db side of this");
+        let req = request.into_inner();
+
+        let avs = Address::from_slice(&req.avs);
+        let metadata_uri = req.metadata_uri;
+        let block_number = req.block_number;
+
+        println!("Received metadata uri event: {:#?}", metadata_uri);
+        println!("Address: {:#?}", avs);
+        println!("Block number: {:#?}", block_number);
+
+        
+
+
+
         Ok(Response::new(()))
     }
 }
