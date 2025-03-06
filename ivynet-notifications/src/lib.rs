@@ -41,7 +41,7 @@ pub enum Channel {
 #[derive(Clone, Debug)]
 pub enum SendgridTemplates {
     Generic(String),
-    Specific(SendgridSpecificTemplates),
+    Specific(Box<SendgridSpecificTemplates>),
 }
 
 #[derive(Clone, Debug)]

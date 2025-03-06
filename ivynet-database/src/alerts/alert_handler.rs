@@ -340,7 +340,7 @@ mod tests {
             telegram_token: "test".to_string(),
             sendgrid_key: "test".to_string(),
             sendgrid_from: "test".to_string(),
-            sendgrid_templates: SendgridTemplates::Specific(specific_templates),
+            sendgrid_templates: SendgridTemplates::Specific(Box::new(specific_templates)),
         }
     }
 
