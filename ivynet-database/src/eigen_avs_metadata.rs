@@ -307,10 +307,16 @@ impl EigenAvsMetadata {
         }
     }
 
-    pub async fn get_all_address_or_metadata_uri_count(
+    /// The point of this function is to see if an AVS has already been registered. If none of these
+    /// things are the same, it could still be an AVS that was already registered, but they probably
+    /// screwed something up.
+    pub async fn search_for_avs(
         pool: &PgPool,
         address: Address,
         metadata_uri: String,
+        name: String,
+        website: String,
+        twitter: String,
     ) -> Result<i64, DatabaseError> {
         debug!("Getting all metadata for address: {} at block: {}", address, metadata_uri);
 
@@ -321,10 +327,13 @@ impl EigenAvsMetadata {
             SELECT 
                 COUNT(*)::BIGINT
             FROM eigen_avs_metadata
-            WHERE address = $1 OR metadata_uri = $2
+            WHERE address = $1 OR metadata_uri = $2 OR name = $3 OR website = $4 OR twitter = $5
             "#,
             address_str,
             metadata_uri,
+            name,
+            website,
+            twitter,
         )
         .fetch_one(pool)
         .await;

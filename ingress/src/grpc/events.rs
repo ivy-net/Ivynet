@@ -59,10 +59,10 @@ impl BackendEvents for EventsService {
         let metadata_uri = req.metadata_uri;
         let block_number = req.block_number;
 
-        println!("Received metadata uri event: {:#?}", metadata_uri.clone());
-        println!("Address: {:#?}", avs);
-        println!("Block number: {:#?}", block_number);
-        println!("Log index: {:#?}", req.log_index);
+        // println!("Received metadata uri event: {:#?}", metadata_uri.clone());
+        // println!("Address: {:#?}", avs);
+        // println!("Block number: {:#?}", block_number);
+        // println!("Log index: {:#?}", req.log_index);
 
         // Use reqwest to get the metadata content
         let metadata = reqwest::get(metadata_uri.clone())
@@ -77,8 +77,6 @@ impl BackendEvents for EventsService {
         let parsed_metadata: serde_json::Value = serde_json::from_str(&metadata_text)
             .map_err(|e| Status::internal(format!("Failed to parse JSON metadata: {}", e)))?;
 
-        println!("Metadata content (parsed): {:#?}", parsed_metadata);
-
         let metadata_content = MetadataContent {
             name: parsed_metadata["name"].as_str().map(|s| s.to_string()),
             description: parsed_metadata["description"].as_str().map(|s| s.to_string()),
@@ -86,6 +84,22 @@ impl BackendEvents for EventsService {
             logo: parsed_metadata["logo"].as_str().map(|s| s.to_string()),
             twitter: parsed_metadata["twitter"].as_str().map(|s| s.to_string()),
         };
+
+        let count = EigenAvsMetadata::search_for_avs(
+            &self.pool,
+            avs,
+            metadata_uri.clone(),
+            metadata_content.name.clone().unwrap_or_default(),
+            metadata_content.website.clone().unwrap_or_default(),
+            metadata_content.twitter.clone().unwrap_or_default(),
+        )
+        .await
+        .map_err(|e| Status::internal(format!("Failed to get count of metadata: {}", e)))?;
+
+        if count > 0 {
+            tracing::info!("AVS already registered");
+            tracing::info!("Metadata content: {:#?}", parsed_metadata);
+        }
 
         EigenAvsMetadata::insert(
             &self.pool,
