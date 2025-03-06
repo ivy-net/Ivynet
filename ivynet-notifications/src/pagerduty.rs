@@ -122,7 +122,7 @@ fn message(notification: &Notification) -> String {
         NotificationType::HardwareResourceUsage { resource, percent, .. } => {
             format!("Machine {} has used over {percent}% of {resource}", notification.machine_id)
         }
-        NotificationType::LowPerformaceScore { node_name, performance, .. } => {
+        NotificationType::LowPerformanceScore { node_name, performance, .. } => {
             format!("AVS {node_name} has droped in performance to {performance}")
         }
         NotificationType::NeedsUpdate {
@@ -144,8 +144,8 @@ fn avs_if_any(notification: &Notification) -> Option<String> {
         NotificationType::NodeNotRunning { node_name, .. } |
         NotificationType::NoChainInfo { node_name, .. } |
         NotificationType::NoMetrics { node_name, .. } |
-        NotificationType::NoOperatorId { node_name, .. } => Some(node_name.to_owned()),
-        NotificationType::LowPerformaceScore { node_name, .. } => Some(node_name.to_owned()),
+        NotificationType::NoOperatorId { node_name, .. } |
+        NotificationType::LowPerformanceScore { node_name, .. } => Some(node_name.to_owned()),
         NotificationType::NeedsUpdate { node_name, .. } => Some(node_name.to_owned()),
         _ => None,
     }

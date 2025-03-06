@@ -111,6 +111,15 @@ impl AlertHandler {
         Ok(())
     }
 
+    pub async fn handle_event_data_alerts(
+        &self,
+        event_data: EventData,
+        machine_id: Uuid,
+    ) -> Result<(), AlertError> {
+
+        todo!()
+    }
+
     // Filters duplicate incoming alerts by checking computed UUID against existing alerts in the
     // database. If the alert is already present. Returns a list of alerts that are not present in
     // the database.

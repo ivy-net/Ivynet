@@ -34,7 +34,7 @@ enum EmailTemplate {
     NoMetrics,
     NoOperatorId,
     HardwareResourceUsage,
-    LowPerformaceScore,
+    LowPerformanceScore,
     NeedsUpdate,
     ActiveSetNoDeployment,
     NodeNotResponding,
@@ -77,8 +77,8 @@ impl EmailTemplate {
                     ("percent".to_owned(), format!("{percent}")),
                 ]),
             ),
-            NotificationType::LowPerformaceScore { node_name, performance, .. } => (
-                Self::LowPerformaceScore,
+            NotificationType::LowPerformanceScore { node_name, performance, .. } => (
+                Self::LowPerformanceScore,
                 HashMap::from([
                     ("avs".to_owned(), node_name),
                     ("performance".to_owned(), format!("{performance}")),
@@ -148,7 +148,7 @@ impl<D: OrganizationDatabase> EmailSender<D> {
                     sendgrid_templates.hw_res_usage.to_string(),
                 );
                 templates.insert(
-                    EmailTemplate::LowPerformaceScore,
+                    EmailTemplate::LowPerformanceScore,
                     sendgrid_templates.low_perf.to_string(),
                 );
                 templates.insert(
@@ -190,7 +190,7 @@ impl<D: OrganizationDatabase> EmailSender<D> {
                     Alert::HardwareResourceUsage { resource, percent, .. } => {
                         format!("Resource {resource} is used in {percent}%")
                     }
-                    Alert::LowPerformaceScore { node_name: _, node_type: _, performance } => {
+                    Alert::LowPerformanceScore { node_name: _, node_type: _, performance } => {
                         format!("AVS dropped in performace score to {performance}")
                     }
                 },

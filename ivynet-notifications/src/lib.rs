@@ -46,6 +46,7 @@ pub enum SendgridTemplates {
 
 #[derive(Clone, Debug)]
 pub struct SendgridSpecificTemplates {
+    // Node Data Alerts
     pub custom: String,
     pub unreg_active_set: String,
     pub machine_not_responding: String,
@@ -56,6 +57,10 @@ pub struct SendgridSpecificTemplates {
     pub hw_res_usage: String,
     pub low_perf: String,
     pub needs_update: String,
+
+    //Event Data Alerts
+    pub new_avs: String,
+    pub updated_avs: String,
 }
 
 #[derive(Clone, Debug)]

@@ -152,7 +152,7 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
                     resource = resource
                 )
             }
-            NotificationType::LowPerformaceScore { node_name, node_type: _, performance } => {
+            NotificationType::LowPerformanceScore { node_name, node_type: _, performance } => {
                 format!(
                     "❗ *Low Performance Score* ❗️\n
                     Node `{node_name}` has a LOW performance score of `{performance}`\n
