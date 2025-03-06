@@ -137,14 +137,12 @@ impl EigenAvsMetadata {
         }
     }
 
-    /// Get the latest metadata for a specific AVS address
-    pub async fn get_latest_for_address(
+    /// Get the latest metadata for a specific metadata URI
+    pub async fn get_latest_for_metadata_uri(
         pool: &PgPool,
-        address: Address,
+        metadata_uri: &str,
     ) -> Result<Option<EigenAvsMetadata>, DatabaseError> {
-        debug!("Getting latest metadata for address: {}", address);
-
-        let address_str = format!("{:?}", address);
+        debug!("Getting latest metadata for URI: {}", metadata_uri);
 
         let result = sqlx::query_as!(
             DbEigenAvsMetadata,
@@ -153,11 +151,11 @@ impl EigenAvsMetadata {
                 id, address, block_number, log_index, metadata_uri, 
                 name, description, website, logo, twitter, created_at
             FROM eigen_avs_metadata
-            WHERE address = $1
+            WHERE metadata_uri = $1
             ORDER BY block_number DESC, log_index DESC
             LIMIT 1
             "#,
-            address_str,
+            metadata_uri,
         )
         .fetch_optional(pool)
         .await;
@@ -170,7 +168,7 @@ impl EigenAvsMetadata {
             }
             Ok(None) => Ok(None),
             Err(e) => {
-                error!("Failed to get latest metadata for address: {}, error: {}", address, e);
+                error!("Failed to get latest metadata for URI: {}, error: {}", metadata_uri, e);
                 Err(DatabaseError::SqlxError(e))
             }
         }

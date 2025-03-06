@@ -24,3 +24,4 @@ CREATE TABLE eigen_avs_metadata (
 -- Create an index to quickly find the latest metadata for an address
 CREATE INDEX idx_eigen_avs_metadata_address_block_log ON eigen_avs_metadata (address, block_number DESC, log_index DESC);
 CREATE INDEX idx_eigen_avs_metadata_address ON eigen_avs_metadata (address DESC);
+CREATE INDEX idx_eigen_avs_metadata_metadata_uri ON eigen_avs_metadata (metadata_uri);
