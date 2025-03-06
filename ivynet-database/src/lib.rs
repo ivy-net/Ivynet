@@ -9,6 +9,7 @@ pub mod avs_version_hash;
 pub mod client;
 pub mod client_log;
 pub mod data;
+pub mod eigen_avs_metadata;
 pub mod error;
 pub mod log;
 pub mod machine;
@@ -18,7 +19,6 @@ pub mod operator_keys;
 pub mod organization;
 pub mod utils;
 pub mod verification;
-pub mod eigen_avs_metadata;
 
 pub use account::{Account, Role};
 pub use avs::Avs;

@@ -144,8 +144,8 @@ impl EigenAvsMetadata {
         let result = sqlx::query_as!(
             DbEigenAvsMetadata,
             r#"
-            SELECT 
-                id, address, block_number, log_index, metadata_uri, 
+            SELECT
+                id, address, block_number, log_index, metadata_uri,
                 name, description, website, logo, twitter, created_at
             FROM eigen_avs_metadata
             WHERE metadata_uri = $1
@@ -181,8 +181,8 @@ impl EigenAvsMetadata {
         let result = sqlx::query_as!(
             DbEigenAvsMetadata,
             r#"
-            SELECT 
-                id, address, block_number, log_index, metadata_uri, 
+            SELECT
+                id, address, block_number, log_index, metadata_uri,
                 name, description, website, logo, twitter, created_at
             FROM eigen_avs_metadata
             WHERE metadata_uri = $1
@@ -228,8 +228,8 @@ impl EigenAvsMetadata {
         let result = sqlx::query_as!(
             DbEigenAvsMetadata,
             r#"
-            SELECT 
-                id, address, block_number, log_index, metadata_uri, 
+            SELECT
+                id, address, block_number, log_index, metadata_uri,
                 name, description, website, logo, twitter, created_at
             FROM eigen_avs_metadata
             WHERE address = $1
@@ -273,8 +273,8 @@ impl EigenAvsMetadata {
         let result = sqlx::query_as!(
             DbEigenAvsMetadata,
             r#"
-            SELECT 
-                id, address, block_number, log_index, metadata_uri, 
+            SELECT
+                id, address, block_number, log_index, metadata_uri,
                 name, description, website, logo, twitter, created_at
             FROM eigen_avs_metadata
             WHERE address = $1 OR metadata_uri = $2
@@ -324,7 +324,7 @@ impl EigenAvsMetadata {
 
         let result = sqlx::query_scalar!(
             r#"
-            SELECT 
+            SELECT
                 COUNT(*)::BIGINT
             FROM eigen_avs_metadata
             WHERE address = $1 OR metadata_uri = $2 OR name = $3 OR website = $4 OR twitter = $5
@@ -363,8 +363,8 @@ impl EigenAvsMetadata {
         let result = sqlx::query_as!(
             DbEigenAvsMetadata,
             r#"
-            SELECT 
-                id, address, block_number, log_index, metadata_uri, 
+            SELECT
+                id, address, block_number, log_index, metadata_uri,
                 name, description, website, logo, twitter, created_at
             FROM eigen_avs_metadata
             WHERE address = $1 AND block_number = $2
