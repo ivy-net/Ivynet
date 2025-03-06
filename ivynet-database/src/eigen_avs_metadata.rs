@@ -293,10 +293,11 @@ impl EigenAvsMetadata {
     }
 
     /// Delete metadata for a specific AVS address at a specific block
-    pub async fn delete_for_address_at_block(
+    pub async fn delete_for_address_block_log(
         pool: &PgPool,
         address: Address,
         block_number: i64,
+        log_index: i32,
     ) -> Result<(), DatabaseError> {
         debug!("Deleting metadata for address: {} at block: {}", address, block_number);
 
@@ -305,10 +306,11 @@ impl EigenAvsMetadata {
         let result = sqlx::query!(
             r#"
             DELETE FROM eigen_avs_metadata
-            WHERE address = $1 AND block_number = $2
+            WHERE address = $1 AND block_number = $2 AND log_index = $3
             "#,
             address_str,
             block_number,
+            log_index,
         )
         .execute(pool)
         .await;
