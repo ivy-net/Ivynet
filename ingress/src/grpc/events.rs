@@ -1,5 +1,8 @@
 use crate::error::IngressError;
-use ivynet_database::AvsActiveSet;
+use ivynet_database::{
+    eigen_avs_metadata::{self, EigenAvsMetadata, MetadataContent},
+    AvsActiveSet,
+};
 use ivynet_error::ethers::types::Address;
 use ivynet_grpc::{
     self,
@@ -56,16 +59,16 @@ impl BackendEvents for EventsService {
         let metadata_uri = req.metadata_uri;
         let block_number = req.block_number;
 
-        println!("Received metadata uri event: {:#?}", metadata_uri);
+        println!("Received metadata uri event: {:#?}", metadata_uri.clone());
         println!("Address: {:#?}", avs);
         println!("Block number: {:#?}", block_number);
         println!("Log index: {:#?}", req.log_index);
 
         // Use reqwest to get the metadata content
-        let metadata_content = reqwest::get(metadata_uri)
+        let metadata = reqwest::get(metadata_uri.clone())
             .await
             .map_err(|e| Status::internal(format!("Failed to fetch metadata: {}", e)))?;
-        let metadata_text = metadata_content
+        let metadata_text = metadata
             .text()
             .await
             .map_err(|e| Status::internal(format!("Failed to parse metadata content: {}", e)))?;
@@ -75,6 +78,25 @@ impl BackendEvents for EventsService {
             .map_err(|e| Status::internal(format!("Failed to parse JSON metadata: {}", e)))?;
 
         println!("Metadata content (parsed): {:#?}", parsed_metadata);
+
+        let metadata_content = MetadataContent {
+            name: parsed_metadata["name"].as_str().map(|s| s.to_string()),
+            description: parsed_metadata["description"].as_str().map(|s| s.to_string()),
+            website: parsed_metadata["website"].as_str().map(|s| s.to_string()),
+            logo: parsed_metadata["logo"].as_str().map(|s| s.to_string()),
+            twitter: parsed_metadata["twitter"].as_str().map(|s| s.to_string()),
+        };
+
+        EigenAvsMetadata::insert(
+            &self.pool,
+            avs,
+            block_number as i64,
+            req.log_index as i32,
+            metadata_uri,
+            metadata_content,
+        )
+        .await
+        .map_err(|e| Status::internal(format!("Failed to insert metadata: {}", e)))?;
 
         Ok(Response::new(()))
     }

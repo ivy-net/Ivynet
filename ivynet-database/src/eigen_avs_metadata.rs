@@ -102,9 +102,6 @@ impl EigenAvsMetadata {
             ) VALUES (
                 $1, $2, $3, $4, $5, $6, $7, $8, $9, NOW()
             )
-            ON CONFLICT (address, block_number) DO UPDATE SET
-                metadata_uri = EXCLUDED.metadata_uri,
-                log_index = EXCLUDED.log_index
             "#,
             address_str,
             block_number,
@@ -175,6 +172,51 @@ impl EigenAvsMetadata {
     }
 
     /// Get all metadata entries for a specific AVS address
+    pub async fn get_all_with_same_metadata_uri(
+        pool: &PgPool,
+        metadata_uri: String,
+    ) -> Result<Vec<EigenAvsMetadata>, DatabaseError> {
+        debug!("Getting all metadata for metadata_uri: {}", metadata_uri);
+
+        let result = sqlx::query_as!(
+            DbEigenAvsMetadata,
+            r#"
+            SELECT 
+                id, address, block_number, log_index, metadata_uri, 
+                name, description, website, logo, twitter, created_at
+            FROM eigen_avs_metadata
+            WHERE metadata_uri = $1
+            ORDER BY block_number DESC, log_index DESC
+            "#,
+            metadata_uri,
+        )
+        .fetch_all(pool)
+        .await;
+
+        match result {
+            Ok(db_metadata_list) => {
+                let mut metadata_list = Vec::new();
+                for db_metadata in db_metadata_list {
+                    match EigenAvsMetadata::try_from(db_metadata) {
+                        Ok(metadata) => metadata_list.push(metadata),
+                        Err(e) => {
+                            error!("Failed to convert DB metadata: {}", e);
+                            return Err(DatabaseError::FailedConversion(e.to_string()));
+                        }
+                    }
+                }
+                Ok(metadata_list)
+            }
+            Err(e) => {
+                error!(
+                    "Failed to get all metadata for metadata_uri: {}, error: {}",
+                    metadata_uri, e
+                );
+                Err(DatabaseError::SqlxError(e))
+            }
+        }
+    }
+
     pub async fn get_all_for_address(
         pool: &PgPool,
         address: Address,
@@ -214,6 +256,86 @@ impl EigenAvsMetadata {
             }
             Err(e) => {
                 error!("Failed to get all metadata for address: {}, error: {}", address, e);
+                Err(DatabaseError::SqlxError(e))
+            }
+        }
+    }
+
+    pub async fn get_all_address_or_metadata_uri(
+        pool: &PgPool,
+        address: Address,
+        metadata_uri: String,
+    ) -> Result<Vec<EigenAvsMetadata>, DatabaseError> {
+        debug!("Getting all metadata for address: {} at block: {}", address, metadata_uri);
+
+        let address_str = format!("{:?}", address);
+
+        let result = sqlx::query_as!(
+            DbEigenAvsMetadata,
+            r#"
+            SELECT 
+                id, address, block_number, log_index, metadata_uri, 
+                name, description, website, logo, twitter, created_at
+            FROM eigen_avs_metadata
+            WHERE address = $1 OR metadata_uri = $2
+            ORDER BY block_number DESC, log_index DESC
+            "#,
+            address_str,
+            metadata_uri,
+        )
+        .fetch_all(pool)
+        .await;
+
+        match result {
+            Ok(db_metadata_list) => {
+                let mut metadata_list = Vec::new();
+                for db_metadata in db_metadata_list {
+                    match EigenAvsMetadata::try_from(db_metadata) {
+                        Ok(metadata) => metadata_list.push(metadata),
+                        Err(e) => {
+                            error!("Failed to convert DB metadata: {}", e);
+                            return Err(DatabaseError::FailedConversion(e.to_string()));
+                        }
+                    }
+                }
+                Ok(metadata_list)
+            }
+            Err(e) => {
+                error!("Failed to get all metadata for address: {}, error: {}", address_str, e);
+                Err(DatabaseError::SqlxError(e))
+            }
+        }
+    }
+
+    pub async fn get_all_address_or_metadata_uri_count(
+        pool: &PgPool,
+        address: Address,
+        metadata_uri: String,
+    ) -> Result<i64, DatabaseError> {
+        debug!("Getting all metadata for address: {} at block: {}", address, metadata_uri);
+
+        let address_str = format!("{:?}", address);
+
+        let result = sqlx::query_scalar!(
+            r#"
+            SELECT 
+                COUNT(*)::BIGINT
+            FROM eigen_avs_metadata
+            WHERE address = $1 OR metadata_uri = $2
+            "#,
+            address_str,
+            metadata_uri,
+        )
+        .fetch_one(pool)
+        .await;
+
+        match result {
+            Ok(count) => Ok(count.unwrap_or(0)),
+            Err(e) => {
+                error!(
+                    "Failed to get count of metadata for address: {}, error: {}",
+                    address_str, e
+                );
                 Err(DatabaseError::SqlxError(e))
             }
         }
