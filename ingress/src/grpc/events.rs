@@ -1,6 +1,6 @@
 use crate::error::IngressError;
 use ivynet_database::{
-    eigen_avs_metadata::{self, EigenAvsMetadata, MetadataContent},
+    eigen_avs_metadata::{EigenAvsMetadata, MetadataContent},
     AvsActiveSet,
 };
 use ivynet_error::ethers::types::Address;
@@ -59,10 +59,10 @@ impl BackendEvents for EventsService {
         let metadata_uri = req.metadata_uri;
         let block_number = req.block_number;
 
-        // println!("Received metadata uri event: {:#?}", metadata_uri.clone());
-        // println!("Address: {:#?}", avs);
-        // println!("Block number: {:#?}", block_number);
-        // println!("Log index: {:#?}", req.log_index);
+        tracing::debug!("Received metadata uri event: {:#?}", metadata_uri.clone());
+        tracing::debug!("Address: {:#?}", avs);
+        tracing::debug!("Block number: {:#?}", block_number);
+        tracing::debug!("Log index: {:#?}", req.log_index);
 
         // Use reqwest to get the metadata content
         let metadata = reqwest::get(metadata_uri.clone())
