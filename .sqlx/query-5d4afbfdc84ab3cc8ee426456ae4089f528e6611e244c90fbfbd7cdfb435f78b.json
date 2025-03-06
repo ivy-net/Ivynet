@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT \n                id, address, block_number, metadata_uri, \n                name, description, website, logo, twitter, created_at\n            FROM eigen_avs_metadata\n            WHERE address = $1 AND block_number = $2\n            ",
+  "query": "\n            SELECT \n                id, address, block_number, log_index, metadata_uri, \n                name, description, website, logo, twitter, created_at\n            FROM eigen_avs_metadata\n            WHERE address = $1 AND block_number = $2\n            ORDER BY log_index DESC\n            ",
   "describe": {
     "columns": [
       {
@@ -20,36 +20,41 @@
       },
       {
         "ordinal": 3,
+        "name": "log_index",
+        "type_info": "Int4"
+      },
+      {
+        "ordinal": 4,
         "name": "metadata_uri",
         "type_info": "Text"
       },
       {
-        "ordinal": 4,
+        "ordinal": 5,
         "name": "name",
         "type_info": "Text"
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "description",
         "type_info": "Text"
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "website",
         "type_info": "Text"
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "logo",
         "type_info": "Text"
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "twitter",
         "type_info": "Text"
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "created_at",
         "type_info": "Timestamp"
       }
@@ -65,6 +70,7 @@
       false,
       false,
       false,
+      false,
       true,
       true,
       true,
@@ -73,5 +79,5 @@
       false
     ]
   },
-  "hash": "f03e43dbbcd4a0fc5055c0f23a3a5abde03f2e108d7ec63e38721932ab1f2168"
+  "hash": "5d4afbfdc84ab3cc8ee426456ae4089f528e6611e244c90fbfbd7cdfb435f78b"
 }

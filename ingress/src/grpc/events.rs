@@ -10,6 +10,7 @@ use ivynet_grpc::{
     client::{Request, Response},
     server, Status,
 };
+use serde_json;
 use sqlx::PgPool;
 
 pub struct EventsService {
@@ -58,10 +59,22 @@ impl BackendEvents for EventsService {
         println!("Received metadata uri event: {:#?}", metadata_uri);
         println!("Address: {:#?}", avs);
         println!("Block number: {:#?}", block_number);
+        println!("Log index: {:#?}", req.log_index);
 
-        
+        // Use reqwest to get the metadata content
+        let metadata_content = reqwest::get(metadata_uri)
+            .await
+            .map_err(|e| Status::internal(format!("Failed to fetch metadata: {}", e)))?;
+        let metadata_text = metadata_content
+            .text()
+            .await
+            .map_err(|e| Status::internal(format!("Failed to parse metadata content: {}", e)))?;
 
+        // Parse the JSON metadata for cleaner output
+        let parsed_metadata: serde_json::Value = serde_json::from_str(&metadata_text)
+            .map_err(|e| Status::internal(format!("Failed to parse JSON metadata: {}", e)))?;
 
+        println!("Metadata content (parsed): {:#?}", parsed_metadata);
 
         Ok(Response::new(()))
     }

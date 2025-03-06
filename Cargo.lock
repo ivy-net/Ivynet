@@ -3331,6 +3331,8 @@ dependencies = [
  "ivynet-node-type",
  "ivynet-notifications",
  "ivynet-signer",
+ "reqwest 0.12.12",
+ "serde_json",
  "sqlx",
  "thiserror 2.0.12",
  "tokio",

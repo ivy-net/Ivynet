@@ -12,6 +12,7 @@ pub struct EigenAvsMetadata {
     pub id: Option<i32>,
     pub address: Address,
     pub block_number: i64,
+    pub log_index: i32,
     pub metadata_uri: String,
     pub name: Option<String>,
     pub description: Option<String>,
@@ -27,6 +28,7 @@ struct DbEigenAvsMetadata {
     pub id: Option<i32>,
     pub address: String,
     pub block_number: i64,
+    pub log_index: i32,
     pub metadata_uri: String,
     pub name: Option<String>,
     pub description: Option<String>,
@@ -34,6 +36,15 @@ struct DbEigenAvsMetadata {
     pub logo: Option<String>,
     pub twitter: Option<String>,
     pub created_at: Option<NaiveDateTime>,
+}
+
+#[derive(Debug, Clone)]
+pub struct MetadataContent {
+    pub name: Option<String>,
+    pub description: Option<String>,
+    pub website: Option<String>,
+    pub logo: Option<String>,
+    pub twitter: Option<String>,
 }
 
 #[derive(Debug, Error)]
@@ -55,6 +66,7 @@ impl TryFrom<DbEigenAvsMetadata> for EigenAvsMetadata {
             id: db_metadata.id,
             address,
             block_number: db_metadata.block_number,
+            log_index: db_metadata.log_index,
             metadata_uri: db_metadata.metadata_uri,
             name: db_metadata.name,
             description: db_metadata.description,
@@ -72,25 +84,37 @@ impl EigenAvsMetadata {
         pool: &PgPool,
         address: Address,
         block_number: i64,
+        log_index: i32,
         metadata_uri: String,
+        metadata_content: MetadataContent,
     ) -> Result<(), DatabaseError> {
-        debug!("Inserting AVS metadata for address: {}, block: {}", address, block_number);
+        debug!(
+            "Inserting AVS metadata for address: {}, block: {}, log_index: {}",
+            address, block_number, log_index
+        );
 
         let address_str = format!("{:?}", address);
 
         let result = sqlx::query!(
             r#"
             INSERT INTO eigen_avs_metadata (
-                address, block_number, metadata_uri, created_at
+                address, block_number, log_index, metadata_uri, name, description, website, logo, twitter, created_at
             ) VALUES (
-                $1, $2, $3, NOW()
+                $1, $2, $3, $4, $5, $6, $7, $8, $9, NOW()
             )
             ON CONFLICT (address, block_number) DO UPDATE SET
-                metadata_uri = EXCLUDED.metadata_uri
+                metadata_uri = EXCLUDED.metadata_uri,
+                log_index = EXCLUDED.log_index
             "#,
             address_str,
             block_number,
+            log_index,
             metadata_uri,
+            metadata_content.name,
+            metadata_content.description,
+            metadata_content.website,
+            metadata_content.logo,
+            metadata_content.twitter,
         )
         .execute(pool)
         .await;
@@ -98,70 +122,15 @@ impl EigenAvsMetadata {
         match result {
             Ok(_) => {
                 info!(
-                    "Successfully inserted AVS metadata for address: {}, block: {}",
-                    address, block_number
+                    "Successfully inserted AVS metadata for address: {}, block: {}, log_index: {}",
+                    address, block_number, log_index
                 );
                 Ok(())
             }
             Err(e) => {
                 error!(
-                    "Failed to insert AVS metadata for address: {}, block: {}, error: {}",
-                    address, block_number, e
-                );
-                Err(DatabaseError::SqlxError(e))
-            }
-        }
-    }
-
-    /// Update metadata content fields after fetching from URI
-    pub async fn update_metadata_content(
-        pool: &PgPool,
-        address: Address,
-        block_number: i64,
-        name: Option<&str>,
-        description: Option<&str>,
-        website: Option<&str>,
-        logo: Option<&str>,
-        twitter: Option<&str>,
-    ) -> Result<(), DatabaseError> {
-        debug!("Updating metadata content for address: {}, block: {}", address, block_number);
-
-        let address_str = format!("{:?}", address);
-
-        let result = sqlx::query!(
-            r#"
-            UPDATE eigen_avs_metadata
-            SET 
-                name = $3,
-                description = $4,
-                website = $5,
-                logo = $6,
-                twitter = $7
-            WHERE address = $1 AND block_number = $2
-            "#,
-            address_str,
-            block_number,
-            name,
-            description,
-            website,
-            logo,
-            twitter,
-        )
-        .execute(pool)
-        .await;
-
-        match result {
-            Ok(_) => {
-                info!(
-                    "Successfully updated metadata content for address: {}, block: {}",
-                    address, block_number
-                );
-                Ok(())
-            }
-            Err(e) => {
-                error!(
-                    "Failed to update metadata content for address: {}, block: {}, error: {}",
-                    address, block_number, e
+                    "Failed to insert AVS metadata for address: {}, block: {}, log_index: {}, error: {}",
+                    address, block_number, log_index, e
                 );
                 Err(DatabaseError::SqlxError(e))
             }
@@ -181,11 +150,11 @@ impl EigenAvsMetadata {
             DbEigenAvsMetadata,
             r#"
             SELECT 
-                id, address, block_number, metadata_uri, 
+                id, address, block_number, log_index, metadata_uri, 
                 name, description, website, logo, twitter, created_at
             FROM eigen_avs_metadata
             WHERE address = $1
-            ORDER BY block_number DESC
+            ORDER BY block_number DESC, log_index DESC
             LIMIT 1
             "#,
             address_str,
@@ -220,11 +189,11 @@ impl EigenAvsMetadata {
             DbEigenAvsMetadata,
             r#"
             SELECT 
-                id, address, block_number, metadata_uri, 
+                id, address, block_number, log_index, metadata_uri, 
                 name, description, website, logo, twitter, created_at
             FROM eigen_avs_metadata
             WHERE address = $1
-            ORDER BY block_number DESC
+            ORDER BY block_number DESC, log_index DESC
             "#,
             address_str,
         )
@@ -266,10 +235,11 @@ impl EigenAvsMetadata {
             DbEigenAvsMetadata,
             r#"
             SELECT 
-                id, address, block_number, metadata_uri, 
+                id, address, block_number, log_index, metadata_uri, 
                 name, description, website, logo, twitter, created_at
             FROM eigen_avs_metadata
             WHERE address = $1 AND block_number = $2
+            ORDER BY log_index DESC
             "#,
             address_str,
             block_number,
