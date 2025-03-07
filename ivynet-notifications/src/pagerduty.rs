@@ -70,6 +70,18 @@ impl From<Notification> for Event {
     }
 }
 
+fn avs_if_any(notification: &Notification) -> Option<String> {
+    match &notification.alert {
+        NotificationType::NodeNotRunning { node_name, .. } |
+        NotificationType::NoChainInfo { node_name, .. } |
+        NotificationType::NoMetrics { node_name, .. } |
+        NotificationType::NoOperatorId { node_name, .. } |
+        NotificationType::LowPerformanceScore { node_name, .. } => Some(node_name.to_owned()),
+        NotificationType::NeedsUpdate { node_name, .. } => Some(node_name.to_owned()),
+        _ => None,
+    }
+}
+
 pub struct PagerDutySender<D: OrganizationDatabase> {
     pub client: reqwest::Client,
     pub db: D,
@@ -136,18 +148,22 @@ fn message(notification: &Notification) -> String {
         NotificationType::NodeNotResponding { node_name, .. } => {
             format!("The node {node_name} is not responding")
         }
-    }
-}
-
-fn avs_if_any(notification: &Notification) -> Option<String> {
-    match &notification.alert {
-        NotificationType::NodeNotRunning { node_name, .. } |
-        NotificationType::NoChainInfo { node_name, .. } |
-        NotificationType::NoMetrics { node_name, .. } |
-        NotificationType::NoOperatorId { node_name, .. } |
-        NotificationType::LowPerformanceScore { node_name, .. } => Some(node_name.to_owned()),
-        NotificationType::NeedsUpdate { node_name, .. } => Some(node_name.to_owned()),
-        _ => None,
+        NotificationType::NewEigenAvs {
+            address,
+            name,
+            metadata_uri,
+            description,
+            website,
+            twitter,
+            ..
+        } => {
+            format!("New EigenLayer AVS: {name} has been detected at {address} with metadata URI {metadata_uri}. \n Website: {website} \n Twitter: {twitter} \n Description: {description}")
+        }
+        NotificationType::UpdatedEigenAvs {
+            address, name, metadata_uri, website, twitter, ..
+        } => {
+            format!("Updated EigenLayer AVS: {name} has updated their metadata or address to {address} with metadata URI {metadata_uri}. \n Website: {website} \n Twitter: {twitter}")
+        }
     }
 }
 

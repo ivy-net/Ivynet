@@ -38,6 +38,8 @@ enum EmailTemplate {
     NeedsUpdate,
     ActiveSetNoDeployment,
     NodeNotResponding,
+    NewEigenAvs,
+    UpdatedEigenAvs,
 }
 
 impl EmailTemplate {
@@ -107,6 +109,42 @@ impl EmailTemplate {
             NotificationType::NodeNotResponding { node_name, .. } => {
                 (Self::NodeNotResponding, HashMap::from([("node_name".to_owned(), node_name)]))
             }
+            NotificationType::NewEigenAvs {
+                name,
+                address,
+                metadata_uri,
+                website,
+                twitter,
+                description,
+                ..
+            } => (
+                Self::NewEigenAvs,
+                HashMap::from([
+                    ("name".to_owned(), name),
+                    ("address".to_owned(), format!("{:?}", address)),
+                    ("metadata_uri".to_owned(), metadata_uri),
+                    ("website".to_owned(), website),
+                    ("twitter".to_owned(), twitter),
+                    ("description".to_owned(), description),
+                ]),
+            ),
+            NotificationType::UpdatedEigenAvs {
+                name,
+                address,
+                metadata_uri,
+                website,
+                twitter,
+                ..
+            } => (
+                Self::UpdatedEigenAvs,
+                HashMap::from([
+                    ("name".to_owned(), name),
+                    ("address".to_owned(), format!("{:?}", address)),
+                    ("metadata_uri".to_owned(), metadata_uri),
+                    ("website".to_owned(), website),
+                    ("twitter".to_owned(), twitter),
+                ]),
+            ),
         }
     }
 }
@@ -192,6 +230,12 @@ impl<D: OrganizationDatabase> EmailSender<D> {
                     }
                     Alert::LowPerformanceScore { node_name: _, node_type: _, performance } => {
                         format!("AVS dropped in performace score to {performance}")
+                    }
+                    Alert::NewEigenAvs { name, address, metadata_uri, website, twitter, .. } => {
+                        format!("New EigenLayer AVS: {name} has been detected at {address} with metadata URI {metadata_uri}. \n Website: {website} \n Twitter: {twitter}")
+                    }
+                    Alert::UpdatedEigenAvs { name, address, metadata_uri, website, twitter, .. } => {
+                        format!("Updated EigenLayer AVS: {name} has updated their metadata or address to {address} with metadata URI {metadata_uri}. \n Website: {website} \n Twitter: {twitter}")
                     }
                 },
             );

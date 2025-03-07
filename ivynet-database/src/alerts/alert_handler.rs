@@ -116,7 +116,6 @@ impl AlertHandler {
         event_data: EventData,
         machine_id: Uuid,
     ) -> Result<(), AlertError> {
-
         todo!()
     }
 
@@ -343,6 +342,8 @@ mod tests {
             hw_res_usage: "test".to_string(),
             low_perf: "test".to_string(),
             needs_update: "test".to_string(),
+            new_eigen_avs: "test".to_string(),
+            updated_eigen_avs: "test".to_string(),
         };
 
         NotificationConfig {

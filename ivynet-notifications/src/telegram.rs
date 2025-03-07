@@ -192,6 +192,33 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
                     machine_id = notification.machine_id
                 )
             }
+            NotificationType::NewEigenAvs {
+                name,
+                address,
+                metadata_uri,
+                website,
+                twitter,
+                description,
+                ..
+            } => {
+                format!(
+                    "❗ *New EigenLayer AVS* ❗️\n
+                    New EigenLayer AVS: {name} has been detected at {address} with metadata URI {metadata_uri}. \n Website: {website} \n Twitter: {twitter} \n Description: {description}"
+                )
+            }
+            NotificationType::UpdatedEigenAvs {
+                name,
+                address,
+                metadata_uri,
+                website,
+                twitter,
+                ..
+            } => {
+                format!(
+                    "❗ *Updated EigenLayer AVS* ❗️\n
+                    Updated EigenLayer AVS: {name} has updated their metadata or address to {address} with metadata URI {metadata_uri}. \n Website: {website} \n Twitter: {twitter}"
+                )
+            }
         };
 
         if let Some(bot) = &self.bot {

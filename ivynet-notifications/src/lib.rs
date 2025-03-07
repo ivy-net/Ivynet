@@ -59,8 +59,8 @@ pub struct SendgridSpecificTemplates {
     pub needs_update: String,
 
     //Event Data Alerts
-    pub new_avs: String,
-    pub updated_avs: String,
+    pub new_eigen_avs: String,
+    pub updated_eigen_avs: String,
 }
 
 #[derive(Clone, Debug)]
