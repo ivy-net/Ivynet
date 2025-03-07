@@ -18,7 +18,10 @@ mod test_alerts_db {
 
     #[sqlx::test(
         migrations = "../migrations",
-        fixtures("../../fixtures/new_user_registration.sql", "../../fixtures/node_alerts_active.sql",)
+        fixtures(
+            "../../fixtures/new_user_registration.sql",
+            "../../fixtures/node_alerts_active.sql",
+        )
     )]
     #[ignore]
     async fn test_add_new_alert(pool: PgPool) {
@@ -50,7 +53,10 @@ mod test_alerts_db {
 
     #[sqlx::test(
         migrations = "../migrations",
-        fixtures("../../fixtures/new_user_registration.sql", "../../fixtures/node_alerts_active.sql",)
+        fixtures(
+            "../../fixtures/new_user_registration.sql",
+            "../../fixtures/node_alerts_active.sql",
+        )
     )]
     #[ignore]
     async fn test_get_all_active_alerts(pool: PgPool) {
@@ -60,7 +66,10 @@ mod test_alerts_db {
 
     #[sqlx::test(
         migrations = "../migrations",
-        fixtures("../../fixtures/new_user_registration.sql", "../../fixtures/node_alerts_active.sql",)
+        fixtures(
+            "../../fixtures/new_user_registration.sql",
+            "../../fixtures/node_alerts_active.sql",
+        )
     )]
     #[ignore]
     async fn test_get_alert_by_id(pool: PgPool) {
@@ -70,7 +79,10 @@ mod test_alerts_db {
 
     #[sqlx::test(
         migrations = "../migrations",
-        fixtures("../../fixtures/new_user_registration.sql", "../../fixtures/node_alerts_active.sql",)
+        fixtures(
+            "../../fixtures/new_user_registration.sql",
+            "../../fixtures/node_alerts_active.sql",
+        )
     )]
     #[ignore]
     async fn test_get_alerts_by_org(pool: PgPool) {
@@ -80,7 +92,10 @@ mod test_alerts_db {
 
     #[sqlx::test(
         migrations = "../migrations",
-        fixtures("../../fixtures/new_user_registration.sql", "../../fixtures/node_alerts_active.sql",)
+        fixtures(
+            "../../fixtures/new_user_registration.sql",
+            "../../fixtures/node_alerts_active.sql",
+        )
     )]
     #[ignore]
     async fn test_get_alerts_by_machine(pool: PgPool) {
@@ -94,7 +109,10 @@ mod test_alerts_db {
 
     #[sqlx::test(
         migrations = "../migrations",
-        fixtures("../../fixtures/new_user_registration.sql", "../../fixtures/node_alerts_active.sql",)
+        fixtures(
+            "../../fixtures/new_user_registration.sql",
+            "../../fixtures/node_alerts_active.sql",
+        )
     )]
     #[ignore]
     async fn test_acknowledge_alert(pool: PgPool) {
@@ -109,7 +127,10 @@ mod test_alerts_db {
 
     #[sqlx::test(
         migrations = "../migrations",
-        fixtures("../../fixtures/new_user_registration.sql", "../../fixtures/node_alerts_active.sql",)
+        fixtures(
+            "../../fixtures/new_user_registration.sql",
+            "../../fixtures/node_alerts_active.sql",
+        )
     )]
     #[ignore]
     async fn test_resolve_alert(pool: PgPool) {
