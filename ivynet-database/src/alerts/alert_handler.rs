@@ -1,15 +1,10 @@
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 
-use ivynet_alerts::Alert;
+use ivynet_alerts::{Alert, Channel, SendState};
 use ivynet_error::ethers::types::Chain;
 use ivynet_grpc::messages::NodeDataV2;
 use ivynet_node_type::NodeType;
-use ivynet_notifications::{
-    Channel, Notification, NotificationDispatcher, NotificationDispatcherError,
-};
+use ivynet_notifications::{Notification, NotificationDispatcher, NotificationDispatcherError};
 
 use sqlx::{types::Uuid, PgPool};
 
@@ -77,9 +72,7 @@ impl AlertHandler {
             .map(|alert| NewAlert::new(machine_id, alert, node_data.name.clone()))
             .collect::<Vec<_>>();
 
-        let filtered_new_alerts = self.filter_duplicate_alerts(new_alerts).await?;
-
-        ActiveAlert::insert_many(&self.db_executor, &filtered_new_alerts).await?;
+        let mut filtered_new_alerts = self.filter_duplicate_alerts(new_alerts).await?;
 
         // Handle notification dispatch. Notification filtering happens post-insertion, so alerts
         // are still visible in the database.
@@ -88,25 +81,28 @@ impl AlertHandler {
 
         let (channels, alert_ids) = self.organization_channel_alerts(organization_id).await;
 
-        let flag_filtered_alerts = filtered_new_alerts
-            .into_iter()
-            .filter(|alert| alert_ids.contains(&alert.alert_type.id()))
-            .collect::<Vec<_>>();
+        for (channel, do_send) in channels {
+            for alert in filtered_new_alerts.iter_mut() {
+                if do_send && alert_ids.contains(&alert.flag_id()) {
+                    let notification = Notification {
+                        id: alert.id,
+                        organization: organization_id,
+                        machine_id,
+                        alert: alert.alert_type.clone(),
+                        resolved: false,
+                    };
 
-        let notifications: Vec<Notification> = flag_filtered_alerts
-            .into_iter()
-            .map(|alert| Notification {
-                id: alert.id,
-                organization: organization_id,
-                machine_id,
-                alert: alert.alert_type,
-                resolved: false,
-            })
-            .collect();
-
-        for notification in notifications {
-            self.dispatcher.notify(notification, channels.clone()).await?;
+                    let send_state =
+                        match self.dispatcher.notify_channel(notification, channel).await {
+                            true => SendState::Sent,
+                            false => SendState::Failed,
+                        };
+                    alert.set_send_state(channel, send_state);
+                }
+            }
         }
+
+        ActiveAlert::insert_many(&self.db_executor, &filtered_new_alerts).await?;
 
         Ok(())
     }
@@ -134,26 +130,20 @@ impl AlertHandler {
         Ok(filtered)
     }
 
-    /// Returns the channels that are enabled for the organization, as well as flags for
-    /// enabled/disabled alerts in the form of a vec.
+    /// Returns hashmap of organization enabled / disabled notification chanels, as well as flags
+    /// for enabled/disabled alerts in the form of a vec.
     pub async fn organization_channel_alerts(
         &self,
         organization_id: u64,
-    ) -> (HashSet<Channel>, Vec<usize>) {
-        let mut channels = HashSet::new();
+    ) -> (HashMap<Channel, bool>, Vec<usize>) {
+        let mut channels = HashMap::new();
         let org_notifications = NotificationSettings::get(&self.db_executor, organization_id)
             .await
             .expect("Organization notifications not found");
 
-        if org_notifications.telegram {
-            channels.insert(Channel::Telegram);
-        }
-        if org_notifications.email {
-            channels.insert(Channel::Email);
-        }
-        if org_notifications.pagerduty {
-            channels.insert(Channel::PagerDuty);
-        }
+        channels.insert(Channel::Telegram, org_notifications.telegram);
+        channels.insert(Channel::Email, org_notifications.email);
+        channels.insert(Channel::PagerDuty, org_notifications.pagerduty);
 
         (channels, org_notifications.alert_flags.to_alert_ids())
     }

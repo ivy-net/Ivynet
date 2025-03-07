@@ -1,6 +1,6 @@
 use std::collections::HashSet;
 
-use ivynet_alerts::Alert;
+use ivynet_alerts::{Alert, Channel};
 use pagerduty::PagerDutySender;
 use sendgrid::EmailSender;
 use telegram::TelegramBot;
@@ -29,13 +29,6 @@ pub struct Notification {
     pub machine_id: Uuid,
     pub alert: Alert,
     pub resolved: bool,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum Channel {
-    Telegram,
-    Email,
-    PagerDuty,
 }
 
 #[derive(Clone, Debug)]
@@ -94,6 +87,14 @@ impl<D: OrganizationDatabase> NotificationDispatcher<D> {
     pub async fn serve(&self) -> Result<(), NotificationDispatcherError> {
         self.telegram.serve().await?;
         Ok(())
+    }
+
+    pub async fn notify_channel(&self, notification: Notification, channel: Channel) -> bool {
+        match channel {
+            Channel::Email => self.email_sender.notify(notification).await.is_ok(),
+            Channel::Telegram => self.telegram.notify(notification).await.is_ok(),
+            Channel::PagerDuty => self.pagerduty.notify(notification).await.is_ok(),
+        }
     }
 
     pub async fn notify(

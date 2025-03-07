@@ -1,7 +1,7 @@
 use std::fmt::{self, Display, Formatter};
 
 use chrono::NaiveDateTime;
-use ivynet_alerts::Alert;
+use ivynet_alerts::{Alert, Channel, SendState};
 use ivynet_error::ethers::types::Address;
 use serde::Serialize;
 use sqlx::PgPool;
@@ -19,6 +19,9 @@ pub struct NewAlert {
     pub machine_id: Uuid,
     pub node_name: String,
     pub created_at: NaiveDateTime,
+    pub telegram_send: SendState,
+    pub sendgrid_send: SendState,
+    pub pagerduty_send: SendState,
 }
 
 impl NewAlert {
@@ -26,7 +29,29 @@ impl NewAlert {
         let alert_id = alert_type.uuid_seed();
         let str_rep = format!("{}-{}-{}", alert_id, machine_id, node_name);
         let id = Uuid::new_v5(&Uuid::NAMESPACE_OID, str_rep.as_bytes());
-        Self { id, alert_type, machine_id, node_name, created_at: chrono::Utc::now().naive_utc() }
+        Self {
+            id,
+            alert_type,
+            machine_id,
+            node_name,
+            created_at: chrono::Utc::now().naive_utc(),
+            telegram_send: SendState::NoSend,
+            sendgrid_send: SendState::NoSend,
+            pagerduty_send: SendState::NoSend,
+        }
+    }
+
+    pub fn set_send_state(&mut self, send_type: Channel, state: SendState) {
+        match send_type {
+            Channel::Telegram => self.telegram_send = state,
+            Channel::Email => self.sendgrid_send = state,
+            Channel::PagerDuty => self.pagerduty_send = state,
+        }
+    }
+
+    /// Get the inner uint representation of the alert type for flag comparison
+    pub fn flag_id(&self) -> usize {
+        self.alert_type.id()
     }
 }
 
@@ -48,6 +73,9 @@ pub struct ActiveAlert {
     pub node_name: String,
     pub created_at: NaiveDateTime,
     pub acknowledged_at: Option<NaiveDateTime>,
+    pub telegram_send: SendState,
+    pub sendgrid_send: SendState,
+    pub pagerduty_send: SendState,
 }
 
 pub struct DbActiveAlert {
@@ -59,6 +87,9 @@ pub struct DbActiveAlert {
     created_at: NaiveDateTime,
     acknowledged_at: Option<NaiveDateTime>,
     alert_data: serde_json::Value,
+    telegram_send: SendState,
+    sendgrid_send: SendState,
+    pagerduty_send: SendState,
 }
 
 impl From<DbActiveAlert> for ActiveAlert {
@@ -73,6 +104,9 @@ impl From<DbActiveAlert> for ActiveAlert {
             node_name: db_active_alert.node_name,
             created_at: db_active_alert.created_at,
             acknowledged_at: db_active_alert.acknowledged_at,
+            telegram_send: db_active_alert.telegram_send,
+            sendgrid_send: db_active_alert.sendgrid_send,
+            pagerduty_send: db_active_alert.pagerduty_send,
         }
     }
 }
@@ -90,7 +124,10 @@ impl ActiveAlert {
                 node_name,
                 created_at,
                 acknowledged_at,
-                alert_data
+                alert_data,
+                telegram_send AS "telegram_send!: SendState",
+                sendgrid_send AS "sendgrid_send!: SendState",
+                pagerduty_send AS "pagerduty_send!: SendState"
             FROM alerts_active
             WHERE alert_id = $1
             "#,
@@ -117,7 +154,11 @@ impl ActiveAlert {
                 node_name,
                 created_at,
                 acknowledged_at,
-                alert_data
+                alert_data,
+                telegram_send AS "telegram_send!: SendState",
+                sendgrid_send AS "sendgrid_send!: SendState",
+                pagerduty_send AS "pagerduty_send!: SendState"
+
             FROM alerts_active
             WHERE alert_id = ANY($1)
             "#,
@@ -141,7 +182,11 @@ impl ActiveAlert {
                 node_name,
                 created_at,
                 acknowledged_at,
-                alert_data
+                alert_data,
+                telegram_send AS "telegram_send!: SendState",
+                sendgrid_send AS "sendgrid_send!: SendState",
+                pagerduty_send AS "pagerduty_send!: SendState"
+
             FROM alerts_active
             "#,
         )
@@ -163,7 +208,10 @@ impl ActiveAlert {
                 client_id,
                 node_name,
                 created_at,
-                alert_data
+                alert_data,
+                telegram_send,
+                sendgrid_send,
+                pagerduty_send
             )
             SELECT
                 $1,
@@ -172,7 +220,10 @@ impl ActiveAlert {
                 m.client_id,
                 $2,
                 $3,
-                $5
+                $5,
+                $6,
+                $7,
+                $8
             FROM machine m
             JOIN client c
               ON m.client_id = c.client_id
@@ -182,7 +233,10 @@ impl ActiveAlert {
             alert.node_name,
             alert.created_at,
             alert.machine_id,
-            alert_data
+            alert_data,
+            alert.telegram_send as SendState,
+            alert.sendgrid_send as SendState,
+            alert.pagerduty_send as SendState,
         )
         .execute(pool)
         .await?;
@@ -202,7 +256,10 @@ impl ActiveAlert {
                 client_id,
                 node_name,
                 created_at,
-                alert_data
+                alert_data,
+                telegram_send,
+                sendgrid_send,
+                pagerduty_send
             )
             SELECT
                 $1,
@@ -211,7 +268,10 @@ impl ActiveAlert {
                 m.client_id,
                 $2,
                 $3,
-                $5
+                $5,
+                $6,
+                $7,
+                $8
             FROM machine m
             JOIN client c
               ON m.client_id = c.client_id
@@ -221,7 +281,10 @@ impl ActiveAlert {
                 alert.node_name,
                 alert.created_at,
                 alert.machine_id,
-                alert_data
+                alert_data,
+                alert.telegram_send as SendState,
+                alert.sendgrid_send as SendState,
+                alert.pagerduty_send as SendState,
             )
             .execute(&mut *tx)
             .await?;
@@ -245,7 +308,10 @@ impl ActiveAlert {
                 node_name,
                 created_at,
                 acknowledged_at,
-                alert_data
+                alert_data,
+                telegram_send AS "telegram_send!: SendState",
+                sendgrid_send AS "sendgrid_send!: SendState",
+                pagerduty_send AS "pagerduty_send!: SendState"
             FROM alerts_active
             WHERE organization_id = $1
             "#,
@@ -272,7 +338,10 @@ impl ActiveAlert {
                 node_name,
                 created_at,
                 acknowledged_at,
-                alert_data
+                alert_data,
+                telegram_send AS "telegram_send!: SendState",
+                sendgrid_send AS "sendgrid_send!: SendState",
+                pagerduty_send AS "pagerduty_send!: SendState"
             FROM alerts_active
             WHERE machine_id = $1
             "#,
@@ -313,7 +382,10 @@ impl ActiveAlert {
                 node_name,
                 created_at,
                 acknowledged_at,
-                alert_data
+                alert_data,
+                telegram_send AS "telegram_send!: SendState",
+                sendgrid_send AS "sendgrid_send!: SendState",
+                pagerduty_send AS "pagerduty_send!: SendState"
             FROM alerts_active
             WHERE alert_id = $1
             "#,
