@@ -27,7 +27,7 @@ use crate::{
 
 use super::{
     alert_db::AlertDb,
-    node_alerts_active::{NodeActiveAlert, NewAlert},
+    node_alerts_active::{NewAlert, NodeActiveAlert},
 };
 
 pub const RUNNING_METRIC: &str = "running";
@@ -142,7 +142,6 @@ impl AlertHandler {
 
         if count > 0 {
             tracing::debug!("AVS already registered - sending update avs alert");
-            
         } else {
             tracing::info!("AVS not registered - sending new avs alert");
         }
@@ -398,7 +397,10 @@ mod tests {
 
     #[sqlx::test(
         migrations = "../migrations",
-        fixtures("../../fixtures/new_user_registration.sql", "../../fixtures/alerts_active.sql",)
+        fixtures(
+            "../../fixtures/new_user_registration.sql",
+            "../../fixtures/node_alerts_active.sql",
+        )
     )]
     #[ignore]
     async fn test_filter_duplicate_alerts(pool: PgPool) {

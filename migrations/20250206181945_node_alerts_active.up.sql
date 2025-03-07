@@ -45,4 +45,4 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER after_insert_organization_node_active
 AFTER INSERT ON organization
 FOR EACH ROW
-EXECUTE FUNCTION create_node_alerts_active_partition(); 
+EXECUTE FUNCTION create_node_alerts_active_partition();

@@ -1,2 +1,2 @@
 DROP TABLE node_alerts_historical;
-DROP TRIGGER after_insert_organization_node_historical ON organization; 
+DROP TRIGGER after_insert_organization_node_historical ON organization;

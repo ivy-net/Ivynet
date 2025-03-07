@@ -5,8 +5,8 @@ pub mod node_alerts_historical;
 
 #[cfg(test)]
 mod test_alerts_db {
-    use node_alerts_active::NewAlert;
     use ivynet_alerts::Alert;
+    use node_alerts_active::NewAlert;
     use sqlx::PgPool;
     use uuid::Uuid;
 
@@ -18,7 +18,7 @@ mod test_alerts_db {
 
     #[sqlx::test(
         migrations = "../migrations",
-        fixtures("../../fixtures/new_user_registration.sql", "../../fixtures/alerts_active.sql",)
+        fixtures("../../fixtures/new_user_registration.sql", "../../fixtures/node_alerts_active.sql",)
     )]
     #[ignore]
     async fn test_add_new_alert(pool: PgPool) {
@@ -50,7 +50,7 @@ mod test_alerts_db {
 
     #[sqlx::test(
         migrations = "../migrations",
-        fixtures("../../fixtures/new_user_registration.sql", "../../fixtures/alerts_active.sql",)
+        fixtures("../../fixtures/new_user_registration.sql", "../../fixtures/node_alerts_active.sql",)
     )]
     #[ignore]
     async fn test_get_all_active_alerts(pool: PgPool) {
@@ -60,7 +60,7 @@ mod test_alerts_db {
 
     #[sqlx::test(
         migrations = "../migrations",
-        fixtures("../../fixtures/new_user_registration.sql", "../../fixtures/alerts_active.sql",)
+        fixtures("../../fixtures/new_user_registration.sql", "../../fixtures/node_alerts_active.sql",)
     )]
     #[ignore]
     async fn test_get_alert_by_id(pool: PgPool) {
@@ -70,7 +70,7 @@ mod test_alerts_db {
 
     #[sqlx::test(
         migrations = "../migrations",
-        fixtures("../../fixtures/new_user_registration.sql", "../../fixtures/alerts_active.sql",)
+        fixtures("../../fixtures/new_user_registration.sql", "../../fixtures/node_alerts_active.sql",)
     )]
     #[ignore]
     async fn test_get_alerts_by_org(pool: PgPool) {
@@ -80,46 +80,51 @@ mod test_alerts_db {
 
     #[sqlx::test(
         migrations = "../migrations",
-        fixtures("../../fixtures/new_user_registration.sql", "../../fixtures/alerts_active.sql",)
+        fixtures("../../fixtures/new_user_registration.sql", "../../fixtures/node_alerts_active.sql",)
     )]
     #[ignore]
     async fn test_get_alerts_by_machine(pool: PgPool) {
         let fixture_machine_id = Uuid::parse_str("dcbf22c7-9d96-47ac-bf06-62d6544e440d").unwrap();
-        let alert = node_alerts_active::NodeActiveAlert::all_alerts_by_machine(&pool, fixture_machine_id)
-            .await
-            .unwrap();
+        let alert =
+            node_alerts_active::NodeActiveAlert::all_alerts_by_machine(&pool, fixture_machine_id)
+                .await
+                .unwrap();
         assert!(!alert.is_empty());
     }
 
     #[sqlx::test(
         migrations = "../migrations",
-        fixtures("../../fixtures/new_user_registration.sql", "../../fixtures/alerts_active.sql",)
+        fixtures("../../fixtures/new_user_registration.sql", "../../fixtures/node_alerts_active.sql",)
     )]
     #[ignore]
     async fn test_acknowledge_alert(pool: PgPool) {
-        let alert = node_alerts_active::NodeActiveAlert::get(&pool, debug_uuid()).await.unwrap().unwrap();
+        let alert =
+            node_alerts_active::NodeActiveAlert::get(&pool, debug_uuid()).await.unwrap().unwrap();
         node_alerts_active::NodeActiveAlert::acknowledge(&pool, alert.alert_id).await.unwrap();
         assert!(alert.acknowledged_at.is_none());
-        let alert = node_alerts_active::NodeActiveAlert::get(&pool, debug_uuid()).await.unwrap().unwrap();
+        let alert =
+            node_alerts_active::NodeActiveAlert::get(&pool, debug_uuid()).await.unwrap().unwrap();
         assert!(alert.acknowledged_at.is_some());
     }
 
     #[sqlx::test(
         migrations = "../migrations",
-        fixtures("../../fixtures/new_user_registration.sql", "../../fixtures/alerts_active.sql",)
+        fixtures("../../fixtures/new_user_registration.sql", "../../fixtures/node_alerts_active.sql",)
     )]
     #[ignore]
     async fn test_resolve_alert(pool: PgPool) {
-        let alert = node_alerts_active::NodeActiveAlert::get(&pool, debug_uuid()).await.unwrap().unwrap();
+        let alert =
+            node_alerts_active::NodeActiveAlert::get(&pool, debug_uuid()).await.unwrap().unwrap();
         node_alerts_active::NodeActiveAlert::resolve_alert(&pool, alert.alert_id).await.unwrap();
 
         // confirm that the alert is resolved in historical db
         let alert_historical =
-            node_alerts_historical::HistoryAlert::get(&pool, debug_uuid()).await.unwrap();
+            node_alerts_historical::NodeHistoryAlert::get(&pool, debug_uuid()).await.unwrap();
         assert!(alert_historical.is_some());
 
         // confirm that the alert is removed from active db
-        let alert_resolved = node_alerts_active::NodeActiveAlert::get(&pool, debug_uuid()).await.unwrap();
+        let alert_resolved =
+            node_alerts_active::NodeActiveAlert::get(&pool, debug_uuid()).await.unwrap();
         assert!(alert_resolved.is_none());
     }
 }

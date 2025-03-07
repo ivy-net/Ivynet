@@ -47,4 +47,4 @@ $$ LANGUAGE plpgsql;
 CREATE TRIGGER after_insert_organization_node_historical
 AFTER INSERT ON organization
 FOR EACH ROW
-EXECUTE FUNCTION create_node_alerts_historical_partition(); 
+EXECUTE FUNCTION create_node_alerts_historical_partition();
