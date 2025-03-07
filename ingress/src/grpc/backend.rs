@@ -1,6 +1,6 @@
 use crate::error::IngressError;
 use ivynet_database::{
-    alerts::{alert_db::AlertDb, alert_handler::AlertHandler},
+    alerts::{alert_db::AlertDb, node_alert_handler::NodeAlertHandler},
     client_log::ClientLog,
     data::{
         machine_data::convert_system_metrics,
@@ -36,13 +36,13 @@ use uuid::Uuid;
 use super::data_validator::validate_request;
 
 pub struct BackendService {
-    pub alert_handler: AlertHandler,
+    pub node_alert_handler: NodeAlertHandler,
     pool: PgPool,
 }
 
 impl BackendService {
-    pub fn new(pool: PgPool, alert_handler: AlertHandler) -> Self {
-        Self { alert_handler, pool }
+    pub fn new(pool: PgPool, node_alert_handler: NodeAlertHandler) -> Self {
+        Self { node_alert_handler, pool }
     }
 }
 
@@ -221,9 +221,9 @@ impl Backend for BackendService {
 
         process_node_data(&self.pool, machine_id, recovered_node_data).await?;
 
-        self.alert_handler.handle_node_data_alerts(node_data, machine_id).await.map_err(|e| {
-            Status::internal(format!("Failed while sending node data to alert actor: {e}"))
-        })?;
+        self.node_alert_handler.handle_node_data_alerts(node_data, machine_id).await.map_err(
+            |e| Status::internal(format!("Failed while sending node data to alert actor: {e}")),
+        )?;
 
         Ok(Response::new(()))
     }
@@ -334,7 +334,7 @@ pub async fn serve(
     let server = server::Server::new(
         BackendServer::new(BackendService::new(
             pool.clone(),
-            AlertHandler::new(notification_dispatcher.clone(), pool),
+            NodeAlertHandler::new(notification_dispatcher.clone(), pool),
         )),
         tls_cert,
         tls_key,

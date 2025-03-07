@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use crate::error::IngressError;
 use ivynet_database::{
-    alerts::{alert_db::AlertDb, alert_handler::AlertHandler},
+    alerts::{alert_db::AlertDb, organization_alert_handler::OrganizationAlertHandler},
     eigen_avs_metadata::{EigenAvsMetadata, MetadataContent},
     AvsActiveSet,
 };
@@ -22,12 +22,12 @@ use sqlx::PgPool;
 
 pub struct EventsService {
     pool: PgPool,
-    alert_handler: AlertHandler,
+    organization_alert_handler: OrganizationAlertHandler,
 }
 
 impl EventsService {
-    pub fn new(pool: PgPool, alert_handler: AlertHandler) -> Self {
-        Self { pool, alert_handler }
+    pub fn new(pool: PgPool, organization_alert_handler: OrganizationAlertHandler) -> Self {
+        Self { pool, organization_alert_handler }
     }
 }
 
@@ -91,7 +91,7 @@ impl BackendEvents for EventsService {
         };
 
         //Needs to be above the insert because count checks for dupes
-        self.alert_handler
+        self.organization_alert_handler
             .handle_new_eigen_avs_alerts(
                 &self.pool,
                 &avs_address,
@@ -135,7 +135,7 @@ pub async fn serve(
     server::Server::new(
         BackendEventsServer::new(EventsService::new(
             pool.clone(),
-            AlertHandler::new(notification_dispatcher.clone(), pool),
+            OrganizationAlertHandler::new(notification_dispatcher.clone(), pool),
         )),
         tls_cert,
         tls_key,

@@ -3471,6 +3471,7 @@ dependencies = [
 name = "ivynet-database"
 version = "0.6.0"
 dependencies = [
+ "async-trait",
  "chrono",
  "ethers",
  "ivynet-alerts",
