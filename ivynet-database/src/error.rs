@@ -47,6 +47,9 @@ pub enum DatabaseError {
 
     #[error("Failed conversion: {0}")]
     FailedConversion(String),
+
+    #[error("Failed to get count of metadata: {0}")]
+    FailedMetadata(String),
 }
 
 impl From<DatabaseError> for Status {

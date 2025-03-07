@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT \n                id, address, block_number, log_index, metadata_uri, \n                name, description, website, logo, twitter, created_at\n            FROM eigen_avs_metadata\n            WHERE address = $1 AND block_number = $2\n            ORDER BY log_index DESC\n            ",
+  "query": "\n            SELECT\n                id, address, block_number, log_index, metadata_uri,\n                name, description, website, logo, twitter, created_at\n            FROM eigen_avs_metadata\n            WHERE metadata_uri = $1\n            ORDER BY block_number DESC, log_index DESC\n            LIMIT 1\n            ",
   "describe": {
     "columns": [
       {
@@ -61,8 +61,7 @@
     ],
     "parameters": {
       "Left": [
-        "Bpchar",
-        "Int8"
+        "Text"
       ]
     },
     "nullable": [
@@ -79,5 +78,5 @@
       false
     ]
   },
-  "hash": "5d4afbfdc84ab3cc8ee426456ae4089f528e6611e244c90fbfbd7cdfb435f78b"
+  "hash": "8862d4c8fe47ea821f63c3661d7ac89296b4105cd7721c8dd8b1f3f01e02ea21"
 }

@@ -88,4 +88,12 @@ impl Organization {
         query!("DELETE FROM organization").execute(pool).await?;
         Ok(())
     }
+
+    /// Get all organization ids - do not make an endpoint for this
+    pub async fn get_all_ids(pool: &PgPool) -> Result<Vec<i64>, DatabaseError> {
+        let orgs = sqlx::query_scalar!(r#"SELECT organization_id FROM organization"#)
+            .fetch_all(pool)
+            .await?;
+        Ok(orgs)
+    }
 }

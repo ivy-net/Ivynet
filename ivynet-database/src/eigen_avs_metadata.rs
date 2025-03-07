@@ -118,7 +118,7 @@ impl EigenAvsMetadata {
 
         match result {
             Ok(_) => {
-                info!(
+                debug!(
                     "Successfully inserted AVS metadata for address: {}, block: {}, log_index: {}",
                     address, block_number, log_index
                 );

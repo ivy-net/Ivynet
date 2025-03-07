@@ -1,5 +1,8 @@
+use std::sync::Arc;
+
 use crate::error::IngressError;
 use ivynet_database::{
+    alerts::{alert_db::AlertDb, alert_handler::AlertHandler},
     eigen_avs_metadata::{EigenAvsMetadata, MetadataContent},
     AvsActiveSet,
 };
@@ -13,16 +16,18 @@ use ivynet_grpc::{
     client::{Request, Response},
     server, Status,
 };
+use ivynet_notifications::{NotificationConfig, NotificationDispatcher};
 use serde_json;
 use sqlx::PgPool;
 
 pub struct EventsService {
     pool: PgPool,
+    alert_handler: AlertHandler,
 }
 
 impl EventsService {
-    pub fn new(pool: PgPool) -> Self {
-        Self { pool }
+    pub fn new(pool: PgPool, alert_handler: AlertHandler) -> Self {
+        Self { pool, alert_handler }
     }
 }
 
@@ -55,12 +60,12 @@ impl BackendEvents for EventsService {
     ) -> Result<Response<()>, Status> {
         let req = request.into_inner();
 
-        let avs = Address::from_slice(&req.avs);
+        let avs_address = Address::from_slice(&req.avs);
         let metadata_uri = req.metadata_uri;
         let block_number = req.block_number;
 
         tracing::debug!("Received metadata uri event: {:#?}", metadata_uri.clone());
-        tracing::debug!("Address: {:#?}", avs);
+        tracing::debug!("Address: {:#?}", avs_address);
         tracing::debug!("Block number: {:#?}", block_number);
         tracing::debug!("Log index: {:#?}", req.log_index);
 
@@ -85,29 +90,21 @@ impl BackendEvents for EventsService {
             twitter: parsed_metadata["twitter"].as_str().map(|s| s.to_string()),
         };
 
-        let count = EigenAvsMetadata::search_for_avs(
-            &self.pool,
-            avs,
-            metadata_uri.clone(),
-            metadata_content.name.clone().unwrap_or_default(),
-            metadata_content.website.clone().unwrap_or_default(),
-            metadata_content.twitter.clone().unwrap_or_default(),
-        )
-        .await
-        .map_err(|e| Status::internal(format!("Failed to get count of metadata: {}", e)))?;
-
-        if count > 0 {
-            tracing::info!("AVS already registered");
-            tracing::info!("Metadata content: {:#?}", parsed_metadata);
-        }
+        //Needs to be above the insert because count checks for dupes
+        self.alert_handler
+            .handle_new_eigen_avs_alerts(&self.pool, &avs_address, &metadata_uri, &metadata_content)
+            .await
+            .map_err(|e| {
+                Status::internal(format!("Failed to handle new eigen avs alerts: {}", e))
+            })?;
 
         EigenAvsMetadata::insert(
             &self.pool,
-            avs,
+            avs_address,
             block_number as i64,
             req.log_index as i32,
-            metadata_uri,
-            metadata_content,
+            metadata_uri.clone(),
+            metadata_content.clone(),
         )
         .await
         .map_err(|e| Status::internal(format!("Failed to insert metadata: {}", e)))?;
@@ -118,14 +115,26 @@ impl BackendEvents for EventsService {
 
 pub async fn serve(
     pool: PgPool,
+    notification_config: NotificationConfig,
     tls_cert: Option<String>,
     tls_key: Option<String>,
     port: u16,
 ) -> Result<(), IngressError> {
     tracing::info!("Starting GRPC events server on port {port}");
-    server::Server::new(BackendEventsServer::new(EventsService::new(pool)), tls_cert, tls_key)
-        .serve(server::Endpoint::Port(port))
-        .await?;
+
+    let notification_dispatcher =
+        Arc::new(NotificationDispatcher::new(notification_config, AlertDb::new(pool.clone())));
+
+    server::Server::new(
+        BackendEventsServer::new(EventsService::new(
+            pool.clone(),
+            AlertHandler::new(notification_dispatcher.clone(), pool),
+        )),
+        tls_cert,
+        tls_key,
+    )
+    .serve(server::Endpoint::Port(port))
+    .await?;
 
     Ok(())
 }

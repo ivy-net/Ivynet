@@ -3,6 +3,7 @@ use std::{
     sync::Arc,
 };
 
+use ethers::types::Address;
 use ivynet_alerts::Alert;
 use ivynet_error::ethers::types::Chain;
 use ivynet_grpc::messages::NodeDataV2;
@@ -19,6 +20,7 @@ use crate::{
         avs_version::{extract_semver, VersionType},
         node_data::UpdateStatus,
     },
+    eigen_avs_metadata::{EigenAvsMetadata, MetadataContent},
     error::DatabaseError,
     Avs, DbAvsVersionData, Machine, NotificationSettings,
 };
@@ -111,12 +113,42 @@ impl AlertHandler {
         Ok(())
     }
 
-    pub async fn handle_event_data_alerts(
+    pub async fn handle_new_eigen_avs_alerts(
         &self,
-        event_data: EventData,
-        machine_id: Uuid,
+        pool: &PgPool,
+        avs_address: &Address,
+        metadata_uri: &str,
+        metadata_content: &MetadataContent,
     ) -> Result<(), AlertError> {
-        todo!()
+        let count = EigenAvsMetadata::search_for_avs(
+            pool,
+            *avs_address,
+            metadata_uri.to_owned(),
+            metadata_content.name.clone().unwrap_or_default(),
+            metadata_content.website.clone().unwrap_or_default(),
+            metadata_content.twitter.clone().unwrap_or_default(),
+        )
+        .await
+        .map_err(|e| {
+            AlertError::DbError(DatabaseError::FailedMetadata(format!(
+                "Failed to get count of metadata: {}",
+                e
+            )))
+        })?;
+
+        println!("count: {}", count);
+        println!("name: {}", metadata_content.name.clone().unwrap_or_default());
+        println!("metadata_uri: {}", metadata_uri);
+
+        if count > 0 {
+            tracing::debug!("AVS already registered - sending update avs alert");
+            
+        } else {
+            tracing::info!("AVS not registered - sending new avs alert");
+        }
+        println!("--------------------------------");
+
+        Ok(())
     }
 
     // Filters duplicate incoming alerts by checking computed UUID against existing alerts in the
