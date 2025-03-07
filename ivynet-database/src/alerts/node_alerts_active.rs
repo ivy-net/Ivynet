@@ -156,7 +156,7 @@ impl NodeActiveAlert {
 
     pub async fn insert_one(pool: &PgPool, alert: &NewAlert) -> Result<(), DatabaseError> {
         let alert_data = serde_json::json!(alert.alert_type);
-        println!("Inserting alert: {:?}", alert);
+        println!("Inserting alert: {:#?}", alert);
         sqlx::query!(
             r#"
             INSERT INTO node_alerts_active (
