@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                alert_id,\n                machine_id,\n                organization_id,\n                client_id,\n                node_name,\n                created_at,\n                acknowledged_at,\n                alert_data\n            FROM alerts_active\n            WHERE alert_id = $1\n            ",
+  "query": "\n            SELECT\n                alert_id,\n                machine_id,\n                organization_id,\n                client_id,\n                node_name,\n                created_at,\n                acknowledged_at,\n                alert_data\n            FROM node_alerts_active\n            ",
   "describe": {
     "columns": [
       {
@@ -45,9 +45,7 @@
       }
     ],
     "parameters": {
-      "Left": [
-        "Uuid"
-      ]
+      "Left": []
     },
     "nullable": [
       false,
@@ -60,5 +58,5 @@
       false
     ]
   },
-  "hash": "f2fd153ed7ca6309d68e7231e21fede4f8d429f7576182eae8f8da5cfeb4f105"
+  "hash": "7a0c1cc2afc09f56e344d17439e5dc5b635e8e25b046df2269f6d6773f23159e"
 }

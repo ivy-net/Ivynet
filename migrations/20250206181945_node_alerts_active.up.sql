@@ -1,4 +1,4 @@
-CREATE TABLE IF NOT EXISTS alerts_active (
+CREATE TABLE IF NOT EXISTS node_alerts_active (
     alert_id            UUID         NOT NULL,
     machine_id          UUID         NOT NULL REFERENCES machine
                                         ON DELETE CASCADE,
@@ -19,20 +19,20 @@ DECLARE
     org_id bigint;
 BEGIN
     FOR org_id IN SELECT organization_id FROM organization LOOP
-        EXECUTE format('CREATE TABLE IF NOT EXISTS alerts_active_%s PARTITION OF alerts_active FOR VALUES IN (%s);', org_id, org_id);
+        EXECUTE format('CREATE TABLE IF NOT EXISTS node_alerts_active_%s PARTITION OF node_alerts_active FOR VALUES IN (%s);', org_id, org_id);
     END LOOP;
 END $$;
 
 -- Create the partition tables for new organizations
-CREATE OR REPLACE FUNCTION create_alerts_active_partition()
+CREATE OR REPLACE FUNCTION create_node_alerts_active_partition()
 RETURNS trigger AS $$
 DECLARE
     partition_name text;
 BEGIN
-    partition_name := format('alerts_active_%s', NEW.organization_id);
+    partition_name := format('node_alerts_active_%s', NEW.organization_id);
 
     EXECUTE format(
-        'CREATE TABLE IF NOT EXISTS %I PARTITION OF alerts_active FOR VALUES IN (%L);',
+        'CREATE TABLE IF NOT EXISTS %I PARTITION OF node_alerts_active FOR VALUES IN (%L);',
         partition_name,
         NEW.organization_id
     );
@@ -42,7 +42,7 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Create and attach trigger to org
-CREATE TRIGGER after_insert_organization_active
+CREATE TRIGGER after_insert_organization_node_active
 AFTER INSERT ON organization
 FOR EACH ROW
-EXECUTE FUNCTION create_alerts_active_partition();
+EXECUTE FUNCTION create_node_alerts_active_partition(); 

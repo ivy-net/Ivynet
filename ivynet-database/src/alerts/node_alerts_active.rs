@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 use crate::error::DatabaseError;
 
-use super::alerts_historical::HistoryAlert;
+use super::node_alerts_historical::NodeHistoryAlert;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct NewAlert {
@@ -39,7 +39,7 @@ impl Display for NewAlert {
 }
 
 #[derive(Serialize, ToSchema, Clone, Debug)]
-pub struct ActiveAlert {
+pub struct NodeActiveAlert {
     pub alert_id: Uuid,
     pub alert_type: Alert,
     pub machine_id: Uuid,
@@ -50,7 +50,7 @@ pub struct ActiveAlert {
     pub acknowledged_at: Option<NaiveDateTime>,
 }
 
-pub struct DbActiveAlert {
+pub struct DbNodeActiveAlert {
     alert_id: Uuid,
     machine_id: Uuid,
     organization_id: i64,
@@ -61,10 +61,10 @@ pub struct DbActiveAlert {
     alert_data: serde_json::Value,
 }
 
-impl From<DbActiveAlert> for ActiveAlert {
-    fn from(db_active_alert: DbActiveAlert) -> Self {
+impl From<DbNodeActiveAlert> for NodeActiveAlert {
+    fn from(db_active_alert: DbNodeActiveAlert) -> Self {
         let notification_type: Alert = serde_json::from_value(db_active_alert.alert_data).unwrap();
-        ActiveAlert {
+        NodeActiveAlert {
             alert_id: db_active_alert.alert_id,
             alert_type: notification_type,
             machine_id: db_active_alert.machine_id,
@@ -77,10 +77,13 @@ impl From<DbActiveAlert> for ActiveAlert {
     }
 }
 
-impl ActiveAlert {
-    pub async fn get(pool: &PgPool, alert_id: Uuid) -> Result<Option<ActiveAlert>, DatabaseError> {
+impl NodeActiveAlert {
+    pub async fn get(
+        pool: &PgPool,
+        alert_id: Uuid,
+    ) -> Result<Option<NodeActiveAlert>, DatabaseError> {
         let alert = sqlx::query_as!(
-            DbActiveAlert,
+            DbNodeActiveAlert,
             r#"
             SELECT
                 alert_id,
@@ -91,7 +94,7 @@ impl ActiveAlert {
                 created_at,
                 acknowledged_at,
                 alert_data
-            FROM alerts_active
+            FROM node_alerts_active
             WHERE alert_id = $1
             "#,
             alert_id
@@ -105,9 +108,9 @@ impl ActiveAlert {
     pub async fn get_many(
         pool: &PgPool,
         alert_ids: &[Uuid],
-    ) -> Result<Vec<ActiveAlert>, DatabaseError> {
+    ) -> Result<Vec<NodeActiveAlert>, DatabaseError> {
         let alerts = sqlx::query_as!(
-            DbActiveAlert,
+            DbNodeActiveAlert,
             r#"
             SELECT
                 alert_id,
@@ -118,7 +121,7 @@ impl ActiveAlert {
                 created_at,
                 acknowledged_at,
                 alert_data
-            FROM alerts_active
+            FROM node_alerts_active
             WHERE alert_id = ANY($1)
             "#,
             alert_ids
@@ -129,9 +132,9 @@ impl ActiveAlert {
         Ok(alerts.into_iter().map(|n| n.into()).collect())
     }
 
-    pub async fn get_all(pool: &PgPool) -> Result<Vec<ActiveAlert>, DatabaseError> {
+    pub async fn get_all(pool: &PgPool) -> Result<Vec<NodeActiveAlert>, DatabaseError> {
         let alerts = sqlx::query_as!(
-            DbActiveAlert,
+            DbNodeActiveAlert,
             r#"
             SELECT
                 alert_id,
@@ -142,7 +145,7 @@ impl ActiveAlert {
                 created_at,
                 acknowledged_at,
                 alert_data
-            FROM alerts_active
+            FROM node_alerts_active
             "#,
         )
         .fetch_all(pool)
@@ -156,7 +159,7 @@ impl ActiveAlert {
         println!("Inserting alert: {:?}", alert);
         sqlx::query!(
             r#"
-            INSERT INTO alerts_active (
+            INSERT INTO node_alerts_active (
                 alert_id,
                 machine_id,
                 organization_id,
@@ -195,7 +198,7 @@ impl ActiveAlert {
             let alert_data = serde_json::json!(alert.alert_type);
             sqlx::query!(
                 r#"
-            INSERT INTO alerts_active (
+            INSERT INTO node_alerts_active (
                 alert_id,
                 machine_id,
                 organization_id,
@@ -233,9 +236,9 @@ impl ActiveAlert {
     pub async fn all_alerts_by_org(
         pool: &PgPool,
         organization_id: i64,
-    ) -> Result<Vec<ActiveAlert>, DatabaseError> {
+    ) -> Result<Vec<NodeActiveAlert>, DatabaseError> {
         let alerts = sqlx::query_as!(
-            DbActiveAlert,
+            DbNodeActiveAlert,
             r#"
             SELECT
                 alert_id,
@@ -246,7 +249,7 @@ impl ActiveAlert {
                 created_at,
                 acknowledged_at,
                 alert_data
-            FROM alerts_active
+            FROM node_alerts_active
             WHERE organization_id = $1
             "#,
             organization_id
@@ -260,9 +263,9 @@ impl ActiveAlert {
     pub async fn all_alerts_by_machine(
         pool: &PgPool,
         machine_id: Uuid,
-    ) -> Result<Vec<ActiveAlert>, DatabaseError> {
+    ) -> Result<Vec<NodeActiveAlert>, DatabaseError> {
         let alerts = sqlx::query_as!(
-            DbActiveAlert,
+            DbNodeActiveAlert,
             r#"
             SELECT
                 alert_id,
@@ -273,7 +276,7 @@ impl ActiveAlert {
                 created_at,
                 acknowledged_at,
                 alert_data
-            FROM alerts_active
+            FROM node_alerts_active
             WHERE machine_id = $1
             "#,
             machine_id
@@ -287,7 +290,7 @@ impl ActiveAlert {
     pub async fn acknowledge(pool: &PgPool, alert_id: Uuid) -> Result<(), DatabaseError> {
         sqlx::query!(
             r#"
-            UPDATE alerts_active
+            UPDATE node_alerts_active
             SET acknowledged_at = now()
             WHERE alert_id = $1
             "#,
@@ -302,8 +305,8 @@ impl ActiveAlert {
     // HistoryAlery::record_new to accept `&mut E: Exectuor` instead of `&PgPool`
     pub async fn resolve_alert(pool: &PgPool, alert_id: Uuid) -> Result<(), DatabaseError> {
         let mut tx = pool.begin().await?;
-        let active_alert: ActiveAlert = sqlx::query_as!(
-            DbActiveAlert,
+        let active_alert: NodeActiveAlert = sqlx::query_as!(
+            DbNodeActiveAlert,
             r#"
             SELECT
                 alert_id,
@@ -314,7 +317,7 @@ impl ActiveAlert {
                 created_at,
                 acknowledged_at,
                 alert_data
-            FROM alerts_active
+            FROM node_alerts_active
             WHERE alert_id = $1
             "#,
             alert_id
@@ -325,12 +328,12 @@ impl ActiveAlert {
 
         let alert_id = active_alert.alert_id;
 
-        let history_alert: HistoryAlert = active_alert.into();
+        let history_alert: NodeHistoryAlert = active_alert.into();
         let alert_data = serde_json::json!(history_alert.alert_type);
 
         sqlx::query!(
             r#"
-            INSERT INTO alerts_historical (
+            INSERT INTO node_alerts_historical (
                 alert_id,
                 machine_id,
                 organization_id,
@@ -367,7 +370,7 @@ impl ActiveAlert {
 
         sqlx::query!(
             r#"
-            DELETE FROM alerts_active
+            DELETE FROM node_alerts_active
             WHERE alert_id = $1
             "#,
             alert_id

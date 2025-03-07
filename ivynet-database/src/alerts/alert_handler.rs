@@ -27,7 +27,7 @@ use crate::{
 
 use super::{
     alert_db::AlertDb,
-    alerts_active::{ActiveAlert, NewAlert},
+    node_alerts_active::{NodeActiveAlert, NewAlert},
 };
 
 pub const RUNNING_METRIC: &str = "running";
@@ -81,7 +81,7 @@ impl AlertHandler {
 
         let filtered_new_alerts = self.filter_duplicate_alerts(new_alerts).await?;
 
-        ActiveAlert::insert_many(&self.db_executor, &filtered_new_alerts).await?;
+        NodeActiveAlert::insert_many(&self.db_executor, &filtered_new_alerts).await?;
 
         // Handle notification dispatch. Notification filtering happens post-insertion, so alerts
         // are still visible in the database.
@@ -160,7 +160,7 @@ impl AlertHandler {
     ) -> Result<Vec<NewAlert>, AlertError> {
         let ids = alerts.iter().map(|alert| alert.id).collect::<Vec<_>>();
 
-        let existing_ids: Vec<Uuid> = ActiveAlert::get_many(&self.db_executor, &ids)
+        let existing_ids: Vec<Uuid> = NodeActiveAlert::get_many(&self.db_executor, &ids)
             .await?
             .iter()
             .map(|alert| alert.alert_id)
@@ -420,7 +420,7 @@ mod tests {
         };
         let new_alert_2 = NewAlert::new(machine_id, alert_type_2.clone(), node_name);
 
-        ActiveAlert::insert_one(&pool, &new_alert_1).await.unwrap();
+        NodeActiveAlert::insert_one(&pool, &new_alert_1).await.unwrap();
 
         let alerts = vec![new_alert_1, new_alert_2];
 

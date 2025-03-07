@@ -8,10 +8,10 @@ use uuid::Uuid;
 
 use crate::error::DatabaseError;
 
-use super::alerts_active::ActiveAlert;
+use super::node_alerts_active::NodeActiveAlert;
 
 #[derive(Serialize, ToSchema, Clone, Debug)]
-pub struct HistoryAlert {
+pub struct NodeHistoryAlert {
     pub alert_id: Uuid,
     pub alert_type: Alert,
     pub machine_id: Uuid,
@@ -23,7 +23,7 @@ pub struct HistoryAlert {
     pub resolved_at: NaiveDateTime,
 }
 
-pub struct DbHistoryAlert {
+pub struct DbNodeHistoryAlert {
     alert_id: Uuid,
     machine_id: Uuid,
     organization_id: i64,
@@ -35,8 +35,8 @@ pub struct DbHistoryAlert {
     alert_data: serde_json::Value,
 }
 
-impl From<HistoryAlert> for DbHistoryAlert {
-    fn from(value: HistoryAlert) -> Self {
+impl From<NodeHistoryAlert> for DbNodeHistoryAlert {
+    fn from(value: NodeHistoryAlert) -> Self {
         Self {
             alert_id: value.alert_id,
             machine_id: value.machine_id,
@@ -51,8 +51,8 @@ impl From<HistoryAlert> for DbHistoryAlert {
     }
 }
 
-impl From<DbHistoryAlert> for HistoryAlert {
-    fn from(value: DbHistoryAlert) -> Self {
+impl From<DbNodeHistoryAlert> for NodeHistoryAlert {
+    fn from(value: DbNodeHistoryAlert) -> Self {
         Self {
             alert_id: value.alert_id,
             alert_type: serde_json::from_value(value.alert_data)
@@ -68,8 +68,8 @@ impl From<DbHistoryAlert> for HistoryAlert {
     }
 }
 
-impl From<ActiveAlert> for HistoryAlert {
-    fn from(value: ActiveAlert) -> Self {
+impl From<NodeActiveAlert> for NodeHistoryAlert {
+    fn from(value: NodeActiveAlert) -> Self {
         let now = Local::now().naive_utc();
         Self {
             alert_id: value.alert_id,
@@ -85,10 +85,13 @@ impl From<ActiveAlert> for HistoryAlert {
     }
 }
 
-impl HistoryAlert {
-    pub async fn get(pool: &PgPool, alert_id: Uuid) -> Result<Option<HistoryAlert>, DatabaseError> {
+impl NodeHistoryAlert {
+    pub async fn get(
+        pool: &PgPool,
+        alert_id: Uuid,
+    ) -> Result<Option<NodeHistoryAlert>, DatabaseError> {
         let db_history_alert = sqlx::query_as!(
-            DbHistoryAlert,
+            DbNodeHistoryAlert,
             r#"
             SELECT
                 alert_id,
@@ -101,7 +104,7 @@ impl HistoryAlert {
                 resolved_at,
                 alert_data
             FROM
-                alerts_historical
+                node_alerts_historical
             WHERE
                 alert_id = $1
             "#,
@@ -113,9 +116,9 @@ impl HistoryAlert {
         Ok(db_history_alert.map(|a| a.into()))
     }
 
-    pub async fn get_all(pool: &PgPool) -> Result<Vec<HistoryAlert>, DatabaseError> {
+    pub async fn get_all(pool: &PgPool) -> Result<Vec<NodeHistoryAlert>, DatabaseError> {
         let db_history_alerts = sqlx::query_as!(
-            DbHistoryAlert,
+            DbNodeHistoryAlert,
             r#"
             SELECT
                 alert_id,
@@ -128,7 +131,7 @@ impl HistoryAlert {
                 resolved_at,
                 alert_data
             FROM
-                alerts_historical
+                node_alerts_historical
             "#,
         )
         .fetch_all(pool)
@@ -137,11 +140,11 @@ impl HistoryAlert {
         Ok(db_history_alerts.into_iter().map(|a| a.into()).collect())
     }
 
-    pub async fn record_new(pool: &PgPool, alert: &HistoryAlert) -> Result<(), DatabaseError> {
+    pub async fn record_new(pool: &PgPool, alert: &NodeHistoryAlert) -> Result<(), DatabaseError> {
         let alert_data = serde_json::json!(alert.alert_type);
         sqlx::query!(
             r#"
-            INSERT INTO alerts_historical (
+            INSERT INTO node_alerts_historical (
                 machine_id,
                 organization_id,
                 client_id,
@@ -172,9 +175,9 @@ impl HistoryAlert {
         organization_id: i64,
         from: NaiveDateTime,
         to: NaiveDateTime,
-    ) -> Result<Vec<HistoryAlert>, DatabaseError> {
+    ) -> Result<Vec<NodeHistoryAlert>, DatabaseError> {
         let db_history_alerts = sqlx::query_as!(
-            DbHistoryAlert,
+            DbNodeHistoryAlert,
             r#"
             SELECT
                 alert_id,
@@ -187,7 +190,7 @@ impl HistoryAlert {
                 resolved_at,
                 alert_data
             FROM
-                alerts_historical
+                node_alerts_historical
             WHERE
                 organization_id = $1
                 AND created_at >= $2
@@ -206,9 +209,9 @@ impl HistoryAlert {
     pub async fn all_alerts_by_org(
         pool: &PgPool,
         organization_id: i64,
-    ) -> Result<Vec<HistoryAlert>, DatabaseError> {
+    ) -> Result<Vec<NodeHistoryAlert>, DatabaseError> {
         let db_history_alerts = sqlx::query_as!(
-            DbHistoryAlert,
+            DbNodeHistoryAlert,
             r#"
             SELECT
                 alert_id,
@@ -221,7 +224,7 @@ impl HistoryAlert {
                 resolved_at,
                 alert_data
             FROM
-                alerts_historical
+                node_alerts_historical
             WHERE
                 organization_id = $1
             "#,
@@ -236,9 +239,9 @@ impl HistoryAlert {
     pub async fn all_alerts_by_machine(
         pool: &PgPool,
         machine_id: Uuid,
-    ) -> Result<Vec<HistoryAlert>, DatabaseError> {
+    ) -> Result<Vec<NodeHistoryAlert>, DatabaseError> {
         let db_history_alerts = sqlx::query_as!(
-            DbHistoryAlert,
+            DbNodeHistoryAlert,
             r#"
             SELECT
                 alert_id,
@@ -251,7 +254,7 @@ impl HistoryAlert {
                 resolved_at,
                 alert_data
             FROM
-                alerts_historical
+                node_alerts_historical
             WHERE
                 machine_id = $1
             "#,

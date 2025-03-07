@@ -7,7 +7,7 @@ use axum_extra::extract::CookieJar;
 use chrono::DateTime;
 use ivynet_alerts::{AlertFlags, AlertType};
 use ivynet_database::{
-    alerts::{alerts_active::ActiveAlert, alerts_historical::HistoryAlert},
+    alerts::{node_alerts_active::NodeActiveAlert, node_alerts_historical::NodeHistoryAlert},
     notification_settings::ServiceType,
     NotificationSettings, ServiceSettings,
 };
@@ -42,7 +42,7 @@ pub struct AcknowledgeAlertParams {
     get,
     path = "/alerts/active",
     responses(
-        (status = 200, body = [ActiveAlert]),
+        (status = 200, body = [NodeActiveAlert]),
         (status = 404)
     )
 )]
@@ -50,12 +50,12 @@ pub async fn active_alerts(
     headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
-) -> Result<Json<Vec<ActiveAlert>>, BackendError> {
+) -> Result<Json<Vec<NodeActiveAlert>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    let alerts = ActiveAlert::all_alerts_by_org(&state.pool, account.organization_id)
+    let alerts = NodeActiveAlert::all_alerts_by_org(&state.pool, account.organization_id)
         .await?
         .into_iter()
-        .map(ActiveAlert::from)
+        .map(NodeActiveAlert::from)
         .collect();
     Ok(Json(alerts))
 }
@@ -78,13 +78,13 @@ pub async fn acknowledge_alert(
 ) -> Result<(), BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     let alert_id = params.alert_id;
-    let alert = ActiveAlert::get(&state.pool, alert_id)
+    let alert = NodeActiveAlert::get(&state.pool, alert_id)
         .await?
         .ok_or(BackendAlertError::AlertNotFound(alert_id))?;
     if alert.organization_id != account.organization_id {
         return Err(BackendAlertError::AlertNotFound(alert_id).into());
     }
-    ActiveAlert::acknowledge(&state.pool, params.alert_id).await?;
+    NodeActiveAlert::acknowledge(&state.pool, params.alert_id).await?;
     Ok(())
 }
 
@@ -94,7 +94,7 @@ pub async fn acknowledge_alert(
     path = "/alerts/history",
     params(HistoricalAlertParams),
     responses(
-        (status = 200, body = [HistoryAlert]),
+        (status = 200, body = [NodeHistoryAlert]),
         (status = 404)
     )
 )]
@@ -103,7 +103,7 @@ pub async fn alert_history(
     State(state): State<HttpState>,
     jar: CookieJar,
     Query(params): Query<HistoricalAlertParams>,
-) -> Result<Json<Vec<HistoryAlert>>, BackendError> {
+) -> Result<Json<Vec<NodeHistoryAlert>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
     let from = DateTime::from_timestamp(params.from, 0)
         .ok_or(BackendError::MalformedParameter("from".to_string(), params.from.to_string()))?
@@ -111,11 +111,11 @@ pub async fn alert_history(
     let to = DateTime::from_timestamp(params.to, 0)
         .ok_or(BackendError::MalformedParameter("to".to_string(), params.to.to_string()))?
         .naive_utc();
-    let alerts: Vec<HistoryAlert> =
-        HistoryAlert::alerts_by_org_between(&state.pool, account.organization_id, from, to)
+    let alerts: Vec<NodeHistoryAlert> =
+        NodeHistoryAlert::alerts_by_org_between(&state.pool, account.organization_id, from, to)
             .await?
             .into_iter()
-            .map(HistoryAlert::from)
+            .map(NodeHistoryAlert::from)
             .collect();
     Ok(Json(alerts))
 }
