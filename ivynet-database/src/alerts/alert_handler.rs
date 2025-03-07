@@ -140,95 +140,62 @@ impl AlertHandler {
         })?;
 
         let organization_ids = Organization::get_all_ids(pool).await?;
+        let is_update = count > 0;
+
+        tracing::debug!(
+            "AVS {} - sending {} alert",
+            if is_update { "already registered" } else { "not registered" },
+            if is_update { "update" } else { "new" }
+        );
 
         let mut new_alerts = Vec::new();
-
-        if count > 0 {
-            tracing::debug!("AVS already registered - sending update avs alert");
-            for organization_id in organization_ids {
-                let alert = NewOrganizationAlert::new(
-                    organization_id,
-                    Alert::UpdatedEigenAvs {
-                        address: *avs_address,
-                        block_number,
-                        log_index,
-                        name: metadata_content.name.clone().unwrap_or_default(),
-                        metadata_uri: metadata_uri.to_string(),
-                        description: metadata_content.description.clone().unwrap_or_default(),
-                        website: metadata_content.website.clone().unwrap_or_default(),
-                        logo: metadata_content.logo.clone().unwrap_or_default(),
-                        twitter: metadata_content.twitter.clone().unwrap_or_default(),
-                    },
-                );
-                new_alerts.push(alert.clone());
-
-                let (channels, alert_ids) = self
-                    .organization_channel_alerts(
-                        organization_id
-                            .try_into()
-                            .expect("We should never have negative organization ids"),
-                    )
-                    .await;
-
-                if alert_ids.contains(&alert.alert_type.id()) {
-                    let notification = Notification {
-                        id: alert.id,
-                        organization: organization_id
-                            .try_into()
-                            .expect("We should never have negative organization ids"),
-                        machine_id: None,
-                        alert: alert.alert_type,
-                        resolved: false,
-                    };
-
-                    self.dispatcher.notify(notification, channels).await?;
-                }
+        let alert_type = if is_update {
+            Alert::UpdatedEigenAvs {
+                address: *avs_address,
+                block_number,
+                log_index,
+                name: metadata_content.name.clone().unwrap_or_default(),
+                metadata_uri: metadata_uri.to_string(),
+                description: metadata_content.description.clone().unwrap_or_default(),
+                website: metadata_content.website.clone().unwrap_or_default(),
+                logo: metadata_content.logo.clone().unwrap_or_default(),
+                twitter: metadata_content.twitter.clone().unwrap_or_default(),
             }
         } else {
-            tracing::debug!("AVS not registered - sending new avs alert");
-            for organization_id in organization_ids {
-                let alert = NewOrganizationAlert::new(
-                    organization_id,
-                    Alert::NewEigenAvs {
-                        address: *avs_address,
-                        block_number,
-                        log_index,
-                        name: metadata_content.name.clone().unwrap_or_default(),
-                        metadata_uri: metadata_uri.to_string(),
-                        description: metadata_content.description.clone().unwrap_or_default(),
-                        website: metadata_content.website.clone().unwrap_or_default(),
-                        logo: metadata_content.logo.clone().unwrap_or_default(),
-                        twitter: metadata_content.twitter.clone().unwrap_or_default(),
-                    },
-                );
-                new_alerts.push(alert.clone());
+            Alert::NewEigenAvs {
+                address: *avs_address,
+                block_number,
+                log_index,
+                name: metadata_content.name.clone().unwrap_or_default(),
+                metadata_uri: metadata_uri.to_string(),
+                description: metadata_content.description.clone().unwrap_or_default(),
+                website: metadata_content.website.clone().unwrap_or_default(),
+                logo: metadata_content.logo.clone().unwrap_or_default(),
+                twitter: metadata_content.twitter.clone().unwrap_or_default(),
+            }
+        };
 
-                let (channels, alert_ids) = self
-                    .organization_channel_alerts(
-                        organization_id
-                            .try_into()
-                            .expect("We should never have negative organization ids"),
-                    )
-                    .await;
+        for organization_id in organization_ids {
+            let alert = NewOrganizationAlert::new(organization_id, alert_type.clone());
+            new_alerts.push(alert.clone());
 
-                if alert_ids.contains(&alert.alert_type.id()) {
-                    let notification = Notification {
-                        id: alert.id,
-                        organization: organization_id
-                            .try_into()
-                            .expect("We should never have negative organization ids"),
-                        machine_id: None,
-                        alert: alert.alert_type,
-                        resolved: false,
-                    };
+            let (channels, alert_ids) =
+                self.organization_channel_alerts(organization_id as u64).await;
 
-                    self.dispatcher.notify(notification, channels).await?;
-                }
+            if alert_ids.contains(&alert.alert_type.id()) {
+                let notification = Notification {
+                    id: alert.id,
+                    organization: organization_id as u64,
+                    machine_id: None,
+                    alert: alert.alert_type,
+                    resolved: false,
+                };
+
+                self.dispatcher.notify(notification, channels).await?;
             }
         }
 
         OrganizationActiveAlert::insert_many(pool, &new_alerts).await?;
-
         Ok(())
     }
 
