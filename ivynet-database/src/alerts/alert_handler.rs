@@ -151,8 +151,7 @@ impl AlertHandler {
     }
 
     // Filters duplicate incoming alerts by checking computed UUID against existing alerts in the
-    // database. If the alert is already present. Returns a list of alerts that are not present in
-    // the database.
+    // database. If the alert is already present, it is not included in the returned list.
     pub async fn filter_duplicate_alerts(
         &self,
         alerts: Vec<NewAlert>,
