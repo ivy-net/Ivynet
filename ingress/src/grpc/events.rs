@@ -63,11 +63,11 @@ impl BackendEvents for EventsService {
         let avs_address = Address::from_slice(&req.avs);
         let metadata_uri = req.metadata_uri;
         let block_number = req.block_number;
-
+        let log_index = req.log_index;
         tracing::debug!("Received metadata uri event: {:#?}", metadata_uri.clone());
         tracing::debug!("Address: {:#?}", avs_address);
         tracing::debug!("Block number: {:#?}", block_number);
-        tracing::debug!("Log index: {:#?}", req.log_index);
+        tracing::debug!("Log index: {:#?}", log_index);
 
         // Use reqwest to get the metadata content
         let metadata = reqwest::get(metadata_uri.clone())
@@ -92,7 +92,14 @@ impl BackendEvents for EventsService {
 
         //Needs to be above the insert because count checks for dupes
         self.alert_handler
-            .handle_new_eigen_avs_alerts(&self.pool, &avs_address, &metadata_uri, &metadata_content)
+            .handle_new_eigen_avs_alerts(
+                &self.pool,
+                &avs_address,
+                block_number,
+                log_index,
+                &metadata_uri,
+                &metadata_content,
+            )
             .await
             .map_err(|e| {
                 Status::internal(format!("Failed to handle new eigen avs alerts: {}", e))

@@ -66,7 +66,7 @@ pub async fn active_alerts(
     path = "/alerts/acknowledge",
     params(AcknowledgeAlertParams),
     responses(
-        (status = 200, body = ()),
+        (status = 200),
         (status = 404)
     )
 )]

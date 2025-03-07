@@ -26,7 +26,7 @@ pub enum NotificationDispatcherError {
 pub struct Notification {
     pub id: Uuid,
     pub organization: u64,
-    pub machine_id: Uuid,
+    pub machine_id: Option<Uuid>,
     pub alert: Alert,
     pub resolved: bool,
 }

@@ -57,7 +57,10 @@ impl EmailTemplate {
             ),
             NotificationType::MachineNotResponding => (
                 Self::MachineNotResponding,
-                HashMap::from([("machine_id".to_owned(), format!("{}", notification.machine_id))]),
+                HashMap::from([(
+                    "machine_id".to_owned(),
+                    format!("{}", notification.machine_id.unwrap_or_default()),
+                )]),
             ),
             NotificationType::NodeNotRunning { node_name, .. } => {
                 (Self::NodeNotRunning, HashMap::from([("avs".to_owned(), node_name)]))
@@ -74,7 +77,10 @@ impl EmailTemplate {
             NotificationType::HardwareResourceUsage { resource, percent, .. } => (
                 Self::HardwareResourceUsage,
                 HashMap::from([
-                    ("machine_id".to_owned(), format!("{}", notification.machine_id)),
+                    (
+                        "machine_id".to_owned(),
+                        format!("{}", notification.machine_id.unwrap_or_default()),
+                    ),
                     ("resource".to_owned(), resource),
                     ("percent".to_owned(), format!("{percent}")),
                 ]),
@@ -205,7 +211,10 @@ impl<D: OrganizationDatabase> EmailSender<D> {
         let (mut template, mut payload) = EmailTemplate::payload(notification.clone());
         if self.templates.len() == 1 {
             template = EmailTemplate::Generic;
-            payload.insert("machine_id".to_string(), format!("{}", notification.machine_id));
+            payload.insert(
+                "machine_id".to_string(),
+                format!("{}", notification.machine_id.unwrap_or_default()),
+            );
             payload.insert(
                 "error_type".to_string(),
                 match notification.alert {

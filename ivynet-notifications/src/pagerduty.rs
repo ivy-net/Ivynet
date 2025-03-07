@@ -120,7 +120,10 @@ fn message(notification: &Notification) -> String {
         }
         NotificationType::Custom { extra_data, .. } => format!("ERROR: {extra_data}"),
         NotificationType::NodeNotRunning { node_name, .. } => {
-            format!("AVS {node_name} is not running on {}", notification.machine_id)
+            format!(
+                "AVS {node_name} is not running on {}",
+                notification.machine_id.unwrap_or_default()
+            )
         }
         NotificationType::NoChainInfo { node_name, .. } => {
             format!("No information on chain for avs {node_name}")
@@ -132,7 +135,10 @@ fn message(notification: &Notification) -> String {
             format!("No operator configured for {node_name}")
         }
         NotificationType::HardwareResourceUsage { resource, percent, .. } => {
-            format!("Machine {} has used over {percent}% of {resource}", notification.machine_id)
+            format!(
+                "Machine {} has used over {percent}% of {resource}",
+                notification.machine_id.unwrap_or_default()
+            )
         }
         NotificationType::LowPerformanceScore { node_name, performance, .. } => {
             format!("AVS {node_name} has droped in performance to {performance}")
@@ -260,7 +266,7 @@ mod pagerduty_live_test {
         let mut test_event = Notification {
             id: Uuid::new_v4(),
             organization: MOCK_ORGANIZATION_ID,
-            machine_id: Uuid::new_v4(),
+            machine_id: Some(Uuid::new_v4()),
             alert: Alert::Custom {
                 node_name: "test-node".to_string(),
                 node_type: "test-type".to_string(),

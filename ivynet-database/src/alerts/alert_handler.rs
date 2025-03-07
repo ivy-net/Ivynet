@@ -15,6 +15,7 @@ use ivynet_notifications::{
 use sqlx::{types::Uuid, PgPool};
 
 use crate::{
+    alerts::organization_alerts_active::{NewOrganizationAlert, OrganizationActiveAlert},
     avs_version::{NodeTypeId, VersionData},
     data::{
         avs_version::{extract_semver, VersionType},
@@ -22,7 +23,7 @@ use crate::{
     },
     eigen_avs_metadata::{EigenAvsMetadata, MetadataContent},
     error::DatabaseError,
-    Avs, DbAvsVersionData, Machine, NotificationSettings,
+    Avs, DbAvsVersionData, Machine, NotificationSettings, Organization,
 };
 
 use super::{
@@ -100,7 +101,7 @@ impl AlertHandler {
             .map(|alert| Notification {
                 id: alert.id,
                 organization: organization_id,
-                machine_id,
+                machine_id: Some(machine_id),
                 alert: alert.alert_type,
                 resolved: false,
             })
@@ -117,6 +118,8 @@ impl AlertHandler {
         &self,
         pool: &PgPool,
         avs_address: &Address,
+        block_number: u64,
+        log_index: u64,
         metadata_uri: &str,
         metadata_content: &MetadataContent,
     ) -> Result<(), AlertError> {
@@ -136,16 +139,95 @@ impl AlertHandler {
             )))
         })?;
 
-        println!("count: {}", count);
-        println!("name: {}", metadata_content.name.clone().unwrap_or_default());
-        println!("metadata_uri: {}", metadata_uri);
+        let organization_ids = Organization::get_all_ids(pool).await?;
+
+        let mut new_alerts = Vec::new();
 
         if count > 0 {
             tracing::debug!("AVS already registered - sending update avs alert");
+            for organization_id in organization_ids {
+                let alert = NewOrganizationAlert::new(
+                    organization_id,
+                    Alert::UpdatedEigenAvs {
+                        address: *avs_address,
+                        block_number,
+                        log_index,
+                        name: metadata_content.name.clone().unwrap_or_default(),
+                        metadata_uri: metadata_uri.to_string(),
+                        description: metadata_content.description.clone().unwrap_or_default(),
+                        website: metadata_content.website.clone().unwrap_or_default(),
+                        logo: metadata_content.logo.clone().unwrap_or_default(),
+                        twitter: metadata_content.twitter.clone().unwrap_or_default(),
+                    },
+                );
+                new_alerts.push(alert.clone());
+
+                let (channels, alert_ids) = self
+                    .organization_channel_alerts(
+                        organization_id
+                            .try_into()
+                            .expect("We should never have negative organization ids"),
+                    )
+                    .await;
+
+                if alert_ids.contains(&alert.alert_type.id()) {
+                    let notification = Notification {
+                        id: alert.id,
+                        organization: organization_id
+                            .try_into()
+                            .expect("We should never have negative organization ids"),
+                        machine_id: None,
+                        alert: alert.alert_type,
+                        resolved: false,
+                    };
+
+                    self.dispatcher.notify(notification, channels).await?;
+                }
+            }
         } else {
-            tracing::info!("AVS not registered - sending new avs alert");
+            tracing::debug!("AVS not registered - sending new avs alert");
+            for organization_id in organization_ids {
+                let alert = NewOrganizationAlert::new(
+                    organization_id,
+                    Alert::NewEigenAvs {
+                        address: *avs_address,
+                        block_number,
+                        log_index,
+                        name: metadata_content.name.clone().unwrap_or_default(),
+                        metadata_uri: metadata_uri.to_string(),
+                        description: metadata_content.description.clone().unwrap_or_default(),
+                        website: metadata_content.website.clone().unwrap_or_default(),
+                        logo: metadata_content.logo.clone().unwrap_or_default(),
+                        twitter: metadata_content.twitter.clone().unwrap_or_default(),
+                    },
+                );
+                new_alerts.push(alert.clone());
+
+                let (channels, alert_ids) = self
+                    .organization_channel_alerts(
+                        organization_id
+                            .try_into()
+                            .expect("We should never have negative organization ids"),
+                    )
+                    .await;
+
+                if alert_ids.contains(&alert.alert_type.id()) {
+                    let notification = Notification {
+                        id: alert.id,
+                        organization: organization_id
+                            .try_into()
+                            .expect("We should never have negative organization ids"),
+                        machine_id: None,
+                        alert: alert.alert_type,
+                        resolved: false,
+                    };
+
+                    self.dispatcher.notify(notification, channels).await?;
+                }
+            }
         }
-        println!("--------------------------------");
+
+        OrganizationActiveAlert::insert_many(pool, &new_alerts).await?;
 
         Ok(())
     }
