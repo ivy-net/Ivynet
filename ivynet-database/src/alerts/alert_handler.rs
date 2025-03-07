@@ -27,7 +27,7 @@ use crate::{
 
 use super::{
     alert_db::AlertDb,
-    node_alerts_active::{NewAlert, NodeActiveAlert},
+    node_alerts_active::{NewNodeAlert, NodeActiveAlert},
 };
 
 pub const RUNNING_METRIC: &str = "running";
@@ -76,7 +76,7 @@ impl AlertHandler {
 
         let new_alerts = raw_alerts
             .into_iter()
-            .map(|alert| NewAlert::new(machine_id, alert, node_data.name.clone()))
+            .map(|alert| NewNodeAlert::new(machine_id, alert, node_data.name.clone()))
             .collect::<Vec<_>>();
 
         let filtered_new_alerts = self.filter_duplicate_alerts(new_alerts).await?;
@@ -154,8 +154,8 @@ impl AlertHandler {
     // database. If the alert is already present, it is not included in the returned list.
     pub async fn filter_duplicate_alerts(
         &self,
-        alerts: Vec<NewAlert>,
-    ) -> Result<Vec<NewAlert>, AlertError> {
+        alerts: Vec<NewNodeAlert>,
+    ) -> Result<Vec<NewNodeAlert>, AlertError> {
         let ids = alerts.iter().map(|alert| alert.id).collect::<Vec<_>>();
 
         let existing_ids: Vec<Uuid> = NodeActiveAlert::get_many(&self.db_executor, &ids)
@@ -412,14 +412,14 @@ mod tests {
             extra_data: serde_json::Value::String("runtime_alert_fixture_1".to_string()),
         };
 
-        let new_alert_1 = NewAlert::new(machine_id, alert_type_1, node_name.clone());
+        let new_alert_1 = NewNodeAlert::new(machine_id, alert_type_1, node_name.clone());
 
         let alert_type_2 = Alert::Custom {
             node_name: node_name.clone(),
             node_type: NodeType::EigenDA.to_string(),
             extra_data: serde_json::Value::String("runtime_alert_fixture_2".to_string()),
         };
-        let new_alert_2 = NewAlert::new(machine_id, alert_type_2.clone(), node_name);
+        let new_alert_2 = NewNodeAlert::new(machine_id, alert_type_2.clone(), node_name);
 
         NodeActiveAlert::insert_one(&pool, &new_alert_1).await.unwrap();
 

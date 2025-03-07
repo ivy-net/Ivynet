@@ -6,7 +6,7 @@ pub mod node_alerts_historical;
 #[cfg(test)]
 mod test_alerts_db {
     use ivynet_alerts::Alert;
-    use node_alerts_active::NewAlert;
+    use node_alerts_active::NewNodeAlert;
     use sqlx::PgPool;
     use uuid::Uuid;
 
@@ -36,7 +36,7 @@ mod test_alerts_db {
         };
         let node_name = "test".to_string();
 
-        let new_alert = NewAlert::new(machine_id, alert_type, node_name);
+        let new_alert = NewNodeAlert::new(machine_id, alert_type, node_name);
         node_alerts_active::NodeActiveAlert::insert_one(&pool, &new_alert).await.unwrap();
 
         let alerts_active = node_alerts_active::NodeActiveAlert::get_all(&pool).await.unwrap();

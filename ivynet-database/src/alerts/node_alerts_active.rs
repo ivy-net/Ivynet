@@ -13,7 +13,7 @@ use crate::error::DatabaseError;
 use super::node_alerts_historical::NodeHistoryAlert;
 
 #[derive(Debug, Clone, Serialize)]
-pub struct NewAlert {
+pub struct NewNodeAlert {
     pub id: Uuid,
     pub alert_type: Alert,
     pub machine_id: Uuid,
@@ -21,7 +21,7 @@ pub struct NewAlert {
     pub created_at: NaiveDateTime,
 }
 
-impl NewAlert {
+impl NewNodeAlert {
     pub fn new(machine_id: Uuid, alert_type: Alert, node_name: String) -> Self {
         let alert_id = alert_type.uuid_seed();
         let str_rep = format!("{}-{}-{}", alert_id, machine_id, node_name);
@@ -32,7 +32,7 @@ impl NewAlert {
 
 /// Custom implementation of display which excludes the timestamp. Used primarily for UUID
 /// generation.
-impl Display for NewAlert {
+impl Display for NewNodeAlert {
     fn fmt(&self, f: &mut Formatter) -> fmt::Result {
         write!(f, "{:?} {} {}", self.alert_type, self.machine_id, self.node_name)
     }
@@ -154,7 +154,7 @@ impl NodeActiveAlert {
         Ok(alerts.into_iter().map(|n| n.into()).collect())
     }
 
-    pub async fn insert_one(pool: &PgPool, alert: &NewAlert) -> Result<(), DatabaseError> {
+    pub async fn insert_one(pool: &PgPool, alert: &NewNodeAlert) -> Result<(), DatabaseError> {
         let alert_data = serde_json::json!(alert.alert_type);
         println!("Inserting alert: {:#?}", alert);
         sqlx::query!(
@@ -192,7 +192,7 @@ impl NodeActiveAlert {
         Ok(())
     }
 
-    pub async fn insert_many(pool: &PgPool, alerts: &[NewAlert]) -> Result<(), DatabaseError> {
+    pub async fn insert_many(pool: &PgPool, alerts: &[NewNodeAlert]) -> Result<(), DatabaseError> {
         let mut tx = pool.begin().await?;
         for alert in alerts {
             let alert_data = serde_json::json!(alert.alert_type);
