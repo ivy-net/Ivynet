@@ -163,12 +163,12 @@ fn message(notification: &Notification) -> String {
             twitter,
             ..
         } => {
-            format!("New EigenLayer AVS: {name} has been detected at {address} with metadata URI {metadata_uri}. \n Website: {website} \n Twitter: {twitter} \n Description: {description}")
+            format!("New EigenLayer AVS: {name} has been detected at {:?} with metadata URI {metadata_uri}. \n Website: {website} \n Twitter: {twitter} \n Description: {description}", address)
         }
         NotificationType::UpdatedEigenAvs {
             address, name, metadata_uri, website, twitter, ..
         } => {
-            format!("Updated EigenLayer AVS: {name} has updated their metadata or address to {address} with metadata URI {metadata_uri}. \n Website: {website} \n Twitter: {twitter}")
+            format!("Updated EigenLayer AVS: {name} has updated their metadata or address to {:?} with metadata URI {metadata_uri}. \n Website: {website} \n Twitter: {twitter}", address)
         }
     }
 }

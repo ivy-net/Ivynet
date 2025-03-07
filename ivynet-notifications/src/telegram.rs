@@ -203,7 +203,8 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
             } => {
                 format!(
                     "❗ *New EigenLayer AVS* ❗️\n
-                    New EigenLayer AVS: {name} has been detected at {address} with metadata URI {metadata_uri}. \n Website: {website} \n Twitter: {twitter} \n Description: {description}"
+                    New EigenLayer AVS: {name} has been detected at {:?} with metadata URI {metadata_uri}. \n Website: {website} \n Twitter: {twitter} \n Description: {description}",
+                    address
                 )
             }
             NotificationType::UpdatedEigenAvs {
@@ -216,7 +217,8 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
             } => {
                 format!(
                     "❗ *Updated EigenLayer AVS* ❗️\n
-                    Updated EigenLayer AVS: {name} has updated their metadata or address to {address} with metadata URI {metadata_uri}. \n Website: {website} \n Twitter: {twitter}"
+                    Updated EigenLayer AVS: {name} has updated their metadata or address to {:?} with metadata URI {metadata_uri}. \n Website: {website} \n Twitter: {twitter}",
+                    address
                 )
             }
         };

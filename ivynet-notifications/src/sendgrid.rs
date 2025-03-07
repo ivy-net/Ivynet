@@ -241,10 +241,10 @@ impl<D: OrganizationDatabase> EmailSender<D> {
                         format!("AVS dropped in performace score to {performance}")
                     }
                     Alert::NewEigenAvs { name, address, metadata_uri, website, twitter, .. } => {
-                        format!("New EigenLayer AVS: {name} has been detected at {address} with metadata URI {metadata_uri}. \n Website: {website} \n Twitter: {twitter}")
+                        format!("New EigenLayer AVS: {name} has been detected at {:?} with metadata URI {metadata_uri}. \n Website: {website} \n Twitter: {twitter}", address)
                     }
                     Alert::UpdatedEigenAvs { name, address, metadata_uri, website, twitter, .. } => {
-                        format!("Updated EigenLayer AVS: {name} has updated their metadata or address to {address} with metadata URI {metadata_uri}. \n Website: {website} \n Twitter: {twitter}")
+                        format!("Updated EigenLayer AVS: {name} has updated their metadata or address to {:?} with metadata URI {metadata_uri}. \n Website: {website} \n Twitter: {twitter}", address)
                     }
                 },
             );
