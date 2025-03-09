@@ -14,8 +14,10 @@ use sqlx;
 pub enum SendState {
     #[sqlx(rename = "no_send")]
     NoSend,
-    Sent,
-    Failed,
+    #[sqlx(rename = "send_success")]
+    SendSuccess,
+    #[sqlx(rename = "send_failed")]
+    SendFailed,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]

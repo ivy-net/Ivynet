@@ -64,29 +64,28 @@ impl AlertHandler {
         node_data: NodeDataV2,
         machine_id: Uuid,
     ) -> Result<(), AlertError> {
-        // alert extraction and insertion
-        let raw_alerts = extract_node_data_alerts(&self.db_executor, machine_id, &node_data).await;
+        let organization_id = Machine::get_organization_id(&self.db_executor, machine_id).await?;
 
-        let new_alerts = raw_alerts
+        let (channels, enabled_alert_ids) =
+            self.organization_channel_alerts(organization_id as u64).await;
+
+        let new_alerts = extract_node_data_alerts(&self.db_executor, machine_id, &node_data)
+            .await
             .into_iter()
             .map(|alert| NewAlert::new(machine_id, alert, node_data.name.clone()))
             .collect::<Vec<_>>();
 
-        let mut filtered_new_alerts = self.filter_duplicate_alerts(new_alerts).await?;
+        let existing_alerts =
+            ActiveAlert::all_alerts_by_org(&self.db_executor, organization_id).await?;
 
-        // Handle notification dispatch. Notification filtering happens post-insertion, so alerts
-        // are still visible in the database.
-        let organization_id =
-            Machine::get_organization_id(&self.db_executor, machine_id).await? as u64;
-
-        let (channels, alert_ids) = self.organization_channel_alerts(organization_id).await;
+        let mut filtered_new_alerts = filter_duplicate_alerts(new_alerts, existing_alerts).await?;
 
         for (channel, do_send) in channels {
             for alert in filtered_new_alerts.iter_mut() {
-                if do_send && alert_ids.contains(&alert.flag_id()) {
+                if do_send && enabled_alert_ids.contains(&alert.flag_id()) {
                     let notification = Notification {
                         id: alert.id,
-                        organization: organization_id,
+                        organization: organization_id as u64,
                         machine_id,
                         alert: alert.alert_type.clone(),
                         resolved: false,
@@ -94,8 +93,8 @@ impl AlertHandler {
 
                     let send_state =
                         match self.dispatcher.notify_channel(notification, channel).await {
-                            true => SendState::Sent,
-                            false => SendState::Failed,
+                            true => SendState::SendSuccess,
+                            false => SendState::SendFailed,
                         };
                     alert.set_send_state(channel, send_state);
                 }
@@ -147,6 +146,22 @@ impl AlertHandler {
 
         (channels, org_notifications.alert_flags.to_alert_ids())
     }
+}
+
+/// Given a vector of NewAlert and ActiveAlerts, filters out the NewAlerts that have the same
+/// alert_id as the ActiveAlerts.
+pub async fn filter_duplicate_alerts(
+    incoming_alerts: Vec<NewAlert>,
+    existing_alerts: Vec<ActiveAlert>,
+) -> Result<Vec<NewAlert>, AlertError> {
+    let existing_ids = existing_alerts.iter().map(|alert| alert.alert_id).collect::<Vec<_>>();
+
+    let filtered = incoming_alerts
+        .into_iter()
+        .filter(|alert| !existing_ids.contains(&alert.id))
+        .collect::<Vec<_>>();
+
+    Ok(filtered)
 }
 
 async fn extract_node_data_alerts(
