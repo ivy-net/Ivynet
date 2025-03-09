@@ -1,6 +1,5 @@
 use std::{collections::HashMap, sync::Arc};
 
-use ethers::types::FilteredParams;
 use ivynet_alerts::{Alert, Channel, SendState};
 use ivynet_error::ethers::types::Chain;
 use ivynet_grpc::messages::NodeDataV2;
@@ -94,8 +93,8 @@ impl AlertHandler {
 
                     let send_state =
                         match self.dispatcher.notify_channel(notification, channel).await {
-                            true => SendState::Sent,
-                            false => SendState::Failed,
+                            true => SendState::SendSuccess,
+                            false => SendState::SendFailed,
                         };
                     alert.set_send_state(channel, send_state);
                 }

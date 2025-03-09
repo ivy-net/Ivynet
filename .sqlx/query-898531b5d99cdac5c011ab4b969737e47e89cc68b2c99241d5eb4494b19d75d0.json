@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                alert_id,\n                machine_id,\n                organization_id,\n                client_id,\n                node_name,\n                created_at,\n                acknowledged_at,\n                alert_data,\n                telegram_send,\n                sendgrid_send,\n                pagerduty_send\n\n            FROM alerts_active\n            ",
+  "query": "\n            SELECT\n                alert_id,\n                machine_id,\n                organization_id,\n                client_id,\n                node_name,\n                created_at,\n                acknowledged_at,\n                alert_data,\n                telegram_send AS \"telegram_send!: SendState\",\n                sendgrid_send AS \"sendgrid_send!: SendState\",\n                pagerduty_send AS \"pagerduty_send!: SendState\"\n            FROM alerts_active\n            WHERE alert_id = $1\n            ",
   "describe": {
     "columns": [
       {
@@ -45,7 +45,7 @@
       },
       {
         "ordinal": 8,
-        "name": "telegram_send",
+        "name": "telegram_send!: SendState",
         "type_info": {
           "Custom": {
             "name": "send_state",
@@ -61,7 +61,7 @@
       },
       {
         "ordinal": 9,
-        "name": "sendgrid_send",
+        "name": "sendgrid_send!: SendState",
         "type_info": {
           "Custom": {
             "name": "send_state",
@@ -77,7 +77,7 @@
       },
       {
         "ordinal": 10,
-        "name": "pagerduty_send",
+        "name": "pagerduty_send!: SendState",
         "type_info": {
           "Custom": {
             "name": "send_state",
@@ -93,7 +93,9 @@
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "Uuid"
+      ]
     },
     "nullable": [
       false,
@@ -109,5 +111,5 @@
       false
     ]
   },
-  "hash": "a43474b483018a2fdc8261f97621b87980cff67aee49c5e9d06e4ab1bc3b5ce5"
+  "hash": "898531b5d99cdac5c011ab4b969737e47e89cc68b2c99241d5eb4494b19d75d0"
 }

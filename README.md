@@ -104,10 +104,13 @@ sqlx migrate run
 cargo sqlx prepare --workspace
 ```
 
-4. Initialize test organization and AVS versions:
+4. Initialize test organization and AVS versions from backend, and register your node:
 
 ```sh
-cargo run --bin ivynet-backend -- --add-organization testuser@ivynet.dev:test1234/testorg
+cd api
+cargo run --add-organization testuser@ivynet.dev:test1234/testorg
+cd ..
+cargo run register_node
 ```
 
 5. Populate version hashes table from remote docker repositories and latest node versions table:
