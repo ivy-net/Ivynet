@@ -95,11 +95,30 @@ impl<D: OrganizationDatabase> NotificationDispatcher<D> {
     }
 
     pub async fn notify_channel(&self, notification: Notification, channel: Channel) -> bool {
-        match channel {
-            Channel::Email => self.email_sender.notify(notification).await.is_ok(),
-            Channel::Telegram => self.telegram.notify(notification).await.is_ok(),
-            Channel::PagerDuty => self.pagerduty.notify(notification).await.is_ok(),
-        }
+        tracing::debug!("notifying channel: {:#?}", channel);
+        tracing::debug!("notification: {:#?}", notification);
+
+        let result = match channel {
+            Channel::Email => self
+                .email_sender
+                .notify(notification)
+                .await
+                .map_err(NotificationDispatcherError::EmailSenderError),
+            Channel::Telegram => self
+                .telegram
+                .notify(notification)
+                .await
+                .map_err(NotificationDispatcherError::BotError),
+            Channel::PagerDuty => self
+                .pagerduty
+                .notify(notification)
+                .await
+                .map_err(NotificationDispatcherError::PagerDutyError),
+        };
+
+        tracing::debug!("result: {:#?}", result);
+
+        result.is_ok()
     }
 
     pub async fn notify(
