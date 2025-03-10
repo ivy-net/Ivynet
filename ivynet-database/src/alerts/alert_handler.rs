@@ -1,15 +1,10 @@
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 
-use ivynet_alerts::Alert;
+use ivynet_alerts::{Alert, Channel, SendState};
 use ivynet_error::ethers::types::Chain;
 use ivynet_grpc::messages::NodeDataV2;
 use ivynet_node_type::NodeType;
-use ivynet_notifications::{
-    Channel, Notification, NotificationDispatcher, NotificationDispatcherError,
-};
+use ivynet_notifications::{Notification, NotificationDispatcher, NotificationDispatcherError};
 
 use sqlx::{types::Uuid, PgPool};
 
@@ -69,44 +64,44 @@ impl AlertHandler {
         node_data: NodeDataV2,
         machine_id: Uuid,
     ) -> Result<(), AlertError> {
-        // alert extraction and insertion
-        let raw_alerts = extract_node_data_alerts(&self.db_executor, machine_id, &node_data).await;
+        let organization_id = Machine::get_organization_id(&self.db_executor, machine_id).await?;
 
-        let new_alerts = raw_alerts
+        let (channels, enabled_alert_ids) =
+            self.organization_channel_alerts(organization_id as u64).await;
+
+        let new_alerts = extract_node_data_alerts(&self.db_executor, machine_id, &node_data)
+            .await
             .into_iter()
             .map(|alert| NewAlert::new(machine_id, alert, node_data.name.clone()))
             .collect::<Vec<_>>();
 
-        let filtered_new_alerts = self.filter_duplicate_alerts(new_alerts).await?;
+        let existing_alerts =
+            ActiveAlert::all_alerts_by_org(&self.db_executor, organization_id).await?;
+
+        let mut filtered_new_alerts = filter_duplicate_alerts(new_alerts, existing_alerts).await?;
+
+        for (channel, do_send) in channels {
+            for alert in filtered_new_alerts.iter_mut() {
+                if do_send && enabled_alert_ids.contains(&alert.flag_id()) {
+                    let notification = Notification {
+                        id: alert.id,
+                        organization: organization_id as u64,
+                        machine_id,
+                        alert: alert.alert_type.clone(),
+                        resolved: false,
+                    };
+
+                    let send_state =
+                        match self.dispatcher.notify_channel(notification, channel).await {
+                            true => SendState::SendSuccess,
+                            false => SendState::SendFailed,
+                        };
+                    alert.set_send_state(channel, send_state);
+                }
+            }
+        }
 
         ActiveAlert::insert_many(&self.db_executor, &filtered_new_alerts).await?;
-
-        // Handle notification dispatch. Notification filtering happens post-insertion, so alerts
-        // are still visible in the database.
-        let organization_id =
-            Machine::get_organization_id(&self.db_executor, machine_id).await? as u64;
-
-        let (channels, alert_ids) = self.organization_channel_alerts(organization_id).await;
-
-        let flag_filtered_alerts = filtered_new_alerts
-            .into_iter()
-            .filter(|alert| alert_ids.contains(&alert.alert_type.id()))
-            .collect::<Vec<_>>();
-
-        let notifications: Vec<Notification> = flag_filtered_alerts
-            .into_iter()
-            .map(|alert| Notification {
-                id: alert.id,
-                organization: organization_id,
-                machine_id,
-                alert: alert.alert_type,
-                resolved: false,
-            })
-            .collect();
-
-        for notification in notifications {
-            self.dispatcher.notify(notification, channels.clone()).await?;
-        }
 
         Ok(())
     }
@@ -134,29 +129,39 @@ impl AlertHandler {
         Ok(filtered)
     }
 
-    /// Returns the channels that are enabled for the organization, as well as flags for
-    /// enabled/disabled alerts in the form of a vec.
+    /// Returns hashmap of organization enabled / disabled notification chanels, as well as flags
+    /// for enabled/disabled alerts in the form of a vec.
     pub async fn organization_channel_alerts(
         &self,
         organization_id: u64,
-    ) -> (HashSet<Channel>, Vec<usize>) {
-        let mut channels = HashSet::new();
+    ) -> (HashMap<Channel, bool>, Vec<usize>) {
+        let mut channels = HashMap::new();
         let org_notifications = NotificationSettings::get(&self.db_executor, organization_id)
             .await
             .expect("Organization notifications not found");
 
-        if org_notifications.telegram {
-            channels.insert(Channel::Telegram);
-        }
-        if org_notifications.email {
-            channels.insert(Channel::Email);
-        }
-        if org_notifications.pagerduty {
-            channels.insert(Channel::PagerDuty);
-        }
+        channels.insert(Channel::Telegram, org_notifications.telegram);
+        channels.insert(Channel::Email, org_notifications.email);
+        channels.insert(Channel::PagerDuty, org_notifications.pagerduty);
 
         (channels, org_notifications.alert_flags.to_alert_ids())
     }
+}
+
+/// Given a vector of NewAlert and ActiveAlerts, filters out the NewAlerts that have the same
+/// alert_id as the ActiveAlerts.
+pub async fn filter_duplicate_alerts(
+    incoming_alerts: Vec<NewAlert>,
+    existing_alerts: Vec<ActiveAlert>,
+) -> Result<Vec<NewAlert>, AlertError> {
+    let existing_ids = existing_alerts.iter().map(|alert| alert.alert_id).collect::<Vec<_>>();
+
+    let filtered = incoming_alerts
+        .into_iter()
+        .filter(|alert| !existing_ids.contains(&alert.id))
+        .collect::<Vec<_>>();
+
+    Ok(filtered)
 }
 
 async fn extract_node_data_alerts(

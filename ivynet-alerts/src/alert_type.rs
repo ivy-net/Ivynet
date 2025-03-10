@@ -114,7 +114,6 @@ impl Alert {
     // id to prevent collision where different notification types may have the same interior field.
     pub fn uuid_seed(&self) -> String {
         match self {
-            Alert::Custom { node_name, .. } |
             Alert::ActiveSetNoDeployment { node_name, .. } |
             Alert::UnregisteredFromActiveSet { node_name, .. } |
             Alert::NodeNotResponding { node_name, .. } |
@@ -124,7 +123,7 @@ impl Alert {
             Alert::NoOperatorId { node_name, .. } => {
                 format!("{}-{}", node_name, self.id())
             }
-            Alert::MachineNotResponding => {
+            Alert::Custom { .. } | Alert::MachineNotResponding => {
                 format!("{:?}-{}", self, self.id())
             }
             Alert::HardwareResourceUsage { machine, resource, .. } => {

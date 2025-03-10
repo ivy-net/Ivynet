@@ -11,7 +11,10 @@ BEGIN
         client_id,
         node_name,
         created_at,
-        alert_data
+        alert_data,
+        telegram_send,
+        sendgrid_send,
+        pagerduty_send
     ) VALUES (
         '00000000-0000-0000-0000-000000000001'::uuid,
         machine_id,
@@ -19,43 +22,58 @@ BEGIN
         client_id,
         'test_node',
         NOW(),
-        '{"Custom": "test"}'
+        '{"UnregisteredFromActiveSet": {"node_name": "test", "node_type": "test", "operator": "0x0000000000000000000000000000000000000000"}}',
+        'no_send',
+        'no_send',
+        'no_send'
     );
 
-    INSERT INTO alerts_active (
-        alert_id,
-        machine_id,
-        organization_id,
-        client_id,
-        node_name,
-        created_at,
-        alert_data
-    ) VALUES (
-        '00000000-0000-0000-0000-000000000002'::uuid,
-        machine_id,
-        (SELECT organization_id FROM organization WHERE name = org_name),
-        client_id,
-        'test_node',
-        NOW(),
-        '{"UnregisteredFromActiveSet": {"avs": "test", "address": "0x0000000000000000000000000000000000000000"}}'
-    );
+     INSERT INTO alerts_active (
+         alert_id,
+         machine_id,
+         organization_id,
+         client_id,
+         node_name,
+         created_at,
+         alert_data,
+         telegram_send,
+         sendgrid_send,
+         pagerduty_send
+     ) VALUES (
+         '00000000-0000-0000-0000-000000000002'::uuid,
+         machine_id,
+         (SELECT organization_id FROM organization WHERE name = org_name),
+         client_id,
+         'test_node',
+         NOW(),
+        '{"UnregisteredFromActiveSet": {"node_name": "test", "node_type": "test", "operator": "0x0000000000000000000000000000000000000000"}}',
+         'no_send',
+         'no_send',
+         'no_send'
+     );
 
-    INSERT INTO alerts_active (
-        alert_id,
-        machine_id,
-        organization_id,
-        client_id,
-        node_name,
-        created_at,
-        alert_data
-    ) VALUES (
-        '00000000-0000-0000-0000-000000000003'::uuid,
-        machine_id,
-        (SELECT organization_id FROM organization WHERE name = org_name),
-        client_id,
-        'test_node',
-        NOW(),
-        '"MachineNotResponding"'
-    );
+     INSERT INTO alerts_active (
+         alert_id,
+         machine_id,
+         organization_id,
+         client_id,
+         node_name,
+         created_at,
+         alert_data,
+         telegram_send,
+         sendgrid_send,
+         pagerduty_send
+     ) VALUES (
+         '00000000-0000-0000-0000-000000000003'::uuid,
+         machine_id,
+         (SELECT organization_id FROM organization WHERE name = org_name),
+         client_id,
+         'test_node',
+         NOW(),
+         '"MachineNotResponding"',
+         'no_send',
+         'no_send',
+         'no_send'
+     );
 END;
 $$;
