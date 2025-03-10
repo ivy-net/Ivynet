@@ -378,7 +378,7 @@ mod tests {
         let filtered_alerts =
             handler.filter_duplicate_alerts(alerts, existing_alerts).await.unwrap();
 
-        assert_eq!(filtered_alerts.len(), 0);
-        // assert_eq!(filtered_alerts[0].alert_type, alert_type_2);
+        assert_eq!(filtered_alerts.len(), 1);
+        assert_eq!(filtered_alerts[0].alert_type, alert_type_2);
     }
 }

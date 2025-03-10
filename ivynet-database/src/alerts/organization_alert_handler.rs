@@ -93,11 +93,11 @@ impl OrganizationAlertHandler {
             new_alerts.push(alert);
         }
 
-        // let existing_alerts = OrganizationActiveAlert::all_alerts_by_org(pool, 1).await?;
-        // let new_alerts = self.filter_duplicate_alerts(new_alerts, existing_alerts).await?;
-        // OrganizationActiveAlert::insert_many(pool, &new_alerts).await?;
+        let existing_alerts = OrganizationActiveAlert::all_alerts_by_org(pool, 1).await?;
+        let new_filtered_alerts = self.filter_duplicate_alerts(new_alerts, existing_alerts).await?;
+        OrganizationActiveAlert::insert_many(pool, &new_filtered_alerts).await?;
 
-        for alert in new_alerts {
+        for alert in new_filtered_alerts {
             self.send_notifications(&mut vec![alert.clone()], alert.organization_id as u64, None)
                 .await?;
         }
@@ -199,62 +199,132 @@ async fn extract_organization_data_alert_type(
 
 #[cfg(test)]
 mod tests {
-    // use ivynet_notifications::{NotificationConfig, SendgridSpecificTemplates, SendgridTemplates};
+    use ivynet_notifications::{NotificationConfig, SendgridSpecificTemplates, SendgridTemplates};
 
-    // use super::*;
+    use super::*;
 
-    // fn dummy_config_fixture() -> NotificationConfig {
-    //     let specific_templates = SendgridSpecificTemplates {
-    //         custom: "test".to_string(),
-    //         unreg_active_set: "test".to_string(),
-    //         machine_not_responding: "test".to_string(),
-    //         node_not_running: "test".to_string(),
-    //         no_chain_info: "test".to_string(),
-    //         no_metrics: "test".to_string(),
-    //         no_operator: "test".to_string(),
-    //         hw_res_usage: "test".to_string(),
-    //         low_perf: "test".to_string(),
-    //         needs_update: "test".to_string(),
-    //         new_eigen_avs: "test".to_string(),
-    //         updated_eigen_avs: "test".to_string(),
-    //     };
+    fn dummy_config_fixture() -> NotificationConfig {
+        let specific_templates = SendgridSpecificTemplates {
+            custom: "test".to_string(),
+            unreg_active_set: "test".to_string(),
+            machine_not_responding: "test".to_string(),
+            node_not_running: "test".to_string(),
+            no_chain_info: "test".to_string(),
+            no_metrics: "test".to_string(),
+            no_operator: "test".to_string(),
+            hw_res_usage: "test".to_string(),
+            low_perf: "test".to_string(),
+            needs_update: "test".to_string(),
+            new_eigen_avs: "test".to_string(),
+            updated_eigen_avs: "test".to_string(),
+        };
 
-    //     NotificationConfig {
-    //         telegram_token: "test".to_string(),
-    //         sendgrid_key: "test".to_string(),
-    //         sendgrid_from: "test".to_string(),
-    //         sendgrid_templates: SendgridTemplates::Specific(Box::new(specific_templates)),
-    //     }
-    // }
+        NotificationConfig {
+            telegram_token: "test".to_string(),
+            sendgrid_key: "test".to_string(),
+            sendgrid_from: "test".to_string(),
+            sendgrid_templates: SendgridTemplates::Specific(Box::new(specific_templates)),
+        }
+    }
 
-    // fn handler_fixture(pool: &PgPool) -> OrganizationAlertHandler {
-    //     OrganizationAlertHandler::new(
-    //         Arc::new(NotificationDispatcher::new(
-    //             dummy_config_fixture(),
-    //             AlertDb::new(pool.clone()),
-    //         )),
-    //         pool.clone(),
-    //     )
-    // }
+    fn handler_fixture(pool: &PgPool) -> OrganizationAlertHandler {
+        OrganizationAlertHandler::new(
+            Arc::new(NotificationDispatcher::new(
+                dummy_config_fixture(),
+                AlertDb::new(pool.clone()),
+            )),
+            pool.clone(),
+        )
+    }
 
-    // #[sqlx::test(
-    //     migrations = "../migrations",
-    //     fixtures(
-    //         "../../fixtures/new_user_registration.sql",
-    //         "../../fixtures/node_alerts_active.sql",
-    //     )
-    // )]
+    #[sqlx::test(
+        migrations = "../migrations",
+        fixtures(
+            "../../fixtures/new_user_registration.sql",
+            "../../fixtures/organization_alerts_active.sql",
+        )
+    )]
     // #[ignore]
-    // async fn test_filter_duplicate_alerts(pool: PgPool) {
-    //     let handler = handler_fixture(&pool);
-    //     let machine_id = Uuid::parse_str("dcbf22c7-9d96-47ac-bf06-62d6544e440d").unwrap();
-    //     let node_name = "test_node_123123".to_string();
-    //     let alert_type_1 = Alert::Custom {
-    //         node_name: node_name.clone(),
-    //         node_type: "test_type".to_string(),
-    //         extra_data: serde_json::Value::String("runtime_alert_fixture_1".to_string()),
-    //     };
+    async fn test_filter_duplicate_alerts(pool: PgPool) {
+        let handler = handler_fixture(&pool);
+        let organization_id = 1; // From the MontyPython org in fixtures
 
-    //     todo!()
-    // }
+        // Create test alerts with same IDs as in fixture for duplicates
+        let alert_id_1 = Uuid::parse_str("00000000-0000-0000-0000-000000000001").unwrap();
+        let alert_id_2 = Uuid::parse_str("00000000-0000-0000-0000-000000000002").unwrap();
+        let alert_id_3 = Uuid::parse_str("00000000-0000-0000-0000-000000000003").unwrap(); // New alert
+
+        let alert_type_1 = Alert::Custom {
+            node_name: "test_node_123123".to_string(),
+            node_type: "test_type".to_string(),
+            extra_data: serde_json::Value::String("runtime_alert_fixture_1".to_string()),
+        };
+
+        let alert_type_2 = Alert::Custom {
+            node_name: "test_node_123123".to_string(),
+            node_type: "test_type".to_string(),
+            extra_data: serde_json::Value::String("runtime_alert_fixture_2".to_string()),
+        };
+
+        let alert_type_3 = Alert::Custom {
+            node_name: "test_node_123123".to_string(),
+            node_type: "test_type".to_string(),
+            extra_data: serde_json::Value::String("runtime_alert_fixture_3".to_string()),
+        };
+
+        // Create incoming alerts with specific IDs
+        let incoming_alerts = vec![
+            NewOrganizationAlert {
+                id: alert_id_1,
+                alert_type: alert_type_1.clone(),
+                organization_id,
+                created_at: chrono::Utc::now().naive_utc(),
+                telegram_send: SendState::NoSend,
+                sendgrid_send: SendState::NoSend,
+                pagerduty_send: SendState::NoSend,
+            },
+            NewOrganizationAlert {
+                id: alert_id_2,
+                alert_type: alert_type_2.clone(),
+                organization_id,
+                created_at: chrono::Utc::now().naive_utc(),
+                telegram_send: SendState::NoSend,
+                sendgrid_send: SendState::NoSend,
+                pagerduty_send: SendState::NoSend,
+            },
+            NewOrganizationAlert {
+                id: alert_id_3,
+                alert_type: alert_type_3.clone(),
+                organization_id,
+                created_at: chrono::Utc::now().naive_utc(),
+                telegram_send: SendState::NoSend,
+                sendgrid_send: SendState::NoSend,
+                pagerduty_send: SendState::NoSend,
+            },
+        ];
+
+        // Get existing alerts from the database
+        let existing_alerts =
+            OrganizationActiveAlert::all_alerts_by_org(&pool, organization_id).await.unwrap();
+
+        // Filter out duplicates
+        let filtered_alerts =
+            handler.filter_duplicate_alerts(incoming_alerts, existing_alerts).await.unwrap();
+
+        // We should only have one alert left (alert_type_3) since the other two were duplicates
+        assert_eq!(filtered_alerts.len(), 1);
+        assert_eq!(filtered_alerts[0].id, alert_id_3);
+        assert!(matches!(
+            filtered_alerts[0].alert_type,
+            Alert::Custom { node_name: _, node_type: _, extra_data: _ }
+        ));
+
+        // Verify it's the correct alert that wasn't filtered
+        if let Alert::Custom { extra_data, .. } = &filtered_alerts[0].alert_type {
+            assert_eq!(
+                extra_data,
+                &serde_json::Value::String("runtime_alert_fixture_3".to_string())
+            );
+        }
+    }
 }

@@ -4,7 +4,7 @@ DECLARE
     machine_id uuid := 'dcbf22c7-9d96-47ac-bf06-62d6544e440d';
     client_id bytea := decode('0101010101010101010101010101010101010101', 'hex');
 BEGIN
-    INSERT INTO alerts_active (
+    INSERT INTO node_alerts_active (
         alert_id,
         machine_id,
         organization_id,
@@ -28,7 +28,7 @@ BEGIN
         'no_send'
     );
 
-     INSERT INTO alerts_active (
+     INSERT INTO node_alerts_active (
          alert_id,
          machine_id,
          organization_id,
@@ -52,7 +52,7 @@ BEGIN
          'no_send'
      );
 
-     INSERT INTO alerts_active (
+     INSERT INTO node_alerts_active (
          alert_id,
          machine_id,
          organization_id,
