@@ -1,11 +1,9 @@
-use std::{collections::HashMap, sync::Arc};
-
+use async_trait::async_trait;
 use ethers::types::Address;
 use ivynet_alerts::Alert;
 use ivynet_notifications::{NotificationDispatcher, NotificationDispatcherError};
-
-use async_trait::async_trait;
 use sqlx::{types::Uuid, PgPool};
+use std::sync::Arc;
 
 use crate::{
     alerts::organization_alerts_active::{NewOrganizationAlert, OrganizationActiveAlert},
@@ -16,7 +14,7 @@ use crate::{
 
 use super::{
     alert_db::AlertDb,
-    alert_handler::{AlertHandler, NewAlert},
+    alert_handler::{ActiveAlert, AlertHandler, NewAlert},
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -32,6 +30,16 @@ pub enum OrganizationAlertError {
 impl NewAlert for NewOrganizationAlert {
     fn get_id(&self) -> Uuid {
         self.id
+    }
+
+    fn get_alert_type(&self) -> Alert {
+        self.alert_type.clone()
+    }
+}
+
+impl ActiveAlert for OrganizationActiveAlert {
+    fn get_id(&self) -> Uuid {
+        self.alert_id
     }
 
     fn get_alert_type(&self) -> Alert {
@@ -116,7 +124,8 @@ impl OrganizationAlertHandler {
             new_alerts.push(alert);
         }
 
-        let filtered_alerts = self.filter_duplicate_alerts(new_alerts).await?;
+        let existing_alerts = OrganizationActiveAlert::all_alerts_by_org(pool, 1).await?;
+        let filtered_alerts = self.filter_duplicate_alerts(new_alerts, existing_alerts).await?;
         OrganizationActiveAlert::insert_many(pool, &filtered_alerts).await?;
 
         for alert in filtered_alerts {
@@ -131,7 +140,8 @@ impl OrganizationAlertHandler {
 #[async_trait]
 impl AlertHandler for OrganizationAlertHandler {
     type Error = OrganizationAlertError;
-    type AlertType = NewOrganizationAlert;
+    type NewAlertType = NewOrganizationAlert;
+    type ActiveAlertType = OrganizationActiveAlert;
 
     fn get_dispatcher(&self) -> &Arc<NotificationDispatcher<AlertDb>> {
         &self.dispatcher
@@ -143,34 +153,15 @@ impl AlertHandler for OrganizationAlertHandler {
 
     async fn filter_duplicate_alerts(
         &self,
-        alerts: Vec<Self::AlertType>,
-    ) -> Result<Vec<Self::AlertType>, Self::Error> {
-        let mut filtered = Vec::new();
+        incoming_alerts: Vec<Self::NewAlertType>,
+        existing_alerts: Vec<Self::ActiveAlertType>,
+    ) -> Result<Vec<Self::NewAlertType>, Self::Error> {
+        let existing_ids = existing_alerts.iter().map(|alert| alert.alert_id).collect::<Vec<_>>();
 
-        // Group alerts by organization_id since we need it for the DB query
-        let mut alerts_by_org: HashMap<i64, Vec<(Uuid, NewOrganizationAlert)>> = HashMap::new();
-        for alert in alerts {
-            alerts_by_org.entry(alert.organization_id).or_default().push((alert.id, alert));
-        }
-
-        // Check duplicates for each organization separately
-        for (org_id, org_alerts) in alerts_by_org {
-            let ids: Vec<_> = org_alerts.iter().map(|(id, _)| *id).collect();
-
-            let existing_ids: Vec<Uuid> =
-                OrganizationActiveAlert::get_many(&self.db_executor, &ids, org_id)
-                    .await?
-                    .iter()
-                    .map(|alert| alert.alert_id)
-                    .collect();
-
-            filtered.extend(
-                org_alerts
-                    .into_iter()
-                    .filter(|(id, _)| !existing_ids.contains(id))
-                    .map(|(_, alert)| alert),
-            );
-        }
+        let filtered = incoming_alerts
+            .into_iter()
+            .filter(|alert| !existing_ids.contains(&alert.id))
+            .collect::<Vec<_>>();
 
         Ok(filtered)
     }

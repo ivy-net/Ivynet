@@ -1,18 +1,12 @@
 use async_trait::async_trait;
-use ivynet_alerts::Alert;
-use ivynet_notifications::{
-    Channel, Notification, NotificationDispatcher, NotificationDispatcherError,
-};
-use std::{collections::HashMap, sync::Arc};
-
-use ivynet_alerts::{Alert, Channel, SendState};
-use ivynet_error::ethers::types::Chain;
-use ivynet_grpc::messages::NodeDataV2;
-use ivynet_node_type::NodeType;
+use ivynet_alerts::{Alert, Channel};
 use ivynet_notifications::{Notification, NotificationDispatcher, NotificationDispatcherError};
+use std::{
+    collections::{HashMap, HashSet},
+    sync::Arc,
+};
 
 use sqlx::{types::Uuid, PgPool};
-use std::{collections::HashSet, sync::Arc};
 
 use super::alert_db::AlertDb;
 use crate::NotificationSettings;
@@ -23,11 +17,18 @@ pub trait NewAlert {
     fn get_alert_type(&self) -> Alert;
 }
 
+/// Represents an active alert that can be retrieved from the database
+pub trait ActiveAlert {
+    fn get_id(&self) -> Uuid;
+    fn get_alert_type(&self) -> Alert;
+}
+
 /// Common trait for alert handlers that provides shared functionality
 #[async_trait]
 pub trait AlertHandler {
     type Error: From<NotificationDispatcherError>;
-    type AlertType: NewAlert + Send;
+    type NewAlertType: NewAlert + Send;
+    type ActiveAlertType: ActiveAlert + Send;
 
     fn get_dispatcher(&self) -> &Arc<NotificationDispatcher<AlertDb>>;
     fn get_db_pool(&self) -> &PgPool;
@@ -35,15 +36,18 @@ pub trait AlertHandler {
     /// Filter out duplicate alerts that already exist in the database
     async fn filter_duplicate_alerts(
         &self,
-        alerts: Vec<Self::AlertType>,
-    ) -> Result<Vec<Self::AlertType>, Self::Error>;
+        incoming_alerts: Vec<Self::NewAlertType>,
+        existing_alerts: Vec<Self::ActiveAlertType>,
+    ) -> Result<Vec<Self::NewAlertType>, Self::Error>;
 
     /// Get the notification channels and alert flags for an organization
+    /// Returns hashmap of organization enabled / disabled notification chanels, as well as flags
+    /// for enabled/disabled alerts in the form of a vec.
     async fn organization_channel_alerts(
         &self,
         organization_id: u64,
-    ) -> (HashSet<Channel>, Vec<usize>) {
-        let mut channels = HashSet::new();
+    ) -> (HashMap<Channel, bool>, Vec<usize>) {
+        let mut channels = HashMap::new();
         let org_notifications = NotificationSettings::get(self.get_db_pool(), organization_id)
             .await
             .expect("Organization notifications not found");
@@ -58,7 +62,7 @@ pub trait AlertHandler {
     /// Send notifications for the given alerts through configured channels
     async fn send_notifications(
         &self,
-        alerts: Vec<Self::AlertType>,
+        alerts: Vec<Self::NewAlertType>,
         organization_id: u64,
         machine_id: Option<Uuid>,
     ) -> Result<(), Self::Error> {
@@ -77,7 +81,12 @@ pub trait AlertHandler {
             .collect();
 
         for notification in notifications {
-            self.get_dispatcher().notify(notification, channels.clone()).await?;
+            let enabled_channels: HashSet<_> = channels
+                .iter()
+                .filter(|(_, &enabled)| enabled)
+                .map(|(channel, _)| *channel)
+                .collect();
+            self.get_dispatcher().notify(notification, enabled_channels).await?;
         }
 
         Ok(())

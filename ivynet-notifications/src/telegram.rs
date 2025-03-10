@@ -91,43 +91,43 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
             NotificationType::UnregisteredFromActiveSet { node_name, node_type: _, operator } => {
                 format!(
                     "❗ *Operator Unregistered from Active Set* ❗️\nAddress `{operator}` has been removed from the active set for node `{node_name}`\n🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    machine_id = notification.machine_id
+                    machine_id = notification.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::MachineNotResponding => {
                 format!(
                     "❗ *Machine Not Responding* ❗️\nMachine `{machine_id}` has lost connection with our backend\n🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    machine_id = notification.machine_id
+                    machine_id = notification.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::Custom { node_name, node_type: _, extra_data } => {
                 format!(
                     "❗ *Custom Alert* ❗️\nNode `{node_name}` has triggered a custom alert with custom data: `{extra_data}`\n🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    machine_id = notification.machine_id,
+                    machine_id = notification.machine_id.unwrap_or_default(),
                 )
             }
             NotificationType::NodeNotRunning { node_name, node_type: _ } => {
                 format!(
                     "❗ *Node Not Running* ❗️\nNode `{node_name}` is not running on machine `{machine_id}`\n🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    machine_id = notification.machine_id
+                    machine_id = notification.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::NoChainInfo { node_name, node_type: _ } => {
                 format!(
                     "❗ *No Chain Info* ❗️ \nNode `{node_name}` has no chain information \n🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    machine_id = notification.machine_id
+                    machine_id = notification.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::NoMetrics { node_name, node_type: _ } => {
                 format!(
                     "❗ *No Metrics* ❗️\nNode `{node_name}` is not reporting any metrics\n🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    machine_id = notification.machine_id
+                    machine_id = notification.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::NoOperatorId { node_name, node_type: _ } => {
                 format!(
                     "❗ *No Operator ID* ❗️\nNode `{node_name}` has no associated operator ID\n🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    machine_id = notification.machine_id
+                    machine_id = notification.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::HardwareResourceUsage { machine, resource, percent } => {
@@ -141,7 +141,7 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
             NotificationType::LowPerformanceScore { node_name, node_type: _, performance } => {
                 format!(
                     "❗ *Low Performance Score* ❗️\nNode `{node_name}` has a LOW performance score of `{performance}`\n🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    machine_id = notification.machine_id,
+                    machine_id = notification.machine_id.unwrap_or_default(),
                     performance = performance
                 )
             }
@@ -153,7 +153,7 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
             } => {
                 format!(
                     "❗ *Node Update Available* ❗️\nNode `{node_name}` is running version `{current_version}` but version `{recommended_version}` is available\n🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    machine_id = notification.machine_id,
+                    machine_id = notification.machine_id.unwrap_or_default(),
                     current_version = current_version,
                     recommended_version = recommended_version
                 )
@@ -161,13 +161,13 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
             NotificationType::ActiveSetNoDeployment { node_name, .. } => {
                 format!(
                     "❗ *Active Set No Deployment* ❗️\nNode `{node_name}` is in the active set, but the node is either not deployed or not responding\n🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    machine_id = notification.machine_id
+                    machine_id = notification.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::NodeNotResponding { node_name, .. } => {
                 format!(
 "❗ *Node Not Responding* ❗️\nNode `{node_name}` is not responding\n🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-machine_id = notification.machine_id
+machine_id = notification.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::NewEigenAvs {

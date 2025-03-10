@@ -1,10 +1,10 @@
 use std::{collections::HashMap, sync::Arc};
 
-use ivynet_alerts::Alert;
+use ivynet_alerts::{Alert, SendState};
 use ivynet_error::ethers::types::Chain;
 use ivynet_grpc::messages::NodeDataV2;
 use ivynet_node_type::NodeType;
-use ivynet_notifications::{NotificationDispatcher, NotificationDispatcherError};
+use ivynet_notifications::{Notification, NotificationDispatcher, NotificationDispatcherError};
 
 use async_trait::async_trait;
 use sqlx::{types::Uuid, PgPool};
@@ -21,7 +21,7 @@ use crate::{
 
 use super::{
     alert_db::AlertDb,
-    alert_handler::{AlertHandler, NewAlert},
+    alert_handler::{ActiveAlert, AlertHandler, NewAlert},
     node_alerts_active::{NewNodeAlert, NodeActiveAlert},
 };
 
@@ -60,6 +60,15 @@ impl NewAlert for NewNodeAlert {
     }
 }
 
+impl ActiveAlert for NodeActiveAlert {
+    fn get_id(&self) -> Uuid {
+        self.alert_id
+    }
+
+    fn get_alert_type(&self) -> Alert {
+        self.alert_type.clone()
+    }
+}
 #[derive(Clone)]
 pub struct NodeAlertHandler {
     pub dispatcher: Arc<NotificationDispatcher<AlertDb>>,
@@ -76,24 +85,45 @@ impl NodeAlertHandler {
         node_data: NodeDataV2,
         machine_id: Uuid,
     ) -> Result<(), NodeAlertError> {
-        // alert extraction and insertion
-        let raw_alerts = extract_node_data_alerts(&self.db_executor, machine_id, &node_data).await;
+        let organization_id = Machine::get_organization_id(&self.db_executor, machine_id).await?;
 
-        let new_alerts = raw_alerts
+        let (channels, enabled_alert_ids) =
+            self.organization_channel_alerts(organization_id as u64).await;
+
+        let new_alerts = extract_node_data_alerts(&self.db_executor, machine_id, &node_data)
+            .await
             .into_iter()
             .map(|alert| NewNodeAlert::new(machine_id, alert, node_data.name.clone()))
             .collect::<Vec<_>>();
 
-        let filtered_new_alerts = self.filter_duplicate_alerts(new_alerts).await?;
+        let existing_alerts =
+            NodeActiveAlert::all_alerts_by_org(&self.db_executor, organization_id).await?;
+
+        let mut filtered_new_alerts =
+            self.filter_duplicate_alerts(new_alerts, existing_alerts).await?;
+
+        for (channel, do_send) in channels {
+            for alert in filtered_new_alerts.iter_mut() {
+                if do_send && enabled_alert_ids.contains(&alert.flag_id()) {
+                    let notification = Notification {
+                        id: alert.id,
+                        organization: organization_id as u64,
+                        machine_id: Some(machine_id),
+                        alert: alert.alert_type.clone(),
+                        resolved: false,
+                    };
+
+                    let send_state =
+                        match self.dispatcher.notify_channel(notification, channel).await {
+                            true => SendState::SendSuccess,
+                            false => SendState::SendFailed,
+                        };
+                    alert.set_send_state(channel, send_state);
+                }
+            }
+        }
 
         NodeActiveAlert::insert_many(&self.db_executor, &filtered_new_alerts).await?;
-
-        // Handle notification dispatch. Notification filtering happens post-insertion, so alerts
-        // are still visible in the database.
-        let organization_id =
-            Machine::get_organization_id(&self.db_executor, machine_id).await? as u64;
-
-        self.send_notifications(filtered_new_alerts, organization_id, Some(machine_id)).await?;
 
         Ok(())
     }
@@ -102,7 +132,8 @@ impl NodeAlertHandler {
 #[async_trait]
 impl AlertHandler for NodeAlertHandler {
     type Error = NodeAlertError;
-    type AlertType = NewNodeAlert;
+    type NewAlertType = NewNodeAlert;
+    type ActiveAlertType = NodeActiveAlert;
 
     fn get_dispatcher(&self) -> &Arc<NotificationDispatcher<AlertDb>> {
         &self.dispatcher
@@ -114,17 +145,12 @@ impl AlertHandler for NodeAlertHandler {
 
     async fn filter_duplicate_alerts(
         &self,
-        alerts: Vec<Self::AlertType>,
-    ) -> Result<Vec<Self::AlertType>, Self::Error> {
-        let ids = alerts.iter().map(|alert| alert.id).collect::<Vec<_>>();
+        incoming_alerts: Vec<NewNodeAlert>,
+        existing_alerts: Vec<NodeActiveAlert>,
+    ) -> Result<Vec<NewNodeAlert>, NodeAlertError> {
+        let existing_ids = existing_alerts.iter().map(|alert| alert.alert_id).collect::<Vec<_>>();
 
-        let existing_ids: Vec<Uuid> = NodeActiveAlert::get_many(&self.db_executor, &ids)
-            .await?
-            .iter()
-            .map(|alert| alert.alert_id)
-            .collect();
-
-        let filtered = alerts
+        let filtered = incoming_alerts
             .into_iter()
             .filter(|alert| !existing_ids.contains(&alert.id))
             .collect::<Vec<_>>();
@@ -360,8 +386,10 @@ mod tests {
         NodeActiveAlert::insert_one(&pool, &new_alert_1).await.unwrap();
 
         let alerts = vec![new_alert_1, new_alert_2];
+        let existing_alerts = NodeActiveAlert::all_alerts_by_org(&pool, 1).await.unwrap();
 
-        let filtered_alerts = handler.filter_duplicate_alerts(alerts).await.unwrap();
+        let filtered_alerts =
+            handler.filter_duplicate_alerts(alerts, existing_alerts).await.unwrap();
 
         assert_eq!(filtered_alerts.len(), 0);
         // assert_eq!(filtered_alerts[0].alert_type, alert_type_2);
