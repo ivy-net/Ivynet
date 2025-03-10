@@ -77,11 +77,16 @@ pub trait AlertHandler {
                         resolved: false,
                     };
 
+                    println!("sending notification: {:#?}", notification);
+
                     let send_state =
                         match self.get_dispatcher().notify_channel(notification, channel).await {
                             true => SendState::SendSuccess,
                             false => SendState::SendFailed,
                         };
+
+                    println!("send_state: {:#?}", send_state);
+
                     alert.set_send_state(channel, send_state);
                 }
             }

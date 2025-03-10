@@ -97,14 +97,10 @@ impl OrganizationAlertHandler {
         // let new_alerts = self.filter_duplicate_alerts(new_alerts, existing_alerts).await?;
         // OrganizationActiveAlert::insert_many(pool, &new_alerts).await?;
 
-        println!("new_alerts: {:#?}", new_alerts);
-
         for alert in new_alerts {
             self.send_notifications(&mut vec![alert.clone()], alert.organization_id as u64, None)
                 .await?;
         }
-
-        println!("------------------------------------------------");
 
         Ok(())
     }
@@ -131,15 +127,10 @@ impl AlertHandler for OrganizationAlertHandler {
     ) -> Result<Vec<Self::NewAlertType>, Self::Error> {
         let existing_ids = existing_alerts.iter().map(|alert| alert.alert_id).collect::<Vec<_>>();
 
-        println!("existing_ids: {:#?}", existing_ids);
-        println!("incoming_alerts: {:#?}", incoming_alerts);
-
         let filtered = incoming_alerts
             .into_iter()
             .filter(|alert| !existing_ids.contains(&alert.id))
             .collect::<Vec<_>>();
-
-        println!("filtered: {:#?}", filtered);
 
         Ok(filtered)
     }
