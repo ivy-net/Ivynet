@@ -168,8 +168,6 @@ async fn extract_organization_data_alert_type(
         if is_update { "update" } else { "new" }
     );
 
-    
-
     let alert_type = if is_update {
         Alert::UpdatedEigenAvs {
             address: *avs_address,
@@ -195,8 +193,6 @@ async fn extract_organization_data_alert_type(
             twitter: metadata_content.twitter.clone().unwrap_or_default(),
         }
     };
-
-
 
     Ok(alert_type)
 }
