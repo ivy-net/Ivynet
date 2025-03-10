@@ -3506,6 +3506,7 @@ dependencies = [
  "bollard",
  "chrono",
  "futures",
+ "hex",
  "mockall",
  "regex",
  "reqwest 0.12.12",

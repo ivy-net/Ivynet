@@ -1,7 +1,7 @@
 use std::{sync::Arc, time::Duration};
 
 use bollard::container::LogOutput;
-use ivynet_docker::{container::Container, dockerapi::DockerClient};
+use ivynet_docker::{container::FullContainer, dockerapi::DockerClient};
 use ivynet_signer::sign_utils::IvySigningError;
 use kameo::{actor::ActorRef, Actor};
 use tokio::{task::JoinSet, time};
@@ -46,7 +46,7 @@ impl LogsListenerManager {
     /// the stream is closed for further handling, restarts, etc.
     pub async fn add_listener(
         &mut self,
-        container: &Container,
+        container: &FullContainer,
         node_data: &ConfiguredAvs,
     ) -> Result<(), LogListenerError> {
         let listener_data = ListenerData {
@@ -92,7 +92,7 @@ impl Actor for LogsListener {
 
 #[derive(Debug, Clone)]
 pub struct ListenerData {
-    pub container: Container,
+    pub container: FullContainer,
     pub node_data: ConfiguredAvs,
     pub machine: Arc<IvyMachine>,
 }

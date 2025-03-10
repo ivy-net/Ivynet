@@ -29,6 +29,7 @@ tokio-stream.workspace = true
 tracing.workspace = true
 regex.workspace = true
 which.workspace = true
+hex = "0.4.3"
 
 [dev-dependencies]
 mockall = "0.13.1"

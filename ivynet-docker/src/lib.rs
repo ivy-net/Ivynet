@@ -4,4 +4,6 @@ pub mod dockerapi;
 pub mod dockercmd;
 pub mod logs;
 pub mod mocks;
+pub mod ports;
+pub mod repodigest;
 pub mod sidecar;

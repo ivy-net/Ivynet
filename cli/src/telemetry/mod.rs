@@ -4,8 +4,9 @@ use convert_case::{Case, Casing};
 use dispatch::{TelemetryDispatchError, TelemetryDispatchHandle};
 use docker_event_stream_listener::DockerStreamListener;
 use ivynet_docker::{
-    container::{Container, ContainerId, ContainerImage},
+    container::{ContainerId, FullContainer},
     dockerapi::{DockerApi, DockerClient},
+    repodigest::RepoTag,
 };
 use ivynet_grpc::{
     backend::backend_client::BackendClient, messages::NodeDataV2, tonic::transport::Channel,
@@ -55,7 +56,7 @@ pub struct ConfiguredAvs {
     pub avs_type: String,
     pub metric_port: Option<u16>,
     pub manifest: Option<ContainerId>,
-    pub image: Option<ContainerImage>,
+    pub image: Option<RepoTag>,
 }
 
 impl ConfiguredAvs {
@@ -72,7 +73,7 @@ impl ConfiguredAvs {
 
     pub async fn node_running(&self) -> bool {
         let docker = DockerClient::default();
-        docker.find_container_by_name(&self.container_name).await.is_some()
+        docker.get_full_container_by_name(&self.container_name).await.is_ok()
     }
 }
 
@@ -95,7 +96,7 @@ impl<'de> Deserialize<'de> for ConfiguredAvs {
             #[serde(default)]
             metric_port: Option<u16>,
             avs_type: AvsTypeField,
-            image: Option<ContainerImage>,
+            image: Option<RepoTag>,
             manifest: Option<ContainerId>,
         }
 
@@ -196,8 +197,8 @@ pub async fn listen(
     // On start, send already-configured node data and setup logs listeners
     for node in avses.iter() {
         info!("Searching for node: {}", node.container_name);
-        let container: Option<Container> =
-            match docker.find_container_by_name(&node.container_name).await {
+        let container: Option<FullContainer> =
+            match docker.get_full_container_by_name(&node.container_name).await {
                 Some(container) => {
                     let _ = monitor_config.update_container_manifest(
                         &node.container_name,

@@ -4,6 +4,7 @@ use fs2::FileExt;
 use ivynet_docker::{
     container::{ContainerId, ContainerImage},
     dockerapi::DockerClient,
+    repodigest::RepoTag,
 };
 use ivynet_grpc::{
     self,
@@ -35,7 +36,7 @@ const MONITOR_CONFIG_FILE: &str = "monitor-config.toml";
 #[derive(Clone, Debug)]
 pub struct PotentialAvs {
     pub container_name: String,
-    pub docker_image: ContainerImage,
+    pub docker_image: RepoTag,
     pub manifest: ContainerId,
     pub ports: Vec<u16>,
 }

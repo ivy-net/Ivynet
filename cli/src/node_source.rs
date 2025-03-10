@@ -18,8 +18,8 @@ impl<T: DockerApi> NodeSource for T {
 
         for container in containers {
             let (names, image_str, image_id) =
-                match (container.names(), container.image(), container.image_id()) {
-                    (Some(n), Some(i), Some(id)) => (n, i, id),
+                match (container.names(), container.repo_tag(), container.image_id()) {
+                    (n, Some(i), Some(id)) => (n, i, id),
                     _ => continue,
                 };
 
