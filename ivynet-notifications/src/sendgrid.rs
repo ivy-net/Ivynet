@@ -34,10 +34,12 @@ enum EmailTemplate {
     NoMetrics,
     NoOperatorId,
     HardwareResourceUsage,
-    LowPerformaceScore,
+    LowPerformanceScore,
     NeedsUpdate,
     ActiveSetNoDeployment,
     NodeNotResponding,
+    NewEigenAvs,
+    UpdatedEigenAvs,
 }
 
 impl EmailTemplate {
@@ -55,7 +57,10 @@ impl EmailTemplate {
             ),
             NotificationType::MachineNotResponding => (
                 Self::MachineNotResponding,
-                HashMap::from([("machine_id".to_owned(), format!("{}", notification.machine_id))]),
+                HashMap::from([(
+                    "machine_id".to_owned(),
+                    format!("{}", notification.machine_id.unwrap_or_default()),
+                )]),
             ),
             NotificationType::NodeNotRunning { node_name, .. } => {
                 (Self::NodeNotRunning, HashMap::from([("avs".to_owned(), node_name)]))
@@ -72,13 +77,16 @@ impl EmailTemplate {
             NotificationType::HardwareResourceUsage { resource, percent, .. } => (
                 Self::HardwareResourceUsage,
                 HashMap::from([
-                    ("machine_id".to_owned(), format!("{}", notification.machine_id)),
+                    (
+                        "machine_id".to_owned(),
+                        format!("{}", notification.machine_id.unwrap_or_default()),
+                    ),
                     ("resource".to_owned(), resource),
                     ("percent".to_owned(), format!("{percent}")),
                 ]),
             ),
-            NotificationType::LowPerformaceScore { node_name, performance, .. } => (
-                Self::LowPerformaceScore,
+            NotificationType::LowPerformanceScore { node_name, performance, .. } => (
+                Self::LowPerformanceScore,
                 HashMap::from([
                     ("avs".to_owned(), node_name),
                     ("performance".to_owned(), format!("{performance}")),
@@ -107,6 +115,42 @@ impl EmailTemplate {
             NotificationType::NodeNotResponding { node_name, .. } => {
                 (Self::NodeNotResponding, HashMap::from([("node_name".to_owned(), node_name)]))
             }
+            NotificationType::NewEigenAvs {
+                name,
+                address,
+                metadata_uri,
+                website,
+                twitter,
+                description,
+                ..
+            } => (
+                Self::NewEigenAvs,
+                HashMap::from([
+                    ("name".to_owned(), name),
+                    ("address".to_owned(), format!("{:?}", address)),
+                    ("metadata_uri".to_owned(), metadata_uri),
+                    ("website".to_owned(), website),
+                    ("twitter".to_owned(), twitter),
+                    ("description".to_owned(), description),
+                ]),
+            ),
+            NotificationType::UpdatedEigenAvs {
+                name,
+                address,
+                metadata_uri,
+                website,
+                twitter,
+                ..
+            } => (
+                Self::UpdatedEigenAvs,
+                HashMap::from([
+                    ("name".to_owned(), name),
+                    ("address".to_owned(), format!("{:?}", address)),
+                    ("metadata_uri".to_owned(), metadata_uri),
+                    ("website".to_owned(), website),
+                    ("twitter".to_owned(), twitter),
+                ]),
+            ),
         }
     }
 }
@@ -148,7 +192,7 @@ impl<D: OrganizationDatabase> EmailSender<D> {
                     sendgrid_templates.hw_res_usage.to_string(),
                 );
                 templates.insert(
-                    EmailTemplate::LowPerformaceScore,
+                    EmailTemplate::LowPerformanceScore,
                     sendgrid_templates.low_perf.to_string(),
                 );
                 templates.insert(
@@ -167,7 +211,10 @@ impl<D: OrganizationDatabase> EmailSender<D> {
         let (mut template, mut payload) = EmailTemplate::payload(notification.clone());
         if self.templates.len() == 1 {
             template = EmailTemplate::Generic;
-            payload.insert("machine_id".to_string(), format!("{}", notification.machine_id));
+            payload.insert(
+                "machine_id".to_string(),
+                format!("{}", notification.machine_id.unwrap_or_default()),
+            );
             payload.insert(
                 "error_type".to_string(),
                 match notification.alert {
@@ -190,8 +237,14 @@ impl<D: OrganizationDatabase> EmailSender<D> {
                     Alert::HardwareResourceUsage { resource, percent, .. } => {
                         format!("Resource {resource} is used in {percent}%")
                     }
-                    Alert::LowPerformaceScore { node_name: _, node_type: _, performance } => {
+                    Alert::LowPerformanceScore { node_name: _, node_type: _, performance } => {
                         format!("AVS dropped in performace score to {performance}")
+                    }
+                    Alert::NewEigenAvs { name, address, metadata_uri, website, twitter, .. } => {
+                        format!("New EigenLayer AVS: {name} has been detected at {:?} with metadata URI {metadata_uri}. \n Website: {website} \n Twitter: {twitter}", address)
+                    }
+                    Alert::UpdatedEigenAvs { name, address, metadata_uri, website, twitter, .. } => {
+                        format!("Updated EigenLayer AVS: {name} has updated their metadata or address to {:?} with metadata URI {metadata_uri}. \n Website: {website} \n Twitter: {twitter}", address)
                     }
                 },
             );

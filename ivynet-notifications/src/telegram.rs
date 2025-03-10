@@ -86,63 +86,90 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
         Ok(())
     }
 
+    fn escape_markdown_v2(text: &str) -> String {
+        let special_chars = [
+            '_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.',
+            '!',
+        ];
+        let mut escaped = String::with_capacity(text.len() * 2);
+        for c in text.chars() {
+            if special_chars.contains(&c) {
+                escaped.push('\\');
+            }
+            escaped.push(c);
+        }
+        escaped
+    }
+
     pub async fn notify(&self, notification: Notification) -> Result<(), BotError> {
         let message = match notification.alert {
             NotificationType::UnregisteredFromActiveSet { node_name, node_type: _, operator } => {
                 format!(
-                    "❗ *Operator Unregistered from Active Set* ❗️\nAddress `{operator}` has been removed from the active set for node `{node_name}`\n🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    machine_id = notification.machine_id
+                    "❗ *Operator Unregistered from Active Set* ❗️\nAddress `{}` has been removed from the active set for node `{}`\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
+                    Self::escape_markdown_v2(&format!("{:?}", operator)),
+                    Self::escape_markdown_v2(&node_name),
+                    notification.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::MachineNotResponding => {
                 format!(
-                    "❗ *Machine Not Responding* ❗️\nMachine `{machine_id}` has lost connection with our backend\n🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    machine_id = notification.machine_id
+                    "❗ *Machine Not Responding* ❗️\nMachine `{}` has lost connection with our backend\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
+                    Self::escape_markdown_v2(&format!("{:?}", notification.machine_id.unwrap_or_default())),
+                    notification.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::Custom { node_name, node_type: _, extra_data } => {
                 format!(
-                    "❗ *Custom Alert* ❗️\nNode `{node_name}` has triggered a custom alert with custom data: `{extra_data}`\n🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    machine_id = notification.machine_id,
+                    "❗ *Custom Alert* ❗️\nNode `{}` has triggered a custom alert with custom data: `{}`\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
+                    Self::escape_markdown_v2(&node_name),
+                    Self::escape_markdown_v2(&extra_data.to_string()),
+                    notification.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::NodeNotRunning { node_name, node_type: _ } => {
                 format!(
-                    "❗ *Node Not Running* ❗️\nNode `{node_name}` is not running on machine `{machine_id}`\n🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    machine_id = notification.machine_id
+                    "❗ *Node Not Running* ❗️\nNode `{}` is not running on machine `{}`\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
+                    Self::escape_markdown_v2(&node_name),
+                    Self::escape_markdown_v2(&format!("{:?}", notification.machine_id.unwrap_or_default())),
+                    notification.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::NoChainInfo { node_name, node_type: _ } => {
                 format!(
-                    "❗ *No Chain Info* ❗️ \nNode `{node_name}` has no chain information \n🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    machine_id = notification.machine_id
+                    "❗ *No Chain Info* ❗️ \nNode `{}` has no chain information \n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
+                    Self::escape_markdown_v2(&node_name),
+                    notification.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::NoMetrics { node_name, node_type: _ } => {
                 format!(
-                    "❗ *No Metrics* ❗️\nNode `{node_name}` is not reporting any metrics\n🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    machine_id = notification.machine_id
+                    "❗ *No Metrics* ❗️\nNode `{}` is not reporting any metrics\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
+                    Self::escape_markdown_v2(&node_name),
+                    notification.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::NoOperatorId { node_name, node_type: _ } => {
                 format!(
-                    "❗ *No Operator ID* ❗️\nNode `{node_name}` has no associated operator ID\n🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    machine_id = notification.machine_id
+                    "❗ *No Operator ID* ❗️\nNode `{}` has no associated operator ID\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
+                    Self::escape_markdown_v2(&node_name),
+                    notification.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::HardwareResourceUsage { machine, resource, percent } => {
                 format!(
-                    "❗ *Hardware Resource Usage* ❗️\nMachine `{machine_id}` has used over `{percent}%` of `{resource}`\n🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    machine_id = machine,
-                    percent = percent,
-                    resource = resource
+                    "❗ *Hardware Resource Usage* ❗️\nMachine `{}` has used over `{}%` of `{}`\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
+                    Self::escape_markdown_v2(&format!("{:?}", machine)),
+                    percent,
+                    Self::escape_markdown_v2(&resource),
+                    machine
                 )
             }
-            NotificationType::LowPerformaceScore { node_name, node_type: _, performance } => {
+            NotificationType::LowPerformanceScore { node_name, node_type: _, performance } => {
                 format!(
-                    "❗ *Low Performance Score* ❗️\nNode `{node_name}` has a LOW performance score of `{performance}`\n🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    machine_id = notification.machine_id,
-                    performance = performance
+                    "❗ *Low Performance Score* ❗️\nNode `{}` has a LOW performance score of `{}`\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
+                    Self::escape_markdown_v2(&node_name),
+                    performance,
+                    notification.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::NeedsUpdate {
@@ -152,22 +179,61 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
                 recommended_version,
             } => {
                 format!(
-                    "❗ *Node Update Available* ❗️\nNode `{node_name}` is running version `{current_version}` but version `{recommended_version}` is available\n🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    machine_id = notification.machine_id,
-                    current_version = current_version,
-                    recommended_version = recommended_version
+                    "❗ *Node Update Available* ❗️\nNode `{}` is running version `{}` but version `{}` is available\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
+                    Self::escape_markdown_v2(&node_name),
+                    Self::escape_markdown_v2(&current_version),
+                    Self::escape_markdown_v2(&recommended_version),
+                    notification.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::ActiveSetNoDeployment { node_name, .. } => {
                 format!(
-                    "❗ *Active Set No Deployment* ❗️\nNode `{node_name}` is in the active set, but the node is either not deployed or not responding\n🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    machine_id = notification.machine_id
+                    "❗ *Active Set No Deployment* ❗️\nNode `{}` is in the active set, but the node is either not deployed or not responding\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
+                    Self::escape_markdown_v2(&node_name),
+                    notification.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::NodeNotResponding { node_name, .. } => {
                 format!(
-                    "❗ *Node Not Responding* ❗️\nNode `{node_name}` is not responding\n🔗 [Machine Details](http://ivynet.dev/machines/{machine_id})",
-                    machine_id = notification.machine_id
+                    "❗ *Node Not Responding* ❗️\nNode `{}` is not responding\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
+                    Self::escape_markdown_v2(&node_name),
+                    notification.machine_id.unwrap_or_default()
+                )
+            }
+            NotificationType::NewEigenAvs {
+                name,
+                address,
+                metadata_uri,
+                website,
+                twitter,
+                description,
+                ..
+            } => {
+                format!(
+                    "❗ *New EigenLayer AVS* ❗️\n\nNew EigenLayer AVS: {} has been detected at {} with metadata URI {}\n\nWebsite: {}\nTwitter: {}\nDescription: {}",
+                    Self::escape_markdown_v2(&name),
+                    Self::escape_markdown_v2(&format!("{:?}", address)),
+                    Self::escape_markdown_v2(&metadata_uri),
+                    Self::escape_markdown_v2(&website),
+                    Self::escape_markdown_v2(&twitter),
+                    Self::escape_markdown_v2(&description)
+                )
+            }
+            NotificationType::UpdatedEigenAvs {
+                name,
+                address,
+                metadata_uri,
+                website,
+                twitter,
+                ..
+            } => {
+                format!(
+                    "❗ *Updated EigenLayer AVS* ❗️\n\nUpdated EigenLayer AVS: {} has updated their metadata or address to {} with metadata URI {}\n\nWebsite: {}\nTwitter: {}",
+                    Self::escape_markdown_v2(&name),
+                    Self::escape_markdown_v2(&format!("{:?}", address)),
+                    Self::escape_markdown_v2(&metadata_uri),
+                    Self::escape_markdown_v2(&website),
+                    Self::escape_markdown_v2(&twitter)
                 )
             }
         };

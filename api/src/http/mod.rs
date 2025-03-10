@@ -150,7 +150,8 @@ fn create_router() -> Router<HttpState> {
                 .route("/notifications", post(alerts::set_alert_flags))
                 .route("/notifications/list", get(alerts::list_alert_flags))
                 .route("/notifications/readable", get(alerts::get_alert_flags_human))
-                .route("/notifications/set_flags", post(alerts::update_alert_flag)),
+                .route("/notifications/set_flag", post(alerts::update_alert_flag))
+                .route("/notifications/set_flags", post(alerts::update_multiple_alert_flags)),
         )
         .nest(
             "/info/avs",

@@ -1,0 +1,2 @@
+DROP TABLE node_alerts_active;
+DROP TRIGGER after_insert_organization_node_active ON organization;

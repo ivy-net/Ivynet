@@ -1,0 +1,54 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                alert_db_id,\n                alert_id,\n                organization_id,\n                created_at,\n                acknowledged_at,\n                alert_data\n            FROM\n                organization_alerts_historical\n            WHERE\n                organization_id = $1\n                AND created_at >= $2\n                AND created_at <= $3\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "alert_db_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "alert_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "organization_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "created_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 4,
+        "name": "acknowledged_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 5,
+        "name": "alert_data",
+        "type_info": "Jsonb"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Timestamp",
+        "Timestamp"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "117a99ac27ba5c56fa55bd3ae86ea0b0ec4483eedb14755e0042234936155ddc"
+}

@@ -3331,6 +3331,8 @@ dependencies = [
  "ivynet-node-type",
  "ivynet-notifications",
  "ivynet-signer",
+ "reqwest 0.12.12",
+ "serde_json",
  "sqlx",
  "thiserror 2.0.12",
  "tokio",
@@ -3470,6 +3472,7 @@ dependencies = [
 name = "ivynet-database"
 version = "0.6.0"
 dependencies = [
+ "async-trait",
  "chrono",
  "ethers",
  "ivynet-alerts",
@@ -3490,6 +3493,7 @@ dependencies = [
  "tokio",
  "tonic",
  "tonic-build",
+ "tracing",
  "utoipa",
  "uuid 1.15.1",
 ]

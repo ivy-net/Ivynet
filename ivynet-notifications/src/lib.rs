@@ -26,7 +26,7 @@ pub enum NotificationDispatcherError {
 pub struct Notification {
     pub id: Uuid,
     pub organization: u64,
-    pub machine_id: Uuid,
+    pub machine_id: Option<Uuid>,
     pub alert: Alert,
     pub resolved: bool,
 }
@@ -34,11 +34,12 @@ pub struct Notification {
 #[derive(Clone, Debug)]
 pub enum SendgridTemplates {
     Generic(String),
-    Specific(SendgridSpecificTemplates),
+    Specific(Box<SendgridSpecificTemplates>),
 }
 
 #[derive(Clone, Debug)]
 pub struct SendgridSpecificTemplates {
+    // Node Data Alerts
     pub custom: String,
     pub unreg_active_set: String,
     pub machine_not_responding: String,
@@ -49,6 +50,10 @@ pub struct SendgridSpecificTemplates {
     pub hw_res_usage: String,
     pub low_perf: String,
     pub needs_update: String,
+
+    //Event Data Alerts
+    pub new_eigen_avs: String,
+    pub updated_eigen_avs: String,
 }
 
 #[derive(Clone, Debug)]
@@ -90,11 +95,30 @@ impl<D: OrganizationDatabase> NotificationDispatcher<D> {
     }
 
     pub async fn notify_channel(&self, notification: Notification, channel: Channel) -> bool {
-        match channel {
-            Channel::Email => self.email_sender.notify(notification).await.is_ok(),
-            Channel::Telegram => self.telegram.notify(notification).await.is_ok(),
-            Channel::PagerDuty => self.pagerduty.notify(notification).await.is_ok(),
-        }
+        tracing::debug!("notifying channel: {:#?}", channel);
+        tracing::debug!("notification: {:#?}", notification);
+
+        let result = match channel {
+            Channel::Email => self
+                .email_sender
+                .notify(notification)
+                .await
+                .map_err(NotificationDispatcherError::EmailSenderError),
+            Channel::Telegram => self
+                .telegram
+                .notify(notification)
+                .await
+                .map_err(NotificationDispatcherError::BotError),
+            Channel::PagerDuty => self
+                .pagerduty
+                .notify(notification)
+                .await
+                .map_err(NotificationDispatcherError::PagerDutyError),
+        };
+
+        tracing::debug!("result: {:#?}", result);
+
+        result.is_ok()
     }
 
     pub async fn notify(

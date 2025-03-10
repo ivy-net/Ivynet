@@ -69,7 +69,7 @@ pub enum Alert {
         percent: u16,
     } = 10,
     // TODO: Find out how exactly this should be used
-    LowPerformaceScore {
+    LowPerformanceScore {
         node_name: String,
         node_type: String,
         performance: u16,
@@ -80,6 +80,28 @@ pub enum Alert {
         current_version: String,
         recommended_version: String,
     } = 12,
+    NewEigenAvs {
+        address: Address,
+        block_number: u64,
+        log_index: u64,
+        name: String,
+        metadata_uri: String,
+        description: String,
+        website: String,
+        logo: String,
+        twitter: String,
+    } = 13,
+    UpdatedEigenAvs {
+        address: Address,
+        block_number: u64,
+        log_index: u64,
+        name: String,
+        metadata_uri: String,
+        description: String,
+        website: String,
+        logo: String,
+        twitter: String,
+    } = 14,
 }
 
 // Implement ToSchema for AlertType
@@ -129,11 +151,17 @@ impl Alert {
             Alert::HardwareResourceUsage { machine, resource, .. } => {
                 format!("{}-{}-{}", machine, resource, self.id())
             }
-            Alert::LowPerformaceScore { node_name, .. } => {
+            Alert::LowPerformanceScore { node_name, .. } => {
                 format!("{}-{}", node_name, self.id())
             }
             Alert::NeedsUpdate { node_name, current_version, .. } => {
                 format!("{}-{}-{}", node_name, current_version, self.id())
+            }
+            Alert::NewEigenAvs { address, block_number, log_index, .. } => {
+                format!("{}-{}-{}", address, block_number, log_index)
+            }
+            Alert::UpdatedEigenAvs { address, block_number, log_index, .. } => {
+                format!("{}-{}-{}", address, block_number, log_index)
             }
         }
     }
@@ -170,8 +198,10 @@ impl Display for AlertType {
             AlertType::NoMetrics => write!(f, "NoMetrics"),
             AlertType::NoOperatorId => write!(f, "NoOperatorId"),
             AlertType::HardwareResourceUsage => write!(f, "HardwareResourceUsage"),
-            AlertType::LowPerformaceScore => write!(f, "LowPerformaceScore"),
+            AlertType::LowPerformanceScore => write!(f, "LowPerformanceScore"),
             AlertType::NeedsUpdate => write!(f, "NeedsUpdate"),
+            AlertType::NewEigenAvs => write!(f, "NewEigenAvs"),
+            AlertType::UpdatedEigenAvs => write!(f, "UpdatedEigenAvs"),
         }
     }
 }
@@ -196,8 +226,10 @@ impl<'de> Deserialize<'de> for AlertType {
             "NoMetrics" => Ok(AlertType::NoMetrics),
             "NoOperatorId" => Ok(AlertType::NoOperatorId),
             "HardwareResourceUsage" => Ok(AlertType::HardwareResourceUsage),
-            "LowPerformaceScore" => Ok(AlertType::LowPerformaceScore),
+            "LowPerformanceScore" => Ok(AlertType::LowPerformanceScore),
             "NeedsUpdate" => Ok(AlertType::NeedsUpdate),
+            "NewEigenAvs" => Ok(AlertType::NewEigenAvs),
+            "UpdatedEigenAvs" => Ok(AlertType::UpdatedEigenAvs),
             _ => Err(serde::de::Error::custom("Unknown alert type")),
         }
     }
@@ -217,8 +249,10 @@ impl From<&AlertType> for usize {
             AlertType::NoMetrics => 8,
             AlertType::NoOperatorId => 9,
             AlertType::HardwareResourceUsage => 10,
-            AlertType::LowPerformaceScore => 11,
+            AlertType::LowPerformanceScore => 11,
             AlertType::NeedsUpdate => 12,
+            AlertType::NewEigenAvs => 13,
+            AlertType::UpdatedEigenAvs => 14,
         }
     }
 }
@@ -236,8 +270,10 @@ impl From<usize> for AlertType {
             8 => AlertType::NoMetrics,
             9 => AlertType::NoOperatorId,
             10 => AlertType::HardwareResourceUsage,
-            11 => AlertType::LowPerformaceScore,
+            11 => AlertType::LowPerformanceScore,
             12 => AlertType::NeedsUpdate,
+            13 => AlertType::NewEigenAvs,
+            14 => AlertType::UpdatedEigenAvs,
             _ => panic!("Unknown alert type"),
         }
     }

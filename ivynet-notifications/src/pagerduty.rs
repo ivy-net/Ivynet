@@ -70,6 +70,18 @@ impl From<Notification> for Event {
     }
 }
 
+fn avs_if_any(notification: &Notification) -> Option<String> {
+    match &notification.alert {
+        NotificationType::NodeNotRunning { node_name, .. } |
+        NotificationType::NoChainInfo { node_name, .. } |
+        NotificationType::NoMetrics { node_name, .. } |
+        NotificationType::NoOperatorId { node_name, .. } |
+        NotificationType::LowPerformanceScore { node_name, .. } => Some(node_name.to_owned()),
+        NotificationType::NeedsUpdate { node_name, .. } => Some(node_name.to_owned()),
+        _ => None,
+    }
+}
+
 pub struct PagerDutySender<D: OrganizationDatabase> {
     pub client: reqwest::Client,
     pub db: D,
@@ -108,7 +120,10 @@ fn message(notification: &Notification) -> String {
         }
         NotificationType::Custom { extra_data, .. } => format!("ERROR: {extra_data}"),
         NotificationType::NodeNotRunning { node_name, .. } => {
-            format!("AVS {node_name} is not running on {}", notification.machine_id)
+            format!(
+                "AVS {node_name} is not running on {}",
+                notification.machine_id.unwrap_or_default()
+            )
         }
         NotificationType::NoChainInfo { node_name, .. } => {
             format!("No information on chain for avs {node_name}")
@@ -120,9 +135,12 @@ fn message(notification: &Notification) -> String {
             format!("No operator configured for {node_name}")
         }
         NotificationType::HardwareResourceUsage { resource, percent, .. } => {
-            format!("Machine {} has used over {percent}% of {resource}", notification.machine_id)
+            format!(
+                "Machine {} has used over {percent}% of {resource}",
+                notification.machine_id.unwrap_or_default()
+            )
         }
-        NotificationType::LowPerformaceScore { node_name, performance, .. } => {
+        NotificationType::LowPerformanceScore { node_name, performance, .. } => {
             format!("AVS {node_name} has droped in performance to {performance}")
         }
         NotificationType::NeedsUpdate {
@@ -136,18 +154,22 @@ fn message(notification: &Notification) -> String {
         NotificationType::NodeNotResponding { node_name, .. } => {
             format!("The node {node_name} is not responding")
         }
-    }
-}
-
-fn avs_if_any(notification: &Notification) -> Option<String> {
-    match &notification.alert {
-        NotificationType::NodeNotRunning { node_name, .. } |
-        NotificationType::NoChainInfo { node_name, .. } |
-        NotificationType::NoMetrics { node_name, .. } |
-        NotificationType::NoOperatorId { node_name, .. } => Some(node_name.to_owned()),
-        NotificationType::LowPerformaceScore { node_name, .. } => Some(node_name.to_owned()),
-        NotificationType::NeedsUpdate { node_name, .. } => Some(node_name.to_owned()),
-        _ => None,
+        NotificationType::NewEigenAvs {
+            address,
+            name,
+            metadata_uri,
+            description,
+            website,
+            twitter,
+            ..
+        } => {
+            format!("New EigenLayer AVS: {name} has been detected at {:?} with metadata URI {metadata_uri}. \n Website: {website} \n Twitter: {twitter} \n Description: {description}", address)
+        }
+        NotificationType::UpdatedEigenAvs {
+            address, name, metadata_uri, website, twitter, ..
+        } => {
+            format!("Updated EigenLayer AVS: {name} has updated their metadata or address to {:?} with metadata URI {metadata_uri}. \n Website: {website} \n Twitter: {twitter}", address)
+        }
     }
 }
 
@@ -244,7 +266,7 @@ mod pagerduty_live_test {
         let mut test_event = Notification {
             id: Uuid::new_v4(),
             organization: MOCK_ORGANIZATION_ID,
-            machine_id: Uuid::new_v4(),
+            machine_id: Some(Uuid::new_v4()),
             alert: Alert::Custom {
                 node_name: "test-node".to_string(),
                 node_type: "test-type".to_string(),

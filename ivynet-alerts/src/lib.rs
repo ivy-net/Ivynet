@@ -7,7 +7,6 @@ pub use alert_type::{Alert, AlertType};
 pub use bitflag::BitflagError;
 
 use serde::Serialize;
-use sqlx;
 
 #[derive(Debug, Clone, Copy, Serialize, sqlx::Type)]
 #[sqlx(type_name = "send_state")]

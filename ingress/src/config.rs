@@ -99,6 +99,12 @@ pub struct Config {
 
     #[arg(long, env = "TELEGRAM_TOKEN")]
     pub telegram_token: Option<String>,
+
+    #[arg(long, env = "STN_NEW_EIGEN_AVS")]
+    pub stn_new_eigen_avs: Option<String>,
+
+    #[arg(long, env = "STN_UPDATED_EIGEN_AVS")]
+    pub stn_updated_eigen_avs: Option<String>,
 }
 
 impl From<Config> for NotificationConfig {
@@ -110,7 +116,7 @@ impl From<Config> for NotificationConfig {
             sendgrid_templates: if let Some(generic) = val.stn_generic {
                 SendgridTemplates::Generic(generic)
             } else {
-                SendgridTemplates::Specific(SendgridSpecificTemplates {
+                SendgridTemplates::Specific(Box::new(SendgridSpecificTemplates {
                     custom: val.stn_custom.unwrap_or_default(),
                     unreg_active_set: val.stn_unreg_active_set.unwrap_or_default(),
                     machine_not_responding: val.stn_machine_not_responding.unwrap_or_default(),
@@ -121,7 +127,9 @@ impl From<Config> for NotificationConfig {
                     hw_res_usage: val.stn_hw_res_usage.unwrap_or_default(),
                     low_perf: val.stn_low_performance.unwrap_or_default(),
                     needs_update: val.stn_needs_update.unwrap_or_default(),
-                })
+                    new_eigen_avs: val.stn_new_eigen_avs.unwrap_or_default(),
+                    updated_eigen_avs: val.stn_updated_eigen_avs.unwrap_or_default(),
+                }))
             },
         }
     }

@@ -44,6 +44,12 @@ pub enum DatabaseError {
 
     #[error("Notification type serialization error")]
     NotificationTypeSerializationError(#[from] serde_json::Error),
+
+    #[error("Failed conversion: {0}")]
+    FailedConversion(String),
+
+    #[error("Failed to get count of metadata: {0}")]
+    FailedMetadata(String),
 }
 
 impl From<DatabaseError> for Status {
