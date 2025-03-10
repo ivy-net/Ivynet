@@ -1,3 +1,5 @@
+create type SEND_STATE as enum ('no_send', 'send_success', 'send_failed');
+
 CREATE TABLE IF NOT EXISTS node_alerts_active (
     alert_id            UUID         NOT NULL,
     machine_id          UUID         NOT NULL REFERENCES machine
@@ -10,6 +12,10 @@ CREATE TABLE IF NOT EXISTS node_alerts_active (
     created_at          TIMESTAMP    NOT NULL,
     acknowledged_at     TIMESTAMP,
     alert_data          JSONB        NOT NULL,
+    telegram_send       SEND_STATE   NOT NULL,
+    sendgrid_send       SEND_STATE   NOT NULL,
+    pagerduty_send      SEND_STATE   NOT NULL,
+
     PRIMARY KEY (organization_id, alert_id)
 ) PARTITION BY LIST (organization_id);
 

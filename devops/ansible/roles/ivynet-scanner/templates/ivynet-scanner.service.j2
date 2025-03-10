@@ -8,7 +8,7 @@ Environment="RPC_URL={{ ivynet_scanner_rpc[network] }}"
 Environment="START_BLOCK=0"
 {% endif %}
 Environment="BACKEND_URL=http://localhost:50051"
-ExecStart={{ ivynet_scanner_path_install }}/bin/scanner
+ExecStart={{ ivynet_scanner_path_install }}/bin/ivynet-scanner
 Type=simple
 Restart=always
 

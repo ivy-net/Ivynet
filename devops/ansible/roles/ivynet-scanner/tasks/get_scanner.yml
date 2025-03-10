@@ -18,7 +18,7 @@
     ivynet_scanner_assets_id: "{{ ivynet_scanner_assets_output | community.general.json_query(json_output_query) }}"
     cacheable: true
   vars:
-    json_output_query: "json.assets[?name=='scanner'].id"
+    json_output_query: "json.assets[?name=='ivynet-scanner'].id"
   tags:
     - ivynet_scanner
     - github
@@ -33,7 +33,7 @@
       Accept: "application/octet-stream"
     follow_redirects: all
     status_code: [200, 304]
-    dest: "{{ ivynet_scanner_path_install }}/bin/scanner"
+    dest: "{{ ivynet_scanner_path_install }}/bin/ivynet-scanner"
     owner: root
     group: root
     mode: "0755"

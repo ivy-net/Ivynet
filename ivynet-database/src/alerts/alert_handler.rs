@@ -3,6 +3,14 @@ use ivynet_alerts::Alert;
 use ivynet_notifications::{
     Channel, Notification, NotificationDispatcher, NotificationDispatcherError,
 };
+use std::{collections::HashMap, sync::Arc};
+
+use ivynet_alerts::{Alert, Channel, SendState};
+use ivynet_error::ethers::types::Chain;
+use ivynet_grpc::messages::NodeDataV2;
+use ivynet_node_type::NodeType;
+use ivynet_notifications::{Notification, NotificationDispatcher, NotificationDispatcherError};
+
 use sqlx::{types::Uuid, PgPool};
 use std::{collections::HashSet, sync::Arc};
 
@@ -40,15 +48,9 @@ pub trait AlertHandler {
             .await
             .expect("Organization notifications not found");
 
-        if org_notifications.telegram {
-            channels.insert(Channel::Telegram);
-        }
-        if org_notifications.email {
-            channels.insert(Channel::Email);
-        }
-        if org_notifications.pagerduty {
-            channels.insert(Channel::PagerDuty);
-        }
+        channels.insert(Channel::Telegram, org_notifications.telegram);
+        channels.insert(Channel::Email, org_notifications.email);
+        channels.insert(Channel::PagerDuty, org_notifications.pagerduty);
 
         (channels, org_notifications.alert_flags.to_alert_ids())
     }
