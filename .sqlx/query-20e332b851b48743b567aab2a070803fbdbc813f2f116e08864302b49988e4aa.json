@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                alert_id,\n                machine_id,\n                organization_id,\n                client_id,\n                node_name,\n                created_at,\n                acknowledged_at,\n                alert_data,\n                telegram_send AS \"telegram_send!: SendState\",\n                sendgrid_send AS \"sendgrid_send!: SendState\",\n                pagerduty_send AS \"pagerduty_send!: SendState\"\n            FROM alerts_active\n            WHERE machine_id = $1\n            ",
+  "query": "\n            SELECT\n                alert_id,\n                organization_id,\n                created_at,\n                alert_data,\n                telegram_send AS \"telegram_send!: SendState\",\n                sendgrid_send AS \"sendgrid_send!: SendState\",\n                pagerduty_send AS \"pagerduty_send!: SendState\"\n            FROM organization_alerts_active\n            WHERE alert_id = ANY($1) AND organization_id = $2\n            ",
   "describe": {
     "columns": [
       {
@@ -10,41 +10,21 @@
       },
       {
         "ordinal": 1,
-        "name": "machine_id",
-        "type_info": "Uuid"
-      },
-      {
-        "ordinal": 2,
         "name": "organization_id",
         "type_info": "Int8"
       },
       {
-        "ordinal": 3,
-        "name": "client_id",
-        "type_info": "Bytea"
-      },
-      {
-        "ordinal": 4,
-        "name": "node_name",
-        "type_info": "Varchar"
-      },
-      {
-        "ordinal": 5,
+        "ordinal": 2,
         "name": "created_at",
         "type_info": "Timestamp"
       },
       {
-        "ordinal": 6,
-        "name": "acknowledged_at",
-        "type_info": "Timestamp"
-      },
-      {
-        "ordinal": 7,
+        "ordinal": 3,
         "name": "alert_data",
         "type_info": "Jsonb"
       },
       {
-        "ordinal": 8,
+        "ordinal": 4,
         "name": "telegram_send!: SendState",
         "type_info": {
           "Custom": {
@@ -60,7 +40,7 @@
         }
       },
       {
-        "ordinal": 9,
+        "ordinal": 5,
         "name": "sendgrid_send!: SendState",
         "type_info": {
           "Custom": {
@@ -76,7 +56,7 @@
         }
       },
       {
-        "ordinal": 10,
+        "ordinal": 6,
         "name": "pagerduty_send!: SendState",
         "type_info": {
           "Custom": {
@@ -94,7 +74,8 @@
     ],
     "parameters": {
       "Left": [
-        "Uuid"
+        "UuidArray",
+        "Int8"
       ]
     },
     "nullable": [
@@ -104,12 +85,8 @@
       false,
       false,
       false,
-      true,
-      false,
-      false,
-      false,
       false
     ]
   },
-  "hash": "1481f75562313cb94084761b08f8f58c407eaf386a7bab3d45b79dbf1d7d9c27"
+  "hash": "20e332b851b48743b567aab2a070803fbdbc813f2f116e08864302b49988e4aa"
 }

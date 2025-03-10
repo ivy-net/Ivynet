@@ -1,0 +1,91 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                alert_id,\n                organization_id,\n                created_at,\n                alert_data,\n                telegram_send AS \"telegram_send!: SendState\",\n                sendgrid_send AS \"sendgrid_send!: SendState\",\n                pagerduty_send AS \"pagerduty_send!: SendState\"\n            FROM organization_alerts_active\n            WHERE organization_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "alert_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "organization_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "created_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 3,
+        "name": "alert_data",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 4,
+        "name": "telegram_send!: SendState",
+        "type_info": {
+          "Custom": {
+            "name": "send_state",
+            "kind": {
+              "Enum": [
+                "no_send",
+                "send_success",
+                "send_failed"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "sendgrid_send!: SendState",
+        "type_info": {
+          "Custom": {
+            "name": "send_state",
+            "kind": {
+              "Enum": [
+                "no_send",
+                "send_success",
+                "send_failed"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "pagerduty_send!: SendState",
+        "type_info": {
+          "Custom": {
+            "name": "send_state",
+            "kind": {
+              "Enum": [
+                "no_send",
+                "send_success",
+                "send_failed"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "7e8b106224f1a961d1e0305f0a9e9a514b4345adb3429b72d55f53a818066c02"
+}

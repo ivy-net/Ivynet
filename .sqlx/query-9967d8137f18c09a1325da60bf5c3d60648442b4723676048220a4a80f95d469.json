@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT\n                alert_id,\n                machine_id,\n                organization_id,\n                client_id,\n                node_name,\n                created_at,\n                acknowledged_at,\n                alert_data,\n                telegram_send AS \"telegram_send!: SendState\",\n                sendgrid_send AS \"sendgrid_send!: SendState\",\n                pagerduty_send AS \"pagerduty_send!: SendState\"\n\n            FROM alerts_active\n            ",
+  "query": "\n            SELECT\n                alert_id,\n                machine_id,\n                organization_id,\n                client_id,\n                node_name,\n                created_at,\n                acknowledged_at,\n                alert_data,\n                telegram_send AS \"telegram_send!: SendState\",\n                sendgrid_send AS \"sendgrid_send!: SendState\",\n                pagerduty_send AS \"pagerduty_send!: SendState\"\n\n            FROM node_alerts_active\n            WHERE alert_id = ANY($1)\n            ",
   "describe": {
     "columns": [
       {
@@ -93,7 +93,9 @@
       }
     ],
     "parameters": {
-      "Left": []
+      "Left": [
+        "UuidArray"
+      ]
     },
     "nullable": [
       false,
@@ -109,5 +111,5 @@
       false
     ]
   },
-  "hash": "020ee063d9602cbd036ade07c1689dc21911505f80af41b0a9f299ce36a3308a"
+  "hash": "9967d8137f18c09a1325da60bf5c3d60648442b4723676048220a4a80f95d469"
 }
