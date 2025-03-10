@@ -4,6 +4,9 @@ CREATE TABLE IF NOT EXISTS organization_alerts_active (
                                         ON DELETE CASCADE,
     created_at          TIMESTAMP    NOT NULL,
     alert_data          JSONB        NOT NULL,
+    telegram_send       SEND_STATE   NOT NULL,
+    sendgrid_send       SEND_STATE   NOT NULL,
+    pagerduty_send      SEND_STATE   NOT NULL,
     PRIMARY KEY (organization_id, alert_id)
 ) PARTITION BY LIST (organization_id);
 

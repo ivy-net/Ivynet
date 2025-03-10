@@ -110,27 +110,6 @@ impl NodeAlertHandler {
         self.send_notifications(&mut filtered_new_alerts, organization_id as u64, Some(machine_id))
             .await?;
 
-        // for (channel, do_send) in channels {
-        //     for alert in filtered_new_alerts.iter_mut() {
-        //         if do_send && enabled_alert_ids.contains(&alert.flag_id()) {
-        //             let notification = Notification {
-        //                 id: alert.id,
-        //                 organization: organization_id as u64,
-        //                 machine_id: Some(machine_id),
-        //                 alert: alert.alert_type.clone(),
-        //                 resolved: false,
-        //             };
-
-        //             let send_state =
-        //                 match self.dispatcher.notify_channel(notification, channel).await {
-        //                     true => SendState::SendSuccess,
-        //                     false => SendState::SendFailed,
-        //                 };
-        //             alert.set_send_state(channel, send_state);
-        //         }
-        //     }
-        // }
-
         NodeActiveAlert::insert_many(&self.db_executor, &filtered_new_alerts).await?;
 
         Ok(())

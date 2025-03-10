@@ -75,76 +75,36 @@ impl OrganizationAlertHandler {
         metadata_uri: &str,
         metadata_content: &MetadataContent,
     ) -> Result<(), OrganizationAlertError> {
-        let count = EigenAvsMetadata::search_for_avs(
-            pool,
-            *avs_address,
-            metadata_uri.to_owned(),
-            metadata_content.name.clone().unwrap_or_default(),
-            metadata_content.website.clone().unwrap_or_default(),
-            metadata_content.twitter.clone().unwrap_or_default(),
-        )
-        .await
-        .map_err(|e| {
-            OrganizationAlertError::DbError(DatabaseError::FailedMetadata(format!(
-                "Failed to get count of metadata: {}",
-                e
-            )))
-        })?;
-
-        println!("count: {:?}", count);
-
         let organization_ids = Organization::get_all_ids(pool).await?;
-        let is_update = count > 0;
 
-        tracing::debug!(
-            "AVS {} - sending {} alert",
-            if is_update { "already registered" } else { "not registered" },
-            if is_update { "update" } else { "new" }
-        );
+        let alert_type = extract_organization_data_alert_type(
+            pool,
+            avs_address,
+            block_number,
+            log_index,
+            metadata_uri,
+            metadata_content,
+        )
+        .await?;
 
         let mut new_alerts = Vec::new();
-        let alert_type = if is_update {
-            Alert::UpdatedEigenAvs {
-                address: *avs_address,
-                block_number,
-                log_index,
-                name: metadata_content.name.clone().unwrap_or_default(),
-                metadata_uri: metadata_uri.to_string(),
-                description: metadata_content.description.clone().unwrap_or_default(),
-                website: metadata_content.website.clone().unwrap_or_default(),
-                logo: metadata_content.logo.clone().unwrap_or_default(),
-                twitter: metadata_content.twitter.clone().unwrap_or_default(),
-            }
-        } else {
-            Alert::NewEigenAvs {
-                address: *avs_address,
-                block_number,
-                log_index,
-                name: metadata_content.name.clone().unwrap_or_default(),
-                metadata_uri: metadata_uri.to_string(),
-                description: metadata_content.description.clone().unwrap_or_default(),
-                website: metadata_content.website.clone().unwrap_or_default(),
-                logo: metadata_content.logo.clone().unwrap_or_default(),
-                twitter: metadata_content.twitter.clone().unwrap_or_default(),
-            }
-        };
-
-        println!("alert_type: {:?}", alert_type);
-
         for organization_id in organization_ids {
             let alert = NewOrganizationAlert::new(organization_id, alert_type.clone());
             new_alerts.push(alert);
         }
 
-        let existing_alerts = OrganizationActiveAlert::all_alerts_by_org(pool, 1).await?;
-        let new_alerts = self.filter_duplicate_alerts(new_alerts, existing_alerts).await?;
-        OrganizationActiveAlert::insert_many(pool, &new_alerts).await?;
+        // let existing_alerts = OrganizationActiveAlert::all_alerts_by_org(pool, 1).await?;
+        // let new_alerts = self.filter_duplicate_alerts(new_alerts, existing_alerts).await?;
+        // OrganizationActiveAlert::insert_many(pool, &new_alerts).await?;
+
+        println!("new_alerts: {:#?}", new_alerts);
 
         for alert in new_alerts {
-            println!("alert: {:#?}", alert);
             self.send_notifications(&mut vec![alert.clone()], alert.organization_id as u64, None)
                 .await?;
         }
+
+        println!("------------------------------------------------");
 
         Ok(())
     }
@@ -181,10 +141,71 @@ impl AlertHandler for OrganizationAlertHandler {
 
         println!("filtered: {:#?}", filtered);
 
-        println!("--------------    ");
-
         Ok(filtered)
     }
+}
+
+async fn extract_organization_data_alert_type(
+    pool: &PgPool,
+    avs_address: &Address,
+    block_number: u64,
+    log_index: u64,
+    metadata_uri: &str,
+    metadata_content: &MetadataContent,
+) -> Result<Alert, OrganizationAlertError> {
+    let count = EigenAvsMetadata::search_for_avs(
+        pool,
+        *avs_address,
+        metadata_uri.to_owned(),
+        metadata_content.name.clone().unwrap_or_default(),
+        metadata_content.website.clone().unwrap_or_default(),
+        metadata_content.twitter.clone().unwrap_or_default(),
+    )
+    .await
+    .map_err(|e| {
+        OrganizationAlertError::DbError(DatabaseError::FailedMetadata(format!(
+            "Failed to get count of metadata: {}",
+            e
+        )))
+    })?;
+
+    let is_update = count > 0;
+
+    tracing::debug!(
+        "AVS {} - sending {} alert",
+        if is_update { "already registered" } else { "not registered" },
+        if is_update { "update" } else { "new" }
+    );
+
+    let alert_type = if is_update {
+        Alert::UpdatedEigenAvs {
+            address: *avs_address,
+            block_number,
+            log_index,
+            name: metadata_content.name.clone().unwrap_or_default(),
+            metadata_uri: metadata_uri.to_string(),
+            description: metadata_content.description.clone().unwrap_or_default(),
+            website: metadata_content.website.clone().unwrap_or_default(),
+            logo: metadata_content.logo.clone().unwrap_or_default(),
+            twitter: metadata_content.twitter.clone().unwrap_or_default(),
+        }
+    } else {
+        Alert::NewEigenAvs {
+            address: *avs_address,
+            block_number,
+            log_index,
+            name: metadata_content.name.clone().unwrap_or_default(),
+            metadata_uri: metadata_uri.to_string(),
+            description: metadata_content.description.clone().unwrap_or_default(),
+            website: metadata_content.website.clone().unwrap_or_default(),
+            logo: metadata_content.logo.clone().unwrap_or_default(),
+            twitter: metadata_content.twitter.clone().unwrap_or_default(),
+        }
+    };
+
+    println!("alert_type: {:#?}", alert_type);
+
+    Ok(alert_type)
 }
 
 #[cfg(test)]

@@ -66,6 +66,9 @@ pub struct OrganizationActiveAlert {
     pub alert_type: Alert,
     pub organization_id: i64,
     pub created_at: NaiveDateTime,
+    pub telegram_send: SendState,
+    pub sendgrid_send: SendState,
+    pub pagerduty_send: SendState,
 }
 
 pub struct DbOrganizationActiveAlert {
@@ -73,6 +76,9 @@ pub struct DbOrganizationActiveAlert {
     organization_id: i64,
     created_at: NaiveDateTime,
     alert_data: serde_json::Value,
+    telegram_send: SendState,
+    sendgrid_send: SendState,
+    pagerduty_send: SendState,
 }
 
 impl From<DbOrganizationActiveAlert> for OrganizationActiveAlert {
@@ -83,6 +89,9 @@ impl From<DbOrganizationActiveAlert> for OrganizationActiveAlert {
             alert_type: notification_type,
             organization_id: db_active_alert.organization_id,
             created_at: db_active_alert.created_at,
+            telegram_send: db_active_alert.telegram_send,
+            sendgrid_send: db_active_alert.sendgrid_send,
+            pagerduty_send: db_active_alert.pagerduty_send,
         }
     }
 }
@@ -100,7 +109,10 @@ impl OrganizationActiveAlert {
                 alert_id,
                 organization_id,
                 created_at,
-                alert_data
+                alert_data,
+                telegram_send AS "telegram_send!: SendState",
+                sendgrid_send AS "sendgrid_send!: SendState",
+                pagerduty_send AS "pagerduty_send!: SendState"
             FROM organization_alerts_active
             WHERE alert_id = $1 AND organization_id = $2
             "#,
@@ -125,7 +137,10 @@ impl OrganizationActiveAlert {
                 alert_id,
                 organization_id,
                 created_at,
-                alert_data
+                alert_data,
+                telegram_send AS "telegram_send!: SendState",
+                sendgrid_send AS "sendgrid_send!: SendState",
+                pagerduty_send AS "pagerduty_send!: SendState"
             FROM organization_alerts_active
             WHERE alert_id = ANY($1) AND organization_id = $2
             "#,
@@ -146,7 +161,10 @@ impl OrganizationActiveAlert {
                 alert_id,
                 organization_id,
                 created_at,
-                alert_data
+                alert_data,
+                telegram_send AS "telegram_send!: SendState",
+                sendgrid_send AS "sendgrid_send!: SendState",
+                pagerduty_send AS "pagerduty_send!: SendState"
             FROM organization_alerts_active
             "#,
         )
@@ -168,14 +186,20 @@ impl OrganizationActiveAlert {
                 alert_id,
                 organization_id,
                 created_at,
-                alert_data
+                alert_data,
+                telegram_send,
+                sendgrid_send,
+                pagerduty_send
             )
-            VALUES ($1, $2, $3, $4)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             "#,
             alert.id,
             alert.organization_id,
             alert.created_at,
-            alert_data
+            alert_data,
+            alert.telegram_send as SendState,
+            alert.sendgrid_send as SendState,
+            alert.pagerduty_send as SendState
         )
         .execute(pool)
         .await?;
@@ -195,14 +219,20 @@ impl OrganizationActiveAlert {
                     alert_id,
                     organization_id,
                     created_at,
-                    alert_data
+                    alert_data,
+                    telegram_send,
+                    sendgrid_send,
+                    pagerduty_send
                 )
-                VALUES ($1, $2, $3, $4)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
                 "#,
                 alert.id,
                 alert.organization_id,
                 alert.created_at,
-                alert_data
+                alert_data,
+                alert.telegram_send as SendState,
+                alert.sendgrid_send as SendState,
+                alert.pagerduty_send as SendState
             )
             .execute(&mut *tx)
             .await?;
@@ -222,7 +252,10 @@ impl OrganizationActiveAlert {
                 alert_id,
                 organization_id,
                 created_at,
-                alert_data
+                alert_data,
+                telegram_send AS "telegram_send!: SendState",
+                sendgrid_send AS "sendgrid_send!: SendState",
+                pagerduty_send AS "pagerduty_send!: SendState"
             FROM organization_alerts_active
             WHERE organization_id = $1
             "#,
@@ -249,7 +282,10 @@ impl OrganizationActiveAlert {
                 alert_id,
                 organization_id,
                 created_at,
-                alert_data
+                alert_data,
+                telegram_send AS "telegram_send!: SendState",
+                sendgrid_send AS "sendgrid_send!: SendState",
+                pagerduty_send AS "pagerduty_send!: SendState"
             FROM organization_alerts_active
             WHERE alert_id = $1 AND organization_id = $2
             "#,
