@@ -1,10 +1,7 @@
 use async_trait::async_trait;
-use ivynet_alerts::{Alert, Channel};
+use ivynet_alerts::{Alert, Channel, SendState};
 use ivynet_notifications::{Notification, NotificationDispatcher, NotificationDispatcherError};
-use std::{
-    collections::{HashMap, HashSet},
-    sync::Arc,
-};
+use std::{collections::HashMap, sync::Arc};
 
 use sqlx::{types::Uuid, PgPool};
 
@@ -15,6 +12,7 @@ use crate::NotificationSettings;
 pub trait NewAlert {
     fn get_id(&self) -> Uuid;
     fn get_alert_type(&self) -> Alert;
+    fn set_send_state(&mut self, channel: Channel, state: SendState);
 }
 
 /// Represents an active alert that can be retrieved from the database
@@ -62,31 +60,31 @@ pub trait AlertHandler {
     /// Send notifications for the given alerts through configured channels
     async fn send_notifications(
         &self,
-        alerts: Vec<Self::NewAlertType>,
+        alerts: &mut Vec<Self::NewAlertType>,
         organization_id: u64,
         machine_id: Option<Uuid>,
     ) -> Result<(), Self::Error> {
-        let (channels, alert_ids) = self.organization_channel_alerts(organization_id).await;
+        let (channels, enabled_alert_ids) = self.organization_channel_alerts(organization_id).await;
 
-        let notifications: Vec<Notification> = alerts
-            .into_iter()
-            .filter(|alert| alert_ids.contains(&alert.get_alert_type().id()))
-            .map(|alert| Notification {
-                id: alert.get_id(),
-                organization: organization_id,
-                machine_id,
-                alert: alert.get_alert_type(),
-                resolved: false,
-            })
-            .collect();
+        for (channel, do_send) in channels {
+            for alert in alerts.iter_mut() {
+                if do_send && enabled_alert_ids.contains(&alert.get_alert_type().id()) {
+                    let notification = Notification {
+                        id: alert.get_id(),
+                        organization: organization_id,
+                        machine_id,
+                        alert: alert.get_alert_type(),
+                        resolved: false,
+                    };
 
-        for notification in notifications {
-            let enabled_channels: HashSet<_> = channels
-                .iter()
-                .filter(|(_, &enabled)| enabled)
-                .map(|(channel, _)| *channel)
-                .collect();
-            self.get_dispatcher().notify(notification, enabled_channels).await?;
+                    let send_state =
+                        match self.get_dispatcher().notify_channel(notification, channel).await {
+                            true => SendState::SendSuccess,
+                            false => SendState::SendFailed,
+                        };
+                    alert.set_send_state(channel, send_state);
+                }
+            }
         }
 
         Ok(())

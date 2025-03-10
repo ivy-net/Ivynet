@@ -1,10 +1,10 @@
 use std::{collections::HashMap, sync::Arc};
 
-use ivynet_alerts::{Alert, SendState};
+use ivynet_alerts::{Alert, Channel, SendState};
 use ivynet_error::ethers::types::Chain;
 use ivynet_grpc::messages::NodeDataV2;
 use ivynet_node_type::NodeType;
-use ivynet_notifications::{Notification, NotificationDispatcher, NotificationDispatcherError};
+use ivynet_notifications::{NotificationDispatcher, NotificationDispatcherError};
 
 use async_trait::async_trait;
 use sqlx::{types::Uuid, PgPool};
@@ -58,6 +58,14 @@ impl NewAlert for NewNodeAlert {
     fn get_alert_type(&self) -> Alert {
         self.alert_type.clone()
     }
+
+    fn set_send_state(&mut self, channel: Channel, state: SendState) {
+        match channel {
+            Channel::Telegram => self.telegram_send = state,
+            Channel::Email => self.sendgrid_send = state,
+            Channel::PagerDuty => self.pagerduty_send = state,
+        }
+    }
 }
 
 impl ActiveAlert for NodeActiveAlert {
@@ -87,9 +95,6 @@ impl NodeAlertHandler {
     ) -> Result<(), NodeAlertError> {
         let organization_id = Machine::get_organization_id(&self.db_executor, machine_id).await?;
 
-        let (channels, enabled_alert_ids) =
-            self.organization_channel_alerts(organization_id as u64).await;
-
         let new_alerts = extract_node_data_alerts(&self.db_executor, machine_id, &node_data)
             .await
             .into_iter()
@@ -102,26 +107,29 @@ impl NodeAlertHandler {
         let mut filtered_new_alerts =
             self.filter_duplicate_alerts(new_alerts, existing_alerts).await?;
 
-        for (channel, do_send) in channels {
-            for alert in filtered_new_alerts.iter_mut() {
-                if do_send && enabled_alert_ids.contains(&alert.flag_id()) {
-                    let notification = Notification {
-                        id: alert.id,
-                        organization: organization_id as u64,
-                        machine_id: Some(machine_id),
-                        alert: alert.alert_type.clone(),
-                        resolved: false,
-                    };
+        self.send_notifications(&mut filtered_new_alerts, organization_id as u64, Some(machine_id))
+            .await?;
 
-                    let send_state =
-                        match self.dispatcher.notify_channel(notification, channel).await {
-                            true => SendState::SendSuccess,
-                            false => SendState::SendFailed,
-                        };
-                    alert.set_send_state(channel, send_state);
-                }
-            }
-        }
+        // for (channel, do_send) in channels {
+        //     for alert in filtered_new_alerts.iter_mut() {
+        //         if do_send && enabled_alert_ids.contains(&alert.flag_id()) {
+        //             let notification = Notification {
+        //                 id: alert.id,
+        //                 organization: organization_id as u64,
+        //                 machine_id: Some(machine_id),
+        //                 alert: alert.alert_type.clone(),
+        //                 resolved: false,
+        //             };
+
+        //             let send_state =
+        //                 match self.dispatcher.notify_channel(notification, channel).await {
+        //                     true => SendState::SendSuccess,
+        //                     false => SendState::SendFailed,
+        //                 };
+        //             alert.set_send_state(channel, send_state);
+        //         }
+        //     }
+        // }
 
         NodeActiveAlert::insert_many(&self.db_executor, &filtered_new_alerts).await?;
 

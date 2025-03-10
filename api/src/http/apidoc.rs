@@ -59,6 +59,7 @@ use super::{alerts, authorize, client, info, machine, node, organization, pubkey
         alerts::get_alert_flags,
         alerts::set_alert_flags,
         alerts::set_notification_service_flags,
+        alerts::update_multiple_alert_flags,
     ),
     components(
         schemas(

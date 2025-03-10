@@ -1,6 +1,6 @@
 use async_trait::async_trait;
 use ethers::types::Address;
-use ivynet_alerts::Alert;
+use ivynet_alerts::{Alert, Channel, SendState};
 use ivynet_notifications::{NotificationDispatcher, NotificationDispatcherError};
 use sqlx::{types::Uuid, PgPool};
 use std::sync::Arc;
@@ -34,6 +34,14 @@ impl NewAlert for NewOrganizationAlert {
 
     fn get_alert_type(&self) -> Alert {
         self.alert_type.clone()
+    }
+
+    fn set_send_state(&mut self, channel: Channel, state: SendState) {
+        match channel {
+            Channel::Telegram => self.telegram_send = state,
+            Channel::Email => self.sendgrid_send = state,
+            Channel::PagerDuty => self.pagerduty_send = state,
+        }
     }
 }
 
@@ -83,6 +91,8 @@ impl OrganizationAlertHandler {
             )))
         })?;
 
+        println!("count: {:?}", count);
+
         let organization_ids = Organization::get_all_ids(pool).await?;
         let is_update = count > 0;
 
@@ -119,17 +129,20 @@ impl OrganizationAlertHandler {
             }
         };
 
+        println!("alert_type: {:?}", alert_type);
+
         for organization_id in organization_ids {
             let alert = NewOrganizationAlert::new(organization_id, alert_type.clone());
             new_alerts.push(alert);
         }
 
         let existing_alerts = OrganizationActiveAlert::all_alerts_by_org(pool, 1).await?;
-        let filtered_alerts = self.filter_duplicate_alerts(new_alerts, existing_alerts).await?;
-        OrganizationActiveAlert::insert_many(pool, &filtered_alerts).await?;
+        let new_alerts = self.filter_duplicate_alerts(new_alerts, existing_alerts).await?;
+        OrganizationActiveAlert::insert_many(pool, &new_alerts).await?;
 
-        for alert in filtered_alerts {
-            self.send_notifications(vec![alert.clone()], alert.organization_id as u64, None)
+        for alert in new_alerts {
+            println!("alert: {:#?}", alert);
+            self.send_notifications(&mut vec![alert.clone()], alert.organization_id as u64, None)
                 .await?;
         }
 
@@ -158,10 +171,17 @@ impl AlertHandler for OrganizationAlertHandler {
     ) -> Result<Vec<Self::NewAlertType>, Self::Error> {
         let existing_ids = existing_alerts.iter().map(|alert| alert.alert_id).collect::<Vec<_>>();
 
+        println!("existing_ids: {:#?}", existing_ids);
+        println!("incoming_alerts: {:#?}", incoming_alerts);
+
         let filtered = incoming_alerts
             .into_iter()
             .filter(|alert| !existing_ids.contains(&alert.id))
             .collect::<Vec<_>>();
+
+        println!("filtered: {:#?}", filtered);
+
+        println!("--------------    ");
 
         Ok(filtered)
     }

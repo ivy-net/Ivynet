@@ -1,7 +1,7 @@
 use std::fmt::{self, Display, Formatter};
 
 use chrono::NaiveDateTime;
-use ivynet_alerts::Alert;
+use ivynet_alerts::{Alert, Channel, SendState};
 use serde::Serialize;
 use sqlx::PgPool;
 use utoipa::ToSchema;
@@ -17,6 +17,9 @@ pub struct NewOrganizationAlert {
     pub alert_type: Alert,
     pub organization_id: i64,
     pub created_at: NaiveDateTime,
+    pub telegram_send: SendState,
+    pub sendgrid_send: SendState,
+    pub pagerduty_send: SendState,
 }
 
 impl NewOrganizationAlert {
@@ -24,7 +27,28 @@ impl NewOrganizationAlert {
         let alert_id = alert_type.uuid_seed();
         let str_rep = format!("{}-{}", alert_id, organization_id);
         let id = Uuid::new_v5(&Uuid::NAMESPACE_OID, str_rep.as_bytes());
-        Self { id, alert_type, organization_id, created_at: chrono::Utc::now().naive_utc() }
+        Self {
+            id,
+            alert_type,
+            organization_id,
+            created_at: chrono::Utc::now().naive_utc(),
+            telegram_send: SendState::NoSend,
+            sendgrid_send: SendState::NoSend,
+            pagerduty_send: SendState::NoSend,
+        }
+    }
+
+    pub fn set_send_state(&mut self, send_type: Channel, state: SendState) {
+        match send_type {
+            Channel::Telegram => self.telegram_send = state,
+            Channel::Email => self.sendgrid_send = state,
+            Channel::PagerDuty => self.pagerduty_send = state,
+        }
+    }
+
+    /// Get the inner uint representation of the alert type for flag comparison
+    pub fn flag_id(&self) -> usize {
+        self.alert_type.id()
     }
 }
 
