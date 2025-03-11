@@ -4,7 +4,6 @@ use async_trait::async_trait;
 use bollard::{
     container::{LogOutput, LogsOptions},
     errors::Error,
-    image::ListImagesOptions,
     secret::{ContainerInspectResponse, EventMessage, ImageSummary},
     Docker,
 };
@@ -125,8 +124,8 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
                 if strict {
                     RepoTag::from_str(image_id) == RepoTag::from_str(image)
                 } else {
-                    RepoTag::from_str(image_id).expect("unenterable") ==
-                        RepoTag::from_str(image).expect("unenterable")
+                    RepoTag::from_str(image_id).expect("unenterable")
+                        == RepoTag::from_str(image).expect("unenterable")
                 }
             } else {
                 false

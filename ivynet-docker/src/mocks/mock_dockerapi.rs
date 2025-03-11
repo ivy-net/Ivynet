@@ -1,18 +1,18 @@
-use std::{collections::HashMap, pin::Pin, sync::Arc};
-
-use async_trait::async_trait;
-use bollard::{
-    container::LogOutput,
-    errors::Error,
-    secret::{ContainerSummary, EventMessage, ImageSummary},
-    Docker,
-};
-use futures::{stream, Stream};
-
-use crate::{
-    container::{ContainerId, ContainerImage, FullContainer},
-    dockerapi::{DockerApi, DockerClient},
-};
+// use std::{collections::HashMap, pin::Pin, sync::Arc};
+//
+// use async_trait::async_trait;
+// use bollard::{
+//     container::LogOutput,
+//     errors::Error,
+//     secret::{ContainerSummary, EventMessage, ImageSummary},
+//     Docker,
+// };
+// use futures::{stream, Stream};
+//
+// use crate::{
+//     container::{ContainerId, FullContainer},
+//     dockerapi::{DockerApi, DockerClient},
+// };
 
 // #[derive(Clone)]
 // pub struct MockDockerClient {

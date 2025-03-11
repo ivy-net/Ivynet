@@ -1,11 +1,7 @@
 use anyhow::anyhow;
 use dialoguer::{Input, MultiSelect, Select};
 use fs2::FileExt;
-use ivynet_docker::{
-    container::{ContainerId, ContainerImage},
-    dockerapi::DockerClient,
-    repodigest::RepoTag,
-};
+use ivynet_docker::{container::ContainerId, dockerapi::DockerClient, repodigest::RepoTag};
 use ivynet_grpc::{
     self,
     backend::backend_client::BackendClient,

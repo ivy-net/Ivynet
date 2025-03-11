@@ -23,35 +23,6 @@ use serde::{Deserialize, Serialize};
 use tokio_stream::Stream;
 use tracing::debug;
 
-/// Type representing a docker image verison `repository:tag.` Primarily for tracking image version
-/// between container and image.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub struct ContainerImage {
-    pub repository: String,
-    pub tag: Option<String>,
-}
-
-impl From<&str> for ContainerImage {
-    fn from(value: &str) -> Self {
-        let parts: Vec<&str> = value.split(':').collect();
-        if parts.len() == 2 {
-            Self { repository: parts[0].to_string(), tag: Some(parts[1].to_string()) }
-        } else {
-            Self { repository: value.to_string(), tag: None }
-        }
-    }
-}
-
-impl Display for ContainerImage {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        if let Some(tag) = &self.tag {
-            write!(f, "{}:{}", self.repository, tag)
-        } else {
-            write!(f, "{}", self.repository)
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct ContainerId(pub String);
 

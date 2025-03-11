@@ -2,9 +2,8 @@ use std::time::Duration;
 
 use bollard::secret::{EventMessage, EventMessageTypeEnum};
 use ivynet_docker::{
-    container::{ContainerId, ContainerImage},
+    container::ContainerId,
     dockerapi::{DockerApi, DockerClient, DockerStreamError},
-    repodigest::RepoTag,
 };
 use ivynet_grpc::{
     backend::backend_client::BackendClient,
