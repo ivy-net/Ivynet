@@ -4,7 +4,6 @@ use async_trait::async_trait;
 use bollard::{
     container::{LogOutput, LogsOptions},
     errors::Error,
-    image::ListImagesOptions,
     secret::{EventMessage, ImageSummary},
     Docker,
 };
@@ -38,7 +37,6 @@ impl Default for DockerClient {
 #[async_trait]
 pub trait DockerApi: Clone + Sync + Send + 'static {
     async fn list_containers(&self) -> Vec<Container>;
-    async fn list_images(&self) -> HashMap<ContainerId, ContainerImage>;
     fn inner(&self) -> Docker;
 
     async fn stream_logs(
@@ -125,23 +123,32 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
 
     async fn find_container_by_image_id(&self, digest: &str) -> Option<Container> {
         let containers = self.list_containers().await;
-        containers.into_iter().find(|container| container.image_id() == Some(digest))
+        for container in containers {
+            if let Some(image_id) = container.repo_digest(&self.inner()).await {
+                if image_id == digest {
+                    return Some(container);
+                }
+            }
+        }
+        None
     }
 
     async fn find_container_by_image(&self, image: &str, strict: bool) -> Option<Container> {
         let containers = self.list_containers().await;
-        containers.into_iter().find(|container| {
-            if let Some(image_id) = container.image_id() {
+        for container in containers {
+            if let Some(image_id) = container.repo_digest(&self.inner()).await {
                 if strict {
-                    ContainerImage::from(image_id) == ContainerImage::from(image)
-                } else {
-                    ContainerImage::from(image_id).repository ==
-                        ContainerImage::from(image).repository
+                    if ContainerImage::from(image_id.as_str()) == ContainerImage::from(image) {
+                        return Some(container);
+                    }
+                } else if ContainerImage::from(image_id.as_str()).repository ==
+                    ContainerImage::from(image).repository
+                {
+                    return Some(container);
                 }
-            } else {
-                false
             }
-        })
+        }
+        None
     }
 
     async fn stream_logs_latest(
@@ -196,46 +203,6 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
         Box::pin(futures::stream::select_all(streams))
     }
 
-    fn process_images(images: Vec<ImageSummary>) -> HashMap<ContainerId, ContainerImage> {
-        let mut map = HashMap::new();
-        for image in images {
-            if image.repo_digests.is_empty() {
-                debug!("No repo digests on image: {:#?}", image);
-                DockerClient::use_repo_tags(&image, &mut map);
-            } else if image.repo_tags.is_empty() && image.repo_digests.is_empty() {
-                debug!("No repo tags or digests on image: {:#?}", image);
-                map.insert(
-                    ContainerId::from(image.id.clone().as_str()),
-                    ContainerImage::from("local"),
-                );
-            } else {
-                for digest in &image.repo_digests {
-                    let elements = digest.split("@").collect::<Vec<_>>();
-                    if elements.len() == 2 {
-                        if !image.repo_tags.is_empty() {
-                            for tag in &image.repo_tags {
-                                map.insert(
-                                    ContainerId::from(elements[1]),
-                                    ContainerImage::from(tag.as_str()),
-                                );
-                            }
-                        } else {
-                            debug!("No repo tags on image: {}", elements[0]);
-                            debug!("This should get a debug later as well in node_type");
-                            map.insert(
-                                ContainerId::from(elements[1]),
-                                ContainerImage::from(elements[0]),
-                            );
-                        }
-                    } else {
-                        DockerClient::use_repo_tags(&image, &mut map);
-                    }
-                }
-            }
-        }
-        map
-    }
-
     fn use_repo_tags(image: &ImageSummary, map: &mut HashMap<ContainerId, ContainerImage>) {
         debug!("REPO DIGESTS BROKEN: {:#?}", image);
         debug!("Using repo_tags instead");
@@ -284,19 +251,6 @@ impl DockerApi for DockerClient {
         &self,
     ) -> Pin<Box<dyn Stream<Item = Result<EventMessage, Error>> + Send + Unpin>> {
         Box::pin(self.0.events::<&str>(None))
-    }
-
-    async fn list_images(&self) -> HashMap<ContainerId, ContainerImage> {
-        let images = self
-            .0
-            .list_images(Some(ListImagesOptions::<String> {
-                all: true,
-                digests: true,
-                ..Default::default()
-            }))
-            .await
-            .expect("Cannot list images");
-        DockerClient::process_images(images)
     }
 }
 

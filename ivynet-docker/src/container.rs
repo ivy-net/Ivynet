@@ -2,6 +2,7 @@ use std::{fmt::Display, str::FromStr, time::Duration};
 
 use crate::{
     dockerapi::DockerApi,
+    repodigest::RepoDigest,
     sidecar::{
         build_sidecar_image,
         netstat::{self, NetstatEntry},
@@ -14,7 +15,8 @@ use super::dockerapi::DockerClient;
 use bollard::{
     container::{Config, CreateContainerOptions, LogOutput, LogsOptions},
     errors::Error,
-    secret::{ContainerSummary, HostConfig},
+    secret::{ContainerSummary, HostConfig, ImageInspect},
+    Docker,
 };
 use futures::TryStreamExt;
 use serde::{Deserialize, Serialize};
@@ -109,6 +111,19 @@ impl Container {
     /// Image name for the associated container
     pub fn image(&self) -> Option<&str> {
         self.0.image.as_deref()
+    }
+
+    pub async fn image_inspect(&self, docker: &Docker) -> Option<ImageInspect> {
+        let image_id = self.image_id()?;
+        docker.inspect_image(image_id).await.ok()
+    }
+
+    pub async fn repo_digest(&self, docker: &Docker) -> Option<String> {
+        let image_inspect = self.image_inspect(docker).await?;
+        let digests = image_inspect.repo_digests?;
+        let digest_str = digests.first()?;
+        let repo_digest = RepoDigest::from_str(digest_str).ok()?;
+        repo_digest.digest
     }
 
     pub fn ports(&self) -> Option<&Vec<bollard::models::Port>> {
@@ -298,6 +313,10 @@ mod tests {
                 println!("IMAGE: {:?}", container.image().unwrap());
                 println!("ID: {:?}", container.id().unwrap());
                 println!("IMAGE_ID: {:?}", container.image_id().unwrap());
+                println!(
+                    "REPO DIGEST: {:?}",
+                    container.repo_digest(&docker.inner()).await.unwrap()
+                );
                 let inspect = docker.0.inspect_image(container.image().unwrap()).await.unwrap();
                 println!("INSPECT: {:#?}", inspect);
             }
