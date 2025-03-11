@@ -116,6 +116,19 @@ impl MonitorConfig {
         });
         self.store()
     }
+
+    pub fn update_container_manifest(
+        &mut self,
+        container_name: &str,
+        manifest: &ContainerId,
+    ) -> Result<(), MonitorConfigError> {
+        self.configured_avses.iter_mut().for_each(|avs| {
+            if avs.container_name == container_name {
+                avs.manifest = Some(manifest.clone());
+            }
+        });
+        self.store()
+    }
 }
 
 pub async fn rename_node(
@@ -209,7 +222,7 @@ pub async fn start_monitor(config: IvyConfig) -> Result<(), anyhow::Error> {
     );
 
     info!("Starting monitor listener...");
-    listen(backend_client, machine, &monitor_config.configured_avses).await?;
+    listen(backend_client, machine, monitor_config).await?;
     Ok(())
 }
 
