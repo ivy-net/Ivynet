@@ -59,7 +59,6 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
     }
 
     async fn list_containers(&self) -> Vec<FullContainer>;
-    async fn list_images(&self) -> HashMap<ContainerId, RepoTag>;
     fn inner(&self) -> Docker;
 
     async fn stream_logs(
@@ -119,21 +118,21 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
         containers.into_iter().find(|container| container.image_id() == Some(digest))
     }
 
-    // async fn find_container_by_image(&self, image: &str, strict: bool) -> Option<Container> {
-    //     let containers = self.list_containers().await;
-    //     containers.into_iter().find(|container| {
-    //         if let Some(image_id) = container.image_id() {
-    //             if strict {
-    //                 ContainerImage::from(image_id) == ContainerImage::from(image)
-    //             } else {
-    //                 ContainerImage::from(image_id).repository
-    //                     == ContainerImage::from(image).repository
-    //             }
-    //         } else {
-    //             false
-    //         }
-    //     })
-    // }
+    async fn find_container_by_image(&self, image: &str, strict: bool) -> Option<FullContainer> {
+        let containers = self.list_containers().await;
+        containers.into_iter().find(|container| {
+            if let Some(image_id) = container.image_id() {
+                if strict {
+                    RepoTag::from_str(image_id) == RepoTag::from_str(image)
+                } else {
+                    RepoTag::from_str(image_id).expect("unenterable")
+                        == RepoTag::from_str(image).expect("unenterable")
+                }
+            } else {
+                false
+            }
+        })
+    }
 
     async fn stream_logs_latest(
         &self,
@@ -268,11 +267,11 @@ impl DockerApi for DockerClient {
             self.0.list_containers::<String>(None).await.expect("Cannot list containers");
         let names: Vec<String> = containers
             .iter()
-            .map(|c| c.names.clone())
-            .flatten()
+            .filter_map(|c| c.names.clone())
             .collect::<Vec<_>>()
             .into_iter()
             .flatten()
+            .map(|s| s.trim_start_matches("/").to_string())
             .collect();
         let mut containers = Vec::new();
         for n in names {
@@ -311,19 +310,6 @@ impl DockerApi for DockerClient {
         &self,
     ) -> Pin<Box<dyn Stream<Item = Result<EventMessage, Error>> + Send + Unpin>> {
         Box::pin(self.0.events::<&str>(None))
-    }
-
-    async fn list_images(&self) -> HashMap<ContainerId, RepoTag> {
-        let images = self
-            .0
-            .list_images(Some(ListImagesOptions::<String> {
-                all: true,
-                digests: true,
-                ..Default::default()
-            }))
-            .await
-            .expect("Cannot list images");
-        DockerClient::process_images(images)
     }
 }
 

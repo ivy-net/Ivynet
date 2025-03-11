@@ -120,12 +120,6 @@ impl FullContainer {
         RepoDigest::from_str(digest_str).ok()
     }
 
-    /// Method for fetching a `RepoTag` from the container. If the container has any invalid
-    /// fields, it will be constructed instead.
-    pub fn repo_tag_with_fallback(&self) -> RepoTag {
-        self.repo_tag().unwrap_or_else(|| self.repo().map(|r| r.into()).unwrap_or_default())
-    }
-
     pub fn repo_tag(&self) -> Option<RepoTag> {
         let tags = self.image.repo_tags.clone()?;
         let tag_str = tags.first()?;
@@ -506,14 +500,19 @@ mod tests {
     async fn test_container_name_trim() {
         let docker = DockerClient::default();
         let containers = docker.list_containers().await;
+        println!("CONTAINERS: {:?}", containers.len());
         for container in containers {
-            let names = container.names().unwrap();
+            let names = container.names();
             if names == vec!["eigenda-native-node"] {
-                println!("NAMES: {:?}", container.names().unwrap());
-                println!("IMAGE: {:?}", container.image().unwrap());
+                println!("NAMES: {:?}", container.names());
+                println!("IMAGE: {:?}", container.repo_tag().unwrap());
                 println!("ID: {:?}", container.id().unwrap());
                 println!("IMAGE_ID: {:?}", container.image_id().unwrap());
-                let inspect = docker.0.inspect_image(container.image().unwrap()).await.unwrap();
+                let inspect = docker
+                    .0
+                    .inspect_image(&container.repo_tag().unwrap().to_string())
+                    .await
+                    .unwrap();
                 println!("INSPECT: {:#?}", inspect);
             }
         }
