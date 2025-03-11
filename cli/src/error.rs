@@ -1,3 +1,5 @@
+use ivynet_docker::dockerapi::DockerClientError;
+
 use crate::ivy_machine::MachineIdentityError;
 
 #[derive(Debug, thiserror::Error)]
@@ -55,4 +57,7 @@ pub enum Error {
 
     #[error("Machine Identity Error")]
     MachineIdentityError(#[from] MachineIdentityError),
+
+    #[error(transparent)]
+    DockerClientError(#[from] DockerClientError),
 }

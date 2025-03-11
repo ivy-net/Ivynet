@@ -197,8 +197,9 @@ pub async fn listen(
         info!("Searching for node: {}", node.container_name);
         let container: Option<FullContainer> =
             match docker.get_full_container_by_name(&node.container_name).await {
-                Some(container) => Some(container),
-                None => {
+                Ok(container) => Some(container),
+                Err(e) => {
+                    warn!("Error finding container: {}", e);
                     if let Some(manifest) = &node.manifest {
                         match docker.find_container_by_image_id(&manifest.to_string()).await {
                             Some(container) => Some(container),
@@ -211,7 +212,7 @@ pub async fn listen(
                             }
                         }
                     } else if let Some(image) = node.image.clone() {
-                        match docker.find_container_by_image(&image.repository, false).await {
+                        match docker.find_container_by_image(&image.image, false).await {
                             Some(container) => Some(container),
                             None => {
                                 warn!("Could not find container by image. {:#?} Continuing.", node);

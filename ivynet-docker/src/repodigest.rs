@@ -68,7 +68,8 @@ pub struct RepoTag {
 }
 
 impl RepoTag {
-    /// Get the repository+image component of the image, for example `ghcr.io/layr-labs/eigenda/opr-node` from `ghcr.io/layr-labs/eigenda/opr-node:latest`
+    /// Get the repository+image component of the image, for example
+    /// `ghcr.io/layr-labs/eigenda/opr-node` from `ghcr.io/layr-labs/eigenda/opr-node:latest`
     pub fn repository(&self) -> String {
         self.image.clone()
     }
