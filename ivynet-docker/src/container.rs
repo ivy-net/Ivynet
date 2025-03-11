@@ -356,16 +356,16 @@ impl FullContainer {
 //         None
 //     }
 //
-//     /// Stream logs for the container since a given timestamp. Returns a stream of log outputs, or
-//     /// a None if the container
+//     /// Stream logs for the container since a given timestamp. Returns a stream of log outputs,
+// or     /// a None if the container
 //     pub fn stream_logs(
 //         &self,
 //         docker: &DockerClient,
 //         since: i64,
 //     ) -> impl Stream<Item = Result<LogOutput, bollard::errors::Error>> {
 //         let log_opts: LogsOptions<&str> =
-//             LogsOptions { follow: true, stdout: true, stderr: true, since, ..Default::default() };
-//         docker.0.logs(self.id().unwrap(), Some(log_opts))
+//             LogsOptions { follow: true, stdout: true, stderr: true, since, ..Default::default()
+// };         docker.0.logs(self.id().unwrap(), Some(log_opts))
 //     }
 //
 //     /// Stream logs for the container since current time

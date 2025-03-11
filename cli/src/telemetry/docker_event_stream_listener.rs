@@ -224,7 +224,7 @@ impl<B: BackendMiddleware> DockerStreamListener<DockerClient, B> {
                                     manifest: Some(ContainerId::from(
                                         inc_container_digest.as_str(),
                                     )),
-                                    image: Some(RepoTag::from(inc_image_name.as_str())),
+                                    image: Some(inc_image_name),
                                 })
                             } else {
                                 None

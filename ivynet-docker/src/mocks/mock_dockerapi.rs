@@ -25,8 +25,8 @@ use crate::{
 // impl MockDockerClient {
 //     pub fn new() -> Self {
 //         let records = vec![postgres_container(), memcached_container(), eigenda_container_1()];
-//         let events = vec![eigenda_stream_start(), eigenda_stream_down(), eigenda_stream_restart()]
-//             .into_iter()
+//         let events = vec![eigenda_stream_start(), eigenda_stream_down(),
+// eigenda_stream_restart()]             .into_iter()
 //             .flatten()
 //             .collect();
 //         let logs = mock_logs();
@@ -34,8 +34,8 @@ use crate::{
 //     }
 //
 //     pub fn images_only(&self, images: Vec<ImageSummary>) -> MockDockerClient {
-//         MockDockerClient { images: Arc::new(images), records: vec![], events: vec![], logs: vec![] }
-//     }
+//         MockDockerClient { images: Arc::new(images), records: vec![], events: vec![], logs:
+// vec![] }     }
 // }
 //
 // impl Default for MockDockerClient {
@@ -117,8 +117,8 @@ use crate::{
 //
 //     let stderr =
 //         LogOutput::StdErr { message: "STD ERR LOG TEST: I am the eggman".as_bytes().into() };
-//     let stdin = LogOutput::StdIn { message: "STD IN LOG TEST: I am the walrus".as_bytes().into() };
-//     let console =
+//     let stdin = LogOutput::StdIn { message: "STD IN LOG TEST: I am the walrus".as_bytes().into()
+// };     let console =
 //         LogOutput::Console { message: "CONSOLE LOG TEST: I am the walrus".as_bytes().into() };
 //
 //     // Flatten them all into one Vec<Result<LogOutput, Error>>:

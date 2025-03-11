@@ -199,16 +199,15 @@ pub async fn listen(
         info!("Searching for node: {}", node.container_name);
         let container: Option<FullContainer> =
             match docker.get_full_container_by_name(&node.container_name).await {
-                Some(container) => {
+                Ok(container) => {
                     let _ = monitor_config.update_container_manifest(
                         &node.container_name,
-                        &ContainerId::from(
-                            container.repo_digest(&docker.inner()).await.unwrap().as_str(),
-                        ),
+                        &ContainerId::from(container.digest().unwrap().as_str()),
                     );
                     Some(container)
                 }
-                None => {
+                Err(e) => {
+                    warn!("Error finding container: {}", e);
                     if let Some(manifest) = &node.manifest {
                         match docker.find_container_by_image_id(&manifest.to_string()).await {
                             Some(container) => Some(container),
@@ -221,18 +220,12 @@ pub async fn listen(
                             }
                         }
                     } else if let Some(image) = node.image.clone() {
-                        match docker.find_container_by_image(&image.repository, false).await {
+                        match docker.find_container_by_image(&image.image, false).await {
                             Some(container) => {
-                                if let Some(names) = container.names() {
+                                if let Some(name) = container.names().first() {
                                     let _ = monitor_config.update_container_manifest(
-                                        names.first().unwrap(),
-                                        &ContainerId::from(
-                                            container
-                                                .repo_digest(&docker.inner())
-                                                .await
-                                                .unwrap()
-                                                .as_str(),
-                                        ),
+                                        name,
+                                        &ContainerId::from(container.digest().unwrap().as_str()),
                                     );
                                 }
                                 Some(container)
