@@ -44,6 +44,7 @@
         owner: root
         group: root
       tags:
+        - ivynet_api
         - github
         - db-config
 
@@ -83,6 +84,14 @@
         - download
         - gcp
 
+    - name: Remove old migrations
+      ansible.build.file:
+        path: "{{ ivynet_api_path_resources }}/migrations"
+        state: absent
+      tags:
+        - ivynet_api
+        - db-config
+
     - name: Unpack migrations
       ansible.builtin.unarchive:
         src: "{{ ivynet_api_path_resources }}/migrations.tar.gz"
@@ -91,7 +100,16 @@
         owner: root
         group: root
       tags:
+        - ivynet_api
         - github
+        - db-config
+
+    - name: Delete ivynet DB
+      community.postgresql.postgresql_db:
+        name: ivynet
+        state: absent
+      tags:
+        - ivynet_api
         - db-config
 
 - name: Configure postgres DB for ivynet
