@@ -98,7 +98,8 @@ fn create_router() -> Router<HttpState> {
                 .route("/invite", post(organization::invite))
                 .route("/confirm/:id", get(organization::confirm))
                 .route("/machines", get(organization::machines))
-                .route("/avses", get(organization::avses)),
+                .route("/avses", get(organization::avses))
+                .route("/accounts", get(organization::accounts)),
         )
         .nest(
             "/client",

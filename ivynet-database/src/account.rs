@@ -54,6 +54,21 @@ impl Account {
         Ok(accounts)
     }
 
+    pub async fn get_all_for_organization(
+        pool: &PgPool,
+        organization_id: i64,
+    ) -> Result<Vec<Account>, DatabaseError> {
+        let accounts = sqlx::query_as!(
+            Account,
+            r#"SELECT user_id, organization_id, email, password, role AS "role!: Role", created_at, updated_at FROM account WHERE organization_id = $1"#,
+            organization_id
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(accounts)
+    }
+
     pub async fn verify(
         pool: &PgPool,
         email: &str,

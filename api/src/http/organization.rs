@@ -49,6 +49,13 @@ pub struct InvitationRequest {
     pub role: Role,
 }
 
+#[derive(Serialize, Debug, Clone, ToSchema)]
+pub struct AccountInfo {
+    pub user_id: i64,
+    pub email: String,
+    pub role: Role,
+}
+
 /// Create a new organization
 #[utoipa::path(
     post,
@@ -242,4 +249,34 @@ pub async fn confirm(
     verification.delete(&state.pool).await?;
 
     Ok(ConfirmationResponse { success: true }.into())
+}
+
+/// Get all accounts in an organization
+#[utoipa::path(
+    get,
+    path = "/organization/accounts",
+    responses(
+        (status = 200, body = [Account]),
+        (status = 404)
+    )
+)]
+pub async fn accounts(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+) -> Result<Json<Vec<AccountInfo>>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+
+    let accounts = Account::get_all_for_organization(&state.pool, account.organization_id).await?;
+
+    let accounts_info: Vec<AccountInfo> = accounts
+        .into_iter()
+        .map(|account| AccountInfo {
+            user_id: account.user_id,
+            email: account.email,
+            role: account.role,
+        })
+        .collect();
+
+    Ok(accounts_info.into())
 }

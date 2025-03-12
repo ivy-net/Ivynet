@@ -19,6 +19,7 @@ use super::{alerts, authorize, client, info, machine, node, organization, pubkey
         organization::machines,
         organization::avses,
         organization::confirm,
+        organization::accounts,
         client::client,
         client::client_machines,
         client::client_logs,
@@ -72,6 +73,7 @@ use super::{alerts, authorize, client, info, machine, node, organization, pubkey
             organization::InvitationResponse,
             organization::ConfirmationResponse,
             organization::InvitationRequest,
+            organization::AccountInfo,
             ivynet_database::Role,
             ivynet_database::AvsVersionData,
             ivynet_database::Avs,
@@ -94,6 +96,7 @@ use super::{alerts, authorize, client, info, machine, node, organization, pubkey
             alerts::AcknowledgeAlertParams,
             alerts::HistoricalAlertParams,
             AlertType,
+
         ),
     ),
     tags(
