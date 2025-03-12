@@ -1,6 +1,11 @@
 use ivynet_alerts::AlertType;
 use ivynet_database::{
     self,
+    alerts::{
+        node_alerts_active::NodeActiveAlert, node_alerts_historical::NodeHistoryAlert,
+        organization_alerts_active::OrganizationActiveAlert,
+        organization_alerts_historical::OrganizationHistoryAlert,
+    },
     data::{machine_data, node_data},
 };
 use utoipa::OpenApi;
@@ -49,9 +54,12 @@ use super::{alerts, authorize, client, info, machine, node, organization, pubkey
         machine::set_name,
         machine::system_metrics,
         machine::set_node_type,
-        alerts::active_alerts,
-        alerts::acknowledge_alert,
-        alerts::alert_history,
+        alerts::node_active_alerts,
+        alerts::node_acknowledge_alert,
+        alerts::node_alert_history,
+        alerts::org_active_alerts,
+        alerts::org_acknowledge_alert,
+        alerts::org_alert_history,
         alerts::list_alert_flags,
         alerts::get_alert_flags_human,
         alerts::update_alert_flag,
@@ -91,12 +99,13 @@ use super::{alerts, authorize, client, info, machine, node, organization, pubkey
             node_data::NodeStatusReport,
             machine_data::MachineInfoReport,
             machine_data::MachineStatusReport,
-            ivynet_database::alerts::node_alerts_active::NodeActiveAlert,
-            ivynet_database::alerts::node_alerts_historical::NodeHistoryAlert,
+            NodeActiveAlert,
+            NodeHistoryAlert,
+            OrganizationActiveAlert,
+            OrganizationHistoryAlert,
             alerts::AcknowledgeAlertParams,
             alerts::HistoricalAlertParams,
             AlertType,
-
         ),
     ),
     tags(
