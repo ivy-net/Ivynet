@@ -162,6 +162,14 @@ async fn extract_node_data_alerts(
         return vec![];
     };
 
+    if !avs.active_set {
+        alerts.push(Alert::UnregisteredFromActiveSet {
+            node_name: avs.avs_name,
+            node_type: avs.avs_type.to_string(),
+            operator: avs.operator_address.unwrap_or_default(),
+        });
+    }
+
     let version_map = DbAvsVersionData::get_all_avs_version(pool).await;
 
     // extraction logic
@@ -216,8 +224,8 @@ async fn extract_node_data_alerts(
 
             if let Some(version_data) = version_map.get(&node_type_id) {
                 let recommended_version = version_data.latest_version.clone();
-                if update_status == UpdateStatus::Outdated ||
-                    update_status == UpdateStatus::Updateable
+                if update_status == UpdateStatus::Outdated
+                    || update_status == UpdateStatus::Updateable
                 {
                     alerts.push(Alert::NeedsUpdate {
                         node_name: node_data.name.clone(),

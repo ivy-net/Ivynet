@@ -98,8 +98,8 @@ pub async fn build_machine_info(
 
     let hardware_info = build_system_metrics(&machine_metrics);
 
-    if hardware_info.disk_status == HardwareInfoStatus::Critical ||
-        hardware_info.memory_status == HardwareInfoStatus::Critical
+    if hardware_info.disk_status == HardwareInfoStatus::Critical
+        || hardware_info.memory_status == HardwareInfoStatus::Critical
     {
         errors.push(MachineError::SystemResourcesUsage);
     }
