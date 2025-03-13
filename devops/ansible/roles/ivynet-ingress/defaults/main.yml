@@ -24,7 +24,7 @@ ivynet_ingress_is_release: true
 # Logs level for IvyNet internals
 ivynet_ingress_logs_lowlevel: ""
 
-# Should Telegram notification be on
+# Token for Telegram bot
 ivynet_ingress_notification_telegram: ""
 
 # Path where to install binaries and other files
