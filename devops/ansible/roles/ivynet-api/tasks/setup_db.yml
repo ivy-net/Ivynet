@@ -85,7 +85,7 @@
         - gcp
 
     - name: Remove old migrations
-      ansible.build.file:
+      ansible.builtin.file:
         path: "{{ ivynet_api_path_resources }}/migrations"
         state: absent
       tags:
@@ -107,7 +107,10 @@
     - name: Delete ivynet DB
       community.postgresql.postgresql_db:
         name: ivynet
+        force: true
         state: absent
+      become: true
+      become_user: postgres
       tags:
         - ivynet_api
         - db-config
