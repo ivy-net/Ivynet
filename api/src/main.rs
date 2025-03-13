@@ -62,14 +62,25 @@ async fn main() -> Result<(), BackendError> {
     }
 }
 
-async fn add_account(pool: &PgPool, org: &str) -> Result<(), BackendError> {
-    let org_data = org.split('/').collect::<Vec<_>>();
+async fn add_account(pool: &PgPool, info: &str) -> Result<(), BackendError> {
+    let org_data = info.split('/').collect::<Vec<_>>();
     if org_data.len() == 2 {
         let cred_data = org_data[0].split(':').collect::<Vec<_>>();
         if cred_data.len() == 2 {
             println!("Creating organization {} with user {}", org_data[1], cred_data[0]);
             let org = ivynet_database::Organization::new(pool, org_data[1], true).await?;
             org.attach_admin(pool, cred_data[0], cred_data[1]).await?;
+        } else {
+            println!("Try testuser@ivynet.dev:test1234/testorg");
+        }
+    } else {
+        let cred_data = info.split(':').collect::<Vec<_>>();
+        if cred_data.len() == 2 {
+            println!("Creating user without organization on org 1");
+            let org = ivynet_database::Organization::get(pool, 1).await?;
+            org.attach_admin(pool, cred_data[0], cred_data[1]).await?;
+        } else {
+            println!("Try testuser@ivynet.dev:test1234");
         }
     }
     Ok(())
