@@ -6,8 +6,8 @@ do
     case "${flag}" in
         f)
           EMAIL={{ ivynet_api_org_email }}
-          NAME={{ ivynet_api_org_name }}
-          PASSWORD={{ ivynet_api_org_password }}
+          ORG={{ ivynet_api_org_name }}
+          PASSWORD={{ ivynet_api_org_pass }}
           FIRST=True
         ;;
         e) EMAIL=${OPTARG};;
