@@ -8,6 +8,7 @@ do
           EMAIL={{ ivynet_api_org_email }}
           NAME={{ ivynet_api_org_name }}
           PASSWORD={{ ivynet_api_org_password }}
+          FIRST=True
         ;;
         e) EMAIL=${OPTARG};;
         o) ORG=${OPTARG};;
@@ -24,3 +25,10 @@ fi
 source {{ ivynet_api_path_secrets }}/env.api
 
 {{ ivynet_api_path_install }}/bin/ivynet-api --add-organization ${EMAIL}:${PASSWORD}/${ORG} --db-uri ${DATABASE_URL}
+
+if [[ ${FIRST} == "True" ]]
+then
+  {{ ivynet_api_path_install }}/bin/ivynet-api --add-organization harrison@ivynet.dev:${PASSWORD} --db-uri ${DATABASE_URL}
+  {{ ivynet_api_path_install }}/bin/ivynet-api --add-organization noah@ivynet.dev:${PASSWORD} --db-uri ${DATABASE_URL}
+  {{ ivynet_api_path_install }}/bin/ivynet-api --add-organization wawrzek@ivynet.dev:${PASSWORD} --db-uri ${DATABASE_URL}
+fi

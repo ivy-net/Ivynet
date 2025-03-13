@@ -50,7 +50,7 @@
 - name: Copy script to add orgs
   ansible.builtin.template:
     src: add_org.sh.j2
-    dest: "{{ ivynet_api_path }}/bin/add_org.sh"
+    dest: "{{ ivynet_api_path_install }}/bin/add_org.sh"
     owner: root
     group: root
     mode: "0755"
