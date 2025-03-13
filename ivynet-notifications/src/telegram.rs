@@ -5,7 +5,7 @@ use teloxide::{
     dispatching::UpdateHandler, prelude::*, types::ParseMode, utils::command::BotCommands,
 };
 use tokio::time::sleep;
-use tracing::warn;
+use tracing::{error, warn};
 use uuid::Uuid;
 
 use crate::OrganizationDatabase;
@@ -21,6 +21,18 @@ pub enum BotError {
 
     #[error("No bot configured")]
     NoBotConfigured,
+
+    #[error("Invalid bot token")]
+    InvalidBotToken,
+
+    #[error("Failed to send message: {0}")]
+    MessageSendError(String),
+
+    #[error("Database error: {0}")]
+    DatabaseError(String),
+
+    #[error("Authentication failed: {0}")]
+    AuthenticationError(String),
 }
 
 /// These commands are supported:
@@ -59,7 +71,13 @@ pub trait TelegramBotApi {
 
 impl<D: OrganizationDatabase> TelegramBot<D> {
     pub fn new(bot_key: &str, db: D) -> Self {
-        Self { bot: if bot_key.is_empty() { None } else { Some(Bot::new(bot_key)) }, db }
+        // Validate bot token format
+        let bot = if bot_key.is_empty() || !bot_key.contains(':') {
+            None
+        } else {
+            Some(Bot::new(bot_key))
+        };
+        Self { bot, db }
     }
 
     pub async fn serve(&self) -> Result<(), BotError> {
@@ -87,13 +105,29 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
     }
 
     fn escape_markdown_v2(text: &str) -> String {
-        let special_chars = [
-            '_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.',
-            '!',
-        ];
+        // Pre-allocate with extra capacity for escape characters
         let mut escaped = String::with_capacity(text.len() * 2);
         for c in text.chars() {
-            if special_chars.contains(&c) {
+            if matches!(
+                c,
+                '_' | '*' |
+                    '[' |
+                    ']' |
+                    '(' |
+                    ')' |
+                    '~' |
+                    '`' |
+                    '>' |
+                    '#' |
+                    '+' |
+                    '-' |
+                    '=' |
+                    '|' |
+                    '{' |
+                    '}' |
+                    '.' |
+                    '!'
+            ) {
                 escaped.push('\\');
             }
             escaped.push(c);
@@ -239,8 +273,14 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
         };
 
         if let Some(bot) = &self.bot {
-            for chat in self.db.get_chats_for_organization(notification.organization).await {
-                bot.parse_mode(ParseMode::MarkdownV2).send_message(chat, &message).await?;
+            let chats = self.db.get_chats_for_organization(notification.organization).await;
+            for chat in chats {
+                if let Err(e) =
+                    bot.parse_mode(ParseMode::MarkdownV2).send_message(chat.clone(), &message).await
+                {
+                    error!("Failed to send message to chat {}: {}", chat, e);
+                    return Err(BotError::MessageSendError(e.to_string()));
+                }
             }
             Ok(())
         } else {
@@ -265,7 +305,11 @@ async fn command_handler<D: OrganizationDatabase>(
             bot.send_message(msg.chat.id, BotCommand::descriptions().to_string()).await?;
         }
         BotCommand::Register { email, password } => {
-            bot.delete_message(msg.chat.id, msg.id).await?;
+            // Delete the message containing credentials immediately
+            if let Err(e) = bot.delete_message(msg.chat.id, msg.id).await {
+                error!("Failed to delete registration message: {}", e);
+            }
+
             if db.register_chat(msg.chat.id.to_string().as_str(), &email, &password).await {
                 bot.send_message(msg.chat.id, "Registration successful.").await?;
             } else {
@@ -309,17 +353,14 @@ async fn wrapped_command_handler<D: OrganizationDatabase>(
 
 #[cfg(test)]
 mod telegram_bot_test {
-
+    use super::*;
     use std::{
         collections::{HashMap, HashSet},
         sync::Arc,
     };
 
-    use tokio::sync::Mutex;
-
-    use super::*;
-
     use teloxide_tests::{MockBot, MockMessageText};
+    use tokio::sync::Mutex;
 
     static MOCK_ORGANIZATION_ID: u64 = 1;
 
@@ -390,9 +431,7 @@ mod telegram_bot_test {
     #[tokio::test]
     async fn test_command_handler() {
         let mock_message = MockMessageText::new().text("/help");
-
         let db = MockDb::new();
-
         let bot = MockBot::new(mock_message, TelegramBot::<MockDb>::wrapped_handler_tree());
         bot.dependencies(dptree::deps![db]);
         bot.dispatch().await;
@@ -410,7 +449,6 @@ mod telegram_bot_test {
     #[tokio::test]
     async fn test_registration_commands() {
         let mock_message = MockMessageText::new().text("/register test@email.com s0mePass");
-
         let db = MockDb::new();
 
         let bot = MockBot::new(mock_message, TelegramBot::<MockDb>::wrapped_handler_tree());
@@ -419,7 +457,6 @@ mod telegram_bot_test {
 
         let responses = bot.get_responses();
         let message = responses.sent_messages.last().expect("No sent messages were detected!");
-
         assert_eq!(message.text(), Some("Registration successful."));
         assert_eq!(db.get_chats_for_organization(MOCK_ORGANIZATION_ID).await.len(), 1);
 
@@ -430,7 +467,6 @@ mod telegram_bot_test {
 
         let responses = bot.get_responses();
         let message = responses.sent_messages.last().expect("No sent messages were detected!");
-
         assert_eq!(message.text(), Some("You have successfully unregistered this chat."));
         assert_eq!(db.get_chats_for_organization(MOCK_ORGANIZATION_ID).await.len(), 0);
     }
@@ -438,7 +474,6 @@ mod telegram_bot_test {
     #[tokio::test]
     async fn test_bad_unregistration_command() {
         let db = MockDb::new();
-
         let mock_message = MockMessageText::new().text("/unregister");
         let bot = MockBot::new(mock_message, TelegramBot::<MockDb>::wrapped_handler_tree());
         bot.dependencies(dptree::deps![db.clone()]);
@@ -446,25 +481,28 @@ mod telegram_bot_test {
 
         let responses = bot.get_responses();
         let message = responses.sent_messages.last().expect("No sent messages were detected!");
-
         assert_eq!(message.text(), Some("This chat was not registered."));
         assert_eq!(db.get_chats_for_organization(MOCK_ORGANIZATION_ID).await.len(), 0);
     }
 
     #[tokio::test]
-    async fn test_event_propagation() {
-        let mock_message = MockMessageText::new().text("/register test@email.com s0mePass");
-
+    async fn test_invalid_bot_token() {
         let db = MockDb::new();
+        let bot = TelegramBot::new("invalid_token", db);
+        assert!(bot.bot.is_none());
+    }
 
-        let bot = MockBot::new(mock_message, TelegramBot::<MockDb>::wrapped_handler_tree());
-        bot.dependencies(dptree::deps![db.clone()]);
-        bot.dispatch().await;
+    #[tokio::test]
+    async fn test_empty_bot_token() {
+        let db = MockDb::new();
+        let bot = TelegramBot::new("", db);
+        assert!(bot.bot.is_none());
+    }
 
-        let responses = bot.get_responses();
-        let message = responses.sent_messages.last().expect("No sent messages were detected!");
-
-        assert_eq!(message.text(), Some("Registration successful."));
-        assert_eq!(db.get_chats_for_organization(MOCK_ORGANIZATION_ID).await.len(), 1);
+    #[tokio::test]
+    async fn test_valid_bot_token() {
+        let db = MockDb::new();
+        let bot = TelegramBot::new("123456:ABCdefGHIjklmNOPQrstUVwxyz", db);
+        assert!(bot.bot.is_some());
     }
 }
