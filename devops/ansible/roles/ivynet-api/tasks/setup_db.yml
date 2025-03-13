@@ -188,3 +188,16 @@
   tags:
     - ivynet_api
     - db-config
+
+- name: Add Org for tests
+  ansible.builtin.command:
+    argv:
+      - "{{ ivynet_api_path_install }}/bin/add_org.sh"
+      - "-f"
+  register: add_org_out
+  when:
+    - ivynet_api_postgres_host == 'localhost'
+  changed_when: add_org_out.stdout != ""
+  tags:
+    - ivynet_api
+    - db-config
