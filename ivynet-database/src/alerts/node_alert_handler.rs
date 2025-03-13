@@ -112,6 +112,9 @@ impl NodeAlertHandler {
 
         NodeActiveAlert::insert_many(&self.db_executor, &filtered_new_alerts).await?;
 
+        // Resolve step
+        run_machine_alert_resolution(&self.db_executor, machine_id).await?;
+
         Ok(())
     }
 }
@@ -144,6 +147,128 @@ impl AlertHandler for NodeAlertHandler {
 
         Ok(filtered)
     }
+}
+
+/// Fetch the latest AVS data for a machine. Compare alerts derived from the AVS data with the
+/// existing alerts in the database. Resolve any alerts that are no longer present in the AVS data.
+pub async fn run_machine_alert_resolution(
+    pool: &PgPool,
+    machine_id: Uuid,
+) -> Result<(), NodeAlertError> {
+    let avses = Avs::get_machines_avs_list(pool, machine_id).await?;
+    let alerts = build_alerts_from_avses(pool, avses).await?;
+    resolve_machine_alerts(pool, alerts, machine_id).await?;
+    Ok(())
+}
+
+/// Fetch the latest AVS data for an organization. Compare alerts derived from the AVS data with
+/// the existing alerts in the database. Resolve any alerts that are no longer present in the AVS
+/// data.
+pub async fn run_org_alert_resolution(pool: &PgPool, org_id: i64) -> Result<(), NodeAlertError> {
+    let avses = Avs::get_org_avs_list(pool, org_id).await?;
+    let alerts = build_alerts_from_avses(pool, avses).await?;
+    resolve_org_alerts(pool, alerts, org_id).await?;
+    Ok(())
+}
+
+async fn build_alerts_from_avses(
+    pool: &PgPool,
+    avses: Vec<Avs>,
+) -> Result<Vec<NewNodeAlert>, DatabaseError> {
+    let mut alerts = vec![];
+    let version_map = DbAvsVersionData::get_all_avs_version(pool).await?;
+
+    for avs in avses {
+        let derived_alerts = alerts_from_avs(&avs, &version_map);
+        let new_alerts = derived_alerts
+            .into_iter()
+            .map(|alert| NewNodeAlert::new(avs.machine_id, alert, avs.avs_name.clone()))
+            .collect::<Vec<_>>();
+        alerts.extend(new_alerts);
+    }
+    Ok(alerts)
+}
+
+pub fn alerts_from_avs(avs: &Avs, version_map: &HashMap<NodeTypeId, VersionData>) -> Vec<Alert> {
+    let mut alerts = vec![];
+
+    if !avs.active_set {
+        alerts.push(Alert::UnregisteredFromActiveSet {
+            node_name: avs.avs_name.clone(),
+            node_type: avs.avs_type.to_string(),
+            operator: avs.operator_address.unwrap_or_default(),
+        });
+    }
+
+    if let Some(datetime) = avs.updated_at {
+        let now = chrono::Utc::now().naive_utc();
+        if now.signed_duration_since(datetime).num_minutes() > IDLE_MINUTES_THRESHOLD {
+            alerts.push(Alert::NodeNotResponding {
+                node_name: avs.avs_name.clone(),
+                node_type: avs.avs_type.to_string(),
+            });
+            if avs.active_set && avs.operator_address.is_some() {
+                alerts.push(Alert::ActiveSetNoDeployment {
+                    node_name: avs.avs_name.clone(),
+                    node_type: avs.avs_type.to_string(),
+                    operator: avs.operator_address.expect("UNENTERABLE"),
+                });
+            }
+        }
+    }
+
+    if !avs.metrics_alive {
+        alerts.push(Alert::NoMetrics {
+            node_name: avs.avs_name.clone(),
+            node_type: avs.avs_type.to_string(),
+        });
+    }
+
+    if !avs.node_running {
+        alerts.push(Alert::NodeNotRunning {
+            node_name: avs.avs_name.clone(),
+            node_type: avs.avs_type.to_string(),
+        });
+    }
+
+    if avs.chain.is_none() {
+        alerts.push(Alert::NoChainInfo {
+            node_name: avs.avs_name.clone(),
+            node_type: avs.avs_type.to_string(),
+        });
+    } else if let Some(chain) = avs.chain {
+        let update_status = get_update_status(
+            version_map.clone(),
+            &avs.avs_version,
+            &avs.version_hash,
+            Some(chain.to_string()),
+            avs.avs_type,
+        );
+
+        let node_type_id = NodeTypeId { node_type: avs.avs_type, chain };
+
+        if let Some(version_data) = version_map.get(&node_type_id) {
+            let recommended_version = version_data.latest_version.clone();
+            if update_status == UpdateStatus::Outdated || update_status == UpdateStatus::Updateable
+            {
+                alerts.push(Alert::NeedsUpdate {
+                    node_name: avs.avs_name.clone(),
+                    node_type: avs.avs_type.to_string(),
+                    current_version: avs.avs_version.clone(),
+                    recommended_version,
+                });
+            }
+        }
+    }
+
+    if avs.operator_address.is_none() {
+        alerts.push(Alert::NoOperatorId {
+            node_name: avs.avs_name.clone(),
+            node_type: avs.avs_type.to_string(),
+        });
+    }
+
+    alerts
 }
 
 async fn extract_node_data_alerts(
@@ -224,8 +349,8 @@ async fn extract_node_data_alerts(
 
             if let Some(version_data) = version_map.get(&node_type_id) {
                 let recommended_version = version_data.latest_version.clone();
-                if update_status == UpdateStatus::Outdated
-                    || update_status == UpdateStatus::Updateable
+                if update_status == UpdateStatus::Outdated ||
+                    update_status == UpdateStatus::Updateable
                 {
                     alerts.push(Alert::NeedsUpdate {
                         node_name: node_data.name.clone(),
@@ -248,7 +373,66 @@ async fn extract_node_data_alerts(
     alerts
 }
 
-/// node_version_tag: corresponds to the docker image tag for the node.
+pub async fn resolve_org_alerts(
+    pool: &PgPool,
+    alerts: Vec<NewNodeAlert>,
+    org_id: i64,
+) -> Result<(), DatabaseError> {
+    let db_alerts = NodeActiveAlert::all_alerts_by_org(pool, org_id).await?;
+
+    // Filter existing alerts, removing any that are not in the incoming list
+    let to_resolve = db_alerts
+        .into_iter()
+        .filter(|alert| !alerts.iter().any(|new_alert| new_alert.get_id() == alert.alert_id))
+        .collect::<Vec<_>>();
+
+    for alert in to_resolve {
+        NodeActiveAlert::resolve_alert(pool, alert.alert_id).await?;
+    }
+
+    Ok(())
+}
+
+pub async fn resolve_machine_alerts(
+    pool: &PgPool,
+    alerts: Vec<NewNodeAlert>,
+    machine_id: Uuid,
+) -> Result<(), DatabaseError> {
+    let db_alerts = NodeActiveAlert::all_alerts_by_machine(pool, machine_id).await?;
+
+    // Filter existing alerts, removing any that are not in the incoming list
+    let to_resolve = db_alerts
+        .into_iter()
+        .filter(|alert| !alerts.iter().any(|new_alert| new_alert.get_id() == alert.alert_id))
+        .collect::<Vec<_>>();
+
+    for alert in to_resolve {
+        NodeActiveAlert::resolve_alert(pool, alert.alert_id).await?;
+    }
+
+    Ok(())
+}
+
+pub async fn resolve_node_alerts(
+    pool: &PgPool,
+    alerts: Vec<NewNodeAlert>,
+    nodes: Vec<Avs>,
+) -> Result<(), DatabaseError> {
+    let db_alerts = NodeActiveAlert::get_by_avs_list(pool, &nodes).await?;
+
+    // Filter existing alerts, removing any that are not in the incoming list
+    let to_resolve = db_alerts
+        .into_iter()
+        .filter(|alert| !alerts.iter().any(|new_alert| new_alert.get_id() == alert.alert_id))
+        .collect::<Vec<_>>();
+
+    for alert in to_resolve {
+        NodeActiveAlert::resolve_alert(pool, alert.alert_id).await?;
+    }
+
+    Ok(())
+}
+
 /// node_image_digest: corresponds to the docker image digest for the node.
 pub fn get_update_status(
     version_map: HashMap<NodeTypeId, VersionData>,

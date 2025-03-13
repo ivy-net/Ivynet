@@ -1,0 +1,88 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                avs.machine_id,\n                avs.avs_name,\n                avs.avs_type,\n                avs.chain,\n                avs.avs_version,\n                avs.operator_address,\n                avs.version_hash,\n                avs.active_set,\n                avs.metrics_alive,\n                avs.node_running,\n                avs.created_at,\n                avs.updated_at\n            FROM avs\n            JOIN machine ON avs.machine_id = machine.machine_id\n            JOIN client ON machine.client_id = client.client_id\n            WHERE client.organization_id = $1\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "machine_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "avs_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "avs_type",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "chain",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 4,
+        "name": "avs_version",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "operator_address",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 6,
+        "name": "version_hash",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 7,
+        "name": "active_set",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 8,
+        "name": "metrics_alive",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 9,
+        "name": "node_running",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 10,
+        "name": "created_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 11,
+        "name": "updated_at",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "02e56d37ede9ae408001f5a0b014bcb44efa470a0108fbeb9f9f8650f24ae244"
+}
