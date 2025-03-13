@@ -98,7 +98,8 @@ fn create_router() -> Router<HttpState> {
                 .route("/invite", post(organization::invite))
                 .route("/confirm/:id", get(organization::confirm))
                 .route("/machines", get(organization::machines))
-                .route("/avses", get(organization::avses)),
+                .route("/avses", get(organization::avses))
+                .route("/accounts", get(organization::accounts)),
         )
         .nest(
             "/client",
@@ -140,9 +141,12 @@ fn create_router() -> Router<HttpState> {
         .nest(
             "/alerts",
             Router::new()
-                .route("/active", get(alerts::active_alerts))
-                .route("/history", get(alerts::alert_history))
-                .route("/acknowledge", post(alerts::acknowledge_alert))
+                .route("/node/active", get(alerts::node_active_alerts))
+                .route("/node/history", get(alerts::node_alert_history))
+                .route("/node/acknowledge", post(alerts::node_acknowledge_alert))
+                .route("/org/active", get(alerts::org_active_alerts))
+                .route("/org/history", get(alerts::org_alert_history))
+                .route("/org/acknowledge", post(alerts::org_acknowledge_alert))
                 .route("/services", get(alerts::get_notification_service_settings))
                 .route("/services", post(alerts::set_notification_service_settings))
                 .route("/services/set_flags", post(alerts::set_notification_service_flags))

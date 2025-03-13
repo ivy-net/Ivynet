@@ -1,0 +1,34 @@
+#!/bin/bash
+#
+
+while getopts e:fo:p: flag
+do
+    case "${flag}" in
+        f)
+          EMAIL={{ ivynet_api_org_email }}
+          ORG={{ ivynet_api_org_name }}
+          PASSWORD={{ ivynet_api_org_pass }}
+          FIRST=True
+        ;;
+        e) EMAIL=${OPTARG};;
+        o) ORG=${OPTARG};;
+        p) PASSWORD=${OPTARG};;
+    esac
+done
+
+if [[ "${EMAIL}x" == "x" || "${ORG}x" == "x" ]]
+then
+	echo "Email or Org not specified"
+	exit 2
+fi
+
+source {{ ivynet_api_path_secrets }}/env.api
+
+{{ ivynet_api_path_install }}/bin/ivynet-api --add-organization ${EMAIL}:${PASSWORD}/${ORG} --db-uri ${DATABASE_URL}
+
+if [[ ${FIRST} == "True" ]]
+then
+  {{ ivynet_api_path_install }}/bin/ivynet-api --add-organization harrison@ivynet.dev:${PASSWORD} --db-uri ${DATABASE_URL}
+  {{ ivynet_api_path_install }}/bin/ivynet-api --add-organization noah@ivynet.dev:${PASSWORD} --db-uri ${DATABASE_URL}
+  {{ ivynet_api_path_install }}/bin/ivynet-api --add-organization wawrzek@ivynet.dev:${PASSWORD} --db-uri ${DATABASE_URL}
+fi

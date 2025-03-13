@@ -47,6 +47,20 @@
     - systemd
     - template
 
+- name: Copy script to add orgs
+  ansible.builtin.template:
+    src: add_org.sh.j2
+    dest: "{{ ivynet_api_path_install }}/bin/add_org.sh"
+    owner: root
+    group: root
+    mode: "0755"
+  notify:
+    - Restart api service
+  tags:
+    - general
+    - db-config
+    - template
+
 - name: Install and configure 3rd party tools
   ansible.builtin.import_tasks:
     file: third_party.yml
