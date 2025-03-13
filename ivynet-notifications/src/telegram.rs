@@ -8,7 +8,7 @@ use tokio::time::sleep;
 use tracing::{error, warn};
 use uuid::Uuid;
 
-use crate::OrganizationDatabase;
+use crate::{OrganizationDatabase, RegistrationResult};
 
 use super::Notification;
 
@@ -308,16 +308,31 @@ async fn command_handler<D: OrganizationDatabase>(
             // Delete the message containing credentials immediately
             if let Err(e) = bot.delete_message(msg.chat.id, msg.id).await {
                 error!("Failed to delete registration message: {}", e);
+                bot.send_message(msg.chat.id, "Failed to delete registration message - give the bot admin access to your chat.").await?;
             }
 
-            if db.register_chat(msg.chat.id.to_string().as_str(), &email, &password).await {
-                bot.send_message(msg.chat.id, "Registration successful.").await?;
-            } else {
-                bot.send_message(
-                    msg.chat.id,
-                    "Registration failed. Please check that your email and password are correct.",
-                )
-                .await?;
+            match db.register_chat(msg.chat.id.to_string().as_str(), &email, &password).await {
+                RegistrationResult::Success => {
+                    bot.send_message(msg.chat.id, "Registration successful.").await?;
+                }
+                RegistrationResult::AlreadyRegistered => {
+                    bot.send_message(
+                        msg.chat.id,
+                        "This chat is already registered for notifications.",
+                    )
+                    .await?;
+                }
+                RegistrationResult::AuthenticationFailed => {
+                    bot.send_message(
+                        msg.chat.id,
+                        "Registration failed. Please check that your email and password are correct.",
+                    )
+                    .await?;
+                }
+                RegistrationResult::DatabaseError(e) => {
+                    error!("Database error during registration: {}", e);
+                    bot.send_message(msg.chat.id, "Registration failed.").await?;
+                }
             }
         }
         BotCommand::Unregister => {
@@ -336,9 +351,11 @@ async fn command_handler<D: OrganizationDatabase>(
 impl<D: OrganizationDatabase> TelegramBot<D> {
     pub fn wrapped_handler_tree(
     ) -> UpdateHandler<Box<dyn std::error::Error + Send + Sync + 'static>> {
-        Update::filter_message().branch(
-            dptree::entry().filter_command::<BotCommand>().endpoint(wrapped_command_handler::<D>),
-        )
+        Update::filter_message().branch(dptree::entry().filter_command::<BotCommand>().endpoint(
+            |bot: Bot, message: Message, cmd: BotCommand, db: D| {
+                wrapped_command_handler(db, bot, message, cmd)
+            },
+        ))
     }
 }
 
@@ -373,9 +390,13 @@ mod telegram_bot_test {
         fn new() -> Self {
             Self { chats: HashMap::new() }
         }
-        fn add_chat(&mut self, organization_id: u64, chat_id: &str) -> bool {
-            self.chats.entry(organization_id).or_default().insert(chat_id.to_string());
-            true
+        fn add_chat(&mut self, organization_id: u64, chat_id: &str) -> RegistrationResult {
+            if self.chats.values().any(|chats| chats.contains(chat_id)) {
+                RegistrationResult::AlreadyRegistered
+            } else {
+                self.chats.entry(organization_id).or_default().insert(chat_id.to_string());
+                RegistrationResult::Success
+            }
         }
         fn remove_chat(&mut self, chat_id: &str) -> bool {
             for chats in self.chats.values_mut() {
@@ -401,7 +422,12 @@ mod telegram_bot_test {
 
     #[async_trait::async_trait]
     impl OrganizationDatabase for MockDb {
-        async fn register_chat(&self, chat_id: &str, _email: &str, _password: &str) -> bool {
+        async fn register_chat(
+            &self,
+            chat_id: &str,
+            _email: &str,
+            _password: &str,
+        ) -> RegistrationResult {
             let mut db = self.0.lock().await;
             db.add_chat(MOCK_ORGANIZATION_ID, chat_id)
         }
