@@ -24,6 +24,21 @@ ivynet_api_is_release: true
 # Logs level for IvyNet internals
 ivynet_api_logs_lowlevel: ""
 
+# Email for org to add
+ivynet_api_org_email: "devops@ivynet.dev"
+
+# Name of the organisation to add
+ivynet_api_org_name: "Test"
+
+# Password for org to add
+ivynet_api_org_pass: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          34653534633035636537386663643233323230333336383438643936633136646232653663376365
+          6238396432663936303132333136376332353637336535640a643365396531323039373366633564
+          35336564663761303765376638376436616535393664323339633830356631373630613638396265
+          3866323364383332310a633437623061643934396130636538663163353966356635633366353664
+          6335
+
 # Path where to install binaries and other files
 ivynet_api_path_install: "/opt/ivynet"
 
