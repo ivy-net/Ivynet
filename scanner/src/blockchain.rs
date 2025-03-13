@@ -17,7 +17,7 @@ use std::{pin::Pin, sync::Arc};
 use tokio::sync::Mutex;
 use tracing::{debug, info};
 
-const PAGE_SIZE: u64 = 50_000;
+const PAGE_SIZE: u64 = 9_900;
 
 pub type EthersStream<'a, T> = Pin<Box<dyn Stream<Item = T> + Send + 'a>>;
 abigen!(
