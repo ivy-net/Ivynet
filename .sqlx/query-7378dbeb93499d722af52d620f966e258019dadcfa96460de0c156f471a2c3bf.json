@@ -1,0 +1,116 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                SELECT\n                    alert_id,\n                    machine_id,\n                    organization_id,\n                    client_id,\n                    node_name,\n                    created_at,\n                    acknowledged_at,\n                    alert_data,\n                    telegram_send AS \"telegram_send!: SendState\",\n                    sendgrid_send AS \"sendgrid_send!: SendState\",\n                    pagerduty_send AS \"pagerduty_send!: SendState\"\n                FROM node_alerts_active\n                WHERE machine_id = $1 AND node_name = $2\n                ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "alert_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "machine_id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 2,
+        "name": "organization_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 3,
+        "name": "client_id",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 4,
+        "name": "node_name",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 6,
+        "name": "acknowledged_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 7,
+        "name": "alert_data",
+        "type_info": "Jsonb"
+      },
+      {
+        "ordinal": 8,
+        "name": "telegram_send!: SendState",
+        "type_info": {
+          "Custom": {
+            "name": "send_state",
+            "kind": {
+              "Enum": [
+                "no_send",
+                "send_success",
+                "send_failed"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "sendgrid_send!: SendState",
+        "type_info": {
+          "Custom": {
+            "name": "send_state",
+            "kind": {
+              "Enum": [
+                "no_send",
+                "send_success",
+                "send_failed"
+              ]
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "pagerduty_send!: SendState",
+        "type_info": {
+          "Custom": {
+            "name": "send_state",
+            "kind": {
+              "Enum": [
+                "no_send",
+                "send_success",
+                "send_failed"
+              ]
+            }
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "7378dbeb93499d722af52d620f966e258019dadcfa96460de0c156f471a2c3bf"
+}
