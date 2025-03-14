@@ -109,12 +109,13 @@ const ALL_MAINNET_AVSES: [(NodeType, H160); 44] = [
     (NodeType::ZKLink, h160!(0x213F448e7a1C8DAEDe41cf94883Cc6149244d00F)),
     (NodeType::HyveDA, h160!(0xe3a148b25cca54eccbd3a4ab01e235d154f03efa)),
     (NodeType::Redstone, h160!(0x6f943318b05ad7c6ee596a220510a6d64b518dd8)),
+    // (NodeType::BlessB7s, h160!(0x0000000000000000000000000000000000000000)),
 ];
 
 /*------------------------------------------------
 ----------------HOLESKY AVS ----------------------
 --------------------------------------------------*/
-const ALL_HOLESKY_AVSES: [(NodeType, H160); 34] = [
+const ALL_HOLESKY_AVSES: [(NodeType, H160); 35] = [
     (NodeType::EigenDA, h160!(0xD4A7E1Bd8015057293f0D0A557088c286942e84b)),
     (NodeType::LagrangeStateCommittee, h160!(0x18A74E66cc90F0B1744Da27E72Df338cEa0A542b)),
     (NodeType::LagrangeZkWorker, h160!(0xf98d5de1014110c65c51b85ea55f73863215cc10)),
@@ -169,6 +170,7 @@ const ALL_HOLESKY_AVSES: [(NodeType, H160); 34] = [
         NodeType::MishtiNetwork(ActiveSet::Eigenlayer),
         h160!(0xe87ff321F5721a9285Ec651d01c0C0B857430c2c),
     ),
+    (NodeType::BlessB7s, h160!(0x234c91abd960b72e63d5e63c8246a259f3827ac8)),
 ];
 
 type AvsMap = HashMap<Chain, HashMap<NodeType, H160>>;

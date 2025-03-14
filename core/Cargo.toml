@@ -1,6 +1,6 @@
 [package]
 name = "ivynet-core"
-version = "0.5.1"
+version = "0.5.2"
 edition = "2021"
 authors = ["Noah Foltz <noah@ivynet.dev>"]
 description = "Core library for Ivynet client functionality"

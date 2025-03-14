@@ -2886,7 +2886,7 @@ dependencies = [
 
 [[package]]
 name = "ivynet-core"
-version = "0.5.1"
+version = "0.5.2"
 dependencies = [
  "dialoguer",
  "dirs",
@@ -2949,7 +2949,7 @@ dependencies = [
 
 [[package]]
 name = "ivynet-docker-registry"
-version = "0.1.0"
+version = "0.5.1"
 dependencies = [
  "docker-registry",
  "ivynet-node-type",
@@ -3023,7 +3023,7 @@ dependencies = [
 
 [[package]]
 name = "ivynet-node-type"
-version = "0.5.0"
+version = "0.5.1"
 dependencies = [
  "convert_case",
  "serde",
