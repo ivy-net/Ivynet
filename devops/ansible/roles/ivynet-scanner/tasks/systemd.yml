@@ -23,6 +23,10 @@
 
 - name: Populate service facts
   ansible.builtin.service_facts:
+  tags:
+    - ivynet_scanner
+    - general
+    - systemd
 
 - name: Set Scanner Holesky service
   ansible.builtin.systemd_service:

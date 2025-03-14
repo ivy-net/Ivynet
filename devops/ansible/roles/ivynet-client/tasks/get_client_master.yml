@@ -28,3 +28,35 @@
   tags:
     - download
     - gcp
+
+- name: Install extra software
+  ansible.builtin.apt:
+    name: "{{ item }}"
+  loop:
+    - expect
+  tags:
+    download
+
+- name: Upload scripts
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ ivynet_client_path_install }}/bin/{{ item }}"
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - reset_ivynet.sh
+  tags:
+    - download
+
+- name: Upload scripts (from template)
+  ansible.builtin.template:
+    src: "{{ item }}.j2"
+    dest: "{{ ivynet_client_path_install }}/bin/{{ item }}"
+    owner: root
+    group: root
+    mode: "0755"
+  loop:
+    - reset_ivynet.exp
+  tags:
+    - download
