@@ -87,6 +87,38 @@ impl Avs {
         Ok(avses.into_iter().filter_map(|e| Avs::try_from(e).ok()).collect())
     }
 
+    pub async fn get_org_avs_list(
+        pool: &sqlx::PgPool,
+        organization_id: i64,
+    ) -> Result<Vec<Avs>, DatabaseError> {
+        let avses: Vec<DbAvs> = sqlx::query_as!(
+            DbAvs,
+            r#"
+            SELECT
+                avs.machine_id,
+                avs.avs_name,
+                avs.avs_type,
+                avs.chain,
+                avs.avs_version,
+                avs.operator_address,
+                avs.version_hash,
+                avs.active_set,
+                avs.metrics_alive,
+                avs.node_running,
+                avs.created_at,
+                avs.updated_at
+            FROM avs
+            JOIN machine ON avs.machine_id = machine.machine_id
+            JOIN client ON machine.client_id = client.client_id
+            WHERE client.organization_id = $1
+            "#,
+            organization_id
+        )
+        .fetch_all(pool)
+        .await?;
+        Ok(avses.into_iter().filter_map(|e| Avs::try_from(e).ok()).collect())
+    }
+
     pub async fn get_machines_avs(
         pool: &sqlx::PgPool,
         machine_id: Uuid,
@@ -102,6 +134,21 @@ impl Avs {
         .await?;
 
         avs.map(|avs| Avs::try_from(avs).map_err(|_| DatabaseError::BadId)).transpose()
+    }
+
+    pub async fn get_by_operator_address(
+        pool: &sqlx::PgPool,
+        operator_id: &Address,
+    ) -> Result<Vec<Avs>, DatabaseError> {
+        let avses: Vec<DbAvs> = sqlx::query_as!(
+            DbAvs,
+            "SELECT machine_id, avs_name, avs_type, chain, avs_version, operator_address, active_set, metrics_alive, node_running, version_hash, created_at, updated_at FROM avs WHERE operator_address = $1",
+            operator_id.as_bytes()
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(avses.into_iter().filter_map(|e| Avs::try_from(e).ok()).collect())
     }
 
     pub async fn get_operator_avs_list(

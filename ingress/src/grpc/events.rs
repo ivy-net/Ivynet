@@ -2,9 +2,14 @@ use std::sync::Arc;
 
 use crate::error::IngressError;
 use ivynet_database::{
-    alerts::{alert_db::AlertDb, organization_alert_handler::OrganizationAlertHandler},
+    alerts::{
+        alert_db::AlertDb,
+        node_alert_handler::{alerts_from_avs, resolve_node_alerts},
+        node_alerts_active::NewNodeAlert,
+        organization_alert_handler::OrganizationAlertHandler,
+    },
     eigen_avs_metadata::{EigenAvsMetadata, MetadataContent},
-    AvsActiveSet,
+    Avs, AvsActiveSet, DbAvsVersionData,
 };
 use ivynet_error::ethers::types::Address;
 use ivynet_grpc::{
@@ -48,9 +53,32 @@ impl BackendEvents for EventsService {
         &self,
         request: Request<RegistrationEvent>,
     ) -> Result<Response<()>, Status> {
-        AvsActiveSet::record_registration_event(&self.pool, &request.into_inner())
+        let req = request.into_inner();
+        AvsActiveSet::record_registration_event(&self.pool, &req)
             .await
             .map_err(|a| Status::invalid_argument(format!("Bad arguments provided {a:?}")))?;
+
+        // Resolve alert step
+        let operator_address = Address::from_slice(&req.address);
+
+        let nodes = Avs::get_by_operator_address(&self.pool, &operator_address).await?;
+
+        let version_map = DbAvsVersionData::get_all_avs_version(&self.pool).await?;
+
+        let new_alerts = nodes
+            .iter()
+            .flat_map(|node| {
+                let alerts = alerts_from_avs(node, &version_map);
+
+                alerts
+                    .into_iter()
+                    .map(|alert| NewNodeAlert::new(node.machine_id, alert, node.avs_name.clone()))
+                    .collect::<Vec<_>>()
+            })
+            .collect();
+
+        resolve_node_alerts(&self.pool, new_alerts, nodes).await?;
+
         Ok(Response::new(()))
     }
 
