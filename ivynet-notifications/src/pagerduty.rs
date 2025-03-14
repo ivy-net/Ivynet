@@ -175,7 +175,6 @@ fn message(notification: &Notification) -> String {
 
 #[cfg(test)]
 mod pagerduty_live_test {
-
     use std::{
         collections::{HashMap, HashSet},
         sync::Arc,
@@ -183,6 +182,8 @@ mod pagerduty_live_test {
 
     use serde_json;
     use tokio::sync::Mutex;
+
+    use crate::RegistrationResult;
 
     use super::*;
 
@@ -199,9 +200,13 @@ mod pagerduty_live_test {
         fn new() -> Self {
             Self { chats: HashMap::new() }
         }
-        fn add_chat(&mut self, organization_id: u64, chat_id: &str) -> bool {
-            self.chats.entry(organization_id).or_default().insert(chat_id.to_string());
-            true
+        fn add_chat(&mut self, organization_id: u64, chat_id: &str) -> RegistrationResult {
+            if self.chats.values().any(|chats| chats.contains(chat_id)) {
+                RegistrationResult::AlreadyRegistered
+            } else {
+                self.chats.entry(organization_id).or_default().insert(chat_id.to_string());
+                RegistrationResult::Success
+            }
         }
         fn remove_chat(&mut self, chat_id: &str) -> bool {
             for chats in self.chats.values_mut() {
@@ -227,7 +232,12 @@ mod pagerduty_live_test {
 
     #[async_trait::async_trait]
     impl OrganizationDatabase for MockDb {
-        async fn register_chat(&self, chat_id: &str, _email: &str, _password: &str) -> bool {
+        async fn register_chat(
+            &self,
+            chat_id: &str,
+            _email: &str,
+            _password: &str,
+        ) -> RegistrationResult {
             let mut db = self.0.lock().await;
             db.add_chat(MOCK_ORGANIZATION_ID, chat_id)
         }

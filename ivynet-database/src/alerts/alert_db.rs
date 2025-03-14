@@ -1,4 +1,4 @@
-use ivynet_notifications::OrganizationDatabase;
+use ivynet_notifications::{OrganizationDatabase, RegistrationResult};
 use std::collections::HashSet;
 
 use sqlx::PgPool;
@@ -18,23 +18,30 @@ impl AlertDbBackend {
 
     /// Adds a chat to an organization's notification settings
     ///
-    /// Returns true if successful, false otherwise
-    pub async fn add_chat(&self, email: &str, password: &str, chat_id: &str) -> bool {
-        tracing::info!("adding chat to organization: {}", chat_id);
+    /// Returns RegistrationResult indicating the outcome of the registration attempt
+    pub async fn add_chat(&self, email: &str, password: &str, chat_id: &str) -> RegistrationResult {
+        tracing::debug!("adding chat to organization: {}", chat_id);
         match Account::verify(&self.pool, email, password).await {
             Ok(account) => {
+                if NotificationSettings::chat_exists(&self.pool, chat_id).await.unwrap_or(false) {
+                    tracing::debug!("chat already exists: {}", chat_id);
+                    return RegistrationResult::AlreadyRegistered;
+                }
                 let result = NotificationSettings::add_chat(
                     &self.pool,
                     account.organization_id.try_into().unwrap_or(0),
                     chat_id,
                 )
                 .await;
-                tracing::info!("result: {:?}", result);
-                result.is_ok()
+                tracing::debug!("result: {:?}", result);
+                match result {
+                    Ok(_) => RegistrationResult::Success,
+                    Err(e) => RegistrationResult::DatabaseError(e.to_string()),
+                }
             }
             Err(e) => {
                 tracing::error!("Failed to verify account: {}", e);
-                false
+                RegistrationResult::AuthenticationFailed
             }
         }
     }
@@ -43,9 +50,9 @@ impl AlertDbBackend {
     ///
     /// Returns true if successful, false otherwise
     pub async fn remove_chat(&self, chat_id: &str) -> bool {
-        tracing::info!("removing chat from database: {}", chat_id);
+        tracing::debug!("removing chat from database: {}", chat_id);
         let result = NotificationSettings::remove_chat(&self.pool, chat_id).await;
-        tracing::info!("result: {:?}", result);
+        tracing::debug!("result: {:?}", result);
         result.is_ok()
     }
 
@@ -105,7 +112,12 @@ impl AlertDb {
 
 #[ivynet_grpc::async_trait]
 impl OrganizationDatabase for AlertDb {
-    async fn register_chat(&self, chat_id: &str, email: &str, password: &str) -> bool {
+    async fn register_chat(
+        &self,
+        chat_id: &str,
+        email: &str,
+        password: &str,
+    ) -> RegistrationResult {
         let db = &self.0;
         db.add_chat(email, password, chat_id).await
     }
