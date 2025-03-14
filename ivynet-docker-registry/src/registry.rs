@@ -13,7 +13,14 @@ pub trait ImageRegistry {
 
 impl ImageRegistry for NodeType {
     fn registry(&self) -> Result<RegistryType, NodeTypeError> {
+        if self == &NodeType::BlessB7s {
+            println!("bless: {:?}", self);
+        } else if self == &NodeType::Unknown {
+            println!("unknown: {:?}", self);
+        }
+
         let res = match self {
+            Self::BlessB7s => Github,
             Self::Tanssi => DockerHub,
             Self::Redstone => Othentic,
             Self::Bolt(_) => Github,

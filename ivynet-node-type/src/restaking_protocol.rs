@@ -47,6 +47,7 @@ impl RestakingProtocol for NodeType {
             NodeType::AtlasNetwork => RestakingProtocolType::Eigenlayer,
             NodeType::Zellular => RestakingProtocolType::Eigenlayer,
             NodeType::Redstone => RestakingProtocolType::Eigenlayer,
+            NodeType::BlessB7s => RestakingProtocolType::Eigenlayer,
             //Symbiotic
             NodeType::Cycle => RestakingProtocolType::Symbiotic,
             NodeType::Tanssi => RestakingProtocolType::Symbiotic,
