@@ -19,7 +19,7 @@
 - name: Upload binaries
   ansible.builtin.copy:
     src: "/tmp/{{ item }}"
-    dest: "{{ ivynet_client_path_install }}/bin/{{ item }}"
+    dest: "{{ ivynet_client_path_bin }}/{{ item }}"
     owner: root
     group: root
     mode: "0755"
@@ -40,7 +40,7 @@
 - name: Upload scripts
   ansible.builtin.copy:
     src: "{{ item }}"
-    dest: "{{ ivynet_client_path_install }}/bin/{{ item }}"
+    dest: "{{ ivynet_client_path_bin }}/{{ item }}"
     owner: root
     group: root
     mode: "0755"
@@ -49,10 +49,23 @@
   tags:
     - download
 
+- name: Upload config
+  ansible.builtin.copy:
+    src: "{{ item }}"
+    dest: "{{ ivynet_client_path_resources }}/{{ item }}"
+    owner: "{{ ivynet_client_user }}"
+    group: "{{ ivynet_client group }}"
+    mode: 0644
+  loop:
+    - monitor-conf.toml
+  tags:
+    - config
+    - download
+
 - name: Upload scripts (from template)
   ansible.builtin.template:
     src: "{{ item }}.j2"
-    dest: "{{ ivynet_client_path_install }}/bin/{{ item }}"
+    dest: "{{ ivynet_client_path_bin }}/{{ item }}"
     owner: root
     group: root
     mode: "0755"
