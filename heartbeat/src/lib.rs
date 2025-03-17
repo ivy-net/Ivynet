@@ -1,11 +1,15 @@
 use core::fmt;
-use std::collections::HashMap;
-use std::fmt::{Display, Formatter};
-use std::hash::Hash;
-use std::str::FromStr;
-use std::sync::atomic::{AtomicBool, Ordering};
-use std::sync::{Arc, RwLock};
-use std::time::Duration;
+use std::{
+    collections::HashMap,
+    fmt::{Display, Formatter},
+    hash::Hash,
+    str::FromStr,
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc, RwLock,
+    },
+    time::Duration,
+};
 
 use chrono::{DateTime, TimeDelta, Utc};
 use ethers::types::Address;
