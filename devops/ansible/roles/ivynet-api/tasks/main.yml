@@ -8,7 +8,7 @@
     mode: "0755"
   loop:
     - "{{ ivynet_api_path_install }}"
-    - "{{ ivynet_api_path_install }}/bin"
+    - "{{ ivynet_api_path_bin }}"
     - "{{ ivynet_api_path_resources }}"
   tags:
     - general
@@ -26,7 +26,7 @@
 - name: Add another bin dir to system-wide $PATH.
   ansible.builtin.copy:
     dest: /etc/profile.d/ivy-path.sh
-    content: 'PATH=$PATH:{{ ivynet_api_path_install }}/bin'
+    content: "PATH=$PATH:{{ ivynet_api_path_bin }}"
     owner: root
     group: root
     mode: "0644"
@@ -50,7 +50,7 @@
 - name: Copy script to add orgs
   ansible.builtin.template:
     src: add_org.sh.j2
-    dest: "{{ ivynet_api_path_install }}/bin/add_org.sh"
+    dest: "{{ ivynet_api_path_bin }}/add_org.sh"
     owner: root
     group: root
     mode: "0755"

@@ -33,7 +33,7 @@
       Accept: "application/octet-stream"
     follow_redirects: all
     status_code: [200, 304]
-    dest: "{{ ivynet_api_path_install }}/bin/ivynet-api"
+    dest: "{{ ivynet_api_path_bin }}/ivynet-api"
     owner: root
     group: root
     mode: "0755"

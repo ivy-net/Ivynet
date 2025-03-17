@@ -33,7 +33,7 @@
 - name: Download sqlx-cli
   ansible.builtin.get_url:
     url: "{{ ivynet_api_sqlx_url }}/{{ item }}"
-    dest: "{{ ivynet_api_path_install }}/bin"
+    dest: "{{ ivynet_api_path_bin }}"
     mode: "0755"
     owner: root
     group: root
