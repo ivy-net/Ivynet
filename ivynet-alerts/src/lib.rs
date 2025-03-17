@@ -1,6 +1,7 @@
 mod alert_flags;
 mod alert_type;
 mod bitflag;
+mod alert_processor;
 
 pub use alert_flags::AlertFlags;
 pub use alert_type::{Alert, AlertType};

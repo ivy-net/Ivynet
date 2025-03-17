@@ -1,0 +1,28 @@
+[package]
+name = "heartbeat"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+categories.workspace = true
+license.workspace = true
+
+[lib]
+path = "src/lib.rs"
+
+[[bin]]
+name = "heartbeat"
+path = "src/main.rs"
+
+[dependencies]
+ivynet-grpc.workspace = true
+
+ethers.workspace = true
+sqlx.workspace = true
+tokio.workspace = true
+uuid.workspace = true
+thiserror.workspace = true
+chrono.workspace = true
+tracing.workspace = true
+
+[lints]
+workspace = true

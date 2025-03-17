@@ -1,13 +1,14 @@
 [workspace]
 members = [
-#Binaries
+	#Binaries
 	"cli",
 	"api",
 	"scanner",
 	"ingress",
-#Crates
-    "ivynet-database",
-    "ivynet-macros",
+	"heartbeat",
+	#Crates
+	"ivynet-database",
+	"ivynet-macros",
 	"ivynet-docker",
 	"ivynet-docker-registry",
 	"ivynet-grpc",
@@ -17,6 +18,7 @@ members = [
 	"ivynet-signer",
 	"ivynet-error",
 	"ivynet-alerts",
+	"heartbeat",
 ]
 resolver = "2"
 
