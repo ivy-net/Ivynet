@@ -34,13 +34,14 @@ ansible-playbook \\
   --vault-password-file ~/.vault.txt \\
   ivynet-client.yml
 EOF
-
+  sed -i.bak 's/\(gcp_area_client\)/\1\:\&gcp_env_dev/' ivynet-client.yml
   ansible-playbook \
     -i gcp.yml \
     -u ${remote_user} \
     -e "ivynet_client_is_release=false" \
     --vault-password-file ~/.vault.txt \
     ivynet-client.yml
+  mv ivynet-client.yml.bak ivynet-client.yml
 else
 cat << EOF
 Run the playbook
@@ -52,7 +53,6 @@ ansible-playbook \\
   --vault-password-file ~/.vault.txt \\
   ivynet-client.yml
 EOF
-
   ansible-playbook \
     -i gcp.yml \
     -u ${remote_user} \
