@@ -42,6 +42,9 @@ ivynet_api_org_pass: !vault |
 # Path where to install binaries and other files
 ivynet_api_path_install: "/opt/ivynet"
 
+# Path to directory with binaries
+ivynet_api_path_bin: "{{ ivynet_api_path_install }}/bin"
+
 # Path to directory with SQL migration
 ivynet_api_path_resources: "{{ ivynet_api_path_install }}/resources"
 

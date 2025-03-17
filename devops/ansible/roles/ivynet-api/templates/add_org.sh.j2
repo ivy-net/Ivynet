@@ -24,11 +24,11 @@ fi
 
 source {{ ivynet_api_path_secrets }}/env.api
 
-{{ ivynet_api_path_install }}/bin/ivynet-api --add-organization ${EMAIL}:${PASSWORD}/${ORG} --db-uri ${DATABASE_URL}
+{{ ivynet_api_path_bin }}/ivynet-api --add-organization ${EMAIL}:${PASSWORD}/${ORG} --db-uri ${DATABASE_URL}
 
 if [[ ${FIRST} == "True" ]]
 then
-  {{ ivynet_api_path_install }}/bin/ivynet-api --add-organization harrison@ivynet.dev:${PASSWORD} --db-uri ${DATABASE_URL}
-  {{ ivynet_api_path_install }}/bin/ivynet-api --add-organization noah@ivynet.dev:${PASSWORD} --db-uri ${DATABASE_URL}
-  {{ ivynet_api_path_install }}/bin/ivynet-api --add-organization wawrzek@ivynet.dev:${PASSWORD} --db-uri ${DATABASE_URL}
+  {{ ivynet_api_path_bin }}/ivynet-api --add-organization harrison@ivynet.dev:${PASSWORD} --db-uri ${DATABASE_URL}
+  {{ ivynet_api_path_bin }}/ivynet-api --add-organization noah@ivynet.dev:${PASSWORD} --db-uri ${DATABASE_URL}
+  {{ ivynet_api_path_bin }}/ivynet-api --add-organization wawrzek@ivynet.dev:${PASSWORD} --db-uri ${DATABASE_URL}
 fi
