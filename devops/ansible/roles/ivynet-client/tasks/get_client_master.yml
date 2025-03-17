@@ -54,8 +54,8 @@
     src: "{{ item }}"
     dest: "{{ ivynet_client_path_resources }}/{{ item }}"
     owner: "{{ ivynet_client_user }}"
-    group: "{{ ivynet_client group }}"
-    mode: 0644
+    group: "{{ ivynet_client_group }}"
+    mode: "0644"
   loop:
     - monitor-conf.toml
   tags:
@@ -71,5 +71,6 @@
     mode: "0755"
   loop:
     - reset_ivynet.exp
+    - master_reset.sh.j2
   tags:
     - download
