@@ -61,7 +61,7 @@
 
 - name: Run version scanner for master
   ansible.builtin.command:
-    cmd: "{{ ivynet_api_path_bin }}/ivynet_version_scanner.sh"
+    cmd: "{{ ivynet_api_path_bin }}/ivynet-version-scanner.sh"
   register: db_versions_out
   when:
     - ivynet_api_postgres_host == 'localhost'
