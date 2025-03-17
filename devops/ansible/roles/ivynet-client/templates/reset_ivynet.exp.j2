@@ -13,7 +13,7 @@ if {$force_conservative} {
 #
 
 set timeout -1
-spawn {{ivynet_client_path }}/bin/restart_ivynet.sh
+spawn {{ivynet_client_path_bin }}/reset_ivynet.sh
 match_max 100000
 expect "Provide email address to IvyNet system: "
 send -- "{{ ivynet_client_org_email }}\r"

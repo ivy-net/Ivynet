@@ -71,6 +71,6 @@
     mode: "0755"
   loop:
     - reset_ivynet.exp
-    - master_reset.sh.j2
+    - master_reset.sh
   tags:
     - download

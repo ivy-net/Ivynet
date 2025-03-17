@@ -47,7 +47,7 @@ ivynet_client_org_pass: !vault |
 ivynet_client_path_install: /opt/ivynet
 
 # Path where to save binaries
-ivnet_client_path_bin: "{{ ivynet_client_path_install }}/bin"
+ivynet_client_path_bin: "{{ ivynet_client_path_install }}/bin"
 
 # Path where to save extra resources
 ivynet_client_path_resources: "{{ ivynet_client_path_install }}/resources"
@@ -56,4 +56,4 @@ ivynet_client_path_resources: "{{ ivynet_client_path_install }}/resources"
 ivynet_client_systemd: true
 
 # Username
-ivynet_client_user: ivynet
+ivynet_client_user: "ivynet"

@@ -20,7 +20,7 @@
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
-    owner: " {{ ivynet_client_user }}"
+    owner: "{{ ivynet_client_user }}"
     group: root
     mode: "0755"
   loop:
@@ -29,6 +29,7 @@
     - "{{ ivynet_client_path_resources }}"
   tags:
     - general
+    - config
 
 - name: Add ivynet bin dir to system-wide $PATH.
   ansible.builtin.copy:
