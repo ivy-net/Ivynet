@@ -8,7 +8,7 @@
     mode: "0755"
   loop:
     - "{{ ivynet_api_path_install }}"
-    - "{{ ivynet_api_path_install }}/bin"
+    - "{{ ivynet_api_path_bin }}"
     - "{{ ivynet_api_path_resources }}"
   tags:
     - general
@@ -26,7 +26,7 @@
 - name: Add another bin dir to system-wide $PATH.
   ansible.builtin.copy:
     dest: /etc/profile.d/ivy-path.sh
-    content: 'PATH=$PATH:{{ ivynet_api_path_install }}/bin'
+    content: "PATH=$PATH:{{ ivynet_api_path_bin }}"
     owner: root
     group: root
     mode: "0644"
@@ -45,6 +45,20 @@
   tags:
     - general
     - systemd
+    - template
+
+- name: Copy script to add orgs
+  ansible.builtin.template:
+    src: add_org.sh.j2
+    dest: "{{ ivynet_api_path_bin }}/add_org.sh"
+    owner: root
+    group: root
+    mode: "0755"
+  notify:
+    - Restart api service
+  tags:
+    - general
+    - db-config
     - template
 
 - name: Install and configure 3rd party tools

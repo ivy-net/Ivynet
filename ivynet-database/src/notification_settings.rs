@@ -95,6 +95,18 @@ impl NotificationSettings {
         Ok(())
     }
 
+    pub async fn chat_exists(pool: &PgPool, chat_id: &str) -> Result<bool, DatabaseError> {
+        let result = sqlx::query_scalar!(
+            r#"SELECT COUNT(*) FROM service_settings WHERE settings_type = $1 AND settings_value = $2"#,
+            ServiceType::Telegram as ServiceType,
+            chat_id
+        )
+        .fetch_one(pool)
+        .await?;
+
+        Ok(result.unwrap_or(0) > 0)
+    }
+
     pub async fn remove_chat(pool: &PgPool, chat_id: &str) -> Result<(), DatabaseError> {
         sqlx::query!(
             r#"DELETE FROM

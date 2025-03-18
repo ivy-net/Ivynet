@@ -1,0 +1,17 @@
+#!/bin/bash
+
+{{ ivynet_client_path_bin }}/reset_ivynet.exp
+
+
+#curl -u ${IVYNET_USER}:${IVYNET_PASS} -X 'POST' \
+curl -u {{ ivynet_client_org_email }}:{{ ivynet_client_org_pass }} -X 'POST' \
+  'https://api3.test.ivynet.dev/pubkey?public_key=0x22fC3299729676C867200d02cd5e190246D90E88&name=operator3' \
+  -H 'accept: application/json'
+
+curl -u {{ ivynet_client_org_email }}:{{ ivynet_client_org_pass }} -X 'POST' \
+  'https://api3.test.ivynet.dev/machine/:machine_id?avs_name=Ava&chain=holesky&operator_address=0x22fC3299729676C867200d02cd5e190246D90E88' \
+  -H 'accept: application/json'
+
+curl -u {{ ivynet_client_org_email }}:{{ ivynet_client_org_pass }} -X 'POST' \
+  'https://api3.test.ivynet.dev/machine/:machine_id?avs_name=EigenDA&chain=holesky&operator_address=0x22fC3299729676C867200d02cd5e190246D90E88' \
+  -H 'accept: application/json'

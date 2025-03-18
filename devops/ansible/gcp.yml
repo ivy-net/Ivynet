@@ -18,7 +18,3 @@ hostnames:
   - public_ip
 compose:
   ansible_host: networkInterfaces[0].accessConfigs[0].natIP
-  ivynet_api_site_url: |
-    "https://testnet-interface.ivynet.dev" if name == "api2"
-    else "https://dev.ivynet.dev" if name == "api3"
-    else omit

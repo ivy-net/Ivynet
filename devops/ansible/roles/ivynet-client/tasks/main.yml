@@ -5,9 +5,9 @@
 
 - name: Add user ivynet
   ansible.builtin.user:
-    name: ivynet
+    name: "{{ ivynet_client_user }}"
     comment: Ivynet Client user
-    groups: docker
+    groups: "{{ ivynet_client_group }}"
     create_home: true
     shell: /bin/bash
   tags:
@@ -20,20 +20,21 @@
   ansible.builtin.file:
     path: "{{ item }}"
     state: directory
-    owner: ivynet
+    owner: "{{ ivynet_client_user }}"
     group: root
     mode: "0755"
   loop:
     - "{{ ivynet_client_path_install }}"
-    - "{{ ivynet_client_path_install }}/bin"
+    - "{{ ivynet_client_path_bin }}"
     - "{{ ivynet_client_path_resources }}"
   tags:
     - general
+    - config
 
 - name: Add ivynet bin dir to system-wide $PATH.
   ansible.builtin.copy:
     dest: /etc/profile.d/ivy-path.sh
-    content: "PATH=$PATH:{{ ivynet_client_path_install }}/bin"
+    content: "PATH=$PATH:{{ ivynet_client_path_bin }}"
     owner: root
     group: root
     mode: "0644"

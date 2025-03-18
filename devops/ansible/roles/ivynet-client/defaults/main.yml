@@ -1,13 +1,4 @@
 ---
-# Name of the GCP bucket
-ivynet_client_gcp_bucket: ivynet-share-test
-
-# File with GCP credentials
-ivynet_client_gcp_cred: ~/.devops-automation-key.json
-
-# Name of GCP project
-ivynet_client_gcp_project: ivynet-tests
-
 # Location of the client server
 ivynet_client_client_server: "api2.test.ivynet.dev"
 
@@ -24,14 +15,45 @@ ivynet_client_github_token: !vault |
           37306335386139313035366663623066636135323139643166386638653532626563623264376165
           3866393766616537613266336166323234616535343537663537
 
+# Group name
+ivynet_client_group: docker
+
+# Name of the GCP bucket
+ivynet_client_gcp_bucket: ivynet-share-test
+
+# File with GCP credentials
+ivynet_client_gcp_cred: ~/.devops-automation-key.json
+
+# Name of GCP project
+ivynet_client_gcp_project: ivynet-tests
+
+
 # Source of binaries (true for release, false for master)
 ivynet_client_is_release: true
 
+# Email for org to add
+ivynet_client_org_email: "devops@ivynet.dev"
+
+# Password for org to add
+ivynet_client_org_pass: !vault |
+          $ANSIBLE_VAULT;1.1;AES256
+          34653534633035636537386663643233323230333336383438643936633136646232653663376365
+          6238396432663936303132333136376332353637336535640a643365396531323039373366633564
+          35336564663761303765376638376436616535393664323339633830356631373630613638396265
+          3866323364383332310a633437623061643934396130636538663163353966356635633366353664
+          6335
+
 # Path where to install binaries and other files
 ivynet_client_path_install: /opt/ivynet
+
+# Path where to save binaries
+ivynet_client_path_bin: "{{ ivynet_client_path_install }}/bin"
 
 # Path where to save extra resources
 ivynet_client_path_resources: "{{ ivynet_client_path_install }}/resources"
 
 # Setup systemd for the client
 ivynet_client_systemd: true
+
+# Username
+ivynet_client_user: "ivynet"

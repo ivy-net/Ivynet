@@ -7,7 +7,11 @@ use axum_extra::extract::CookieJar;
 use chrono::DateTime;
 use ivynet_alerts::{AlertFlags, AlertType};
 use ivynet_database::{
-    alerts::{node_alerts_active::NodeActiveAlert, node_alerts_historical::NodeHistoryAlert},
+    alerts::{
+        node_alerts_active::NodeActiveAlert, node_alerts_historical::NodeHistoryAlert,
+        organization_alerts_active::OrganizationActiveAlert,
+        organization_alerts_historical::OrganizationHistoryAlert,
+    },
     notification_settings::ServiceType,
     NotificationSettings, ServiceSettings,
 };
@@ -33,20 +37,20 @@ pub struct AcknowledgeAlertParams {
     pub alert_id: Uuid,
 }
 
-/* --------------------------------
-----BASE ALERT FUNCTIONALITY-------
------------------------------------ */
+/* -------------------------------------
+----BASE NODE ALERT FUNCTIONALITY-------
+------------------------------------- */
 
 /// Get all active alerts for every machine
 #[utoipa::path(
     get,
-    path = "/alerts/active",
+    path = "/alerts/node/active",
     responses(
         (status = 200, body = [NodeActiveAlert]),
         (status = 404)
     )
 )]
-pub async fn active_alerts(
+pub async fn node_active_alerts(
     headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
@@ -63,14 +67,14 @@ pub async fn active_alerts(
 /// Acknowledge an alert
 #[utoipa::path(
     post,
-    path = "/alerts/acknowledge",
+    path = "/alerts/node/acknowledge",
     params(AcknowledgeAlertParams),
     responses(
         (status = 200),
         (status = 404)
     )
 )]
-pub async fn acknowledge_alert(
+pub async fn node_acknowledge_alert(
     headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
@@ -91,14 +95,14 @@ pub async fn acknowledge_alert(
 /// Get historical alerts for all machines
 #[utoipa::path(
     get,
-    path = "/alerts/history",
+    path = "/alerts/node/history",
     params(HistoricalAlertParams),
     responses(
         (status = 200, body = [NodeHistoryAlert]),
         (status = 404)
     )
 )]
-pub async fn alert_history(
+pub async fn node_alert_history(
     headers: HeaderMap,
     State(state): State<HttpState>,
     jar: CookieJar,
@@ -117,6 +121,96 @@ pub async fn alert_history(
             .into_iter()
             .map(NodeHistoryAlert::from)
             .collect();
+    Ok(Json(alerts))
+}
+
+/* --------------------------------------
+--BASE ORGANIZATION ALERT FUNCTIONALITY--
+----------------------------------------- */
+
+/// Get all active alerts for every machine
+#[utoipa::path(
+    get,
+    path = "/alerts/org/active",
+    responses(
+        (status = 200, body = [OrganizationActiveAlert]),
+        (status = 404)
+    )
+)]
+pub async fn org_active_alerts(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+) -> Result<Json<Vec<OrganizationActiveAlert>>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let alerts = OrganizationActiveAlert::all_alerts_by_org(&state.pool, account.organization_id)
+        .await?
+        .into_iter()
+        .collect();
+    Ok(Json(alerts))
+}
+
+/// Acknowledge an alert
+#[utoipa::path(
+    post,
+    path = "/alerts/org/acknowledge",
+    params(AcknowledgeAlertParams),
+    responses(
+        (status = 200),
+        (status = 404)
+    )
+)]
+pub async fn org_acknowledge_alert(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Query(params): Query<AcknowledgeAlertParams>,
+) -> Result<(), BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let alert_id = params.alert_id;
+    let alert = OrganizationActiveAlert::get(&state.pool, alert_id, account.organization_id)
+        .await?
+        .ok_or(BackendAlertError::AlertNotFound(alert_id))?;
+    if alert.organization_id != account.organization_id {
+        return Err(BackendAlertError::AlertNotFound(alert_id).into());
+    }
+    OrganizationActiveAlert::resolve_alert(&state.pool, params.alert_id, account.organization_id)
+        .await?;
+    Ok(())
+}
+
+/// Get historical alerts for all machines
+#[utoipa::path(
+    get,
+    path = "/alerts/org/history",
+    params(HistoricalAlertParams),
+    responses(
+        (status = 200, body = [OrganizationHistoryAlert]),
+        (status = 404)
+    )
+)]
+pub async fn org_alert_history(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Query(params): Query<HistoricalAlertParams>,
+) -> Result<Json<Vec<OrganizationHistoryAlert>>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let from = DateTime::from_timestamp(params.from, 0)
+        .ok_or(BackendError::MalformedParameter("from".to_string(), params.from.to_string()))?
+        .naive_utc();
+    let to = DateTime::from_timestamp(params.to, 0)
+        .ok_or(BackendError::MalformedParameter("to".to_string(), params.to.to_string()))?
+        .naive_utc();
+    let alerts: Vec<OrganizationHistoryAlert> = OrganizationHistoryAlert::alerts_by_org_between(
+        &state.pool,
+        account.organization_id,
+        from,
+        to,
+    )
+    .await?
+    .into_iter()
+    .collect();
     Ok(Json(alerts))
 }
 

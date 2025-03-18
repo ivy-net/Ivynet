@@ -8,7 +8,7 @@ use sqlx::PgPool;
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::error::DatabaseError;
+use crate::{error::DatabaseError, Avs};
 
 use super::node_alerts_historical::NodeHistoryAlert;
 
@@ -140,6 +140,43 @@ impl NodeActiveAlert {
         .await?;
 
         Ok(alert.map(|n| n.into()))
+    }
+
+    pub async fn get_by_avs_list(
+        pool: &PgPool,
+        nodes: &[Avs],
+    ) -> Result<Vec<NodeActiveAlert>, DatabaseError> {
+        // return alerts where alert machine_id and node_name match the corresponding
+        // values from (avs.machine_id, avs.avs_name)
+        let mut alerts = Vec::new();
+        for node in nodes {
+            let node_alerts = sqlx::query_as!(
+                DbNodeActiveAlert,
+                r#"
+                SELECT
+                    alert_id,
+                    machine_id,
+                    organization_id,
+                    client_id,
+                    node_name,
+                    created_at,
+                    acknowledged_at,
+                    alert_data,
+                    telegram_send AS "telegram_send!: SendState",
+                    sendgrid_send AS "sendgrid_send!: SendState",
+                    pagerduty_send AS "pagerduty_send!: SendState"
+                FROM node_alerts_active
+                WHERE machine_id = $1 AND node_name = $2
+                "#,
+                node.machine_id,
+                node.avs_name
+            )
+            .fetch_all(pool)
+            .await?;
+
+            alerts.extend(node_alerts.into_iter().map(|n| n.into()));
+        }
+        Ok(alerts)
     }
 
     pub async fn get_many(
