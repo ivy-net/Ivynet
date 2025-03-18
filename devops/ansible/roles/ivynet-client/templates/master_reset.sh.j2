@@ -5,16 +5,16 @@
 
 # Add Public Key
 curl -u {{ ivynet_client_org_email }}:{{ ivynet_client_org_pass }} -X 'POST' \
-  'https://api3.test.ivynet.dev/pubkey?public_key=0x22fC3299729676C867200d02cd5e190246D90E88&name=operator3' \
+  "https://api3.test.ivynet.dev/pubkey?public_key=0x22fC3299729676C867200d02cd5e190246D90E88&name=operator3" \
   -H 'accept: application/json'
 
 # Set the machine ID for AVS's
-MACHINE_ID=$(sudo -i ivynet awk -F\" '/machine_id/ {print $2}' /home/ivynet/.ivynet/ivy-config.toml)
+MACHINE_ID=$(sudo -u ivynet awk -F\" '/machine_id/ {print $2}' /home/ivynet/.ivynet/ivy-config.toml)
 
 curl -u {{ ivynet_client_org_email }}:{{ ivynet_client_org_pass }} -X 'PUT' \
-  'https://api3.test.ivynet.dev/machine/${MACHINE_ID}?avs_name=Ava&chain=holesky&operator_address=0x22fC3299729676C867200d02cd5e190246D90E88' \
+  "https://api3.test.ivynet.dev/machine/${MACHINE_ID}?avs_name=Ava&chain=holesky&operator_address=0x22fC3299729676C867200d02cd5e190246D90E88" \
   -H 'accept: application/json'
 
 curl -u {{ ivynet_client_org_email }}:{{ ivynet_client_org_pass }} -X 'PUT' \
-  'https://api3.test.ivynet.dev/machine/${MACHINE_ID}?avs_name=EigenDA&chain=holesky&operator_address=0x22fC3299729676C867200d02cd5e190246D90E88' \
+  "https://api3.test.ivynet.dev/machine/${MACHINE_ID}?avs_name=EigenDA&chain=holesky&operator_address=0x22fC3299729676C867200d02cd5e190246D90E88" \
   -H 'accept: application/json'

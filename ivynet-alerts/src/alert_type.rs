@@ -42,7 +42,9 @@ pub enum Alert {
         node_type: String,
         operator: Address,
     } = 3,
-    MachineNotResponding = 4,
+    MachineNotResponding {
+        machine: Uuid,
+    } = 4,
     NodeNotResponding {
         node_name: String,
         node_type: String,
@@ -145,8 +147,11 @@ impl Alert {
             Alert::NoOperatorId { node_name, .. } => {
                 format!("{}-{}", node_name, self.id())
             }
-            Alert::Custom { .. } | Alert::MachineNotResponding => {
+            Alert::Custom { .. } => {
                 format!("{:?}-{}", self, self.id())
+            }
+            Alert::MachineNotResponding { machine, .. } => {
+                format!("{}-{}", machine, self.id())
             }
             Alert::HardwareResourceUsage { machine, resource, .. } => {
                 format!("{}-{}-{}", machine, resource, self.id())

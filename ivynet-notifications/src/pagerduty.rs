@@ -72,13 +72,20 @@ impl From<Notification> for Event {
 
 fn avs_if_any(notification: &Notification) -> Option<String> {
     match &notification.alert {
-        NotificationType::NodeNotRunning { node_name, .. } |
-        NotificationType::NoChainInfo { node_name, .. } |
-        NotificationType::NoMetrics { node_name, .. } |
-        NotificationType::NoOperatorId { node_name, .. } |
-        NotificationType::LowPerformanceScore { node_name, .. } => Some(node_name.to_owned()),
-        NotificationType::NeedsUpdate { node_name, .. } => Some(node_name.to_owned()),
-        _ => None,
+        NotificationType::NodeNotRunning { node_name: name, .. } |
+        NotificationType::NoChainInfo { node_name: name, .. } |
+        NotificationType::NoMetrics { node_name: name, .. } |
+        NotificationType::NoOperatorId { node_name: name, .. } |
+        NotificationType::LowPerformanceScore { node_name: name, .. } |
+        NotificationType::NeedsUpdate { node_name: name, .. } |
+        NotificationType::Custom { node_name: name, .. } |
+        NotificationType::ActiveSetNoDeployment { node_name: name, .. } |
+        NotificationType::UnregisteredFromActiveSet { node_name: name, .. } |
+        NotificationType::NodeNotResponding { node_name: name, .. } |
+        NotificationType::NewEigenAvs { name, .. } |
+        NotificationType::UpdatedEigenAvs { name, .. } => Some(name.to_owned()),
+        NotificationType::MachineNotResponding { .. } => None,
+        NotificationType::HardwareResourceUsage { .. } => None,
     }
 }
 
@@ -115,8 +122,8 @@ fn message(notification: &Notification) -> String {
         NotificationType::UnregisteredFromActiveSet { node_name, operator, .. } => {
             format!("Address {operator:?} has been removed from the active set for {node_name}")
         }
-        NotificationType::MachineNotResponding => {
-            format!("Machine '{:?}' has lost connection with our backend", notification.machine_id)
+        NotificationType::MachineNotResponding { machine } => {
+            format!("Machine '{:?}' has lost connection with our backend", machine)
         }
         NotificationType::Custom { extra_data, .. } => format!("ERROR: {extra_data}"),
         NotificationType::NodeNotRunning { node_name, .. } => {
