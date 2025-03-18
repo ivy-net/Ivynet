@@ -102,6 +102,7 @@ pub enum NodeType {
     IBTCNetwork,
     ZKLink,
     HyveDA,
+    BlessB7s,
 }
 
 impl IntoEnumIterator for NodeType {
@@ -149,6 +150,7 @@ impl IntoEnumIterator for NodeType {
             NodeType::ZKLink,
             NodeType::HyveDA,
             NodeType::PrimevBidder,
+            NodeType::BlessB7s,
         ]
         .into_iter()
         .chain(ActiveSet::iter().map(NodeType::Hyperlane))
@@ -326,6 +328,7 @@ pub const ZELLULAR_REPO: &str = "zellular/zsequencer"; //Testnet only
 pub const BOLT_REPO: &str = "chainbound/bolt-sidecar"; //Testnet only
 pub const CYCLE_REPO: &str = "cycle-data-availability"; //Testnet only
 pub const TANSSI_REPO: &str = "moondancelabs/dancebox-container-chain-evm-templates"; //Testnet only
+pub const BLESS_B7S_REPO: &str = "blocklessnetwork/b7s";
 
 /* ------------------------------------ */
 /* ------- NODE CONTAINER NAMES ------- */
@@ -378,6 +381,7 @@ pub const BOLT_CONTAINER_NAME: &str = "bolt-sidecar-holesky";
 impl NodeType {
     pub fn default_repository(&self) -> Result<&'static str, NodeTypeError> {
         let res = match self {
+            Self::BlessB7s => BLESS_B7S_REPO,
             Self::Tanssi => TANSSI_REPO,
             Self::Cycle => CYCLE_REPO,
             Self::Zellular => ZELLULAR_REPO,
@@ -469,6 +473,7 @@ impl NodeType {
             Self::GoPlusAVS => GOPLUS_CONTAINER_NAME,
             Self::UngateInfiniRoute(_) => UNGATE_MAINNET,
             Self::DittoNetwork(_) => DITTO_NETWORK_CONTAINER_NAME,
+            Self::BlessB7s => return Err(NodeTypeError::NoDefaultContainerName),
             Self::PrimevMevCommit(_) => return Err(NodeTypeError::NoDefaultContainerName),
             Self::PrimevBidder => PRIMEV_BIDDER_CONTAINER_NAME,
             Self::Altlayer(altlayer_type) => {
@@ -550,6 +555,7 @@ impl NodeType {
             Self::LagrangeStateCommittee => LAGRANGE_STATE_COMMITTEE_CONTAINER_NAME,
             Self::LagrangeZkWorker => LAGRANGE_WORKER_CONTAINER_NAME,
             Self::Nuffle => NUFFLE_CONTAINER_NAME,
+            Self::BlessB7s => return Err(NodeTypeError::NoDefaultContainerName),
             Self::PrimevMevCommit(_) => return Err(NodeTypeError::NoDefaultContainerName),
             Self::PrimevBidder => PRIMEV_BIDDER_CONTAINER_NAME,
             Self::LagrangeZKProver => {
@@ -637,6 +643,7 @@ impl NodeType {
     pub fn from_repo(repo: &str) -> Option<Self> {
         debug!("repo: {}", repo);
         match repo {
+            BLESS_B7S_REPO => Some(Self::BlessB7s),
             ATLAS_NETWORK_REPO => Some(Self::AtlasNetwork),
             AVAPROTOCOL_REPO => Some(Self::AvaProtocol),
             EIGENDA_REPO => Some(Self::EigenDA),
@@ -831,6 +838,7 @@ mod node_type_tests {
             ("ditto-network(unknown)", NodeType::DittoNetwork(ActiveSet::Unknown)),
             ("ditto-network(eigenlayer)", NodeType::DittoNetwork(ActiveSet::Eigenlayer)),
             ("ditto-network(symbiotic)", NodeType::DittoNetwork(ActiveSet::Symbiotic)),
+            ("bless-b7s", NodeType::BlessB7s),
         ];
 
         for (input, expected) in test_cases {
@@ -908,6 +916,7 @@ mod node_type_tests {
             ("HyperLane(Unknown)", NodeType::Hyperlane(ActiveSet::Unknown)),
             ("HYPERLANE(EIGENLAYER)", NodeType::Hyperlane(ActiveSet::Eigenlayer)),
             ("HyperLane(Eigenlayer)", NodeType::Hyperlane(ActiveSet::Eigenlayer)),
+            ("BLEsSB7S", NodeType::BlessB7s),
         ];
 
         for (input, expected) in test_cases {
