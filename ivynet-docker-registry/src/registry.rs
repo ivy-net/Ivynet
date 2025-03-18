@@ -14,6 +14,7 @@ pub trait ImageRegistry {
 impl ImageRegistry for NodeType {
     fn registry(&self) -> Result<RegistryType, NodeTypeError> {
         let res = match self {
+            Self::BlessB7s => Github,
             Self::Tanssi => DockerHub,
             Self::Redstone => Othentic,
             Self::Bolt(_) => Github,
