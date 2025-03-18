@@ -40,10 +40,14 @@
 
 - name: Get EigenDA Operator Setup
   ansible.builtin.git:  # noqa: latest[git]
-    repo: https://github.com/Layr-Labs/eigenda-operator-setup.git
-    dest: "{{ ivynet_client_path_install }}/eigenda-operator-setup"
+    # yamllint disable-line rule:line-length
+    dest: "{{ ivynet_client_path_resources }}/{{ item | split('/') | last | splitext | first }}"
+    repo: "{{ item }}"
     clone: true
     update: true
+  become: true
+  become_user: "{{ ivynet_client_user }}"
+  loop: "{{ ivynet_client_repos }}"
   tags:
     - eigen
     - github
