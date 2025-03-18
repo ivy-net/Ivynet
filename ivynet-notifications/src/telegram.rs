@@ -145,7 +145,7 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
                     notification.machine_id.unwrap_or_default()
                 )
             }
-            NotificationType::MachineNotResponding => {
+            NotificationType::MachineNotResponding { .. } => {
                 format!(
                     "❗ *Machine Not Responding* ❗️\nMachine `{}` has lost connection with our backend\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
                     Self::escape_markdown_v2(&format!("{:?}", notification.machine_id.unwrap_or_default())),
