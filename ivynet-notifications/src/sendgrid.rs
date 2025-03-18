@@ -55,7 +55,7 @@ impl EmailTemplate {
                     ("address".to_owned(), format!("{:?}", operator)),
                 ]),
             ),
-            NotificationType::MachineNotResponding => (
+            NotificationType::MachineNotResponding { .. } => (
                 Self::MachineNotResponding,
                 HashMap::from([(
                     "machine_id".to_owned(),
@@ -232,7 +232,9 @@ impl<D: OrganizationDatabase> EmailSender<D> {
                     Alert::UnregisteredFromActiveSet { node_name: _, node_type: _, operator } => {
                         format!("Operator {operator:?} unregistered from the active set")
                     }
-                    Alert::MachineNotResponding => "Machine is not responding".to_string(),
+                    Alert::MachineNotResponding { machine, .. } => {
+                        format!("Machine {machine} is not responding")
+                    }
                     Alert::NodeNotResponding {..} => "AVS is not responding".to_string(),
                     Alert::HardwareResourceUsage { resource, percent, .. } => {
                         format!("Resource {resource} is used in {percent}%")
