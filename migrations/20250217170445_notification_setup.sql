@@ -33,12 +33,18 @@ RETURNS TRIGGER AS $$
 BEGIN
     INSERT INTO notification_settings (
         organization_id,
+        email,
+        telegram,
+        pagerduty,
         alert_flags,
         created_at,
         updated_at
     )
     VALUES (
         NEW.organization_id,
+        FALSE,   -- default value for email
+        FALSE,   -- default value for telegram
+        FALSE,   -- default value for pagerduty
         0,       -- Alert flags off
         NOW(),   -- created_at timestamp
         NOW()    -- updated_at timestamp
@@ -57,11 +63,17 @@ EXECUTE FUNCTION create_default_notification_settings();
 INSERT INTO notification_settings (
     organization_id,
     alert_flags,
+    email,
+    telegram,
+    pagerduty,
     created_at,
     updated_at
 )
 SELECT
     o.organization_id,
+    FALSE,      -- default value for email
+    FALSE,      -- default value for telegram
+    FALSE,      -- default value for pagerduty
     0,          -- default alert_flags
     NOW(),      -- current timestamp for created_at
     NOW()       -- current timestamp for updated_at
