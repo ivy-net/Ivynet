@@ -489,7 +489,7 @@ pub async fn get_alert_flags(
     Ok(Json(flags))
 }
 
-/// Get human-readable active notification flags
+/// Get human-readable enabled notification flags
 #[utoipa::path(
     get,
     path = "/alerts/notifications/readable",
