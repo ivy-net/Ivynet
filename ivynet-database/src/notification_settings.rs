@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use chrono::NaiveDateTime;
 use ivynet_alerts::AlertFlags;
 use serde::{Deserialize, Serialize};
@@ -92,6 +94,40 @@ impl NotificationSettings {
         )
         .execute(pool)
         .await?;
+        Ok(())
+    }
+
+    /// Adds multiple Telegram chat IDs to the service settings in a single database operation.
+    pub async fn add_many_chats(
+        pool: &PgPool,
+        id: u64,
+        chats: &[String],
+    ) -> Result<(), DatabaseError> {
+        if chats.is_empty() {
+            return Ok(());
+        }
+
+        // Deduplicate the chats using HashSet
+        let chats: Vec<_> = chats.iter().collect::<HashSet<_>>().into_iter().collect();
+
+        // Create a vector of tuples containing all the values for each row
+        let values: Vec<(i64, ServiceType, String)> =
+            chats.iter().map(|chat| (id as i64, ServiceType::Telegram, (*chat).clone())).collect();
+
+        // Use SQLx's built-in support for bulk inserts
+        sqlx::query!(
+            r#"INSERT INTO service_settings
+                (organization_id, settings_type, settings_value, created_at)
+            SELECT org_id, type, value, NOW()
+            FROM UNNEST($1::bigint[], $2::service_type[], $3::text[])
+            AS t(org_id, type, value)"#,
+            values.iter().map(|v| v.0).collect::<Vec<_>>() as Vec<i64>,
+            values.iter().map(|v| v.1.clone()).collect::<Vec<_>>() as Vec<ServiceType>,
+            values.iter().map(|v| v.2.clone()).collect::<Vec<_>>() as Vec<String>
+        )
+        .execute(pool)
+        .await?;
+
         Ok(())
     }
 

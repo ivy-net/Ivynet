@@ -44,7 +44,7 @@ enum BotCommand {
     #[command(
         rename_rule = "lowercase",
         parse_with = "split",
-        description = "Register this chat to notifications using /register <email> <password>. Your message will be deleted after registration."
+        description = "Register this chat to notifications using /register <email> <password>. Please give the bot admin access if you have added it to a group chat so it can delete sensitive messages properly."
     )]
     Register { email: String, password: String },
 
@@ -54,6 +54,18 @@ enum BotCommand {
         description = "Unregister previously registered chat for notifications"
     )]
     Unregister,
+    #[command(
+        rename_rule = "lowercase",
+        parse_with = "split",
+        description = "Start the bot - same functionality as /help"
+    )]
+    Start,
+    #[command(
+        rename_rule = "lowercase",
+        parse_with = "split",
+        description = "Get the id of the current chat to bypass the register command. You can use the id with the api to not post login credentials in the public channel."
+    )]
+    ChatId,
 }
 
 type HandlerResult = Result<(), Box<dyn std::error::Error + Send + Sync>>;
@@ -349,6 +361,13 @@ async fn command_handler<D: OrganizationDatabase>(
                     bot.send_message(msg.chat.id, "Unregistration failed.").await?;
                 }
             }
+        }
+        BotCommand::Start => {
+            bot.send_message(msg.chat.id, BotCommand::descriptions().to_string()).await?;
+        }
+        BotCommand::ChatId => {
+            //FIXME: Add this ability to the api
+            bot.send_message(msg.chat.id, format!("Your chat id is {}", msg.chat.id)).await?;
         }
     };
 

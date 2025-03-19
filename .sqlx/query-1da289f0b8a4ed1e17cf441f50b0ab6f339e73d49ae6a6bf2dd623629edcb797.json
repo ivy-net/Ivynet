@@ -1,0 +1,34 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO service_settings\n                (organization_id, settings_type, settings_value, created_at)\n            SELECT org_id, type, value, NOW()\n            FROM UNNEST($1::bigint[], $2::service_type[], $3::text[])\n            AS t(org_id, type, value)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8Array",
+        {
+          "Custom": {
+            "name": "service_type[]",
+            "kind": {
+              "Array": {
+                "Custom": {
+                  "name": "service_type",
+                  "kind": {
+                    "Enum": [
+                      "email",
+                      "telegram",
+                      "pagerduty"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        },
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1da289f0b8a4ed1e17cf441f50b0ab6f339e73d49ae6a6bf2dd623629edcb797"
+}
