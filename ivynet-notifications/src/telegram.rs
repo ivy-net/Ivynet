@@ -365,7 +365,8 @@ async fn command_handler<D: OrganizationDatabase>(
         BotCommand::Start => {
             bot.send_message(msg.chat.id, BotCommand::descriptions().to_string()).await?;
         }
-        BotCommand::ChatId => { //FIXME: Add this ability to the api
+        BotCommand::ChatId => {
+            //FIXME: Add this ability to the api
             bot.send_message(msg.chat.id, format!("Your chat id is {}", msg.chat.id)).await?;
         }
     };
