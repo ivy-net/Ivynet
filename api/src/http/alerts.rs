@@ -64,6 +64,34 @@ pub async fn node_active_alerts(
     Ok(Json(alerts))
 }
 
+/// Remove an active alert - moves to historical
+#[utoipa::path(
+    post,
+    path = "/alerts/node/remove",
+    params(AcknowledgeAlertParams),
+    responses(
+        (status = 200),
+        (status = 404)
+    )
+)]
+pub async fn node_remove_alert(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Query(params): Query<AcknowledgeAlertParams>,
+) -> Result<(), BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let alert_id = params.alert_id;
+    let alert = NodeActiveAlert::get(&state.pool, alert_id)
+        .await?
+        .ok_or(BackendAlertError::AlertNotFound(alert_id))?;
+    if alert.organization_id != account.organization_id {
+        return Err(BackendAlertError::AlertNotFound(alert_id).into());
+    }
+    NodeActiveAlert::resolve_alert(&state.pool, alert_id).await?;
+    Ok(())
+}
+
 /// Acknowledge an alert
 #[utoipa::path(
     post,

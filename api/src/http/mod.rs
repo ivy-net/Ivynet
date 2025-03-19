@@ -144,6 +144,7 @@ fn create_router() -> Router<HttpState> {
                 .route("/node/active", get(alerts::node_active_alerts))
                 .route("/node/history", get(alerts::node_alert_history))
                 .route("/node/acknowledge", post(alerts::node_acknowledge_alert))
+                .route("/node/remove", post(alerts::node_remove_alert))
                 .route("/org/active", get(alerts::org_active_alerts))
                 .route("/org/history", get(alerts::org_alert_history))
                 .route("/org/acknowledge", post(alerts::org_acknowledge_alert))
