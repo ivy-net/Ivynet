@@ -1,4 +1,4 @@
-use ivynet_notifications::{OrganizationDatabase, RegistrationResult};
+use ivynet_notifications::{OrganizationDatabase, RegistrationResult, UnregistrationResult};
 use std::collections::HashSet;
 
 use sqlx::PgPool;
@@ -49,11 +49,22 @@ impl AlertDbBackend {
     /// Removes a chat from the notification settings
     ///
     /// Returns true if successful, false otherwise
-    pub async fn remove_chat(&self, chat_id: &str) -> bool {
+    pub async fn remove_chat(&self, chat_id: &str) -> UnregistrationResult {
         tracing::debug!("removing chat from database: {}", chat_id);
         let result = NotificationSettings::remove_chat(&self.pool, chat_id).await;
-        tracing::debug!("result: {:?}", result);
-        result.is_ok()
+        match result {
+            Ok(rows_affected) => {
+                if rows_affected > 0 {
+                    UnregistrationResult::Success
+                } else {
+                    UnregistrationResult::ChatNotRegistered
+                }
+            }
+            Err(e) => {
+                tracing::error!("Failed to remove chat: {}", e);
+                UnregistrationResult::DatabaseError(e.to_string())
+            }
+        }
     }
 
     /// Gets all chat IDs for an organization
@@ -122,7 +133,7 @@ impl OrganizationDatabase for AlertDb {
         db.add_chat(email, password, chat_id).await
     }
 
-    async fn unregister_chat(&self, chat_id: &str) -> bool {
+    async fn unregister_chat(&self, chat_id: &str) -> UnregistrationResult {
         let db = &self.0;
         db.remove_chat(chat_id).await
     }

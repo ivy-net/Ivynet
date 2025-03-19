@@ -190,7 +190,7 @@ mod pagerduty_live_test {
     use serde_json;
     use tokio::sync::Mutex;
 
-    use crate::RegistrationResult;
+    use crate::{RegistrationResult, UnregistrationResult};
 
     use super::*;
 
@@ -215,13 +215,13 @@ mod pagerduty_live_test {
                 RegistrationResult::Success
             }
         }
-        fn remove_chat(&mut self, chat_id: &str) -> bool {
+        fn remove_chat(&mut self, chat_id: &str) -> UnregistrationResult {
             for chats in self.chats.values_mut() {
                 if chats.remove(chat_id) {
-                    return true;
+                    return UnregistrationResult::Success;
                 }
             }
-            false
+            UnregistrationResult::ChatNotRegistered
         }
         fn chats_for(&self, organization_id: u64) -> HashSet<String> {
             self.chats.get(&organization_id).cloned().unwrap_or_default()
@@ -249,7 +249,7 @@ mod pagerduty_live_test {
             db.add_chat(MOCK_ORGANIZATION_ID, chat_id)
         }
 
-        async fn unregister_chat(&self, chat_id: &str) -> bool {
+        async fn unregister_chat(&self, chat_id: &str) -> UnregistrationResult {
             let mut db = self.0.lock().await;
             db.remove_chat(chat_id)
         }

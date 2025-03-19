@@ -21,6 +21,7 @@ pub enum VersionType {
 impl From<&NodeType> for VersionType {
     fn from(node_type: &NodeType) -> Self {
         match node_type {
+            NodeType::BlessB7s => VersionType::SemVer,
             NodeType::Tanssi => VersionType::FixedVer,
             NodeType::Bolt(_) => VersionType::SemVer,
             NodeType::Zellular => VersionType::FixedVer,
