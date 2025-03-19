@@ -107,8 +107,8 @@ impl NotificationSettings {
         Ok(result.unwrap_or(0) > 0)
     }
 
-    pub async fn remove_chat(pool: &PgPool, chat_id: &str) -> Result<(), DatabaseError> {
-        sqlx::query!(
+    pub async fn remove_chat(pool: &PgPool, chat_id: &str) -> Result<u64, DatabaseError> {
+        let result = sqlx::query!(
             r#"DELETE FROM
                 service_settings
                WHERE
@@ -118,7 +118,7 @@ impl NotificationSettings {
         )
         .execute(pool)
         .await?;
-        Ok(())
+        Ok(result.rows_affected())
     }
 
     pub async fn get_service_settings(
