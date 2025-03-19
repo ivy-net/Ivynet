@@ -56,11 +56,7 @@ pub async fn node_active_alerts(
     jar: CookieJar,
 ) -> Result<Json<Vec<NodeActiveAlert>>, BackendError> {
     let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
-    let alerts = NodeActiveAlert::all_alerts_by_org(&state.pool, account.organization_id)
-        .await?
-        .into_iter()
-        .map(NodeActiveAlert::from)
-        .collect();
+    let alerts = NodeActiveAlert::all_alerts_by_org(&state.pool, account.organization_id).await?;
     Ok(Json(alerts))
 }
 
@@ -145,10 +141,7 @@ pub async fn node_alert_history(
         .naive_utc();
     let alerts: Vec<NodeHistoryAlert> =
         NodeHistoryAlert::alerts_by_org_between(&state.pool, account.organization_id, from, to)
-            .await?
-            .into_iter()
-            .map(NodeHistoryAlert::from)
-            .collect();
+            .await?;
     Ok(Json(alerts))
 }
 

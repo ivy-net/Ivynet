@@ -51,6 +51,7 @@ pub trait AlertHandler {
         let enabled_alert_ids = settings.alert_flags.to_alert_ids();
 
         let mut channels = Vec::new();
+
         if settings.pagerduty {
             channels.push(Channel::PagerDuty(settings.pagerduty_keys));
         }

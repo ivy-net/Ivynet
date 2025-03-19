@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "\n            SELECT \n                ns.organization_id,\n                ns.email,\n                ns.telegram,\n                ns.pagerduty,\n                ns.alert_flags,\n                ns.created_at,\n                ns.updated_at,\n                ARRAY_AGG(DISTINCT CASE WHEN ss.settings_type = 'email' THEN ss.settings_value ELSE NULL END) FILTER (WHERE ss.settings_type = 'email') as \"sendgrid_emails!: Vec<String>\",\n                ARRAY_AGG(DISTINCT CASE WHEN ss.settings_type = 'telegram' THEN ss.settings_value ELSE NULL END) FILTER (WHERE ss.settings_type = 'telegram') as \"telegram_chats!: Vec<String>\",\n                ARRAY_AGG(DISTINCT CASE WHEN ss.settings_type = 'pagerduty' THEN ss.settings_value ELSE NULL END) FILTER (WHERE ss.settings_type = 'pagerduty') as \"pagerduty_keys!: Vec<String>\"\n            FROM \n                notification_settings ns\n            LEFT JOIN \n                service_settings ss ON ns.organization_id = ss.organization_id\n            WHERE \n                ns.organization_id = $1\n            GROUP BY \n                ns.organization_id, ns.email, ns.telegram, ns.pagerduty, ns.alert_flags, ns.created_at, ns.updated_at\n            ",
+  "query": "\n            SELECT\n                ns.organization_id,\n                ns.email,\n                ns.telegram,\n                ns.pagerduty,\n                ns.alert_flags,\n                ns.created_at,\n                ns.updated_at,\n                ARRAY_AGG(DISTINCT CASE WHEN ss.settings_type = 'email' THEN ss.settings_value ELSE NULL END) FILTER (WHERE ss.settings_type = 'email') as \"sendgrid_emails!: Vec<String>\",\n                ARRAY_AGG(DISTINCT CASE WHEN ss.settings_type = 'telegram' THEN ss.settings_value ELSE NULL END) FILTER (WHERE ss.settings_type = 'telegram') as \"telegram_chats!: Vec<String>\",\n                ARRAY_AGG(DISTINCT CASE WHEN ss.settings_type = 'pagerduty' THEN ss.settings_value ELSE NULL END) FILTER (WHERE ss.settings_type = 'pagerduty') as \"pagerduty_keys!: Vec<String>\"\n            FROM\n                notification_settings ns\n            LEFT JOIN\n                service_settings ss ON ns.organization_id = ss.organization_id\n            WHERE\n                ns.organization_id = $1\n            GROUP BY\n                ns.organization_id, ns.email, ns.telegram, ns.pagerduty, ns.alert_flags, ns.created_at, ns.updated_at\n            ",
   "describe": {
     "columns": [
       {
@@ -72,5 +72,5 @@
       null
     ]
   },
-  "hash": "0a2d25fcb8de46ee14dd01f3cc0c46f4d7c1731b2793d6a387671468c68f74d8"
+  "hash": "cc9d144f5002d9ebbe9e11f8d3daad846f767b89b130f919b79c172f2b90d622"
 }
