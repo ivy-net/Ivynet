@@ -14,7 +14,7 @@ CREATE INDEX idx_notification_settings ON notification_settings (organization_id
 CREATE TYPE service_type AS ENUM ('email', 'telegram', 'pagerduty');
 
 CREATE TABLE IF NOT EXISTS service_settings (
-    id              SERIAL PRIMARY KEY,
+    id              UUID PRIMARY KEY,
     organization_id BIGINT NOT NULL REFERENCES organization
                         ON DELETE CASCADE,
     settings_type   service_type NOT NULL,
@@ -25,24 +25,20 @@ CREATE TABLE IF NOT EXISTS service_settings (
 CREATE INDEX idx_service_settings_org ON service_settings (organization_id);
 CREATE INDEX idx_service_settings_or_type ON service_settings (organization_id, settings_type);
 
+
+
 -- Create a trigger function to create default notification settings when a new organization is created
 CREATE OR REPLACE FUNCTION create_default_notification_settings()
 RETURNS TRIGGER AS $$
 BEGIN
     INSERT INTO notification_settings (
         organization_id,
-        email,
-        telegram,
-        pagerduty,
         alert_flags,
         created_at,
         updated_at
     )
     VALUES (
         NEW.organization_id,
-        FALSE,   -- default value for email
-        FALSE,   -- default value for telegram
-        FALSE,   -- default value for pagerduty
         0,       -- Alert flags off
         NOW(),   -- created_at timestamp
         NOW()    -- updated_at timestamp
@@ -60,18 +56,12 @@ EXECUTE FUNCTION create_default_notification_settings();
 -- Create a new notification_settings table for each existing organization
 INSERT INTO notification_settings (
     organization_id,
-    email,
-    telegram,
-    pagerduty,
     alert_flags,
     created_at,
     updated_at
 )
 SELECT
     o.organization_id,
-    FALSE,      -- default value for email
-    FALSE,      -- default value for telegram
-    FALSE,      -- default value for pagerduty
     0,          -- default alert_flags
     NOW(),      -- current timestamp for created_at
     NOW()       -- current timestamp for updated_at

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM\n                service_settings\n               WHERE\n                settings_type = 'telegram' AND settings_value = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "aef2f7cfd9dbd24a3f34a0f6c6125b891a7af19cb02b281803cb1c5a49dc8457"
+}

@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE\n                notification_settings\n               SET\n                alert_flags = $2,\n                updated_at = NOW()\n               WHERE\n                organization_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d33108c1bcf2c6e84defd199cd80c286f19f1c2a2c7804bfd1ecdb1c7eaaf4f0"
+}

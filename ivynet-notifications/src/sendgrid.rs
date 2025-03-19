@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 use ivynet_alerts::Alert;
 use sendgrid::{
@@ -204,10 +204,11 @@ impl<D: OrganizationDatabase> EmailSender<D> {
         Self { sender, from: config.sendgrid_from.to_string(), db, templates }
     }
 
-    pub async fn notify(&self, notification: Notification) -> Result<(), EmailSenderError> {
-        let organization = notification.organization;
-        // If there is only generic template
-
+    pub async fn notify(
+        &self,
+        notification: Notification,
+        emails: &HashSet<String>,
+    ) -> Result<(), EmailSenderError> {
         let (mut template, mut payload) = EmailTemplate::payload(notification.clone());
         if self.templates.len() == 1 {
             template = EmailTemplate::Generic;
@@ -251,7 +252,7 @@ impl<D: OrganizationDatabase> EmailSender<D> {
                 },
             );
         }
-        for email in self.db.get_emails_for_organization(organization).await {
+        for email in emails {
             self.sender
                 .send(
                     &Message::new(Email::new(&self.from))

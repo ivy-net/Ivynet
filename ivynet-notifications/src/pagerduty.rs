@@ -1,3 +1,5 @@
+use std::collections::HashSet;
+
 use crate::{Notification, OrganizationDatabase};
 use chrono::{DateTime, Utc};
 use ivynet_alerts::Alert;
@@ -99,12 +101,14 @@ impl<D: OrganizationDatabase> PagerDutySender<D> {
         Self { client: reqwest::Client::new(), db }
     }
 
-    pub async fn notify(&self, notification: Notification) -> Result<(), PagerDutySenderError> {
-        if let Some(integration_key) =
-            self.db.get_pd_integration_key_for_organization(notification.organization).await
-        {
-            let mut event: Event = notification.into();
-            event.routing_key = integration_key;
+    pub async fn notify(
+        &self,
+        notification: Notification,
+        keys: &HashSet<String>,
+    ) -> Result<(), PagerDutySenderError> {
+        for key in keys {
+            let mut event: Event = notification.clone().into();
+            event.routing_key = key.clone();
             self.send(event).await?;
         }
         Ok(())
@@ -263,14 +267,16 @@ mod pagerduty_live_test {
             db.chats_for(organization_id)
         }
 
-        async fn get_pd_integration_key_for_organization(
+        async fn get_pd_integration_keys_for_organization(
             &self,
             _organization_id: u64,
-        ) -> Option<String> {
+        ) -> HashSet<String> {
             if MOCK_INTEGRATION_ID.is_empty() {
-                None
+                HashSet::new()
             } else {
-                Some(MOCK_INTEGRATION_ID.to_string())
+                let mut set = HashSet::new();
+                set.insert(MOCK_INTEGRATION_ID.to_string());
+                set
             }
         }
     }
@@ -278,6 +284,7 @@ mod pagerduty_live_test {
     #[tokio::test]
     async fn test_raising_event() {
         let db = MockDb::new();
+        let keys = db.get_pd_integration_keys_for_organization(MOCK_ORGANIZATION_ID).await;
 
         let pagerduty = PagerDutySender::new(db);
         let mut test_event = Notification {
@@ -294,8 +301,8 @@ mod pagerduty_live_test {
             resolved: false,
         };
 
-        assert!(pagerduty.notify(test_event.clone()).await.is_ok());
+        assert!(pagerduty.notify(test_event.clone(), &keys).await.is_ok());
         test_event.resolved = true;
-        assert!(pagerduty.notify(test_event.clone()).await.is_ok());
+        assert!(pagerduty.notify(test_event.clone(), &keys).await.is_ok());
     }
 }
