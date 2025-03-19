@@ -78,11 +78,18 @@ pub enum RegistrationResult {
     DatabaseError(String),
 }
 
+#[derive(Debug)]
+pub enum UnregistrationResult {
+    Success,
+    ChatNotRegistered,
+    DatabaseError(String),
+}
+
 #[async_trait::async_trait]
 pub trait OrganizationDatabase: Send + Sync + Clone + 'static {
     async fn register_chat(&self, chat_id: &str, email: &str, password: &str)
         -> RegistrationResult;
-    async fn unregister_chat(&self, chat_id: &str) -> bool;
+    async fn unregister_chat(&self, chat_id: &str) -> UnregistrationResult;
     async fn get_emails_for_organization(&self, organization_id: u64) -> HashSet<String>;
     async fn get_chats_for_organization(&self, organization_id: u64) -> HashSet<String>;
     async fn get_pd_integration_key_for_organization(&self, organization_id: u64)

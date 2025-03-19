@@ -75,4 +75,4 @@
   ansible.builtin.import_tasks:
     file: get_eigen.yml
   when:
-    - ivynet_client_eigenda | bool
+    - ivynet_client_eigen | bool

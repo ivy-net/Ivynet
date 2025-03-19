@@ -51,6 +51,15 @@ impl RestakingProtocol for NodeType {
             NodeType::Cycle => RestakingProtocolType::Symbiotic,
             NodeType::Tanssi => RestakingProtocolType::Symbiotic,
             NodeType::PrimevBidder => RestakingProtocolType::Symbiotic,
+            NodeType::Kalypso => RestakingProtocolType::Symbiotic,
+            NodeType::RouterXtendNetwork => RestakingProtocolType::Symbiotic,
+            NodeType::CapxCloud => RestakingProtocolType::Symbiotic,
+            NodeType::Symbiosis => RestakingProtocolType::Symbiotic,
+            NodeType::Radius => RestakingProtocolType::Symbiotic,
+            NodeType::IBTCNetwork => RestakingProtocolType::Symbiotic,
+            NodeType::ZKLink => RestakingProtocolType::Symbiotic,
+            NodeType::HyveDA => RestakingProtocolType::Symbiotic,
+            NodeType::BlessB7s => RestakingProtocolType::Symbiotic,
             //Complicated
             NodeType::DittoNetwork(inner) => match inner {
                 ActiveSet::Unknown => return None,
@@ -95,14 +104,6 @@ impl RestakingProtocol for NodeType {
                 ActiveSet::Eigenlayer => RestakingProtocolType::Eigenlayer,
                 ActiveSet::Symbiotic => RestakingProtocolType::Symbiotic,
             },
-            NodeType::Kalypso => RestakingProtocolType::Symbiotic,
-            NodeType::RouterXtendNetwork => RestakingProtocolType::Symbiotic,
-            NodeType::CapxCloud => RestakingProtocolType::Symbiotic,
-            NodeType::Symbiosis => RestakingProtocolType::Symbiotic,
-            NodeType::Radius => RestakingProtocolType::Symbiotic,
-            NodeType::IBTCNetwork => RestakingProtocolType::Symbiotic,
-            NodeType::ZKLink => RestakingProtocolType::Symbiotic,
-            NodeType::HyveDA => RestakingProtocolType::Symbiotic,
         };
 
         Some(protocol)

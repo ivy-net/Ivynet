@@ -3,7 +3,7 @@
 ivynet_client_client_server: "api2.test.ivynet.dev"
 
 # Switch do download eigenDA
-ivynet_client_eigenda: false
+ivynet_client_eigen: false
 
 # Token to access github
 ivynet_client_github_token: !vault |
@@ -51,6 +51,14 @@ ivynet_client_path_bin: "{{ ivynet_client_path_install }}/bin"
 
 # Path where to save extra resources
 ivynet_client_path_resources: "{{ ivynet_client_path_install }}/resources"
+
+# Dict of AVS to download
+ivynet_client_repos:
+  - https://github.com/Layr-Labs/eigenda-operator-setup.git
+  - https://github.com/AvaProtocol/ap-operator-setup.git
+  - https://github.com/predicatelabs/predicate-operator.git
+  - https://github.com/Eoracle/Eoracle-operator-setup.git
+
 
 # Setup systemd for the client
 ivynet_client_systemd: true
