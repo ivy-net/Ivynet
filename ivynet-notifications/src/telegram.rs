@@ -8,7 +8,7 @@ use tokio::time::sleep;
 use tracing::{error, warn};
 use uuid::Uuid;
 
-use crate::{OrganizationDatabase, RegistrationResult};
+use crate::{OrganizationDatabase, RegistrationResult, UnregistrationResult};
 
 use super::Notification;
 
@@ -145,7 +145,7 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
                     notification.machine_id.unwrap_or_default()
                 )
             }
-            NotificationType::MachineNotResponding => {
+            NotificationType::MachineNotResponding { .. } => {
                 format!(
                     "❗ *Machine Not Responding* ❗️\nMachine `{}` has lost connection with our backend\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
                     Self::escape_markdown_v2(&format!("{:?}", notification.machine_id.unwrap_or_default())),
@@ -336,11 +336,18 @@ async fn command_handler<D: OrganizationDatabase>(
             }
         }
         BotCommand::Unregister => {
-            if db.unregister_chat(msg.chat.id.to_string().as_str()).await {
-                bot.send_message(msg.chat.id, "You have successfully unregistered this chat.")
-                    .await?;
-            } else {
-                bot.send_message(msg.chat.id, "This chat was not registered.").await?;
+            match db.unregister_chat(msg.chat.id.to_string().as_str()).await {
+                UnregistrationResult::Success => {
+                    bot.send_message(msg.chat.id, "You have successfully unregistered this chat.")
+                        .await?;
+                }
+                UnregistrationResult::ChatNotRegistered => {
+                    bot.send_message(msg.chat.id, "This chat was not registered.").await?;
+                }
+                UnregistrationResult::DatabaseError(e) => {
+                    error!("Database error during unregistration: {}", e);
+                    bot.send_message(msg.chat.id, "Unregistration failed.").await?;
+                }
             }
         }
     };
@@ -398,13 +405,13 @@ mod telegram_bot_test {
                 RegistrationResult::Success
             }
         }
-        fn remove_chat(&mut self, chat_id: &str) -> bool {
+        fn remove_chat(&mut self, chat_id: &str) -> UnregistrationResult {
             for chats in self.chats.values_mut() {
                 if chats.remove(chat_id) {
-                    return true;
+                    return UnregistrationResult::Success;
                 }
             }
-            false
+            UnregistrationResult::ChatNotRegistered
         }
         fn chats_for(&self, organization_id: u64) -> HashSet<String> {
             self.chats.get(&organization_id).cloned().unwrap_or_default()
@@ -432,7 +439,7 @@ mod telegram_bot_test {
             db.add_chat(MOCK_ORGANIZATION_ID, chat_id)
         }
 
-        async fn unregister_chat(&self, chat_id: &str) -> bool {
+        async fn unregister_chat(&self, chat_id: &str) -> UnregistrationResult {
             let mut db = self.0.lock().await;
             db.remove_chat(chat_id)
         }

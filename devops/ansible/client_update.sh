@@ -3,10 +3,12 @@
 # The script to run ansible to update current client
 # Requires toml cargo package
 
-while getopts m flag
+EIGEN="false"
+while getopts em flag
 do
   case "${flag}" in
     m) MASTER=True;;
+    e) EIGEN="true";;
   esac
 done
 
@@ -31,6 +33,7 @@ ansible-playbook \\
   -i gcp.yml \\
   -u ${remote_user} \\
   -e "ivynet_client_is_release=false" \\
+  -e "ivynet_client_eigen=${EIGEN}" \\
   --vault-password-file ~/.vault.txt \\
   ivynet-client.yml
 EOF
@@ -39,6 +42,7 @@ EOF
     -i gcp.yml \
     -u ${remote_user} \
     -e "ivynet_client_is_release=false" \
+    -e "ivynet_client_eigen=${EIGEN}" \
     --vault-password-file ~/.vault.txt \
     ivynet-client.yml
   mv ivynet-client.yml.bak ivynet-client.yml
