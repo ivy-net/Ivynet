@@ -12,7 +12,7 @@ use ivynet_database::{
         organization_alerts_active::OrganizationActiveAlert,
         organization_alerts_historical::OrganizationHistoryAlert,
     },
-    notification_settings::ServiceType,
+    service_settings::ServiceType,
     NotificationSettings, ServiceSettings,
 };
 use serde::{Deserialize, Serialize};

@@ -215,9 +215,9 @@ impl NotificationSettings {
                 ns.alert_flags,
                 ns.created_at,
                 ns.updated_at,
-                ARRAY_AGG(DISTINCT CASE WHEN ss.settings_type = 'email' THEN ss.settings_value ELSE NULL END) FILTER (WHERE ss.settings_type = 'email') as "sendgrid_emails!: Vec<String>",
-                ARRAY_AGG(DISTINCT CASE WHEN ss.settings_type = 'telegram' THEN ss.settings_value ELSE NULL END) FILTER (WHERE ss.settings_type = 'telegram') as "telegram_chats!: Vec<String>",
-                ARRAY_AGG(DISTINCT CASE WHEN ss.settings_type = 'pagerduty' THEN ss.settings_value ELSE NULL END) FILTER (WHERE ss.settings_type = 'pagerduty') as "pagerduty_keys!: Vec<String>"
+                COALESCE(ARRAY_AGG(DISTINCT CASE WHEN ss.settings_type = 'email' THEN ss.settings_value END) FILTER (WHERE ss.settings_type = 'email'), ARRAY[]::text[]) as "sendgrid_emails!: Vec<String>",
+                COALESCE(ARRAY_AGG(DISTINCT CASE WHEN ss.settings_type = 'telegram' THEN ss.settings_value END) FILTER (WHERE ss.settings_type = 'telegram'), ARRAY[]::text[]) as "telegram_chats!: Vec<String>",
+                COALESCE(ARRAY_AGG(DISTINCT CASE WHEN ss.settings_type = 'pagerduty' THEN ss.settings_value END) FILTER (WHERE ss.settings_type = 'pagerduty'), ARRAY[]::text[]) as "pagerduty_keys!: Vec<String>"
             FROM
                 notification_settings ns
             LEFT JOIN
@@ -456,5 +456,269 @@ impl NotificationSettings {
         };
 
         Self::remove_by_uuid(pool, service_setting.uuid()).await
+    }
+}
+
+#[cfg(test)]
+mod notification_settings_tests {
+    use super::*;
+    use sqlx::PgPool;
+
+    // Helper function to set up service settings with deterministic UUIDs
+    async fn setup_service_settings(pool: &PgPool) -> Result<(), DatabaseError> {
+        // Add service settings with deterministic UUIDs calculated by the ServiceSettings::uuid
+        // method
+        let email1 = ServiceSettings {
+            organization_id: 1,
+            settings_type: ServiceType::Email,
+            settings_value: "test1@example.com".to_string(),
+            created_at: None,
+        };
+        let email2 = ServiceSettings {
+            organization_id: 1,
+            settings_type: ServiceType::Email,
+            settings_value: "test2@example.com".to_string(),
+            created_at: None,
+        };
+        let pd = ServiceSettings {
+            organization_id: 1,
+            settings_type: ServiceType::PagerDuty,
+            settings_value: "pdkey123".to_string(),
+            created_at: None,
+        };
+
+        // Insert the settings with their deterministic UUIDs
+        sqlx::query!(
+            r#"INSERT INTO
+                service_settings
+                (id, organization_id, settings_type, settings_value, created_at)
+            VALUES
+                ($1, $2, $3, $4, NOW())"#,
+            email1.uuid(),
+            email1.organization_id,
+            email1.settings_type as ServiceType,
+            email1.settings_value
+        )
+        .execute(pool)
+        .await?;
+
+        sqlx::query!(
+            r#"INSERT INTO
+                service_settings
+                (id, organization_id, settings_type, settings_value, created_at)
+            VALUES
+                ($1, $2, $3, $4, NOW())"#,
+            email2.uuid(),
+            email2.organization_id,
+            email2.settings_type as ServiceType,
+            email2.settings_value
+        )
+        .execute(pool)
+        .await?;
+
+        sqlx::query!(
+            r#"INSERT INTO
+                service_settings
+                (id, organization_id, settings_type, settings_value, created_at)
+            VALUES
+                ($1, $2, $3, $4, NOW())"#,
+            pd.uuid(),
+            pd.organization_id,
+            pd.settings_type as ServiceType,
+            pd.settings_value
+        )
+        .execute(pool)
+        .await?;
+
+        Ok(())
+    }
+
+    #[sqlx::test(
+        migrations = "../migrations",
+        fixtures("../fixtures/new_user_registration.sql", "../fixtures/notification_settings.sql")
+    )]
+    async fn test_get_notification_settings(pool: PgPool) {
+        // Set up the service settings with deterministic UUIDs
+        setup_service_settings(&pool).await.unwrap();
+
+        // Get settings for organization with ID 1
+        let settings = NotificationSettings::get(&pool, 1).await.unwrap();
+
+        // Verify the settings match what we set in the fixture
+        assert_eq!(settings.organization_id, 1);
+        assert!(settings.email);
+        assert!(!settings.telegram);
+        assert!(settings.pagerduty);
+        assert_eq!(settings.alert_flags.as_u64(), 2_u64);
+
+        // Check that we retrieved the service settings correctly
+        assert_eq!(settings.sendgrid_emails.len(), 2);
+        assert!(settings.sendgrid_emails.contains("test1@example.com"));
+        assert!(settings.sendgrid_emails.contains("test2@example.com"));
+        assert_eq!(settings.telegram_chats.len(), 0);
+        assert_eq!(settings.pagerduty_keys.len(), 1);
+        assert!(settings.pagerduty_keys.contains("pdkey123"));
+    }
+
+    #[sqlx::test(migrations = "../migrations", fixtures("../fixtures/new_user_registration.sql"))]
+    async fn test_set_notification_settings(pool: PgPool) {
+        // Create new settings for organization with ID 1
+        NotificationSettings::set(&pool, 1, true, true, false).await.unwrap();
+
+        // Retrieve the settings we just created
+        let settings = NotificationSettings::get(&pool, 1).await.unwrap();
+
+        // Verify the settings match what we set
+        assert_eq!(settings.organization_id, 1);
+        assert!(settings.email);
+        assert!(settings.telegram);
+        assert!(!settings.pagerduty);
+
+        // By default, no service settings should exist yet
+        assert_eq!(settings.sendgrid_emails.len(), 0);
+        assert_eq!(settings.telegram_chats.len(), 0);
+        assert_eq!(settings.pagerduty_keys.len(), 0);
+
+        // Now update the settings
+        NotificationSettings::set(&pool, 1, false, true, true).await.unwrap();
+
+        // Check the updated settings
+        let updated_settings = NotificationSettings::get(&pool, 1).await.unwrap();
+        assert!(!updated_settings.email);
+        assert!(updated_settings.telegram);
+        assert!(updated_settings.pagerduty);
+    }
+
+    #[sqlx::test(migrations = "../migrations", fixtures("../fixtures/new_user_registration.sql"))]
+    async fn test_add_service_settings(pool: PgPool) {
+        // First set up the notification settings
+        NotificationSettings::set(&pool, 1, true, true, true).await.unwrap();
+
+        // Add service settings
+        let email1 = "user1@example.com";
+        let email2 = "user2@example.com";
+        let chat1 = "123456789";
+        let key1 = "pdkey456";
+
+        // Add individual settings
+        let email_uuid = NotificationSettings::add_email(&pool, 1, email1).await.unwrap();
+        let chat_uuid = NotificationSettings::add_chat(&pool, 1, chat1).await.unwrap();
+        let pd_uuid = NotificationSettings::add_pagerduty_key(&pool, 1, key1).await.unwrap();
+
+        // Verify UUIDs were returned
+        assert!(email_uuid.is_some());
+        assert!(chat_uuid.is_some());
+        assert!(pd_uuid.is_some());
+
+        // Add multiple emails
+        let emails = vec![email1.to_string(), email2.to_string()];
+        let email_uuids = NotificationSettings::set_emails(&pool, 1, &emails).await.unwrap();
+
+        // We should only get one UUID back since email1 already exists
+        assert_eq!(email_uuids.len(), 2);
+
+        // Get the settings and verify
+        let settings = NotificationSettings::get(&pool, 1).await.unwrap();
+
+        // We should have both emails
+        assert_eq!(settings.sendgrid_emails.len(), 2);
+        assert!(settings.sendgrid_emails.contains(email1));
+        assert!(settings.sendgrid_emails.contains(email2));
+
+        // And the chat and pagerduty key
+        assert_eq!(settings.telegram_chats.len(), 1);
+        assert!(settings.telegram_chats.contains(chat1));
+        assert_eq!(settings.pagerduty_keys.len(), 1);
+        assert!(settings.pagerduty_keys.contains(key1));
+    }
+
+    #[sqlx::test(
+        migrations = "../migrations",
+        fixtures("../fixtures/new_user_registration.sql", "../fixtures/notification_settings.sql")
+    )]
+    async fn test_remove_service_settings(pool: PgPool) {
+        // Get the initial settings
+        setup_service_settings(&pool).await.unwrap();
+        let settings = NotificationSettings::get(&pool, 1).await.unwrap();
+        assert_eq!(settings.sendgrid_emails.len(), 2);
+
+        // Remove an email
+        let removed =
+            NotificationSettings::remove_email(&pool, 1, "test1@example.com").await.unwrap();
+        assert_eq!(removed, 1); // 1 row affected
+
+        // Verify it was removed
+        let updated = NotificationSettings::get(&pool, 1).await.unwrap();
+        assert_eq!(updated.sendgrid_emails.len(), 1);
+        assert!(!updated.sendgrid_emails.contains("test1@example.com"));
+        assert!(updated.sendgrid_emails.contains("test2@example.com"));
+
+        // Add and then remove a chat
+        let chat_id = "987654321";
+        NotificationSettings::add_chat(&pool, 1, chat_id).await.unwrap();
+        let removed = NotificationSettings::remove_chat(&pool, 1, chat_id).await.unwrap();
+        assert_eq!(removed, 1);
+
+        // Verify chat was removed
+        let final_settings = NotificationSettings::get(&pool, 1).await.unwrap();
+        assert!(!final_settings.telegram_chats.contains(chat_id));
+    }
+
+    #[sqlx::test(migrations = "../migrations", fixtures("../fixtures/new_user_registration.sql"))]
+    async fn test_alert_flags(pool: PgPool) {
+        // First set up notification settings
+        NotificationSettings::set(&pool, 1, true, false, false).await.unwrap();
+
+        // Set alert flags
+        let flags: u64 = 42; // 101010 in binary
+        NotificationSettings::set_alert_flags(&pool, 1, flags).await.unwrap();
+
+        // Get and verify flags
+        let retrieved_flags = NotificationSettings::get_alert_flags(&pool, 1).await.unwrap();
+        assert_eq!(retrieved_flags, flags);
+
+        // Verify flags via get as well
+        let settings = NotificationSettings::get(&pool, 1).await.unwrap();
+        assert_eq!(settings.alert_flags.as_u64(), flags);
+    }
+
+    #[sqlx::test(migrations = "../migrations", fixtures("../fixtures/new_user_registration.sql"))]
+    async fn test_service_settings_methods(pool: PgPool) {
+        // Test ServiceSettings::create and get_for_org methods
+
+        // Create some service settings
+        let org_id = 1u64;
+        let uuid1 = ServiceSettings::create(&pool, org_id, ServiceType::Email, "new@example.com")
+            .await
+            .unwrap();
+        let uuid2 =
+            ServiceSettings::create(&pool, org_id, ServiceType::Telegram, "chat123").await.unwrap();
+
+        assert!(uuid1.is_some());
+        assert!(uuid2.is_some());
+
+        // Get all settings for the org
+        let all_settings = ServiceSettings::get_for_org(&pool, org_id, None).await.unwrap();
+        assert_eq!(all_settings.len(), 2);
+
+        // Get only email settings
+        let email_settings =
+            ServiceSettings::get_for_org(&pool, org_id, Some(ServiceType::Email)).await.unwrap();
+        assert_eq!(email_settings.len(), 1);
+        assert_eq!(email_settings[0].settings_value, "new@example.com");
+
+        // Delete by UUID
+        let deleted = ServiceSettings::delete_by_uuid(&pool, uuid1.unwrap()).await.unwrap();
+        assert_eq!(deleted, 1);
+
+        // Delete by org and type
+        let deleted = ServiceSettings::delete_by_org_and_type(&pool, org_id, ServiceType::Telegram)
+            .await
+            .unwrap();
+        assert_eq!(deleted, 1);
+
+        // Verify all were deleted
+        let remaining = ServiceSettings::get_for_org(&pool, org_id, None).await.unwrap();
+        assert_eq!(remaining.len(), 0);
     }
 }
