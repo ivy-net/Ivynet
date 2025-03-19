@@ -128,7 +128,7 @@ pub async fn node_alert_history(
 --BASE ORGANIZATION ALERT FUNCTIONALITY--
 ----------------------------------------- */
 
-/// Get all active alerts for every machine
+/// Get all active alerts for your organization
 #[utoipa::path(
     get,
     path = "/alerts/org/active",
@@ -150,7 +150,7 @@ pub async fn org_active_alerts(
     Ok(Json(alerts))
 }
 
-/// Acknowledge an alert
+/// Acknowledge an organization alert - equivalent to resolution of the alert
 #[utoipa::path(
     post,
     path = "/alerts/org/acknowledge",
@@ -179,7 +179,7 @@ pub async fn org_acknowledge_alert(
     Ok(())
 }
 
-/// Get historical alerts for all machines
+/// Get historical alerts for your organization
 #[utoipa::path(
     get,
     path = "/alerts/org/history",
@@ -348,6 +348,14 @@ pub async fn set_notification_service_settings(
         .await?;
     }
 
+    if !settings.telegram.chats.is_empty() {
+        NotificationSettings::add_many_chats(
+            &state.pool,
+            account.organization_id as u64,
+            &settings.telegram.chats,
+        )
+        .await?;
+    }
     Ok(())
 }
 
