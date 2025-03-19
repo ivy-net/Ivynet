@@ -60,10 +60,10 @@ EXECUTE FUNCTION create_default_notification_settings();
 -- Create a new notification_settings table for each existing organization
 INSERT INTO notification_settings (
     organization_id,
-    alert_flags,
     email,
     telegram,
     pagerduty,
+    alert_flags,
     created_at,
     updated_at
 )
