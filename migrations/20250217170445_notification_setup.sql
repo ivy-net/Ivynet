@@ -25,8 +25,6 @@ CREATE TABLE IF NOT EXISTS service_settings (
 CREATE INDEX idx_service_settings_org ON service_settings (organization_id);
 CREATE INDEX idx_service_settings_or_type ON service_settings (organization_id, settings_type);
 
-
-
 -- Create a trigger function to create default notification settings when a new organization is created
 CREATE OR REPLACE FUNCTION create_default_notification_settings()
 RETURNS TRIGGER AS $$
