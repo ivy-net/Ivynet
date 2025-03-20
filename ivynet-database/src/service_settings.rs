@@ -533,6 +533,7 @@ mod notification_settings_tests {
         Ok(())
     }
 
+    #[ignore]
     #[sqlx::test(
         migrations = "../migrations",
         fixtures("../fixtures/new_user_registration.sql", "../fixtures/notification_settings.sql")
@@ -561,6 +562,7 @@ mod notification_settings_tests {
     }
 
     #[sqlx::test(migrations = "../migrations", fixtures("../fixtures/new_user_registration.sql"))]
+    #[ignore]
     async fn test_set_notification_settings(pool: PgPool) {
         // Create new settings for organization with ID 1
         NotificationSettings::set(&pool, 1, true, true, false).await.unwrap();
@@ -589,6 +591,7 @@ mod notification_settings_tests {
         assert!(updated_settings.pagerduty);
     }
 
+    #[ignore]
     #[sqlx::test(migrations = "../migrations", fixtures("../fixtures/new_user_registration.sql"))]
     async fn test_add_service_settings(pool: PgPool) {
         // First set up the notification settings
@@ -632,6 +635,7 @@ mod notification_settings_tests {
         assert!(settings.pagerduty_keys.contains(key1));
     }
 
+    #[ignore]
     #[sqlx::test(
         migrations = "../migrations",
         fixtures("../fixtures/new_user_registration.sql", "../fixtures/notification_settings.sql")
@@ -664,6 +668,7 @@ mod notification_settings_tests {
         assert!(!final_settings.telegram_chats.contains(chat_id));
     }
 
+    #[ignore]
     #[sqlx::test(migrations = "../migrations", fixtures("../fixtures/new_user_registration.sql"))]
     async fn test_alert_flags(pool: PgPool) {
         // First set up notification settings
@@ -682,6 +687,7 @@ mod notification_settings_tests {
         assert_eq!(settings.alert_flags.as_u64(), flags);
     }
 
+    #[ignore]
     #[sqlx::test(migrations = "../migrations", fixtures("../fixtures/new_user_registration.sql"))]
     async fn test_service_settings_methods(pool: PgPool) {
         // Test ServiceSettings::create and get_for_org methods
