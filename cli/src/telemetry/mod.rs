@@ -225,7 +225,7 @@ pub async fn listen(
 
         if let Some(container) = container {
             // --- Send node data for configured nodes ---
-            let image_id = match container.image_id() {
+            let image_id = match container.repo_digest(&docker.inner()).await {
                 Some(id) => id,
                 None => {
                     warn!("Cannot find image id for container: {}", node.container_name);
