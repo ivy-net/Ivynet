@@ -1,200 +1,41 @@
 use convert_case::{Case, Casing};
+use eth_avs::EthereumAvsType;
+use eth_node::EthereumNodeType;
 use serde::{Deserialize, Serialize};
 use strum::{EnumIter, IntoEnumIterator};
 use tracing::{debug, error, warn};
 
-pub mod directory;
-pub mod restaking_protocol;
+pub mod eth_avs;
+pub mod eth_node;
 
 const EIGENDA_METRICS_ID: &str = "da-node";
-
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter, Default)]
-pub enum MachType {
-    Xterio,
-    DodoChain,
-    Cyber,
-    #[default]
-    Unknown,
-}
-
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter, Default)]
-pub enum AltlayerType {
-    AltlayerMach,
-    GmNetworkMach,
-    #[default]
-    Unknown,
-}
-
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter, Default)]
-pub enum InfiniRouteType {
-    Base,
-    Polygon,
-    #[default]
-    UnknownL2,
-}
-
-#[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, EnumIter, Default)]
-pub enum SkateChainType {
-    Base,
-    Mantle,
-    #[default]
-    UnknownL2,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash, EnumIter, Serialize, Deserialize, Default)]
-pub enum ActiveSet {
-    Eigenlayer,
-    Symbiotic,
-    #[default]
-    Unknown,
-}
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum NodeType {
     Unknown,
-    AvaProtocol,
-    EigenDA,
-    LagrangeStateCommittee,
-    LagrangeZkWorker,
-    LagrangeZKProver,
-    K3LabsAvs,
-    K3LabsAvsHolesky,
-    EOracle,
-    Gasp,
-    Predicate,
-    WitnessChain,
-    Altlayer(AltlayerType),
-    AltlayerMach(MachType),
-    Omni,
-    Automata,
-    OpenLayerMainnet,
-    OpenLayerHolesky,
-    AethosHolesky, // Deprecated - now Predicate
-    ArpaNetworkNodeClient,
-    // OpacityNetwork, //Doesn't really exist yet
-    UnifiAVS, // I think this is on-chain only - https://docs.puffer.fi/unifi-avs-protocol
-    ChainbaseNetworkV1,
-    SkateChain(SkateChainType), /* Othentic-cli - not sure whats going on here either https://github.com/Skate-Org/avs-X-othentic/blob/main/docker-compose.yml */
-    ChainbaseNetwork,
-    DittoNetwork(ActiveSet),
-    Primus,                             //Testnet only  - Unverified registry
-    GoPlusAVS,                          //Built locally
-    UngateInfiniRoute(InfiniRouteType), //Built locally
-    AlignedLayer,                       //Built locally
-    Brevis,                             //Built locally
-    Nuffle,                             //Built locally - Testnet only
-    Blockless,                          //Built Locally - Testnet only - Unverified registry
-    AtlasNetwork,                       //Testnet only
-    Zellular,                           //Testnet only
-    Redstone,                           //Testnet only
-    MishtiNetwork(ActiveSet),           //Testnet only
-    Cycle,                              //Testnet only
-    PrimevMevCommit(ActiveSet),         //I have no idea
-    PrimevBidder,                       //Built locally
-    Bolt(ActiveSet),                    //Testnet only
-    Hyperlane(ActiveSet),
-    Tanssi,
-    Kalypso,
-    RouterXtendNetwork,
-    CapxCloud,
-    Symbiosis,
-    Radius,
-    IBTCNetwork,
-    ZKLink,
-    HyveDA,
-    BlessB7s,
+    EthereumAvs(EthereumAvsType),
+    EthereumNode(EthereumNodeType),
 }
 
 impl IntoEnumIterator for NodeType {
     type Iterator = std::vec::IntoIter<NodeType>;
 
     fn iter() -> Self::Iterator {
-        vec![
-            // Simple variants
-            NodeType::AvaProtocol,
-            NodeType::EigenDA,
-            NodeType::LagrangeStateCommittee,
-            NodeType::LagrangeZkWorker,
-            NodeType::K3LabsAvs,
-            NodeType::K3LabsAvsHolesky,
-            NodeType::EOracle,
-            NodeType::Predicate,
-            NodeType::Brevis,
-            NodeType::WitnessChain,
-            NodeType::Omni,
-            NodeType::Automata,
-            NodeType::OpenLayerMainnet,
-            NodeType::OpenLayerHolesky,
-            NodeType::AethosHolesky,
-            NodeType::ArpaNetworkNodeClient,
-            NodeType::UnifiAVS,
-            NodeType::ChainbaseNetwork,
-            NodeType::GoPlusAVS,
-            NodeType::AlignedLayer,
-            NodeType::Gasp,
-            NodeType::Nuffle,
-            NodeType::Unknown,
-            NodeType::Blockless,
-            NodeType::Primus,
-            NodeType::AtlasNetwork,
-            NodeType::Zellular,
-            NodeType::Redstone,
-            NodeType::Cycle,
-            NodeType::Tanssi,
-            NodeType::Kalypso,
-            NodeType::RouterXtendNetwork,
-            NodeType::CapxCloud,
-            NodeType::Symbiosis,
-            NodeType::Radius,
-            NodeType::IBTCNetwork,
-            NodeType::ZKLink,
-            NodeType::HyveDA,
-            NodeType::PrimevBidder,
-            NodeType::BlessB7s,
-        ]
-        .into_iter()
-        .chain(ActiveSet::iter().map(NodeType::Hyperlane))
-        .chain(ActiveSet::iter().map(NodeType::MishtiNetwork))
-        .chain(ActiveSet::iter().map(NodeType::DittoNetwork))
-        .chain(ActiveSet::iter().map(NodeType::PrimevMevCommit))
-        .chain(ActiveSet::iter().map(NodeType::Bolt))
-        .chain(AltlayerType::iter().map(NodeType::Altlayer))
-        .chain(MachType::iter().map(NodeType::AltlayerMach))
-        .chain(SkateChainType::iter().map(NodeType::SkateChain))
-        .chain(InfiniRouteType::iter().map(NodeType::UngateInfiniRoute))
-        .collect::<Vec<_>>()
-        .into_iter()
+        let eth_avs_types = eth_avs::EthereumAvsType::iter();
+        let eth_node_types = eth_node::EthereumNodeType::iter();
+        let mut types = Vec::new();
+        types.extend(eth_avs_types);
+        types.extend(eth_node_types);
+        types.into_iter();
+        todo!()
     }
 }
 
 // Works with lower case and kebab case - kebab case is what is displayed
 impl From<&str> for NodeType {
     fn from(s: &str) -> Self {
-        let normalized = s.replace(['-', '_', ' '], "").to_lowercase();
-
-        // First try exact match (current behavior)
-        let exact_match = NodeType::iter().find(|variant| {
-            let variant_str = format!("{:?}", variant);
-            let variant_normalized = variant_str.replace(['-', '_', ' '], "").to_lowercase();
-            normalized == variant_normalized
-        });
-
-        if let Some(exact_match) = exact_match {
-            return exact_match;
-        }
-
-        // If no exact match, try matching just the outer type
-        match normalized.as_str() {
-            "altlayer" => Self::Altlayer(AltlayerType::Unknown),
-            "altlayermach" => Self::AltlayerMach(MachType::Unknown),
-            "skatechain" => Self::SkateChain(SkateChainType::UnknownL2),
-            "ungateinfiniroute" => Self::UngateInfiniRoute(InfiniRouteType::UnknownL2),
-            "primevmevcommit" => Self::PrimevMevCommit(ActiveSet::Unknown),
-            "bolt" => Self::Bolt(ActiveSet::Unknown),
-            "hyperlane" => Self::Hyperlane(ActiveSet::Unknown),
-            "dittonetwork" => Self::DittoNetwork(ActiveSet::Unknown),
-            _ => Self::Unknown,
-        }
+        //Check for ETH AVS, Check for ETH NODE
+        todo!()
     }
 }
 
