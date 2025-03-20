@@ -14,6 +14,7 @@ pub mod error;
 pub mod log;
 pub mod machine;
 pub mod metric;
+pub mod notification_settings;
 pub mod operator_keys;
 pub mod organization;
 pub mod service_settings;
@@ -27,8 +28,9 @@ pub use avs_version::{AvsVersionData, DbAvsVersionData};
 pub use avs_version_hash::AvsVersionHash;
 pub use client::Client;
 pub use machine::Machine;
+pub use notification_settings::NotificationSettings;
 pub use organization::Organization;
-pub use service_settings::{NotificationSettings, ServiceSettings};
+pub use service_settings::ServiceSettings;
 
 pub async fn configure(uri: &str, _migrate: bool) -> Result<PgPool, error::DatabaseError> {
     let pool = PoolOptions::new().max_connections(5).connect(uri).await?;
