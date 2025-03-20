@@ -248,7 +248,7 @@ pub struct TelegramSettings {
 #[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
 pub struct PagerDutySettings {
     pub enabled: bool,
-    pub integration_key: Option<String>,
+    pub integration_keys: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, ToSchema)]
@@ -275,20 +275,20 @@ impl From<(NotificationSettings, Vec<ServiceSettings>)> for NotificationServiceS
     fn from(value: (NotificationSettings, Vec<ServiceSettings>)) -> Self {
         let mut emails = Vec::new();
         let mut chats = Vec::new();
-        let mut integration_key = None;
+        let mut integration_keys = Vec::new();
 
         for setting in value.1 {
             match setting.settings_type {
                 ServiceType::Email => emails.push(setting.settings_value.clone()),
                 ServiceType::Telegram => chats.push(setting.settings_value.clone()),
-                ServiceType::PagerDuty => integration_key = Some(setting.settings_value.clone()),
+                ServiceType::PagerDuty => integration_keys.push(setting.settings_value.clone()),
             }
         }
 
         Self {
             email: EmailSettings { enabled: value.0.email, emails },
             telegram: TelegramSettings { enabled: value.0.telegram, chats },
-            pagerduty: PagerDutySettings { enabled: value.0.pagerduty, integration_key },
+            pagerduty: PagerDutySettings { enabled: value.0.pagerduty, integration_keys },
         }
     }
 }
@@ -376,11 +376,11 @@ pub async fn set_notification_service_settings(
         ServiceType::PagerDuty,
     )
     .await?;
-    if let Some(ref integration_key) = settings.pagerduty.integration_key {
-        NotificationSettings::add_pagerduty_key(
+    if !settings.pagerduty.integration_keys.is_empty() {
+        NotificationSettings::add_pagerduty_keys(
             &state.pool,
             account.organization_id as u64,
-            integration_key,
+            &settings.pagerduty.integration_keys,
         )
         .await?;
     }
