@@ -1,6 +1,6 @@
 use convert_case::{Case, Casing};
-use eth_avs::EthereumAvsType;
-use eth_node::{EthereumComponentType, EthereumNode};
+use eth_avs::EthereumAvs;
+use eth_node::EthereumNodeComponent;
 use serde::{Deserialize, Serialize};
 use strum::{EnumIter, IntoEnumIterator};
 use tracing::{debug, error, warn};
@@ -13,16 +13,16 @@ const EIGENDA_METRICS_ID: &str = "da-node";
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum NodeType {
     Unknown,
-    EthereumAvs(EthereumAvsType),
-    EthereumNode(EthereumNode),
+    EthereumAvs(EthereumAvs),
+    EthereumNodeComponent(EthereumNodeComponent),
 }
 
 impl IntoEnumIterator for NodeType {
     type Iterator = std::vec::IntoIter<NodeType>;
 
     fn iter() -> Self::Iterator {
-        let eth_avs_types = eth_avs::EthereumAvsType::iter();
-        let eth_node_types = eth_node::EthereumComponentType::iter();
+        let eth_avs_types = eth_avs::EthereumAvs::iter();
+        let eth_node_types = eth_node::EthereumNodeComponent::iter();
         let mut types = Vec::new();
         types.extend(eth_avs_types);
         types.extend(eth_node_types);
@@ -37,7 +37,7 @@ impl From<&str> for NodeType {
         if let Some((prefix, rest)) = s.split_once(':') {
             match prefix {
                 "ethavs" => {
-                    let avs_type = EthereumAvsType::from_str(rest);
+                    let avs_type = EthereumAvs::from_str(rest);
                     if let Some(avs_type) = avs_type {
                         NodeType::EthereumAvs(avs_type)
                     } else {
@@ -45,9 +45,9 @@ impl From<&str> for NodeType {
                     }
                 }
                 "ethcomp" => {
-                    let node_type = EthereumComponentType::from_str(rest);
+                    let node_type = EthereumNodeComponent::from_str(rest);
                     if let Some(node_type) = node_type {
-                        NodeType::EthereumNode(node_type)
+                        NodeType::EthereumNodeComponent(node_type)
                     } else {
                         NodeType::Unknown
                     }
@@ -76,15 +76,19 @@ impl Serialize for NodeType {
         match self {
             NodeType::EthereumAvs(inner) => {
                 let mut buf = Vec::new();
-                inner.serialize(&mut serde_json::Serializer::new(&mut buf))?;
+                inner
+                    .serialize(&mut serde_json::Serializer::new(&mut buf))
+                    .map_err(|e| serde::ser::Error::custom(e))?;
                 let inner_str = String::from_utf8(buf).map_err(serde::ser::Error::custom)?;
                 serializer.serialize_str(&format!("ethavs:{}", inner_str.trim_matches('"')))
             }
-            NodeType::EthereumNode(inner) => {
+            NodeType::EthereumNodeComponent(inner) => {
                 let mut buf = Vec::new();
-                inner.serialize(&mut serde_json::Serializer::new(&mut buf))?;
+                inner
+                    .serialize(&mut serde_json::Serializer::new(&mut buf))
+                    .map_err(|e| serde::ser::Error::custom(e))?;
                 let inner_str = String::from_utf8(buf).map_err(serde::ser::Error::custom)?;
-                serializer.serialize_str(&format!("ethnode:{}", inner_str.trim_matches('"')))
+                serializer.serialize_str(&format!("ethcomp:{}", inner_str.trim_matches('"')))
             }
             NodeType::Unknown => serializer.serialize_str("unknown"),
         }
@@ -101,7 +105,7 @@ impl<'de> Deserialize<'de> for NodeType {
         if let Some((prefix, rest)) = s.split_once(':') {
             match prefix {
                 "ethavs" => {
-                    let avs_type = EthereumAvsType::from_str(rest);
+                    let avs_type = EthereumAvs::from_str(rest);
                     if let Some(avs_type) = avs_type {
                         Ok(NodeType::EthereumAvs(avs_type))
                     } else {
@@ -109,9 +113,9 @@ impl<'de> Deserialize<'de> for NodeType {
                     }
                 }
                 "ethcomp" => {
-                    let node_type = EthereumComponentType::from_str(rest);
+                    let node_type = EthereumNodeComponent::from_str(rest);
                     if let Some(node_type) = node_type {
-                        Ok(NodeType::EthereumNode(node_type))
+                        Ok(NodeType::EthereumNodeComponent(node_type))
                     } else {
                         Err(serde::de::Error::custom("Invalid node type"))
                     }
@@ -229,31 +233,8 @@ impl NodeType {
         Some(node_type)
     }
 
-    pub fn from_metrics_name(metrics_id: &str) -> Self {
-        match metrics_id {
-            EIGENDA_METRICS_ID => Self::EigenDA,
-            _ => Self::Unknown,
-        }
-    }
-
     pub fn list_all_variants() -> Vec<Self> {
         Self::iter().collect()
-    }
-
-    pub fn all_machtypes() -> Vec<Self> {
-        MachType::iter().map(NodeType::AltlayerMach).collect()
-    }
-
-    pub fn all_altlayertypes() -> Vec<Self> {
-        AltlayerType::iter().map(NodeType::Altlayer).collect()
-    }
-
-    pub fn all_skatechaintypes() -> Vec<Self> {
-        SkateChainType::iter().map(NodeType::SkateChain).collect()
-    }
-
-    pub fn all_infiniroutetypes() -> Vec<Self> {
-        InfiniRouteType::iter().map(NodeType::UngateInfiniRoute).collect()
     }
 
     //This function assumes that the repository is in the format of "organization" / "repo"
@@ -261,22 +242,6 @@ impl NodeType {
     // this bit)
     fn has_valid_repository(&self) -> bool {
         self.default_repository().ok().filter(|repo| repo.split('/').count() > 1).is_some()
-    }
-
-    fn flatten_layered_type(&self) -> bool {
-        match self {
-            NodeType::Altlayer(inner_type) => matches!(inner_type, AltlayerType::Unknown),
-            NodeType::AltlayerMach(inner_type) => matches!(inner_type, MachType::Unknown),
-            NodeType::SkateChain(inner_type) => matches!(inner_type, SkateChainType::UnknownL2),
-            NodeType::UngateInfiniRoute(inner_type) => {
-                matches!(inner_type, InfiniRouteType::UnknownL2)
-            }
-            NodeType::PrimevMevCommit(inner_type) => matches!(inner_type, ActiveSet::Unknown),
-            NodeType::Bolt(inner_type) => matches!(inner_type, ActiveSet::Unknown),
-            NodeType::Hyperlane(inner_type) => matches!(inner_type, ActiveSet::Unknown),
-            NodeType::DittoNetwork(inner_type) => matches!(inner_type, ActiveSet::Unknown),
-            _ => true,
-        }
     }
 }
 

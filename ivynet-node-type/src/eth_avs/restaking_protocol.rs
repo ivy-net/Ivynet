@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::{ActiveSet, AltlayerType, EthereumAvsType, InfiniRouteType, MachType, SkateChainType};
+use super::{ActiveSet, AltlayerType, EthereumAvs, InfiniRouteType, MachType, SkateChainType};
 
 #[derive(Copy, Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum RestakingProtocolType {
@@ -13,92 +13,92 @@ pub trait RestakingProtocol {
     fn restaking_protocol(&self) -> Option<RestakingProtocolType>;
 }
 
-impl RestakingProtocol for EthereumAvsType {
+impl RestakingProtocol for EthereumAvs {
     fn restaking_protocol(&self) -> Option<RestakingProtocolType> {
         let protocol = match self {
             //Eigenlayer
-            EthereumAvsType::AvaProtocol => RestakingProtocolType::Eigenlayer,
-            EthereumAvsType::EigenDA => RestakingProtocolType::Eigenlayer,
-            EthereumAvsType::LagrangeStateCommittee => RestakingProtocolType::Eigenlayer,
-            EthereumAvsType::LagrangeZkWorker => RestakingProtocolType::Eigenlayer,
-            EthereumAvsType::LagrangeZKProver => RestakingProtocolType::Eigenlayer,
-            EthereumAvsType::K3LabsAvs => RestakingProtocolType::Eigenlayer,
-            EthereumAvsType::K3LabsAvsHolesky => RestakingProtocolType::Eigenlayer,
-            EthereumAvsType::EOracle => RestakingProtocolType::Eigenlayer,
-            EthereumAvsType::Gasp => RestakingProtocolType::Eigenlayer,
-            EthereumAvsType::Predicate => RestakingProtocolType::Eigenlayer,
-            EthereumAvsType::WitnessChain => RestakingProtocolType::Eigenlayer,
-            EthereumAvsType::Omni => RestakingProtocolType::Eigenlayer,
-            EthereumAvsType::Automata => RestakingProtocolType::Eigenlayer,
-            EthereumAvsType::OpenLayerMainnet => RestakingProtocolType::Eigenlayer,
-            EthereumAvsType::OpenLayerHolesky => RestakingProtocolType::Eigenlayer,
-            EthereumAvsType::AethosHolesky => RestakingProtocolType::Eigenlayer,
-            EthereumAvsType::ArpaNetworkNodeClient => RestakingProtocolType::Eigenlayer,
-            EthereumAvsType::UnifiAVS => RestakingProtocolType::Eigenlayer,
-            EthereumAvsType::ChainbaseNetworkV1 => RestakingProtocolType::Eigenlayer,
-            EthereumAvsType::ChainbaseNetwork => RestakingProtocolType::Eigenlayer,
-            EthereumAvsType::Primus => RestakingProtocolType::Eigenlayer,
-            EthereumAvsType::GoPlusAVS => RestakingProtocolType::Eigenlayer,
-            EthereumAvsType::AlignedLayer => RestakingProtocolType::Eigenlayer,
-            EthereumAvsType::Brevis => RestakingProtocolType::Eigenlayer,
-            EthereumAvsType::Nuffle => RestakingProtocolType::Eigenlayer,
-            EthereumAvsType::Blockless => RestakingProtocolType::Eigenlayer,
-            EthereumAvsType::AtlasNetwork => RestakingProtocolType::Eigenlayer,
-            EthereumAvsType::Zellular => RestakingProtocolType::Eigenlayer,
-            EthereumAvsType::Redstone => RestakingProtocolType::Eigenlayer,
+            EthereumAvs::AvaProtocol => RestakingProtocolType::Eigenlayer,
+            EthereumAvs::EigenDA => RestakingProtocolType::Eigenlayer,
+            EthereumAvs::LagrangeStateCommittee => RestakingProtocolType::Eigenlayer,
+            EthereumAvs::LagrangeZkWorker => RestakingProtocolType::Eigenlayer,
+            EthereumAvs::LagrangeZKProver => RestakingProtocolType::Eigenlayer,
+            EthereumAvs::K3LabsAvs => RestakingProtocolType::Eigenlayer,
+            EthereumAvs::K3LabsAvsHolesky => RestakingProtocolType::Eigenlayer,
+            EthereumAvs::EOracle => RestakingProtocolType::Eigenlayer,
+            EthereumAvs::Gasp => RestakingProtocolType::Eigenlayer,
+            EthereumAvs::Predicate => RestakingProtocolType::Eigenlayer,
+            EthereumAvs::WitnessChain => RestakingProtocolType::Eigenlayer,
+            EthereumAvs::Omni => RestakingProtocolType::Eigenlayer,
+            EthereumAvs::Automata => RestakingProtocolType::Eigenlayer,
+            EthereumAvs::OpenLayerMainnet => RestakingProtocolType::Eigenlayer,
+            EthereumAvs::OpenLayerHolesky => RestakingProtocolType::Eigenlayer,
+            EthereumAvs::AethosHolesky => RestakingProtocolType::Eigenlayer,
+            EthereumAvs::ArpaNetworkNodeClient => RestakingProtocolType::Eigenlayer,
+            EthereumAvs::UnifiAVS => RestakingProtocolType::Eigenlayer,
+            EthereumAvs::ChainbaseNetworkV1 => RestakingProtocolType::Eigenlayer,
+            EthereumAvs::ChainbaseNetwork => RestakingProtocolType::Eigenlayer,
+            EthereumAvs::Primus => RestakingProtocolType::Eigenlayer,
+            EthereumAvs::GoPlusAVS => RestakingProtocolType::Eigenlayer,
+            EthereumAvs::AlignedLayer => RestakingProtocolType::Eigenlayer,
+            EthereumAvs::Brevis => RestakingProtocolType::Eigenlayer,
+            EthereumAvs::Nuffle => RestakingProtocolType::Eigenlayer,
+            EthereumAvs::Blockless => RestakingProtocolType::Eigenlayer,
+            EthereumAvs::AtlasNetwork => RestakingProtocolType::Eigenlayer,
+            EthereumAvs::Zellular => RestakingProtocolType::Eigenlayer,
+            EthereumAvs::Redstone => RestakingProtocolType::Eigenlayer,
             //Symbiotic
-            EthereumAvsType::Cycle => RestakingProtocolType::Symbiotic,
-            EthereumAvsType::Tanssi => RestakingProtocolType::Symbiotic,
-            EthereumAvsType::PrimevBidder => RestakingProtocolType::Symbiotic,
-            EthereumAvsType::Kalypso => RestakingProtocolType::Symbiotic,
-            EthereumAvsType::RouterXtendNetwork => RestakingProtocolType::Symbiotic,
-            EthereumAvsType::CapxCloud => RestakingProtocolType::Symbiotic,
-            EthereumAvsType::Symbiosis => RestakingProtocolType::Symbiotic,
-            EthereumAvsType::Radius => RestakingProtocolType::Symbiotic,
-            EthereumAvsType::IBTCNetwork => RestakingProtocolType::Symbiotic,
-            EthereumAvsType::ZKLink => RestakingProtocolType::Symbiotic,
-            EthereumAvsType::HyveDA => RestakingProtocolType::Symbiotic,
-            EthereumAvsType::BlessB7s => RestakingProtocolType::Symbiotic,
+            EthereumAvs::Cycle => RestakingProtocolType::Symbiotic,
+            EthereumAvs::Tanssi => RestakingProtocolType::Symbiotic,
+            EthereumAvs::PrimevBidder => RestakingProtocolType::Symbiotic,
+            EthereumAvs::Kalypso => RestakingProtocolType::Symbiotic,
+            EthereumAvs::RouterXtendNetwork => RestakingProtocolType::Symbiotic,
+            EthereumAvs::CapxCloud => RestakingProtocolType::Symbiotic,
+            EthereumAvs::Symbiosis => RestakingProtocolType::Symbiotic,
+            EthereumAvs::Radius => RestakingProtocolType::Symbiotic,
+            EthereumAvs::IBTCNetwork => RestakingProtocolType::Symbiotic,
+            EthereumAvs::ZKLink => RestakingProtocolType::Symbiotic,
+            EthereumAvs::HyveDA => RestakingProtocolType::Symbiotic,
+            EthereumAvs::BlessB7s => RestakingProtocolType::Symbiotic,
             //Complicated
-            EthereumAvsType::DittoNetwork(inner) => match inner {
+            EthereumAvs::DittoNetwork(inner) => match inner {
                 ActiveSet::Unknown => return None,
                 ActiveSet::Eigenlayer => RestakingProtocolType::Eigenlayer,
                 ActiveSet::Symbiotic => RestakingProtocolType::Symbiotic,
             },
-            EthereumAvsType::MishtiNetwork(inner) => match inner {
+            EthereumAvs::MishtiNetwork(inner) => match inner {
                 ActiveSet::Unknown => return None,
                 ActiveSet::Eigenlayer => RestakingProtocolType::Eigenlayer,
                 ActiveSet::Symbiotic => RestakingProtocolType::Symbiotic,
             },
-            EthereumAvsType::Altlayer(inner) => match inner {
+            EthereumAvs::Altlayer(inner) => match inner {
                 AltlayerType::Unknown => return None,
                 _ => RestakingProtocolType::Eigenlayer,
             },
-            EthereumAvsType::AltlayerMach(inner) => match inner {
+            EthereumAvs::AltlayerMach(inner) => match inner {
                 MachType::Unknown => return None,
                 _ => RestakingProtocolType::Eigenlayer,
             },
 
-            EthereumAvsType::SkateChain(inner) => match inner {
+            EthereumAvs::SkateChain(inner) => match inner {
                 SkateChainType::UnknownL2 => return None,
                 _ => RestakingProtocolType::Eigenlayer,
             },
-            EthereumAvsType::UngateInfiniRoute(inner) => match inner {
+            EthereumAvs::UngateInfiniRoute(inner) => match inner {
                 InfiniRouteType::UnknownL2 => return None,
                 _ => RestakingProtocolType::Eigenlayer,
             },
 
-            EthereumAvsType::PrimevMevCommit(inner) => match inner {
+            EthereumAvs::PrimevMevCommit(inner) => match inner {
                 ActiveSet::Unknown => return None,
                 ActiveSet::Eigenlayer => RestakingProtocolType::Eigenlayer,
                 ActiveSet::Symbiotic => RestakingProtocolType::Symbiotic,
             },
-            EthereumAvsType::Bolt(inner) => match inner {
+            EthereumAvs::Bolt(inner) => match inner {
                 ActiveSet::Unknown => return None,
                 ActiveSet::Eigenlayer => RestakingProtocolType::Eigenlayer,
                 ActiveSet::Symbiotic => RestakingProtocolType::Symbiotic,
             },
-            EthereumAvsType::Hyperlane(inner) => match inner {
+            EthereumAvs::Hyperlane(inner) => match inner {
                 ActiveSet::Unknown => return None,
                 ActiveSet::Eigenlayer => RestakingProtocolType::Eigenlayer,
                 ActiveSet::Symbiotic => RestakingProtocolType::Symbiotic,

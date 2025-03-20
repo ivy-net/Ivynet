@@ -50,7 +50,7 @@ pub enum ActiveSet {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum EthereumAvsType {
+pub enum EthereumAvs {
     AvaProtocol,
     EigenDA,
     LagrangeStateCommittee,
@@ -104,74 +104,74 @@ pub enum EthereumAvsType {
     BlessB7s,
 }
 
-impl IntoEnumIterator for EthereumAvsType {
-    type Iterator = std::vec::IntoIter<EthereumAvsType>;
+impl IntoEnumIterator for EthereumAvs {
+    type Iterator = std::vec::IntoIter<EthereumAvs>;
 
     fn iter() -> Self::Iterator {
         vec![
             // Simple variants
-            EthereumAvsType::AvaProtocol,
-            EthereumAvsType::EigenDA,
-            EthereumAvsType::LagrangeStateCommittee,
-            EthereumAvsType::LagrangeZkWorker,
-            EthereumAvsType::K3LabsAvs,
-            EthereumAvsType::K3LabsAvsHolesky,
-            EthereumAvsType::EOracle,
-            EthereumAvsType::Predicate,
-            EthereumAvsType::Brevis,
-            EthereumAvsType::WitnessChain,
-            EthereumAvsType::Omni,
-            EthereumAvsType::Automata,
-            EthereumAvsType::OpenLayerMainnet,
-            EthereumAvsType::OpenLayerHolesky,
-            EthereumAvsType::AethosHolesky,
-            EthereumAvsType::ArpaNetworkNodeClient,
-            EthereumAvsType::UnifiAVS,
-            EthereumAvsType::ChainbaseNetwork,
-            EthereumAvsType::GoPlusAVS,
-            EthereumAvsType::AlignedLayer,
-            EthereumAvsType::Gasp,
-            EthereumAvsType::Nuffle,
-            EthereumAvsType::Blockless,
-            EthereumAvsType::Primus,
-            EthereumAvsType::AtlasNetwork,
-            EthereumAvsType::Zellular,
-            EthereumAvsType::Redstone,
-            EthereumAvsType::Cycle,
-            EthereumAvsType::Tanssi,
-            EthereumAvsType::Kalypso,
-            EthereumAvsType::RouterXtendNetwork,
-            EthereumAvsType::CapxCloud,
-            EthereumAvsType::Symbiosis,
-            EthereumAvsType::Radius,
-            EthereumAvsType::IBTCNetwork,
-            EthereumAvsType::ZKLink,
-            EthereumAvsType::HyveDA,
-            EthereumAvsType::PrimevBidder,
-            EthereumAvsType::BlessB7s,
+            EthereumAvs::AvaProtocol,
+            EthereumAvs::EigenDA,
+            EthereumAvs::LagrangeStateCommittee,
+            EthereumAvs::LagrangeZkWorker,
+            EthereumAvs::K3LabsAvs,
+            EthereumAvs::K3LabsAvsHolesky,
+            EthereumAvs::EOracle,
+            EthereumAvs::Predicate,
+            EthereumAvs::Brevis,
+            EthereumAvs::WitnessChain,
+            EthereumAvs::Omni,
+            EthereumAvs::Automata,
+            EthereumAvs::OpenLayerMainnet,
+            EthereumAvs::OpenLayerHolesky,
+            EthereumAvs::AethosHolesky,
+            EthereumAvs::ArpaNetworkNodeClient,
+            EthereumAvs::UnifiAVS,
+            EthereumAvs::ChainbaseNetwork,
+            EthereumAvs::GoPlusAVS,
+            EthereumAvs::AlignedLayer,
+            EthereumAvs::Gasp,
+            EthereumAvs::Nuffle,
+            EthereumAvs::Blockless,
+            EthereumAvs::Primus,
+            EthereumAvs::AtlasNetwork,
+            EthereumAvs::Zellular,
+            EthereumAvs::Redstone,
+            EthereumAvs::Cycle,
+            EthereumAvs::Tanssi,
+            EthereumAvs::Kalypso,
+            EthereumAvs::RouterXtendNetwork,
+            EthereumAvs::CapxCloud,
+            EthereumAvs::Symbiosis,
+            EthereumAvs::Radius,
+            EthereumAvs::IBTCNetwork,
+            EthereumAvs::ZKLink,
+            EthereumAvs::HyveDA,
+            EthereumAvs::PrimevBidder,
+            EthereumAvs::BlessB7s,
         ]
         .into_iter()
-        .chain(ActiveSet::iter().map(EthereumAvsType::Hyperlane))
-        .chain(ActiveSet::iter().map(EthereumAvsType::MishtiNetwork))
-        .chain(ActiveSet::iter().map(EthereumAvsType::DittoNetwork))
-        .chain(ActiveSet::iter().map(EthereumAvsType::PrimevMevCommit))
-        .chain(ActiveSet::iter().map(EthereumAvsType::Bolt))
-        .chain(AltlayerType::iter().map(EthereumAvsType::Altlayer))
-        .chain(MachType::iter().map(EthereumAvsType::AltlayerMach))
-        .chain(SkateChainType::iter().map(EthereumAvsType::SkateChain))
-        .chain(InfiniRouteType::iter().map(EthereumAvsType::UngateInfiniRoute))
+        .chain(ActiveSet::iter().map(EthereumAvs::Hyperlane))
+        .chain(ActiveSet::iter().map(EthereumAvs::MishtiNetwork))
+        .chain(ActiveSet::iter().map(EthereumAvs::DittoNetwork))
+        .chain(ActiveSet::iter().map(EthereumAvs::PrimevMevCommit))
+        .chain(ActiveSet::iter().map(EthereumAvs::Bolt))
+        .chain(AltlayerType::iter().map(EthereumAvs::Altlayer))
+        .chain(MachType::iter().map(EthereumAvs::AltlayerMach))
+        .chain(SkateChainType::iter().map(EthereumAvs::SkateChain))
+        .chain(InfiniRouteType::iter().map(EthereumAvs::UngateInfiniRoute))
         .collect::<Vec<_>>()
         .into_iter()
     }
 }
 
 // Works with lower case and kebab case - kebab case is what is displayed
-impl EthereumAvsType {
+impl EthereumAvs {
     pub fn from_str(s: &str) -> Option<Self> {
         let normalized = s.replace(['-', '_', ' '], "").to_lowercase();
 
         // First try exact match (current behavior)
-        let exact_match = EthereumAvsType::iter().find(|variant| {
+        let exact_match = EthereumAvs::iter().find(|variant| {
             let variant_str = format!("{:?}", variant);
             let variant_normalized = variant_str.replace(['-', '_', ' '], "").to_lowercase();
             normalized == variant_normalized
@@ -196,7 +196,7 @@ impl EthereumAvsType {
     }
 }
 
-impl std::fmt::Display for EthereumAvsType {
+impl std::fmt::Display for EthereumAvs {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         // Convert enum variant name to kebab case
         let name = format!("{:?}", self).to_case(Case::Kebab);
@@ -204,7 +204,7 @@ impl std::fmt::Display for EthereumAvsType {
     }
 }
 
-impl Serialize for EthereumAvsType {
+impl Serialize for EthereumAvs {
     fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: serde::Serializer,
@@ -228,25 +228,25 @@ impl Serialize for EthereumAvsType {
         }
 
         match self {
-            EthereumAvsType::Altlayer(inner) => serialize_compound("altlayer", inner, serializer),
-            EthereumAvsType::AltlayerMach(inner) => {
+            EthereumAvs::Altlayer(inner) => serialize_compound("altlayer", inner, serializer),
+            EthereumAvs::AltlayerMach(inner) => {
                 serialize_compound("altlayer-mach", inner, serializer)
             }
-            EthereumAvsType::SkateChain(inner) => {
+            EthereumAvs::SkateChain(inner) => {
                 serialize_compound("skate-chain", inner, serializer)
             }
-            EthereumAvsType::UngateInfiniRoute(inner) => {
+            EthereumAvs::UngateInfiniRoute(inner) => {
                 serialize_compound("ungate-infini-route", inner, serializer)
             }
-            EthereumAvsType::PrimevMevCommit(inner) => {
+            EthereumAvs::PrimevMevCommit(inner) => {
                 serialize_compound("primev-mev-commit", inner, serializer)
             }
-            EthereumAvsType::Bolt(inner) => serialize_compound("bolt", inner, serializer),
-            EthereumAvsType::Hyperlane(inner) => serialize_compound("hyperlane", inner, serializer),
-            EthereumAvsType::MishtiNetwork(inner) => {
+            EthereumAvs::Bolt(inner) => serialize_compound("bolt", inner, serializer),
+            EthereumAvs::Hyperlane(inner) => serialize_compound("hyperlane", inner, serializer),
+            EthereumAvs::MishtiNetwork(inner) => {
                 serialize_compound("mishti-network", inner, serializer)
             }
-            EthereumAvsType::DittoNetwork(inner) => {
+            EthereumAvs::DittoNetwork(inner) => {
                 serialize_compound("ditto-network", inner, serializer)
             }
             // Simple types - use Display implementation
@@ -255,7 +255,7 @@ impl Serialize for EthereumAvsType {
     }
 }
 
-impl<'de> Deserialize<'de> for EthereumAvsType {
+impl<'de> Deserialize<'de> for EthereumAvs {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
         D: serde::Deserializer<'de>,
@@ -274,26 +274,26 @@ impl<'de> Deserialize<'de> for EthereumAvsType {
             let normalized_outer = outer.replace(['-', '_', ' '], "").to_lowercase();
 
             match normalized_outer.as_str() {
-                "altlayer" => parse_inner(inner).map(EthereumAvsType::Altlayer),
-                "altlayermach" => parse_inner(inner).map(EthereumAvsType::AltlayerMach),
-                "skatechain" => parse_inner(inner).map(EthereumAvsType::SkateChain),
-                "ungateinfiniroute" => parse_inner(inner).map(EthereumAvsType::UngateInfiniRoute),
-                "primevmevcommit" => parse_inner(inner).map(EthereumAvsType::PrimevMevCommit),
-                "bolt" => parse_inner(inner).map(EthereumAvsType::Bolt),
-                "hyperlane" => parse_inner(inner).map(EthereumAvsType::Hyperlane),
-                "mishti" => parse_inner(inner).map(EthereumAvsType::MishtiNetwork),
-                "ditto" => parse_inner(inner).map(EthereumAvsType::DittoNetwork),
-                "mishtinetwork" => parse_inner(inner).map(EthereumAvsType::MishtiNetwork),
-                "dittonetwork" => parse_inner(inner).map(EthereumAvsType::DittoNetwork),
+                "altlayer" => parse_inner(inner).map(EthereumAvs::Altlayer),
+                "altlayermach" => parse_inner(inner).map(EthereumAvs::AltlayerMach),
+                "skatechain" => parse_inner(inner).map(EthereumAvs::SkateChain),
+                "ungateinfiniroute" => parse_inner(inner).map(EthereumAvs::UngateInfiniRoute),
+                "primevmevcommit" => parse_inner(inner).map(EthereumAvs::PrimevMevCommit),
+                "bolt" => parse_inner(inner).map(EthereumAvs::Bolt),
+                "hyperlane" => parse_inner(inner).map(EthereumAvs::Hyperlane),
+                "mishti" => parse_inner(inner).map(EthereumAvs::MishtiNetwork),
+                "ditto" => parse_inner(inner).map(EthereumAvs::DittoNetwork),
+                "mishtinetwork" => parse_inner(inner).map(EthereumAvs::MishtiNetwork),
+                "dittonetwork" => parse_inner(inner).map(EthereumAvs::DittoNetwork),
                 _ => Err(D::Error::custom(format!(
-                    "Invalid compound EthereumAvsType {normalized_outer}({})",
+                    "Invalid compound EthereumAvs {normalized_outer}({})",
                     inner
                 ))),
             }
         } else {
             // Fall back to existing From<&str> implementation for simple types
-            Ok(EthereumAvsType::from_str(s.as_str())
-                .ok_or_else(|| D::Error::custom("Invalid EthereumAvsType"))?)
+            Ok(EthereumAvs::from_str(s.as_str())
+                .ok_or_else(|| D::Error::custom("Invalid EthereumAvs"))?)
         }
     }
 }
@@ -383,8 +383,8 @@ pub const ZELLULAR_CONTAINER_NAME: &str = "zsequencer-node";
 pub const BOLT_CONTAINER_NAME: &str = "bolt-sidecar-holesky";
 
 // We may want to put these methods elsewhere.
-impl EthereumAvsType {
-    pub fn default_repository(&self) -> Result<&'static str, EthereumAvsTypeError> {
+impl EthereumAvs {
+    pub fn default_repository(&self) -> Result<&'static str, EthereumAvsError> {
         let res = match self {
             Self::BlessB7s => BLESS_B7S_REPO,
             Self::Tanssi => TANSSI_REPO,
@@ -411,46 +411,46 @@ impl EthereumAvsType {
             Self::OpenLayerHolesky => OPEN_LAYER_HOLESKY_REPO,
             Self::ArpaNetworkNodeClient => ARPA_NETWORK_NODE_CLIENT_REPO,
             Self::ChainbaseNetwork => CHAINBASE_NETWORK_V2_REPO,
-            Self::PrimevMevCommit(_) => return Err(EthereumAvsTypeError::NoRepository),
+            Self::PrimevMevCommit(_) => return Err(EthereumAvsError::NoRepository),
             Self::PrimevBidder => PRIMEV_BIDDER_REPO,
             Self::GoPlusAVS => GOPLUS_REPO,
             Self::DittoNetwork(_) => DITTO_NETWORK_REPO,
             Self::AtlasNetwork => ATLAS_NETWORK_REPO,
             Self::Bolt(_) => BOLT_REPO,
-            Self::MishtiNetwork(_) => return Err(EthereumAvsTypeError::NoRepository),
-            Self::Brevis => return Err(EthereumAvsTypeError::NoRepository),
-            Self::Nuffle => return Err(EthereumAvsTypeError::NoRepository),
-            Self::Blockless => return Err(EthereumAvsTypeError::NoRepository),
-            Self::UngateInfiniRoute(_) => return Err(EthereumAvsTypeError::NoRepository),
-            Self::AlignedLayer => return Err(EthereumAvsTypeError::NoRepository),
-            Self::SkateChain(_) => return Err(EthereumAvsTypeError::NoRepository),
-            Self::Redstone => return Err(EthereumAvsTypeError::NoRepository),
-            Self::UnifiAVS => return Err(EthereumAvsTypeError::InvalidEthereumAvsType),
+            Self::MishtiNetwork(_) => return Err(EthereumAvsError::NoRepository),
+            Self::Brevis => return Err(EthereumAvsError::NoRepository),
+            Self::Nuffle => return Err(EthereumAvsError::NoRepository),
+            Self::Blockless => return Err(EthereumAvsError::NoRepository),
+            Self::UngateInfiniRoute(_) => return Err(EthereumAvsError::NoRepository),
+            Self::AlignedLayer => return Err(EthereumAvsError::NoRepository),
+            Self::SkateChain(_) => return Err(EthereumAvsError::NoRepository),
+            Self::Redstone => return Err(EthereumAvsError::NoRepository),
+            Self::UnifiAVS => return Err(EthereumAvsError::InvalidEthereumAvs),
             Self::AethosHolesky => {
-                return Err(EthereumAvsTypeError::SpecializedError(
+                return Err(EthereumAvsError::SpecializedError(
                     "AethosHolesky is deprecated - now predicate".to_string(),
                 ))
             }
             Self::ChainbaseNetworkV1 => {
-                return Err(EthereumAvsTypeError::SpecializedError(
+                return Err(EthereumAvsError::SpecializedError(
                     "ChainbaseNetworkV1 is deprecated - update to V2 - ChainbaseNetwork"
                         .to_string(),
                 ))
             }
-            Self::Kalypso => return Err(EthereumAvsTypeError::NoRepository),
-            Self::RouterXtendNetwork => return Err(EthereumAvsTypeError::NoRepository),
-            Self::CapxCloud => return Err(EthereumAvsTypeError::NoRepository),
-            Self::Symbiosis => return Err(EthereumAvsTypeError::NoRepository),
-            Self::Radius => return Err(EthereumAvsTypeError::NoRepository),
-            Self::IBTCNetwork => return Err(EthereumAvsTypeError::NoRepository),
-            Self::ZKLink => return Err(EthereumAvsTypeError::NoRepository),
-            Self::HyveDA => return Err(EthereumAvsTypeError::NoRepository),
+            Self::Kalypso => return Err(EthereumAvsError::NoRepository),
+            Self::RouterXtendNetwork => return Err(EthereumAvsError::NoRepository),
+            Self::CapxCloud => return Err(EthereumAvsError::NoRepository),
+            Self::Symbiosis => return Err(EthereumAvsError::NoRepository),
+            Self::Radius => return Err(EthereumAvsError::NoRepository),
+            Self::IBTCNetwork => return Err(EthereumAvsError::NoRepository),
+            Self::ZKLink => return Err(EthereumAvsError::NoRepository),
+            Self::HyveDA => return Err(EthereumAvsError::NoRepository),
         };
         Ok(res)
     }
 
     // TODO: Find real default names of nodes marked with `temp_`
-    pub fn default_container_name_mainnet(&self) -> Result<&'static str, EthereumAvsTypeError> {
+    pub fn default_container_name_mainnet(&self) -> Result<&'static str, EthereumAvsError> {
         let res = match self {
             Self::Tanssi => TANSSI_CONTAINER_NAME,
             Self::Cycle => CYCLE_CONTAINER_NAME,
@@ -468,7 +468,7 @@ impl EthereumAvsType {
             Self::LagrangeStateCommittee => LAGRANGE_STATE_COMMITTEE_CONTAINER_NAME,
             Self::LagrangeZkWorker => LAGRANGE_WORKER_CONTAINER_NAME,
             Self::LagrangeZKProver => {
-                return Err(EthereumAvsTypeError::SpecializedError(
+                return Err(EthereumAvsError::SpecializedError(
                     "TODO:".to_string(),
                 ))
             }
@@ -477,14 +477,14 @@ impl EthereumAvsType {
             Self::GoPlusAVS => GOPLUS_CONTAINER_NAME,
             Self::UngateInfiniRoute(_) => UNGATE_MAINNET,
             Self::DittoNetwork(_) => DITTO_NETWORK_CONTAINER_NAME,
-            Self::BlessB7s => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::PrimevMevCommit(_) => return Err(EthereumAvsTypeError::NoDefaultContainerName),
+            Self::BlessB7s => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::PrimevMevCommit(_) => return Err(EthereumAvsError::NoDefaultContainerName),
             Self::PrimevBidder => PRIMEV_BIDDER_CONTAINER_NAME,
             Self::Altlayer(altlayer_type) => {
                 match altlayer_type {
                     AltlayerType::AltlayerMach => MACH_AVS_ETHEREUM,
                     AltlayerType::GmNetworkMach => MACH_AVS_ETHEREUM_GMNETWORK,
-                    AltlayerType::Unknown => return Err(EthereumAvsTypeError::SpecializedError("This unknown altlayer type isn't an actual container, its just the image. Assign a specific altlayer type".to_string())),
+                    AltlayerType::Unknown => return Err(EthereumAvsError::SpecializedError("This unknown altlayer type isn't an actual container, its just the image. Assign a specific altlayer type".to_string())),
                 }
             },
             Self::AltlayerMach(altlayer_mach_type) => {
@@ -492,54 +492,54 @@ impl EthereumAvsType {
                     MachType::Xterio => MACH_AVS_ETHEREUM_XTERIO,
                     MachType::DodoChain => MACH_AVS_ETHEREUM_DODOCHAIN,
                     MachType::Cyber => MACH_AVS_ETHEREUM_CYBER,
-                    MachType::Unknown => return Err(EthereumAvsTypeError::SpecializedError("GenericAltlayer isn't an actual container, its just the image. Assign a specific altlayer type".to_string())),
+                    MachType::Unknown => return Err(EthereumAvsError::SpecializedError("GenericAltlayer isn't an actual container, its just the image. Assign a specific altlayer type".to_string())),
                 }
             },
-            Self::MishtiNetwork(_) => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::Brevis => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::Blockless => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::K3LabsAvs => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::K3LabsAvsHolesky => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::Redstone => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::AlignedLayer => return Err(EthereumAvsTypeError::InvalidEthereumAvsType),
-            Self::SkateChain(_skate_chain_type) => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::UnifiAVS => return Err(EthereumAvsTypeError::InvalidEthereumAvsType),
-            Self::ArpaNetworkNodeClient => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::Predicate => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::OpenLayerMainnet => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::OpenLayerHolesky => return Err(EthereumAvsTypeError::InvalidEthereumAvsType),
+            Self::MishtiNetwork(_) => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::Brevis => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::Blockless => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::K3LabsAvs => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::K3LabsAvsHolesky => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::Redstone => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::AlignedLayer => return Err(EthereumAvsError::InvalidEthereumAvs),
+            Self::SkateChain(_skate_chain_type) => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::UnifiAVS => return Err(EthereumAvsError::InvalidEthereumAvs),
+            Self::ArpaNetworkNodeClient => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::Predicate => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::OpenLayerMainnet => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::OpenLayerHolesky => return Err(EthereumAvsError::InvalidEthereumAvs),
             Self::Nuffle => {
-                return Err(EthereumAvsTypeError::SpecializedError(
+                return Err(EthereumAvsError::SpecializedError(
                     "Not on mainnet"
                         .to_string(),
                 ))
             }
             Self::ChainbaseNetworkV1 => {
-                return Err(EthereumAvsTypeError::SpecializedError(
+                return Err(EthereumAvsError::SpecializedError(
                     "ChainbaseNetworkV1 is deprecated - update to V2 - ChainbaseNetwork"
                         .to_string(),
                 ))
             }
 
             Self::AethosHolesky => {
-                return Err(EthereumAvsTypeError::SpecializedError(
+                return Err(EthereumAvsError::SpecializedError(
                     "AethosHolesky is deprecated - now Predicate".to_string(),
                 ))
             }
 
-            Self::Kalypso => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::RouterXtendNetwork => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::CapxCloud => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::Symbiosis => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::Radius => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::IBTCNetwork => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::ZKLink => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::HyveDA => return Err(EthereumAvsTypeError::NoDefaultContainerName),
+            Self::Kalypso => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::RouterXtendNetwork => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::CapxCloud => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::Symbiosis => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::Radius => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::IBTCNetwork => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::ZKLink => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::HyveDA => return Err(EthereumAvsError::NoDefaultContainerName),
         };
         Ok(res)
     }
 
-    pub fn default_container_name_holesky(&self) -> Result<&'static str, EthereumAvsTypeError> {
+    pub fn default_container_name_holesky(&self) -> Result<&'static str, EthereumAvsError> {
         let res = match self {
             Self::Tanssi => TANSSI_CONTAINER_NAME,
             Self::Cycle => CYCLE_CONTAINER_NAME,
@@ -558,11 +558,11 @@ impl EthereumAvsType {
             Self::LagrangeStateCommittee => LAGRANGE_STATE_COMMITTEE_CONTAINER_NAME,
             Self::LagrangeZkWorker => LAGRANGE_WORKER_CONTAINER_NAME,
             Self::Nuffle => NUFFLE_CONTAINER_NAME,
-            Self::BlessB7s => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::PrimevMevCommit(_) => return Err(EthereumAvsTypeError::NoDefaultContainerName),
+            Self::BlessB7s => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::PrimevMevCommit(_) => return Err(EthereumAvsError::NoDefaultContainerName),
             Self::PrimevBidder => PRIMEV_BIDDER_CONTAINER_NAME,
             Self::LagrangeZKProver => {
-                return Err(EthereumAvsTypeError::SpecializedError(
+                return Err(EthereumAvsError::SpecializedError(
                     "TODO".to_string(),
                 ))
             }
@@ -574,7 +574,7 @@ impl EthereumAvsType {
                 match altlayer_type {
                     AltlayerType::AltlayerMach => MACH_AVS_HOLESKY,
                     AltlayerType::GmNetworkMach => MACH_AVS_HOLESKY_GMNETWORK,
-                    AltlayerType::Unknown => return Err(EthereumAvsTypeError::SpecializedError("This unknown altlayer type isn't an actual container, its just the image. Assign a specific altlayer type".to_string())),
+                    AltlayerType::Unknown => return Err(EthereumAvsError::SpecializedError("This unknown altlayer type isn't an actual container, its just the image. Assign a specific altlayer type".to_string())),
                 }
             },
             Self::AltlayerMach(altlayer_mach_type) => {
@@ -582,37 +582,37 @@ impl EthereumAvsType {
                     MachType::Xterio => MACH_AVS_HOLESKY_XTERIO_TESTNET,
                     MachType::DodoChain => MACH_AVS_HOLESKY_DODOCHAIN,
                     MachType::Cyber => MACH_AVS_HOLESKY_CYBER_TESTNET_OPERATOR_NODE,
-                    MachType::Unknown => return Err(EthereumAvsTypeError::SpecializedError("GenericAltlayer isn't an actual container, its just the image. Assign a specific altlayer type".to_string())),
+                    MachType::Unknown => return Err(EthereumAvsError::SpecializedError("GenericAltlayer isn't an actual container, its just the image. Assign a specific altlayer type".to_string())),
                 }
             },
-            Self::MishtiNetwork(_) => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::Brevis => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::Blockless => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::Redstone => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::K3LabsAvs => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::K3LabsAvsHolesky => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::AlignedLayer => return Err(EthereumAvsTypeError::InvalidEthereumAvsType),
-            Self::SkateChain(_skate_chain_type) => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::UnifiAVS => return Err(EthereumAvsTypeError::InvalidEthereumAvsType),
-            Self::ArpaNetworkNodeClient => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::Predicate => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::AethosHolesky => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::OpenLayerHolesky => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::OpenLayerMainnet => return Err(EthereumAvsTypeError::InvalidEthereumAvsType),
+            Self::MishtiNetwork(_) => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::Brevis => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::Blockless => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::Redstone => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::K3LabsAvs => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::K3LabsAvsHolesky => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::AlignedLayer => return Err(EthereumAvsError::InvalidEthereumAvs),
+            Self::SkateChain(_skate_chain_type) => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::UnifiAVS => return Err(EthereumAvsError::InvalidEthereumAvs),
+            Self::ArpaNetworkNodeClient => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::Predicate => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::AethosHolesky => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::OpenLayerHolesky => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::OpenLayerMainnet => return Err(EthereumAvsError::InvalidEthereumAvs),
             Self::ChainbaseNetworkV1 => {
-                return Err(EthereumAvsTypeError::SpecializedError(
+                return Err(EthereumAvsError::SpecializedError(
                     "ChainbaseNetworkV1 is deprecated - update to V2 - ChainbaseNetwork"
                         .to_string(),
                 ))
             },
-            Self::Kalypso => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::RouterXtendNetwork => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::CapxCloud => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::Symbiosis => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::Radius => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::IBTCNetwork => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::ZKLink => return Err(EthereumAvsTypeError::NoDefaultContainerName),
-            Self::HyveDA => return Err(EthereumAvsTypeError::NoDefaultContainerName),
+            Self::Kalypso => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::RouterXtendNetwork => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::CapxCloud => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::Symbiosis => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::Radius => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::IBTCNetwork => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::ZKLink => return Err(EthereumAvsError::NoDefaultContainerName),
+            Self::HyveDA => return Err(EthereumAvsError::NoDefaultContainerName),
         };
         Ok(res)
     }
@@ -640,7 +640,7 @@ impl EthereumAvsType {
         Self::from_repo(parts[1])
     }
 
-    // Given a repo and tag, get the EthereumAvsType, since they have a 1:1 relationship
+    // Given a repo and tag, get the EthereumAvs, since they have a 1:1 relationship
     pub fn from_repo(repo: &str) -> Option<Self> {
         debug!("repo: {}", repo);
         match repo {
@@ -725,19 +725,19 @@ impl EthereumAvsType {
     }
 
     pub fn all_machtypes() -> Vec<Self> {
-        MachType::iter().map(EthereumAvsType::AltlayerMach).collect()
+        MachType::iter().map(EthereumAvs::AltlayerMach).collect()
     }
 
     pub fn all_altlayertypes() -> Vec<Self> {
-        AltlayerType::iter().map(EthereumAvsType::Altlayer).collect()
+        AltlayerType::iter().map(EthereumAvs::Altlayer).collect()
     }
 
     pub fn all_skatechaintypes() -> Vec<Self> {
-        SkateChainType::iter().map(EthereumAvsType::SkateChain).collect()
+        SkateChainType::iter().map(EthereumAvs::SkateChain).collect()
     }
 
     pub fn all_infiniroutetypes() -> Vec<Self> {
-        InfiniRouteType::iter().map(EthereumAvsType::UngateInfiniRoute).collect()
+        InfiniRouteType::iter().map(EthereumAvs::UngateInfiniRoute).collect()
     }
 
     //This function assumes that the repository is in the format of "organization" / "repo"
@@ -749,29 +749,29 @@ impl EthereumAvsType {
 
     fn flatten_layered_type(&self) -> bool {
         match self {
-            EthereumAvsType::Altlayer(inner_type) => matches!(inner_type, AltlayerType::Unknown),
-            EthereumAvsType::AltlayerMach(inner_type) => matches!(inner_type, MachType::Unknown),
-            EthereumAvsType::SkateChain(inner_type) => {
+            EthereumAvs::Altlayer(inner_type) => matches!(inner_type, AltlayerType::Unknown),
+            EthereumAvs::AltlayerMach(inner_type) => matches!(inner_type, MachType::Unknown),
+            EthereumAvs::SkateChain(inner_type) => {
                 matches!(inner_type, SkateChainType::UnknownL2)
             }
-            EthereumAvsType::UngateInfiniRoute(inner_type) => {
+            EthereumAvs::UngateInfiniRoute(inner_type) => {
                 matches!(inner_type, InfiniRouteType::UnknownL2)
             }
-            EthereumAvsType::PrimevMevCommit(inner_type) => {
+            EthereumAvs::PrimevMevCommit(inner_type) => {
                 matches!(inner_type, ActiveSet::Unknown)
             }
-            EthereumAvsType::Bolt(inner_type) => matches!(inner_type, ActiveSet::Unknown),
-            EthereumAvsType::Hyperlane(inner_type) => matches!(inner_type, ActiveSet::Unknown),
-            EthereumAvsType::DittoNetwork(inner_type) => matches!(inner_type, ActiveSet::Unknown),
+            EthereumAvs::Bolt(inner_type) => matches!(inner_type, ActiveSet::Unknown),
+            EthereumAvs::Hyperlane(inner_type) => matches!(inner_type, ActiveSet::Unknown),
+            EthereumAvs::DittoNetwork(inner_type) => matches!(inner_type, ActiveSet::Unknown),
             _ => true,
         }
     }
 }
 
 #[derive(Debug, thiserror::Error, Eq, PartialEq)]
-pub enum EthereumAvsTypeError {
+pub enum EthereumAvsError {
     #[error("Invalid node type")]
-    InvalidEthereumAvsType,
+    InvalidEthereumAvs,
     #[error("Could not match node type: {0}")]
     NodeMatchError(String),
     #[error("This node type does not have a default container name")]
@@ -791,103 +791,103 @@ mod node_type_tests {
     #[test]
     fn test_from_docker_image_name() {
         let no_tag_image_name = "layr-labs/eigenda/opr-node";
-        let no_tag_node_type = EthereumAvsType::from_image(no_tag_image_name).unwrap();
-        assert_eq!(no_tag_node_type, EthereumAvsType::EigenDA);
+        let no_tag_node_type = EthereumAvs::from_image(no_tag_image_name).unwrap();
+        assert_eq!(no_tag_node_type, EthereumAvs::EigenDA);
 
         let image_name = "layr-labs/eigenda/opr-node:0.8.4";
-        let node_type = EthereumAvsType::from_image(image_name).unwrap();
-        assert_eq!(node_type, EthereumAvsType::EigenDA);
+        let node_type = EthereumAvs::from_image(image_name).unwrap();
+        assert_eq!(node_type, EthereumAvs::EigenDA);
 
         let image_name_lagrange_holesky = "lagrangelabs/worker:holesky";
         let node_type_lagrange_holesky =
-            EthereumAvsType::from_image(image_name_lagrange_holesky).unwrap();
-        assert_eq!(node_type_lagrange_holesky, EthereumAvsType::LagrangeZkWorker);
+            EthereumAvs::from_image(image_name_lagrange_holesky).unwrap();
+        assert_eq!(node_type_lagrange_holesky, EthereumAvs::LagrangeZkWorker);
 
         let image_name_lagrange_mainnet = "lagrangelabs/worker:mainnet";
         let node_type_lagrange_mainnet =
-            EthereumAvsType::from_image(image_name_lagrange_mainnet).unwrap();
-        assert_eq!(node_type_lagrange_mainnet, EthereumAvsType::LagrangeZkWorker);
+            EthereumAvs::from_image(image_name_lagrange_mainnet).unwrap();
+        assert_eq!(node_type_lagrange_mainnet, EthereumAvs::LagrangeZkWorker);
 
         let unknown_image_name = "unknown";
-        let unknown_node_type = EthereumAvsType::from_image(unknown_image_name);
+        let unknown_node_type = EthereumAvs::from_image(unknown_image_name);
         assert_eq!(unknown_node_type, None);
     }
 
     #[test]
     fn test_from_str_kebab_case() {
         let test_cases = vec![
-            ("eigenda", Some(EthereumAvsType::EigenDA)),
-            ("ava-protocol", Some(EthereumAvsType::AvaProtocol)),
-            ("lagrange-state-committee", Some(EthereumAvsType::LagrangeStateCommittee)),
-            ("lagrange-zk-worker", Some(EthereumAvsType::LagrangeZkWorker)),
-            ("eoracle", Some(EthereumAvsType::EOracle)),
-            ("hyperlane(eigenlayer)", Some(EthereumAvsType::Hyperlane(ActiveSet::Eigenlayer))),
+            ("eigenda", Some(EthereumAvs::EigenDA)),
+            ("ava-protocol", Some(EthereumAvs::AvaProtocol)),
+            ("lagrange-state-committee", Some(EthereumAvs::LagrangeStateCommittee)),
+            ("lagrange-zk-worker", Some(EthereumAvs::LagrangeZkWorker)),
+            ("eoracle", Some(EthereumAvs::EOracle)),
+            ("hyperlane(eigenlayer)", Some(EthereumAvs::Hyperlane(ActiveSet::Eigenlayer))),
             (
                 "altlayer(altlayer-mach)",
-                Some(EthereumAvsType::Altlayer(AltlayerType::AltlayerMach)),
+                Some(EthereumAvs::Altlayer(AltlayerType::AltlayerMach)),
             ),
             (
                 "altlayer(gm-network-mach)",
-                Some(EthereumAvsType::Altlayer(AltlayerType::GmNetworkMach)),
+                Some(EthereumAvs::Altlayer(AltlayerType::GmNetworkMach)),
             ),
-            ("altlayer-mach(xterio)", Some(EthereumAvsType::AltlayerMach(MachType::Xterio))),
-            ("altlayer-mach(dodo-chain)", Some(EthereumAvsType::AltlayerMach(MachType::DodoChain))),
-            ("altlayer-mach(cyber)", Some(EthereumAvsType::AltlayerMach(MachType::Cyber))),
+            ("altlayer-mach(xterio)", Some(EthereumAvs::AltlayerMach(MachType::Xterio))),
+            ("altlayer-mach(dodo-chain)", Some(EthereumAvs::AltlayerMach(MachType::DodoChain))),
+            ("altlayer-mach(cyber)", Some(EthereumAvs::AltlayerMach(MachType::Cyber))),
             (
                 "ungate-infini-route(unknown-l2)",
-                Some(EthereumAvsType::UngateInfiniRoute(InfiniRouteType::UnknownL2)),
+                Some(EthereumAvs::UngateInfiniRoute(InfiniRouteType::UnknownL2)),
             ),
-            ("skate-chain(base)", Some(EthereumAvsType::SkateChain(SkateChainType::Base))),
-            ("skate-chain(mantle)", Some(EthereumAvsType::SkateChain(SkateChainType::Mantle))),
+            ("skate-chain(base)", Some(EthereumAvs::SkateChain(SkateChainType::Base))),
+            ("skate-chain(mantle)", Some(EthereumAvs::SkateChain(SkateChainType::Mantle))),
             (
                 "skate-chain(unknown-l2)",
-                Some(EthereumAvsType::SkateChain(SkateChainType::UnknownL2)),
+                Some(EthereumAvs::SkateChain(SkateChainType::UnknownL2)),
             ),
-            ("ditto-network(unknown)", Some(EthereumAvsType::DittoNetwork(ActiveSet::Unknown))),
+            ("ditto-network(unknown)", Some(EthereumAvs::DittoNetwork(ActiveSet::Unknown))),
             (
                 "ditto-network(eigenlayer)",
-                Some(EthereumAvsType::DittoNetwork(ActiveSet::Eigenlayer)),
+                Some(EthereumAvs::DittoNetwork(ActiveSet::Eigenlayer)),
             ),
-            ("ditto-network(symbiotic)", Some(EthereumAvsType::DittoNetwork(ActiveSet::Symbiotic))),
-            ("bless-b7s", Some(EthereumAvsType::BlessB7s)),
+            ("ditto-network(symbiotic)", Some(EthereumAvs::DittoNetwork(ActiveSet::Symbiotic))),
+            ("bless-b7s", Some(EthereumAvs::BlessB7s)),
         ];
 
         for (input, expected) in test_cases {
-            assert_eq!(EthereumAvsType::from_str(input), expected, "Failed for input: {}", input);
+            assert_eq!(EthereumAvs::from_str(input), expected, "Failed for input: {}", input);
         }
     }
 
     #[test]
     fn test_from_str_lower_case() {
         let test_cases = vec![
-            ("eigenda", Some(EthereumAvsType::EigenDA)),
-            ("avaprotocol", Some(EthereumAvsType::AvaProtocol)),
-            ("lagrangestatecommittee", Some(EthereumAvsType::LagrangeStateCommittee)),
-            ("lagrangezkworker", Some(EthereumAvsType::LagrangeZkWorker)),
-            ("eoracle", Some(EthereumAvsType::EOracle)),
-            ("hyperlane(eigenlayer)", Some(EthereumAvsType::Hyperlane(ActiveSet::Eigenlayer))),
-            ("altlayer(altlayermach)", Some(EthereumAvsType::Altlayer(AltlayerType::AltlayerMach))),
+            ("eigenda", Some(EthereumAvs::EigenDA)),
+            ("avaprotocol", Some(EthereumAvs::AvaProtocol)),
+            ("lagrangestatecommittee", Some(EthereumAvs::LagrangeStateCommittee)),
+            ("lagrangezkworker", Some(EthereumAvs::LagrangeZkWorker)),
+            ("eoracle", Some(EthereumAvs::EOracle)),
+            ("hyperlane(eigenlayer)", Some(EthereumAvs::Hyperlane(ActiveSet::Eigenlayer))),
+            ("altlayer(altlayermach)", Some(EthereumAvs::Altlayer(AltlayerType::AltlayerMach))),
             (
                 "altlayer(gmnetworkmach)",
-                Some(EthereumAvsType::Altlayer(AltlayerType::GmNetworkMach)),
+                Some(EthereumAvs::Altlayer(AltlayerType::GmNetworkMach)),
             ),
-            ("altlayermach(xterio)", Some(EthereumAvsType::AltlayerMach(MachType::Xterio))),
-            ("altlayermach(dodochain)", Some(EthereumAvsType::AltlayerMach(MachType::DodoChain))),
-            ("altlayermach(cyber)", Some(EthereumAvsType::AltlayerMach(MachType::Cyber))),
+            ("altlayermach(xterio)", Some(EthereumAvs::AltlayerMach(MachType::Xterio))),
+            ("altlayermach(dodochain)", Some(EthereumAvs::AltlayerMach(MachType::DodoChain))),
+            ("altlayermach(cyber)", Some(EthereumAvs::AltlayerMach(MachType::Cyber))),
             (
                 "ungate-infini-route(unknownl2)",
-                Some(EthereumAvsType::UngateInfiniRoute(InfiniRouteType::UnknownL2)),
+                Some(EthereumAvs::UngateInfiniRoute(InfiniRouteType::UnknownL2)),
             ),
-            ("skate-chain(base)", Some(EthereumAvsType::SkateChain(SkateChainType::Base))),
-            ("skate-chain(mantle)", Some(EthereumAvsType::SkateChain(SkateChainType::Mantle))),
-            ("bolt(eigenlayer)", Some(EthereumAvsType::Bolt(ActiveSet::Eigenlayer))),
-            ("bolt(unknown)", Some(EthereumAvsType::Bolt(ActiveSet::Unknown))),
-            ("bolt(symbiotic)", Some(EthereumAvsType::Bolt(ActiveSet::Symbiotic))),
-            ("hyperlane(unknown)", Some(EthereumAvsType::Hyperlane(ActiveSet::Unknown))),
+            ("skate-chain(base)", Some(EthereumAvs::SkateChain(SkateChainType::Base))),
+            ("skate-chain(mantle)", Some(EthereumAvs::SkateChain(SkateChainType::Mantle))),
+            ("bolt(eigenlayer)", Some(EthereumAvs::Bolt(ActiveSet::Eigenlayer))),
+            ("bolt(unknown)", Some(EthereumAvs::Bolt(ActiveSet::Unknown))),
+            ("bolt(symbiotic)", Some(EthereumAvs::Bolt(ActiveSet::Symbiotic))),
+            ("hyperlane(unknown)", Some(EthereumAvs::Hyperlane(ActiveSet::Unknown))),
         ];
 
         for (input, expected) in test_cases {
-            assert_eq!(EthereumAvsType::from_str(input), expected, "Failed for input: {}", input);
+            assert_eq!(EthereumAvs::from_str(input), expected, "Failed for input: {}", input);
         }
     }
 
@@ -896,43 +896,43 @@ mod node_type_tests {
         let test_cases = vec!["not_a_node", "random", "", "123", "unknown-node-type"];
 
         for input in test_cases {
-            assert_eq!(EthereumAvsType::from_str(input), None, "Failed for input: {}", input);
+            assert_eq!(EthereumAvs::from_str(input), None, "Failed for input: {}", input);
         }
     }
 
     #[test]
     fn test_backwards_compatibility() {
-        let node_type = EthereumAvsType::from_str("altlayer");
-        assert_eq!(node_type, Some(EthereumAvsType::Altlayer(AltlayerType::Unknown)));
-        let node_type = EthereumAvsType::from_str("altlayermach");
-        assert_eq!(node_type, Some(EthereumAvsType::AltlayerMach(MachType::Unknown)));
-        let node_type = EthereumAvsType::from_str("bolt");
-        assert_eq!(node_type, Some(EthereumAvsType::Bolt(ActiveSet::Unknown)));
-        let node_type = EthereumAvsType::from_str("primev-mev-commit");
-        assert_eq!(node_type, Some(EthereumAvsType::PrimevMevCommit(ActiveSet::Unknown)));
-        let node_type = EthereumAvsType::from_str("ungate-infini-route");
-        assert_eq!(node_type, Some(EthereumAvsType::UngateInfiniRoute(InfiniRouteType::UnknownL2)));
-        let node_type = EthereumAvsType::from_str("skate-chain");
-        assert_eq!(node_type, Some(EthereumAvsType::SkateChain(SkateChainType::UnknownL2)));
-        let node_type = EthereumAvsType::from_str("hyperlane");
-        assert_eq!(node_type, Some(EthereumAvsType::Hyperlane(ActiveSet::Unknown)));
+        let node_type = EthereumAvs::from_str("altlayer");
+        assert_eq!(node_type, Some(EthereumAvs::Altlayer(AltlayerType::Unknown)));
+        let node_type = EthereumAvs::from_str("altlayermach");
+        assert_eq!(node_type, Some(EthereumAvs::AltlayerMach(MachType::Unknown)));
+        let node_type = EthereumAvs::from_str("bolt");
+        assert_eq!(node_type, Some(EthereumAvs::Bolt(ActiveSet::Unknown)));
+        let node_type = EthereumAvs::from_str("primev-mev-commit");
+        assert_eq!(node_type, Some(EthereumAvs::PrimevMevCommit(ActiveSet::Unknown)));
+        let node_type = EthereumAvs::from_str("ungate-infini-route");
+        assert_eq!(node_type, Some(EthereumAvs::UngateInfiniRoute(InfiniRouteType::UnknownL2)));
+        let node_type = EthereumAvs::from_str("skate-chain");
+        assert_eq!(node_type, Some(EthereumAvs::SkateChain(SkateChainType::UnknownL2)));
+        let node_type = EthereumAvs::from_str("hyperlane");
+        assert_eq!(node_type, Some(EthereumAvs::Hyperlane(ActiveSet::Unknown)));
     }
 
     #[test]
     fn test_from_str_case_insensitive() {
         let test_cases = vec![
-            ("EIGENDA", Some(EthereumAvsType::EigenDA)),
-            ("eigenDA", Some(EthereumAvsType::EigenDA)),
-            ("EigenDa", Some(EthereumAvsType::EigenDA)),
-            ("HYPERLANE(UNKNOWN)", Some(EthereumAvsType::Hyperlane(ActiveSet::Unknown))),
-            ("HyperLane(Unknown)", Some(EthereumAvsType::Hyperlane(ActiveSet::Unknown))),
-            ("HYPERLANE(EIGENLAYER)", Some(EthereumAvsType::Hyperlane(ActiveSet::Eigenlayer))),
-            ("HyperLane(Eigenlayer)", Some(EthereumAvsType::Hyperlane(ActiveSet::Eigenlayer))),
-            ("BLEsSB7S", Some(EthereumAvsType::BlessB7s)),
+            ("EIGENDA", Some(EthereumAvs::EigenDA)),
+            ("eigenDA", Some(EthereumAvs::EigenDA)),
+            ("EigenDa", Some(EthereumAvs::EigenDA)),
+            ("HYPERLANE(UNKNOWN)", Some(EthereumAvs::Hyperlane(ActiveSet::Unknown))),
+            ("HyperLane(Unknown)", Some(EthereumAvs::Hyperlane(ActiveSet::Unknown))),
+            ("HYPERLANE(EIGENLAYER)", Some(EthereumAvs::Hyperlane(ActiveSet::Eigenlayer))),
+            ("HyperLane(Eigenlayer)", Some(EthereumAvs::Hyperlane(ActiveSet::Eigenlayer))),
+            ("BLEsSB7S", Some(EthereumAvs::BlessB7s)),
         ];
 
         for (input, expected) in test_cases {
-            assert_eq!(EthereumAvsType::from_str(input), expected, "Failed for input: {}", input);
+            assert_eq!(EthereumAvs::from_str(input), expected, "Failed for input: {}", input);
         }
     }
 }
