@@ -52,84 +52,54 @@ impl Serialize for NodeType {
     where
         S: serde::Serializer,
     {
-        use convert_case::{Case, Casing};
-
-        fn serialize_compound<S, T>(
-            outer: &str,
-            inner: &T,
-            serializer: S,
-        ) -> Result<S::Ok, S::Error>
-        where
-            S: serde::Serializer,
-            T: serde::Serialize,
-        {
-            let inner_str = serde_json::to_string(inner)
-                .map_err(serde::ser::Error::custom)?
-                .trim_matches('"')
-                .to_case(Case::Kebab);
-            serializer.serialize_str(&format!("{}({})", outer, inner_str))
-        }
-
         match self {
-            NodeType::Altlayer(inner) => serialize_compound("altlayer", inner, serializer),
-            NodeType::AltlayerMach(inner) => serialize_compound("altlayer-mach", inner, serializer),
-            NodeType::SkateChain(inner) => serialize_compound("skate-chain", inner, serializer),
-            NodeType::UngateInfiniRoute(inner) => {
-                serialize_compound("ungate-infini-route", inner, serializer)
+            NodeType::EthereumAvs(inner) => {
+                let mut buf = Vec::new();
+                inner.serialize(&mut serde_json::Serializer::new(&mut buf))?;
+                let inner_str = String::from_utf8(buf).map_err(serde::ser::Error::custom)?;
+                serializer.serialize_str(&format!("ethavs:{}", inner_str.trim_matches('"')))
             }
-            NodeType::PrimevMevCommit(inner) => {
-                serialize_compound("primev-mev-commit", inner, serializer)
+            NodeType::EthereumNode(inner) => {
+                let mut buf = Vec::new();
+                inner.serialize(&mut serde_json::Serializer::new(&mut buf))?;
+                let inner_str = String::from_utf8(buf).map_err(serde::ser::Error::custom)?;
+                serializer.serialize_str(&format!("ethnode:{}", inner_str.trim_matches('"')))
             }
-            NodeType::Bolt(inner) => serialize_compound("bolt", inner, serializer),
-            NodeType::Hyperlane(inner) => serialize_compound("hyperlane", inner, serializer),
-            NodeType::MishtiNetwork(inner) => {
-                serialize_compound("mishti-network", inner, serializer)
-            }
-            NodeType::DittoNetwork(inner) => serialize_compound("ditto-network", inner, serializer),
-            // Simple types - use Display implementation
-            _ => serializer.serialize_str(&self.to_string()),
+            NodeType::Unknown => serializer.serialize_str("unknown"),
         }
     }
 }
 
 impl<'de> Deserialize<'de> for NodeType {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    fn deserialize<D>(deserializer: D) -> Self
     where
         D: serde::Deserializer<'de>,
     {
-        use serde::de::Error;
+        let s = match String::deserialize(deserializer) {
+            Ok(s) => s,
+            Err(_) => return NodeType::Unknown,
+        };
 
-        let s = String::deserialize(deserializer)?;
-
-        // Helper function to parse inner types
-        fn parse_inner<T: serde::de::DeserializeOwned, E: Error>(inner: &str) -> Result<T, E> {
-            serde_json::from_str(&format!("\"{}\"", inner)).map_err(E::custom)
-        }
-
-        if let Some((outer, inner)) = s.split_once('(') {
-            let inner = inner.trim_end_matches(')');
-            let normalized_outer = outer.replace(['-', '_', ' '], "").to_lowercase();
-
-            match normalized_outer.as_str() {
-                "altlayer" => parse_inner(inner).map(NodeType::Altlayer),
-                "altlayermach" => parse_inner(inner).map(NodeType::AltlayerMach),
-                "skatechain" => parse_inner(inner).map(NodeType::SkateChain),
-                "ungateinfiniroute" => parse_inner(inner).map(NodeType::UngateInfiniRoute),
-                "primevmevcommit" => parse_inner(inner).map(NodeType::PrimevMevCommit),
-                "bolt" => parse_inner(inner).map(NodeType::Bolt),
-                "hyperlane" => parse_inner(inner).map(NodeType::Hyperlane),
-                "mishti" => parse_inner(inner).map(NodeType::MishtiNetwork),
-                "ditto" => parse_inner(inner).map(NodeType::DittoNetwork),
-                "mishtinetwork" => parse_inner(inner).map(NodeType::MishtiNetwork),
-                "dittonetwork" => parse_inner(inner).map(NodeType::DittoNetwork),
-                _ => Err(D::Error::custom(format!(
-                    "Invalid compound NodeType {normalized_outer}({})",
-                    inner
-                ))),
+        if let Some((prefix, rest)) = s.split_once(':') {
+            match prefix {
+                "ethavs" => {
+                    let avs_type = EthereumAvsType::from(rest);
+                    NodeType::EthereumAvs(avs_type)
+                }
+                "ethnode" => {
+                    // let node_type = EthereumNodeType::from(rest);
+                    // NodeType::EthereumNode(node_type)
+                    todo!()
+                }
+                _ => NodeType::Unknown,
             }
         } else {
-            // Fall back to existing From<&str> implementation for simple types
-            Ok(NodeType::from(s.as_str()))
+            // Handle legacy format without prefix
+            if let Ok(avs_type) = EthereumAvsType::try_from(s.as_str()) {
+                NodeType::EthereumAvs(avs_type)
+            } else {
+                NodeType::Unknown
+            }
         }
     }
 }

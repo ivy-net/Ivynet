@@ -51,7 +51,6 @@ pub enum ActiveSet {
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum EthereumAvsType {
-    Unknown,
     AvaProtocol,
     EigenDA,
     LagrangeStateCommittee,
@@ -133,7 +132,6 @@ impl IntoEnumIterator for EthereumAvsType {
             EthereumAvsType::AlignedLayer,
             EthereumAvsType::Gasp,
             EthereumAvsType::Nuffle,
-            EthereumAvsType::Unknown,
             EthereumAvsType::Blockless,
             EthereumAvsType::Primus,
             EthereumAvsType::AtlasNetwork,
@@ -168,8 +166,8 @@ impl IntoEnumIterator for EthereumAvsType {
 }
 
 // Works with lower case and kebab case - kebab case is what is displayed
-impl From<&str> for EthereumAvsType {
-    fn from(s: &str) -> Self {
+impl EthereumAvsType {
+    pub fn from_str(s: &str) -> Option<Self> {
         let normalized = s.replace(['-', '_', ' '], "").to_lowercase();
 
         // First try exact match (current behavior)
@@ -180,20 +178,20 @@ impl From<&str> for EthereumAvsType {
         });
 
         if let Some(exact_match) = exact_match {
-            return exact_match;
+            return Some(exact_match);
         }
 
         // If no exact match, try matching just the outer type
         match normalized.as_str() {
-            "altlayer" => Self::Altlayer(AltlayerType::Unknown),
-            "altlayermach" => Self::AltlayerMach(MachType::Unknown),
-            "skatechain" => Self::SkateChain(SkateChainType::UnknownL2),
-            "ungateinfiniroute" => Self::UngateInfiniRoute(InfiniRouteType::UnknownL2),
-            "primevmevcommit" => Self::PrimevMevCommit(ActiveSet::Unknown),
-            "bolt" => Self::Bolt(ActiveSet::Unknown),
-            "hyperlane" => Self::Hyperlane(ActiveSet::Unknown),
-            "dittonetwork" => Self::DittoNetwork(ActiveSet::Unknown),
-            _ => Self::Unknown,
+            "altlayer" => Some(Self::Altlayer(AltlayerType::Unknown)),
+            "altlayermach" => Some(Self::AltlayerMach(MachType::Unknown)),
+            "skatechain" => Some(Self::SkateChain(SkateChainType::UnknownL2)),
+            "ungateinfiniroute" => Some(Self::UngateInfiniRoute(InfiniRouteType::UnknownL2)),
+            "primevmevcommit" => Some(Self::PrimevMevCommit(ActiveSet::Unknown)),
+            "bolt" => Some(Self::Bolt(ActiveSet::Unknown)),
+            "hyperlane" => Some(Self::Hyperlane(ActiveSet::Unknown)),
+            "dittonetwork" => Some(Self::DittoNetwork(ActiveSet::Unknown)),
+            _ => None,
         }
     }
 }
@@ -294,7 +292,8 @@ impl<'de> Deserialize<'de> for EthereumAvsType {
             }
         } else {
             // Fall back to existing From<&str> implementation for simple types
-            Ok(EthereumAvsType::from(s.as_str()))
+            Ok(EthereumAvsType::from_str(s.as_str())
+                .ok_or_else(|| D::Error::custom("Invalid EthereumAvsType"))?)
         }
     }
 }
@@ -427,7 +426,6 @@ impl EthereumAvsType {
             Self::SkateChain(_) => return Err(EthereumAvsTypeError::NoRepository),
             Self::Redstone => return Err(EthereumAvsTypeError::NoRepository),
             Self::UnifiAVS => return Err(EthereumAvsTypeError::InvalidEthereumAvsType),
-            Self::Unknown => return Err(EthereumAvsTypeError::InvalidEthereumAvsType),
             Self::AethosHolesky => {
                 return Err(EthereumAvsTypeError::SpecializedError(
                     "AethosHolesky is deprecated - now predicate".to_string(),
@@ -510,7 +508,6 @@ impl EthereumAvsType {
             Self::Predicate => return Err(EthereumAvsTypeError::NoDefaultContainerName),
             Self::OpenLayerMainnet => return Err(EthereumAvsTypeError::NoDefaultContainerName),
             Self::OpenLayerHolesky => return Err(EthereumAvsTypeError::InvalidEthereumAvsType),
-            Self::Unknown => return Err(EthereumAvsTypeError::InvalidEthereumAvsType),
             Self::Nuffle => {
                 return Err(EthereumAvsTypeError::SpecializedError(
                     "Not on mainnet"
@@ -602,7 +599,6 @@ impl EthereumAvsType {
             Self::AethosHolesky => return Err(EthereumAvsTypeError::NoDefaultContainerName),
             Self::OpenLayerHolesky => return Err(EthereumAvsTypeError::NoDefaultContainerName),
             Self::OpenLayerMainnet => return Err(EthereumAvsTypeError::InvalidEthereumAvsType),
-            Self::Unknown => return Err(EthereumAvsTypeError::InvalidEthereumAvsType),
             Self::ChainbaseNetworkV1 => {
                 return Err(EthereumAvsTypeError::SpecializedError(
                     "ChainbaseNetworkV1 is deprecated - update to V2 - ChainbaseNetwork"
@@ -621,11 +617,10 @@ impl EthereumAvsType {
         Ok(res)
     }
 
-    /// Get a vec of all known node types. Excludes `EthereumAvsType::Unknown`.
+    /// Get a vec of all known node types.
     pub fn all_known_with_repo() -> Vec<Self> {
         Self::list_all_variants()
             .into_iter()
-            .filter(|node_type| node_type != &Self::Unknown)
             .filter(Self::has_valid_repository)
             .filter(|node_type| node_type.flatten_layered_type())
             .collect()
@@ -725,13 +720,6 @@ impl EthereumAvsType {
         Some(node_type)
     }
 
-    pub fn from_metrics_name(metrics_id: &str) -> Self {
-        match metrics_id {
-            EIGENDA_METRICS_ID => Self::EigenDA,
-            _ => Self::Unknown,
-        }
-    }
-
     pub fn list_all_variants() -> Vec<Self> {
         Self::iter().collect()
     }
@@ -828,69 +816,78 @@ mod node_type_tests {
     #[test]
     fn test_from_str_kebab_case() {
         let test_cases = vec![
-            ("eigen-da", EthereumAvsType::EigenDA),
-            ("ava-protocol", EthereumAvsType::AvaProtocol),
-            ("lagrange-state-committee", EthereumAvsType::LagrangeStateCommittee),
-            ("lagrange-zk-worker", EthereumAvsType::LagrangeZkWorker),
-            ("e-oracle", EthereumAvsType::EOracle),
-            ("predicate", EthereumAvsType::Predicate),
-            ("witness-chain", EthereumAvsType::WitnessChain),
-            ("altlayer(altlayermach)", EthereumAvsType::Altlayer(AltlayerType::AltlayerMach)),
-            ("altlayer(gm-network-mach)", EthereumAvsType::Altlayer(AltlayerType::GmNetworkMach)),
-            ("altlayer-mach(xterio)", EthereumAvsType::AltlayerMach(MachType::Xterio)),
-            ("altlayer-mach(dodo-chain)", EthereumAvsType::AltlayerMach(MachType::DodoChain)),
-            ("altlayer-mach(cyber)", EthereumAvsType::AltlayerMach(MachType::Cyber)),
+            ("eigenda", Some(EthereumAvsType::EigenDA)),
+            ("ava-protocol", Some(EthereumAvsType::AvaProtocol)),
+            ("lagrange-state-committee", Some(EthereumAvsType::LagrangeStateCommittee)),
+            ("lagrange-zk-worker", Some(EthereumAvsType::LagrangeZkWorker)),
+            ("eoracle", Some(EthereumAvsType::EOracle)),
+            ("hyperlane(eigenlayer)", Some(EthereumAvsType::Hyperlane(ActiveSet::Eigenlayer))),
+            (
+                "altlayer(altlayer-mach)",
+                Some(EthereumAvsType::Altlayer(AltlayerType::AltlayerMach)),
+            ),
+            (
+                "altlayer(gm-network-mach)",
+                Some(EthereumAvsType::Altlayer(AltlayerType::GmNetworkMach)),
+            ),
+            ("altlayer-mach(xterio)", Some(EthereumAvsType::AltlayerMach(MachType::Xterio))),
+            ("altlayer-mach(dodo-chain)", Some(EthereumAvsType::AltlayerMach(MachType::DodoChain))),
+            ("altlayer-mach(cyber)", Some(EthereumAvsType::AltlayerMach(MachType::Cyber))),
             (
                 "ungate-infini-route(unknown-l2)",
-                EthereumAvsType::UngateInfiniRoute(InfiniRouteType::UnknownL2),
+                Some(EthereumAvsType::UngateInfiniRoute(InfiniRouteType::UnknownL2)),
             ),
-            ("skate-chain(base)", EthereumAvsType::SkateChain(SkateChainType::Base)),
-            ("skate-chain(mantle)", EthereumAvsType::SkateChain(SkateChainType::Mantle)),
-            ("skate-chain(unknown-l2)", EthereumAvsType::SkateChain(SkateChainType::UnknownL2)),
-            ("ditto-network(unknown)", EthereumAvsType::DittoNetwork(ActiveSet::Unknown)),
-            ("ditto-network(eigenlayer)", EthereumAvsType::DittoNetwork(ActiveSet::Eigenlayer)),
-            ("ditto-network(symbiotic)", EthereumAvsType::DittoNetwork(ActiveSet::Symbiotic)),
-            ("bless-b7s", EthereumAvsType::BlessB7s),
+            ("skate-chain(base)", Some(EthereumAvsType::SkateChain(SkateChainType::Base))),
+            ("skate-chain(mantle)", Some(EthereumAvsType::SkateChain(SkateChainType::Mantle))),
+            (
+                "skate-chain(unknown-l2)",
+                Some(EthereumAvsType::SkateChain(SkateChainType::UnknownL2)),
+            ),
+            ("ditto-network(unknown)", Some(EthereumAvsType::DittoNetwork(ActiveSet::Unknown))),
+            (
+                "ditto-network(eigenlayer)",
+                Some(EthereumAvsType::DittoNetwork(ActiveSet::Eigenlayer)),
+            ),
+            ("ditto-network(symbiotic)", Some(EthereumAvsType::DittoNetwork(ActiveSet::Symbiotic))),
+            ("bless-b7s", Some(EthereumAvsType::BlessB7s)),
         ];
 
         for (input, expected) in test_cases {
-            assert_eq!(EthereumAvsType::from(input), expected, "Failed for input: {}", input);
+            assert_eq!(EthereumAvsType::from_str(input), expected, "Failed for input: {}", input);
         }
     }
 
     #[test]
     fn test_from_str_lower_case() {
         let test_cases = vec![
-            ("eigenda", EthereumAvsType::EigenDA),
-            ("avaprotocol", EthereumAvsType::AvaProtocol),
-            ("lagrangestatecommittee", EthereumAvsType::LagrangeStateCommittee),
-            ("lagrangezkworker", EthereumAvsType::LagrangeZkWorker),
-            ("eoracle", EthereumAvsType::EOracle),
-            ("hyperlane(eigenlayer)", EthereumAvsType::Hyperlane(ActiveSet::Eigenlayer)),
-            ("altlayer(altlayermach)", EthereumAvsType::Altlayer(AltlayerType::AltlayerMach)),
-            ("altlayer(gmnetworkmach)", EthereumAvsType::Altlayer(AltlayerType::GmNetworkMach)),
-            ("altlayermach(xterio)", EthereumAvsType::AltlayerMach(MachType::Xterio)),
-            ("altlayermach(dodochain)", EthereumAvsType::AltlayerMach(MachType::DodoChain)),
-            ("altlayermach(cyber)", EthereumAvsType::AltlayerMach(MachType::Cyber)),
+            ("eigenda", Some(EthereumAvsType::EigenDA)),
+            ("avaprotocol", Some(EthereumAvsType::AvaProtocol)),
+            ("lagrangestatecommittee", Some(EthereumAvsType::LagrangeStateCommittee)),
+            ("lagrangezkworker", Some(EthereumAvsType::LagrangeZkWorker)),
+            ("eoracle", Some(EthereumAvsType::EOracle)),
+            ("hyperlane(eigenlayer)", Some(EthereumAvsType::Hyperlane(ActiveSet::Eigenlayer))),
+            ("altlayer(altlayermach)", Some(EthereumAvsType::Altlayer(AltlayerType::AltlayerMach))),
+            (
+                "altlayer(gmnetworkmach)",
+                Some(EthereumAvsType::Altlayer(AltlayerType::GmNetworkMach)),
+            ),
+            ("altlayermach(xterio)", Some(EthereumAvsType::AltlayerMach(MachType::Xterio))),
+            ("altlayermach(dodochain)", Some(EthereumAvsType::AltlayerMach(MachType::DodoChain))),
+            ("altlayermach(cyber)", Some(EthereumAvsType::AltlayerMach(MachType::Cyber))),
             (
                 "ungate-infini-route(unknownl2)",
-                EthereumAvsType::UngateInfiniRoute(InfiniRouteType::UnknownL2),
+                Some(EthereumAvsType::UngateInfiniRoute(InfiniRouteType::UnknownL2)),
             ),
-            ("skate-chain(base)", EthereumAvsType::SkateChain(SkateChainType::Base)),
-            ("skate-chain(mantle)", EthereumAvsType::SkateChain(SkateChainType::Mantle)),
-            ("skate-chain(unknownl2)", EthereumAvsType::SkateChain(SkateChainType::UnknownL2)),
-            (
-                "primevmevcommit(eigenlayer)",
-                EthereumAvsType::PrimevMevCommit(ActiveSet::Eigenlayer),
-            ),
-            ("bolt(eigenlayer)", EthereumAvsType::Bolt(ActiveSet::Eigenlayer)),
-            ("bolt(unknown)", EthereumAvsType::Bolt(ActiveSet::Unknown)),
-            ("bolt(symbiotic)", EthereumAvsType::Bolt(ActiveSet::Symbiotic)),
-            ("hyperlane(unknown)", EthereumAvsType::Hyperlane(ActiveSet::Unknown)),
+            ("skate-chain(base)", Some(EthereumAvsType::SkateChain(SkateChainType::Base))),
+            ("skate-chain(mantle)", Some(EthereumAvsType::SkateChain(SkateChainType::Mantle))),
+            ("bolt(eigenlayer)", Some(EthereumAvsType::Bolt(ActiveSet::Eigenlayer))),
+            ("bolt(unknown)", Some(EthereumAvsType::Bolt(ActiveSet::Unknown))),
+            ("bolt(symbiotic)", Some(EthereumAvsType::Bolt(ActiveSet::Symbiotic))),
+            ("hyperlane(unknown)", Some(EthereumAvsType::Hyperlane(ActiveSet::Unknown))),
         ];
 
         for (input, expected) in test_cases {
-            assert_eq!(EthereumAvsType::from(input), expected, "Failed for input: {}", input);
+            assert_eq!(EthereumAvsType::from_str(input), expected, "Failed for input: {}", input);
         }
     }
 
@@ -899,48 +896,43 @@ mod node_type_tests {
         let test_cases = vec!["not_a_node", "random", "", "123", "unknown-node-type"];
 
         for input in test_cases {
-            assert_eq!(
-                EthereumAvsType::from(input),
-                EthereumAvsType::Unknown,
-                "Failed for input: {}",
-                input
-            );
+            assert_eq!(EthereumAvsType::from_str(input), None, "Failed for input: {}", input);
         }
     }
 
     #[test]
     fn test_backwards_compatibility() {
-        let node_type = EthereumAvsType::from("altlayer");
-        assert_eq!(node_type, EthereumAvsType::Altlayer(AltlayerType::Unknown));
-        let node_type = EthereumAvsType::from("altlayermach");
-        assert_eq!(node_type, EthereumAvsType::AltlayerMach(MachType::Unknown));
-        let node_type = EthereumAvsType::from("bolt");
-        assert_eq!(node_type, EthereumAvsType::Bolt(ActiveSet::Unknown));
-        let node_type = EthereumAvsType::from("primev-mev-commit");
-        assert_eq!(node_type, EthereumAvsType::PrimevMevCommit(ActiveSet::Unknown));
-        let node_type = EthereumAvsType::from("ungate-infini-route");
-        assert_eq!(node_type, EthereumAvsType::UngateInfiniRoute(InfiniRouteType::UnknownL2));
-        let node_type = EthereumAvsType::from("skate-chain");
-        assert_eq!(node_type, EthereumAvsType::SkateChain(SkateChainType::UnknownL2));
-        let node_type = EthereumAvsType::from("hyperlane");
-        assert_eq!(node_type, EthereumAvsType::Hyperlane(ActiveSet::Unknown));
+        let node_type = EthereumAvsType::from_str("altlayer");
+        assert_eq!(node_type, Some(EthereumAvsType::Altlayer(AltlayerType::Unknown)));
+        let node_type = EthereumAvsType::from_str("altlayermach");
+        assert_eq!(node_type, Some(EthereumAvsType::AltlayerMach(MachType::Unknown)));
+        let node_type = EthereumAvsType::from_str("bolt");
+        assert_eq!(node_type, Some(EthereumAvsType::Bolt(ActiveSet::Unknown)));
+        let node_type = EthereumAvsType::from_str("primev-mev-commit");
+        assert_eq!(node_type, Some(EthereumAvsType::PrimevMevCommit(ActiveSet::Unknown)));
+        let node_type = EthereumAvsType::from_str("ungate-infini-route");
+        assert_eq!(node_type, Some(EthereumAvsType::UngateInfiniRoute(InfiniRouteType::UnknownL2)));
+        let node_type = EthereumAvsType::from_str("skate-chain");
+        assert_eq!(node_type, Some(EthereumAvsType::SkateChain(SkateChainType::UnknownL2)));
+        let node_type = EthereumAvsType::from_str("hyperlane");
+        assert_eq!(node_type, Some(EthereumAvsType::Hyperlane(ActiveSet::Unknown)));
     }
 
     #[test]
     fn test_from_str_case_insensitive() {
         let test_cases = vec![
-            ("EIGENDA", EthereumAvsType::EigenDA),
-            ("eigenDA", EthereumAvsType::EigenDA),
-            ("EigenDa", EthereumAvsType::EigenDA),
-            ("HYPERLANE(UNKNOWN)", EthereumAvsType::Hyperlane(ActiveSet::Unknown)),
-            ("HyperLane(Unknown)", EthereumAvsType::Hyperlane(ActiveSet::Unknown)),
-            ("HYPERLANE(EIGENLAYER)", EthereumAvsType::Hyperlane(ActiveSet::Eigenlayer)),
-            ("HyperLane(Eigenlayer)", EthereumAvsType::Hyperlane(ActiveSet::Eigenlayer)),
-            ("BLEsSB7S", EthereumAvsType::BlessB7s),
+            ("EIGENDA", Some(EthereumAvsType::EigenDA)),
+            ("eigenDA", Some(EthereumAvsType::EigenDA)),
+            ("EigenDa", Some(EthereumAvsType::EigenDA)),
+            ("HYPERLANE(UNKNOWN)", Some(EthereumAvsType::Hyperlane(ActiveSet::Unknown))),
+            ("HyperLane(Unknown)", Some(EthereumAvsType::Hyperlane(ActiveSet::Unknown))),
+            ("HYPERLANE(EIGENLAYER)", Some(EthereumAvsType::Hyperlane(ActiveSet::Eigenlayer))),
+            ("HyperLane(Eigenlayer)", Some(EthereumAvsType::Hyperlane(ActiveSet::Eigenlayer))),
+            ("BLEsSB7S", Some(EthereumAvsType::BlessB7s)),
         ];
 
         for (input, expected) in test_cases {
-            assert_eq!(EthereumAvsType::from(input), expected, "Failed for input: {}", input);
+            assert_eq!(EthereumAvsType::from_str(input), expected, "Failed for input: {}", input);
         }
     }
 }

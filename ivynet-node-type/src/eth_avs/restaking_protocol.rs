@@ -17,7 +17,6 @@ impl RestakingProtocol for EthereumAvsType {
     fn restaking_protocol(&self) -> Option<RestakingProtocolType> {
         let protocol = match self {
             //Eigenlayer
-            EthereumAvsType::Unknown => RestakingProtocolType::Eigenlayer,
             EthereumAvsType::AvaProtocol => RestakingProtocolType::Eigenlayer,
             EthereumAvsType::EigenDA => RestakingProtocolType::Eigenlayer,
             EthereumAvsType::LagrangeStateCommittee => RestakingProtocolType::Eigenlayer,
