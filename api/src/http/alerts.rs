@@ -324,7 +324,7 @@ pub async fn get_notification_service_settings(
     Ok(response.into())
 }
 
-/// Set new notification service settings - email, telegram, pagerduty - and information for each
+/// Set notification service settings - email, telegram, pagerduty - and information for each
 #[utoipa::path(
     post,
     path = "/alerts/services",
@@ -353,21 +353,45 @@ pub async fn set_notification_service_settings(
         settings.pagerduty.enabled,
     )
     .await?;
-    NotificationSettings::set_emails(
+
+    // Handle email settings
+    ServiceSettings::delete_by_org_and_type(
+        &state.pool,
+        account.organization_id as u64,
+        ServiceType::Email,
+    )
+    .await?;
+
+    NotificationSettings::add_emails(
         &state.pool,
         account.organization_id as u64,
         &settings.email.emails,
     )
     .await?;
 
+    // Handle PagerDuty settings
+    ServiceSettings::delete_by_org_and_type(
+        &state.pool,
+        account.organization_id as u64,
+        ServiceType::PagerDuty,
+    )
+    .await?;
     if let Some(ref integration_key) = settings.pagerduty.integration_key {
-        NotificationSettings::set_pagerduty_integration(
+        NotificationSettings::add_pagerduty_key(
             &state.pool,
             account.organization_id as u64,
             integration_key,
         )
         .await?;
     }
+
+    // Handle Telegram settings
+    ServiceSettings::delete_by_org_and_type(
+        &state.pool,
+        account.organization_id as u64,
+        ServiceType::Telegram,
+    )
+    .await?;
 
     if !settings.telegram.chats.is_empty() {
         NotificationSettings::add_many_chats(
