@@ -17,17 +17,20 @@ impl<T: DockerApi> NodeSource for T {
         let mut potentials = Vec::new();
 
         for container in containers {
-            let (names, image_str, image_id) =
-                match (container.names(), container.image(), container.image_id()) {
-                    (Some(n), Some(i), Some(id)) => (n, i, id),
-                    _ => continue,
-                };
+            let (names, image_str, image_id) = match (
+                container.names(),
+                container.image(),
+                container.repo_digest(&self.inner()).await,
+            ) {
+                (Some(n), Some(i), Some(id)) => (n, i, id),
+                _ => continue,
+            };
 
             let mut ports = container.public_ports(self).await;
             ports.sort_unstable();
             ports.dedup();
 
-            let image_hash = ContainerId::from(image_id);
+            let image_hash = ContainerId::from(image_id.as_str());
 
             potentials.push(PotentialAvs {
                 container_name: names.first().unwrap_or(&image_str.to_string()).to_string(),

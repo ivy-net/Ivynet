@@ -158,7 +158,8 @@ impl<B: BackendMiddleware> DockerStreamListener<DockerClient, B> {
         };
 
         let inc_image_name = inc_container.image().unwrap_or_default().to_string();
-        let inc_container_digest = inc_container.image_id().unwrap_or_default().to_string();
+        let inc_container_digest =
+            inc_container.repo_digest(&self.docker.inner()).await.unwrap_or_default().to_string();
 
         let metrics_port = match inc_container.metrics_port(&self.docker).await {
             Some(port) => Some(port),
@@ -181,7 +182,9 @@ impl<B: BackendMiddleware> DockerStreamListener<DockerClient, B> {
             if let Some(existing_container) =
                 self.docker.find_container_by_name(&avs.container_name).await
             {
-                if let Some(existing_digest) = existing_container.image_id() {
+                if let Some(existing_digest) =
+                    existing_container.repo_digest(&self.docker.inner()).await
+                {
                     if existing_digest == inc_container_digest {
                         configured = Some(avs.clone());
                         break;
