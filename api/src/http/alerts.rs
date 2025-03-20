@@ -482,7 +482,7 @@ pub async fn get_alert_flags(
     Ok(Json(flags))
 }
 
-/// Get human-readable active notification flags
+/// Get human-readable enabled notification flags
 #[utoipa::path(
     get,
     path = "/alerts/notifications/readable",
@@ -508,7 +508,7 @@ pub async fn get_alert_flags_human(
 
 /// Update an individual notification flag
 #[utoipa::path(
-    patch,
+    post,
     path = "/alerts/notifications/set_flag",
     request_body = AlertFlagUpdate,
     responses(
@@ -551,7 +551,7 @@ pub async fn update_alert_flag(
 
 /// Update multiple notification flags
 #[utoipa::path(
-    patch,
+    post,
     path = "/alerts/notifications/set_flags",
     request_body = Vec<AlertFlagUpdate>,
     responses(
