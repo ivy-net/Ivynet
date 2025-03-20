@@ -14,13 +14,12 @@ pub mod error;
 pub mod log;
 pub mod machine;
 pub mod metric;
+pub mod notification_settings;
 pub mod operator_keys;
 pub mod organization;
 pub mod service_settings;
-pub mod notification_settings;
 pub mod utils;
 pub mod verification;
-
 
 pub use account::{Account, Role};
 pub use avs::Avs;
