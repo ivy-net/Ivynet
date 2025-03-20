@@ -70,7 +70,7 @@ BEGIN
          client_id,
          'test_node',
          NOW(),
-         '"MachineNotResponding"',
+         '{"MachineNotResponding": {"machine": "dcbf22c7-9d96-47ac-bf06-62d6544e440d"}}',
          'no_send',
          'no_send',
          'no_send'

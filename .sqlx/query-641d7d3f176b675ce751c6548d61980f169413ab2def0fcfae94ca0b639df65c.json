@@ -1,10 +1,11 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO\n                service_settings\n                (organization_id, settings_type, settings_value, created_at)\n               VALUES\n                ($1, $2, $3, NOW())",
+  "query": "INSERT INTO\n                service_settings\n                (id, organization_id, settings_type, settings_value, created_at)\n            VALUES\n                ($1, $2, $3, $4, NOW())\n            ON CONFLICT (id)\n            DO NOTHING",
   "describe": {
     "columns": [],
     "parameters": {
       "Left": [
+        "Uuid",
         "Int8",
         {
           "Custom": {
@@ -23,5 +24,5 @@
     },
     "nullable": []
   },
-  "hash": "ef55f8edabcf67305c33eaf90bc182b2bd12ee21904ca0dc6d91f36273e8edd3"
+  "hash": "641d7d3f176b675ce751c6548d61980f169413ab2def0fcfae94ca0b639df65c"
 }

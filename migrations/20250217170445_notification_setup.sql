@@ -14,7 +14,7 @@ CREATE INDEX idx_notification_settings ON notification_settings (organization_id
 CREATE TYPE service_type AS ENUM ('email', 'telegram', 'pagerduty');
 
 CREATE TABLE IF NOT EXISTS service_settings (
-    id              SERIAL PRIMARY KEY,
+    id              UUID PRIMARY KEY,
     organization_id BIGINT NOT NULL REFERENCES organization
                         ON DELETE CASCADE,
     settings_type   service_type NOT NULL,

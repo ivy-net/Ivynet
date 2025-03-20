@@ -43,9 +43,9 @@ impl NewNodeAlert {
 
     pub fn set_send_state(&mut self, send_type: Channel, state: SendState) {
         match send_type {
-            Channel::Telegram => self.telegram_send = state,
-            Channel::Email => self.sendgrid_send = state,
-            Channel::PagerDuty => self.pagerduty_send = state,
+            Channel::Telegram(_) => self.telegram_send = state,
+            Channel::Email(_) => self.sendgrid_send = state,
+            Channel::PagerDuty(_) => self.pagerduty_send = state,
         }
     }
 

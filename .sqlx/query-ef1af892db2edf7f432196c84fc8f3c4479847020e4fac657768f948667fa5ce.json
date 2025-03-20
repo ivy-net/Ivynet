@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT\n                organization_id, settings_type as \"settings_type: _\", settings_value, created_at\n               FROM\n                service_settings\n               WHERE\n                organization_id = $1",
+  "query": "SELECT\n                    organization_id, settings_type as \"settings_type: _\", settings_value, created_at\n                FROM\n                    service_settings\n                WHERE\n                    organization_id = $1",
   "describe": {
     "columns": [
       {
@@ -47,5 +47,5 @@
       false
     ]
   },
-  "hash": "9c9589a170585ea2a0090946c0c01ff290fc537eac4b014619b18c32c5df61c9"
+  "hash": "ef1af892db2edf7f432196c84fc8f3c4479847020e4fac657768f948667fa5ce"
 }

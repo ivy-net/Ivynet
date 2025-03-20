@@ -40,9 +40,9 @@ impl NewOrganizationAlert {
 
     pub fn set_send_state(&mut self, send_type: Channel, state: SendState) {
         match send_type {
-            Channel::Telegram => self.telegram_send = state,
-            Channel::Email => self.sendgrid_send = state,
-            Channel::PagerDuty => self.pagerduty_send = state,
+            Channel::Telegram(_) => self.telegram_send = state,
+            Channel::Email(_) => self.sendgrid_send = state,
+            Channel::PagerDuty(_) => self.pagerduty_send = state,
         }
     }
 
@@ -179,7 +179,6 @@ impl OrganizationActiveAlert {
         alert: &NewOrganizationAlert,
     ) -> Result<(), DatabaseError> {
         let alert_data = serde_json::json!(alert.alert_type);
-        println!("Inserting alert: {:#?}", alert);
         sqlx::query!(
             r#"
             INSERT INTO organization_alerts_active (
