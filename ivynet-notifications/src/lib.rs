@@ -20,6 +20,9 @@ pub enum NotificationDispatcherError {
 
     #[error(transparent)]
     PagerDutyError(#[from] pagerduty::PagerDutySenderError),
+
+    #[error("Database error")]
+    DatabaseError,
 }
 
 #[derive(Debug, Clone)]
@@ -92,8 +95,10 @@ pub trait OrganizationDatabase: Send + Sync + Clone + 'static {
     async fn unregister_chat(&self, chat_id: &str) -> UnregistrationResult;
     async fn get_emails_for_organization(&self, organization_id: u64) -> HashSet<String>;
     async fn get_chats_for_organization(&self, organization_id: u64) -> HashSet<String>;
-    async fn get_pd_integration_key_for_organization(&self, organization_id: u64)
-        -> Option<String>;
+    async fn get_pd_integration_keys_for_organization(
+        &self,
+        organization_id: u64,
+    ) -> HashSet<String>;
 }
 
 impl<D: OrganizationDatabase> NotificationDispatcher<D> {
@@ -110,24 +115,24 @@ impl<D: OrganizationDatabase> NotificationDispatcher<D> {
         Ok(())
     }
 
-    pub async fn notify_channel(&self, notification: Notification, channel: Channel) -> bool {
+    pub async fn notify_channel(&self, notification: Notification, channel: &Channel) -> bool {
         tracing::debug!("notifying channel: {:#?}", channel);
         tracing::debug!("notification: {:#?}", notification);
 
         let result = match channel {
-            Channel::Email => self
+            Channel::Email(emails) => self
                 .email_sender
-                .notify(notification)
+                .notify(notification, emails)
                 .await
                 .map_err(NotificationDispatcherError::EmailSenderError),
-            Channel::Telegram => self
+            Channel::Telegram(chats) => self
                 .telegram
-                .notify(notification)
+                .notify(notification, chats)
                 .await
                 .map_err(NotificationDispatcherError::BotError),
-            Channel::PagerDuty => self
+            Channel::PagerDuty(keys) => self
                 .pagerduty
-                .notify(notification)
+                .notify(notification, keys)
                 .await
                 .map_err(NotificationDispatcherError::PagerDutyError),
         };
@@ -144,9 +149,15 @@ impl<D: OrganizationDatabase> NotificationDispatcher<D> {
     ) -> Result<(), NotificationDispatcherError> {
         for channel in channels {
             match channel {
-                Channel::Email => self.email_sender.notify(notification.clone()).await?,
-                Channel::Telegram => self.telegram.notify(notification.clone()).await?,
-                Channel::PagerDuty => self.pagerduty.notify(notification.clone()).await?,
+                Channel::Email(emails) => {
+                    self.email_sender.notify(notification.clone(), &emails).await?
+                }
+                Channel::Telegram(chats) => {
+                    self.telegram.notify(notification.clone(), &chats).await?
+                }
+                Channel::PagerDuty(keys) => {
+                    self.pagerduty.notify(notification.clone(), &keys).await?
+                }
             }
         }
         Ok(())

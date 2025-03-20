@@ -59,11 +59,11 @@ impl NewAlert for NewNodeAlert {
         self.alert_type.clone()
     }
 
-    fn set_send_state(&mut self, channel: Channel, state: SendState) {
+    fn set_send_state(&mut self, channel: &Channel, state: SendState) {
         match channel {
-            Channel::Telegram => self.telegram_send = state,
-            Channel::Email => self.sendgrid_send = state,
-            Channel::PagerDuty => self.pagerduty_send = state,
+            Channel::Telegram(_) => self.telegram_send = state,
+            Channel::Email(_) => self.sendgrid_send = state,
+            Channel::PagerDuty(_) => self.pagerduty_send = state,
         }
     }
 }
@@ -565,6 +565,7 @@ mod tests {
         NodeActiveAlert::insert_one(&pool, &new_alert_1).await.unwrap();
 
         let alerts = vec![new_alert_1, new_alert_2];
+
         let existing_alerts = NodeActiveAlert::all_alerts_by_org(&pool, 1).await.unwrap();
 
         let filtered_alerts =

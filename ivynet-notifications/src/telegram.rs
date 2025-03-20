@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{collections::HashSet, time::Duration};
 
 use ivynet_alerts::Alert;
 use teloxide::{
@@ -147,7 +147,11 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
         escaped
     }
 
-    pub async fn notify(&self, notification: Notification) -> Result<(), BotError> {
+    pub async fn notify(
+        &self,
+        notification: Notification,
+        chats: &HashSet<String>,
+    ) -> Result<(), BotError> {
         let message = match notification.alert {
             NotificationType::UnregisteredFromActiveSet { node_name, node_type: _, operator } => {
                 format!(
@@ -285,7 +289,6 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
         };
 
         if let Some(bot) = &self.bot {
-            let chats = self.db.get_chats_for_organization(notification.organization).await;
             for chat in chats {
                 if let Err(e) =
                     bot.parse_mode(ParseMode::MarkdownV2).send_message(chat.clone(), &message).await
@@ -472,11 +475,11 @@ mod telegram_bot_test {
             db.chats_for(organization_id)
         }
 
-        async fn get_pd_integration_key_for_organization(
+        async fn get_pd_integration_keys_for_organization(
             &self,
             _organization_id: u64,
-        ) -> Option<String> {
-            None
+        ) -> HashSet<String> {
+            HashSet::new()
         }
     }
 

@@ -52,6 +52,10 @@ impl AlertFlags {
     pub fn to_alert_types(&self) -> Vec<AlertType> {
         self.to_alert_ids().into_iter().map(AlertType::from).collect()
     }
+
+    pub fn as_u64(&self) -> u64 {
+        self.0.into()
+    }
 }
 
 impl Default for AlertFlags {
