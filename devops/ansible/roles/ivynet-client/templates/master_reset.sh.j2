@@ -1,5 +1,14 @@
 #!/bin/bash
 
+FULL=False
+
+while getopts f flag
+do
+  case "${flag}" in
+    f) FULL=True;;
+  esac
+done
+
 {{ ivynet_client_path_bin }}/reset_ivynet.exp
 
 
@@ -11,10 +20,13 @@ curl -u {{ ivynet_client_org_email }}:{{ ivynet_client_org_pass }} -X 'POST' \
 # Set the machine ID for AVS's
 MACHINE_ID=$(sudo -u ivynet awk -F\" '/machine_id/ {print $2}' /home/ivynet/.ivynet/ivy-config.toml)
 
-curl -u {{ ivynet_client_org_email }}:{{ ivynet_client_org_pass }} -X 'PUT' \
+if ${FULL}
+then
+  curl -u {{ ivynet_client_org_email }}:{{ ivynet_client_org_pass }} -X 'PUT' \
   "https://api3.test.ivynet.dev/machine/${MACHINE_ID}?avs_name=Ava&chain=holesky&operator_address=0x22fC3299729676C867200d02cd5e190246D90E88" \
   -H 'accept: application/json'
 
-curl -u {{ ivynet_client_org_email }}:{{ ivynet_client_org_pass }} -X 'PUT' \
+  curl -u {{ ivynet_client_org_email }}:{{ ivynet_client_org_pass }} -X 'PUT' \
   "https://api3.test.ivynet.dev/machine/${MACHINE_ID}?avs_name=EigenDA&chain=holesky&operator_address=0x22fC3299729676C867200d02cd5e190246D90E88" \
   -H 'accept: application/json'
+fi
