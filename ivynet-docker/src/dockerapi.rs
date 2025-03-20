@@ -1,20 +1,20 @@
-use std::{collections::HashMap, pin::Pin};
+use std::{collections::HashMap, pin::Pin, str::FromStr};
 
 use async_trait::async_trait;
 use bollard::{
     container::{LogOutput, LogsOptions},
     errors::Error,
-    image::ListImagesOptions,
-    secret::{EventMessage, ImageSummary},
+    secret::{ContainerInspectResponse, EventMessage, ImageSummary},
     Docker,
 };
 use futures::future::join_all;
 use tokio_stream::Stream;
 use tracing::debug;
 
-use crate::container::ContainerId;
-
-use super::container::{Container, ContainerImage};
+use crate::{
+    container::{ContainerId, FullContainer},
+    repodigest::RepoTag,
+};
 
 #[derive(Debug, Clone)]
 pub struct DockerClient(pub Docker);
@@ -37,13 +37,32 @@ impl Default for DockerClient {
 // TODO: Implement lifetimes to allow passing as ref
 #[async_trait]
 pub trait DockerApi: Clone + Sync + Send + 'static {
-    async fn list_containers(&self) -> Vec<Container>;
-    async fn list_images(&self) -> HashMap<ContainerId, ContainerImage>;
+    async fn get_container_by_name(
+        &self,
+        container_name: &str,
+    ) -> Result<ContainerInspectResponse, DockerClientError>;
+
+    async fn get_full_container_by_name(
+        &self,
+        container_name: &str,
+    ) -> Result<FullContainer, DockerClientError> {
+        let container = self.get_container_by_name(container_name).await?;
+        let image_name = container
+            .clone()
+            .config
+            .ok_or(DockerClientError::ContainerNotFound(container_name.to_string()))?
+            .image
+            .ok_or(DockerClientError::ImageNotFoundForContainer(container_name.to_string()))?;
+        let image_inspect = self.inner().inspect_image(&image_name).await?;
+        Ok(FullContainer::new(container, image_inspect))
+    }
+
+    async fn list_containers(&self) -> Vec<FullContainer>;
     fn inner(&self) -> Docker;
 
     async fn stream_logs(
         &self,
-        container: Container,
+        container: FullContainer,
         since: i64,
     ) -> Pin<Box<dyn Stream<Item = Result<LogOutput, Error>> + Send + Unpin>>;
 
@@ -57,86 +76,56 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
         since: i64,
     ) -> Pin<Box<dyn Stream<Item = Result<LogOutput, Error>> + Send + Unpin>>;
 
-    async fn inspect(&self, image_name: &str) -> Option<Container> {
-        let containers = self.list_containers().await;
-        for container in containers {
-            println!("Checking container {container:?}");
-            if let Some(image_string) = container.image() {
-                if image_string.contains(image_name) {
-                    return Some(container);
-                }
-            }
-        }
-        None
-    }
+    // async fn inspect(&self, image_name: &str) -> Option<FullContainer> {
+    //     let containers = self.list_containers().await;
+    //     for container in containers {
+    //         println!("Checking container {container:?}");
+    //         if let Some(image_string) = container.image() {
+    //             if image_string.contains(image_name) {
+    //                 return Some(container);
+    //             }
+    //         }
+    //     }
+    //     None
+    // }
 
     /// Checks if a container is running by container name
     async fn is_running(&self, container_name: &str) -> bool {
-        if let Some(container) = self.find_container_by_name(container_name).await {
+        if let Ok(container) = self.get_full_container_by_name(container_name).await {
             if let Some(state) = container.state() {
-                return state.to_lowercase() == "running";
+                if let Some(status) = state.status {
+                    return status.to_string().to_lowercase() == "running";
+                }
             }
         }
 
         false
     }
 
-    /// Inspect multiple containers by image name. Returns a vector of found containers.
-    async fn inspect_many(&self, image_names: &[&str]) -> Vec<Container> {
-        let containers = self.list_containers().await;
+    async fn get_containers_by_name(&self, container_names: &[&str]) -> Vec<FullContainer> {
+        let mut containers = Vec::new();
+        for name in container_names {
+            if let Ok(container) = self.get_full_container_by_name(name).await {
+                containers.push(container);
+            }
+        }
         containers
-            .into_iter()
-            .filter(|container| {
-                container
-                    .image()
-                    .as_ref()
-                    .map(|image_string| image_names.iter().any(|name| image_string.contains(name)))
-                    .unwrap_or_default()
-            })
-            .collect()
     }
 
-    async fn find_container_by_name(&self, container_name: &str) -> Option<Container> {
-        let containers = self.list_containers().await;
-        containers.into_iter().find(|container| {
-            container
-                .names()
-                .as_ref()
-                .map(|names| names.iter().any(|n| n.contains(container_name)))
-                .unwrap_or_default()
-        })
-    }
-
-    async fn find_containers_by_name(&self, container_names: &[&str]) -> Vec<Container> {
-        let containers = self.list_containers().await;
-        containers
-            .into_iter()
-            .filter(|container| {
-                container
-                    .names()
-                    .as_ref()
-                    .map(|names| {
-                        names.iter().any(|n| container_names.iter().any(|cn| n.contains(cn)))
-                    })
-                    .unwrap_or_default()
-            })
-            .collect()
-    }
-
-    async fn find_container_by_image_id(&self, digest: &str) -> Option<Container> {
+    async fn find_container_by_image_id(&self, digest: &str) -> Option<FullContainer> {
         let containers = self.list_containers().await;
         containers.into_iter().find(|container| container.image_id() == Some(digest))
     }
 
-    async fn find_container_by_image(&self, image: &str, strict: bool) -> Option<Container> {
+    async fn find_container_by_image(&self, image: &str, strict: bool) -> Option<FullContainer> {
         let containers = self.list_containers().await;
         containers.into_iter().find(|container| {
             if let Some(image_id) = container.image_id() {
                 if strict {
-                    ContainerImage::from(image_id) == ContainerImage::from(image)
+                    RepoTag::from_str(image_id) == RepoTag::from_str(image)
                 } else {
-                    ContainerImage::from(image_id).repository ==
-                        ContainerImage::from(image).repository
+                    RepoTag::from_str(image_id).expect("unenterable")
+                        == RepoTag::from_str(image).expect("unenterable")
                 }
             } else {
                 false
@@ -146,7 +135,7 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
 
     async fn stream_logs_latest(
         &self,
-        container: Container,
+        container: FullContainer,
     ) -> Pin<Box<dyn Stream<Item = Result<LogOutput, Error>> + Send + Unpin>> {
         let now = chrono::Utc::now().timestamp();
         self.stream_logs(container, now).await
@@ -158,7 +147,7 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
         node_type: &str,
         since: i64,
     ) -> Option<Pin<Box<dyn Stream<Item = Result<LogOutput, Error>> + Send>>> {
-        let container = self.find_container_by_name(node_type).await?;
+        let container = self.get_full_container_by_name(node_type).await.ok()?;
         Some(self.stream_logs(container, since).await)
     }
 
@@ -167,7 +156,7 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
         &self,
         node_type: &str,
     ) -> Option<Pin<Box<dyn Stream<Item = Result<LogOutput, Error>> + Send>>> {
-        let container = self.find_container_by_name(node_type).await?;
+        let container = self.get_full_container_by_name(node_type).await.ok()?;
         Some(self.stream_logs_latest(container).await)
     }
 
@@ -177,7 +166,7 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
         nodes: &[&str],
         since: i64,
     ) -> Pin<Box<dyn Stream<Item = Result<LogOutput, Error>> + Send + Unpin>> {
-        let containers = self.find_containers_by_name(nodes).await;
+        let containers = self.get_containers_by_name(nodes).await;
         let stream_futures =
             containers.into_iter().map(|container| self.stream_logs(container, since));
         let streams = join_all(stream_futures).await;
@@ -189,14 +178,14 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
         &self,
         nodes: &[&str],
     ) -> Pin<Box<dyn Stream<Item = Result<LogOutput, Error>> + Send + Unpin>> {
-        let containers = self.find_containers_by_name(nodes).await;
+        let containers = self.get_containers_by_name(nodes).await;
         let stream_futures =
             containers.into_iter().map(|container| self.stream_logs_latest(container));
         let streams = join_all(stream_futures).await;
         Box::pin(futures::stream::select_all(streams))
     }
 
-    fn process_images(images: Vec<ImageSummary>) -> HashMap<ContainerId, ContainerImage> {
+    fn process_images(images: Vec<ImageSummary>) -> HashMap<ContainerId, RepoTag> {
         let mut map = HashMap::new();
         for image in images {
             if image.repo_digests.is_empty() {
@@ -206,7 +195,8 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
                 debug!("No repo tags or digests on image: {:#?}", image);
                 map.insert(
                     ContainerId::from(image.id.clone().as_str()),
-                    ContainerImage::from("local"),
+                    RepoTag::from_str("local")
+                        .expect("Cannot parse repo tag, this should be unenterable."),
                 );
             } else {
                 for digest in &image.repo_digests {
@@ -216,7 +206,9 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
                             for tag in &image.repo_tags {
                                 map.insert(
                                     ContainerId::from(elements[1]),
-                                    ContainerImage::from(tag.as_str()),
+                                    RepoTag::from_str(tag.as_str()).expect(
+                                        "Cannot parse repo tag, this should be unenterable.",
+                                    ),
                                 );
                             }
                         } else {
@@ -224,7 +216,8 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
                             debug!("This should get a debug later as well in node_type");
                             map.insert(
                                 ContainerId::from(elements[1]),
-                                ContainerImage::from(elements[0]),
+                                RepoTag::from_str(elements[0])
+                                    .expect("Cannot parse repo tag, this should be unenterable."),
                             );
                         }
                     } else {
@@ -236,24 +229,56 @@ pub trait DockerApi: Clone + Sync + Send + 'static {
         map
     }
 
-    fn use_repo_tags(image: &ImageSummary, map: &mut HashMap<ContainerId, ContainerImage>) {
+    fn use_repo_tags(image: &ImageSummary, map: &mut HashMap<ContainerId, RepoTag>) {
         debug!("REPO DIGESTS BROKEN: {:#?}", image);
         debug!("Using repo_tags instead");
         for tag in &image.repo_tags {
             map.insert(
                 ContainerId::from(image.id.clone().as_str()),
-                ContainerImage::from(tag.as_str()),
+                RepoTag::from_str(tag.as_str())
+                    .expect("Cannot parse repo tag, this should be unenterable."),
             );
         }
     }
 }
 
+#[derive(Debug, thiserror::Error)]
+pub enum DockerClientError {
+    #[error("Container not found: {0}")]
+    ContainerNotFound(String),
+    #[error("Image not found: {0}")]
+    ImageNotFoundForContainer(String),
+    #[error(transparent)]
+    DockerError(#[from] Error),
+}
+
 #[async_trait]
 impl DockerApi for DockerClient {
-    async fn list_containers(&self) -> Vec<Container> {
+    async fn get_container_by_name(
+        &self,
+        container_name: &str,
+    ) -> Result<ContainerInspectResponse, DockerClientError> {
+        Ok(self.0.inspect_container(container_name, None).await?)
+    }
+
+    async fn list_containers(&self) -> Vec<FullContainer> {
         let containers =
             self.0.list_containers::<String>(None).await.expect("Cannot list containers");
-        containers.into_iter().map(Container::new).collect()
+        let names: Vec<String> = containers
+            .iter()
+            .filter_map(|c| c.names.clone())
+            .collect::<Vec<_>>()
+            .into_iter()
+            .flatten()
+            .map(|s| s.trim_start_matches("/").to_string())
+            .collect();
+        let mut containers = Vec::new();
+        for n in names {
+            if let Ok(container) = self.get_full_container_by_name(&n).await {
+                containers.push(container);
+            }
+        }
+        containers
     }
 
     fn inner(&self) -> Docker {
@@ -262,7 +287,7 @@ impl DockerApi for DockerClient {
 
     async fn stream_logs(
         &self,
-        container: Container,
+        container: FullContainer,
         since: i64,
     ) -> Pin<Box<dyn Stream<Item = Result<LogOutput, Error>> + Send + Unpin>> {
         let log_opts: LogsOptions<&str> =
@@ -284,19 +309,6 @@ impl DockerApi for DockerClient {
         &self,
     ) -> Pin<Box<dyn Stream<Item = Result<EventMessage, Error>> + Send + Unpin>> {
         Box::pin(self.0.events::<&str>(None))
-    }
-
-    async fn list_images(&self) -> HashMap<ContainerId, ContainerImage> {
-        let images = self
-            .0
-            .list_images(Some(ListImagesOptions::<String> {
-                all: true,
-                digests: true,
-                ..Default::default()
-            }))
-            .await
-            .expect("Cannot list images");
-        DockerClient::process_images(images)
     }
 }
 

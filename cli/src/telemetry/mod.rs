@@ -4,8 +4,9 @@ use convert_case::{Case, Casing};
 use dispatch::{TelemetryDispatchError, TelemetryDispatchHandle};
 use docker_event_stream_listener::DockerStreamListener;
 use ivynet_docker::{
-    container::{Container, ContainerId, ContainerImage},
+    container::{ContainerId, FullContainer},
     dockerapi::{DockerApi, DockerClient},
+    repodigest::RepoTag,
 };
 use ivynet_grpc::{
     backend::backend_client::BackendClient, messages::NodeDataV2, tonic::transport::Channel,
@@ -20,7 +21,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::broadcast;
 use tracing::{error, info, warn};
 
-use crate::{error::Error, ivy_machine::IvyMachine};
+use crate::{error::Error, ivy_machine::IvyMachine, monitor::MonitorConfig};
 
 pub mod dispatch;
 pub mod docker_event_stream_listener;
@@ -55,7 +56,7 @@ pub struct ConfiguredAvs {
     pub avs_type: String,
     pub metric_port: Option<u16>,
     pub manifest: Option<ContainerId>,
-    pub image: Option<ContainerImage>,
+    pub image: Option<RepoTag>,
 }
 
 impl ConfiguredAvs {
@@ -72,7 +73,7 @@ impl ConfiguredAvs {
 
     pub async fn node_running(&self) -> bool {
         let docker = DockerClient::default();
-        docker.find_container_by_name(&self.container_name).await.is_some()
+        docker.get_full_container_by_name(&self.container_name).await.is_ok()
     }
 }
 
@@ -95,7 +96,7 @@ impl<'de> Deserialize<'de> for ConfiguredAvs {
             #[serde(default)]
             metric_port: Option<u16>,
             avs_type: AvsTypeField,
-            image: Option<ContainerImage>,
+            image: Option<RepoTag>,
             manifest: Option<ContainerId>,
         }
 
@@ -166,7 +167,7 @@ impl<'de> Deserialize<'de> for ConfiguredAvs {
 pub async fn listen(
     backend_client: BackendClient<Channel>,
     machine: IvyMachine,
-    avses: &[ConfiguredAvs],
+    mut monitor_config: MonitorConfig,
 ) -> Result<(), Error> {
     let docker = DockerClient::default();
 
@@ -187,17 +188,26 @@ pub async fn listen(
     let mut logs_listener_handle =
         LogsListenerManager::new(&docker, machine.clone().into(), &dispatch);
 
+    let avses = monitor_config.configured_avses.clone();
+
     // Metrics Listener handles metrics from containers and sends them to the dispatcher
     let metrics_listener_handle =
-        MetricsListenerHandle::new(machine.clone(), avses, &dispatch, error_tx);
+        MetricsListenerHandle::new(machine.clone(), &avses, &dispatch, error_tx);
 
     // On start, send already-configured node data and setup logs listeners
     for node in avses.iter() {
         info!("Searching for node: {}", node.container_name);
-        let container: Option<Container> =
-            match docker.find_container_by_name(&node.container_name).await {
-                Some(container) => Some(container),
-                None => {
+        let container: Option<FullContainer> =
+            match docker.get_full_container_by_name(&node.container_name).await {
+                Ok(container) => {
+                    let _ = monitor_config.update_container_manifest(
+                        &node.container_name,
+                        &ContainerId::from(container.digest().unwrap().as_str()),
+                    );
+                    Some(container)
+                }
+                Err(e) => {
+                    warn!("Error finding container: {}", e);
                     if let Some(manifest) = &node.manifest {
                         match docker.find_container_by_image_id(&manifest.to_string()).await {
                             Some(container) => Some(container),
@@ -210,8 +220,16 @@ pub async fn listen(
                             }
                         }
                     } else if let Some(image) = node.image.clone() {
-                        match docker.find_container_by_image(&image.repository, false).await {
-                            Some(container) => Some(container),
+                        match docker.find_container_by_image(&image.image, false).await {
+                            Some(container) => {
+                                if let Some(name) = container.names().first() {
+                                    let _ = monitor_config.update_container_manifest(
+                                        name,
+                                        &ContainerId::from(container.digest().unwrap().as_str()),
+                                    );
+                                }
+                                Some(container)
+                            }
                             None => {
                                 warn!("Could not find container by image. {:#?} Continuing.", node);
                                 None

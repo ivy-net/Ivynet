@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use bollard::secret::{EventMessage, EventMessageTypeEnum};
 use ivynet_docker::{
-    container::{ContainerId, ContainerImage},
+    container::ContainerId,
     dockerapi::{DockerApi, DockerClient, DockerStreamError},
 };
 use ivynet_grpc::{
@@ -13,7 +13,7 @@ use ivynet_grpc::{
 };
 use tokio::time::sleep;
 use tokio_stream::StreamExt;
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 use crate::ivy_machine::{IvyMachine, MachineIdentityError};
 
@@ -150,14 +150,21 @@ impl<B: BackendMiddleware> DockerStreamListener<DockerClient, B> {
         let inc_container_name =
             attributes.get("name").ok_or(DockerStreamError::MissingAttributes)?;
 
-        let inc_container = match self.docker.find_container_by_name(inc_container_name).await {
-            Some(container) => container,
-            None => {
+        let inc_container = match self.docker.get_full_container_by_name(inc_container_name).await {
+            Ok(container) => container,
+            Err(e) => {
+                warn!("Error getting container for event-stream detected container: {:?}", e);
                 return Ok(());
             }
         };
 
-        let inc_image_name = inc_container.image().unwrap_or_default().to_string();
+        let inc_image_name = if let Some(inc_image_name) = inc_container.repo_tag() {
+            inc_image_name
+        } else {
+            warn!("Container started without image name, continuing: {:?}", inc_container_name);
+            return Ok(());
+        };
+
         let inc_container_digest = inc_container.image_id().unwrap_or_default().to_string();
 
         let metrics_port = match inc_container.metrics_port(&self.docker).await {
@@ -178,8 +185,8 @@ impl<B: BackendMiddleware> DockerStreamListener<DockerClient, B> {
             }
             // If not found by name, check if any existing AVS is monitoring
             // the same container (by image hash)
-            if let Some(existing_container) =
-                self.docker.find_container_by_name(&avs.container_name).await
+            if let Ok(existing_container) =
+                self.docker.get_full_container_by_name(&avs.container_name).await
             {
                 if let Some(existing_digest) = existing_container.image_id() {
                     if existing_digest == inc_container_digest {
@@ -195,7 +202,7 @@ impl<B: BackendMiddleware> DockerStreamListener<DockerClient, B> {
             None => {
                 let node_type_query = NodeTypeQuery {
                     container_name: inc_container_name.clone(),
-                    image_name: inc_image_name.clone(),
+                    image_name: inc_image_name.to_string(),
                     image_digest: inc_container_digest.clone(),
                 };
                 let query = Request::new(NodeTypeQueries { node_types: vec![node_type_query] });
@@ -216,7 +223,7 @@ impl<B: BackendMiddleware> DockerStreamListener<DockerClient, B> {
                                     manifest: Some(ContainerId::from(
                                         inc_container_digest.as_str(),
                                     )),
-                                    image: Some(ContainerImage::from(inc_image_name.as_str())),
+                                    image: Some(inc_image_name),
                                 })
                             } else {
                                 None

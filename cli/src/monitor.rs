@@ -1,10 +1,7 @@
 use anyhow::anyhow;
 use dialoguer::{Input, MultiSelect, Select};
 use fs2::FileExt;
-use ivynet_docker::{
-    container::{ContainerId, ContainerImage},
-    dockerapi::DockerClient,
-};
+use ivynet_docker::{container::ContainerId, dockerapi::DockerClient, repodigest::RepoTag};
 use ivynet_grpc::{
     self,
     backend::backend_client::BackendClient,
@@ -35,7 +32,7 @@ const MONITOR_CONFIG_FILE: &str = "monitor-config.toml";
 #[derive(Clone, Debug)]
 pub struct PotentialAvs {
     pub container_name: String,
-    pub docker_image: ContainerImage,
+    pub docker_image: RepoTag,
     pub manifest: ContainerId,
     pub ports: Vec<u16>,
 }
@@ -112,6 +109,19 @@ impl MonitorConfig {
         self.configured_avses.iter_mut().for_each(|avs| {
             if avs.assigned_name == old_name {
                 avs.assigned_name = new_name.to_string();
+            }
+        });
+        self.store()
+    }
+
+    pub fn update_container_manifest(
+        &mut self,
+        container_name: &str,
+        manifest: &ContainerId,
+    ) -> Result<(), MonitorConfigError> {
+        self.configured_avses.iter_mut().for_each(|avs| {
+            if avs.container_name == container_name {
+                avs.manifest = Some(manifest.clone());
             }
         });
         self.store()
@@ -209,7 +219,7 @@ pub async fn start_monitor(config: IvyConfig) -> Result<(), anyhow::Error> {
     );
 
     info!("Starting monitor listener...");
-    listen(backend_client, machine, &monitor_config.configured_avses).await?;
+    listen(backend_client, machine, monitor_config).await?;
     Ok(())
 }
 
