@@ -464,86 +464,16 @@ mod notification_settings_tests {
     use super::*;
     use sqlx::PgPool;
 
-    // Helper function to set up service settings with deterministic UUIDs
-    async fn setup_service_settings(pool: &PgPool) -> Result<(), DatabaseError> {
-        // Add service settings with deterministic UUIDs calculated by the ServiceSettings::uuid
-        // method
-        let email1 = ServiceSettings {
-            organization_id: 1,
-            settings_type: ServiceType::Email,
-            settings_value: "test1@example.com".to_string(),
-            created_at: None,
-        };
-        let email2 = ServiceSettings {
-            organization_id: 1,
-            settings_type: ServiceType::Email,
-            settings_value: "test2@example.com".to_string(),
-            created_at: None,
-        };
-        let pd = ServiceSettings {
-            organization_id: 1,
-            settings_type: ServiceType::PagerDuty,
-            settings_value: "pdkey123".to_string(),
-            created_at: None,
-        };
-
-        // Insert the settings with their deterministic UUIDs
-        sqlx::query!(
-            r#"INSERT INTO
-                service_settings
-                (id, organization_id, settings_type, settings_value, created_at)
-            VALUES
-                ($1, $2, $3, $4, NOW())"#,
-            email1.uuid(),
-            email1.organization_id,
-            email1.settings_type as ServiceType,
-            email1.settings_value
-        )
-        .execute(pool)
-        .await?;
-
-        sqlx::query!(
-            r#"INSERT INTO
-                service_settings
-                (id, organization_id, settings_type, settings_value, created_at)
-            VALUES
-                ($1, $2, $3, $4, NOW())"#,
-            email2.uuid(),
-            email2.organization_id,
-            email2.settings_type as ServiceType,
-            email2.settings_value
-        )
-        .execute(pool)
-        .await?;
-
-        sqlx::query!(
-            r#"INSERT INTO
-                service_settings
-                (id, organization_id, settings_type, settings_value, created_at)
-            VALUES
-                ($1, $2, $3, $4, NOW())"#,
-            pd.uuid(),
-            pd.organization_id,
-            pd.settings_type as ServiceType,
-            pd.settings_value
-        )
-        .execute(pool)
-        .await?;
-
-        Ok(())
-    }
-
     #[ignore]
     #[sqlx::test(
         migrations = "../migrations",
         fixtures("../fixtures/new_user_registration.sql", "../fixtures/notification_settings.sql")
     )]
     async fn test_get_notification_settings(pool: PgPool) {
-        // Set up the service settings with deterministic UUIDs
-        setup_service_settings(&pool).await.unwrap();
-
         // Get settings for organization with ID 1
         let settings = NotificationSettings::get(&pool, 1).await.unwrap();
+
+        println!("Settings: {:#?}", settings);
 
         // Verify the settings match what we set in the fixture
         assert_eq!(settings.organization_id, 1);
@@ -642,7 +572,6 @@ mod notification_settings_tests {
     )]
     async fn test_remove_service_settings(pool: PgPool) {
         // Get the initial settings
-        setup_service_settings(&pool).await.unwrap();
         let settings = NotificationSettings::get(&pool, 1).await.unwrap();
         assert_eq!(settings.sendgrid_emails.len(), 2);
 
