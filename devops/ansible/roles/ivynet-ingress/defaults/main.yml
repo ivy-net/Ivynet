@@ -70,7 +70,7 @@ ivynet_ingress_release: "0.5.0"
 ivynet_ingress_sendgrid: true
 
 # Sengrid config STN_GENERIC
-ivynet_ingress_sendrig_alert_generic: !vault |
+ivynet_ingress_sendgrid_alert_generic: !vault |
           $ANSIBLE_VAULT;1.1;AES256
           37636465656363343431356664626138346230376431373737613632313833616562616532623164
           6231313265616432383133323936643666653635363366340a653938323864396337346337303138
@@ -82,7 +82,7 @@ ivynet_ingress_sendrig_alert_generic: !vault |
 # Email for email from field
 ivynet_ingress_sendgrid_from: contact@ivynet.dev
 
-# Sengrid API key
+# Sendgrid API key
 ivynet_ingress_sendgrid_key: !vault |
           $ANSIBLE_VAULT;1.1;AES256
           33643630366631316635313564303431383730633039616135663939616437633730653334623232
