@@ -4,7 +4,9 @@
 while getopts a:fk:n: flag
 do
   case "${flag}" in
-    a) AVSS+=("${OPTARG}");;
+    a)
+    avs_from_cli=True
+    AVSS+=("${OPTARG}");;
     f) FULL=True;;
     k) KEY=${OPTARG};;
     n) NAME=${OPTARG};;
@@ -30,12 +32,18 @@ NAME=${NAME:-operator3}
 
 if [[ ${FULL} == 'True' ]]
 then
+echo "Adding operator to AVS"
+if [[ ${avs_from_cli} != 'True' ]]
+  then
+    AVSS=(Ava EigenDA)
+  fi
 # Set the machine ID for AVS's
   MACHINE_ID=$(sudo -u ivynet awk -F\" '/machine_id/ {print $2}' /home/ivynet/.ivynet/ivy-config.toml)
   sleep 2
 
   for AVS in "${AVSS[@]}"
   do
+    echo ${AVS}
     curl -s -u {{ ivynet_client_org_email }}:{{ ivynet_client_org_pass }} -X 'PUT' \
       "https://api3.test.ivynet.dev/machine/${MACHINE_ID}?avs_name=${AVS}&chain=holesky&operator_address=${PUBLIC_KEY}" \
       -H 'accept: application/json'
