@@ -1,14 +1,16 @@
 #!/bin/bash
 
 
-while getopts fk:n: flag
+while getopts a:fk:n: flag
 do
   case "${flag}" in
+    a) AVSS+=("${OPTARG}");;
     f) FULL=True;;
     k) KEY=${OPTARG};;
     n) NAME=${OPTARG};;
   esac
 done
+shift $(( OPTIND - 1 ))
 
 FULL=${FULL:-False}
 PUBLIC_KEY=${KEY:-0x22fC3299729676C867200d02cd5e190246D90E88}
@@ -25,19 +27,17 @@ NAME=${NAME:-operator3}
   grep -q ${NAME} ) || (curl -s -u {{ ivynet_client_org_email }}:{{ ivynet_client_org_pass }} -X 'POST' \
   "https://api3.test.ivynet.dev/pubkey?public_key=${PUBLIC_KEY}&name=${NAME}" \
   -H 'accept: application/json') \
-  && echo "Key exists"
-## It first call for the list of operator and if the name does not exists call to add new pubkey
 
 if [[ ${FULL} == 'True' ]]
 then
-  # Set the machine ID for AVS's
+# Set the machine ID for AVS's
   MACHINE_ID=$(sudo -u ivynet awk -F\" '/machine_id/ {print $2}' /home/ivynet/.ivynet/ivy-config.toml)
+  sleep 2
 
-  curl -s -u {{ ivynet_client_org_email }}:{{ ivynet_client_org_pass }} -X 'PUT' \
-  "https://api3.test.ivynet.dev/machine/${MACHINE_ID}?avs_name=Ava&chain=holesky&operator_address=${PUBLIC_KEY}" \
-  -H 'accept: application/json'
-
-  curl -s -u {{ ivynet_client_org_email }}:{{ ivynet_client_org_pass }} -X 'PUT' \
-  "https://api3.test.ivynet.dev/machine/${MACHINE_ID}?avs_name=EigenDA&chain=holesky&operator_address=${PUBLIC_KEY}" \
-  -H 'accept: application/json'
+  for AVS in "${AVSS[@]}"
+  do
+    curl -s -u {{ ivynet_client_org_email }}:{{ ivynet_client_org_pass }} -X 'PUT' \
+      "https://api3.test.ivynet.dev/machine/${MACHINE_ID}?avs_name=${AVS}&chain=holesky&operator_address=${PUBLIC_KEY}" \
+      -H 'accept: application/json'
+  done
 fi
