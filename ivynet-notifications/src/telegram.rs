@@ -81,41 +81,8 @@ pub trait TelegramBotApi {
     fn notify(&self, organization: Uuid, notification: Notification) -> Result<(), BotError>;
 }
 
-impl<D: OrganizationDatabase> TelegramBot<D> {
-    pub fn new(bot_key: &str, db: D) -> Self {
-        // Validate bot token format
-        let bot = if bot_key.is_empty() || !bot_key.contains(':') {
-            None
-        } else {
-            Some(Bot::new(bot_key))
-        };
-        Self { bot, db }
-    }
-
-    pub async fn serve(&self) -> Result<(), BotError> {
-        if let Some(bot) = &self.bot {
-            let handler = Self::handler_tree();
-            Dispatcher::builder(bot.clone(), handler)
-                .dependencies(dptree::deps![self.db.clone()])
-                .default_handler(|upd| async move {
-                    warn!("Unhandled update: {:#?}", upd);
-                })
-                // If the dispatcher fails for some reason, execute this handler.
-                .error_handler(LoggingErrorHandler::with_custom_text(
-                    "An error has occurred in the dispatcher",
-                ))
-                .enable_ctrlc_handler()
-                .build()
-                .dispatch()
-                .await;
-        } else {
-            loop {
-                sleep(Duration::from_secs(100)).await;
-            }
-        }
-        Ok(())
-    }
-
+pub trait TelegramSend: Clone {
+    fn to_telegram_message(&self) -> String;
     fn escape_markdown_v2(text: &str) -> String {
         // Pre-allocate with extra capacity for escape characters
         let mut escaped = String::with_capacity(text.len() * 2);
@@ -146,26 +113,24 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
         }
         escaped
     }
+}
 
-    pub async fn notify(
-        &self,
-        notification: Notification,
-        chats: &HashSet<String>,
-    ) -> Result<(), BotError> {
-        let message = match notification.alert {
+impl TelegramSend for Notification {
+    fn to_telegram_message(&self) -> String {
+        match &self.alert {
             NotificationType::UnregisteredFromActiveSet { node_name, node_type: _, operator } => {
                 format!(
                     "❗ *Operator Unregistered from Active Set* ❗️\nAddress `{}` has been removed from the active set for node `{}`\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
                     Self::escape_markdown_v2(&format!("{:?}", operator)),
                     Self::escape_markdown_v2(&node_name),
-                    notification.machine_id.unwrap_or_default()
+                    self.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::MachineNotResponding { .. } => {
                 format!(
                     "❗ *Machine Not Responding* ❗️\nMachine `{}` has lost connection with our backend\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
-                    Self::escape_markdown_v2(&format!("{:?}", notification.machine_id.unwrap_or_default())),
-                    notification.machine_id.unwrap_or_default()
+                    Self::escape_markdown_v2(&format!("{:?}", self.machine_id.unwrap_or_default())),
+                    self.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::Custom { node_name, node_type: _, extra_data } => {
@@ -173,36 +138,36 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
                     "❗ *Custom Alert* ❗️\nNode `{}` has triggered a custom alert with custom data: `{}`\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
                     Self::escape_markdown_v2(&node_name),
                     Self::escape_markdown_v2(&extra_data.to_string()),
-                    notification.machine_id.unwrap_or_default()
+                    self.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::NodeNotRunning { node_name, node_type: _ } => {
                 format!(
                     "❗ *Node Not Running* ❗️\nNode `{}` is not running on machine `{}`\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
                     Self::escape_markdown_v2(&node_name),
-                    Self::escape_markdown_v2(&format!("{:?}", notification.machine_id.unwrap_or_default())),
-                    notification.machine_id.unwrap_or_default()
+                    Self::escape_markdown_v2(&format!("{:?}", self.machine_id.unwrap_or_default())),
+                    self.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::NoChainInfo { node_name, node_type: _ } => {
                 format!(
                     "❗ *No Chain Info* ❗️ \nNode `{}` has no chain information \n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
                     Self::escape_markdown_v2(&node_name),
-                    notification.machine_id.unwrap_or_default()
+                    self.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::NoMetrics { node_name, node_type: _ } => {
                 format!(
                     "❗ *No Metrics* ❗️\nNode `{}` is not reporting any metrics\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
                     Self::escape_markdown_v2(&node_name),
-                    notification.machine_id.unwrap_or_default()
+                    self.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::NoOperatorId { node_name, node_type: _ } => {
                 format!(
                     "❗ *No Operator ID* ❗️\nNode `{}` has no associated operator ID\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
                     Self::escape_markdown_v2(&node_name),
-                    notification.machine_id.unwrap_or_default()
+                    self.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::HardwareResourceUsage { machine, resource, percent } => {
@@ -219,7 +184,7 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
                     "❗ *Low Performance Score* ❗️\nNode `{}` has a LOW performance score of `{}`\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
                     Self::escape_markdown_v2(&node_name),
                     performance,
-                    notification.machine_id.unwrap_or_default()
+                    self.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::NeedsUpdate {
@@ -233,21 +198,21 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
                     Self::escape_markdown_v2(&node_name),
                     Self::escape_markdown_v2(&current_version),
                     Self::escape_markdown_v2(&recommended_version),
-                    notification.machine_id.unwrap_or_default()
+                    self.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::ActiveSetNoDeployment { node_name, .. } => {
                 format!(
                     "❗ *Active Set No Deployment* ❗️\nNode `{}` is in the active set, but the node is either not deployed or not responding\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
                     Self::escape_markdown_v2(&node_name),
-                    notification.machine_id.unwrap_or_default()
+                    self.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::NodeNotResponding { node_name, .. } => {
                 format!(
                     "❗ *Node Not Responding* ❗️\nNode `{}` is not responding\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
                     Self::escape_markdown_v2(&node_name),
-                    notification.machine_id.unwrap_or_default()
+                    self.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::NewEigenAvs {
@@ -286,7 +251,51 @@ impl<D: OrganizationDatabase> TelegramBot<D> {
                     Self::escape_markdown_v2(&twitter)
                 )
             }
+        }
+    }
+}
+
+impl<D: OrganizationDatabase> TelegramBot<D> {
+    pub fn new(bot_key: &str, db: D) -> Self {
+        // Validate bot token format
+        let bot = if bot_key.is_empty() || !bot_key.contains(':') {
+            None
+        } else {
+            Some(Bot::new(bot_key))
         };
+        Self { bot, db }
+    }
+
+    pub async fn serve(&self) -> Result<(), BotError> {
+        if let Some(bot) = &self.bot {
+            let handler = Self::handler_tree();
+            Dispatcher::builder(bot.clone(), handler)
+                .dependencies(dptree::deps![self.db.clone()])
+                .default_handler(|upd| async move {
+                    warn!("Unhandled update: {:#?}", upd);
+                })
+                // If the dispatcher fails for some reason, execute this handler.
+                .error_handler(LoggingErrorHandler::with_custom_text(
+                    "An error has occurred in the dispatcher",
+                ))
+                .enable_ctrlc_handler()
+                .build()
+                .dispatch()
+                .await;
+        } else {
+            loop {
+                sleep(Duration::from_secs(100)).await;
+            }
+        }
+        Ok(())
+    }
+
+    pub async fn notify(
+        &self,
+        notification: impl TelegramSend,
+        chats: &HashSet<String>,
+    ) -> Result<(), BotError> {
+        let message = notification.to_telegram_message();
 
         if let Some(bot) = &self.bot {
             for chat in chats {

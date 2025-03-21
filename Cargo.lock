@@ -3330,6 +3330,7 @@ dependencies = [
  "ivynet-docker-registry",
  "ivynet-error",
  "ivynet-grpc",
+ "ivynet-heartbeat",
  "ivynet-node-type",
  "ivynet-notifications",
  "ivynet-signer",
@@ -3563,6 +3564,23 @@ dependencies = [
  "tonic-build",
  "tonic-reflection",
  "tracing",
+]
+
+[[package]]
+name = "ivynet-heartbeat"
+version = "0.6.0"
+dependencies = [
+ "chrono",
+ "ethers",
+ "ivynet-database",
+ "ivynet-grpc",
+ "ivynet-notifications",
+ "serde",
+ "sqlx",
+ "thiserror 2.0.12",
+ "tokio",
+ "tracing",
+ "uuid 1.15.1",
 ]
 
 [[package]]

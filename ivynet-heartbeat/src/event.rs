@@ -1,0 +1,111 @@
+use std::sync::Arc;
+
+use chrono::{DateTime, Utc};
+use ivynet_database::{error::DatabaseError, NotificationSettings};
+use ivynet_notifications::{Channel, NotificationDispatcher, OrganizationDatabase};
+use sqlx::PgPool;
+
+use crate::{
+    alerts::{ClientHeartbeatAlert, MachineHeartbeatAlert, NodeHeartbeatAlert},
+    ClientId, HeartbeatError, MachineId, NodeId,
+};
+
+#[derive(Debug)]
+pub enum HeartbeatEvent {
+    NewClient(ClientId),
+    NewMachine(MachineId),
+    NewNode(NodeId),
+    StaleClient { client_id: ClientId, last_heartbeat: DateTime<Utc> },
+    StaleMachine { machine_id: MachineId, time_not_responding: DateTime<Utc> },
+    StaleNode { node_id: NodeId, time_not_responding: DateTime<Utc> },
+}
+
+pub struct HeartbeatEventHandler<D: OrganizationDatabase> {
+    pub db: PgPool,
+    pub notifier: Arc<NotificationDispatcher<D>>,
+}
+
+impl<D: OrganizationDatabase> HeartbeatEventHandler<D> {
+    pub fn new(db: PgPool, notifier: Arc<NotificationDispatcher<D>>) -> Self {
+        Self { db, notifier }
+    }
+
+    /// Top-level event handler that delegates to specialized methods.
+    pub async fn handle_event(&self, event: HeartbeatEvent) -> Result<(), HeartbeatError> {
+        match event {
+            HeartbeatEvent::NewClient(client_id) => self.handle_new_client(client_id).await?,
+            HeartbeatEvent::NewMachine(machine_id) => self.handle_new_machine(machine_id).await?,
+            HeartbeatEvent::NewNode(node_id) => self.handle_new_node(node_id).await?,
+            HeartbeatEvent::StaleClient { client_id, last_heartbeat } => {
+                let settings = NotificationSettings::get_for_client(&self.db, client_id.0).await?;
+                let channels = settings.get_active_channels();
+                self.handle_stale_client(client_id, last_heartbeat, channels).await?
+            }
+            HeartbeatEvent::StaleMachine { machine_id, time_not_responding } => {
+                let settings =
+                    NotificationSettings::get_for_machine(&self.db, machine_id.0).await?;
+                let channels = settings.get_active_channels();
+                self.handle_stale_machine(machine_id, time_not_responding, channels).await?
+            }
+            HeartbeatEvent::StaleNode { node_id, time_not_responding } => {
+                let settings =
+                    NotificationSettings::get_for_machine(&self.db, node_id.machine).await?;
+                let channels = settings.get_active_channels();
+                self.handle_stale_node(node_id, time_not_responding, channels).await?
+            }
+        }
+        Ok(())
+    }
+
+    async fn handle_new_client(&self, client_id: ClientId) -> Result<(), DatabaseError> {
+        ClientHeartbeatAlert::delete(&self.db, client_id).await?;
+        Ok(())
+    }
+
+    async fn handle_new_machine(&self, machine_id: MachineId) -> Result<(), DatabaseError> {
+        MachineHeartbeatAlert::delete(&self.db, machine_id).await?;
+        Ok(())
+    }
+
+    async fn handle_new_node(&self, node_id: NodeId) -> Result<(), DatabaseError> {
+        NodeHeartbeatAlert::delete(&self.db, node_id).await?;
+        Ok(())
+    }
+
+    async fn handle_stale_client(
+        &self,
+        client_id: ClientId,
+        last_response_time: DateTime<Utc>,
+        channels: Vec<Channel>,
+    ) -> Result<(), HeartbeatError> {
+        let alert = ClientHeartbeatAlert { client_id, last_response_time };
+        ClientHeartbeatAlert::insert(&self.db, alert.clone()).await?;
+        self.notifier.notify(alert, channels).await?;
+        Ok(())
+    }
+
+    async fn handle_stale_machine(
+        &self,
+        machine_id: MachineId,
+        last_response_time: DateTime<Utc>,
+        channels: Vec<Channel>,
+    ) -> Result<(), HeartbeatError> {
+        let alert = MachineHeartbeatAlert { machine_id, last_response_time };
+        MachineHeartbeatAlert::insert(&self.db, alert.clone()).await?;
+        self.notifier.notify(alert, channels).await?;
+
+        Ok(())
+    }
+
+    async fn handle_stale_node(
+        &self,
+        node_id: NodeId,
+        last_response_time: DateTime<Utc>,
+        channels: Vec<Channel>,
+    ) -> Result<(), HeartbeatError> {
+        let alert = NodeHeartbeatAlert { node_id, last_response_time };
+        NodeHeartbeatAlert::insert(&self.db, alert.clone()).await?;
+        self.notifier.notify(alert, channels).await?;
+        Ok(())
+    }
+}

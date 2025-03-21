@@ -1,6 +1,8 @@
 use async_trait::async_trait;
-use ivynet_alerts::{Alert, Channel, SendState};
-use ivynet_notifications::{Notification, NotificationDispatcher, NotificationDispatcherError};
+use ivynet_alerts::{Alert, SendState};
+use ivynet_notifications::{
+    Channel, Notification, NotificationDispatcher, NotificationDispatcherError,
+};
 use std::sync::Arc;
 
 use sqlx::{types::Uuid, PgPool};
@@ -51,7 +53,6 @@ pub trait AlertHandler {
         let enabled_alert_ids = settings.alert_flags.to_alert_ids();
 
         let mut channels = Vec::new();
-
         if settings.pagerduty {
             channels.push(Channel::PagerDuty(settings.pagerduty_keys));
         }

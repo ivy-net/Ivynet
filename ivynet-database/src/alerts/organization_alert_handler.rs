@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use ethers::types::Address;
-use ivynet_alerts::{Alert, Channel, SendState};
-use ivynet_notifications::{NotificationDispatcher, NotificationDispatcherError};
+use ivynet_alerts::{Alert, SendState};
+use ivynet_notifications::{Channel, NotificationDispatcher, NotificationDispatcherError};
 use sqlx::{types::Uuid, PgPool};
 use std::sync::Arc;
 

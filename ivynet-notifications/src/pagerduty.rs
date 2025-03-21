@@ -35,7 +35,7 @@ pub enum Action {
 
 /// Payload of the event that is being sent
 #[derive(Clone, Debug, Serialize)]
-struct Payload {
+pub struct Payload {
     pub severity: Severity,
     pub source: String,
     pub summary: String,
@@ -45,7 +45,7 @@ struct Payload {
 
 /// Struct of the event to send to PagerDuty service
 #[derive(Clone, Debug, Serialize)]
-struct Event {
+pub struct Event {
     pub routing_key: String,
     pub event_action: Action,
     pub dedup_key: Uuid,
@@ -64,7 +64,7 @@ impl From<Notification> for Event {
                 severity: Severity::Error, // TODO: Maybe we should vary it depending on the
                 // notification type?
                 source: "IvyNet".to_owned(),
-                summary: message(&value),
+                summary: value.to_pagerduty_message(),
                 timestamp: chrono::Local::now().into(),
                 component: Some(format!("{:?}", value.machine_id)),
             },
@@ -103,7 +103,7 @@ impl<D: OrganizationDatabase> PagerDutySender<D> {
 
     pub async fn notify(
         &self,
-        notification: Notification,
+        notification: impl PagerDutySend,
         keys: &HashSet<String>,
     ) -> Result<(), PagerDutySenderError> {
         for key in keys {
@@ -121,65 +121,78 @@ impl<D: OrganizationDatabase> PagerDutySender<D> {
     }
 }
 
-fn message(notification: &Notification) -> String {
-    match &notification.alert {
-        NotificationType::UnregisteredFromActiveSet { node_name, operator, .. } => {
-            format!("Address {operator:?} has been removed from the active set for {node_name}")
-        }
-        NotificationType::MachineNotResponding { machine } => {
-            format!("Machine '{:?}' has lost connection with our backend", machine)
-        }
-        NotificationType::Custom { extra_data, .. } => format!("ERROR: {extra_data}"),
-        NotificationType::NodeNotRunning { node_name, .. } => {
-            format!(
-                "AVS {node_name} is not running on {}",
-                notification.machine_id.unwrap_or_default()
-            )
-        }
-        NotificationType::NoChainInfo { node_name, .. } => {
-            format!("No information on chain for avs {node_name}")
-        }
-        NotificationType::NoMetrics { node_name, .. } => {
-            format!("No metrics reported from avs {node_name}")
-        }
-        NotificationType::NoOperatorId { node_name, .. } => {
-            format!("No operator configured for {node_name}")
-        }
-        NotificationType::HardwareResourceUsage { resource, percent, .. } => {
-            format!(
-                "Machine {} has used over {percent}% of {resource}",
-                notification.machine_id.unwrap_or_default()
-            )
-        }
-        NotificationType::LowPerformanceScore { node_name, performance, .. } => {
-            format!("AVS {node_name} has droped in performance to {performance}")
-        }
-        NotificationType::NeedsUpdate {
-            node_name, current_version, recommended_version, ..
-        } => {
-            format!("AVS {node_name} needs update from {current_version} to {recommended_version}")
-        }
-        NotificationType::ActiveSetNoDeployment { node_name, operator, .. } => {
-            format!("The validator {operator} for {node_name} is in the active set, but the node is either not deployed or not responding")
-        }
-        NotificationType::NodeNotResponding { node_name, .. } => {
-            format!("The node {node_name} is not responding")
-        }
-        NotificationType::NewEigenAvs {
-            address,
-            name,
-            metadata_uri,
-            description,
-            website,
-            twitter,
-            ..
-        } => {
-            format!("New EigenLayer AVS: {name} has been detected at {:?} with metadata URI {metadata_uri}. \n Website: {website} \n Twitter: {twitter} \n Description: {description}", address)
-        }
-        NotificationType::UpdatedEigenAvs {
-            address, name, metadata_uri, website, twitter, ..
-        } => {
-            format!("Updated EigenLayer AVS: {name} has updated their metadata or address to {:?} with metadata URI {metadata_uri}. \n Website: {website} \n Twitter: {twitter}", address)
+pub trait PagerDutySend: Into<Event> + Clone {
+    fn to_pagerduty_message(&self) -> String;
+}
+
+impl PagerDutySend for Notification {
+    fn to_pagerduty_message(&self) -> String {
+        match &self.alert {
+            NotificationType::UnregisteredFromActiveSet { node_name, operator, .. } => {
+                format!("Address {operator:?} has been removed from the active set for {node_name}")
+            }
+            NotificationType::MachineNotResponding { machine } => {
+                format!("Machine '{:?}' has lost connection with our backend", machine)
+            }
+            NotificationType::Custom { extra_data, .. } => format!("ERROR: {extra_data}"),
+            NotificationType::NodeNotRunning { node_name, .. } => {
+                format!("AVS {node_name} is not running on {}", self.machine_id.unwrap_or_default())
+            }
+            NotificationType::NoChainInfo { node_name, .. } => {
+                format!("No information on chain for avs {node_name}")
+            }
+            NotificationType::NoMetrics { node_name, .. } => {
+                format!("No metrics reported from avs {node_name}")
+            }
+            NotificationType::NoOperatorId { node_name, .. } => {
+                format!("No operator configured for {node_name}")
+            }
+            NotificationType::HardwareResourceUsage { resource, percent, .. } => {
+                format!(
+                    "Machine {} has used over {percent}% of {resource}",
+                    self.machine_id.unwrap_or_default()
+                )
+            }
+            NotificationType::LowPerformanceScore { node_name, performance, .. } => {
+                format!("AVS {node_name} has droped in performance to {performance}")
+            }
+            NotificationType::NeedsUpdate {
+                node_name,
+                current_version,
+                recommended_version,
+                ..
+            } => {
+                format!(
+                    "AVS {node_name} needs update from {current_version} to {recommended_version}"
+                )
+            }
+            NotificationType::ActiveSetNoDeployment { node_name, operator, .. } => {
+                format!("The validator {operator} for {node_name} is in the active set, but the node is either not deployed or not responding")
+            }
+            NotificationType::NodeNotResponding { node_name, .. } => {
+                format!("The node {node_name} is not responding")
+            }
+            NotificationType::NewEigenAvs {
+                address,
+                name,
+                metadata_uri,
+                description,
+                website,
+                twitter,
+                ..
+            } => {
+                format!("New EigenLayer AVS: {name} has been detected at {:?} with metadata URI {metadata_uri}. \n Website: {website} \n Twitter: {twitter} \n Description: {description}", address)
+            }
+            NotificationType::UpdatedEigenAvs {
+                address,
+                name,
+                metadata_uri,
+                website,
+                twitter,
+                ..
+            } => {
+                format!("Updated EigenLayer AVS: {name} has updated their metadata or address to {:?} with metadata URI {metadata_uri}. \n Website: {website} \n Twitter: {twitter}", address)
+            }
         }
     }
 }

@@ -1,0 +1,19 @@
+syntax = "proto3";
+package heartbeat;
+
+import "google/protobuf/empty.proto";
+
+message ClientHeartbeat { string client_id = 1; }
+
+message MachineHeartbeat { string machine_id = 1; }
+
+message NodeHeartbeat {
+  string node_id = 1;
+  string machine_id = 2;
+}
+
+service Heartbeat {
+  rpc SendClientHeartbeat(ClientHeartbeat) returns (google.protobuf.Empty) {}
+  rpc SendMachineHeartbeat(MachineHeartbeat) returns (google.protobuf.Empty) {}
+  rpc SendNodeHeartbeat(NodeHeartbeat) returns (google.protobuf.Empty) {}
+}
