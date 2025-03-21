@@ -16,8 +16,8 @@ pub enum HeartbeatEvent {
     NewMachine(MachineId),
     NewNode(NodeId),
     StaleClient { client_id: ClientId, last_heartbeat: DateTime<Utc> },
-    StaleMachine { machine_id: MachineId, time_not_responding: DateTime<Utc> },
-    StaleNode { node_id: NodeId, time_not_responding: DateTime<Utc> },
+    StaleMachine { machine_id: MachineId, last_heartbeat: DateTime<Utc> },
+    StaleNode { node_id: NodeId, last_heartbeat: DateTime<Utc> },
 }
 
 pub struct HeartbeatEventHandler<D: OrganizationDatabase> {
@@ -39,19 +39,32 @@ impl<D: OrganizationDatabase> HeartbeatEventHandler<D> {
             HeartbeatEvent::StaleClient { client_id, last_heartbeat } => {
                 let settings = NotificationSettings::get_for_client(&self.db, client_id.0).await?;
                 let channels = settings.get_active_channels();
-                self.handle_stale_client(client_id, last_heartbeat, channels).await?
+                self.handle_stale_client(
+                    client_id,
+                    settings.organization_id,
+                    last_heartbeat,
+                    channels,
+                )
+                .await?
             }
-            HeartbeatEvent::StaleMachine { machine_id, time_not_responding } => {
+            HeartbeatEvent::StaleMachine { machine_id, last_heartbeat } => {
                 let settings =
                     NotificationSettings::get_for_machine(&self.db, machine_id.0).await?;
                 let channels = settings.get_active_channels();
-                self.handle_stale_machine(machine_id, time_not_responding, channels).await?
+                self.handle_stale_machine(
+                    machine_id,
+                    settings.organization_id,
+                    last_heartbeat,
+                    channels,
+                )
+                .await?
             }
-            HeartbeatEvent::StaleNode { node_id, time_not_responding } => {
+            HeartbeatEvent::StaleNode { node_id, last_heartbeat } => {
                 let settings =
                     NotificationSettings::get_for_machine(&self.db, node_id.machine).await?;
                 let channels = settings.get_active_channels();
-                self.handle_stale_node(node_id, time_not_responding, channels).await?
+                self.handle_stale_node(node_id, settings.organization_id, last_heartbeat, channels)
+                    .await?
             }
         }
         Ok(())
@@ -75,11 +88,12 @@ impl<D: OrganizationDatabase> HeartbeatEventHandler<D> {
     async fn handle_stale_client(
         &self,
         client_id: ClientId,
+        organization_id: i64,
         last_response_time: DateTime<Utc>,
         channels: Vec<Channel>,
     ) -> Result<(), HeartbeatError> {
         let alert = ClientHeartbeatAlert { client_id, last_response_time };
-        ClientHeartbeatAlert::insert(&self.db, alert.clone()).await?;
+        ClientHeartbeatAlert::insert(&self.db, alert.clone(), organization_id).await?;
         self.notifier.notify(alert, channels).await?;
         Ok(())
     }
@@ -87,11 +101,12 @@ impl<D: OrganizationDatabase> HeartbeatEventHandler<D> {
     async fn handle_stale_machine(
         &self,
         machine_id: MachineId,
+        organization_id: i64,
         last_response_time: DateTime<Utc>,
         channels: Vec<Channel>,
     ) -> Result<(), HeartbeatError> {
         let alert = MachineHeartbeatAlert { machine_id, last_response_time };
-        MachineHeartbeatAlert::insert(&self.db, alert.clone()).await?;
+        MachineHeartbeatAlert::insert(&self.db, alert.clone(), organization_id).await?;
         self.notifier.notify(alert, channels).await?;
 
         Ok(())
@@ -100,11 +115,12 @@ impl<D: OrganizationDatabase> HeartbeatEventHandler<D> {
     async fn handle_stale_node(
         &self,
         node_id: NodeId,
+        organization_id: i64,
         last_response_time: DateTime<Utc>,
         channels: Vec<Channel>,
     ) -> Result<(), HeartbeatError> {
         let alert = NodeHeartbeatAlert { node_id, last_response_time };
-        NodeHeartbeatAlert::insert(&self.db, alert.clone()).await?;
+        NodeHeartbeatAlert::insert(&self.db, alert.clone(), organization_id).await?;
         self.notifier.notify(alert, channels).await?;
         Ok(())
     }

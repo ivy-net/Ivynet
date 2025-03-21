@@ -122,7 +122,7 @@ impl TelegramSend for Notification {
                 format!(
                     "❗ *Operator Unregistered from Active Set* ❗️\nAddress `{}` has been removed from the active set for node `{}`\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
                     Self::escape_markdown_v2(&format!("{:?}", operator)),
-                    Self::escape_markdown_v2(&node_name),
+                    Self::escape_markdown_v2(node_name),
                     self.machine_id.unwrap_or_default()
                 )
             }
@@ -136,7 +136,7 @@ impl TelegramSend for Notification {
             NotificationType::Custom { node_name, node_type: _, extra_data } => {
                 format!(
                     "❗ *Custom Alert* ❗️\nNode `{}` has triggered a custom alert with custom data: `{}`\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
-                    Self::escape_markdown_v2(&node_name),
+                    Self::escape_markdown_v2(node_name),
                     Self::escape_markdown_v2(&extra_data.to_string()),
                     self.machine_id.unwrap_or_default()
                 )
@@ -144,7 +144,7 @@ impl TelegramSend for Notification {
             NotificationType::NodeNotRunning { node_name, node_type: _ } => {
                 format!(
                     "❗ *Node Not Running* ❗️\nNode `{}` is not running on machine `{}`\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
-                    Self::escape_markdown_v2(&node_name),
+                    Self::escape_markdown_v2(node_name),
                     Self::escape_markdown_v2(&format!("{:?}", self.machine_id.unwrap_or_default())),
                     self.machine_id.unwrap_or_default()
                 )
@@ -152,21 +152,21 @@ impl TelegramSend for Notification {
             NotificationType::NoChainInfo { node_name, node_type: _ } => {
                 format!(
                     "❗ *No Chain Info* ❗️ \nNode `{}` has no chain information \n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
-                    Self::escape_markdown_v2(&node_name),
+                    Self::escape_markdown_v2(node_name),
                     self.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::NoMetrics { node_name, node_type: _ } => {
                 format!(
                     "❗ *No Metrics* ❗️\nNode `{}` is not reporting any metrics\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
-                    Self::escape_markdown_v2(&node_name),
+                    Self::escape_markdown_v2(node_name),
                     self.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::NoOperatorId { node_name, node_type: _ } => {
                 format!(
                     "❗ *No Operator ID* ❗️\nNode `{}` has no associated operator ID\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
-                    Self::escape_markdown_v2(&node_name),
+                    Self::escape_markdown_v2(node_name),
                     self.machine_id.unwrap_or_default()
                 )
             }
@@ -175,14 +175,14 @@ impl TelegramSend for Notification {
                     "❗ *Hardware Resource Usage* ❗️\nMachine `{}` has used over `{}%` of `{}`\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
                     Self::escape_markdown_v2(&format!("{:?}", machine)),
                     percent,
-                    Self::escape_markdown_v2(&resource),
+                    Self::escape_markdown_v2(resource),
                     machine
                 )
             }
             NotificationType::LowPerformanceScore { node_name, node_type: _, performance } => {
                 format!(
                     "❗ *Low Performance Score* ❗️\nNode `{}` has a LOW performance score of `{}`\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
-                    Self::escape_markdown_v2(&node_name),
+                    Self::escape_markdown_v2(node_name),
                     performance,
                     self.machine_id.unwrap_or_default()
                 )
@@ -195,23 +195,23 @@ impl TelegramSend for Notification {
             } => {
                 format!(
                     "❗ *Node Update Available* ❗️\nNode `{}` is running version `{}` but version `{}` is available\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
-                    Self::escape_markdown_v2(&node_name),
-                    Self::escape_markdown_v2(&current_version),
-                    Self::escape_markdown_v2(&recommended_version),
+                    Self::escape_markdown_v2(node_name),
+                    Self::escape_markdown_v2(current_version),
+                    Self::escape_markdown_v2(recommended_version),
                     self.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::ActiveSetNoDeployment { node_name, .. } => {
                 format!(
                     "❗ *Active Set No Deployment* ❗️\nNode `{}` is in the active set, but the node is either not deployed or not responding\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
-                    Self::escape_markdown_v2(&node_name),
+                    Self::escape_markdown_v2(node_name),
                     self.machine_id.unwrap_or_default()
                 )
             }
             NotificationType::NodeNotResponding { node_name, .. } => {
                 format!(
                     "❗ *Node Not Responding* ❗️\nNode `{}` is not responding\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
-                    Self::escape_markdown_v2(&node_name),
+                    Self::escape_markdown_v2(node_name),
                     self.machine_id.unwrap_or_default()
                 )
             }
@@ -226,12 +226,12 @@ impl TelegramSend for Notification {
             } => {
                 format!(
                     "❗ *New EigenLayer AVS* ❗️\n\nNew EigenLayer AVS: {} has been detected at {} with metadata URI {}\n\nWebsite: {}\nTwitter: {}\nDescription: {}",
-                    Self::escape_markdown_v2(&name),
+                    Self::escape_markdown_v2(name),
                     Self::escape_markdown_v2(&format!("{:?}", address)),
-                    Self::escape_markdown_v2(&metadata_uri),
-                    Self::escape_markdown_v2(&website),
-                    Self::escape_markdown_v2(&twitter),
-                    Self::escape_markdown_v2(&description)
+                    Self::escape_markdown_v2(metadata_uri),
+                    Self::escape_markdown_v2(website),
+                    Self::escape_markdown_v2(twitter),
+                    Self::escape_markdown_v2(description)
                 )
             }
             NotificationType::UpdatedEigenAvs {
@@ -244,11 +244,11 @@ impl TelegramSend for Notification {
             } => {
                 format!(
                     "❗ *Updated EigenLayer AVS* ❗️\n\nUpdated EigenLayer AVS: {} has updated their metadata or address to {} with metadata URI {}\n\nWebsite: {}\nTwitter: {}",
-                    Self::escape_markdown_v2(&name),
+                    Self::escape_markdown_v2(name),
                     Self::escape_markdown_v2(&format!("{:?}", address)),
-                    Self::escape_markdown_v2(&metadata_uri),
-                    Self::escape_markdown_v2(&website),
-                    Self::escape_markdown_v2(&twitter)
+                    Self::escape_markdown_v2(metadata_uri),
+                    Self::escape_markdown_v2(website),
+                    Self::escape_markdown_v2(twitter)
                 )
             }
         }

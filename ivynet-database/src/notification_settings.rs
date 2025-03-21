@@ -140,7 +140,7 @@ impl NotificationSettings {
             ids
         ).fetch_all(pool).await?;
 
-        Ok(rows.into_iter().map(|row| NotificationSettings::from(row)).collect())
+        Ok(rows.into_iter().map(NotificationSettings::from).collect())
     }
 
     /// Fetch NotificationSettings for an organization corresponding to a given client ID.
@@ -454,7 +454,7 @@ impl NotificationSettings {
             &client_id_bytes as &[&[u8]]
         ).fetch_all(pool).await?;
 
-        Ok(rows.into_iter().map(|row| NotificationSettings::from(row)).collect())
+        Ok(rows.into_iter().map(NotificationSettings::from).collect())
     }
 
     /// Fetch NotificationSettings for organizations corresponding to multiple machine IDs.
@@ -492,7 +492,7 @@ impl NotificationSettings {
             machine_ids
         ).fetch_all(pool).await?;
 
-        Ok(rows.into_iter().map(|row| NotificationSettings::from(row)).collect())
+        Ok(rows.into_iter().map(NotificationSettings::from).collect())
     }
 }
 

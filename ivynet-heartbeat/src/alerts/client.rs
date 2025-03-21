@@ -51,10 +51,15 @@ impl ClientHeartbeatAlert {
         Ok(alert.map(|a| a.into()))
     }
 
-    pub async fn insert(pool: &PgPool, alert: Self) -> Result<(), DatabaseError> {
+    pub async fn insert(
+        pool: &PgPool,
+        alert: Self,
+        organization_id: i64,
+    ) -> Result<(), DatabaseError> {
         sqlx::query!(
-            "INSERT INTO client_heartbeat (client_id, last_response_time) VALUES ($1, $2)",
+            "INSERT INTO client_heartbeat (client_id, organization_id, last_response_time) VALUES ($1, $2, $3)",
             alert.client_id.0.as_bytes(),
+            organization_id,
             alert.last_response_time.naive_utc()
         )
         .execute(pool)

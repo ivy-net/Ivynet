@@ -64,10 +64,15 @@ impl NodeHeartbeatAlert {
         }
     }
 
-    pub async fn insert(pool: &PgPool, alert: Self) -> Result<(), DatabaseError> {
+    pub async fn insert(
+        pool: &PgPool,
+        alert: Self,
+        organization_id: i64,
+    ) -> Result<(), DatabaseError> {
         sqlx::query!(
-            "INSERT INTO node_heartbeat (node_id, last_response_time) VALUES ($1, $2)",
+            "INSERT INTO node_heartbeat (node_id, organization_id, last_response_time) VALUES ($1, $2, $3)",
             format!("{}:{}", alert.node_id.machine, alert.node_id.name),
+            organization_id,
             alert.last_response_time.naive_utc()
         )
         .execute(pool)

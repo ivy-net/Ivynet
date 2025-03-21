@@ -242,8 +242,10 @@ impl Backend for BackendService {
         )?;
 
         // heartbeat
-        let node_id = NodeId::new(machine_id, recovered_node_data.name);
-        self.heartbeats.post_node_heartbeat(node_id).await?;
+        if recovered_node_data.node_running.unwrap_or(false) {
+            let node_id = NodeId::new(machine_id, recovered_node_data.name);
+            self.heartbeats.post_node_heartbeat(node_id).await?;
+        }
         let machine_id = MachineId::new(machine_id);
         self.heartbeats.post_machine_heartbeat(machine_id).await?;
 

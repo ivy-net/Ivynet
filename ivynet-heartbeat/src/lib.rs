@@ -1,13 +1,10 @@
 use core::fmt;
 use std::{
     collections::HashMap,
-    fmt::{Display, Formatter},
+    fmt::{Debug, Display, Formatter},
     hash::Hash,
     str::FromStr,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc, RwLock,
-    },
+    sync::{Arc, RwLock},
     time::Duration,
 };
 
@@ -27,8 +24,7 @@ use ivynet_notifications::{
 };
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
-use tokio::task::JoinHandle;
-use tracing::debug;
+use tracing::{error, warn};
 use uuid::Uuid;
 
 mod event;
@@ -36,8 +32,8 @@ mod event;
 pub mod alerts;
 pub mod server;
 
-const FIVE_MINUTES: TimeDelta = TimeDelta::minutes(5);
-const ONE_MINUTE: TimeDelta = TimeDelta::minutes(1);
+const FIFTEEN_MINUTES_SECS: u64 = 15 * 60;
+const ONE_MINUTE_SECS: u64 = 60;
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq, Serialize, Deserialize)]
 pub struct ClientId(Address);
@@ -125,62 +121,21 @@ impl FromStr for NodeId {
     }
 }
 
-// Add a type alias for the callback function to make the code more readable
-type StaleCallback<T> = dyn Fn(T, DateTime<Utc>) + Send + Sync + 'static;
-
-/// A map of heartbeats for a given type to a unix timestamp
-pub struct HeartbeatMap<T: Clone + Eq + Hash + Send + Sync + 'static> {
-    _ttl: TimeDelta,
+/// A simplified map of heartbeats for a given type to a unix timestamp
+pub struct HeartbeatMap<T: Debug + Clone + Eq + Hash + Send + Sync + 'static> {
     map: Arc<RwLock<HashMap<T, DateTime<Utc>>>>,
-    cleanup_thread: Option<JoinHandle<()>>,
-    stop_signal: Arc<AtomicBool>,
-    _on_stale_callback: Option<Arc<StaleCallback<T>>>,
 }
 
-impl<T: Eq + Hash + Send + Sync + Clone + 'static> Default for HeartbeatMap<T> {
+impl<T: Debug + Eq + Hash + Send + Sync + Clone + 'static> Default for HeartbeatMap<T> {
     fn default() -> Self {
-        Self::new(Duration::from_secs(60), FIVE_MINUTES, None::<fn(T, DateTime<Utc>)>)
+        Self::new()
     }
 }
 
-impl<T: Eq + Hash + Send + Sync + Clone + 'static> HeartbeatMap<T> {
-    pub fn new(
-        cleanup_interval: Duration,
-        ttl: TimeDelta,
-        on_stale_callback: Option<impl Fn(T, DateTime<Utc>) + Send + Sync + 'static>,
-    ) -> Self {
-        let stop_signal = Arc::new(AtomicBool::new(false));
-        let stop_signal_clone = stop_signal.clone();
-
+impl<T: Debug + Eq + Hash + Send + Sync + Clone + 'static> HeartbeatMap<T> {
+    pub fn new() -> Self {
         let map: Arc<RwLock<HashMap<T, DateTime<Utc>>>> = Arc::new(RwLock::new(HashMap::new()));
-        let map_clone = map.clone();
-
-        let callback = on_stale_callback.map(|cb| Arc::new(cb) as Arc<StaleCallback<T>>);
-        let callback_clone = callback.clone();
-
-        let cleanup_thread = Some(tokio::spawn(async move {
-            loop {
-                tokio::time::sleep(cleanup_interval).await;
-                if stop_signal_clone.load(Ordering::Relaxed) {
-                    break;
-                }
-                let now = Utc::now();
-                let mut map = map_clone.write().expect("Write lock failed");
-                let stale_entries = map
-                    .iter()
-                    .filter(|(_, &time)| now - time > ttl)
-                    .map(|(k, v)| (k.clone(), *v))
-                    .collect::<Vec<_>>();
-
-                for (key, time) in stale_entries {
-                    map.remove(&key);
-                    if let Some(ref callback) = callback_clone {
-                        callback(key, time);
-                    }
-                }
-            }
-        }));
-        Self { _ttl: ttl, map, cleanup_thread, stop_signal, _on_stale_callback: callback }
+        Self { map }
     }
 
     pub fn insert(&self, key: T) -> Option<DateTime<Utc>> {
@@ -196,21 +151,24 @@ impl<T: Eq + Hash + Send + Sync + Clone + 'static> HeartbeatMap<T> {
         self.map.read().expect("Read lock failed").get(key).copied()
     }
 
-    pub fn shutdown(&self) {
-        self.stop_signal.store(true, Ordering::Relaxed);
+    pub fn get_all(&self) -> HashMap<T, DateTime<Utc>> {
+        self.map.read().expect("Read lock failed").clone()
     }
-}
 
-impl<T: Eq + Hash + Send + Sync + Clone + 'static> Drop for HeartbeatMap<T> {
-    fn drop(&mut self) {
-        // Signal the cleanup thread to stop
-        self.stop_signal.store(true, Ordering::Relaxed);
+    pub fn remove_stale_entries(&self, ttl: TimeDelta) -> Vec<(T, DateTime<Utc>)> {
+        let now = Utc::now();
+        let mut map = self.map.write().expect("Write lock failed");
+        let stale_entries = map
+            .iter()
+            .filter(|(_, &time)| now - time > ttl)
+            .map(|(k, v)| (k.clone(), *v))
+            .collect::<Vec<_>>();
 
-        // Optionally, if you want to wait for the thread to finish:
-        if let Some(handle) = self.cleanup_thread.take() {
-            // Convert to a blocking operation only in drop
-            handle.abort();
+        for (key, _) in &stale_entries {
+            map.remove(key);
         }
+
+        stale_entries
     }
 }
 
@@ -235,66 +193,64 @@ impl From<HeartbeatError> for Status {
 }
 
 pub struct HeartbeatMonitor<D: OrganizationDatabase> {
-    client_map: HeartbeatMap<ClientId>,
-    machine_map: HeartbeatMap<MachineId>,
-    node_map: HeartbeatMap<NodeId>,
+    client_map: Arc<HeartbeatMap<ClientId>>,
+    machine_map: Arc<HeartbeatMap<MachineId>>,
+    node_map: Arc<HeartbeatMap<NodeId>>,
     event_handler: Arc<HeartbeatEventHandler<D>>,
 }
 
 impl<D: OrganizationDatabase> HeartbeatMonitor<D> {
     pub fn new(db: PgPool, notifier: Arc<NotificationDispatcher<D>>) -> Self {
-        let event_handler = HeartbeatEventHandler::new(db, notifier);
-        let event_handler_arc = Arc::new(event_handler);
-        let event_handler_client = event_handler_arc.clone();
-        let event_handler_machine = event_handler_arc.clone();
-        let event_handler_node = event_handler_arc.clone();
+        let client_map = Arc::new(HeartbeatMap::new());
+        let machine_map = Arc::new(HeartbeatMap::new());
+        let node_map = Arc::new(HeartbeatMap::new());
+        let event_handler = Arc::new(HeartbeatEventHandler::new(db, notifier));
 
-        // Create callback for client heartbeats
-        let client_callback = move |client_id: ClientId, last_heartbeat: DateTime<Utc>| {
-            let handler = event_handler_client.clone();
-            tokio::spawn(async move {
-                let event = HeartbeatEvent::StaleClient { client_id, last_heartbeat };
-                if let Err(e) = handler.handle_event(event).await {
-                    eprintln!("Error handling stale client event: {}", e);
+        let monitor = Self { client_map, machine_map, node_map, event_handler };
+
+        let client_map = Arc::clone(&monitor.client_map);
+        let machine_map = Arc::clone(&monitor.machine_map);
+        let node_map = Arc::clone(&monitor.node_map);
+        let event_handler = Arc::clone(&monitor.event_handler);
+
+        tokio::spawn(async move {
+            let interval = Duration::from_secs(ONE_MINUTE_SECS);
+            let ttl = TimeDelta::seconds(FIFTEEN_MINUTES_SECS as i64);
+            let mut interval = tokio::time::interval(interval);
+            loop {
+                interval.tick().await;
+                let stale_clients = client_map.remove_stale_entries(ttl);
+                let stale_machines = machine_map.remove_stale_entries(ttl);
+                let stale_nodes = node_map.remove_stale_entries(ttl);
+
+                for (client_id, time) in stale_clients {
+                    let event = HeartbeatEvent::StaleClient { client_id, last_heartbeat: time };
+                    if let Err(e) = event_handler.handle_event(event).await {
+                        error!("Error handling stale client event: {}", e);
+                    };
                 }
-            });
-        };
 
-        // Create callback for machine heartbeats
-        let machine_callback = move |machine_id: MachineId, time_not_responding: DateTime<Utc>| {
-            let handler = event_handler_machine.clone();
-            tokio::spawn(async move {
-                let event = HeartbeatEvent::StaleMachine { machine_id, time_not_responding };
-                debug!("Stale machine heartbeat: {:?}", event);
-                if let Err(e) = handler.handle_event(event).await {
-                    eprintln!("Error handling stale machine event: {}", e);
+                for (machine_id, time) in stale_machines {
+                    let event = HeartbeatEvent::StaleMachine { machine_id, last_heartbeat: time };
+                    if let Err(e) = event_handler.handle_event(event).await {
+                        error!("Error handling stale machine event: {}", e);
+                    };
                 }
-            });
-        };
 
-        // Create callback for node heartbeats
-        let node_callback = move |node_id: NodeId, time_not_responding: DateTime<Utc>| {
-            let handler = event_handler_node.clone();
-            tokio::spawn(async move {
-                let event = HeartbeatEvent::StaleNode { node_id, time_not_responding };
-                debug!("Stale node heartbeat: {:?}", event);
-                if let Err(e) = handler.handle_event(event).await {
-                    eprintln!("Error handling stale node event: {}", e);
+                for (node_id, time) in stale_nodes {
+                    let event = HeartbeatEvent::StaleNode { node_id, last_heartbeat: time };
+                    if let Err(e) = event_handler.handle_event(event).await {
+                        error!("Error handling stale node event: {}", e);
+                    };
                 }
-            });
-        };
+            }
+        });
 
-        let client_map =
-            HeartbeatMap::new(Duration::from_secs(60), ONE_MINUTE, Some(client_callback));
-        let machine_map =
-            HeartbeatMap::new(Duration::from_secs(60), ONE_MINUTE, Some(machine_callback));
-        let node_map = HeartbeatMap::new(Duration::from_secs(60), ONE_MINUTE, Some(node_callback));
-
-        Self { client_map, machine_map, node_map, event_handler: event_handler_arc }
+        monitor
     }
 
     pub async fn post_client_heartbeat(&self, client_id: ClientId) -> Result<(), HeartbeatError> {
-        debug!("Client heartbeat: {}", client_id.to_string());
+        warn!("Client heartbeat: {}", client_id.to_string());
         if self.client_map.insert(client_id).is_none() {
             let event = HeartbeatEvent::NewClient(client_id);
             self.event_handler.handle_event(event).await?;
@@ -306,7 +262,7 @@ impl<D: OrganizationDatabase> HeartbeatMonitor<D> {
         &self,
         machine_id: MachineId,
     ) -> Result<(), HeartbeatError> {
-        debug!("Machine heartbeat: {}", machine_id.to_string());
+        warn!("Machine heartbeat: {}", machine_id.to_string());
         if self.machine_map.insert(machine_id).is_none() {
             let event = HeartbeatEvent::NewMachine(machine_id);
             self.event_handler.handle_event(event).await?;
@@ -315,11 +271,17 @@ impl<D: OrganizationDatabase> HeartbeatMonitor<D> {
     }
 
     pub async fn post_node_heartbeat(&self, node_id: NodeId) -> Result<(), HeartbeatError> {
-        debug!("Node heartbeat: {}", node_id.to_string());
+        warn!("Node heartbeat: {}", node_id.to_string());
         if self.node_map.insert(node_id.clone()).is_none() {
             let event = HeartbeatEvent::NewNode(node_id);
             self.event_handler.handle_event(event).await?;
         }
         Ok(())
+    }
+}
+
+impl<D: OrganizationDatabase> Drop for HeartbeatMonitor<D> {
+    fn drop(&mut self) {
+        warn!("Shutting down heartbeat monitor");
     }
 }
