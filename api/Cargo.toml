@@ -17,6 +17,7 @@ path = "src/main.rs"
 ivynet-database.workspace = true
 ivynet-docker-registry.workspace = true
 ivynet-grpc.workspace = true
+ivynet-heartbeat.workspace = true
 ivynet-node-type.workspace = true
 ivynet-alerts.workspace = true
 

@@ -443,6 +443,7 @@ dependencies = [
  "ivynet-database",
  "ivynet-docker-registry",
  "ivynet-grpc",
+ "ivynet-heartbeat",
  "ivynet-node-type",
  "memcache",
  "rayon",

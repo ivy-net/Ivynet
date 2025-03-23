@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "DELETE FROM client_heartbeat WHERE client_id = $1",
+  "query": "DELETE FROM client_heartbeat_alerts WHERE client_id = $1",
   "describe": {
     "columns": [],
     "parameters": {
@@ -10,5 +10,5 @@
     },
     "nullable": []
   },
-  "hash": "76e79616438b32a0fed2248150fc28c4bfd0c1519704ebcfd5badb8ef8e21d37"
+  "hash": "32a50bb609b7cf8ee774866034464c560dc812a259604dc8ab857c2468c5801f"
 }

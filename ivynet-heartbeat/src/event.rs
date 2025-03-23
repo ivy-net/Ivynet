@@ -92,7 +92,7 @@ impl<D: OrganizationDatabase> HeartbeatEventHandler<D> {
         last_response_time: DateTime<Utc>,
         channels: Vec<Channel>,
     ) -> Result<(), HeartbeatError> {
-        let alert = ClientHeartbeatAlert { client_id, last_response_time };
+        let alert = ClientHeartbeatAlert { client_id, last_response_time, created_at: Utc::now() };
         ClientHeartbeatAlert::insert(&self.db, alert.clone(), organization_id).await?;
         self.notifier.notify(alert, channels).await?;
         Ok(())
@@ -105,7 +105,8 @@ impl<D: OrganizationDatabase> HeartbeatEventHandler<D> {
         last_response_time: DateTime<Utc>,
         channels: Vec<Channel>,
     ) -> Result<(), HeartbeatError> {
-        let alert = MachineHeartbeatAlert { machine_id, last_response_time };
+        let alert =
+            MachineHeartbeatAlert { machine_id, last_response_time, created_at: Utc::now() };
         MachineHeartbeatAlert::insert(&self.db, alert.clone(), organization_id).await?;
         self.notifier.notify(alert, channels).await?;
 
@@ -119,7 +120,7 @@ impl<D: OrganizationDatabase> HeartbeatEventHandler<D> {
         last_response_time: DateTime<Utc>,
         channels: Vec<Channel>,
     ) -> Result<(), HeartbeatError> {
-        let alert = NodeHeartbeatAlert { node_id, last_response_time };
+        let alert = NodeHeartbeatAlert { node_id, last_response_time, created_at: Utc::now() };
         NodeHeartbeatAlert::insert(&self.db, alert.clone(), organization_id).await?;
         self.notifier.notify(alert, channels).await?;
         Ok(())

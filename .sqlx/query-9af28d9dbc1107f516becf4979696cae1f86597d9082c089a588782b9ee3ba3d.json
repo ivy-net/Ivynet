@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "DELETE FROM machine_heartbeat WHERE machine_id = $1",
+  "query": "DELETE FROM machine_heartbeat_alerts WHERE machine_id = $1",
   "describe": {
     "columns": [],
     "parameters": {
@@ -10,5 +10,5 @@
     },
     "nullable": []
   },
-  "hash": "b7626af334c0b8aa604f5e15d93bc75f5786c94f713a63f3c35b21d3f0a3d48e"
+  "hash": "9af28d9dbc1107f516becf4979696cae1f86597d9082c089a588782b9ee3ba3d"
 }

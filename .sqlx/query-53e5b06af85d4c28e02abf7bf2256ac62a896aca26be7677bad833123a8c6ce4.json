@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO node_heartbeat_alerts_historical \n                   (node_id, organization_id, created_at, last_response_time, resolved_at) \n                   VALUES ($1, $2, $3, $4, $5)\n                   RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8",
+        "Timestamp",
+        "Timestamp",
+        "Timestamp"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "53e5b06af85d4c28e02abf7bf2256ac62a896aca26be7677bad833123a8c6ce4"
+}
