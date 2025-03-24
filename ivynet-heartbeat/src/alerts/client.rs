@@ -308,7 +308,7 @@ mod client_heartbeat_alert_tests {
         ClientHeartbeatAlert::insert(&pool, alert.clone(), organization_id).await.unwrap();
 
         // Retrieve the alert
-        let retrieved = ClientHeartbeatAlert::get(&pool, client_id.clone()).await.unwrap();
+        let retrieved = ClientHeartbeatAlert::get(&pool, client_id).await.unwrap();
         assert!(retrieved.is_some());
         let retrieved = retrieved.unwrap();
 
@@ -318,16 +318,16 @@ mod client_heartbeat_alert_tests {
         assert_eq!(retrieved.last_response_time.timestamp(), last_response.timestamp());
 
         // Resolve the alert
-        let historical_id = ClientHeartbeatAlert::resolve(&pool, client_id.clone()).await.unwrap();
+        let historical_id = ClientHeartbeatAlert::resolve(&pool, client_id).await.unwrap();
         assert!(historical_id.is_some());
 
         // Check that the alert is no longer in the active table
-        let deleted_check = ClientHeartbeatAlert::get(&pool, client_id.clone()).await.unwrap();
+        let deleted_check = ClientHeartbeatAlert::get(&pool, client_id).await.unwrap();
         assert!(deleted_check.is_none());
 
         // Check that it's in the historical table
         let historical =
-            ClientHeartbeatAlertHistorical::get(&pool, client_id.clone(), 10, 0).await.unwrap();
+            ClientHeartbeatAlertHistorical::get(&pool, client_id, 10, 0).await.unwrap();
 
         assert_eq!(historical.len(), 1);
         assert_eq!(historical[0].client_id.0, client_id.0);
@@ -362,7 +362,7 @@ mod client_heartbeat_alert_tests {
             let client_id = ClientId(Address::from_slice(&addr_bytes));
 
             let alert = ClientHeartbeatAlert {
-                client_id: client_id.clone(),
+                client_id,
                 created_at: now,
                 last_response_time: last_response,
             };
@@ -431,7 +431,7 @@ mod client_heartbeat_alert_tests {
             let client_id = ClientId(Address::from_slice(&addr_bytes));
 
             let alert = ClientHeartbeatAlert {
-                client_id: client_id.clone(),
+                client_id,
                 created_at: now,
                 last_response_time: last_response,
             };
@@ -447,7 +447,7 @@ mod client_heartbeat_alert_tests {
             let client_id = ClientId(Address::from_slice(&addr_bytes));
 
             let alert = ClientHeartbeatAlert {
-                client_id: client_id.clone(),
+                client_id,
                 created_at: now,
                 last_response_time: last_response,
             };

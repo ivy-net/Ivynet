@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, client_id, created_at, last_response_time, resolved_at \n               FROM client_heartbeat_alerts_historical \n               WHERE organization_id = $1\n               ORDER BY created_at DESC\n               LIMIT $2 OFFSET $3",
+  "query": "SELECT id, node_id, created_at, last_response_time, resolved_at\n               FROM node_heartbeat_alerts_historical\n               WHERE node_id = $1\n               ORDER BY created_at DESC\n               LIMIT $2 OFFSET $3",
   "describe": {
     "columns": [
       {
@@ -10,8 +10,8 @@
       },
       {
         "ordinal": 1,
-        "name": "client_id",
-        "type_info": "Bytea"
+        "name": "node_id",
+        "type_info": "Text"
       },
       {
         "ordinal": 2,
@@ -31,7 +31,7 @@
     ],
     "parameters": {
       "Left": [
-        "Int8",
+        "Text",
         "Int8",
         "Int8"
       ]
@@ -44,5 +44,5 @@
       false
     ]
   },
-  "hash": "fffdc2b3aedf5a2d46eb6161f1517f46968606d5855b5a425818f562f8ea6201"
+  "hash": "e88d0980fc4f4a1c263879baebf61ecd7313ace58217f071ac8ec6d307cc347e"
 }

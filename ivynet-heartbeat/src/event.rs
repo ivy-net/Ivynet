@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use chrono::{DateTime, Utc};
+use ivynet_alerts::AlertType;
 use ivynet_database::{error::DatabaseError, NotificationSettings};
 use ivynet_notifications::{Channel, NotificationDispatcher, OrganizationDatabase};
 use sqlx::PgPool;
@@ -38,33 +39,56 @@ impl<D: OrganizationDatabase> HeartbeatEventHandler<D> {
             HeartbeatEvent::NewNode(node_id) => self.handle_new_node(node_id).await?,
             HeartbeatEvent::StaleClient { client_id, last_heartbeat } => {
                 let settings = NotificationSettings::get_for_client(&self.db, client_id.0).await?;
-                let channels = settings.get_active_channels();
-                self.handle_stale_client(
-                    client_id,
-                    settings.organization_id,
-                    last_heartbeat,
-                    channels,
-                )
-                .await?
+                if settings
+                    .alert_flags
+                    .is_alert_enabled(&AlertType::NoClientHeartbeat)
+                    .is_ok_and(|enabled| enabled)
+                {
+                    let channels = settings.get_active_channels();
+                    self.handle_stale_client(
+                        client_id,
+                        settings.organization_id,
+                        last_heartbeat,
+                        channels,
+                    )
+                    .await?
+                }
             }
             HeartbeatEvent::StaleMachine { machine_id, last_heartbeat } => {
                 let settings =
                     NotificationSettings::get_for_machine(&self.db, machine_id.0).await?;
-                let channels = settings.get_active_channels();
-                self.handle_stale_machine(
-                    machine_id,
-                    settings.organization_id,
-                    last_heartbeat,
-                    channels,
-                )
-                .await?
+                if settings
+                    .alert_flags
+                    .is_alert_enabled(&AlertType::NoMachineHeartbeat)
+                    .is_ok_and(|enabled| enabled)
+                {
+                    let channels = settings.get_active_channels();
+                    self.handle_stale_machine(
+                        machine_id,
+                        settings.organization_id,
+                        last_heartbeat,
+                        channels,
+                    )
+                    .await?
+                }
             }
             HeartbeatEvent::StaleNode { node_id, last_heartbeat } => {
                 let settings =
                     NotificationSettings::get_for_machine(&self.db, node_id.machine).await?;
-                let channels = settings.get_active_channels();
-                self.handle_stale_node(node_id, settings.organization_id, last_heartbeat, channels)
+                if settings
+                    .alert_flags
+                    .is_alert_enabled(&AlertType::NoNodeHeartbeat)
+                    .is_ok_and(|enabled| enabled)
+                {
+                    let channels = settings.get_active_channels();
+                    self.handle_stale_node(
+                        node_id,
+                        settings.organization_id,
+                        last_heartbeat,
+                        channels,
+                    )
                     .await?
+                }
             }
         }
         Ok(())

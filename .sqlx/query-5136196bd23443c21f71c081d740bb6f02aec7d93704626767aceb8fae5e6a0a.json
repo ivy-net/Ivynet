@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO node_heartbeat_alerts_historical \n                   (node_id, organization_id, created_at, last_response_time, resolved_at) \n                   VALUES ($1, $2, $3, $4, $5)\n                   RETURNING id",
+  "query": "INSERT INTO node_heartbeat_alerts_historical\n                   (node_id, organization_id, created_at, last_response_time, resolved_at)\n                   VALUES ($1, $2, $3, $4, $5)\n                   RETURNING id",
   "describe": {
     "columns": [
       {
@@ -22,5 +22,5 @@
       false
     ]
   },
-  "hash": "53e5b06af85d4c28e02abf7bf2256ac62a896aca26be7677bad833123a8c6ce4"
+  "hash": "5136196bd23443c21f71c081d740bb6f02aec7d93704626767aceb8fae5e6a0a"
 }

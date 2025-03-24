@@ -144,6 +144,15 @@ impl SendgridSend for Notification {
                     ("twitter".to_owned(), twitter),
                 ]),
             ),
+            // TODO: Unused due to the `NotificationSend` trait impl. Only here for compiler
+            // completeness. Should migrate all Alerts to same method.
+            NotificationType::NoClientHeartbeat => {
+                (EmailTemplate::NoClientHeartbeat, HashMap::new())
+            }
+            NotificationType::NoNodeHeartbeat => (EmailTemplate::NoNodeHeartbeat, HashMap::new()),
+            NotificationType::NoMachineHeartbeat => {
+                (EmailTemplate::NoMachineHeartbeat, HashMap::new())
+            }
         };
         SendgridParams { email_template, payload }
     }
@@ -151,6 +160,7 @@ impl SendgridSend for Notification {
     fn machine_id(&self) -> Option<Uuid> {
         self.machine_id
     }
+
     fn error_type_msg(&self) -> String {
         match &self.alert {
             Alert::Custom { node_name: _, node_type: _, extra_data } => {
@@ -190,6 +200,11 @@ impl SendgridSend for Notification {
             Alert::UpdatedEigenAvs { name, address, metadata_uri, website, twitter, .. } => {
                 format!("Updated EigenLayer AVS: {name} has updated their metadata or address to {:?} with metadata URI {metadata_uri}. \n Website: {website} \n Twitter: {twitter}", address)
             }
+            // TODO: Unused due to the `NotificationSend` trait impl. Only here for compiler
+            // completeness. Should migrate all Alerts to same method.
+            Alert::NoClientHeartbeat => "No client heartbeat".to_string(),
+            Alert::NoNodeHeartbeat => "No node heartbeat".to_string(),
+            Alert::NoMachineHeartbeat => "No machine heartbeat".to_string(),
         }
     }
 }

@@ -88,6 +88,11 @@ fn avs_if_any(notification: &Notification) -> Option<String> {
         NotificationType::UpdatedEigenAvs { name, .. } => Some(name.to_owned()),
         NotificationType::MachineNotResponding { .. } => None,
         NotificationType::HardwareResourceUsage { .. } => None,
+        // TODO: This is somewhat redundant with the `impl` methods for constructing notifications.
+        // Should be standardized.
+        NotificationType::NoClientHeartbeat => None,
+        NotificationType::NoMachineHeartbeat => None,
+        NotificationType::NoNodeHeartbeat => None,
     }
 }
 
@@ -193,6 +198,10 @@ impl PagerDutySend for Notification {
             } => {
                 format!("Updated EigenLayer AVS: {name} has updated their metadata or address to {:?} with metadata URI {metadata_uri}. \n Website: {website} \n Twitter: {twitter}", address)
             }
+            // TODO: As above, currently unused, only here for compiler completeness.
+            NotificationType::NoClientHeartbeat => "No heartbeat from client".to_string(),
+            NotificationType::NoMachineHeartbeat => "No heartbeat from machine".to_string(),
+            NotificationType::NoNodeHeartbeat => "No heartbeat from node".to_string(),
         }
     }
 }

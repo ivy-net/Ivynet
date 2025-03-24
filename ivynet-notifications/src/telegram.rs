@@ -251,6 +251,11 @@ impl TelegramSend for Notification {
                     Self::escape_markdown_v2(twitter)
                 )
             }
+            // TODO: Unused due to the `NotificationSend` trait impl. Only here for compiler
+            // completeness. Should migrate all Alerts to same method.
+            NotificationType::NoClientHeartbeat => "".to_string(),
+            NotificationType::NoMachineHeartbeat => "".to_string(),
+            NotificationType::NoNodeHeartbeat => "".to_string(),
         }
     }
 }

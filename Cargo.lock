@@ -3573,6 +3573,7 @@ version = "0.6.0"
 dependencies = [
  "chrono",
  "ethers",
+ "ivynet-alerts",
  "ivynet-database",
  "ivynet-grpc",
  "ivynet-notifications",

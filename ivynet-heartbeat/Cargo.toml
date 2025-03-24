@@ -9,6 +9,7 @@ license.workspace = true
 [dependencies]
 chrono.workspace = true
 ethers.workspace = true
+ivynet-alerts.workspace = true
 ivynet-database.workspace = true
 ivynet-grpc.workspace = true
 ivynet-notifications.workspace = true
