@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO machine_heartbeat (machine_id, organization_id, last_response_time) VALUES ($1, $2, $3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8",
+        "Timestamp"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "718ca72f249204c9eb6ffacb37db18e13aee3cea76c5d16979e5c0834e2ff42c"
+}

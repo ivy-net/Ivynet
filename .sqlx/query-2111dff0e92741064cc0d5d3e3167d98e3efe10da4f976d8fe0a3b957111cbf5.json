@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO node_heartbeat (node_id, organization_id, last_response_time) VALUES ($1, $2, $3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8",
+        "Timestamp"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2111dff0e92741064cc0d5d3e3167d98e3efe10da4f976d8fe0a3b957111cbf5"
+}
