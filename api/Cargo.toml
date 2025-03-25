@@ -41,7 +41,7 @@ tracing-subscriber.workspace = true
 uuid = { version = "1.11.0", features = ["v4", "serde"] }
 chrono = "0.4"
 memcache = "0.18.0"
-axum-extra = { version = "0.9.3", features = ["cookie"] }
+axum-extra = { version = "0.10.0", features = ["cookie"] }
 sendgrid = "0.23.0"
 strum.workspace = true
 utoipa.workspace = true
