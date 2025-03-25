@@ -11,14 +11,18 @@ use ivynet_notifications::{
 };
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::ClientId;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct ClientHeartbeatAlert {
+    #[schema(value_type = String)]
     pub client_id: ClientId,
+    #[schema(value_type = String)]
     pub created_at: DateTime<Utc>,
+    #[schema(value_type = String)]
     pub last_response_time: DateTime<Utc>,
 }
 
@@ -74,7 +78,7 @@ impl ClientHeartbeatAlert {
             alert.created_at.naive_utc(),
             alert.last_response_time.naive_utc()
         )
-        .execute(pool)
+.execute(pool)
         .await?;
 
         Ok(())
@@ -193,12 +197,16 @@ impl TelegramSend for ClientHeartbeatAlert {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct ClientHeartbeatAlertHistorical {
     pub id: i64,
+    #[schema(value_type = String)]
     pub client_id: ClientId,
+    #[schema(value_type = String)]
     pub created_at: DateTime<Utc>,
+    #[schema(value_type = String)]
     pub last_response_time: DateTime<Utc>,
+    #[schema(value_type = String)]
     pub resolved_at: DateTime<Utc>,
 }
 

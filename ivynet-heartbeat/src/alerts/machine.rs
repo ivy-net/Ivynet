@@ -10,14 +10,18 @@ use ivynet_notifications::{
 };
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::MachineId;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct MachineHeartbeatAlert {
+    #[schema(value_type = String)]
     pub machine_id: MachineId,
+    #[schema(value_type = String)]
     pub created_at: DateTime<Utc>,
+    #[schema(value_type = String)]
     pub last_response_time: DateTime<Utc>,
 }
 
@@ -195,12 +199,16 @@ impl TelegramSend for MachineHeartbeatAlert {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct MachineHeartbeatAlertHistorical {
     pub id: i64,
+    #[schema(value_type = String)]
     pub machine_id: MachineId,
+    #[schema(value_type = String)]
     pub created_at: DateTime<Utc>,
+    #[schema(value_type = String)]
     pub last_response_time: DateTime<Utc>,
+    #[schema(value_type = String)]
     pub resolved_at: DateTime<Utc>,
 }
 

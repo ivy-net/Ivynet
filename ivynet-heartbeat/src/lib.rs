@@ -25,6 +25,7 @@ use ivynet_notifications::{
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use tracing::{error, warn};
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 mod event;
@@ -77,7 +78,7 @@ impl Display for MachineId {
     }
 }
 
-#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Hash, Eq, PartialEq, Serialize, Deserialize, ToSchema)]
 pub struct NodeId {
     pub machine: Uuid,
     pub name: String,
@@ -250,7 +251,6 @@ impl<D: OrganizationDatabase> HeartbeatMonitor<D> {
     }
 
     pub async fn post_client_heartbeat(&self, client_id: ClientId) -> Result<(), HeartbeatError> {
-        warn!("Client heartbeat: {}", client_id.to_string());
         if self.client_map.insert(client_id).is_none() {
             let event = HeartbeatEvent::NewClient(client_id);
             self.event_handler.handle_event(event).await?;
@@ -262,7 +262,6 @@ impl<D: OrganizationDatabase> HeartbeatMonitor<D> {
         &self,
         machine_id: MachineId,
     ) -> Result<(), HeartbeatError> {
-        warn!("Machine heartbeat: {}", machine_id.to_string());
         if self.machine_map.insert(machine_id).is_none() {
             let event = HeartbeatEvent::NewMachine(machine_id);
             self.event_handler.handle_event(event).await?;
@@ -271,7 +270,6 @@ impl<D: OrganizationDatabase> HeartbeatMonitor<D> {
     }
 
     pub async fn post_node_heartbeat(&self, node_id: NodeId) -> Result<(), HeartbeatError> {
-        warn!("Node heartbeat: {}", node_id.to_string());
         if self.node_map.insert(node_id.clone()).is_none() {
             let event = HeartbeatEvent::NewNode(node_id);
             self.event_handler.handle_event(event).await?;

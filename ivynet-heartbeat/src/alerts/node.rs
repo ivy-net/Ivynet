@@ -10,14 +10,17 @@ use ivynet_notifications::{
 };
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
+use utoipa::ToSchema;
 use uuid::Uuid;
 
 use crate::NodeId;
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct NodeHeartbeatAlert {
     pub node_id: NodeId,
+    #[schema(value_type = String)]
     pub created_at: DateTime<Utc>,
+    #[schema(value_type = String)]
     pub last_response_time: DateTime<Utc>,
 }
 
@@ -220,7 +223,7 @@ impl TelegramSend for NodeHeartbeatAlert {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
 pub struct NodeHeartbeatAlertHistorical {
     pub id: i64,
     pub node_id: NodeId,
