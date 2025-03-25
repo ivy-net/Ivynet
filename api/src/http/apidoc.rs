@@ -10,7 +10,7 @@ use ivynet_database::{
 };
 use utoipa::OpenApi;
 
-use super::{alerts, authorize, client, info, machine, node, organization, pubkey};
+use super::{alerts, authorize, client, heartbeat, info, machine, node, organization, pubkey};
 #[derive(OpenApi)]
 #[openapi(
     paths(
@@ -54,6 +54,12 @@ use super::{alerts, authorize, client, info, machine, node, organization, pubkey
         machine::set_name,
         machine::system_metrics,
         machine::set_node_type,
+        heartbeat::client_active_alerts,
+        heartbeat::client_alert_history,
+        heartbeat::machine_active_alerts,
+        heartbeat::machine_alert_history,
+        heartbeat::node_active_alerts,
+        heartbeat::node_alert_history,
         alerts::node_active_alerts,
         alerts::node_acknowledge_alert,
         alerts::node_alert_history,
@@ -107,6 +113,12 @@ use super::{alerts, authorize, client, info, machine, node, organization, pubkey
             alerts::AcknowledgeAlertParams,
             alerts::HistoricalAlertParams,
             AlertType,
+            ivynet_heartbeat::alerts::ClientHeartbeatAlert,
+            ivynet_heartbeat::alerts::ClientHeartbeatAlertHistorical,
+            ivynet_heartbeat::alerts::MachineHeartbeatAlert,
+            ivynet_heartbeat::alerts::MachineHeartbeatAlertHistorical,
+            ivynet_heartbeat::alerts::NodeHeartbeatAlert,
+            ivynet_heartbeat::alerts::NodeHeartbeatAlertHistorical,
         ),
     ),
     tags(

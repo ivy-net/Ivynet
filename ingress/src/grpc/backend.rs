@@ -26,6 +26,7 @@ use ivynet_grpc::{
 };
 
 use ivynet_docker::logs::{find_log_level, find_or_create_log_timestamp, sanitize_log};
+use ivynet_heartbeat::{HeartbeatMonitor, MachineId, NodeId};
 use ivynet_node_type::NodeType;
 use ivynet_notifications::{NotificationConfig, NotificationDispatcher};
 use sqlx::PgPool;
@@ -37,12 +38,17 @@ use super::data_validator::validate_request;
 
 pub struct BackendService {
     pub node_alert_handler: NodeAlertHandler,
+    pub heartbeats: HeartbeatMonitor<AlertDb>,
     pool: PgPool,
 }
 
 impl BackendService {
-    pub fn new(pool: PgPool, node_alert_handler: NodeAlertHandler) -> Self {
-        Self { node_alert_handler, pool }
+    pub fn new(
+        pool: PgPool,
+        heartbeats: HeartbeatMonitor<AlertDb>,
+        node_alert_handler: NodeAlertHandler,
+    ) -> Self {
+        Self { node_alert_handler, heartbeats, pool }
     }
 }
 
@@ -176,6 +182,10 @@ impl Backend for BackendService {
         .await
         .map_err(|e| Status::internal(format!("Failed while saving system metrics: {e:?}")))?;
 
+        // Heartbeat
+        let machine_id = MachineId::new(machine_id);
+        self.heartbeats.post_machine_heartbeat(machine_id).await?;
+
         Ok(Response::new(()))
     }
 
@@ -195,7 +205,13 @@ impl Backend for BackendService {
 
         let recovered_node_data = RecoveredNodeData::from(node_data);
 
-        process_node_data(&self.pool, machine_id, recovered_node_data).await?;
+        process_node_data(&self.pool, machine_id, recovered_node_data.clone()).await?;
+
+        // Heartbeat
+        let node_id = NodeId::new(machine_id, recovered_node_data.name);
+        self.heartbeats.post_node_heartbeat(node_id).await?;
+        let machine_id = MachineId::new(machine_id);
+        self.heartbeats.post_machine_heartbeat(machine_id).await?;
 
         Ok(Response::new(()))
     }
@@ -219,11 +235,19 @@ impl Backend for BackendService {
 
         let recovered_node_data = RecoveredNodeData::from(node_data.clone());
 
-        process_node_data(&self.pool, machine_id, recovered_node_data).await?;
+        process_node_data(&self.pool, machine_id, recovered_node_data.clone()).await?;
 
         self.node_alert_handler.handle_node_data_alerts(node_data, machine_id).await.map_err(
             |e| Status::internal(format!("Failed while sending node data to alert actor: {e}")),
         )?;
+
+        // heartbeat
+        if recovered_node_data.node_running.unwrap_or(false) {
+            let node_id = NodeId::new(machine_id, recovered_node_data.name);
+            self.heartbeats.post_node_heartbeat(node_id).await?;
+        }
+        let machine_id = MachineId::new(machine_id);
+        self.heartbeats.post_machine_heartbeat(machine_id).await?;
 
         Ok(Response::new(()))
     }
@@ -331,9 +355,12 @@ pub async fn serve(
     let notification_dispatcher =
         Arc::new(NotificationDispatcher::new(notification_config, AlertDb::new(pool.clone())));
 
+    let heartbeat_monitor = HeartbeatMonitor::new(pool.clone(), notification_dispatcher.clone());
+
     let server = server::Server::new(
         BackendServer::new(BackendService::new(
             pool.clone(),
+            heartbeat_monitor,
             NodeAlertHandler::new(notification_dispatcher.clone(), pool),
         )),
         tls_cert,

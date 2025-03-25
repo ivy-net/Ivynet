@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM node_heartbeat_alerts WHERE node_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d0821bf4544714f83451f435f5af214c7fae6f6361d502faa4865eacac64bf06"
+}

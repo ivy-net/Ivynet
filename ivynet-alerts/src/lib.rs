@@ -2,8 +2,6 @@ mod alert_flags;
 mod alert_type;
 mod bitflag;
 
-use std::collections::HashSet;
-
 pub use alert_flags::AlertFlags;
 pub use alert_type::{Alert, AlertType};
 pub use bitflag::BitflagError;
@@ -19,11 +17,4 @@ pub enum SendState {
     SendSuccess,
     #[sqlx(rename = "send_failed")]
     SendFailed,
-}
-
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Channel {
-    Telegram(HashSet<String>),
-    Email(HashSet<String>),
-    PagerDuty(HashSet<String>),
 }

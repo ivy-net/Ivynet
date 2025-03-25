@@ -1,14 +1,16 @@
-use std::collections::HashSet;
+use std::{collections::HashSet, fmt::Debug};
 
-use ivynet_alerts::{Alert, Channel};
-use pagerduty::PagerDutySender;
-use sendgrid::EmailSender;
-use telegram::TelegramBot;
+use ivynet_alerts::Alert;
+use pagerduty::{PagerDutySend, PagerDutySender};
+use sendgrid::{EmailSender, SendgridSend};
+use telegram::{TelegramBot, TelegramSend};
 use uuid::Uuid;
 
 pub mod pagerduty;
 pub mod sendgrid;
 pub mod telegram;
+
+pub trait NotificationSend: PagerDutySend + SendgridSend + TelegramSend + Debug {}
 
 #[derive(thiserror::Error, Debug)]
 pub enum NotificationDispatcherError {
@@ -33,6 +35,8 @@ pub struct Notification {
     pub alert: Alert,
     pub resolved: bool,
 }
+
+impl NotificationSend for Notification {}
 
 #[derive(Clone, Debug)]
 pub enum SendgridTemplates {
@@ -88,6 +92,13 @@ pub enum UnregistrationResult {
     DatabaseError(String),
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Channel {
+    Telegram(HashSet<String>),
+    Email(HashSet<String>),
+    PagerDuty(HashSet<String>),
+}
+
 #[async_trait::async_trait]
 pub trait OrganizationDatabase: Send + Sync + Clone + 'static {
     async fn register_chat(&self, chat_id: &str, email: &str, password: &str)
@@ -115,7 +126,11 @@ impl<D: OrganizationDatabase> NotificationDispatcher<D> {
         Ok(())
     }
 
-    pub async fn notify_channel(&self, notification: Notification, channel: &Channel) -> bool {
+    pub async fn notify_channel(
+        &self,
+        notification: impl NotificationSend,
+        channel: &Channel,
+    ) -> bool {
         tracing::debug!("notifying channel: {:#?}", channel);
         tracing::debug!("notification: {:#?}", notification);
 
@@ -144,8 +159,8 @@ impl<D: OrganizationDatabase> NotificationDispatcher<D> {
 
     pub async fn notify(
         &self,
-        notification: Notification,
-        channels: HashSet<Channel>,
+        notification: impl NotificationSend,
+        channels: Vec<Channel>,
     ) -> Result<(), NotificationDispatcherError> {
         for channel in channels {
             match channel {

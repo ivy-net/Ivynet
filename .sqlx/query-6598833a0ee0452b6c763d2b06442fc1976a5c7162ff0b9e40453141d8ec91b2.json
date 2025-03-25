@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO client_heartbeat_alerts (client_id, organization_id, created_at, last_response_time) VALUES ($1, $2, $3, $4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Bytea",
+        "Int8",
+        "Timestamp",
+        "Timestamp"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6598833a0ee0452b6c763d2b06442fc1976a5c7162ff0b9e40453141d8ec91b2"
+}

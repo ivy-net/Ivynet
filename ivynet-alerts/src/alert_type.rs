@@ -104,6 +104,9 @@ pub enum Alert {
         logo: String,
         twitter: String,
     } = 14,
+    NoClientHeartbeat,
+    NoMachineHeartbeat,
+    NoNodeHeartbeat,
 }
 
 // Implement ToSchema for AlertType
@@ -168,6 +171,9 @@ impl Alert {
             Alert::UpdatedEigenAvs { address, block_number, log_index, .. } => {
                 format!("{}-{}-{}", address, block_number, log_index)
             }
+            Alert::NoClientHeartbeat => "NoClientHeartbeat".to_string(),
+            Alert::NoMachineHeartbeat => "NoMachineHeartbeat".to_string(),
+            Alert::NoNodeHeartbeat => "NoNodeHeartbeat".to_string(),
         }
     }
 
@@ -207,6 +213,9 @@ impl Display for AlertType {
             AlertType::NeedsUpdate => write!(f, "NeedsUpdate"),
             AlertType::NewEigenAvs => write!(f, "NewEigenAvs"),
             AlertType::UpdatedEigenAvs => write!(f, "UpdatedEigenAvs"),
+            AlertType::NoClientHeartbeat => write!(f, "NoClientHeartbeat"),
+            AlertType::NoMachineHeartbeat => write!(f, "NoMachineHeartbeat"),
+            AlertType::NoNodeHeartbeat => write!(f, "NoNodeHeartbeat"),
         }
     }
 }
@@ -235,6 +244,9 @@ impl<'de> Deserialize<'de> for AlertType {
             "NeedsUpdate" => Ok(AlertType::NeedsUpdate),
             "NewEigenAvs" => Ok(AlertType::NewEigenAvs),
             "UpdatedEigenAvs" => Ok(AlertType::UpdatedEigenAvs),
+            "NoClientHeartbeat" => Ok(AlertType::NoClientHeartbeat),
+            "NoMachineHeartbeat" => Ok(AlertType::NoMachineHeartbeat),
+            "NoNodeHeartbeat" => Ok(AlertType::NoNodeHeartbeat),
             _ => Err(serde::de::Error::custom("Unknown alert type")),
         }
     }
@@ -258,6 +270,9 @@ impl From<&AlertType> for usize {
             AlertType::NeedsUpdate => 12,
             AlertType::NewEigenAvs => 13,
             AlertType::UpdatedEigenAvs => 14,
+            AlertType::NoClientHeartbeat => 15,
+            AlertType::NoMachineHeartbeat => 16,
+            AlertType::NoNodeHeartbeat => 17,
         }
     }
 }
@@ -279,6 +294,9 @@ impl From<usize> for AlertType {
             12 => AlertType::NeedsUpdate,
             13 => AlertType::NewEigenAvs,
             14 => AlertType::UpdatedEigenAvs,
+            15 => AlertType::NoClientHeartbeat,
+            16 => AlertType::NoMachineHeartbeat,
+            17 => AlertType::NoNodeHeartbeat,
             _ => panic!("Unknown alert type"),
         }
     }
