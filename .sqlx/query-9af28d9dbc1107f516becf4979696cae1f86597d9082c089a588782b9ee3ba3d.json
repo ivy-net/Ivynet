@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM machine_heartbeat_alerts WHERE machine_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9af28d9dbc1107f516becf4979696cae1f86597d9082c089a588782b9ee3ba3d"
+}

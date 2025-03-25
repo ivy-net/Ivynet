@@ -1,0 +1,25 @@
+[package]
+name = "ivynet-heartbeat"
+version.workspace = true
+edition.workspace = true
+repository.workspace = true
+categories.workspace = true
+license.workspace = true
+
+[dependencies]
+chrono.workspace = true
+ethers.workspace = true
+ivynet-alerts.workspace = true
+ivynet-database.workspace = true
+ivynet-grpc.workspace = true
+ivynet-notifications.workspace = true
+serde.workspace = true
+sqlx.workspace = true
+thiserror.workspace = true
+tokio.workspace = true
+tracing.workspace = true
+utoipa.workspace = true
+uuid.workspace = true
+
+[lints]
+workspace = true

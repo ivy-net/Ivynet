@@ -1,22 +1,24 @@
 [workspace]
 members = [
-#Binaries
+	#Binaries
 	"cli",
 	"api",
 	"scanner",
 	"ingress",
-#Crates
-    "ivynet-database",
-    "ivynet-macros",
+	#Crates
+	"ivynet-database",
+	"ivynet-macros",
 	"ivynet-docker",
 	"ivynet-docker-registry",
 	"ivynet-grpc",
+	"ivynet-heartbeat",
 	"ivynet-io",
 	"ivynet-node-type",
 	"ivynet-notifications",
 	"ivynet-signer",
 	"ivynet-error",
 	"ivynet-alerts",
+	"ivynet-heartbeat",
 ]
 resolver = "2"
 
@@ -62,16 +64,17 @@ useless_let_if_seq = "warn"
 [workspace.dependencies]
 # Local packages
 ivynet-alerts = { path = "ivynet-alerts" }
-ivynet-error = { path = "ivynet-error" }
+ivynet-database = { path = "ivynet-database" }
 ivynet-docker = { path = "ivynet-docker" }
 ivynet-docker-registry = { path = "ivynet-docker-registry" }
+ivynet-error = { path = "ivynet-error" }
 ivynet-grpc = { path = "ivynet-grpc" }
+ivynet-heartbeat = { path = "ivynet-heartbeat" }
 ivynet-io = { path = "ivynet-io" }
 ivynet-node-type = { path = "ivynet-node-type" }
 ivynet-notifications = { path = "ivynet-notifications" }
-ivynet-signer = { path = "ivynet-signer" }
-ivynet-database = { path = "ivynet-database" }
 ivynet-macros = { path = "ivynet-macros" }
+ivynet-signer = { path = "ivynet-signer" }
 
 #grpc
 prost = "0.13"

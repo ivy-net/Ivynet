@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT client_id, organization_id, created_at, last_response_time FROM client_heartbeat_alerts WHERE client_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "client_id",
+        "type_info": "Bytea"
+      },
+      {
+        "ordinal": 1,
+        "name": "organization_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 2,
+        "name": "created_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 3,
+        "name": "last_response_time",
+        "type_info": "Timestamp"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bytea"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "236b629b6c6437ac27e80ea8bff7f0b50806d87bc954e1d66028055e8d908959"
+}

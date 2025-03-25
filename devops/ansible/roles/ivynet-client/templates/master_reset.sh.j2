@@ -1,20 +1,51 @@
 #!/bin/bash
 
+
+while getopts a:fk:n: flag
+do
+  case "${flag}" in
+    a)
+    avs_from_cli=True
+    AVSS+=("${OPTARG}");;
+    f) FULL=True;;
+    k) KEY=${OPTARG};;
+    n) NAME=${OPTARG};;
+  esac
+done
+shift $(( OPTIND - 1 ))
+
+FULL=${FULL:-False}
+PUBLIC_KEY=${KEY:-0x22fC3299729676C867200d02cd5e190246D90E88}
+NAME=${NAME:-operator3}
+
+# Reset Ivynet Client
 {{ ivynet_client_path_bin }}/reset_ivynet.exp
 
 
 # Add Public Key
-curl -u {{ ivynet_client_org_email }}:{{ ivynet_client_org_pass }} -X 'POST' \
-  "https://api3.test.ivynet.dev/pubkey?public_key=0x22fC3299729676C867200d02cd5e190246D90E88&name=operator3" \
-  -H 'accept: application/json'
+(curl -s -u {{ ivynet_client_org_email }}:{{ ivynet_client_org_pass }} -X 'GET' \
+  "https://api3.test.ivynet.dev/pubkey?public_key=${PUBLIC_KEY}&name=${NAME}" \
+  -H 'accept: application/json' | \
+  grep -q ${NAME} ) || (curl -s -u {{ ivynet_client_org_email }}:{{ ivynet_client_org_pass }} -X 'POST' \
+  "https://api3.test.ivynet.dev/pubkey?public_key=${PUBLIC_KEY}&name=${NAME}" \
+  -H 'accept: application/json') \
 
+if [[ ${FULL} == 'True' ]]
+then
+echo "Adding operator to AVS"
+if [[ ${avs_from_cli} != 'True' ]]
+  then
+    AVSS=(Ava EigenDA)
+  fi
 # Set the machine ID for AVS's
-MACHINE_ID=$(sudo -u ivynet awk -F\" '/machine_id/ {print $2}' /home/ivynet/.ivynet/ivy-config.toml)
+  MACHINE_ID=$(sudo -u ivynet awk -F\" '/machine_id/ {print $2}' /home/ivynet/.ivynet/ivy-config.toml)
+  sleep 2
 
-curl -u {{ ivynet_client_org_email }}:{{ ivynet_client_org_pass }} -X 'PUT' \
-  "https://api3.test.ivynet.dev/machine/${MACHINE_ID}?avs_name=Ava&chain=holesky&operator_address=0x22fC3299729676C867200d02cd5e190246D90E88" \
-  -H 'accept: application/json'
-
-curl -u {{ ivynet_client_org_email }}:{{ ivynet_client_org_pass }} -X 'PUT' \
-  "https://api3.test.ivynet.dev/machine/${MACHINE_ID}?avs_name=EigenDA&chain=holesky&operator_address=0x22fC3299729676C867200d02cd5e190246D90E88" \
-  -H 'accept: application/json'
+  for AVS in "${AVSS[@]}"
+  do
+    echo ${AVS}
+    curl -s -u {{ ivynet_client_org_email }}:{{ ivynet_client_org_pass }} -X 'PUT' \
+      "https://api3.test.ivynet.dev/machine/${MACHINE_ID}?avs_name=${AVS}&chain=holesky&operator_address=${PUBLIC_KEY}" \
+      -H 'accept: application/json'
+  done
+fi

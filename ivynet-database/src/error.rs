@@ -50,6 +50,9 @@ pub enum DatabaseError {
 
     #[error("Failed to get count of metadata: {0}")]
     FailedMetadata(String),
+
+    #[error("NodeId parse error: failed to parse nodeid {0}")]
+    NodeIdParseError(String),
 }
 
 impl From<DatabaseError> for Status {

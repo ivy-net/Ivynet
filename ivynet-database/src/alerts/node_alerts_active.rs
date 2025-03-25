@@ -1,8 +1,9 @@
 use std::fmt::{self, Display, Formatter};
 
 use chrono::NaiveDateTime;
-use ivynet_alerts::{Alert, Channel, SendState};
+use ivynet_alerts::{Alert, SendState};
 use ivynet_error::ethers::types::Address;
+use ivynet_notifications::Channel;
 use serde::Serialize;
 use sqlx::PgPool;
 use utoipa::ToSchema;
