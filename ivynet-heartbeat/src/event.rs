@@ -94,7 +94,7 @@ impl<D: OrganizationDatabase> HeartbeatEventHandler<D> {
         ClientHeartbeatAlert::insert(&self.db, alert.clone(), organization_id).await?;
         if settings
             .alert_flags
-            .is_alert_enabled(&AlertType::NoMachineHeartbeat)
+            .is_alert_enabled(&AlertType::NoClientHeartbeat)
             .is_ok_and(|enabled| enabled)
         {
             let channels = settings.get_active_channels();
@@ -136,7 +136,7 @@ impl<D: OrganizationDatabase> HeartbeatEventHandler<D> {
         NodeHeartbeatAlert::insert(&self.db, alert.clone(), organization_id).await?;
         if settings
             .alert_flags
-            .is_alert_enabled(&AlertType::NoMachineHeartbeat)
+            .is_alert_enabled(&AlertType::NoNodeHeartbeat)
             .is_ok_and(|enabled| enabled)
         {
             let channels = settings.get_active_channels();
