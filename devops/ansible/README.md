@@ -1,18 +1,19 @@
 # General information
 
 [Ansible](https://ansible.readthedocs.io/) is used to automate configuration of backend and client Ivynet VMs.
-In this directory there are roles to install each ivynet components, but also related playbooks and scripts to simplify usage.
+In this directory there are roles to install each ivynet components, but also related playbooks and scripts to simplify Ansible usage.
 
-Additionally to content of this folder, Ivynet provides a public role to [install client](https://github.com/ivy-net/ivynet-client-ansible).
+Additionally to content of this folder, Ivynet provides a public role to [install client](https://github.com/ivy-net/ivynet-client-ansible) from the public bucket.
 
 # Support scripts
 
 There is a few shell script helping to run Ivynet Ansible.
 All of them check if Ansible is activated.
 If not, script will try to load the Python virtual environment located in the  `~/bin/ansible` directory.
-The scripts also loads vault password from the `~/.vault.txt` file.
+The scripts also load the vault password from the `~/.vault.txt` file.
 
 ## api1.sh
+
 The script updates backend services in the production (api1).
 It requires a version for each of 3 services
 ```
@@ -28,17 +29,17 @@ It requires the name of the services as the only parameter and finds the version
 ```
 ./api_update.sh scanner
 ```
-
-The script applies the playbook on VMs with label `area:backend` and `env:gha`.
+The script applies the playbook on VMs with the labels `area:backend` and `env:gha`.
 
 ## client_update.sh
 
-The scripts updates client software on VMs with the `area:client` label.
+The scripts install (updates) client software.
 If the option `-m` is passed it uploads the latest binaries from the master branch to the VMs with `env:dev` label.
 Otherwise it takes the latest release.
 ```
 ./client_update.sh -m
 ```
+It works on VMs with the `area:client` label.
 
 # Roles
 
@@ -61,10 +62,11 @@ The [gcp.yml](gcp.yml) file is the [dynamic inventory](https://docs.ansible.com/
 ## Backend
 
 Each service has a dedicated playbook (`api.yml`, `ingress.yml`, `scanner.yml`).
-They are used by GHA ([release-api](../github/workflows/release-api.yml), [release-ingress](../github/workflows/release-ingress.yml), [release-scanner](../github/workflows/release-scanner.yml)) to update a release software in staging environment (API2).
-Additionally, there are two script to use the roles to configure an APIx backend server.
+They are used by GHA as mentioned in the [scripts](#client_update.sh) section.
 
-* The `api-server.yml` playbook can be used to configure a server with a release software in a staging environment (API2)
+Additionally, there are two playbooks to use the roles to configure an APIx backend server.
+
+* The `api-server.yml` playbook can be used to configure a server with all backend components (using release version) in a staging environment (API2).
 * The `backend-master.yml` one is a part of a [PR merge into master workflow](../github/workflows/master-pr.yml) updating a dev environment API3).
 
 # Other information
@@ -81,9 +83,9 @@ pipelining = True
 Pipelining helps to deal with tasks requiring to 'become' postgres user.
 
 ## Vault
-The roles requires the vault password to decrypt some of the variables (or new values).
+The roles requires the vault password to decrypt some of the variables. (Alternative, is to provide new values).
 
-To make it easier to manual, but also GHA automated runs, scripts assumes that the password is stored in the `~/.vault.txt` file
+To make it easier for manual, but also GHA automated runs, scripts assumes that the password is stored in the `~/.vault.txt` file.
 
 ## Testing
 
@@ -109,7 +111,7 @@ ANSIBLE_VAULT_PASSWORD_FILE=$HOME/.vault.txt molecule converge -- --skip-tags db
 ANSIBLE_PIPELINING=true ANSIBLE_VAULT_PASSWORD_FILE=$HOME/.vault.txt molecule test -s gce
 ```
 
-# ToDo
+# TODO
 
 * molecule in every role
 * molecule scenario to test systemd locally (e.g. Vagrant, or dedicated docker image)
