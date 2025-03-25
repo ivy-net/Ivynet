@@ -95,17 +95,17 @@ impl<D: OrganizationDatabase> HeartbeatEventHandler<D> {
     }
 
     async fn handle_new_client(&self, client_id: ClientId) -> Result<(), DatabaseError> {
-        ClientHeartbeatAlert::delete(&self.db, client_id).await?;
+        ClientHeartbeatAlert::resolve(&self.db, client_id).await?;
         Ok(())
     }
 
     async fn handle_new_machine(&self, machine_id: MachineId) -> Result<(), DatabaseError> {
-        MachineHeartbeatAlert::delete(&self.db, machine_id).await?;
+        MachineHeartbeatAlert::resolve(&self.db, machine_id).await?;
         Ok(())
     }
 
     async fn handle_new_node(&self, node_id: NodeId) -> Result<(), DatabaseError> {
-        NodeHeartbeatAlert::delete(&self.db, node_id).await?;
+        NodeHeartbeatAlert::resolve(&self.db, node_id).await?;
         Ok(())
     }
 
