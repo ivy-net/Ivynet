@@ -394,6 +394,38 @@ impl NodeActiveAlert {
         Ok(alerts.into_iter().map(|n| n.into()).collect())
     }
 
+    pub async fn all_alerts_by_machine_and_avs(
+        pool: &PgPool,
+        machine_id: Uuid,
+        avs_name: String,
+    ) -> Result<Vec<NodeActiveAlert>, DatabaseError> {
+        let alerts = sqlx::query_as!(
+            DbNodeActiveAlert,
+            r#"
+            SELECT
+                alert_id,
+                machine_id,
+                organization_id,
+                client_id,
+                node_name,
+                created_at,
+                acknowledged_at,
+                alert_data,
+                telegram_send AS "telegram_send!: SendState",
+                sendgrid_send AS "sendgrid_send!: SendState",
+                pagerduty_send AS "pagerduty_send!: SendState"
+            FROM node_alerts_active
+            WHERE machine_id = $1 AND node_name = $2
+            "#,
+            machine_id,
+            avs_name
+        )
+        .fetch_all(pool)
+        .await?;
+
+        Ok(alerts.into_iter().map(|n| n.into()).collect())
+    }
+
     pub async fn acknowledge(pool: &PgPool, alert_id: Uuid) -> Result<(), DatabaseError> {
         sqlx::query!(
             r#"

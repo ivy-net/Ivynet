@@ -1,3 +1,5 @@
+use chrono::NaiveDateTime;
+use ivynet_alerts::{Alert, SendState};
 use ivynet_docker_registry::{registry::ImageRegistry, registry_type::RegistryType};
 use ivynet_node_type::{
     directory::{avs_contract, get_chained_avs_map},
@@ -11,6 +13,7 @@ use uuid::Uuid;
 use std::collections::HashMap;
 
 use crate::{
+    alerts::node::alerts_active::NodeActiveAlert,
     avs_version::{DbAvsVersionData, NodeTypeId, VersionData},
     error::DatabaseError,
     metric::Metric,
@@ -31,20 +34,6 @@ pub const EIGEN_PERFORMANCE_HEALTHY_THRESHOLD: f64 = 80.0;
 const CONDENSED_EIGENDA_METRICS_NAMES: [&str; 2] =
     ["eigen_performance_score", "node_reachability_status"];
 
-#[derive(Serialize, Debug, Clone)]
-pub enum NodeError {
-    NoOperatorId,
-    ActiveSetNoDeployment,
-    UnregisteredFromActiveSet,
-    LowPerformanceScore,
-    HardwareResourceUsage,
-    NeedsUpdate,
-    CrashedNode,
-    NoChainInfo,
-    NoMetrics,
-    NodeNotRunning,
-}
-
 #[derive(Serialize, ToSchema, Clone, Debug, Default)]
 pub struct NodeStatusReport {
     pub total_nodes: usize,
@@ -61,7 +50,7 @@ pub struct AvsInfo {
     pub uptime: f64,
     pub performance_score: f64,
     pub update_status: UpdateStatus,
-    pub errors: Vec<NodeError>,
+    pub errors: Vec<TruncatedNodeAlert>,
 }
 
 #[derive(Serialize, ToSchema, Clone, Debug, PartialEq, Eq)]
@@ -82,47 +71,40 @@ pub struct ActiveSetInfo {
     pub machine_id: Option<String>,
 }
 
+#[derive(Serialize, ToSchema, Clone, Debug)]
+pub struct TruncatedNodeAlert {
+    pub alert_id: Uuid,
+    pub created_at: NaiveDateTime,
+    pub telegram_send: SendState,
+    pub sendgrid_send: SendState,
+    pub pagerduty_send: SendState,
+    pub alert_type: Alert,
+}
+
+impl From<NodeActiveAlert> for TruncatedNodeAlert {
+    fn from(alert: NodeActiveAlert) -> Self {
+        TruncatedNodeAlert {
+            alert_id: alert.alert_id,
+            created_at: alert.created_at,
+            telegram_send: alert.telegram_send,
+            sendgrid_send: alert.sendgrid_send,
+            pagerduty_send: alert.pagerduty_send,
+            alert_type: alert.alert_type,
+        }
+    }
+}
+
 pub async fn build_avs_info(
     pool: &sqlx::PgPool,
     avs: Avs,
     metrics: HashMap<String, Metric>,
 ) -> Result<AvsInfo, DatabaseError> {
     let mut avs = avs;
-    let metrics_alive = avs.metrics_alive;
 
     let version_map = DbAvsVersionData::get_all_avs_version(pool).await;
 
-    //Start of error building
-    let mut errors = vec![];
-
-    if !avs.active_set {
-        errors.push(NodeError::UnregisteredFromActiveSet);
-    }
-
-    if let Some(datetime) = avs.updated_at {
-        let now = chrono::Utc::now().naive_utc();
-        if now.signed_duration_since(datetime).num_minutes() > IDLE_MINUTES_THRESHOLD {
-            errors.push(NodeError::CrashedNode);
-
-            if avs.active_set {
-                errors.push(NodeError::ActiveSetNoDeployment);
-            }
-        }
-    }
-
-    if !metrics_alive {
-        errors.push(NodeError::NoMetrics);
-    }
-
-    let is_running = avs.node_running;
-    if !is_running {
-        errors.push(NodeError::NodeNotRunning);
-    }
-
     let mut update_status = UpdateStatus::Unknown;
-    if avs.chain.is_none() {
-        errors.push(NodeError::NoChainInfo);
-    } else if let Some(chain) = avs.chain {
+    if let Some(chain) = avs.chain {
         if let Ok(version_map) = version_map {
             update_status = get_update_status(
                 version_map,
@@ -131,15 +113,7 @@ pub async fn build_avs_info(
                 Some(chain.to_string()),
                 avs.avs_type,
             );
-            if update_status == UpdateStatus::Outdated || update_status == UpdateStatus::Updateable
-            {
-                errors.push(NodeError::NeedsUpdate);
-            }
         }
-    }
-
-    if avs.operator_address.is_none() {
-        errors.push(NodeError::NoOperatorId);
     }
 
     if avs.avs_type.registry() == Ok(RegistryType::Othentic) {
@@ -152,14 +126,18 @@ pub async fn build_avs_info(
 
     let protocol = avs.avs_type.restaking_protocol();
 
+    let active_alerts =
+        NodeActiveAlert::all_alerts_by_machine_and_avs(pool, avs.machine_id, avs.avs_name.clone())
+            .await?;
+
     Ok(AvsInfo {
-        avs,
+        avs: avs.clone(),
         protocol,
-        is_running,
+        is_running: avs.node_running,
         uptime: metrics.get(UPTIME_METRIC).map_or(0.0, |m| m.value),
         performance_score: metrics.get(EIGEN_PERFORMANCE_METRIC).map_or(0.0, |m| m.value),
         update_status,
-        errors,
+        errors: active_alerts.into_iter().map(TruncatedNodeAlert::from).collect(),
     })
 }
 
