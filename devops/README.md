@@ -5,6 +5,10 @@ PreCommit is used to ensure code align with some basic rules.
 For example ensure lack of trailing white spaces, but also passing the cargo clippy checks.
 Further information about pre-commit usage in the ivynet repo can be found in the [PreCommit](./PreCommit.md) document.
 
+## GitHub Actions
+
+For more information on how the build and deploy is automated in ivynet project check [this](./GitHubActions.md) document.
+
 ## Ansible
 
 Ansible is the tools used to configure backend and client.

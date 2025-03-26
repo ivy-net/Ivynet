@@ -54,7 +54,6 @@ As well as coping files. E.g.:
 gcloud compute scp  --zone "us-central1-a"  --project "ivynet-tests" metadata.json  $VMNAME:
 ```
 
-
 ## On the machine
 
 * The `/opt/ivynet/bin` directory is added to the $PATH variable.
