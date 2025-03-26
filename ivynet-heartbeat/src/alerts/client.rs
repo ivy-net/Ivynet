@@ -307,7 +307,7 @@ mod client_heartbeat_alert_tests {
 
         // Create an alert
         let alert = ClientHeartbeatAlert {
-            client_id: client_id.clone(),
+            client_id,
             created_at: now,
             last_response_time: last_response,
         };
