@@ -5,22 +5,27 @@ In this directory there are roles to install each ivynet components, but also re
 
 Additionally to content of this folder, Ivynet provides a public role to [install client](https://github.com/ivy-net/ivynet-client-ansible) from the public bucket.
 
+Finally, Ansible scripts are also present in the [infra](https://github.com/ivy-net/infra) repository.
+Check the [README.md](https://github.com/ivy-net/infra/blob/master/Ansible/README.md) file there.
+
 # Support scripts
 
 There is a few shell script helping to run Ivynet Ansible.
-All of them check if Ansible is activated.
+
+
+All of them check if Ansible is activated first.
 If not, script will try to load the Python virtual environment located in the  `~/bin/ansible` directory.
 The scripts also load the vault password from the `~/.vault.txt` file.
 
 ## api1.sh
 
 The script updates backend services in the production (api1).
-It requires a version for each of 3 services
+It requires a version for each of 3 services:
 ```
 ./api1.sh -b 0.5.5 -i 0.5.5 -s 0.5.0
 ```
 The script applies the `api1.yml` playbook at the `api1` host.
-(It manipulates the `hosts` line in the playbook.)
+(It manipulates the `hosts` line in the playbook to ensure that it configure the right machine.)
 
 ## api_update.sh
 
@@ -56,6 +61,13 @@ The second one grabs software from the master.
 
 The [gcp.yml](gcp.yml) file is the [dynamic inventory](https://docs.ansible.com/ansible/latest/inventory_guide/intro_dynamic_inventory.html) for GCP.
 
+The inventory creates host groups based on GCP labels.
+Following one are important:
+
+- `area` (`client`, `backend`)
+- `env` (`gha`, `dev`)
+
+The few host specific variables are defined in the [host_vars](host_vars/) folder.
 
 # Playbooks
 
@@ -73,7 +85,8 @@ Additionally, there are two playbooks to use the roles to configure an APIx back
 
 ## Configuration
 
-The Ansible configuration file
+The Ansible configuration (`~/.ansible.cfg`) file used by me:
+
 ```
 [defaults]
 stdout_callback = yaml
@@ -83,17 +96,22 @@ pipelining = True
 Pipelining helps to deal with tasks requiring to 'become' postgres user.
 
 ## Vault
-The roles requires the vault password to decrypt some of the variables. (Alternative, is to provide new values).
 
+The roles requires the vault password to decrypt some of the variables.
 To make it easier for manual, but also GHA automated runs, scripts assumes that the password is stored in the `~/.vault.txt` file.
+
+_Alternative, to using vault is to provide new values from outside of code repo._
+
 
 ## Testing
 
 There are molecule scenario for the `ivynet-client` and the `ivynet-api` roles.
 
 Default molecule scenario cannot test everything.
-For client, it cannot download point files.
-In case of api, postgres cannot be properly started (systemd).
+For client, it cannot download point files from GCP (unless the right credentaials would be passed) and systemd cannot be setup.
+In case of api, postgres cannot be properly started (systemd) and systemd service cannot be setup.
+
+To run at least some test tasks with some tags can be skipped.
 
 ### Client test
 ```
@@ -116,3 +134,4 @@ ANSIBLE_PIPELINING=true ANSIBLE_VAULT_PASSWORD_FILE=$HOME/.vault.txt molecule te
 * molecule in every role
 * molecule scenario to test systemd locally (e.g. Vagrant, or dedicated docker image)
 * use GHA to test roles
+* test GHA access with appropriate crendetials

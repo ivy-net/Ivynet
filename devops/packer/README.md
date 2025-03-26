@@ -2,10 +2,10 @@
 
 _[Return](../README.md)_
 
-[Packer](https://packer.io) can be used to create images with backend and client binaries.
-All required extra software is installed and extra AVS repositories are downloded.
+[Packer](https://packer.io) can be used to create VM images with backend and client binaries.
+All required extra software is installed and extra AVS repositories are included, too.
 
-# Usage
+# Packer Usage
 
 ## Git Hub actions
 
@@ -13,6 +13,8 @@ Packer has been turn off in the GHA, but the client workflow was just commented 
 Check the `build-image` job in the [Release Client](../github/workflows/release-client.yml) workflow.
 The images can be still build manually.
 Check the [Packer build notes](#packer-build-notes) section.
+
+# Cloudstation image usage
 
 ## Setting up VM
 
@@ -26,7 +28,7 @@ VMNAME=ivy-c
 ```
 * next version of cloudstation (I plan to find a way to call 'latest')
 ```
-VERSION=4
+VERSION=053
 ```
 * and finally the tag (or tags) to set firewall
 ```
@@ -34,14 +36,15 @@ TAG=holesky-eigenda
 ```
 * build machine
 ```
-gcloud compute instances create --image ivynet-cloudstation-$VERSION  --zone "us-central1-a" --boot-disk-size 40GB --machine-type n2-standard-2  $VMNAME
+gcloud compute instances create --image ivynet-cloudstation-$VERSION  --zone "us-central1-a" --boot-disk-size 200GB --machine-type n2-standard-2  $VMNAME
 ```
 * add the tag to open the firewall
 ```
 gcloud compute instances add-tags $VMNAME --tags $TAG
 ```
 
-### SSH
+## SSH
+
 THE GCP CLI can be also use to login to the VM (because we set OS Login, [see more](https://cloud.google.com/compute/docs/oslogin))
 ```
 gcloud compute ssh --zone "us-central1-a"  --project "ivynet-tests" $VMNAME
@@ -50,11 +53,10 @@ As well as coping files. E.g.:
 ```
 gcloud compute scp  --zone "us-central1-a"  --project "ivynet-tests" metadata.json  $VMNAME:
 ```
-The VM should have a network tag _holeksy-eigenda_ to enable firewall setup.
-I don't know how to do this from commandline, yet.
 
 
 ## On the machine
+
 * The `/opt/ivynet/bin` directory is added to the $PATH variable.
 * On the client VM all extra repositories store in the `/opt/ivynet/resources` are owned by the `ivynet` user.
 It might be the easiest to use this user for any build process.
