@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO machine_heartbeat_alerts (machine_id, organization_id, created_at, last_response_time) VALUES ($1, $2, $3, $4)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Int8",
+        "Timestamp",
+        "Timestamp"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7313a76ca6d3a790b0d02d395ad10bc0bc371e6a5260d98625a44cd234b6e320"
+}

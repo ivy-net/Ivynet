@@ -2,6 +2,7 @@ mod alerts;
 mod apidoc;
 mod authorize;
 mod client;
+mod heartbeat;
 mod info;
 mod machine;
 mod node;
@@ -156,7 +157,17 @@ fn create_router() -> Router<HttpState> {
                 .route("/notifications/list", get(alerts::list_alert_flags))
                 .route("/notifications/readable", get(alerts::get_alert_flags_human))
                 .route("/notifications/set_flag", post(alerts::update_alert_flag))
-                .route("/notifications/set_flags", post(alerts::update_multiple_alert_flags)),
+                .route("/notifications/set_flags", post(alerts::update_multiple_alert_flags))
+                .nest(
+                    "/heartbeat",
+                    Router::new()
+                        .route("/client/active", get(heartbeat::client_active_alerts))
+                        .route("/client/history", get(heartbeat::client_alert_history))
+                        .route("/machine/active", get(heartbeat::machine_active_alerts))
+                        .route("/machine/history", get(heartbeat::machine_alert_history))
+                        .route("/node/active", get(heartbeat::node_active_alerts))
+                        .route("/node/history", get(heartbeat::node_alert_history)),
+                ),
         )
         .nest(
             "/info/avs",

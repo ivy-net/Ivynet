@@ -112,9 +112,9 @@ cargo sqlx prepare --workspace
 
 ```sh
 cd api
-cargo run --add-organization testuser@ivynet.dev:test1234/testorg
+cargo run -- --add-organization testuser@ivynet.dev:test1234/testorg
 cd ..
-cargo run register_node
+cargo run register-node
 ```
 
 5. Populate version hashes table from remote docker repositories and latest node versions table:

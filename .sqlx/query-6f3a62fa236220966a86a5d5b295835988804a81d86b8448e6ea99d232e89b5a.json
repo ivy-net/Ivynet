@@ -1,0 +1,76 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n            SELECT\n                ns.organization_id,\n                ns.email,\n                ns.telegram,\n                ns.pagerduty,\n                ns.alert_flags,\n                ns.created_at,\n                ns.updated_at,\n                COALESCE(ARRAY_AGG(DISTINCT CASE WHEN ss.settings_type = 'email' THEN ss.settings_value END) FILTER (WHERE ss.settings_type = 'email'), ARRAY[]::text[]) as \"sendgrid_emails!: Vec<String>\",\n                COALESCE(ARRAY_AGG(DISTINCT CASE WHEN ss.settings_type = 'telegram' THEN ss.settings_value END) FILTER (WHERE ss.settings_type = 'telegram'), ARRAY[]::text[]) as \"telegram_chats!: Vec<String>\",\n                COALESCE(ARRAY_AGG(DISTINCT CASE WHEN ss.settings_type = 'pagerduty' THEN ss.settings_value END) FILTER (WHERE ss.settings_type = 'pagerduty'), ARRAY[]::text[]) as \"pagerduty_keys!: Vec<String>\"\n            FROM\n                notification_settings ns\n            JOIN\n                client c ON ns.organization_id = c.organization_id\n            LEFT JOIN\n                service_settings ss ON ns.organization_id = ss.organization_id\n            WHERE\n                c.client_id = ANY($1)\n            GROUP BY\n                ns.organization_id, ns.email, ns.telegram, ns.pagerduty, ns.alert_flags, ns.created_at, ns.updated_at\n            ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "organization_id",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 1,
+        "name": "email",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 2,
+        "name": "telegram",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 3,
+        "name": "pagerduty",
+        "type_info": "Bool"
+      },
+      {
+        "ordinal": 4,
+        "name": "alert_flags",
+        "type_info": "Int8"
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 6,
+        "name": "updated_at",
+        "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 7,
+        "name": "sendgrid_emails!: Vec<String>",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 8,
+        "name": "telegram_chats!: Vec<String>",
+        "type_info": "TextArray"
+      },
+      {
+        "ordinal": 9,
+        "name": "pagerduty_keys!: Vec<String>",
+        "type_info": "TextArray"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "ByteaArray"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "6f3a62fa236220966a86a5d5b295835988804a81d86b8448e6ea99d232e89b5a"
+}

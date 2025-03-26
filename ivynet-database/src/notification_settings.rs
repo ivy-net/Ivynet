@@ -1,7 +1,9 @@
 use std::collections::HashSet;
 
 use chrono::NaiveDateTime;
+use ethers::types::Address;
 use ivynet_alerts::AlertFlags;
+use ivynet_notifications::Channel;
 use serde::{Deserialize, Serialize};
 use sqlx::PgPool;
 use utoipa::ToSchema;
@@ -54,6 +56,30 @@ struct NotificationSettingsRow {
     pagerduty_keys: Vec<String>,
 }
 
+// Object-based methods
+impl NotificationSettings {
+    /// Get all active channels for the organization. Returns a Vec<Channel(targets)> where targets
+    /// is a Vec<String> of the target addresses for the channel.
+    pub fn get_active_channels(&self) -> Vec<Channel> {
+        let mut channels = Vec::new();
+
+        if self.email {
+            channels.push(Channel::Email(self.sendgrid_emails.clone()));
+        }
+
+        if self.telegram {
+            channels.push(Channel::Telegram(self.telegram_chats.clone()));
+        }
+
+        if self.pagerduty {
+            channels.push(Channel::PagerDuty(self.pagerduty_keys.clone()));
+        }
+
+        channels
+    }
+}
+
+// Databse access methods
 impl NotificationSettings {
     pub async fn get(pool: &PgPool, id: u64) -> Result<Self, DatabaseError> {
         // First, get the base notification settings with all service settings
@@ -81,6 +107,108 @@ impl NotificationSettings {
                 ns.organization_id, ns.email, ns.telegram, ns.pagerduty, ns.alert_flags, ns.created_at, ns.updated_at
             "#,
             id as i64
+        )
+        .fetch_one(pool)
+        .await?;
+        Ok(NotificationSettings::from(row))
+    }
+
+    pub async fn get_many(pool: &PgPool, ids: &[i64]) -> Result<Vec<Self>, DatabaseError> {
+        let rows = sqlx::query_as!(
+            NotificationSettingsRow,
+            r#"
+            SELECT
+                ns.organization_id,
+                ns.email,
+                ns.telegram,
+                ns.pagerduty,
+                ns.alert_flags,
+                ns.created_at,
+                ns.updated_at,
+                COALESCE(ARRAY_AGG(DISTINCT CASE WHEN ss.settings_type = 'email' THEN ss.settings_value END) FILTER (WHERE ss.settings_type = 'email'), ARRAY[]::text[]) as "sendgrid_emails!: Vec<String>",
+                COALESCE(ARRAY_AGG(DISTINCT CASE WHEN ss.settings_type = 'telegram' THEN ss.settings_value END) FILTER (WHERE ss.settings_type = 'telegram'), ARRAY[]::text[]) as "telegram_chats!: Vec<String>",
+                COALESCE(ARRAY_AGG(DISTINCT CASE WHEN ss.settings_type = 'pagerduty' THEN ss.settings_value END) FILTER (WHERE ss.settings_type = 'pagerduty'), ARRAY[]::text[]) as "pagerduty_keys!: Vec<String>"
+            FROM
+                notification_settings ns
+            LEFT JOIN
+                service_settings ss ON ns.organization_id = ss.organization_id
+            WHERE
+                ns.organization_id = ANY($1)
+            GROUP BY
+                ns.organization_id, ns.email, ns.telegram, ns.pagerduty, ns.alert_flags, ns.created_at, ns.updated_at
+            "#,
+            ids
+        ).fetch_all(pool).await?;
+
+        Ok(rows.into_iter().map(NotificationSettings::from).collect())
+    }
+
+    /// Fetch NotificationSettings for an organization corresponding to a given client ID.
+    pub async fn get_for_client(pool: &PgPool, client_id: Address) -> Result<Self, DatabaseError> {
+        let row = sqlx::query_as!(
+            NotificationSettingsRow,
+            r#"
+            SELECT
+                ns.organization_id,
+                ns.email,
+                ns.telegram,
+                ns.pagerduty,
+                ns.alert_flags,
+                ns.created_at,
+                ns.updated_at,
+                COALESCE(ARRAY_AGG(DISTINCT CASE WHEN ss.settings_type = 'email' THEN ss.settings_value END) FILTER (WHERE ss.settings_type = 'email'), ARRAY[]::text[]) as "sendgrid_emails!: Vec<String>",
+                COALESCE(ARRAY_AGG(DISTINCT CASE WHEN ss.settings_type = 'telegram' THEN ss.settings_value END) FILTER (WHERE ss.settings_type = 'telegram'), ARRAY[]::text[]) as "telegram_chats!: Vec<String>",
+                COALESCE(ARRAY_AGG(DISTINCT CASE WHEN ss.settings_type = 'pagerduty' THEN ss.settings_value END) FILTER (WHERE ss.settings_type = 'pagerduty'), ARRAY[]::text[]) as "pagerduty_keys!: Vec<String>"
+            FROM
+                notification_settings ns
+            JOIN
+                client c ON ns.organization_id = c.organization_id
+            LEFT JOIN
+                service_settings ss ON ns.organization_id = ss.organization_id
+            WHERE
+                c.client_id = $1
+            GROUP BY
+                ns.organization_id, ns.email, ns.telegram, ns.pagerduty, ns.alert_flags, ns.created_at, ns.updated_at
+            "#,
+            client_id.as_bytes() as &[u8]
+        )
+        .fetch_one(pool)
+        .await?;
+        Ok(NotificationSettings::from(row))
+    }
+
+    pub async fn get_for_machine(
+        pool: &PgPool,
+        machine_id: uuid::Uuid,
+    ) -> Result<Self, DatabaseError> {
+        let row = sqlx::query_as!(
+            NotificationSettingsRow,
+            r#"
+            SELECT
+                ns.organization_id,
+                ns.email,
+                ns.telegram,
+                ns.pagerduty,
+                ns.alert_flags,
+                ns.created_at,
+                ns.updated_at,
+                COALESCE(ARRAY_AGG(DISTINCT CASE WHEN ss.settings_type = 'email' THEN ss.settings_value END) FILTER (WHERE ss.settings_type = 'email'), ARRAY[]::text[]) as "sendgrid_emails!: Vec<String>",
+                COALESCE(ARRAY_AGG(DISTINCT CASE WHEN ss.settings_type = 'telegram' THEN ss.settings_value END) FILTER (WHERE ss.settings_type = 'telegram'), ARRAY[]::text[]) as "telegram_chats!: Vec<String>",
+                COALESCE(ARRAY_AGG(DISTINCT CASE WHEN ss.settings_type = 'pagerduty' THEN ss.settings_value END) FILTER (WHERE ss.settings_type = 'pagerduty'), ARRAY[]::text[]) as "pagerduty_keys!: Vec<String>"
+            FROM
+                notification_settings ns
+            JOIN
+                client c ON ns.organization_id = c.organization_id
+            JOIN
+                machine m ON c.client_id = m.client_id
+            LEFT JOIN
+                service_settings ss ON ns.organization_id = ss.organization_id
+            WHERE
+                m.machine_id = $1
+            GROUP BY
+                ns.organization_id, ns.email, ns.telegram, ns.pagerduty, ns.alert_flags, ns.created_at, ns.updated_at
+            "#,
+            machine_id
         )
         .fetch_one(pool)
         .await?;
@@ -289,6 +417,83 @@ impl NotificationSettings {
 
         Self::remove_by_uuid(pool, service_setting.uuid()).await
     }
+
+    /// Fetch NotificationSettings for organizations corresponding to multiple client IDs.
+    pub async fn get_many_for_client(
+        pool: &PgPool,
+        client_ids: &[Address],
+    ) -> Result<Vec<Self>, DatabaseError> {
+        // Convert addresses to byte arrays for SQL
+        let client_id_bytes: Vec<&[u8]> = client_ids.iter().map(|id| id.as_bytes()).collect();
+
+        let rows = sqlx::query_as!(
+            NotificationSettingsRow,
+            r#"
+            SELECT
+                ns.organization_id,
+                ns.email,
+                ns.telegram,
+                ns.pagerduty,
+                ns.alert_flags,
+                ns.created_at,
+                ns.updated_at,
+                COALESCE(ARRAY_AGG(DISTINCT CASE WHEN ss.settings_type = 'email' THEN ss.settings_value END) FILTER (WHERE ss.settings_type = 'email'), ARRAY[]::text[]) as "sendgrid_emails!: Vec<String>",
+                COALESCE(ARRAY_AGG(DISTINCT CASE WHEN ss.settings_type = 'telegram' THEN ss.settings_value END) FILTER (WHERE ss.settings_type = 'telegram'), ARRAY[]::text[]) as "telegram_chats!: Vec<String>",
+                COALESCE(ARRAY_AGG(DISTINCT CASE WHEN ss.settings_type = 'pagerduty' THEN ss.settings_value END) FILTER (WHERE ss.settings_type = 'pagerduty'), ARRAY[]::text[]) as "pagerduty_keys!: Vec<String>"
+            FROM
+                notification_settings ns
+            JOIN
+                client c ON ns.organization_id = c.organization_id
+            LEFT JOIN
+                service_settings ss ON ns.organization_id = ss.organization_id
+            WHERE
+                c.client_id = ANY($1)
+            GROUP BY
+                ns.organization_id, ns.email, ns.telegram, ns.pagerduty, ns.alert_flags, ns.created_at, ns.updated_at
+            "#,
+            &client_id_bytes as &[&[u8]]
+        ).fetch_all(pool).await?;
+
+        Ok(rows.into_iter().map(NotificationSettings::from).collect())
+    }
+
+    /// Fetch NotificationSettings for organizations corresponding to multiple machine IDs.
+    pub async fn get_many_for_machine(
+        pool: &PgPool,
+        machine_ids: &[uuid::Uuid],
+    ) -> Result<Vec<Self>, DatabaseError> {
+        let rows = sqlx::query_as!(
+            NotificationSettingsRow,
+            r#"
+            SELECT
+                ns.organization_id,
+                ns.email,
+                ns.telegram,
+                ns.pagerduty,
+                ns.alert_flags,
+                ns.created_at,
+                ns.updated_at,
+                COALESCE(ARRAY_AGG(DISTINCT CASE WHEN ss.settings_type = 'email' THEN ss.settings_value END) FILTER (WHERE ss.settings_type = 'email'), ARRAY[]::text[]) as "sendgrid_emails!: Vec<String>",
+                COALESCE(ARRAY_AGG(DISTINCT CASE WHEN ss.settings_type = 'telegram' THEN ss.settings_value END) FILTER (WHERE ss.settings_type = 'telegram'), ARRAY[]::text[]) as "telegram_chats!: Vec<String>",
+                COALESCE(ARRAY_AGG(DISTINCT CASE WHEN ss.settings_type = 'pagerduty' THEN ss.settings_value END) FILTER (WHERE ss.settings_type = 'pagerduty'), ARRAY[]::text[]) as "pagerduty_keys!: Vec<String>"
+            FROM
+                notification_settings ns
+            JOIN
+                client c ON ns.organization_id = c.organization_id
+            JOIN
+                machine m ON c.client_id = m.client_id
+            LEFT JOIN
+                service_settings ss ON ns.organization_id = ss.organization_id
+            WHERE
+                m.machine_id = ANY($1)
+            GROUP BY
+                ns.organization_id, ns.email, ns.telegram, ns.pagerduty, ns.alert_flags, ns.created_at, ns.updated_at
+            "#,
+            machine_ids
+        ).fetch_all(pool).await?;
+
+        Ok(rows.into_iter().map(NotificationSettings::from).collect())
+    }
 }
 
 #[cfg(test)]
@@ -305,8 +510,6 @@ mod notification_settings_tests {
         // Get settings for organization with ID 1
         let settings = NotificationSettings::get(&pool, 1).await.unwrap();
 
-        println!("Settings: {:#?}", settings);
-
         // Verify the settings match what we set in the fixture
         assert_eq!(settings.organization_id, 1);
         assert!(settings.email);
@@ -321,6 +524,21 @@ mod notification_settings_tests {
         assert_eq!(settings.telegram_chats.len(), 0);
         assert_eq!(settings.pagerduty_keys.len(), 1);
         assert!(settings.pagerduty_keys.contains("pdkey123"));
+    }
+
+    #[ignore]
+    #[sqlx::test(
+        migrations = "../migrations",
+        fixtures("../fixtures/new_user_registration.sql", "../fixtures/notification_settings.sql")
+    )]
+    async fn test_get_many_notification_settings(pool: PgPool) {
+        let settings = NotificationSettings::get_many(&pool, &[1, 2]).await.unwrap();
+
+        assert_eq!(settings.len(), 2);
+
+        // Verify the settings exist
+        assert!(settings.iter().any(|s| s.organization_id == 1));
+        assert!(settings.iter().any(|s| s.organization_id == 2));
     }
 
     #[sqlx::test(migrations = "../migrations", fixtures("../fixtures/new_user_registration.sql"))]
@@ -487,5 +705,139 @@ mod notification_settings_tests {
         // Verify all were deleted
         let remaining = ServiceSettings::get_for_org(&pool, org_id, None).await.unwrap();
         assert_eq!(remaining.len(), 0);
+    }
+
+    #[ignore]
+    #[sqlx::test(
+        migrations = "../migrations",
+        fixtures("../fixtures/new_user_registration.sql", "../fixtures/notification_settings.sql")
+    )]
+    async fn test_get_notification_settings_for_client(pool: PgPool) {
+        let client_id = "0x0101010101010101010101010101010101010101".parse::<Address>().unwrap();
+
+        NotificationSettings::set(&pool, 1, true, false, true).await.unwrap();
+        NotificationSettings::add_email(&pool, 1, "client_test@example.com").await.unwrap();
+
+        let settings = NotificationSettings::get_for_client(&pool, client_id).await.unwrap();
+
+        assert_eq!(settings.organization_id, 1);
+        assert!(settings.email);
+        assert!(!settings.telegram);
+        assert!(settings.pagerduty);
+
+        assert!(settings.sendgrid_emails.contains("client_test@example.com"));
+    }
+
+    #[ignore]
+    #[sqlx::test(
+        migrations = "../migrations",
+        fixtures("../fixtures/new_user_registration.sql", "../fixtures/notification_settings.sql")
+    )]
+    async fn test_get_notification_settings_for_machine(pool: PgPool) {
+        // We'll use the machine ID from the fixtures
+        let machine_id = uuid::Uuid::parse_str("dcbf22c7-9d96-47ac-bf06-62d6544e440d").unwrap();
+
+        // First set up the notification settings
+        NotificationSettings::set(&pool, 1, true, false, true).await.unwrap();
+
+        // Add a test email
+        NotificationSettings::add_email(&pool, 1, "machine_test@example.com").await.unwrap();
+
+        // Get settings for the machine
+        let settings = NotificationSettings::get_for_machine(&pool, machine_id).await.unwrap();
+
+        // Verify the settings match what we expect
+        assert_eq!(settings.organization_id, 1);
+        assert!(settings.email);
+        assert!(!settings.telegram);
+        assert!(settings.pagerduty);
+
+        // Verify the email was added
+        assert!(settings.sendgrid_emails.contains("machine_test@example.com"));
+    }
+
+    #[ignore]
+    #[sqlx::test(
+        migrations = "../migrations",
+        fixtures("../fixtures/new_user_registration.sql", "../fixtures/notification_settings.sql")
+    )]
+    async fn test_get_many_notification_settings_for_client(pool: PgPool) {
+        // We'll use the client IDs from the fixtures
+        let client_id1 = "0x0101010101010101010101010101010101010101".parse::<Address>().unwrap();
+        let client_id2 = "0x0101010101010101010101010101010101010102".parse::<Address>().unwrap();
+        let client_ids = vec![client_id1, client_id2];
+
+        // Set up notification settings for both organizations
+        NotificationSettings::set(&pool, 1, true, false, true).await.unwrap();
+        NotificationSettings::set(&pool, 2, false, true, false).await.unwrap();
+
+        // Add different emails to distinguish them
+        NotificationSettings::add_email(&pool, 1, "client1@example.com").await.unwrap();
+        NotificationSettings::add_email(&pool, 2, "client2@example.com").await.unwrap();
+
+        // Get settings for both clients
+        let settings = NotificationSettings::get_many_for_client(&pool, &client_ids).await.unwrap();
+
+        // We should have two settings objects
+        assert_eq!(settings.len(), 2);
+
+        // Find each organization's settings and verify they're correct
+        let org1_settings = settings.iter().find(|s| s.organization_id == 1).unwrap();
+        let org2_settings = settings.iter().find(|s| s.organization_id == 2).unwrap();
+
+        // Verify org 1 settings
+        assert!(org1_settings.email);
+        assert!(!org1_settings.telegram);
+        assert!(org1_settings.pagerduty);
+        assert!(org1_settings.sendgrid_emails.contains("client1@example.com"));
+
+        // Verify org 2 settings
+        assert!(!org2_settings.email);
+        assert!(org2_settings.telegram);
+        assert!(!org2_settings.pagerduty);
+        assert!(org2_settings.sendgrid_emails.contains("client2@example.com"));
+    }
+
+    #[ignore]
+    #[sqlx::test(
+        migrations = "../migrations",
+        fixtures("../fixtures/new_user_registration.sql", "../fixtures/notification_settings.sql")
+    )]
+    async fn test_get_many_notification_settings_for_machine(pool: PgPool) {
+        // We'll use the machine IDs from the fixtures
+        let machine_id1 = uuid::Uuid::parse_str("dcbf22c7-9d96-47ac-bf06-62d6544e440d").unwrap();
+        let machine_id2 = uuid::Uuid::parse_str("d160619b-5fb8-4507-b73a-e2f5bd05d477").unwrap();
+        let machine_ids = vec![machine_id1, machine_id2];
+
+        // Set up notification settings for both organizations
+        NotificationSettings::set(&pool, 1, true, false, true).await.unwrap();
+        NotificationSettings::set(&pool, 2, false, true, false).await.unwrap();
+
+        // Add different emails to distinguish them
+        NotificationSettings::add_email(&pool, 1, "machine1@example.com").await.unwrap();
+        NotificationSettings::add_email(&pool, 2, "machine2@example.com").await.unwrap();
+
+        // Get settings for both machines
+        let settings =
+            NotificationSettings::get_many_for_machine(&pool, &machine_ids).await.unwrap();
+
+        // We should have two settings objects
+        assert_eq!(settings.len(), 2);
+
+        // Find each organization's settings and verify they're correct
+        let org1_settings = settings.iter().find(|s| s.organization_id == 1).unwrap();
+        let org2_settings = settings.iter().find(|s| s.organization_id == 2).unwrap();
+
+        // Verify org 1 settings
+        assert!(org1_settings.email);
+        assert!(!org1_settings.telegram);
+        assert!(org1_settings.pagerduty);
+        assert!(org1_settings.sendgrid_emails.contains("machine1@example.com"));
+
+        // Verify org 2 settings
+        assert!(!org2_settings.email);
+        assert!(org2_settings.telegram);
+        assert!(!org2_settings.pagerduty);
+        assert!(org2_settings.sendgrid_emails.contains("machine2@example.com"));
     }
 }

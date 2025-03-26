@@ -1,10 +1,10 @@
 use std::{collections::HashMap, sync::Arc};
 
-use ivynet_alerts::{Alert, Channel, SendState};
+use ivynet_alerts::{Alert, SendState};
 use ivynet_error::ethers::types::Chain;
 use ivynet_grpc::messages::NodeDataV2;
 use ivynet_node_type::NodeType;
-use ivynet_notifications::{NotificationDispatcher, NotificationDispatcherError};
+use ivynet_notifications::{Channel, NotificationDispatcher, NotificationDispatcherError};
 
 use async_trait::async_trait;
 use sqlx::{types::Uuid, PgPool};

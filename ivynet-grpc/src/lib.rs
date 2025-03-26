@@ -16,6 +16,11 @@ pub mod messages {
     tonic::include_proto!("messages");
 }
 
+pub mod heartbeat {
+    #![allow(clippy::derive_partial_eq_without_eq)]
+    tonic::include_proto!("heartbeat");
+}
+
 use backend::backend_client::BackendClient;
 use messages::RegistrationCredentials;
 use tonic::transport::Channel;
