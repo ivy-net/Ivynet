@@ -10,6 +10,10 @@ use async_trait::async_trait;
 use sqlx::{types::Uuid, PgPool};
 
 use crate::{
+    alerts::{
+        alert_db::AlertDb,
+        alert_handler::{ActiveAlert, AlertHandler, NewAlert},
+    },
     avs_version::{NodeTypeId, VersionData},
     data::{
         avs_version::{extract_semver, VersionType},
@@ -19,11 +23,7 @@ use crate::{
     Avs, DbAvsVersionData, Machine,
 };
 
-use super::{
-    alert_db::AlertDb,
-    alert_handler::{ActiveAlert, AlertHandler, NewAlert},
-    node_alerts_active::{NewNodeAlert, NodeActiveAlert},
-};
+use super::alerts_active::{NewNodeAlert, NodeActiveAlert};
 
 pub const RUNNING_METRIC: &str = "running";
 pub const EIGEN_PERFORMANCE_METRIC: &str = "eigen_performance_score";
@@ -538,8 +538,8 @@ mod tests {
     #[sqlx::test(
         migrations = "../migrations",
         fixtures(
-            "../../fixtures/new_user_registration.sql",
-            "../../fixtures/node_alerts_active.sql",
+            "../../../fixtures/new_user_registration.sql",
+            "../../../fixtures/node_alerts_active.sql",
         )
     )]
     #[ignore]

@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 use crate::{error::DatabaseError, Avs};
 
-use super::node_alerts_historical::NodeHistoryAlert;
+use super::alerts_historical::NodeHistoryAlert;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct NewNodeAlert {

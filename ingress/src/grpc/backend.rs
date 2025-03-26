@@ -1,6 +1,6 @@
 use crate::error::IngressError;
 use ivynet_database::{
-    alerts::{alert_db::AlertDb, node_alert_handler::NodeAlertHandler},
+    alerts::{alert_db::AlertDb, node::alert_handler::NodeAlertHandler},
     client_log::ClientLog,
     data::{
         machine_data::convert_system_metrics,

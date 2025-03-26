@@ -2,7 +2,7 @@ use ivynet_alerts::AlertType;
 use ivynet_database::{
     self,
     alerts::{
-        node_alerts_active::NodeActiveAlert, node_alerts_historical::NodeHistoryAlert,
+        node::alerts_active::NodeActiveAlert, node::alerts_historical::NodeHistoryAlert,
         organization_alerts_active::OrganizationActiveAlert,
         organization_alerts_historical::OrganizationHistoryAlert,
     },

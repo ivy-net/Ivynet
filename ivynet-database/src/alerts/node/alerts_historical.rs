@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use crate::error::DatabaseError;
 
-use super::node_alerts_active::NodeActiveAlert;
+use super::alerts_active::NodeActiveAlert;
 
 #[derive(Serialize, ToSchema, Clone, Debug)]
 pub struct NodeHistoryAlert {
