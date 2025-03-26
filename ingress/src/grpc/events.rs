@@ -6,7 +6,7 @@ use ivynet_database::{
         alert_db::AlertDb,
         node::alert_handler::{alerts_from_avs, resolve_node_alerts},
         node::alerts_active::NewNodeAlert,
-        organization_alert_handler::OrganizationAlertHandler,
+        org::alert_handler::OrganizationAlertHandler,
     },
     eigen_avs_metadata::{EigenAvsMetadata, MetadataContent},
     Avs, AvsActiveSet, DbAvsVersionData,

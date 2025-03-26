@@ -10,7 +10,7 @@ use uuid::Uuid;
 
 use crate::error::DatabaseError;
 
-use super::organization_alerts_historical::OrganizationHistoryAlert;
+use super::alerts_historical::OrganizationHistoryAlert;
 
 #[derive(Debug, Clone, Serialize)]
 pub struct NewOrganizationAlert {

@@ -9,8 +9,8 @@ use ivynet_alerts::{AlertFlags, AlertType};
 use ivynet_database::{
     alerts::{
         node::alerts_active::NodeActiveAlert, node::alerts_historical::NodeHistoryAlert,
-        organization_alerts_active::OrganizationActiveAlert,
-        organization_alerts_historical::OrganizationHistoryAlert,
+        org::alerts_active::OrganizationActiveAlert,
+        org::alerts_historical::OrganizationHistoryAlert,
     },
     service_settings::ServiceType,
     NotificationSettings, ServiceSettings,

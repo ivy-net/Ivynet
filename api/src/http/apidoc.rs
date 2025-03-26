@@ -3,8 +3,7 @@ use ivynet_database::{
     self,
     alerts::{
         node::alerts_active::NodeActiveAlert, node::alerts_historical::NodeHistoryAlert,
-        organization_alerts_active::OrganizationActiveAlert,
-        organization_alerts_historical::OrganizationHistoryAlert,
+        org::alerts_active::OrganizationActiveAlert, org::alerts_historical::OrganizationHistoryAlert,
     },
     data::{machine_data, node_data},
 };

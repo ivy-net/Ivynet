@@ -1,9 +1,7 @@
 pub mod alert_db;
 pub mod alert_handler;
 pub mod node;
-pub mod organization_alert_handler;
-pub mod organization_alerts_active;
-pub mod organization_alerts_historical;
+pub mod org;
 
 #[cfg(test)]
 mod test_alerts_db {
