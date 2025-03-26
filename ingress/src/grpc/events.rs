@@ -4,8 +4,10 @@ use crate::error::IngressError;
 use ivynet_database::{
     alerts::{
         alert_db::AlertDb,
-        node::alert_handler::{alerts_from_avs, resolve_node_alerts},
-        node::alerts_active::NewNodeAlert,
+        node::{
+            alert_handler::{alerts_from_avs, resolve_node_alerts},
+            alerts_active::NewNodeAlert,
+        },
         org::alert_handler::OrganizationAlertHandler,
     },
     eigen_avs_metadata::{EigenAvsMetadata, MetadataContent},
