@@ -22,6 +22,8 @@ pub struct NodeHeartbeatAlert {
     pub created_at: DateTime<Utc>,
     #[schema(value_type = String)]
     pub last_response_time: DateTime<Utc>,
+    #[schema(value_type = String)]
+    pub organization_id: i64,
 }
 
 pub struct DbNodeHeartbeatAlert {
@@ -49,6 +51,7 @@ impl TryFrom<DbNodeHeartbeatAlert> for NodeHeartbeatAlert {
                     value.last_response_time,
                     Utc,
                 ),
+                organization_id: value.organization_id,
             })
         } else {
             Err(DatabaseError::NodeIdParseError(node_id_raw))
@@ -350,6 +353,7 @@ mod node_heartbeat_alert_tests {
             node_id: node_id.clone(),
             created_at: now,
             last_response_time: last_response,
+            organization_id,
         };
 
         // Insert the alert
@@ -412,6 +416,7 @@ mod node_heartbeat_alert_tests {
                 node_id: node_id.clone(),
                 created_at: now,
                 last_response_time: last_response,
+                organization_id,
             };
 
             // Insert and resolve each alert
@@ -481,6 +486,7 @@ mod node_heartbeat_alert_tests {
                 node_id: node_id.clone(),
                 created_at: now,
                 last_response_time: last_response,
+                organization_id: organization_id_1,
             };
 
             NodeHeartbeatAlert::insert(&pool, alert, organization_id_1).await.unwrap();
@@ -494,6 +500,7 @@ mod node_heartbeat_alert_tests {
                 node_id: node_id.clone(),
                 created_at: now,
                 last_response_time: last_response,
+                organization_id: organization_id_2,
             };
 
             NodeHeartbeatAlert::insert(&pool, alert, organization_id_2).await.unwrap();

@@ -163,10 +163,13 @@ fn create_router() -> Router<HttpState> {
                     Router::new()
                         .route("/client/active", get(heartbeat::client_active_alerts))
                         .route("/client/history", get(heartbeat::client_alert_history))
+                        .route("/client/acknowledge", post(heartbeat::acknowledge_client_alert))
                         .route("/machine/active", get(heartbeat::machine_active_alerts))
                         .route("/machine/history", get(heartbeat::machine_alert_history))
+                        .route("/machine/acknowledge", post(heartbeat::acknowledge_machine_alert))
                         .route("/node/active", get(heartbeat::node_active_alerts))
-                        .route("/node/history", get(heartbeat::node_alert_history)),
+                        .route("/node/history", get(heartbeat::node_alert_history))
+                        .route("/node/acknowledge", post(heartbeat::acknowledge_node_alert)),
                 ),
         )
         .nest(

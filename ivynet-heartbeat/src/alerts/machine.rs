@@ -23,6 +23,8 @@ pub struct MachineHeartbeatAlert {
     pub created_at: DateTime<Utc>,
     #[schema(value_type = String)]
     pub last_response_time: DateTime<Utc>,
+    #[schema(value_type = String)]
+    pub organization_id: i64,
 }
 
 pub struct DbMachineHeartbeatAlert {
@@ -41,6 +43,7 @@ impl From<DbMachineHeartbeatAlert> for MachineHeartbeatAlert {
                 value.last_response_time,
                 Utc,
             ),
+            organization_id: value.organization_id,
         }
     }
 }
@@ -309,6 +312,7 @@ mod machine_heartbeat_alert_tests {
             machine_id,
             created_at: now,
             last_response_time: last_response,
+            organization_id,
         };
 
         // Insert the alert
@@ -325,8 +329,7 @@ mod machine_heartbeat_alert_tests {
         assert_eq!(retrieved.last_response_time.timestamp(), last_response.timestamp());
 
         // Resolve the alert
-        let historical_id =
-            MachineHeartbeatAlert::resolve(&pool, machine_id).await.unwrap();
+        let historical_id = MachineHeartbeatAlert::resolve(&pool, machine_id).await.unwrap();
         assert!(historical_id.is_some());
 
         // Check that the alert is no longer in the active table
@@ -369,6 +372,7 @@ mod machine_heartbeat_alert_tests {
                 machine_id,
                 created_at: now,
                 last_response_time: last_response,
+                organization_id,
             };
 
             // Insert and resolve each alert
@@ -435,6 +439,7 @@ mod machine_heartbeat_alert_tests {
                 machine_id,
                 created_at: now,
                 last_response_time: last_response,
+                organization_id: organization_id_1,
             };
 
             MachineHeartbeatAlert::insert(&pool, alert, organization_id_1).await.unwrap();
@@ -448,6 +453,7 @@ mod machine_heartbeat_alert_tests {
                 machine_id,
                 created_at: now,
                 last_response_time: last_response,
+                organization_id: organization_id_2,
             };
 
             MachineHeartbeatAlert::insert(&pool, alert, organization_id_2).await.unwrap();

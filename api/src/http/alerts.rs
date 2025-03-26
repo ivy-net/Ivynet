@@ -8,9 +8,10 @@ use chrono::DateTime;
 use ivynet_alerts::{AlertFlags, AlertType};
 use ivynet_database::{
     alerts::{
-        node::alerts_active::NodeActiveAlert, node::alerts_historical::NodeHistoryAlert,
-        org::alerts_active::OrganizationActiveAlert,
-        org::alerts_historical::OrganizationHistoryAlert,
+        node::{alerts_active::NodeActiveAlert, alerts_historical::NodeHistoryAlert},
+        org::{
+            alerts_active::OrganizationActiveAlert, alerts_historical::OrganizationHistoryAlert,
+        },
     },
     service_settings::ServiceType,
     NotificationSettings, ServiceSettings,
@@ -19,10 +20,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
-use crate::{
-    error::{BackendAlertError, BackendError},
-    http::authorize,
-};
+use crate::{error::BackendError, http::authorize};
 
 use super::HttpState;
 
@@ -80,9 +78,9 @@ pub async fn node_remove_alert(
     let alert_id = params.alert_id;
     let alert = NodeActiveAlert::get(&state.pool, alert_id)
         .await?
-        .ok_or(BackendAlertError::AlertNotFound(alert_id))?;
+        .ok_or(BackendError::AlertNotFound(alert_id))?;
     if alert.organization_id != account.organization_id {
-        return Err(BackendAlertError::AlertNotFound(alert_id).into());
+        return Err(BackendError::AlertNotFound(alert_id));
     }
     NodeActiveAlert::resolve_alert(&state.pool, alert_id).await?;
     Ok(())
@@ -108,9 +106,9 @@ pub async fn node_acknowledge_alert(
     let alert_id = params.alert_id;
     let alert = NodeActiveAlert::get(&state.pool, alert_id)
         .await?
-        .ok_or(BackendAlertError::AlertNotFound(alert_id))?;
+        .ok_or(BackendError::AlertNotFound(alert_id))?;
     if alert.organization_id != account.organization_id {
-        return Err(BackendAlertError::AlertNotFound(alert_id).into());
+        return Err(BackendError::AlertNotFound(alert_id));
     }
     NodeActiveAlert::acknowledge(&state.pool, params.alert_id).await?;
     Ok(())
@@ -191,9 +189,9 @@ pub async fn org_acknowledge_alert(
     let alert_id = params.alert_id;
     let alert = OrganizationActiveAlert::get(&state.pool, alert_id, account.organization_id)
         .await?
-        .ok_or(BackendAlertError::AlertNotFound(alert_id))?;
+        .ok_or(BackendError::AlertNotFound(alert_id))?;
     if alert.organization_id != account.organization_id {
-        return Err(BackendAlertError::AlertNotFound(alert_id).into());
+        return Err(BackendError::AlertNotFound(alert_id));
     }
     OrganizationActiveAlert::resolve_alert(&state.pool, params.alert_id, account.organization_id)
         .await?;
