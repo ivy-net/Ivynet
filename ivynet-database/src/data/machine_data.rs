@@ -1,3 +1,5 @@
+use chrono::NaiveDateTime;
+use ivynet_alerts::{Alert, SendState};
 use ivynet_grpc::messages::{MachineData, Metrics, MetricsAttribute};
 use serde::Serialize;
 use sqlx::PgPool;
@@ -89,6 +91,15 @@ pub struct DiskInfo {
     pub used: u64,
 }
 
+#[derive(Serialize, ToSchema, Clone, Debug)]
+pub struct TruncatedMachineAlert {
+    pub alert_id: Uuid,
+    pub created_at: NaiveDateTime,
+    pub telegram_send: SendState,
+    pub sendgrid_send: SendState,
+    pub pagerduty_send: SendState,
+    pub alert_type: Alert,
+}
 pub async fn build_machine_info(
     pool: &sqlx::PgPool,
     machine: &Machine,

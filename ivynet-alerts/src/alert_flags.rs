@@ -99,7 +99,7 @@ mod tests {
     #[test]
     fn test_get_alert_flags() -> Result<(), BitflagError> {
         let custom_alert = AlertType::Custom;
-        let needs_update_alert = AlertType::NeedsUpdate;
+        let needs_update_alert = AlertType::NodeNeedsUpdate;
 
         let mut flags = AlertFlags::default();
         assert!(!flags.is_alert_enabled(&custom_alert)?);

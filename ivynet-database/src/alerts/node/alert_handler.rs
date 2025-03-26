@@ -251,7 +251,7 @@ pub fn alerts_from_avs(avs: &Avs, version_map: &HashMap<NodeTypeId, VersionData>
             let recommended_version = version_data.latest_version.clone();
             if update_status == UpdateStatus::Outdated || update_status == UpdateStatus::Updateable
             {
-                alerts.push(Alert::NeedsUpdate {
+                alerts.push(Alert::NodeNeedsUpdate {
                     node_name: avs.avs_name.clone(),
                     node_type: avs.avs_type.to_string(),
                     current_version: avs.avs_version.clone(),
@@ -352,7 +352,7 @@ async fn extract_node_data_alerts(
                 if update_status == UpdateStatus::Outdated ||
                     update_status == UpdateStatus::Updateable
                 {
-                    alerts.push(Alert::NeedsUpdate {
+                    alerts.push(Alert::NodeNeedsUpdate {
                         node_name: node_data.name.clone(),
                         node_type: avs.avs_type.to_string(),
                         current_version: avs.avs_version.clone(),

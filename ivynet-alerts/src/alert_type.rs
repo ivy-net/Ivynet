@@ -33,31 +33,38 @@ pub enum Alert {
         extra_data: serde_json::Value,
     } = 1,
     ActiveSetNoDeployment {
+        // Node Alert
         node_name: String,
         node_type: String,
         operator: Address,
     } = 2,
     UnregisteredFromActiveSet {
+        // Node Alert
         node_name: String,
         node_type: String,
         operator: Address,
     } = 3,
     MachineNotResponding {
+        // Machine Alert
         machine: Uuid,
     } = 4,
     NodeNotResponding {
+        // Node Alert
         node_name: String,
         node_type: String,
     } = 5,
     NodeNotRunning {
+        // Node Alert
         node_name: String,
         node_type: String,
     } = 6,
     NoChainInfo {
+        // Node Alert
         node_name: String,
         node_type: String,
     } = 7,
     NoMetrics {
+        // Node Alert
         node_name: String,
         node_type: String,
     } = 8,
@@ -66,23 +73,26 @@ pub enum Alert {
         node_type: String,
     } = 9,
     HardwareResourceUsage {
+        // Machine Alert
         machine: Uuid,
         resource: String,
         percent: u16,
     } = 10,
     // TODO: Find out how exactly this should be used
     LowPerformanceScore {
+        // Node Alert
         node_name: String,
         node_type: String,
         performance: u16,
     } = 11,
-    NeedsUpdate {
+    NodeNeedsUpdate {
         node_name: String,
         node_type: String,
         current_version: String,
         recommended_version: String,
     } = 12,
     NewEigenAvs {
+        // Org Alert
         address: Address,
         block_number: u64,
         log_index: u64,
@@ -94,6 +104,7 @@ pub enum Alert {
         twitter: String,
     } = 13,
     UpdatedEigenAvs {
+        // Org Alert
         address: Address,
         block_number: u64,
         log_index: u64,
@@ -104,9 +115,17 @@ pub enum Alert {
         logo: String,
         twitter: String,
     } = 14,
-    NoClientHeartbeat,
-    NoMachineHeartbeat,
-    NoNodeHeartbeat,
+    NoClientHeartbeat = 15,  // Heartbeat Alert
+    NoMachineHeartbeat = 16, // Heartbeat Alert
+    NoNodeHeartbeat = 17,    // Heartbeat Alert
+    IdleMachine {
+        // Machine Alert
+        machine_id: Uuid,
+    } = 18,
+    ClientUpdateRequired {
+        // Machine Alert
+        machine_id: Uuid,
+    } = 19,
 }
 
 // Implement ToSchema for AlertType
@@ -162,7 +181,7 @@ impl Alert {
             Alert::LowPerformanceScore { node_name, .. } => {
                 format!("{}-{}", node_name, self.id())
             }
-            Alert::NeedsUpdate { node_name, current_version, .. } => {
+            Alert::NodeNeedsUpdate { node_name, current_version, .. } => {
                 format!("{}-{}-{}", node_name, current_version, self.id())
             }
             Alert::NewEigenAvs { address, block_number, log_index, .. } => {
@@ -174,6 +193,12 @@ impl Alert {
             Alert::NoClientHeartbeat => "NoClientHeartbeat".to_string(),
             Alert::NoMachineHeartbeat => "NoMachineHeartbeat".to_string(),
             Alert::NoNodeHeartbeat => "NoNodeHeartbeat".to_string(),
+            Alert::IdleMachine { machine_id, .. } => {
+                format!("{}-{}", machine_id, self.id())
+            }
+            Alert::ClientUpdateRequired { machine_id, .. } => {
+                format!("{}-{}", machine_id, self.id())
+            }
         }
     }
 
@@ -210,12 +235,14 @@ impl Display for AlertType {
             AlertType::NoOperatorId => write!(f, "NoOperatorId"),
             AlertType::HardwareResourceUsage => write!(f, "HardwareResourceUsage"),
             AlertType::LowPerformanceScore => write!(f, "LowPerformanceScore"),
-            AlertType::NeedsUpdate => write!(f, "NeedsUpdate"),
+            AlertType::NodeNeedsUpdate => write!(f, "NodeNeedsUpdate"),
             AlertType::NewEigenAvs => write!(f, "NewEigenAvs"),
             AlertType::UpdatedEigenAvs => write!(f, "UpdatedEigenAvs"),
             AlertType::NoClientHeartbeat => write!(f, "NoClientHeartbeat"),
             AlertType::NoMachineHeartbeat => write!(f, "NoMachineHeartbeat"),
             AlertType::NoNodeHeartbeat => write!(f, "NoNodeHeartbeat"),
+            AlertType::IdleMachine => write!(f, "IdleMachine"),
+            AlertType::ClientUpdateRequired => write!(f, "ClientUpdateRequired"),
         }
     }
 }
@@ -241,12 +268,14 @@ impl<'de> Deserialize<'de> for AlertType {
             "NoOperatorId" => Ok(AlertType::NoOperatorId),
             "HardwareResourceUsage" => Ok(AlertType::HardwareResourceUsage),
             "LowPerformanceScore" => Ok(AlertType::LowPerformanceScore),
-            "NeedsUpdate" => Ok(AlertType::NeedsUpdate),
+            "NodeNeedsUpdate" => Ok(AlertType::NodeNeedsUpdate),
             "NewEigenAvs" => Ok(AlertType::NewEigenAvs),
             "UpdatedEigenAvs" => Ok(AlertType::UpdatedEigenAvs),
             "NoClientHeartbeat" => Ok(AlertType::NoClientHeartbeat),
             "NoMachineHeartbeat" => Ok(AlertType::NoMachineHeartbeat),
             "NoNodeHeartbeat" => Ok(AlertType::NoNodeHeartbeat),
+            "IdleMachine" => Ok(AlertType::IdleMachine),
+            "ClientUpdateRequired" => Ok(AlertType::ClientUpdateRequired),
             _ => Err(serde::de::Error::custom("Unknown alert type")),
         }
     }
@@ -267,12 +296,14 @@ impl From<&AlertType> for usize {
             AlertType::NoOperatorId => 9,
             AlertType::HardwareResourceUsage => 10,
             AlertType::LowPerformanceScore => 11,
-            AlertType::NeedsUpdate => 12,
+            AlertType::NodeNeedsUpdate => 12,
             AlertType::NewEigenAvs => 13,
             AlertType::UpdatedEigenAvs => 14,
             AlertType::NoClientHeartbeat => 15,
             AlertType::NoMachineHeartbeat => 16,
             AlertType::NoNodeHeartbeat => 17,
+            AlertType::IdleMachine => 18,
+            AlertType::ClientUpdateRequired => 19,
         }
     }
 }
@@ -291,12 +322,14 @@ impl From<usize> for AlertType {
             9 => AlertType::NoOperatorId,
             10 => AlertType::HardwareResourceUsage,
             11 => AlertType::LowPerformanceScore,
-            12 => AlertType::NeedsUpdate,
+            12 => AlertType::NodeNeedsUpdate,
             13 => AlertType::NewEigenAvs,
             14 => AlertType::UpdatedEigenAvs,
             15 => AlertType::NoClientHeartbeat,
             16 => AlertType::NoMachineHeartbeat,
             17 => AlertType::NoNodeHeartbeat,
+            18 => AlertType::IdleMachine,
+            19 => AlertType::ClientUpdateRequired,
             _ => panic!("Unknown alert type"),
         }
     }
