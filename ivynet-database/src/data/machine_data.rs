@@ -112,9 +112,9 @@ impl Display for ErrorItem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ErrorItem::Disk(disk_id, usage_percent) => {
-                write!(f, "Disk {disk_id} is at {usage_percent}% usage")
+                write!(f, "Disk {disk_id} at {usage_percent}%")
             }
-            ErrorItem::Memory(usage_percent) => write!(f, "Memory is at {usage_percent}% usage"),
+            ErrorItem::Memory(usage_percent) => write!(f, "Memory at {usage_percent}%"),
         }
     }
 }

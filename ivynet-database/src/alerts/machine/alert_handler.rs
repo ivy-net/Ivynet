@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use ivynet_alerts::{Alert, SendState};
-use ivynet_grpc::messages::MachineData;
+use ivynet_grpc::messages::{DiskInformation, MachineData};
 use ivynet_notifications::{Channel, NotificationDispatcher, NotificationDispatcherError};
 use sqlx::{types::Uuid, PgPool};
 
@@ -183,7 +183,7 @@ pub async fn extract_machine_data_alerts(
         });
     }
 
-    todo!()
+    alerts
 }
 
 #[cfg(test)]
@@ -258,5 +258,76 @@ mod tests {
 
         assert_eq!(filtered_alerts.len(), 1);
         assert_eq!(filtered_alerts[0].alert_type, alert_type_3);
+    }
+
+    #[sqlx::test(
+        migrations = "../migrations",
+        fixtures(
+            "../../../fixtures/new_user_registration.sql",
+            "../../../fixtures/machine_alerts_active.sql",
+        )
+    )]
+    #[ignore]
+    async fn test_alert_extraction(pool: PgPool) {
+        let machine_id = Uuid::parse_str("ef9ebac8-d896-4a56-b143-6be483853be9").unwrap();
+
+        // Create MachineData with the provided metrics
+        let machine_data = MachineData {
+            ivynet_version: "".to_string(),
+            uptime: "268260".to_string(),
+            cpu_usage: "0.0".to_string(),
+            cpu_cores: "24".to_string(),
+            memory_used: "67225997312".to_string(),
+            memory_free: "0".to_string(),
+            memory_total: "67225997312".to_string(),
+            disk_used_total: "0".to_string(), // This will be calculated from disks
+            disks: vec![
+                DiskInformation {
+                    id: "nvme0n1p2".to_string(),
+                    total: "1967317549056".to_string(),
+                    free: "1512876183552".to_string(),
+                    used: "454441365504".to_string(),
+                },
+                DiskInformation {
+                    id: "nvme0n1p1".to_string(),
+                    total: "535805952".to_string(),
+                    free: "529371136".to_string(),
+                    used: "6434816".to_string(),
+                },
+                DiskInformation {
+                    id: "nvme1n1p3".to_string(),
+                    total: "1023344111616".to_string(),
+                    free: "643409354752".to_string(),
+                    used: "379934756864".to_string(),
+                },
+                DiskInformation {
+                    id: "nvme1n1p2".to_string(),
+                    total: "2000381014016".to_string(),
+                    free: "0".to_string(),
+                    used: "2000381014016".to_string(),
+                },
+            ],
+        };
+
+        // Extract alerts from the machine data
+        let extracted_alerts = extract_machine_data_alerts(&pool, machine_id, &machine_data).await;
+
+        assert_eq!(extracted_alerts.len(), 4);
+        assert_eq!(extracted_alerts[0], Alert::IdleMachine { machine_id });
+        assert_eq!(extracted_alerts[1], Alert::ClientUpdateRequired { machine_id });
+        assert_eq!(
+            extracted_alerts[2],
+            Alert::HardwareResourceUsage {
+                machine: machine_id,
+                resource: "Memory at 100%".to_string()
+            }
+        );
+        assert_eq!(
+            extracted_alerts[3],
+            Alert::HardwareResourceUsage {
+                machine: machine_id,
+                resource: "Disk nvme1n1p2 at 100%".to_string()
+            }
+        );
     }
 }
