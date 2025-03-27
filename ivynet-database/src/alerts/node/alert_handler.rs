@@ -140,12 +140,12 @@ impl AlertHandler for NodeAlertHandler {
     ) -> Result<Vec<NewNodeAlert>, NodeAlertError> {
         let existing_ids = existing_alerts.iter().map(|alert| alert.alert_id).collect::<Vec<_>>();
 
-        let filtered = incoming_alerts
+        let new_filtered_alerts = incoming_alerts
             .into_iter()
             .filter(|alert| !existing_ids.contains(&alert.id))
             .collect::<Vec<_>>();
 
-        Ok(filtered)
+        Ok(new_filtered_alerts)
     }
 }
 

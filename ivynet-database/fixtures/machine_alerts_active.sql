@@ -15,28 +15,6 @@ BEGIN
         sendgrid_send,
         pagerduty_send
     ) VALUES (
-        '00000000-0000-0000-0000-000000000001'::uuid,
-        machine_id,
-        (SELECT organization_id FROM organization WHERE name = org_name),
-        client_id,
-        NOW(),
-        '{"Custom": {"node_name": "test_machine", "node_type": "EigenDA", "extra_data": "runtime_alert_fixture_1"}}',
-        'no_send',
-        'no_send',
-        'no_send'
-    );
-
-    INSERT INTO machine_alerts_active (
-        alert_id,
-        machine_id,
-        organization_id,
-        client_id,
-        created_at,
-        alert_data,
-        telegram_send,
-        sendgrid_send,
-        pagerduty_send
-    ) VALUES (
         '00000000-0000-0000-0000-000000000002'::uuid,
         machine_id,
         (SELECT organization_id FROM organization WHERE name = org_name),
