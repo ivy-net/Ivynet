@@ -221,7 +221,6 @@ pub enum EmailTemplate {
     Custom,
     Generic,
     UnregisteredFromActiveSet,
-    MachineNotResponding,
     NodeNotRunning,
     NoChainInfo,
     NoMetrics,
@@ -254,10 +253,6 @@ impl<D: OrganizationDatabase> EmailSender<D> {
                 templates.insert(
                     EmailTemplate::UnregisteredFromActiveSet,
                     sendgrid_templates.unreg_active_set.to_string(),
-                );
-                templates.insert(
-                    EmailTemplate::MachineNotResponding,
-                    sendgrid_templates.machine_not_responding.to_string(),
                 );
                 templates.insert(
                     EmailTemplate::NodeNotRunning,
