@@ -202,6 +202,10 @@ async fn add_node_version_hashes(pool: &PgPool) -> Result<(), BackendError> {
                 info!("Skipping opt-in only node type {}", name);
                 continue;
             }
+            VersionType::Manual => {
+                info!("Skipping manual only node type {}", name);
+                continue;
+            }
         }
     }
 
@@ -361,11 +365,11 @@ mod tests {
         for (t, (tag, _digest)) in tags.iter() {
             assert_ne!(types_hashmap.get(t), new_versions_map.get(t));
             assert_ne!(
-                types_hashmap.get(t).unwrap().clone().unwrap().vd.latest_version,
+                types_hashmap.get(t).unwrap().clone().unwrap().vd.stable_version,
                 tag.to_owned()
             );
             assert_eq!(
-                new_versions_map.get(t).unwrap().clone().unwrap().vd.latest_version,
+                new_versions_map.get(t).unwrap().clone().unwrap().vd.stable_version,
                 tag.to_owned()
             );
         }

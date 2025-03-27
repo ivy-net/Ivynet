@@ -1,11 +1,14 @@
-use crate::{error::DatabaseError, AvsVersionHash};
+use crate::{avs_version::VersionData, error::DatabaseError, AvsVersionHash, DbAvsVersionData};
 use ivynet_error::ethers::types::Chain;
 use ivynet_node_type::NodeType;
+
+use super::node_data::UpdateStatus;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum VersionType {
     SemVer,
-    /// For node types with fixed docker versioning tags, such as `latest` or `holesky`
+    /// For node types with fixed docker versioning tags, such as `latest` or `holesky.` This is
+    /// just for fixed tags, but we expect the digest to update over time.
     FixedVer,
     /// Hybrid version type, for node types with both fixed and semver versioning. Currently used
     /// when a node type has both fixed and semver versioning, and the most reliable way to report
@@ -15,6 +18,8 @@ pub enum VersionType {
     LocalOnly,
     /// Node types that are opt-in only
     OptInOnly,
+    /// Node types that are manually set because their developers push garbage tags to the registry
+    Manual,
 }
 
 // TODO: This is really messy, should probably live in core but has a ToSchema dep
@@ -166,6 +171,21 @@ pub async fn find_latest_avs_version(
         }
         VersionType::LocalOnly => ("Local".to_string(), "Local_Builds_Only".to_string()),
         VersionType::OptInOnly => ("OptInOnly".to_string(), "OptInOnly".to_string()),
+        VersionType::Manual => {
+            let version =
+                DbAvsVersionData::get_avs_version_with_chain(pool, node_type, chain).await?;
+            if let Some(version) = version {
+                if let (Some(manual_version_digest), Some(manual_version_tag)) =
+                    (version.vd.manual_version_digest, version.vd.manual_version_tag)
+                {
+                    (manual_version_tag, manual_version_digest)
+                } else {
+                    return Err(DatabaseError::NoVersionsFound);
+                }
+            } else {
+                return Err(DatabaseError::NoVersionsFound);
+            }
+        }
     };
     Ok((tag, digest))
 }
@@ -180,6 +200,65 @@ pub fn extract_semver(tag: &str) -> Option<semver::Version> {
 /// Modified to not necessarily start from the beginning of the line, allowing for matching against
 /// tags that may have a nonstandard prefix such as `v`.
 const SEMVER_REGEX: &str = r#"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?"#;
+
+/// Derive the update status of a node based on the version type and version data.
+pub fn check_version_status(
+    version_type: VersionType,
+    version_data: &VersionData,
+    node_version_tag: &str,
+    node_image_digest: &str,
+) -> UpdateStatus {
+    match version_type {
+        VersionType::SemVer => {
+            let latest_semver = match extract_semver(&version_data.stable_version) {
+                Some(semver) => semver,
+                None => return UpdateStatus::Unknown,
+            };
+
+            let query_semver = match extract_semver(node_version_tag) {
+                Some(semver) => semver,
+                None => return UpdateStatus::Unknown,
+            };
+
+            let breaking_change_semver = match version_data.breaking_change_version.as_ref() {
+                Some(breaking_change) => extract_semver(&breaking_change.to_string()),
+                None => None,
+            };
+
+            if let Some(breaking_change_semver) = breaking_change_semver {
+                if query_semver < breaking_change_semver {
+                    return UpdateStatus::Outdated;
+                }
+            }
+
+            if query_semver >= latest_semver {
+                return UpdateStatus::UpToDate;
+            }
+
+            UpdateStatus::Updateable
+        }
+        // TODO: This is pretty dumb at the moment, no real way to check for breaking change
+        // versions for fixed versions
+        VersionType::FixedVer | VersionType::HybridVer => {
+            if node_image_digest == version_data.stable_version_digest {
+                return UpdateStatus::UpToDate;
+            }
+            UpdateStatus::Updateable
+        }
+        VersionType::LocalOnly => UpdateStatus::Unknown,
+        VersionType::OptInOnly => UpdateStatus::Unknown,
+        VersionType::Manual => {
+            if let Some(manual_version) = &version_data.manual_version_digest {
+                if node_image_digest == manual_version {
+                    return UpdateStatus::UpToDate;
+                }
+                UpdateStatus::Updateable
+            } else {
+                UpdateStatus::Unknown
+            }
+        }
+    }
+}
 
 #[cfg(test)]
 mod avs_version_tests {
