@@ -1,5 +1,6 @@
 pub mod alert_db;
 pub mod alert_handler;
+pub mod machine;
 pub mod node;
 pub mod org;
 
