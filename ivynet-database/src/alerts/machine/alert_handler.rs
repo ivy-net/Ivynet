@@ -76,25 +76,36 @@ impl MachineAlertHandler {
     ) -> Result<(), MachineAlertError> {
         let organization_id = Machine::get_organization_id(&self.db_executor, machine_id).await?;
 
-        let new_alerts = extract_machine_data_alerts(pool, machine_id, machine_data)
+        //Alerts derived from the latest machine data
+        let extracted_alerts = extract_machine_data_alerts(pool, machine_id, machine_data)
             .await
             .into_iter()
             .map(|alert| NewMachineAlert::new(machine_id, alert))
             .collect::<Vec<_>>();
 
+        // Already known alerts in the database
         let existing_alerts =
             MachineActiveAlert::all_alerts(&self.db_executor, machine_id, organization_id).await?;
 
+        // Alerts that are truly *new* and not duplicates to the alerts already in the database
         let mut filtered_new_alerts =
-            self.filter_duplicate_alerts(new_alerts, existing_alerts).await?;
+            self.filter_duplicate_alerts(extracted_alerts.clone(), existing_alerts.clone()).await?;
 
+        // Send notifications for the new alerts
         self.send_notifications(&mut filtered_new_alerts, organization_id as u64, Some(machine_id))
             .await?;
 
+        // Insert the new alerts into the database
         MachineActiveAlert::insert_many(&self.db_executor, &filtered_new_alerts).await?;
 
         // Resolve step: Remove any alerts that are no longer present
-        run_machine_alert_resolution(&self.db_executor, machine_id, organization_id).await?;
+        run_machine_alert_resolution(
+            &self.db_executor,
+            organization_id,
+            extracted_alerts,
+            existing_alerts,
+        )
+        .await?;
 
         Ok(())
     }
@@ -134,23 +145,16 @@ impl AlertHandler for MachineAlertHandler {
 /// Resolve any alerts that are no longer present in the machine data.
 pub async fn run_machine_alert_resolution(
     pool: &PgPool,
-    machine_id: Uuid,
     organization_id: i64,
+    extracted_alerts: Vec<NewMachineAlert>,
+    existing_alerts: Vec<MachineActiveAlert>,
 ) -> Result<(), MachineAlertError> {
-    let alerts = MachineActiveAlert::all_alerts(pool, machine_id, organization_id).await?;
-
-    // Filter existing alerts, removing any that are not in the incoming list
-    let to_resolve = alerts
-        .into_iter()
-        .filter(|alert| {
-            // FIXME: Add logic to determine which alerts should be resolved
-            // For now, we'll just resolve all alerts
-            todo!()
-        })
-        .collect::<Vec<_>>();
-
-    for alert in to_resolve {
-        MachineActiveAlert::resolve_alert(pool, alert.alert_id, organization_id).await?;
+    // Any alert that is present in the existing_alerts but not in the extracted_alerts should be
+    // resolved
+    for alert in existing_alerts {
+        if !extracted_alerts.iter().any(|a| a.id == alert.alert_id) {
+            MachineActiveAlert::resolve_alert(pool, alert.alert_id, organization_id).await?;
+        }
     }
 
     Ok(())
