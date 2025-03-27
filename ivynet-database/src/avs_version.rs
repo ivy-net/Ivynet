@@ -31,11 +31,15 @@ pub struct NodeTypeId {
 /// Represents version information for an AVS node
 #[derive(Clone, Serialize, Deserialize, ToSchema, Eq, PartialEq, Debug)]
 pub struct VersionData {
-    pub latest_version: String,
+    pub stable_version: String,
     // Necessary for fixed-version node types (`latest`, `holesky`, etc.)
-    pub latest_version_digest: String,
+    pub stable_version_digest: String,
     pub breaking_change_version: Option<String>,
     pub breaking_change_datetime: Option<NaiveDateTime>,
+    pub manual_version_tag: Option<String>,
+    pub manual_version_digest: Option<String>,
+    pub release_candidate_tag: Option<String>,
+    pub release_candidate_digest: Option<String>,
 }
 
 #[derive(Clone, sqlx::FromRow, Debug)]
@@ -43,10 +47,14 @@ pub struct DbAvsVersionData {
     pub id: i32,
     pub node_type: String,
     pub chain: String,
-    pub latest_version_tag: String,
-    pub latest_version_digest: String,
+    pub stable_version_tag: String,
+    pub stable_version_digest: String,
     pub breaking_change_tag: Option<String>,
     pub breaking_change_datetime: Option<NaiveDateTime>,
+    pub manual_version_tag: Option<String>,
+    pub manual_version_digest: Option<String>,
+    pub release_candidate_tag: Option<String>,
+    pub release_candidate_digest: Option<String>,
 }
 
 impl TryFrom<DbAvsVersionData> for AvsVersionData {
@@ -54,10 +62,14 @@ impl TryFrom<DbAvsVersionData> for AvsVersionData {
 
     fn try_from(db: DbAvsVersionData) -> Result<Self, Self::Error> {
         let version_data = VersionData {
-            latest_version: db.latest_version_tag,
-            latest_version_digest: db.latest_version_digest,
+            stable_version: db.stable_version_tag,
+            stable_version_digest: db.stable_version_digest.to_owned(),
             breaking_change_version: db.breaking_change_tag.to_owned(),
             breaking_change_datetime: db.breaking_change_datetime,
+            manual_version_tag: db.manual_version_tag,
+            manual_version_digest: db.manual_version_digest,
+            release_candidate_tag: db.release_candidate_tag,
+            release_candidate_digest: db.release_candidate_digest,
         };
 
         Ok(Self {
@@ -125,19 +137,19 @@ impl DbAvsVersionData {
     ) -> Result<(), DatabaseError> {
         let query = match (&data.vd.breaking_change_version, &data.vd.breaking_change_datetime) {
             (Some(ver), Some(dt)) => query!(
-                "INSERT INTO avs_version_data (node_type, latest_version_tag, chain, breaking_change_tag, breaking_change_datetime)
+                "INSERT INTO avs_version_data (node_type, stable_version_tag, chain, breaking_change_tag, breaking_change_datetime)
                 VALUES ($1, $2, $3, $4, $5)",
                 data.id.node_type.to_string(),
-                data.vd.latest_version,
+                data.vd.stable_version,
                 data.id.chain.to_string(),
                 ver,
                 dt,
             ),
             _ => query!(
-                "INSERT INTO avs_version_data (node_type, latest_version_tag, chain)
+                "INSERT INTO avs_version_data (node_type, stable_version_tag, chain)
                 VALUES ($1, $2, $3)",
                 data.id.node_type.to_string(),
-                data.vd.latest_version,
+                data.vd.stable_version,
                 data.id.chain.to_string(),
             ),
         };
@@ -166,16 +178,16 @@ impl DbAvsVersionData {
         pool: &sqlx::PgPool,
         node_type: &NodeType,
         chain: &Chain,
-        latest_version_tag: &str,
-        latest_version_digest: &str,
+        stable_version_tag: &str,
+        stable_version_digest: &str,
     ) -> Result<(), DatabaseError> {
         query!(
-            "INSERT INTO avs_version_data (node_type, latest_version_tag, latest_version_digest, chain)
+            "INSERT INTO avs_version_data (node_type, stable_version_tag, stable_version_digest, chain)
             VALUES ($1, $2, $3, $4)
-            ON CONFLICT (node_type, chain) DO UPDATE SET latest_version_tag = $2, latest_version_digest = $3",
+            ON CONFLICT (node_type, chain) DO UPDATE SET stable_version_tag = $2, stable_version_digest = $3",
             node_type.to_string(),
-            latest_version_tag,
-            latest_version_digest,
+            stable_version_tag,
+            stable_version_digest,
             chain.to_string(),
         )
         .execute(pool)
@@ -199,6 +211,53 @@ impl DbAvsVersionData {
             chain.to_string(),
             Some(breaking_change_version.to_string()),
             Some(breaking_change_datetime)
+        )
+        .execute(pool)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Update the manual_version_tag and manual_version_digest for a given node type and chain
+    pub async fn set_manual_version(
+        pool: &sqlx::PgPool,
+        node_type: &NodeType,
+        chain: &Chain,
+        manual_version_tag: &str,
+        manual_version_digest: &str,
+    ) -> Result<(), DatabaseError> {
+        query!(
+            "UPDATE avs_version_data
+            SET manual_version_tag = $3, manual_version_digest = $4
+            WHERE node_type = $1 AND chain = $2",
+            node_type.to_string(),
+            chain.to_string(),
+            manual_version_tag,
+            manual_version_digest,
+        )
+        .execute(pool)
+        .await?;
+
+        Ok(())
+    }
+
+    /// Update the release_candidate_tag and release_candidate_digest for a given node type and
+    /// chain
+    pub async fn set_release_candidate(
+        pool: &sqlx::PgPool,
+        node_type: &NodeType,
+        chain: &Chain,
+        release_candidate_tag: &str,
+        release_candidate_digest: &str,
+    ) -> Result<(), DatabaseError> {
+        query!(
+            "UPDATE avs_version_data
+            SET release_candidate_tag = $3, release_candidate_digest = $4
+            WHERE node_type = $1 AND chain = $2",
+            node_type.to_string(),
+            chain.to_string(),
+            release_candidate_tag,
+            release_candidate_digest,
         )
         .execute(pool)
         .await?;

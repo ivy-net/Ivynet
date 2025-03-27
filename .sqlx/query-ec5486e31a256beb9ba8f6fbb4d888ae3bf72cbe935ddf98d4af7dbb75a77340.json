@@ -20,12 +20,12 @@
       },
       {
         "ordinal": 3,
-        "name": "latest_version_tag",
+        "name": "stable_version_tag",
         "type_info": "Varchar"
       },
       {
         "ordinal": 4,
-        "name": "latest_version_digest",
+        "name": "stable_version_digest",
         "type_info": "Varchar"
       },
       {
@@ -37,6 +37,26 @@
         "ordinal": 6,
         "name": "breaking_change_datetime",
         "type_info": "Timestamp"
+      },
+      {
+        "ordinal": 7,
+        "name": "manual_version_tag",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 8,
+        "name": "manual_version_digest",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 9,
+        "name": "release_candidate_tag",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 10,
+        "name": "release_candidate_digest",
+        "type_info": "Varchar"
       }
     ],
     "parameters": {
@@ -51,6 +71,10 @@
       false,
       false,
       false,
+      true,
+      true,
+      true,
+      true,
       true,
       true
     ]

@@ -16,7 +16,7 @@ use crate::{
     },
     avs_version::{NodeTypeId, VersionData},
     data::{
-        avs_version::{extract_semver, VersionType},
+        avs_version::{check_version_status, VersionType},
         node_data::UpdateStatus,
     },
     error::DatabaseError,
@@ -248,7 +248,7 @@ pub fn alerts_from_avs(avs: &Avs, version_map: &HashMap<NodeTypeId, VersionData>
         let node_type_id = NodeTypeId { node_type: avs.avs_type, chain };
 
         if let Some(version_data) = version_map.get(&node_type_id) {
-            let recommended_version = version_data.latest_version.clone();
+            let recommended_version = version_data.stable_version.clone();
             if update_status == UpdateStatus::Outdated || update_status == UpdateStatus::Updateable
             {
                 alerts.push(Alert::NodeNeedsUpdate {
@@ -348,7 +348,7 @@ async fn extract_node_data_alerts(
             let node_type_id = NodeTypeId { node_type: avs.avs_type, chain };
 
             if let Some(version_data) = version_map.get(&node_type_id) {
-                let recommended_version = version_data.latest_version.clone();
+                let recommended_version = version_data.stable_version.clone();
                 if update_status == UpdateStatus::Outdated ||
                     update_status == UpdateStatus::Updateable
                 {
@@ -453,46 +453,8 @@ pub fn get_update_status(
         None => return UpdateStatus::Unknown,
     };
 
-    match VersionType::from(&node_type) {
-        VersionType::SemVer => {
-            let latest_semver = match extract_semver(&version_data.latest_version) {
-                Some(semver) => semver,
-                None => return UpdateStatus::Unknown,
-            };
-
-            let query_semver = match extract_semver(node_version_tag) {
-                Some(semver) => semver,
-                None => return UpdateStatus::Unknown,
-            };
-
-            let breaking_change_semver = match version_data.breaking_change_version.as_ref() {
-                Some(breaking_change) => extract_semver(&breaking_change.to_string()),
-                None => None,
-            };
-
-            if let Some(breaking_change_semver) = breaking_change_semver {
-                if query_semver < breaking_change_semver {
-                    return UpdateStatus::Outdated;
-                }
-            }
-
-            if query_semver >= latest_semver {
-                return UpdateStatus::UpToDate;
-            }
-
-            UpdateStatus::Updateable
-        }
-        // TODO: This is pretty dumb at the moment, no real way to check for breaking change
-        // versions for fixed versions
-        VersionType::FixedVer | VersionType::HybridVer => {
-            if node_image_digest == version_data.latest_version_digest {
-                return UpdateStatus::UpToDate;
-            }
-            UpdateStatus::Updateable
-        }
-        VersionType::LocalOnly => UpdateStatus::Unknown,
-        VersionType::OptInOnly => UpdateStatus::Unknown,
-    }
+    let version_type = VersionType::from(&node_type);
+    check_version_status(version_type, version_data, node_version_tag, node_image_digest)
 }
 
 #[cfg(test)]

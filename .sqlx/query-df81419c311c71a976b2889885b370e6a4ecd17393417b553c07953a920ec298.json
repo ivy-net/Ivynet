@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO avs_version_data (node_type, stable_version_tag, chain, breaking_change_tag, breaking_change_datetime)\n                VALUES ($1, $2, $3, $4, $5)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Timestamp"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "df81419c311c71a976b2889885b370e6a4ecd17393417b553c07953a920ec298"
+}

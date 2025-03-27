@@ -22,7 +22,7 @@ use crate::{
 };
 use ivynet_error::ethers::types::Chain;
 
-use super::avs_version::{extract_semver, VersionType};
+use super::avs_version::{check_version_status, VersionType};
 
 const UPTIME_METRIC: &str = "uptime";
 pub const RUNNING_METRIC: &str = "running";
@@ -162,46 +162,8 @@ pub fn get_update_status(
         None => return UpdateStatus::Unknown,
     };
 
-    match VersionType::from(&node_type) {
-        VersionType::SemVer => {
-            let latest_semver = match extract_semver(&version_data.latest_version) {
-                Some(semver) => semver,
-                None => return UpdateStatus::Unknown,
-            };
-
-            let query_semver = match extract_semver(node_version_tag) {
-                Some(semver) => semver,
-                None => return UpdateStatus::Unknown,
-            };
-
-            let breaking_change_semver = match version_data.breaking_change_version.as_ref() {
-                Some(breaking_change) => extract_semver(&breaking_change.to_string()),
-                None => None,
-            };
-
-            if let Some(breaking_change_semver) = breaking_change_semver {
-                if query_semver < breaking_change_semver {
-                    return UpdateStatus::Outdated;
-                }
-            }
-
-            if query_semver >= latest_semver {
-                return UpdateStatus::UpToDate;
-            }
-
-            UpdateStatus::Updateable
-        }
-        // TODO: This is pretty dumb at the moment, no real way to check for breaking change
-        // versions for fixed versions
-        VersionType::FixedVer | VersionType::HybridVer => {
-            if node_image_digest == version_data.latest_version_digest {
-                return UpdateStatus::UpToDate;
-            }
-            UpdateStatus::Updateable
-        }
-        VersionType::LocalOnly => UpdateStatus::Unknown,
-        VersionType::OptInOnly => UpdateStatus::Unknown,
-    }
+    let version_type = VersionType::from(&node_type);
+    check_version_status(version_type, version_data, node_version_tag, node_image_digest)
 }
 
 /// Condense list of metrics into a smaller list of metrics for the frontend
@@ -311,8 +273,12 @@ mod node_data_tests {
         map.insert(
             NodeTypeId { node_type: NodeType::EigenDA, chain: Chain::Mainnet },
             VersionData {
-                latest_version: Version::new(1, 2, 0).to_string(),
-                latest_version_digest: "digest".to_string(),
+                stable_version: Version::new(1, 2, 0).to_string(),
+                stable_version_digest: "digest".to_string(),
+                manual_version_tag: None,
+                manual_version_digest: None,
+                release_candidate_tag: None,
+                release_candidate_digest: None,
                 breaking_change_version: Some(Version::new(1, 0, 0).to_string()),
                 breaking_change_datetime: None,
             },

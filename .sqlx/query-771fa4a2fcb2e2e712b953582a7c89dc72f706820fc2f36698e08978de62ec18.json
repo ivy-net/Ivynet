@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO avs_version_data (node_type, stable_version_tag, stable_version_digest, chain)\n            VALUES ($1, $2, $3, $4)\n            ON CONFLICT (node_type, chain) DO UPDATE SET stable_version_tag = $2, stable_version_digest = $3",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Varchar",
+        "Varchar",
+        "Varchar",
+        "Varchar"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "771fa4a2fcb2e2e712b953582a7c89dc72f706820fc2f36698e08978de62ec18"
+}
