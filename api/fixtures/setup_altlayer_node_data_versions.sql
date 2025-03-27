@@ -2,8 +2,8 @@ INSERT INTO avs_version_data (
     id,
     node_type,
     chain,
-    latest_version_tag,
-    latest_version_digest,
+    stable_version_tag,
+    stable_version_digest,
     breaking_change_tag,
     breaking_change_datetime
 )
