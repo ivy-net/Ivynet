@@ -3,7 +3,7 @@ use ivynet_alerts::{Alert, SendState};
 use ivynet_grpc::messages::{MachineData, Metrics, MetricsAttribute};
 use serde::Serialize;
 use sqlx::PgPool;
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt::Display};
 use utoipa::ToSchema;
 use uuid::Uuid;
 
@@ -63,6 +63,13 @@ pub struct HardwareUsageInfo {
     pub sys_metrics: SystemMetrics,
     pub memory_status: HardwareInfoStatus,
     pub disk_status: HardwareInfoStatus,
+    pub error_items: Vec<ErrorItem>,
+}
+
+#[derive(Serialize, ToSchema, Clone, Debug)]
+pub enum ErrorItem {
+    Disk(String, f64), //Disk Partition, Usage Percent
+    Memory(f64),
 }
 
 #[derive(Serialize, ToSchema, Clone, Debug, PartialEq, Eq)]
@@ -100,6 +107,18 @@ pub struct TruncatedMachineAlert {
     pub pagerduty_send: SendState,
     pub alert_type: Alert,
 }
+
+impl Display for ErrorItem {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ErrorItem::Disk(disk_id, usage_percent) => {
+                write!(f, "Disk {disk_id} is at {usage_percent}% usage")
+            }
+            ErrorItem::Memory(usage_percent) => write!(f, "Memory is at {usage_percent}% usage"),
+        }
+    }
+}
+
 pub async fn build_machine_info(
     pool: &sqlx::PgPool,
     machine: &Machine,
@@ -194,6 +213,8 @@ pub fn build_system_metrics(machine_metrics: &HashMap<String, Metric>) -> Hardwa
         i += 1;
     }
 
+    let mut error_items = vec![];
+
     let metrics = SystemMetrics {
         cpu_cores: machine_metrics.get(CORES_METRIC).map(|m| m.value as u64).unwrap_or_default(),
         cpu_usage: machine_metrics.get(CPU_USAGE_METRIC).map(|m| m.value).unwrap_or_default(),
@@ -218,9 +239,11 @@ pub fn build_system_metrics(machine_metrics: &HashMap<String, Metric>) -> Hardwa
         HardwareInfoStatus::Healthy
     } else {
         let total = metrics.memory_usage + metrics.memory_free;
+        let usage_percent = (metrics.memory_usage as f64 / total as f64) * 100.0;
         if total == 0 {
             HardwareInfoStatus::Healthy
         } else if metrics.memory_usage as f64 > (total as f64 * 0.95) {
+            error_items.push(ErrorItem::Memory(usage_percent));
             HardwareInfoStatus::Critical
         } else if metrics.memory_usage as f64 > (total as f64 * 0.9) {
             HardwareInfoStatus::Warning
@@ -240,6 +263,10 @@ pub fn build_system_metrics(machine_metrics: &HashMap<String, Metric>) -> Hardwa
                 continue;
             }
             if disk.used as f64 > (total as f64 * 0.95) {
+                error_items.push(ErrorItem::Disk(
+                    disk.id.clone(),
+                    (disk.used as f64 / total as f64) * 100.0,
+                ));
                 worst_status = HardwareInfoStatus::Critical;
                 break;
             } else if disk.used as f64 > (total as f64 * 0.9) {
@@ -249,7 +276,7 @@ pub fn build_system_metrics(machine_metrics: &HashMap<String, Metric>) -> Hardwa
         worst_status
     };
 
-    HardwareUsageInfo { sys_metrics: metrics, memory_status, disk_status }
+    HardwareUsageInfo { sys_metrics: metrics, memory_status, disk_status, error_items }
 }
 
 pub fn convert_system_metrics(sys_info: &MachineData) -> Vec<Metrics> {
@@ -305,4 +332,76 @@ pub fn convert_system_metrics(sys_info: &MachineData) -> Vec<Metrics> {
     }
 
     sys_metrics
+}
+
+pub fn build_system_metrics_from_machine_data(machine_data: &MachineData) -> HardwareUsageInfo {
+    let mut disks = Vec::new();
+
+    // Convert disk information from MachineData
+    for disk in &machine_data.disks {
+        let disk_info = DiskInfo {
+            id: disk.id.clone(),
+            total: disk.total.parse().unwrap_or_default(),
+            free: disk.free.parse().unwrap_or_default(),
+            used: disk.used.parse().unwrap_or_default(),
+        };
+        disks.push(disk_info);
+    }
+
+    let metrics = SystemMetrics {
+        cpu_cores: machine_data.cpu_cores.parse().unwrap_or_default(),
+        cpu_usage: machine_data.cpu_usage.parse().unwrap_or_default(),
+        memory_usage: machine_data.memory_used.parse().unwrap_or_default(),
+        memory_free: machine_data.memory_free.parse().unwrap_or_default(),
+        memory_total: machine_data.memory_total.parse().unwrap_or_default(),
+        disks,
+        uptime: machine_data.uptime.parse().unwrap_or_default(),
+    };
+
+    let mut error_items = vec![];
+
+    // Calculate memory status and usage
+    let memory_status = if metrics.memory_usage == 0 && metrics.memory_free == 0 {
+        HardwareInfoStatus::Healthy
+    } else {
+        let total = metrics.memory_usage + metrics.memory_free;
+        if total == 0 {
+            HardwareInfoStatus::Healthy
+        } else {
+            let usage_percent = (metrics.memory_usage as f64 / total as f64) * 100.0;
+
+            if usage_percent > 95.0 {
+                error_items.push(ErrorItem::Memory(usage_percent));
+                HardwareInfoStatus::Critical
+            } else if usage_percent > 90.0 {
+                HardwareInfoStatus::Warning
+            } else {
+                HardwareInfoStatus::Healthy
+            }
+        }
+    };
+
+    // Calculate disk status and usage
+    let disk_status = if metrics.disks.is_empty() {
+        HardwareInfoStatus::Healthy
+    } else {
+        let mut worst_status = HardwareInfoStatus::Healthy;
+        for disk in &metrics.disks {
+            let total = disk.used + disk.free;
+            if total == 0 {
+                continue;
+            }
+            let usage_percent = ((disk.used as f64 / total as f64) * 100.0) as u16;
+            if usage_percent > 95 {
+                error_items.push(ErrorItem::Disk(disk.id.clone(), usage_percent as f64));
+                worst_status = HardwareInfoStatus::Critical;
+                break;
+            } else if usage_percent > 90 {
+                worst_status = HardwareInfoStatus::Warning;
+            }
+        }
+        worst_status
+    };
+
+    HardwareUsageInfo { sys_metrics: metrics, memory_status, disk_status, error_items }
 }

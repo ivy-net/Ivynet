@@ -50,13 +50,6 @@ impl SendgridSend for Notification {
                     ("address".to_owned(), format!("{:?}", operator)),
                 ]),
             ),
-            NotificationType::MachineNotResponding { .. } => (
-                EmailTemplate::MachineNotResponding,
-                HashMap::from([(
-                    "machine_id".to_owned(),
-                    format!("{}", self.machine_id.unwrap_or_default()),
-                )]),
-            ),
             NotificationType::NodeNotRunning { node_name, .. } => {
                 (EmailTemplate::NodeNotRunning, HashMap::from([("avs".to_owned(), node_name)]))
             }
@@ -69,12 +62,11 @@ impl SendgridSend for Notification {
             NotificationType::NoOperatorId { node_name, .. } => {
                 (EmailTemplate::NoOperatorId, HashMap::from([("avs".to_owned(), node_name)]))
             }
-            NotificationType::HardwareResourceUsage { resource, percent, .. } => (
+            NotificationType::HardwareResourceUsage { resource, .. } => (
                 EmailTemplate::HardwareResourceUsage,
                 HashMap::from([
                     ("machine_id".to_owned(), format!("{}", self.machine_id.unwrap_or_default())),
                     ("resource".to_owned(), resource),
-                    ("percent".to_owned(), format!("{percent}")),
                 ]),
             ),
             NotificationType::LowPerformanceScore { node_name, performance, .. } => (
@@ -192,12 +184,13 @@ impl SendgridSend for Notification {
             Alert::UnregisteredFromActiveSet { node_name: _, node_type: _, operator } => {
                 format!("Operator {operator:?} unregistered from the active set")
             }
-            Alert::MachineNotResponding { machine, .. } => {
-                format!("Machine {machine} is not responding")
-            }
             Alert::NodeNotResponding { .. } => "AVS is not responding".to_string(),
-            Alert::HardwareResourceUsage { resource, percent, .. } => {
-                format!("Resource {resource} is used in {percent}%")
+            Alert::HardwareResourceUsage { resource, .. } => {
+                format!(
+                    "Machine {} is maxing out hardware resources: {}",
+                    self.machine_id.unwrap_or_default(),
+                    resource
+                )
             }
             Alert::LowPerformanceScore { node_name: _, node_type: _, performance } => {
                 format!("AVS dropped in performace score to {performance}")

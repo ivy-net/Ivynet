@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use ivynet_alerts::{Alert, SendState};
+use ivynet_grpc::messages::MachineData;
 use ivynet_notifications::{Channel, NotificationDispatcher, NotificationDispatcherError};
 use sqlx::{types::Uuid, PgPool};
 
@@ -11,8 +12,9 @@ use crate::{
         alert_db::AlertDb,
         alert_handler::{ActiveAlert, AlertHandler, NewAlert},
     },
+    data::machine_data::build_system_metrics_from_machine_data,
     error::DatabaseError,
-    Machine,
+    Avs, Machine,
 };
 
 use super::alerts_active::{MachineActiveAlert, NewMachineAlert};
@@ -66,24 +68,22 @@ impl MachineAlertHandler {
         Self { dispatcher, db_executor }
     }
 
-    pub async fn handle_machine_alerts(
+    pub async fn handle_machine_data_alerts(
         &self,
+        pool: &PgPool,
         machine_id: Uuid,
-        alerts: Vec<Alert>,
+        machine_data: &MachineData,
     ) -> Result<(), MachineAlertError> {
         let organization_id = Machine::get_organization_id(&self.db_executor, machine_id).await?;
 
-        let new_alerts = alerts
+        let new_alerts = extract_machine_data_alerts(pool, machine_id, machine_data)
+            .await
             .into_iter()
             .map(|alert| NewMachineAlert::new(machine_id, alert))
             .collect::<Vec<_>>();
 
-        let existing_alerts = MachineActiveAlert::all_alerts_by_machine(
-            &self.db_executor,
-            machine_id,
-            organization_id,
-        )
-        .await?;
+        let existing_alerts =
+            MachineActiveAlert::all_alerts(&self.db_executor, machine_id, organization_id).await?;
 
         let mut filtered_new_alerts =
             self.filter_duplicate_alerts(new_alerts, existing_alerts).await?;
@@ -93,7 +93,7 @@ impl MachineAlertHandler {
 
         MachineActiveAlert::insert_many(&self.db_executor, &filtered_new_alerts).await?;
 
-        // Resolve step
+        // Resolve step: Remove any alerts that are no longer present
         run_machine_alert_resolution(&self.db_executor, machine_id, organization_id).await?;
 
         Ok(())
@@ -137,8 +137,7 @@ pub async fn run_machine_alert_resolution(
     machine_id: Uuid,
     organization_id: i64,
 ) -> Result<(), MachineAlertError> {
-    let alerts =
-        MachineActiveAlert::all_alerts_by_machine(pool, machine_id, organization_id).await?;
+    let alerts = MachineActiveAlert::all_alerts(pool, machine_id, organization_id).await?;
 
     // Filter existing alerts, removing any that are not in the incoming list
     let to_resolve = alerts
@@ -146,7 +145,7 @@ pub async fn run_machine_alert_resolution(
         .filter(|alert| {
             // FIXME: Add logic to determine which alerts should be resolved
             // For now, we'll just resolve all alerts
-            true
+            todo!()
         })
         .collect::<Vec<_>>();
 
@@ -155,6 +154,32 @@ pub async fn run_machine_alert_resolution(
     }
 
     Ok(())
+}
+
+pub async fn extract_machine_data_alerts(
+    pool: &PgPool,
+    machine_id: Uuid,
+    machine_data: &MachineData,
+) -> Vec<Alert> {
+    let mut alerts = Vec::new();
+    let avs_count = Avs::get_avs_list_count(pool, machine_id).await.unwrap_or(0);
+    if avs_count == 0 {
+        alerts.push(Alert::IdleMachine { machine_id });
+    }
+
+    if machine_data.ivynet_version.is_empty() {
+        alerts.push(Alert::ClientUpdateRequired { machine_id });
+    }
+
+    let system_metrics = build_system_metrics_from_machine_data(machine_data);
+    for error_item in system_metrics.error_items {
+        alerts.push(Alert::HardwareResourceUsage {
+            machine: machine_id,
+            resource: error_item.to_string(),
+        });
+    }
+
+    todo!()
 }
 
 #[cfg(test)]
@@ -222,8 +247,7 @@ mod tests {
 
         let alerts = vec![new_alert_2, new_alert_3];
 
-        let existing_alerts =
-            MachineActiveAlert::all_alerts_by_machine(&pool, machine_id, 1).await.unwrap();
+        let existing_alerts = MachineActiveAlert::all_alerts(&pool, machine_id, 1).await.unwrap();
 
         let filtered_alerts =
             handler.filter_duplicate_alerts(alerts, existing_alerts).await.unwrap();

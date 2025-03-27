@@ -291,7 +291,7 @@ impl MachineActiveAlert {
         Ok(())
     }
 
-    pub async fn all_alerts_by_machine(
+    pub async fn all_alerts(
         pool: &PgPool,
         machine_id: Uuid,
         organization_id: i64,

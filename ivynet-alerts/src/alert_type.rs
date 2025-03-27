@@ -44,9 +44,9 @@ pub enum Alert {
         node_type: String,
         operator: Address,
     } = 3,
-    MachineNotResponding {
+    IdleMachine {
         // Machine Alert
-        machine: Uuid,
+        machine_id: Uuid,
     } = 4,
     NodeNotResponding {
         // Node Alert
@@ -76,7 +76,6 @@ pub enum Alert {
         // Machine Alert
         machine: Uuid,
         resource: String,
-        percent: u16,
     } = 10,
     // TODO: Find out how exactly this should be used
     LowPerformanceScore {
@@ -118,14 +117,10 @@ pub enum Alert {
     NoClientHeartbeat = 15,  // Heartbeat Alert
     NoMachineHeartbeat = 16, // Heartbeat Alert
     NoNodeHeartbeat = 17,    // Heartbeat Alert
-    IdleMachine {
-        // Machine Alert
-        machine_id: Uuid,
-    } = 18,
     ClientUpdateRequired {
         // Machine Alert
         machine_id: Uuid,
-    } = 19,
+    } = 18,
 }
 
 // Implement ToSchema for AlertType
@@ -171,9 +166,6 @@ impl Alert {
             }
             Alert::Custom { .. } => {
                 format!("{:?}-{}", self, self.id())
-            }
-            Alert::MachineNotResponding { machine, .. } => {
-                format!("{}-{}", machine, self.id())
             }
             Alert::HardwareResourceUsage { machine, resource, .. } => {
                 format!("{}-{}-{}", machine, resource, self.id())
@@ -227,7 +219,6 @@ impl Display for AlertType {
             AlertType::Custom => write!(f, "Custom"),
             AlertType::ActiveSetNoDeployment => write!(f, "ActiveSetNoDeployment"),
             AlertType::UnregisteredFromActiveSet => write!(f, "UnregisteredFromActiveSet"),
-            AlertType::MachineNotResponding => write!(f, "MachineNotResponding"),
             AlertType::NodeNotResponding => write!(f, "NodeNotResponding"),
             AlertType::NodeNotRunning => write!(f, "NodeNotRunning"),
             AlertType::NoChainInfo => write!(f, "NoChainInfo"),
@@ -260,7 +251,6 @@ impl<'de> Deserialize<'de> for AlertType {
             "Custom" => Ok(AlertType::Custom),
             "ActiveSetNoDeployment" => Ok(AlertType::ActiveSetNoDeployment),
             "UnregisteredFromActiveSet" => Ok(AlertType::UnregisteredFromActiveSet),
-            "MachineNotResponding" => Ok(AlertType::MachineNotResponding),
             "NodeNotResponding" => Ok(AlertType::NodeNotResponding),
             "NodeNotRunning" => Ok(AlertType::NodeNotRunning),
             "NoChainInfo" => Ok(AlertType::NoChainInfo),
@@ -288,7 +278,7 @@ impl From<&AlertType> for usize {
             AlertType::Custom => 1,
             AlertType::ActiveSetNoDeployment => 2,
             AlertType::UnregisteredFromActiveSet => 3,
-            AlertType::MachineNotResponding => 4,
+            AlertType::IdleMachine => 4,
             AlertType::NodeNotResponding => 5,
             AlertType::NodeNotRunning => 6,
             AlertType::NoChainInfo => 7,
@@ -302,8 +292,7 @@ impl From<&AlertType> for usize {
             AlertType::NoClientHeartbeat => 15,
             AlertType::NoMachineHeartbeat => 16,
             AlertType::NoNodeHeartbeat => 17,
-            AlertType::IdleMachine => 18,
-            AlertType::ClientUpdateRequired => 19,
+            AlertType::ClientUpdateRequired => 18,
         }
     }
 }
@@ -314,7 +303,7 @@ impl From<usize> for AlertType {
             1 => AlertType::Custom,
             2 => AlertType::ActiveSetNoDeployment,
             3 => AlertType::UnregisteredFromActiveSet,
-            4 => AlertType::MachineNotResponding,
+            4 => AlertType::IdleMachine,
             5 => AlertType::NodeNotResponding,
             6 => AlertType::NodeNotRunning,
             7 => AlertType::NoChainInfo,
@@ -328,8 +317,7 @@ impl From<usize> for AlertType {
             15 => AlertType::NoClientHeartbeat,
             16 => AlertType::NoMachineHeartbeat,
             17 => AlertType::NoNodeHeartbeat,
-            18 => AlertType::IdleMachine,
-            19 => AlertType::ClientUpdateRequired,
+            18 => AlertType::ClientUpdateRequired,
             _ => panic!("Unknown alert type"),
         }
     }
