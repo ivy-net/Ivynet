@@ -188,6 +188,7 @@ pub async fn extract_machine_data_alerts(
 
 #[cfg(test)]
 mod tests {
+    use ivynet_grpc::messages::DiskInformation;
     use ivynet_notifications::{NotificationConfig, SendgridSpecificTemplates, SendgridTemplates};
 
     use super::*;
