@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use ivynet_alerts::{Alert, SendState};
-use ivynet_grpc::messages::{DiskInformation, MachineData};
+use ivynet_grpc::messages::MachineData;
 use ivynet_notifications::{Channel, NotificationDispatcher, NotificationDispatcherError};
 use sqlx::{types::Uuid, PgPool};
 
