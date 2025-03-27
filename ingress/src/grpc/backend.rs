@@ -1,6 +1,9 @@
 use crate::error::IngressError;
 use ivynet_database::{
-    alerts::{alert_db::AlertDb, node_alert_handler::NodeAlertHandler},
+    alerts::{
+        alert_db::AlertDb, machine::alert_handler::MachineAlertHandler,
+        node::alert_handler::NodeAlertHandler,
+    },
     client_log::ClientLog,
     data::{
         machine_data::convert_system_metrics,
@@ -38,6 +41,7 @@ use super::data_validator::validate_request;
 
 pub struct BackendService {
     pub node_alert_handler: NodeAlertHandler,
+    pub machine_alert_handler: MachineAlertHandler,
     pub heartbeats: HeartbeatMonitor<AlertDb>,
     pool: PgPool,
 }
@@ -47,8 +51,9 @@ impl BackendService {
         pool: PgPool,
         heartbeats: HeartbeatMonitor<AlertDb>,
         node_alert_handler: NodeAlertHandler,
+        machine_alert_handler: MachineAlertHandler,
     ) -> Self {
-        Self { node_alert_handler, heartbeats, pool }
+        Self { node_alert_handler, machine_alert_handler, heartbeats, pool }
     }
 }
 
@@ -166,6 +171,13 @@ impl Backend for BackendService {
 
         let machine_id = signed_data.machine_id;
         let machine_data = signed_data.data;
+
+        self.machine_alert_handler
+            .handle_machine_data_alerts(&self.pool, machine_id, &machine_data)
+            .await
+            .map_err(|e| {
+                Status::internal(format!("Failed while sending machine data to alert actor: {e}"))
+            })?;
 
         let system_metrics = convert_system_metrics(&machine_data);
 
@@ -361,7 +373,8 @@ pub async fn serve(
         BackendServer::new(BackendService::new(
             pool.clone(),
             heartbeat_monitor,
-            NodeAlertHandler::new(notification_dispatcher.clone(), pool),
+            NodeAlertHandler::new(notification_dispatcher.clone(), pool.clone()),
+            MachineAlertHandler::new(notification_dispatcher.clone(), pool),
         )),
         tls_cert,
         tls_key,

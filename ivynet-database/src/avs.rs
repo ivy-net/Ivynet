@@ -87,6 +87,22 @@ impl Avs {
         Ok(avses.into_iter().filter_map(|e| Avs::try_from(e).ok()).collect())
     }
 
+    pub async fn get_avs_list_count(
+        pool: &sqlx::PgPool,
+        machine_id: Uuid,
+    ) -> Result<i64, DatabaseError> {
+        let count: Option<i64> =
+            sqlx::query_scalar!("SELECT COUNT(*) FROM avs WHERE machine_id = $1", Some(machine_id))
+                .fetch_one(pool)
+                .await?;
+
+        if let Some(count) = count {
+            return Ok(count);
+        }
+
+        Ok(0)
+    }
+
     pub async fn get_org_avs_list(
         pool: &sqlx::PgPool,
         organization_id: i64,

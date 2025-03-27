@@ -4,9 +4,12 @@ use axum::{
     Json,
 };
 use axum_extra::extract::CookieJar;
-use ivynet_heartbeat::alerts::{
-    ClientHeartbeatAlert, ClientHeartbeatAlertHistorical, MachineHeartbeatAlert,
-    MachineHeartbeatAlertHistorical, NodeHeartbeatAlert, NodeHeartbeatAlertHistorical,
+use ivynet_heartbeat::{
+    alerts::{
+        ClientHeartbeatAlert, ClientHeartbeatAlertHistorical, MachineHeartbeatAlert,
+        MachineHeartbeatAlertHistorical, NodeHeartbeatAlert, NodeHeartbeatAlertHistorical,
+    },
+    ClientId, MachineId, NodeId,
 };
 use serde::Deserialize;
 use utoipa::ToSchema;
@@ -25,6 +28,21 @@ impl Default for PaginationParams {
     fn default() -> Self {
         Self { limit: 100, offset: 0 }
     }
+}
+
+#[derive(Debug, Clone, Copy, ToSchema, Deserialize, utoipa::IntoParams)]
+pub struct ClientAlertParams {
+    pub client_id: ClientId,
+}
+
+#[derive(Debug, Clone, Copy, ToSchema, Deserialize, utoipa::IntoParams)]
+pub struct MachineAlertParams {
+    pub machine_id: MachineId,
+}
+
+#[derive(Debug, Clone, ToSchema, Deserialize, utoipa::IntoParams)]
+pub struct NodeAlertParams {
+    pub node_id: NodeId,
 }
 
 /// Get all active client heartbeat alerts
@@ -74,6 +92,35 @@ pub async fn client_alert_history(
     Ok(Json(alerts))
 }
 
+/// Acknowledge a client heartbeat alert and move it to the historical table - used for deprecated
+/// clients
+#[utoipa::path(
+    post,
+    path = "/alerts/heartbeat/client/acknowledge",
+    params(ClientAlertParams),
+    responses(
+        (status = 200),
+        (status = 404)
+    )
+)]
+pub async fn acknowledge_client_alert(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Query(params): Query<ClientAlertParams>,
+) -> Result<Json<()>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let alert_id = params.client_id;
+    let alert = ClientHeartbeatAlert::get(&state.pool, params.client_id)
+        .await?
+        .ok_or(BackendError::ClientHeartbeatAlertNotFound(alert_id))?;
+    if alert.organization_id != account.organization_id {
+        return Err(BackendError::ClientHeartbeatAlertNotFound(alert_id));
+    }
+    ClientHeartbeatAlert::resolve(&state.pool, params.client_id).await?;
+    Ok(Json(()))
+}
+
 /// Get all active machine heartbeat alerts
 #[utoipa::path(
     get,
@@ -121,6 +168,35 @@ pub async fn machine_alert_history(
     Ok(Json(alerts))
 }
 
+/// Acknowledge a machine heartbeat alert and move it to the historical table - used for deprecated
+/// machines
+#[utoipa::path(
+    post,
+    path = "/alerts/heartbeat/machine/acknowledge",
+    params(MachineAlertParams),
+    responses(
+        (status = 200),
+        (status = 404)
+    )
+)]
+pub async fn acknowledge_machine_alert(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Query(params): Query<MachineAlertParams>,
+) -> Result<Json<()>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let machine_id = params.machine_id;
+    let alert = MachineHeartbeatAlert::get(&state.pool, machine_id)
+        .await?
+        .ok_or(BackendError::MachineHeartbeatAlertNotFound(machine_id))?;
+    if alert.organization_id != account.organization_id {
+        return Err(BackendError::MachineHeartbeatAlertNotFound(machine_id));
+    }
+    MachineHeartbeatAlert::resolve(&state.pool, params.machine_id).await?;
+    Ok(Json(()))
+}
+
 /// Get all active node heartbeat alerts
 #[utoipa::path(
     get,
@@ -166,4 +242,33 @@ pub async fn node_alert_history(
     )
     .await?;
     Ok(Json(alerts))
+}
+
+/// Acknowledge a node heartbeat alert and move it to the historical table - used for deprecated
+/// nodes
+#[utoipa::path(
+    post,
+    path = "/alerts/heartbeat/node/acknowledge",
+    params(NodeAlertParams),
+    responses(
+        (status = 200),
+        (status = 404)
+    )
+)]
+pub async fn acknowledge_node_alert(
+    headers: HeaderMap,
+    State(state): State<HttpState>,
+    jar: CookieJar,
+    Query(params): Query<NodeAlertParams>,
+) -> Result<Json<()>, BackendError> {
+    let account = authorize::verify(&state.pool, &headers, &state.cache, &jar).await?;
+    let node_id = params.node_id;
+    let alert = NodeHeartbeatAlert::get(&state.pool, node_id.clone())
+        .await?
+        .ok_or(BackendError::NodeHeartbeatAlertNotFound(node_id.clone()))?;
+    if alert.organization_id != account.organization_id {
+        return Err(BackendError::NodeHeartbeatAlertNotFound(node_id.clone()));
+    }
+    NodeHeartbeatAlert::resolve(&state.pool, node_id.clone()).await?;
+    Ok(Json(()))
 }

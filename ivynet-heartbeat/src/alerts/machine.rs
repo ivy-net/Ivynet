@@ -23,6 +23,8 @@ pub struct MachineHeartbeatAlert {
     pub created_at: DateTime<Utc>,
     #[schema(value_type = String)]
     pub last_response_time: DateTime<Utc>,
+    #[schema(value_type = String)]
+    pub organization_id: i64,
 }
 
 pub struct DbMachineHeartbeatAlert {
@@ -41,6 +43,7 @@ impl From<DbMachineHeartbeatAlert> for MachineHeartbeatAlert {
                 value.last_response_time,
                 Utc,
             ),
+            organization_id: value.organization_id,
         }
     }
 }
@@ -306,16 +309,17 @@ mod machine_heartbeat_alert_tests {
 
         // Create an alert
         let alert = MachineHeartbeatAlert {
-            machine_id: machine_id.clone(),
+            machine_id,
             created_at: now,
             last_response_time: last_response,
+            organization_id,
         };
 
         // Insert the alert
         MachineHeartbeatAlert::insert(&pool, alert.clone(), organization_id).await.unwrap();
 
         // Retrieve the alert
-        let retrieved = MachineHeartbeatAlert::get(&pool, machine_id.clone()).await.unwrap();
+        let retrieved = MachineHeartbeatAlert::get(&pool, machine_id).await.unwrap();
         assert!(retrieved.is_some());
         let retrieved = retrieved.unwrap();
 
@@ -325,17 +329,16 @@ mod machine_heartbeat_alert_tests {
         assert_eq!(retrieved.last_response_time.timestamp(), last_response.timestamp());
 
         // Resolve the alert
-        let historical_id =
-            MachineHeartbeatAlert::resolve(&pool, machine_id.clone()).await.unwrap();
+        let historical_id = MachineHeartbeatAlert::resolve(&pool, machine_id).await.unwrap();
         assert!(historical_id.is_some());
 
         // Check that the alert is no longer in the active table
-        let deleted_check = MachineHeartbeatAlert::get(&pool, machine_id.clone()).await.unwrap();
+        let deleted_check = MachineHeartbeatAlert::get(&pool, machine_id).await.unwrap();
         assert!(deleted_check.is_none());
 
         // Check that it's in the historical table
         let historical =
-            MachineHeartbeatAlertHistorical::get(&pool, machine_id.clone(), 10, 0).await.unwrap();
+            MachineHeartbeatAlertHistorical::get(&pool, machine_id, 10, 0).await.unwrap();
 
         assert_eq!(historical.len(), 1);
         assert_eq!(historical[0].machine_id.0, machine_id.0);
@@ -366,9 +369,10 @@ mod machine_heartbeat_alert_tests {
             let machine_id = MachineId(Uuid::new_v4());
 
             let alert = MachineHeartbeatAlert {
-                machine_id: machine_id.clone(),
+                machine_id,
                 created_at: now,
                 last_response_time: last_response,
+                organization_id,
             };
 
             // Insert and resolve each alert
@@ -432,9 +436,10 @@ mod machine_heartbeat_alert_tests {
             let machine_id = MachineId(Uuid::new_v4());
 
             let alert = MachineHeartbeatAlert {
-                machine_id: machine_id.clone(),
+                machine_id,
                 created_at: now,
                 last_response_time: last_response,
+                organization_id: organization_id_1,
             };
 
             MachineHeartbeatAlert::insert(&pool, alert, organization_id_1).await.unwrap();
@@ -445,9 +450,10 @@ mod machine_heartbeat_alert_tests {
             let machine_id = MachineId(Uuid::new_v4());
 
             let alert = MachineHeartbeatAlert {
-                machine_id: machine_id.clone(),
+                machine_id,
                 created_at: now,
                 last_response_time: last_response,
+                organization_id: organization_id_2,
             };
 
             MachineHeartbeatAlert::insert(&pool, alert, organization_id_2).await.unwrap();

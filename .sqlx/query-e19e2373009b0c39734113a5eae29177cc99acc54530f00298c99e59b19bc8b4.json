@@ -1,0 +1,53 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n                INSERT INTO machine_alerts_active (\n                    alert_id,\n                    machine_id,\n                    organization_id,\n                    client_id,\n                    created_at,\n                    alert_data,\n                    telegram_send,\n                    sendgrid_send,\n                    pagerduty_send\n                )\n                SELECT\n                    $1,\n                    m.machine_id,\n                    c.organization_id,\n                    m.client_id,\n                    $2,\n                    $3,\n                    $4,\n                    $5,\n                    $6\n                FROM machine m\n                JOIN client c\n                  ON m.client_id = c.client_id\n                WHERE m.machine_id = $7\n                ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Uuid",
+        "Timestamp",
+        "Jsonb",
+        {
+          "Custom": {
+            "name": "send_state",
+            "kind": {
+              "Enum": [
+                "no_send",
+                "send_success",
+                "send_failed"
+              ]
+            }
+          }
+        },
+        {
+          "Custom": {
+            "name": "send_state",
+            "kind": {
+              "Enum": [
+                "no_send",
+                "send_success",
+                "send_failed"
+              ]
+            }
+          }
+        },
+        {
+          "Custom": {
+            "name": "send_state",
+            "kind": {
+              "Enum": [
+                "no_send",
+                "send_success",
+                "send_failed"
+              ]
+            }
+          }
+        },
+        "Uuid"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "e19e2373009b0c39734113a5eae29177cc99acc54530f00298c99e59b19bc8b4"
+}

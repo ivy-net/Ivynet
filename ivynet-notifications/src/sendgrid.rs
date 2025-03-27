@@ -50,13 +50,6 @@ impl SendgridSend for Notification {
                     ("address".to_owned(), format!("{:?}", operator)),
                 ]),
             ),
-            NotificationType::MachineNotResponding { .. } => (
-                EmailTemplate::MachineNotResponding,
-                HashMap::from([(
-                    "machine_id".to_owned(),
-                    format!("{}", self.machine_id.unwrap_or_default()),
-                )]),
-            ),
             NotificationType::NodeNotRunning { node_name, .. } => {
                 (EmailTemplate::NodeNotRunning, HashMap::from([("avs".to_owned(), node_name)]))
             }
@@ -69,12 +62,11 @@ impl SendgridSend for Notification {
             NotificationType::NoOperatorId { node_name, .. } => {
                 (EmailTemplate::NoOperatorId, HashMap::from([("avs".to_owned(), node_name)]))
             }
-            NotificationType::HardwareResourceUsage { resource, percent, .. } => (
+            NotificationType::HardwareResourceUsage { resource, .. } => (
                 EmailTemplate::HardwareResourceUsage,
                 HashMap::from([
                     ("machine_id".to_owned(), format!("{}", self.machine_id.unwrap_or_default())),
                     ("resource".to_owned(), resource),
-                    ("percent".to_owned(), format!("{percent}")),
                 ]),
             ),
             NotificationType::LowPerformanceScore { node_name, performance, .. } => (
@@ -84,13 +76,13 @@ impl SendgridSend for Notification {
                     ("performance".to_owned(), format!("{performance}")),
                 ]),
             ),
-            NotificationType::NeedsUpdate {
+            NotificationType::NodeNeedsUpdate {
                 node_name,
                 current_version,
                 recommended_version,
                 ..
             } => (
-                EmailTemplate::NeedsUpdate,
+                EmailTemplate::NodeNeedsUpdate,
                 HashMap::from([
                     ("avs".to_owned(), node_name),
                     ("current_version".to_owned(), current_version),
@@ -144,6 +136,14 @@ impl SendgridSend for Notification {
                     ("twitter".to_owned(), twitter),
                 ]),
             ),
+            NotificationType::IdleMachine { machine_id, .. } => (
+                EmailTemplate::IdleMachine,
+                HashMap::from([("machine_id".to_owned(), format!("{:?}", machine_id))]),
+            ),
+            NotificationType::ClientUpdateRequired { machine_id, .. } => (
+                EmailTemplate::ClientUpdateRequired,
+                HashMap::from([("machine_id".to_owned(), format!("{:?}", machine_id))]),
+            ),
             // TODO: Unused due to the `NotificationSend` trait impl. Only here for compiler
             // completeness. Should migrate all Alerts to same method.
             NotificationType::NoClientHeartbeat => {
@@ -169,7 +169,7 @@ impl SendgridSend for Notification {
             Alert::NoMetrics { .. } => "No metrics available".to_string(),
             Alert::NoChainInfo { .. } => "No chain info".to_string(),
             Alert::NoOperatorId { .. } => "No operator id".to_string(),
-            Alert::NeedsUpdate {
+            Alert::NodeNeedsUpdate {
                 node_name: _,
                 node_type: _,
                 current_version,
@@ -184,12 +184,13 @@ impl SendgridSend for Notification {
             Alert::UnregisteredFromActiveSet { node_name: _, node_type: _, operator } => {
                 format!("Operator {operator:?} unregistered from the active set")
             }
-            Alert::MachineNotResponding { machine, .. } => {
-                format!("Machine {machine} is not responding")
-            }
             Alert::NodeNotResponding { .. } => "AVS is not responding".to_string(),
-            Alert::HardwareResourceUsage { resource, percent, .. } => {
-                format!("Resource {resource} is used in {percent}%")
+            Alert::HardwareResourceUsage { resource, .. } => {
+                format!(
+                    "Machine {} is maxing out hardware resources: {}",
+                    self.machine_id.unwrap_or_default(),
+                    resource
+                )
             }
             Alert::LowPerformanceScore { node_name: _, node_type: _, performance } => {
                 format!("AVS dropped in performace score to {performance}")
@@ -199,6 +200,12 @@ impl SendgridSend for Notification {
             }
             Alert::UpdatedEigenAvs { name, address, metadata_uri, website, twitter, .. } => {
                 format!("Updated EigenLayer AVS: {name} has updated their metadata or address to {:?} with metadata URI {metadata_uri}. \n Website: {website} \n Twitter: {twitter}", address)
+            }
+            Alert::IdleMachine { machine_id, .. } => {
+                format!("Machine {machine_id} has no running nodes")
+            }
+            Alert::ClientUpdateRequired { machine_id, .. } => {
+                format!("Machine {machine_id} needs an update to the Ivynet client")
             }
             // TODO: Unused due to the `NotificationSend` trait impl. Only here for compiler
             // completeness. Should migrate all Alerts to same method.
@@ -214,18 +221,19 @@ pub enum EmailTemplate {
     Custom,
     Generic,
     UnregisteredFromActiveSet,
-    MachineNotResponding,
     NodeNotRunning,
     NoChainInfo,
     NoMetrics,
     NoOperatorId,
     HardwareResourceUsage,
     LowPerformanceScore,
-    NeedsUpdate,
+    NodeNeedsUpdate,
     ActiveSetNoDeployment,
     NodeNotResponding,
     NewEigenAvs,
     UpdatedEigenAvs,
+    IdleMachine,
+    ClientUpdateRequired,
     // Heartbeat variants
     NoClientHeartbeat,
     NoNodeHeartbeat,
@@ -245,10 +253,6 @@ impl<D: OrganizationDatabase> EmailSender<D> {
                 templates.insert(
                     EmailTemplate::UnregisteredFromActiveSet,
                     sendgrid_templates.unreg_active_set.to_string(),
-                );
-                templates.insert(
-                    EmailTemplate::MachineNotResponding,
-                    sendgrid_templates.machine_not_responding.to_string(),
                 );
                 templates.insert(
                     EmailTemplate::NodeNotRunning,
@@ -273,7 +277,7 @@ impl<D: OrganizationDatabase> EmailSender<D> {
                     sendgrid_templates.low_perf.to_string(),
                 );
                 templates.insert(
-                    EmailTemplate::NeedsUpdate,
+                    EmailTemplate::NodeNeedsUpdate,
                     sendgrid_templates.needs_update.to_string(),
                 );
             }

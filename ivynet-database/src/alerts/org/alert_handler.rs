@@ -6,15 +6,14 @@ use sqlx::{types::Uuid, PgPool};
 use std::sync::Arc;
 
 use crate::{
-    alerts::organization_alerts_active::{NewOrganizationAlert, OrganizationActiveAlert},
+    alerts::{
+        alert_db::AlertDb,
+        alert_handler::{ActiveAlert, AlertHandler, NewAlert},
+        org::alerts_active::{NewOrganizationAlert, OrganizationActiveAlert},
+    },
     eigen_avs_metadata::{EigenAvsMetadata, MetadataContent},
     error::DatabaseError,
     Organization,
-};
-
-use super::{
-    alert_db::AlertDb,
-    alert_handler::{ActiveAlert, AlertHandler, NewAlert},
 };
 
 #[derive(Debug, thiserror::Error)]
@@ -240,8 +239,8 @@ mod tests {
     #[sqlx::test(
         migrations = "../migrations",
         fixtures(
-            "../../fixtures/new_user_registration.sql",
-            "../../fixtures/organization_alerts_active.sql",
+            "../../../fixtures/new_user_registration.sql",
+            "../../../fixtures/organization_alerts_active.sql",
         )
     )]
     // #[ignore]

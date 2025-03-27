@@ -79,15 +79,16 @@ fn avs_if_any(notification: &Notification) -> Option<String> {
         NotificationType::NoMetrics { node_name: name, .. } |
         NotificationType::NoOperatorId { node_name: name, .. } |
         NotificationType::LowPerformanceScore { node_name: name, .. } |
-        NotificationType::NeedsUpdate { node_name: name, .. } |
+        NotificationType::NodeNeedsUpdate { node_name: name, .. } |
         NotificationType::Custom { node_name: name, .. } |
         NotificationType::ActiveSetNoDeployment { node_name: name, .. } |
         NotificationType::UnregisteredFromActiveSet { node_name: name, .. } |
         NotificationType::NodeNotResponding { node_name: name, .. } |
         NotificationType::NewEigenAvs { name, .. } |
         NotificationType::UpdatedEigenAvs { name, .. } => Some(name.to_owned()),
-        NotificationType::MachineNotResponding { .. } => None,
         NotificationType::HardwareResourceUsage { .. } => None,
+        NotificationType::IdleMachine { .. } => None,
+        NotificationType::ClientUpdateRequired { .. } => None,
         // TODO: This is somewhat redundant with the `impl` methods for constructing notifications.
         // Should be standardized.
         NotificationType::NoClientHeartbeat => None,
@@ -136,9 +137,6 @@ impl PagerDutySend for Notification {
             NotificationType::UnregisteredFromActiveSet { node_name, operator, .. } => {
                 format!("Address {operator:?} has been removed from the active set for {node_name}")
             }
-            NotificationType::MachineNotResponding { machine } => {
-                format!("Machine '{:?}' has lost connection with our backend", machine)
-            }
             NotificationType::Custom { extra_data, .. } => format!("ERROR: {extra_data}"),
             NotificationType::NodeNotRunning { node_name, .. } => {
                 format!("AVS {node_name} is not running on {}", self.machine_id.unwrap_or_default())
@@ -152,16 +150,17 @@ impl PagerDutySend for Notification {
             NotificationType::NoOperatorId { node_name, .. } => {
                 format!("No operator configured for {node_name}")
             }
-            NotificationType::HardwareResourceUsage { resource, percent, .. } => {
+            NotificationType::HardwareResourceUsage { resource, .. } => {
                 format!(
-                    "Machine {} has used over {percent}% of {resource}",
-                    self.machine_id.unwrap_or_default()
+                    "Machine {} is maxing out hardware resources: {}",
+                    self.machine_id.unwrap_or_default(),
+                    resource
                 )
             }
             NotificationType::LowPerformanceScore { node_name, performance, .. } => {
                 format!("AVS {node_name} has droped in performance to {performance}")
             }
-            NotificationType::NeedsUpdate {
+            NotificationType::NodeNeedsUpdate {
                 node_name,
                 current_version,
                 recommended_version,
@@ -202,6 +201,15 @@ impl PagerDutySend for Notification {
             NotificationType::NoClientHeartbeat => "No heartbeat from client".to_string(),
             NotificationType::NoMachineHeartbeat => "No heartbeat from machine".to_string(),
             NotificationType::NoNodeHeartbeat => "No heartbeat from node".to_string(),
+            NotificationType::IdleMachine { .. } => {
+                format!("Machine {} has no running nodes", self.machine_id.unwrap_or_default())
+            }
+            NotificationType::ClientUpdateRequired { .. } => {
+                format!(
+                    "Machine {} needs an update to the Ivynet client",
+                    self.machine_id.unwrap_or_default()
+                )
+            }
         }
     }
 }

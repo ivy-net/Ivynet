@@ -90,7 +90,12 @@ impl<D: OrganizationDatabase> HeartbeatEventHandler<D> {
         last_response_time: DateTime<Utc>,
         settings: NotificationSettings,
     ) -> Result<(), HeartbeatError> {
-        let alert = ClientHeartbeatAlert { client_id, last_response_time, created_at: Utc::now() };
+        let alert = ClientHeartbeatAlert {
+            client_id,
+            last_response_time,
+            created_at: Utc::now(),
+            organization_id,
+        };
         ClientHeartbeatAlert::insert(&self.db, alert.clone(), organization_id).await?;
         if settings
             .alert_flags
@@ -110,8 +115,12 @@ impl<D: OrganizationDatabase> HeartbeatEventHandler<D> {
         last_response_time: DateTime<Utc>,
         settings: NotificationSettings,
     ) -> Result<(), HeartbeatError> {
-        let alert =
-            MachineHeartbeatAlert { machine_id, last_response_time, created_at: Utc::now() };
+        let alert = MachineHeartbeatAlert {
+            machine_id,
+            last_response_time,
+            created_at: Utc::now(),
+            organization_id,
+        };
         MachineHeartbeatAlert::insert(&self.db, alert.clone(), organization_id).await?;
         if settings
             .alert_flags
@@ -132,7 +141,12 @@ impl<D: OrganizationDatabase> HeartbeatEventHandler<D> {
         last_response_time: DateTime<Utc>,
         settings: NotificationSettings,
     ) -> Result<(), HeartbeatError> {
-        let alert = NodeHeartbeatAlert { node_id, last_response_time, created_at: Utc::now() };
+        let alert = NodeHeartbeatAlert {
+            node_id,
+            last_response_time,
+            created_at: Utc::now(),
+            organization_id,
+        };
         NodeHeartbeatAlert::insert(&self.db, alert.clone(), organization_id).await?;
         if settings
             .alert_flags

@@ -26,7 +26,7 @@ pub struct Config {
     #[arg(long, env = "SENDGRID_FROM", default_value = "no-reply@em739.ivynet.dev")]
     pub sendgrid_from: Option<String>,
 
-    #[arg(long, env = "SENDGRID_API_KEY")]
+    #[arg(long, env = "SENDGRID_KEY")]
     pub sendgrid_api_key: Option<String>,
 
     #[arg(long, env = "SENDGRID_ORG_VER_TMP")]

@@ -24,6 +24,8 @@ pub struct ClientHeartbeatAlert {
     pub created_at: DateTime<Utc>,
     #[schema(value_type = String)]
     pub last_response_time: DateTime<Utc>,
+    #[schema(value_type = String)]
+    pub organization_id: i64,
 }
 
 pub struct DbClientHeartbeatAlert {
@@ -42,6 +44,7 @@ impl From<DbClientHeartbeatAlert> for ClientHeartbeatAlert {
                 value.last_response_time,
                 Utc,
             ),
+            organization_id: value.organization_id,
         }
     }
 }
@@ -307,9 +310,10 @@ mod client_heartbeat_alert_tests {
 
         // Create an alert
         let alert = ClientHeartbeatAlert {
-            client_id: client_id.clone(),
+            client_id,
             created_at: now,
             last_response_time: last_response,
+            organization_id,
         };
 
         // Insert the alert
@@ -373,6 +377,7 @@ mod client_heartbeat_alert_tests {
                 client_id,
                 created_at: now,
                 last_response_time: last_response,
+                organization_id,
             };
 
             // Insert and resolve each alert
@@ -442,6 +447,7 @@ mod client_heartbeat_alert_tests {
                 client_id,
                 created_at: now,
                 last_response_time: last_response,
+                organization_id: organization_id_1,
             };
 
             ClientHeartbeatAlert::insert(&pool, alert, organization_id_1).await.unwrap();
@@ -458,6 +464,7 @@ mod client_heartbeat_alert_tests {
                 client_id,
                 created_at: now,
                 last_response_time: last_response,
+                organization_id: organization_id_2,
             };
 
             ClientHeartbeatAlert::insert(&pool, alert, organization_id_2).await.unwrap();

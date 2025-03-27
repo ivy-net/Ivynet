@@ -2,9 +2,10 @@ use ivynet_alerts::AlertType;
 use ivynet_database::{
     self,
     alerts::{
-        node_alerts_active::NodeActiveAlert, node_alerts_historical::NodeHistoryAlert,
-        organization_alerts_active::OrganizationActiveAlert,
-        organization_alerts_historical::OrganizationHistoryAlert,
+        node::{alerts_active::NodeActiveAlert, alerts_historical::NodeHistoryAlert},
+        org::{
+            alerts_active::OrganizationActiveAlert, alerts_historical::OrganizationHistoryAlert,
+        },
     },
     data::{machine_data, node_data},
 };
@@ -56,10 +57,13 @@ use super::{alerts, authorize, client, heartbeat, info, machine, node, organizat
         machine::set_node_type,
         heartbeat::client_active_alerts,
         heartbeat::client_alert_history,
+        heartbeat::acknowledge_client_alert,
         heartbeat::machine_active_alerts,
         heartbeat::machine_alert_history,
+        heartbeat::acknowledge_machine_alert,
         heartbeat::node_active_alerts,
         heartbeat::node_alert_history,
+        heartbeat::acknowledge_node_alert,
         alerts::node_active_alerts,
         alerts::node_acknowledge_alert,
         alerts::node_alert_history,

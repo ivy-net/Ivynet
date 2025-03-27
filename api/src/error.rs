@@ -4,6 +4,7 @@ use axum::{
 };
 use ivynet_docker_registry::registry::RegistryError;
 use ivynet_grpc::server::ServerError;
+use ivynet_heartbeat::{ClientId, MachineId, NodeId};
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -94,16 +95,19 @@ pub enum BackendError {
     InvalidSetAvsVersionData,
 
     #[error(transparent)]
-    BackendAlertError(#[from] BackendAlertError),
-
-    #[error(transparent)]
     AlertError(#[from] ivynet_alerts::BitflagError),
-}
 
-#[derive(Debug, Error)]
-pub enum BackendAlertError {
     #[error("Alert not found for id: {0}")]
     AlertNotFound(Uuid),
+
+    #[error("Alert not found for client id: {0}")]
+    ClientHeartbeatAlertNotFound(ClientId),
+
+    #[error("Alert not found for machine id: {0}")]
+    MachineHeartbeatAlertNotFound(MachineId),
+
+    #[error("Alert not found for node id: {0}")]
+    NodeHeartbeatAlertNotFound(NodeId),
 }
 
 impl IntoResponse for BackendError {

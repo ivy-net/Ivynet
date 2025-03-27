@@ -126,13 +126,6 @@ impl TelegramSend for Notification {
                     self.machine_id.unwrap_or_default()
                 )
             }
-            NotificationType::MachineNotResponding { .. } => {
-                format!(
-                    "❗ *Machine Not Responding* ❗️\nMachine `{}` has lost connection with our backend\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
-                    Self::escape_markdown_v2(&format!("{:?}", self.machine_id.unwrap_or_default())),
-                    self.machine_id.unwrap_or_default()
-                )
-            }
             NotificationType::Custom { node_name, node_type: _, extra_data } => {
                 format!(
                     "❗ *Custom Alert* ❗️\nNode `{}` has triggered a custom alert with custom data: `{}`\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
@@ -170,11 +163,10 @@ impl TelegramSend for Notification {
                     self.machine_id.unwrap_or_default()
                 )
             }
-            NotificationType::HardwareResourceUsage { machine, resource, percent } => {
+            NotificationType::HardwareResourceUsage { machine, resource, .. } => {
                 format!(
-                    "❗ *Hardware Resource Usage* ❗️\nMachine `{}` has used over `{}%` of `{}`\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
+                    "❗ *Hardware Resource Usage* ❗️\nMachine `{}` is maxing out hardware resources: {}\n🔗 [Machine Details](http://ivynet\\.dev/machines/{})",
                     Self::escape_markdown_v2(&format!("{:?}", machine)),
-                    percent,
                     Self::escape_markdown_v2(resource),
                     machine
                 )
@@ -187,7 +179,7 @@ impl TelegramSend for Notification {
                     self.machine_id.unwrap_or_default()
                 )
             }
-            NotificationType::NeedsUpdate {
+            NotificationType::NodeNeedsUpdate {
                 node_name,
                 node_type: _,
                 current_version,
@@ -249,6 +241,18 @@ impl TelegramSend for Notification {
                     Self::escape_markdown_v2(metadata_uri),
                     Self::escape_markdown_v2(website),
                     Self::escape_markdown_v2(twitter)
+                )
+            }
+            NotificationType::IdleMachine { machine_id, .. } => {
+                format!(
+                    "❗ *Idle Machine* ❗️\n\nMachine {} has no running nodes",
+                    Self::escape_markdown_v2(&format!("{:?}", machine_id))
+                )
+            }
+            NotificationType::ClientUpdateRequired { machine_id, .. } => {
+                format!(
+                    "❗ *Client Update Required* ❗️\n\nMachine {} needs an update to the Ivynet client",
+                    Self::escape_markdown_v2(&format!("{:?}", machine_id))
                 )
             }
             // TODO: Unused due to the `NotificationSend` trait impl. Only here for compiler

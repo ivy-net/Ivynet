@@ -10,6 +10,10 @@ use async_trait::async_trait;
 use sqlx::{types::Uuid, PgPool};
 
 use crate::{
+    alerts::{
+        alert_db::AlertDb,
+        alert_handler::{ActiveAlert, AlertHandler, NewAlert},
+    },
     avs_version::{NodeTypeId, VersionData},
     data::{
         avs_version::{check_version_status, VersionType},
@@ -19,11 +23,7 @@ use crate::{
     Avs, DbAvsVersionData, Machine,
 };
 
-use super::{
-    alert_db::AlertDb,
-    alert_handler::{ActiveAlert, AlertHandler, NewAlert},
-    node_alerts_active::{NewNodeAlert, NodeActiveAlert},
-};
+use super::alerts_active::{NewNodeAlert, NodeActiveAlert};
 
 pub const RUNNING_METRIC: &str = "running";
 pub const EIGEN_PERFORMANCE_METRIC: &str = "eigen_performance_score";
@@ -140,12 +140,12 @@ impl AlertHandler for NodeAlertHandler {
     ) -> Result<Vec<NewNodeAlert>, NodeAlertError> {
         let existing_ids = existing_alerts.iter().map(|alert| alert.alert_id).collect::<Vec<_>>();
 
-        let filtered = incoming_alerts
+        let new_filtered_alerts = incoming_alerts
             .into_iter()
             .filter(|alert| !existing_ids.contains(&alert.id))
             .collect::<Vec<_>>();
 
-        Ok(filtered)
+        Ok(new_filtered_alerts)
     }
 }
 
@@ -251,7 +251,7 @@ pub fn alerts_from_avs(avs: &Avs, version_map: &HashMap<NodeTypeId, VersionData>
             let recommended_version = version_data.stable_version.clone();
             if update_status == UpdateStatus::Outdated || update_status == UpdateStatus::Updateable
             {
-                alerts.push(Alert::NeedsUpdate {
+                alerts.push(Alert::NodeNeedsUpdate {
                     node_name: avs.avs_name.clone(),
                     node_type: avs.avs_type.to_string(),
                     current_version: avs.avs_version.clone(),
@@ -352,7 +352,7 @@ async fn extract_node_data_alerts(
                 if update_status == UpdateStatus::Outdated ||
                     update_status == UpdateStatus::Updateable
                 {
-                    alerts.push(Alert::NeedsUpdate {
+                    alerts.push(Alert::NodeNeedsUpdate {
                         node_name: node_data.name.clone(),
                         node_type: avs.avs_type.to_string(),
                         current_version: avs.avs_version.clone(),
@@ -500,8 +500,8 @@ mod tests {
     #[sqlx::test(
         migrations = "../migrations",
         fixtures(
-            "../../fixtures/new_user_registration.sql",
-            "../../fixtures/node_alerts_active.sql",
+            "../../../fixtures/new_user_registration.sql",
+            "../../../fixtures/node_alerts_active.sql",
         )
     )]
     #[ignore]
