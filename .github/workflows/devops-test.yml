@@ -19,24 +19,4 @@ jobs:
         uses: actions/checkout@v4
         with:
           ssh-key: "${{ secrets.ED_25519 }}"
-      - name: Get latest git tag
-        id: tag-api
-        run: |
-          git pull --tags
-          tag=$(git tag | awk -F- '/api/ {print $2}'| tail -1)
-          echo "TAG_API_GIT=${tag}" >> "$GITHUB_OUTPUT"
-          echo "Tag: ${tag}"
-      - name: Debug
-        run: |
-          echo "${PATH}"
-      - name: Install TOML cli
-        run: |
-          cd /usr/local/bin
-          wget https://storage.googleapis.com/ivynet-share/toml
-          chmod 0755 toml
-      - name: Version api
-        id: version-api
-        run: |
-          version=$(toml get api/Cargo.toml package.version | tr -d \")
-          echo "TAG_API_TOML=${version}" >> "$GITHUB_OUTPUT"
-          echo "Version: ${version}"
+# Add steps to get GHA itself

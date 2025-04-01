@@ -50,64 +50,68 @@ jobs:
           tar -czf migrations.tar.gz migrations
           cp migrations.tar.gz ${DEST}
 
-      - name: Authenticate to Google Cloud
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
-      - name: Upload file to the bucket
-        uses: google-github-actions/upload-cloud-storage@v2
-        with:
-          path: '/tmp/ivy-master'
-          destination: 'ivynet-share-test'
-          parent: true
-          gzip: false
-          process_gcloudignore: false
+# Remove dependencies on GCP
+#      - name: Authenticate to Google Cloud
+#        uses: google-github-actions/auth@v2
+#        with:
+#          credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
+#      - name: Upload file to the bucket
+#        uses: google-github-actions/upload-cloud-storage@v2
+#        with:
+#          path: '/tmp/ivy-master'
+#          destination: 'ivynet-share-test'
+#          parent: true
+#          gzip: false
+#          process_gcloudignore: false
 
-  update-dev:
-    name: Ansible Update dev server
-    runs-on: ubuntu-latest
-    needs: build
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Inject packages
-        run: >
-          pipx inject ansible-core
-          jmespath
-          google-auth
-          google-cloud-storage
-          requests
-      - name: Create a file with the vault password
-        run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
-        env:
-          ANSIBLE_VAULT: ${{ secrets.ANSIBLE_VAULT }}
-      - name: Authenticate to Google Cloud
-        id: google-creds
-        uses: google-github-actions/auth@v2
-        with:
-          credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
-      - name: Run Ansible (after preparations)
-        env:
-          ANSIBLE_HOST_KEY_CHECKING: false
-          ANSIBLE_PIPELINING: true
-        run: |
-          gcloud auth activate-service-account \
-           --key-file=${GOOGLE_GHA_CREDS_PATH}
-          export remote_user=$(gcloud compute os-login describe-profile \
-           --format "value(posixAccounts.username)")
-          cd devops/ansible
-          jq -r .private_key ${GOOGLE_GHA_CREDS_PATH} > sa.prv
-          chmod 600 sa.prv
-          cp ${GOOGLE_GHA_CREDS_PATH} sa.json
-          sed -i.bak 's/\~\/\.devops\-automation-key/sa/' gcp.yml
-          ssh-agent > ~/.ssh-env
-          source ~/.ssh-env
-          ssh-add sa.prv
-          ansible-playbook \
-            -i gcp.yml \
-            -u ${remote_user} \
-            --vault-password-file ~/.vault.txt \
-            -e "ivynet_api_gcp_cred=sa.json" \
-            -e "ivynet_scanner_gcp_cred=sa.json" \
-            -e "ivynet_ingress_gcp_cred=sa.json" \
-            backend-master.yml
+# Remove dependencies on GCP
+# Alternative described in:
+# https://github.com/ivy-net/ivynet/issues/578
+#  update-dev:
+#    name: Ansible Update dev server
+#    runs-on: ubuntu-latest
+#    needs: build
+#    steps:
+#      - name: Checkout repository
+#        uses: actions/checkout@v4
+#      - name: Inject packages
+#        run: >
+#          pipx inject ansible-core
+#          jmespath
+#          google-auth
+#          google-cloud-storage
+#          requests
+#      - name: Create a file with the vault password
+#        run: echo "$ANSIBLE_VAULT" > ~/.vault.txt
+#        env:
+#          ANSIBLE_VAULT: ${{ secrets.ANSIBLE_VAULT }}
+#      - name: Authenticate to Google Cloud
+#        id: google-creds
+#        uses: google-github-actions/auth@v2
+#        with:
+#          credentials_json: '${{ secrets.GOOGLE_CREDENTIALS }}'
+#      - name: Run Ansible (after preparations)
+#        env:
+#          ANSIBLE_HOST_KEY_CHECKING: false
+#          ANSIBLE_PIPELINING: true
+#        run: |
+#          gcloud auth activate-service-account \
+#           --key-file=${GOOGLE_GHA_CREDS_PATH}
+#          export remote_user=$(gcloud compute os-login describe-profile \
+#           --format "value(posixAccounts.username)")
+#          cd devops/ansible
+#          jq -r .private_key ${GOOGLE_GHA_CREDS_PATH} > sa.prv
+#          chmod 600 sa.prv
+#          cp ${GOOGLE_GHA_CREDS_PATH} sa.json
+#          sed -i.bak 's/\~\/\.devops\-automation-key/sa/' gcp.yml
+#          ssh-agent > ~/.ssh-env
+#          source ~/.ssh-env
+#          ssh-add sa.prv
+#          ansible-playbook \
+#            -i gcp.yml \
+#            -u ${remote_user} \
+#            --vault-password-file ~/.vault.txt \
+#            -e "ivynet_api_gcp_cred=sa.json" \
+#            -e "ivynet_scanner_gcp_cred=sa.json" \
+#            -e "ivynet_ingress_gcp_cred=sa.json" \
+#            backend-master.yml
