@@ -27,7 +27,7 @@ version = "0.6.0"
 edition = "2021"
 repository = "https://github.com/ivy-net/ivynet"
 categories = ["cryptography::cryptocurrencies"]
-license = "UNLICENSED"
+license = "Apache-2.0"
 
 [workspace.lints.clippy]
 # Duplicated from Reth - Reth has more enabled but lists them as experimental so
