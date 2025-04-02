@@ -130,7 +130,7 @@ cd ingress
 cargo run
 ```
 
-7. Run the backend from ./backend:
+7. Run the api from ./api:
 ```sh
 cd backend
 cargo run

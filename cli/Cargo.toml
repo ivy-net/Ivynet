@@ -7,7 +7,7 @@ description = "CLI for Ivynet client"
 keywords = ["cli", "tool"]
 repository = "https://github.com/ivy-net/ivynet"
 default-run = "ivynet"
-license = "UNLICENSED"
+license = "Apache-2.0"
 
 [[bin]]
 name = "ivynet"
