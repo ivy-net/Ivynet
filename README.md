@@ -2,22 +2,11 @@
 
 <https://ivynet.dev/>
 
-Ivynet is building the operating system for all restaking protocols. Where restaking protocols facilitate a more efficient distribution of restaked assets, Ivynet facilitates an efficient use of compute in order to maxmize yield from those restaked assets.
-
-With the Ivynet client, that begins with calculations determining whether a specific AVS is worth the compute it demands, and then it helps in deploying that AVS.
-
-## Features
-
-- Import, create, and password protect your keys
-- Grab information from mainnet and holesky testnet on operators and stakers
-- Grab information on your computer/server in relation to AVS's node requirements
-- Setup and deploy multiple AVS's in minutes
-<!-- - Register as an operator on EigenLayer (Soon) -->
-
+Ivynet is building a unified observability solution for all crypto node operators. Primarily, the Ivynet cli daemon is used to grab all information from any actively deployed AVSs it detects (or manually added ones) and push data upwards to the ingress service. This data is then transformed and enriched with eg: active set data and accessed by the api service.
 
 ## Ivynet Monorepo
 
-Currently, this repo contains the backend, core, and cli modules of the Ivy platform. The interface is separate as it is not built using Rust. See the links to their individual readme files below. Also, view our docs page at [docs.ivynet.dev](https://docs.ivynet.dev/)
+Currently, this repo contains the api, ingress, scanner, and cli modules of the Ivy platform, as well as their dependencies. The interface is separate as it is not built using Rust. See the links to their individual readme files below. Also, view our docs page at [docs.ivynet.dev](https://docs.ivynet.dev/)
 
 ## Build Dependencies
 
@@ -86,13 +75,13 @@ Please refer to the CLI documentation [here](./cli/README.md)
 Optional: Ensure that no existing instance of the database is running:
 
 ```sh
-docker compose -f ./db/backend-compose.yaml down -v
+docker compose -f ./ivynet-database/backend-compose.yaml down -v
 ```
 
 Bring up the database:
 
 ```sh
-docker compose -f ./db/backend-compose.yaml up -d
+docker compose -f ./ivynet-database/backend-compose.yaml up -d
 ```
 
 2. Set the DATABASE_URL environment variable:
@@ -136,10 +125,10 @@ cd backend
 cargo run
 ```
 
-8. Run the scraper from ./scraper:
+8. Run the onchain data scanner from ./scanner:
 
 ```sh
-cd scraper
+cd scanner
 cargo run
 ```
 
