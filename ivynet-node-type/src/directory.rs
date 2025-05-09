@@ -8,27 +8,42 @@ use super::{
     NodeType, SkateChainType,
 };
 
-const ALL_DIRECTORIES: [(Chain, H160, RestakingProtocolType); 4] = [
+// EigenLayer uses one contract for central operator opt in and metadat of new AVS
+//Symbiotic uses OptInService for opt in and NetworkRegistry for metadata of new AVS
+const ALL_DIRECTORIES: [(Chain, H160, RestakingProtocolType); 6] = [
+    //EigenLayer
     (
         Chain::Mainnet,
         h160!(0x135DDa560e946695d6f155dACaFC6f1F25C1F5AF),
         RestakingProtocolType::Eigenlayer,
-    ), //Eigenlayer
-    (
-        Chain::Mainnet,
-        h160!(0x7133415b33B438843D581013f98A08704316633c),
-        RestakingProtocolType::Symbiotic,
-    ), //Symbiotic
+    ),
     (
         Chain::Holesky,
         h160!(0x055733000064333CaDDbC92763c58BF0192fFeBf),
         RestakingProtocolType::Eigenlayer,
-    ), //Eigenlayer
+    ),
+    //Symbiotic NetworkOptInService
+    (
+        Chain::Mainnet,
+        h160!(0x7133415b33B438843D581013f98A08704316633c),
+        RestakingProtocolType::Symbiotic,
+    ),
     (
         Chain::Holesky,
         h160!(0x58973d16FFA900D11fC22e5e2B6840d9f7e13401),
         RestakingProtocolType::Symbiotic,
-    ), //Symbiotic
+    ),
+    //Symbiotic NetworkRegistry
+    (
+        Chain::Mainnet,
+        h160!(0xC773b1011461e7314CF05f97d95aa8e92C1Fd8aA),
+        RestakingProtocolType::Symbiotic,
+    ),
+    (
+        Chain::Holesky,
+        h160!(0x7d03b7343BF8d5cEC7C0C27ecE084a20113D15C9),
+        RestakingProtocolType::Symbiotic,
+    ),
 ];
 
 /*------------------------------------------------
