@@ -12,7 +12,7 @@ For more information on how the build and deploy is automated in ivynet project 
 ## Ansible
 
 Ansible is the tools used to configure backend and client.
-It is a core of many github actions [workflows](github/workflows).
+It is a core of many github actions [workflows](../.github/workflows).
 Information about Ansible roles, playbooks and script helping to run them are in [Ansible](ansible/README.md) folder.
 
 
