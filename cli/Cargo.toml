@@ -34,7 +34,7 @@ kameo.workspace = true
 linemux = "=0.3.0"
 once_cell.workspace = true
 reqwest.workspace = true
-rustix = { version = "0.38", default-features = false, features = ["system"] }
+rustix = { version = "1.0", default-features = false, features = ["system"] }
 serde.workspace = true
 serde_json.workspace = true
 sysinfo = "0.33"
