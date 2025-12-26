@@ -27,6 +27,7 @@ abigen!(
         event OperatorAVSRegistrationStatusUpdated(address indexed operator, address indexed avs, uint8 status)
         event OptIn(address indexed who, address indexed where)
         event OptOut(address indexed who, address indexed where)
+        event AddEntity(address avs)
     ]"#,
 );
 
